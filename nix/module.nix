@@ -68,7 +68,7 @@ in
 
       serviceConfig = {
         ExecStartPre = "${lib.getExe cfg.package} migrate --config ${configFile}";
-        ExecStart = "${lib.getExe cfg.package} serve --config ${configFile}";
+        ExecStart = "${lib.getExe cfg.package} all --config ${configFile}";
         Restart = "on-failure";
 
         # The dynamic user is named verso, so PostgreSQL's peer authentication maps it to the
