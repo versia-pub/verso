@@ -16,6 +16,10 @@
       # `nix fmt` passes no paths, so use the treefmt wrapper that formats the whole tree.
       formatter = forAllSystems (pkgs: pkgs.nixfmt-tree);
 
+      packages = forAllSystems (pkgs: {
+        deps = pkgs.callPackage ./nix/deps.nix { };
+      });
+
       devShells = forAllSystems (pkgs: {
         default = pkgs.callPackage ./nix/devshell.nix { };
       });
@@ -25,6 +29,7 @@
         import ./nix/checks.nix {
           inherit pkgs;
           src = self;
+          deps = self.packages.${pkgs.stdenv.hostPlatform.system}.deps;
         }
       );
     };

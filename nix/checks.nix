@@ -1,12 +1,15 @@
 {
   pkgs,
   src,
+  deps,
 }:
 let
   # Runs a deno.json task against the read-only source, so a task that tries to write fails loudly.
+  # Deno writes to its cache, so it gets a writable copy of the dependencies.
   denoTask =
     name: task:
     pkgs.runCommand name { nativeBuildInputs = [ pkgs.deno ]; } ''
+      cp -r --no-preserve=mode ${deps} "$TMPDIR/deno"
       export DENO_DIR="$TMPDIR/deno" DENO_NO_UPDATE_CHECK=1
       cd ${src}
       deno task ${task}
