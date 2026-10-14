@@ -22,15 +22,17 @@ running `nix build` or `nix flake check`, or Nix will act as if it isn't there.
 
 ## Commands
 
-| Command                   | What it does                                          |
-| ------------------------- | ----------------------------------------------------- |
-| `deno task fmt`           | Format the code                                       |
-| `deno task lint`          | Lint the code                                         |
-| `deno task check`         | Type-check the code                                   |
-| `nix fmt`                 | Format the Nix files                                  |
-| `nix flake check`         | Run everything CI runs                                |
-| `nix build`               | Build the server package                              |
-| `nix run .#update-hashes` | Update the dependency hash after changing `deno.lock` |
+| Command                         | What it does                                          |
+| ------------------------------- | ----------------------------------------------------- |
+| `deno task fmt`                 | Format the code                                       |
+| `deno task lint`                | Lint the code                                         |
+| `deno task check`               | Type-check the code                                   |
+| `deno task test`                | Run the tests                                         |
+| `deno task unused-dependencies` | List dependencies nothing imports                     |
+| `nix fmt`                       | Format the Nix files                                  |
+| `nix flake check`               | Run everything CI runs                                |
+| `nix build`                     | Build the server package                              |
+| `nix run .#update-hashes`       | Update the dependency hash after changing `deno.lock` |
 
 CI runs `nix flake check` and nothing else. It runs the same Deno tasks inside
 the Nix sandbox, without network access. If it passes on your machine, it should

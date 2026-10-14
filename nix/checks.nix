@@ -25,6 +25,7 @@ in
   lint = denoTask "lint" "lint";
   typecheck = denoTask "typecheck" "check";
   test = denoTask "test" "test";
+  unused-dependencies = denoTask "unused-dependencies" "unused-dependencies";
 
   media-spike = import ./media-spike.nix { inherit pkgs; };
 
