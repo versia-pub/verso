@@ -50,7 +50,7 @@ export const formatReference = (
  * non-ASCII names (the spec wants Punycode), unbracketed IPv6, and anything that isn't just a
  * hostname and port.
  */
-const canonicalize = (host: string): string | undefined => {
+export const canonicalize = (host: string): string | undefined => {
   if (!/^[\x21-\x7e]+$/.test(host)) {
     return undefined;
   }
