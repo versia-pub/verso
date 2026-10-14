@@ -37,11 +37,15 @@ in
     database.createLocally = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Whether to run PostgreSQL on this machine with a `verso` database and role.";
+      description = "Whether to run PostgreSQL on this machine with a `verso` database and role, and point Verso at it. Turn it off to set `settings.database` yourself.";
     };
   };
 
   config = lib.mkIf cfg.enable {
+    services.verso.settings.database = lib.mkIf cfg.database.createLocally {
+      postgres = "postgresql://verso@/verso?host=/run/postgresql";
+    };
+
     services.postgresql = lib.mkIf cfg.database.createLocally {
       enable = true;
       ensureDatabases = [ "verso" ];

@@ -44,9 +44,13 @@ for (const file of await typeScriptFiles(".")) {
   for (const specifier of await importsOf(file)) used.add(specifier);
 }
 
+const isUsed = (name: string) =>
+  used.has(name) ||
+  [...used].some((specifier) => specifier.startsWith(`${name}/`));
+
+// Deno finds @types/<name> for <name> by itself, so nothing imports it directly.
 const unused = Object.keys(denoConfig.imports).filter((name) =>
-  !used.has(name) &&
-  ![...used].some((specifier) => specifier.startsWith(`${name}/`))
+  !isUsed(name.startsWith("@types/") ? name.slice("@types/".length) : name)
 );
 if (unused.length > 0) {
   // deno-lint-ignore no-console -- this script's whole output is its report

@@ -5,6 +5,11 @@ import { z } from "zod";
 export const Config = z.strictObject({
   /** The instance's domain, without a port. https://versia.pub/api/basics#domain */
   domain: z.hostname().transform((domain) => domain.toLowerCase()),
+  /** Exactly one of a libpq connection string for PostgreSQL, or the path of a SQLite file. */
+  database: z.union([
+    z.strictObject({ postgres: z.string().min(1) }),
+    z.strictObject({ sqlite: z.string().min(1) }),
+  ], { error: 'Set exactly one of "postgres" or "sqlite"' }),
   http: z.strictObject({
     port: z.int().min(1).max(65535).default(8080),
   }).prefault({}),
