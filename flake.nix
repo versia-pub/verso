@@ -16,8 +16,9 @@
       # `nix fmt` passes no paths, so use the treefmt wrapper that formats the whole tree.
       formatter = forAllSystems (pkgs: pkgs.nixfmt-tree);
 
-      packages = forAllSystems (pkgs: {
+      packages = forAllSystems (pkgs: rec {
         deps = pkgs.callPackage ./nix/deps.nix { };
+        default = pkgs.callPackage ./nix/package.nix { inherit deps; };
       });
 
       apps = forAllSystems (pkgs: import ./nix/apps.nix { inherit pkgs; });
