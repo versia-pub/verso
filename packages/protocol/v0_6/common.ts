@@ -13,7 +13,7 @@ export const Id = z.string().regex(/^[A-Za-z0-9_-]+$/);
 export const Rfc3339 = z.iso.datetime({ offset: true });
 
 /** Whole numbers from 0, for the spec's `u64` fields. */
-const Unsigned = z.number().int().nonnegative();
+export const Unsigned = z.number().int().nonnegative();
 
 /** Keys are `namespace:name`, such as `pub.versia:custom_emojis`. https://versia.pub/extensions#naming */
 export const Extensions = z.record(
