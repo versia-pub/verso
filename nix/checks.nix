@@ -8,13 +8,19 @@
 let
   # Runs a deno.json task in a read-only copy of the source and its vendored dependencies, so a
   # task that tries to write there fails loudly.
-  denoTask =
+  denoTask = name: task: denoTaskWith name task { };
+  denoTaskWith =
     name: task:
-    pkgs.runCommand name { nativeBuildInputs = [ pkgs.deno ]; } ''
+    {
+      packages ? [ ],
+      setup ? "",
+    }:
+    pkgs.runCommand name { nativeBuildInputs = [ pkgs.deno ] ++ packages; } ''
       export DENO_DIR="$TMPDIR/deno" DENO_NO_UPDATE_CHECK=1
       cp -r --no-preserve=mode ${src} "$TMPDIR/src"
       cp -r --no-preserve=mode ${deps}/vendor ${deps}/node_modules "$TMPDIR/src/"
       chmod -R a-w "$TMPDIR/src"
+      ${setup}
       cd "$TMPDIR/src"
       deno task ${task}
       touch $out
@@ -24,7 +30,19 @@ in
   fmt = denoTask "fmt" "fmt --check";
   lint = denoTask "lint" "lint";
   typecheck = denoTask "typecheck" "check";
-  test = denoTask "test" "test";
+  test-pglite = denoTask "test-pglite" "test";
+  test-sqlite = denoTaskWith "test-sqlite" "test" { setup = "export VERSO_TEST_DATABASE=sqlite"; };
+  # A throwaway PostgreSQL in $TMPDIR, reached over loopback, the only network in the sandbox.
+  test-postgres = denoTaskWith "test-postgres" "test --allow-net=127.0.0.1" {
+    packages = [ pkgs.postgresql_18 ];
+    setup = ''
+      initdb --pgdata="$TMPDIR/pg" --username=postgres --auth=trust >/dev/null
+      pg_ctl --pgdata="$TMPDIR/pg" --log="$TMPDIR/pg.log" --wait start \
+        --options="-c listen_addresses=127.0.0.1 -c unix_socket_directories=''' -c fsync=off"
+      trap 'pg_ctl --pgdata="$TMPDIR/pg" --mode=immediate stop' EXIT
+      export VERSO_TEST_DATABASE=postgresql://postgres@127.0.0.1:5432/postgres
+    '';
+  };
   unused-dependencies = denoTask "unused-dependencies" "unused-dependencies";
 
   media-spike = import ./media-spike.nix { inherit pkgs; };

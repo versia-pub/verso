@@ -9,7 +9,7 @@
     "fmt": "deno fmt",
     "lint": "deno lint",
     "check": "deno check",
-    "test": "deno test --allow-read=node_modules",
+    "test": "deno test --allow-read=node_modules --allow-env",
     "unused-dependencies": "deno run --allow-read=. --allow-run=deno scripts/unused_dependencies.ts"
   },
   "lint": {

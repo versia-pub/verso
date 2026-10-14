@@ -38,6 +38,12 @@ CI runs `nix flake check` and nothing else. It runs the same Deno tasks inside
 the Nix sandbox, without network access. If it passes on your machine, it should
 pass in CI.
 
+Tests run on PGlite, an in-process PostgreSQL, by default. To run them on
+SQLite, set `VERSO_TEST_DATABASE=sqlite`. To run them on a real PostgreSQL
+server, set it to the server's URL and add `--allow-net` for its address. Each
+test creates its own database there, so use a throwaway server.
+`nix flake check` runs all three.
+
 ## Dependencies
 
 Every dependency is code we don't control, so add one only when it pays for
