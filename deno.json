@@ -28,6 +28,7 @@
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.19",
+    "fast-check": "npm:fast-check@4.10.2",
     "zod": "npm:zod@4.6.7"
   }
 }

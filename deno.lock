@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/internal@^1.0.12": "1.0.14",
+    "npm:fast-check@4.10.2": "4.10.2",
     "npm:zod@4.6.7": "4.6.7"
   },
   "jsr": {
@@ -17,6 +18,15 @@
     }
   },
   "npm": {
+    "fast-check@4.10.2": {
+      "integrity": "sha512-iK2f+YrcmoeGqk6fA0ea2bptcu/itMIm4NfEozq6N25+aG6h7s5HZbB/k1aV7b5w5sFLMCbbtRUsTVR+BgC3xw==",
+      "dependencies": [
+        "pure-rand"
+      ]
+    },
+    "pure-rand@8.4.2": {
+      "integrity": "sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng=="
+    },
     "zod@4.6.7": {
       "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg=="
     }
@@ -24,6 +34,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@1.0.19",
+      "npm:fast-check@4.10.2",
       "npm:zod@4.6.7"
     ]
   }

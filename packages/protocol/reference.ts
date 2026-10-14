@@ -43,13 +43,17 @@ export function formatReference(reference: Reference, origin: string): string {
 }
 
 /**
- * Lowercases a hostname, with an optional port, and checks that the URL parser leaves it as it is.
- * That rejects non-ASCII names (the spec wants Punycode), unbracketed IPv6, port 443 (the HTTPS
- * default, never written out) and anything that isn't a hostname.
+ * Returns the canonical form of a hostname with an optional port, as the URL parser writes it:
+ * lowercase, IPv6 compressed, and without port 443 (the HTTPS default). Returns undefined for
+ * non-ASCII names (the spec wants Punycode), unbracketed IPv6, and anything that isn't just a
+ * hostname and port.
  */
 function canonicalize(host: string): string | undefined {
-  const lowercase = host.toLowerCase();
-  return URL.parse(`https://${lowercase}`)?.host === lowercase
-    ? lowercase
-    : undefined;
+  if (!/^[\x21-\x7e]+$/.test(host)) {
+    return undefined;
+  }
+  const url = URL.parse(`https://${host}`);
+  const onlyHost = url !== null && url.pathname === "/" && url.search === "" &&
+    url.hash === "" && url.username === "" && url.password === "";
+  return onlyHost ? url.host : undefined;
 }

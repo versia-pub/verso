@@ -21,11 +21,19 @@ Deno.test("a hostname before the last colon is the entity's instance", () => {
   }
 });
 
-Deno.test("hostnames are lowercased", () => {
-  assertEquals(parseReference(`Test.ORG:${id}`, "example.com"), {
-    host: "test.org",
-    id,
-  });
+Deno.test("hostnames are stored in canonical form", () => {
+  for (
+    const [written, canonical] of [
+      ["Test.ORG", "test.org"],
+      ["test.org:443", "test.org"],
+      ["[2001:DB8:0:0:0:0:0:1]", "[2001:db8::1]"],
+    ]
+  ) {
+    assertEquals(
+      parseReference(`${written}:${id}`, "example.com")?.host,
+      canonical,
+    );
+  }
   assertEquals(parseReference(id, "Example.com")?.host, "example.com");
 });
 
@@ -39,7 +47,6 @@ Deno.test("invalid references are rejected", () => {
       "test.org:a.b",
       "2001:db8::1:abc",
       "ü.example:abc",
-      "example.com:443:abc",
       "example.com:99999:abc",
       "user@test.org:abc",
       "test.org/path:abc",
