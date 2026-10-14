@@ -1,9 +1,9 @@
 import {
-  ansiColorFormatter,
-  configure,
-  defaultTextFormatter,
-  getConsoleSink,
-  type LogLevel,
+    ansiColorFormatter,
+    configure,
+    defaultTextFormatter,
+    getConsoleSink,
+    type LogLevel,
 } from "@logtape/logtape";
 
 /**
@@ -12,23 +12,23 @@ import {
  * `NO_COLOR` turns colour off too.
  */
 export const setUpLogging = async (
-  level: LogLevel,
-  colour: boolean = Deno.stdout.isTerminal() && !Deno.noColor,
+    level: LogLevel,
+    colour: boolean = Deno.stdout.isTerminal() && !Deno.noColor,
 ): Promise<void> => {
-  await configure({
-    sinks: {
-      console: getConsoleSink({
-        formatter: colour ? ansiColorFormatter : defaultTextFormatter,
-      }),
-    },
-    loggers: [
-      { category: ["verso"], lowestLevel: level, sinks: ["console"] },
-      // LogTape's own warnings, such as a misconfigured sink.
-      {
-        category: ["logtape", "meta"],
-        lowestLevel: "warning",
-        sinks: ["console"],
-      },
-    ],
-  });
+    await configure({
+        sinks: {
+            console: getConsoleSink({
+                formatter: colour ? ansiColorFormatter : defaultTextFormatter,
+            }),
+        },
+        loggers: [
+            { category: ["verso"], lowestLevel: level, sinks: ["console"] },
+            // LogTape's own warnings, such as a misconfigured sink.
+            {
+                category: ["logtape", "meta"],
+                lowestLevel: "warning",
+                sinks: ["console"],
+            },
+        ],
+    });
 };

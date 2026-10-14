@@ -1,44 +1,44 @@
 {
-  "about": "Versia 0.6 request signing vectors (https://versia.pub/signatures). Generated with OpenSSL, not with Verso, so they check Verso against an independent implementation. Timestamps are Unix seconds, as the spec's text says; its example code wrongly uses milliseconds. Bodies are UTF-8 text, signed as their exact bytes.",
-  "private_key": "MC4CAQAwBQYDK2VwBCIEILrNXhbWxC/MhKQDsJOAAF1FH/R+Am5G/eZKnqNum5ro",
-  "public_key": "MCowBQYDK2VwAyEA9oGFPbz+LThzQSOhWhOpUdFxLG07Rqmn0HtAFaCz/hM=",
-  "signed_by": "bob.com",
-  "vectors": [
-    {
-      "name": "POST to an inbox",
-      "method": "POST",
-      "pathname": "/.versia/v0.6/inbox",
-      "body": "{\"content\":\"Hello, world!\"}",
-      "signed_at": "1729243417",
-      "signed_string": "post /.versia/v0.6/inbox 1729243417 4+e2vswDyKEalby/akgnvZl4yJTXIbN1u42bC6inlOo=",
-      "signature": "cboFpspY5XR66DjeuOQRUhHktWYvokU2pGK7Zfhf9cQiuGcIxkWuKR6Iqc/TK0FUtDJpERTzxYKIR5J9xgHmCQ=="
-    },
-    {
-      "name": "GET, which signs the hash of an empty body",
-      "method": "GET",
-      "pathname": "/.versia/v0.6/entities/User/bf44e6ad-7c0a-4560-9938-cf3fd4066511",
-      "body": "",
-      "signed_at": "1729243417",
-      "signed_string": "get /.versia/v0.6/entities/User/bf44e6ad-7c0a-4560-9938-cf3fd4066511 1729243417 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-      "signature": "sxKxOwNPC/XfZNzoIIEEnLM6CI0A6qxgXXtGZVvh53+fvapZCcCMHq/M8jNWzBLfJ0EDXtKj9LijpYhQZFHjCw=="
-    },
-    {
-      "name": "Response to a GET, with non-ASCII text in the body",
-      "method": "GET",
-      "pathname": "/.versia/v0.6/entities/Note/01902e09-0f8b-72de-8ee3-9afc0cf5eae1",
-      "body": "{\"text\":\"Héllo 🌸\"}",
-      "signed_at": "1729243418",
-      "signed_string": "get /.versia/v0.6/entities/Note/01902e09-0f8b-72de-8ee3-9afc0cf5eae1 1729243418 ew30w9h3xG5rshwpqjwDmZ4XixEsv8gV+f410fLgp74=",
-      "signature": "bP6LvSXwJL14IaX9qwzZcVXzVpzNjfyZYVFRzYFPSARVbxbxgCNU4hYbX4hIQkMcUb8kFDoqfm7jnH79rVjIDg=="
-    },
-    {
-      "name": "GET with a URL-encoded path, signed as encoded",
-      "method": "GET",
-      "pathname": "/.versia/v0.6/entities/pub.versia%3Alikes%2FLike/abc",
-      "body": "",
-      "signed_at": "1729243417",
-      "signed_string": "get /.versia/v0.6/entities/pub.versia%3Alikes%2FLike/abc 1729243417 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-      "signature": "BdQQsTe3x24rzFQjLcZhkJTgmVJDvMpFQGnj5ZVaJbe3ehlSo2gY3w080gWvRi+iMtHkN1F1vQEe8lv8MLYFBQ=="
-    }
-  ]
+    "about": "Versia 0.6 request signing vectors (https://versia.pub/signatures). Generated with OpenSSL, not with Verso, so they check Verso against an independent implementation. Timestamps are Unix seconds, as the spec's text says; its example code wrongly uses milliseconds. Bodies are UTF-8 text, signed as their exact bytes.",
+    "private_key": "MC4CAQAwBQYDK2VwBCIEILrNXhbWxC/MhKQDsJOAAF1FH/R+Am5G/eZKnqNum5ro",
+    "public_key": "MCowBQYDK2VwAyEA9oGFPbz+LThzQSOhWhOpUdFxLG07Rqmn0HtAFaCz/hM=",
+    "signed_by": "bob.com",
+    "vectors": [
+        {
+            "name": "POST to an inbox",
+            "method": "POST",
+            "pathname": "/.versia/v0.6/inbox",
+            "body": "{\"content\":\"Hello, world!\"}",
+            "signed_at": "1729243417",
+            "signed_string": "post /.versia/v0.6/inbox 1729243417 4+e2vswDyKEalby/akgnvZl4yJTXIbN1u42bC6inlOo=",
+            "signature": "cboFpspY5XR66DjeuOQRUhHktWYvokU2pGK7Zfhf9cQiuGcIxkWuKR6Iqc/TK0FUtDJpERTzxYKIR5J9xgHmCQ=="
+        },
+        {
+            "name": "GET, which signs the hash of an empty body",
+            "method": "GET",
+            "pathname": "/.versia/v0.6/entities/User/bf44e6ad-7c0a-4560-9938-cf3fd4066511",
+            "body": "",
+            "signed_at": "1729243417",
+            "signed_string": "get /.versia/v0.6/entities/User/bf44e6ad-7c0a-4560-9938-cf3fd4066511 1729243417 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+            "signature": "sxKxOwNPC/XfZNzoIIEEnLM6CI0A6qxgXXtGZVvh53+fvapZCcCMHq/M8jNWzBLfJ0EDXtKj9LijpYhQZFHjCw=="
+        },
+        {
+            "name": "Response to a GET, with non-ASCII text in the body",
+            "method": "GET",
+            "pathname": "/.versia/v0.6/entities/Note/01902e09-0f8b-72de-8ee3-9afc0cf5eae1",
+            "body": "{\"text\":\"Héllo 🌸\"}",
+            "signed_at": "1729243418",
+            "signed_string": "get /.versia/v0.6/entities/Note/01902e09-0f8b-72de-8ee3-9afc0cf5eae1 1729243418 ew30w9h3xG5rshwpqjwDmZ4XixEsv8gV+f410fLgp74=",
+            "signature": "bP6LvSXwJL14IaX9qwzZcVXzVpzNjfyZYVFRzYFPSARVbxbxgCNU4hYbX4hIQkMcUb8kFDoqfm7jnH79rVjIDg=="
+        },
+        {
+            "name": "GET with a URL-encoded path, signed as encoded",
+            "method": "GET",
+            "pathname": "/.versia/v0.6/entities/pub.versia%3Alikes%2FLike/abc",
+            "body": "",
+            "signed_at": "1729243417",
+            "signed_string": "get /.versia/v0.6/entities/pub.versia%3Alikes%2FLike/abc 1729243417 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+            "signature": "BdQQsTe3x24rzFQjLcZhkJTgmVJDvMpFQGnj5ZVaJbe3ehlSo2gY3w080gWvRi+iMtHkN1F1vQEe8lv8MLYFBQ=="
+        }
+    ]
 }

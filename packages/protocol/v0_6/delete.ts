@@ -8,9 +8,9 @@ import { optional, ReferenceText, TransientEntity } from "./common.ts";
  * missing author means the instance that signed the request.
  */
 export const Delete = TransientEntity.extend({
-  type: z.literal("Delete"),
-  author: optional(ReferenceText),
-  deleted_type: z.string(),
-  deleted: ReferenceText,
+    type: z.literal("Delete"),
+    author: optional(ReferenceText),
+    deleted_type: z.string(),
+    deleted: ReferenceText,
 });
 export type Delete = z.infer<typeof Delete>;

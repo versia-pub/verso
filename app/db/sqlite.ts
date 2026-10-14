@@ -3,16 +3,16 @@ import { type Dialect, SqliteAdapter, SqliteDialect } from "kysely";
 import { sqliteTypes } from "./columns.ts";
 
 const write = (value: unknown) =>
-  value instanceof Date
-    ? value.toISOString()
-    : typeof value === "boolean"
-    ? Number(value)
-    : value;
+    value instanceof Date
+        ? value.toISOString()
+        : typeof value === "boolean"
+        ? Number(value)
+        : value;
 
 const readers: Record<string, (value: unknown) => unknown> = {
-  [sqliteTypes.timestamp]: (value) => new Date(value as string),
-  [sqliteTypes.json]: (value) => JSON.parse(value as string),
-  boolean: (value) => value !== 0,
+    [sqliteTypes.timestamp]: (value) => new Date(value as string),
+    [sqliteTypes.json]: (value) => JSON.parse(value as string),
+    boolean: (value) => value !== 0,
 };
 
 /**
@@ -21,15 +21,15 @@ const readers: Record<string, (value: unknown) => unknown> = {
  * so a migration that rebuilds a table uses `PRAGMA defer_foreign_keys` instead.
  */
 class TransactionalSqliteAdapter extends SqliteAdapter {
-  override get supportsTransactionalDdl(): boolean {
-    return true;
-  }
+    override get supportsTransactionalDdl(): boolean {
+        return true;
+    }
 }
 
 class NodeSqliteDialect extends SqliteDialect {
-  override createAdapter(): SqliteAdapter {
-    return new TransactionalSqliteAdapter();
-  }
+    override createAdapter(): SqliteAdapter {
+        return new TransactionalSqliteAdapter();
+    }
 }
 
 /**
@@ -42,32 +42,34 @@ class NodeSqliteDialect extends SqliteDialect {
  * each column's declared type.
  */
 export const sqliteDialect = (database: DatabaseSync): Dialect =>
-  new NodeSqliteDialect({
-    database: {
-      close: () => database.close(),
-      prepare: (sql) => {
-        const statement = database.prepare(sql);
-        const columns = statement.columns();
-        const converted = columns.flatMap((column) => {
-          const convert = column.type && readers[column.type.toLowerCase()];
-          return convert ? [[column.name, convert] as const] : [];
-        });
-        const values = (parameters: readonly unknown[]) =>
-          parameters.map(write) as SQLInputValue[];
-        const read = (row: unknown) => {
-          const record = row as Record<string, unknown>;
-          for (const [name, convert] of converted) {
-            if (record[name] !== null) record[name] = convert(record[name]);
-          }
-          return record;
-        };
-        return {
-          reader: columns.length > 0,
-          all: (parameters) => statement.all(...values(parameters)).map(read),
-          run: (parameters) => statement.run(...values(parameters)),
-          iterate: (parameters) =>
-            statement.iterate(...values(parameters)).map(read),
-        };
-      },
-    },
-  });
+    new NodeSqliteDialect({
+        database: {
+            close: () => database.close(),
+            prepare: (sql) => {
+                const statement = database.prepare(sql);
+                const columns = statement.columns();
+                const converted = columns.flatMap((column) => {
+                    const convert = column.type &&
+                        readers[column.type.toLowerCase()];
+                    return convert ? [[column.name, convert] as const] : [];
+                });
+                const values = (parameters: readonly unknown[]) =>
+                    parameters.map(write) as SQLInputValue[];
+                const read = (row: unknown) => {
+                    const record = row as Record<string, unknown>;
+                    for (const [name, convert] of converted) {
+                        if (record[name] !== null) {
+                            record[name] = convert(record[name]);
+                        }
+                    }
+                    return record;
+                };
+                return {
+                    reader: columns.length > 0,
+                    all: (parameters) => statement.all(...values(parameters)).map(read),
+                    run: (parameters) => statement.run(...values(parameters)),
+                    iterate: (parameters) => statement.iterate(...values(parameters)).map(read),
+                };
+            },
+        },
+    });

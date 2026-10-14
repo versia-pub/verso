@@ -10,14 +10,14 @@ export type Database = Record<never, never>;
 
 /** Kysely on any of the dialects, set up the same way. Tests use it to open PGlite. */
 export const connect = <DB = Database>(dialect: Dialect): Kysely<DB> =>
-  new Kysely({ dialect, plugins: [jsonValues] });
+    new Kysely({ dialect, plugins: [jsonValues] });
 
 /** Opens the configured database. Postgres connects lazily, on the first query. */
 export const openDatabase = (config: Config["database"]): Kysely<Database> =>
-  connect(
-    "postgres" in config
-      ? new PostgresDialect({
-        pool: new pg.Pool({ connectionString: config.postgres }),
-      })
-      : sqliteDialect(new DatabaseSync(config.sqlite)),
-  );
+    connect(
+        "postgres" in config
+            ? new PostgresDialect({
+                pool: new pg.Pool({ connectionString: config.postgres }),
+            })
+            : sqliteDialect(new DatabaseSync(config.sqlite)),
+    );

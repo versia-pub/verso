@@ -3,8 +3,8 @@ import { type Migration, Migrator } from "kysely/migration";
 import { migrations as all } from "./migrations/mod.ts";
 
 export type MigrateResult =
-  | { readonly ok: true; readonly applied: string[] }
-  | { readonly ok: false; readonly error: unknown };
+    | { readonly ok: true; readonly applied: string[] }
+    | { readonly ok: false; readonly error: unknown };
 
 /**
  * Brings the database up to date. Migrations only go forward and run in name order. All the
@@ -12,15 +12,15 @@ export type MigrateResult =
  * nothing new to apply does nothing.
  */
 export const migrate = async <DB>(
-  db: Kysely<DB>,
-  migrations: Record<string, Migration> = all,
+    db: Kysely<DB>,
+    migrations: Record<string, Migration> = all,
 ): Promise<MigrateResult> => {
-  const migrator = new Migrator({
-    db,
-    provider: { getMigrations: () => Promise.resolve(migrations) },
-  });
-  const { error, results = [] } = await migrator.migrateToLatest();
-  return error === undefined
-    ? { ok: true, applied: results.map((result) => result.migrationName) }
-    : { ok: false, error };
+    const migrator = new Migrator({
+        db,
+        provider: { getMigrations: () => Promise.resolve(migrations) },
+    });
+    const { error, results = [] } = await migrator.migrateToLatest();
+    return error === undefined
+        ? { ok: true, applied: results.map((result) => result.migrationName) }
+        : { ok: false, error };
 };

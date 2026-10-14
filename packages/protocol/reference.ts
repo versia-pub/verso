@@ -3,8 +3,8 @@
  * See https://versia.pub/types#reference.
  */
 export interface Reference {
-  readonly host: string;
-  readonly id: string;
+    readonly host: string;
+    readonly id: string;
 }
 
 const idPattern = /^[A-Za-z0-9_-]+$/;
@@ -17,19 +17,19 @@ const idPattern = /^[A-Za-z0-9_-]+$/;
  * Returns undefined if the reference is invalid.
  */
 export const parseReference = (
-  text: string,
-  origin: string,
+    text: string,
+    origin: string,
 ): Reference | undefined => {
-  // Ids can't contain a colon, but hostnames can (ports, IPv6), so split at the last one.
-  const separator = text.lastIndexOf(":");
-  const host = separator === -1 ? origin : text.slice(0, separator);
-  const id = text.slice(separator + 1);
+    // Ids can't contain a colon, but hostnames can (ports, IPv6), so split at the last one.
+    const separator = text.lastIndexOf(":");
+    const host = separator === -1 ? origin : text.slice(0, separator);
+    const id = text.slice(separator + 1);
 
-  const canonicalHost = canonicalize(host);
-  if (canonicalHost === undefined || !idPattern.test(id)) {
-    return undefined;
-  }
-  return { host: canonicalHost, id };
+    const canonicalHost = canonicalize(host);
+    if (canonicalHost === undefined || !idPattern.test(id)) {
+        return undefined;
+    }
+    return { host: canonicalHost, id };
 };
 
 /**
@@ -37,12 +37,10 @@ export const parseReference = (
  * left out when the referenced entity also lives on `origin`.
  */
 export const formatReference = (
-  reference: Reference,
-  origin: string,
+    reference: Reference,
+    origin: string,
 ): string =>
-  reference.host === canonicalize(origin)
-    ? reference.id
-    : `${reference.host}:${reference.id}`;
+    reference.host === canonicalize(origin) ? reference.id : `${reference.host}:${reference.id}`;
 
 /**
  * Returns the canonical form of a hostname with an optional port, as the URL parser writes it:
@@ -51,11 +49,12 @@ export const formatReference = (
  * hostname and port.
  */
 export const canonicalize = (host: string): string | undefined => {
-  if (!/^[\x21-\x7e]+$/.test(host)) {
-    return undefined;
-  }
-  const url = URL.parse(`https://${host}`);
-  const onlyHost = url !== null && url.pathname === "/" && url.search === "" &&
-    url.hash === "" && url.username === "" && url.password === "";
-  return onlyHost ? url.host : undefined;
+    if (!/^[\x21-\x7e]+$/.test(host)) {
+        return undefined;
+    }
+    const url = URL.parse(`https://${host}`);
+    const onlyHost = url !== null && url.pathname === "/" &&
+        url.search === "" &&
+        url.hash === "" && url.username === "" && url.password === "";
+    return onlyHost ? url.host : undefined;
 };

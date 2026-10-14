@@ -1,7 +1,7 @@
 # 5. Gaps and mistakes in the Versia 0.6 spec
 
-Where the spec is unclear or wrong, Verso does the following. Each of these
-should be raised upstream.
+Where the spec is unclear or wrong, Verso does the following. Each of these should be raised
+upstream.
 
 | Issue                                                                                                                                                           | What Verso does                                     |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
