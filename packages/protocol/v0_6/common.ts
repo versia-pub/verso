@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseReference } from "../reference.ts";
 
 /** An optional field. Peers may leave it out or set it to null (see docs/decisions/0005). */
 export const optional = <T extends z.ZodType>(
@@ -37,6 +38,38 @@ export const ContentFormat = z.record(
   }),
 );
 export type ContentFormat = z.infer<typeof ContentFormat>;
+
+/**
+ * A ContentFormat whose MIME types all start with `prefix`, such as "image/" for an avatar, and
+ * whose entries all have the given `remote` value, if one is given.
+ */
+export const contentFormatOf = (
+  prefix: string,
+  remote?: boolean,
+): typeof ContentFormat =>
+  ContentFormat.refine(
+    (formats) =>
+      Object.entries(formats).every(([type, format]) =>
+        type.startsWith(prefix) &&
+        (remote === undefined || format.remote === remote)
+      ),
+    remote === undefined
+      ? `Every MIME type must start with "${prefix}"`
+      : `Every MIME type must start with "${prefix}" and have remote: ${remote}`,
+  );
+
+/**
+ * A reference as it is written inside an entity: `host:id` or a bare `id`. The schema only checks
+ * the syntax; parseReference turns it into a host and id once the entity's origin is known.
+ */
+export const ReferenceText = z.string().refine(
+  // Any valid hostname works as the origin here, because it is only used for bare ids.
+  (text) => parseReference(text, "origin.invalid") !== undefined,
+  "Invalid reference",
+);
+
+/** A link to a web page or image. Other schemes, such as javascript:, are rejected. */
+export const WebUrl = z.url({ protocol: /^https?$/ });
 
 /** The fields every entity has. Transient entities, such as Follow, have no `id`. */
 export const Entity = z.object({
