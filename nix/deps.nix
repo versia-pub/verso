@@ -24,7 +24,7 @@ runCommand "verso-deno-deps"
       jq
     ];
     outputHashMode = "recursive";
-    outputHash = "sha256-p4sAsDbr0weBZ8cGTCGmjCxdq/TTm+QNa6R7k1hSqrE=";
+    outputHash = "sha256-Np0C1rhWNGepS0ZFLF3JNoi2qw4Nqm90QcbpFwDpyTo=";
   }
   ''
     export DENO_DIR="$TMPDIR/deno" DENO_NO_UPDATE_CHECK=1
@@ -46,4 +46,6 @@ runCommand "verso-deno-deps"
 
     mkdir $out
     mv vendor node_modules $out/
+    # Lets the deps-hash check notice when deno.lock changed but this derivation's hash didn't.
+    cp deno.lock $out/
   ''

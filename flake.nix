@@ -20,6 +20,8 @@
         deps = pkgs.callPackage ./nix/deps.nix { };
       });
 
+      apps = forAllSystems (pkgs: import ./nix/apps.nix { inherit pkgs; });
+
       devShells = forAllSystems (pkgs: {
         default = pkgs.callPackage ./nix/devshell.nix { };
       });

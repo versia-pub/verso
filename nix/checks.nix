@@ -23,6 +23,17 @@ in
   lint = denoTask "lint" "lint";
   typecheck = denoTask "typecheck" "check";
 
+  # Nix reuses a fixed-output derivation whose hash is already in the store, so a stale hash would
+  # silently keep the old dependencies.
+  deps-hash = pkgs.runCommand "deps-hash" { } ''
+    if ! cmp -s ${src}/deno.lock ${deps}/deno.lock; then
+      echo "deno.lock has changed but the dependency hash in nix/deps.nix has not."
+      echo "Run 'nix run .#update-hashes' and commit the result."
+      exit 1
+    fi
+    touch $out
+  '';
+
   # This codebase is written for people
   agent-files = pkgs.runCommand "agent-files" { } ''
     found=$(find ${src} \( \
