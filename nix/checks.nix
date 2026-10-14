@@ -3,6 +3,7 @@
   src,
   deps,
   image,
+  module,
 }:
 let
   # Runs a deno.json task in a read-only copy of the source and its vendored dependencies, so a
@@ -38,6 +39,24 @@ in
     fi
     touch $out
   '';
+
+  nixos-module = pkgs.testers.runNixOSTest {
+    name = "nixos-module";
+    nodes.machine = {
+      imports = [ module ];
+      services.verso.enable = true;
+      environment.systemPackages = [ pkgs.curl ];
+    };
+    testScript = ''
+      machine.wait_for_unit("verso.service")
+      machine.wait_for_open_port(8080)
+      machine.succeed("curl --fail --silent localhost:8080/health/live | grep -x ok")
+      owner = machine.succeed(
+          "sudo -u postgres psql -tAc \"select pg_get_userbyid(datdba) from pg_database where datname = 'verso'\""
+      )
+      assert owner.strip() == "verso", f"the verso database is owned by {owner!r}"
+    '';
+  };
 
   # Nix reuses a fixed-output derivation whose hash is already in the store, so a stale hash would
   # silently keep the old dependencies.

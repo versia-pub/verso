@@ -22,6 +22,8 @@
         image = pkgs.callPackage ./nix/image.nix { verso = default; };
       });
 
+      nixosModules.default = import ./nix/module.nix self;
+
       apps = forAllSystems (pkgs: import ./nix/apps.nix { inherit pkgs; });
 
       devShells = forAllSystems (pkgs: {
@@ -33,6 +35,7 @@
         import ./nix/checks.nix {
           inherit pkgs;
           src = self;
+          module = self.nixosModules.default;
           inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) deps image;
         }
       );
