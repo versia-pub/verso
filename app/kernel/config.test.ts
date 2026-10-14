@@ -4,7 +4,11 @@ import { parseConfig } from "./config.ts";
 Deno.test("a minimal config gets the defaults", () => {
   assertEquals(parseConfig('domain = "social.example"'), {
     ok: true,
-    config: { domain: "social.example", http: { port: 8080 } },
+    config: {
+      domain: "social.example",
+      http: { port: 8080 },
+      logging: { level: "info" },
+    },
   });
 });
 
@@ -14,10 +18,17 @@ domain = "Social.Example"
 
 [http]
 port = 3000
+
+[logging]
+level = "debug"
 `);
   assertEquals(result, {
     ok: true,
-    config: { domain: "social.example", http: { port: 3000 } },
+    config: {
+      domain: "social.example",
+      http: { port: 3000 },
+      logging: { level: "debug" },
+    },
   });
 });
 
@@ -36,6 +47,10 @@ Deno.test("bad configs explain what is wrong", () => {
   assertStringIncludes(
     errors('domain = "social.example"\ndomian = "typo.example"'),
     "domian",
+  );
+  assertStringIncludes(
+    errors('domain = "social.example"\n[logging]\nlevel = "loud"'),
+    "logging.level",
   );
   assertStringIncludes(errors("domain = "), "Invalid TOML");
 });

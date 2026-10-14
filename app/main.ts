@@ -1,6 +1,8 @@
+import { getLogger } from "@logtape/logtape";
 import { parseArgs } from "@std/cli";
 import denoConfig from "../deno.json" with { type: "json" };
 import { type Config, readConfig } from "./kernel/config.ts";
+import { setUpLogging } from "./kernel/logging.ts";
 
 const banner = `
 ███   ███ ████████ ███████▄  ▄███████▄  ▄██████▄
@@ -14,7 +16,14 @@ const serve = (config: Config): void => {
   // deno-lint-ignore no-console -- the banner is command output, not a log line
   console.log(banner);
 
-  Deno.serve({ port: config.http.port }, (request) => {
+  const logger = getLogger(["verso", "http"]);
+  const onListen = ({ hostname, port }: Deno.NetAddr) =>
+    logger.info("Listening on {hostname} port {port} as {domain}", {
+      hostname,
+      port,
+      domain: config.domain,
+    });
+  Deno.serve({ port: config.http.port, onListen }, (request) => {
     const { pathname } = new URL(request.url);
     if (request.method === "GET" && pathname === "/health/live") {
       return new Response("ok");
@@ -41,6 +50,7 @@ if (import.meta.main) {
       console.error(`Can't load ${args.config}:\n${result.error}`);
       Deno.exit(1);
     }
+    await setUpLogging(result.config.logging.level);
     serve(result.config);
   } else {
     // deno-lint-ignore no-console -- usage errors are command output, not log lines

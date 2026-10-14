@@ -8,6 +8,10 @@ export const Config = z.strictObject({
   http: z.strictObject({
     port: z.int().min(1).max(65535).default(8080),
   }).prefault({}),
+  logging: z.strictObject({
+    level: z.enum(["trace", "debug", "info", "warning", "error", "fatal"])
+      .default("info"),
+  }).prefault({}),
 });
 export type Config = z.infer<typeof Config>;
 

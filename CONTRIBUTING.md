@@ -65,6 +65,9 @@ hash, the `deps-hash` check fails and tells you what to run.
 - Don't use `console` for logging. Logs go through LogTape so they stay
   structured. Printing command output, like `--version`, is fine with a
   lint-ignore comment.
+- Get a logger with `getLogger(["verso", "<module>"])`. Put values in the log's
+  properties, as in `logger.info("Fetched {url}", { url })`, so they stay
+  searchable.
 - Logs printed to a terminal should be easy to scan. Use colour, bold text and
   alignment to make the important parts stand out.
 - Comments explain why the code is the way it is: a spec rule, a constraint, a
