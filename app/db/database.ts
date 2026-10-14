@@ -1,12 +1,15 @@
 import { type Dialect, Kysely, PostgresDialect } from "kysely";
 import { DatabaseSync } from "node:sqlite";
 import pg from "pg";
+import type { JobsTable } from "../jobs/queue.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
 import { sqliteDialect } from "./sqlite.ts";
 
 /** Every table, as migrations add them. */
-export type Database = Record<never, never>;
+export type Database = {
+    jobs: JobsTable;
+};
 
 /** Kysely on any of the dialects, set up the same way. Tests use it to open PGlite. */
 export const connect = <DB = Database>(dialect: Dialect): Kysely<DB> =>

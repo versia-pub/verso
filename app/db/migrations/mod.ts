@@ -1,7 +1,10 @@
 import type { Migration } from "kysely/migration";
+import { jobs } from "./0001_jobs.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
  * A migration never changes once released; fix mistakes in a new one.
  */
-export const migrations: Record<string, Migration> = {};
+export const migrations: Record<string, Migration> = {
+    "0001_jobs": jobs,
+};
