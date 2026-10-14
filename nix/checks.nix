@@ -23,6 +23,8 @@ in
   lint = denoTask "lint" "lint";
   typecheck = denoTask "typecheck" "check";
 
+  media-spike = import ./media-spike.nix { inherit pkgs; };
+
   # Nix reuses a fixed-output derivation whose hash is already in the store, so a stale hash would
   # silently keep the old dependencies.
   deps-hash = pkgs.runCommand "deps-hash" { } ''
