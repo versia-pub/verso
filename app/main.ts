@@ -3,7 +3,8 @@ import { parseArgs } from "@std/cli";
 import denoConfig from "../deno.json" with { type: "json" };
 import { openDatabase } from "./db/database.ts";
 import { migrate } from "./db/migrate.ts";
-import { queues } from "./jobs/queues.ts";
+import { queues, tasks } from "./jobs/queues.ts";
+import { runScheduler } from "./jobs/scheduler.ts";
 import { work } from "./jobs/worker.ts";
 import { systemClock } from "./kernel/clock.ts";
 import { type Config, readConfig } from "./kernel/config.ts";
@@ -69,6 +70,9 @@ const run = async (role: string, config: Config): Promise<void> => {
         role === "serve"
             ? undefined
             : work(ctx, queues, { worker, pollMs: 1000, signal: stopping.signal }),
+        role === "serve"
+            ? undefined
+            : runScheduler(ctx, tasks, { intervalMs: 60_000, signal: stopping.signal }),
     ]);
     for (const signal of signals) Deno.removeSignalListener(signal, stop);
     logger.info("Stopped");

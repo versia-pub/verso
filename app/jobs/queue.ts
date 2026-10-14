@@ -18,6 +18,10 @@ export type JobsTable = {
     dedupe_key: string | null;
     last_error: string | null;
     created_at: Date;
+    /** A finished job is kept until then instead of deleted, so its dedupe key stays taken. */
+    keep_until: Date | null;
+    /** Set on a finished job that is being kept. */
+    finished_at: Date | null;
 };
 
 /** A JSON object, serialised when enqueued, so later changes can't alter a job already queued. */
@@ -32,6 +36,8 @@ export type NewJob = {
     readonly maxAttempts?: number;
     /** While a job with this key is queued, enqueueing another with the same key does nothing. */
     readonly dedupeKey?: string;
+    /** Keeps the job once finished, and with it its dedupe key, until then. */
+    readonly keepUntil?: Date;
 };
 
 /**
@@ -57,6 +63,8 @@ export const enqueue = async (
             dedupe_key: job.dedupeKey ?? null,
             last_error: null,
             created_at: now,
+            keep_until: job.keepUntil ?? null,
+            finished_at: null,
         })
         .onConflict((conflict) => conflict.column("dedupe_key").doNothing())
         .returning("id")
@@ -90,6 +98,7 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
             eb.selectFrom("jobs").select("id")
                 .where("queue", "=", options.queue)
                 .where("run_at", "<=", now)
+                .where("finished_at", "is", null)
                 .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
                 .where((eb) =>
                     eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
@@ -106,14 +115,28 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
 };
 
 /**
- * Deletes a job that ran successfully. Like `fail`, it only touches the job while this claim
- * still holds it, so a worker that lost its lease can't undo someone else's newer claim.
+ * Deletes a job that ran successfully, or marks it finished while it should be kept. Like `fail`,
+ * it only touches the job while this claim still holds it, so a worker that lost its lease can't
+ * undo someone else's newer claim.
  */
 export const complete = async (ctx: Context, job: JobsTable): Promise<void> => {
+    const now = ctx.clock.now();
+    const stillClaimed = { id: job.id, lease_owner: job.lease_owner, attempts: job.attempts };
+    if (job.keep_until !== null && job.keep_until > now) {
+        await ctx.db.updateTable("jobs")
+            .set({ lease_owner: null, lease_expires_at: null, finished_at: now })
+            .where((eb) => eb.and(stillClaimed))
+            .execute();
+    } else {
+        await ctx.db.deleteFrom("jobs").where((eb) => eb.and(stillClaimed)).execute();
+    }
+};
+
+/** Deletes finished jobs that no longer need to be kept. */
+export const deleteExpiredJobs = async (ctx: Context): Promise<void> => {
     await ctx.db.deleteFrom("jobs")
-        .where("id", "=", job.id)
-        .where("lease_owner", "=", job.lease_owner)
-        .where("attempts", "=", job.attempts)
+        .where("finished_at", "is not", null)
+        .where("keep_until", "<=", ctx.clock.now())
         .execute();
 };
 

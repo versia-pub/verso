@@ -48,7 +48,11 @@ const runJob = async (ctx: Context, name: string, queue: Queue, job: JobsTable) 
 };
 
 /** Waits until `ms` pass, `signal` aborts or one of `running` settles, whichever comes first. */
-const pause = (ms: number, signal: AbortSignal, running: Iterable<Promise<void>>) =>
+export const pause = (
+    ms: number,
+    signal: AbortSignal,
+    running: Iterable<Promise<void>> = [],
+): Promise<void> =>
     new Promise<void>((resolve) => {
         const done = () => {
             clearTimeout(timer);

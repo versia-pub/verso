@@ -1,5 +1,6 @@
 import type { Migration } from "kysely/migration";
 import { jobs } from "./0001_jobs.ts";
+import { keptJobs } from "./0002_kept_jobs.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -7,4 +8,5 @@ import { jobs } from "./0001_jobs.ts";
  */
 export const migrations: Record<string, Migration> = {
     "0001_jobs": jobs,
+    "0002_kept_jobs": keptJobs,
 };

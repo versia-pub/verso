@@ -41,6 +41,8 @@ Deno.test("an enqueued job is due now with its attempts unused", async () => {
         dedupe_key: null,
         last_error: null,
         created_at: now,
+        keep_until: null,
+        finished_at: null,
     }]);
 });
 
