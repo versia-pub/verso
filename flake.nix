@@ -19,6 +19,7 @@
       packages = forAllSystems (pkgs: rec {
         deps = pkgs.callPackage ./nix/deps.nix { };
         default = pkgs.callPackage ./nix/package.nix { inherit deps; };
+        image = pkgs.callPackage ./nix/image.nix { verso = default; };
       });
 
       apps = forAllSystems (pkgs: import ./nix/apps.nix { inherit pkgs; });
@@ -32,7 +33,7 @@
         import ./nix/checks.nix {
           inherit pkgs;
           src = self;
-          deps = self.packages.${pkgs.stdenv.hostPlatform.system}.deps;
+          inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) deps image;
         }
       );
     };

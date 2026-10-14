@@ -2,6 +2,7 @@
   pkgs,
   src,
   deps,
+  image,
 }:
 let
   # Runs a deno.json task in a read-only copy of the source and its vendored dependencies, so a
@@ -24,6 +25,19 @@ in
   typecheck = denoTask "typecheck" "check";
 
   media-spike = import ./media-spike.nix { inherit pkgs; };
+
+  # There is no container runtime in the sandbox, so run the entrypoint the image's config names.
+  image = pkgs.runCommand "image" { nativeBuildInputs = [ pkgs.jq ]; } ''
+    ${image} | tar -x
+    config=$(jq -r '.[0].Config' manifest.json)
+    entrypoint=$(jq -r '.config.Entrypoint[0]' "$config")
+    version=$("$entrypoint" --version)
+    if [ "$version" != "verso ${image.imageTag}" ]; then
+      echo "The image's entrypoint answered '$version', expected 'verso ${image.imageTag}'."
+      exit 1
+    fi
+    touch $out
+  '';
 
   # Nix reuses a fixed-output derivation whose hash is already in the store, so a stale hash would
   # silently keep the old dependencies.
