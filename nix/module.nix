@@ -8,6 +8,7 @@ self:
 
 let
   cfg = config.services.verso;
+  settingsFormat = pkgs.formats.toml { };
 in
 {
   options.services.verso = {
@@ -18,6 +19,19 @@ in
       default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
       defaultText = lib.literalExpression "verso.packages.\${system}.default";
       description = "The Verso package to run.";
+    };
+
+    settings = lib.mkOption {
+      type = lib.types.submodule {
+        freeformType = settingsFormat.type;
+        options.domain = lib.mkOption {
+          type = lib.types.str;
+          example = "social.example";
+          description = "The instance's domain, without a port.";
+        };
+      };
+      default = { };
+      description = "Verso's config.toml. Verso checks it on startup and refuses unknown keys.";
     };
 
     database.createLocally = lib.mkOption {
@@ -48,7 +62,7 @@ in
       environment.DENO_DIR = "%C/verso";
 
       serviceConfig = {
-        ExecStart = "${lib.getExe cfg.package} serve";
+        ExecStart = "${lib.getExe cfg.package} serve --config ${settingsFormat.generate "config.toml" cfg.settings}";
         Restart = "on-failure";
 
         # The dynamic user is named verso, so PostgreSQL's peer authentication maps it to the

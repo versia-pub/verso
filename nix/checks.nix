@@ -46,7 +46,10 @@ in
     name = "nixos-module";
     nodes.machine = {
       imports = [ module ];
-      services.verso.enable = true;
+      services.verso = {
+        enable = true;
+        settings.domain = "verso.test";
+      };
       environment.systemPackages = [ pkgs.curl ];
     };
     testScript = ''
