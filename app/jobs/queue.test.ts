@@ -6,7 +6,7 @@ import { fakeClock } from "../kernel/clock.ts";
 import { createContext } from "../kernel/context.ts";
 import { countingRandom, idGenerator } from "../kernel/ids.ts";
 import { urlBuilder } from "../kernel/urls.ts";
-import { enqueue } from "./queue.ts";
+import { backoffMs, claim, complete, enqueue, fail } from "./queue.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";
 
@@ -20,7 +20,7 @@ const open = async () => {
         urls: urlBuilder("social.example"),
         db,
     });
-    return { ctx, [Symbol.asyncDispose]: () => db.destroy() };
+    return { ctx, clock, [Symbol.asyncDispose]: () => db.destroy() };
 };
 
 Deno.test("an enqueued job is due now with its attempts unused", async () => {
@@ -69,4 +69,90 @@ Deno.test("a dedupe key that is already queued adds nothing", async () => {
     await enqueue(test.ctx, { queue: "cleanup", payload: {} });
     await enqueue(test.ctx, { queue: "cleanup", payload: {} });
     assertEquals((await test.ctx.db.selectFrom("jobs").select("id").execute()).length, 3);
+});
+
+const minute = 60_000;
+const options = { queue: "deliver", worker: "w1", limit: 10, leaseMs: minute };
+
+const ids = (jobs: { payload: Record<string, unknown> }[]) => jobs.map((job) => job.payload.n);
+
+Deno.test("claiming takes due jobs of one queue, by priority and then age", async () => {
+    await using test = await open();
+    const later = new Date(test.clock.now().getTime() + minute);
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 1 } });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 2 }, priority: 5 });
+    await enqueue(test.ctx, { queue: "notify", payload: { n: 3 } });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 4 }, runAt: later });
+    test.clock.advance(1);
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 5 }, priority: 5 });
+    assertEquals(ids(await claim(test.ctx, { ...options, limit: 2 })), [2, 5]);
+    const [job] = await claim(test.ctx, options);
+    assertEquals(ids([job]), [1]);
+    assertEquals(job.attempts, 1);
+    assertEquals(job.lease_owner, "w1");
+    assertEquals(job.lease_expires_at, new Date(test.clock.now().getTime() + minute));
+    assertEquals(await claim(test.ctx, options), []);
+});
+
+Deno.test("a job is claimed again only after its lease expires", async () => {
+    await using test = await open();
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 1 } });
+    const [first] = await claim(test.ctx, options);
+    test.clock.advance(minute - 1);
+    assertEquals(await claim(test.ctx, { ...options, worker: "w2" }), []);
+    test.clock.advance(1);
+    const [second] = await claim(test.ctx, { ...options, worker: "w2" });
+    assertEquals([second.lease_owner, second.attempts], ["w2", 2]);
+    // The first worker lost its lease, so finishing late changes nothing.
+    await complete(test.ctx, first);
+    await fail(test.ctx, first, "late");
+    assertEquals(
+        await test.ctx.db.selectFrom("jobs").select(["lease_owner", "last_error"]).execute(),
+        [
+            { lease_owner: "w2", last_error: null },
+        ],
+    );
+    await complete(test.ctx, second);
+    assertEquals(await test.ctx.db.selectFrom("jobs").select("id").execute(), []);
+});
+
+Deno.test("concurrent claims never share a job", async () => {
+    await using test = await open();
+    for (let n = 0; n < 20; n++) await enqueue(test.ctx, { queue: "deliver", payload: { n } });
+    const claims = await Promise.all(
+        ["w1", "w2", "w3"].map((worker) => claim(test.ctx, { ...options, worker, limit: 8 })),
+    );
+    const claimed = claims.flatMap(ids);
+    assertEquals(claimed.length, 20);
+    assertEquals(new Set(claimed).size, 20);
+});
+
+Deno.test("a failed job is retried after a backoff, then kept as a dead letter", async () => {
+    await using test = await open();
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 1 }, maxAttempts: 2 });
+    const [first] = await claim(test.ctx, options);
+    await fail(test.ctx, first, "timed out", () => 0);
+    test.clock.advance(15_000 - 1);
+    assertEquals(await claim(test.ctx, options), []);
+    test.clock.advance(1);
+    const [second] = await claim(test.ctx, options);
+    assertEquals([second.attempts, second.last_error], [2, "timed out"]);
+    await fail(test.ctx, second, "refused");
+    test.clock.advance(24 * 60 * minute);
+    assertEquals(await claim(test.ctx, options), []);
+    assertEquals(
+        await test.ctx.db.selectFrom("jobs")
+            .select(["attempts", "lease_owner", "lease_expires_at", "last_error"]).execute(),
+        [{ attempts: 2, lease_owner: null, lease_expires_at: null, last_error: "refused" }],
+    );
+});
+
+Deno.test("backoff doubles from 30 seconds up to six hours, with jitter", () => {
+    assertEquals([1, 2, 3].map((attempts) => backoffMs(attempts, () => 1)), [
+        30_000,
+        60_000,
+        120_000,
+    ]);
+    assertEquals(backoffMs(1, () => 0), 15_000);
+    assertEquals(backoffMs(30, () => 1), 6 * 60 * minute);
 });

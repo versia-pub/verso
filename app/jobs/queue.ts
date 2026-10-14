@@ -1,3 +1,4 @@
+import { skippingLocked } from "../db/locking.ts";
 import type { Context } from "../kernel/context.ts";
 
 /** A row of the jobs table. */
@@ -61,4 +62,91 @@ export const enqueue = async (
         .returning("id")
         .executeTakeFirst();
     return inserted?.id;
+};
+
+export type ClaimOptions = {
+    readonly queue: string;
+    /** Names the worker in `lease_owner`, for finding who holds a job. */
+    readonly worker: string;
+    readonly limit: number;
+    /** How long the worker has to finish before the job can be claimed again. */
+    readonly leaseMs: number;
+};
+
+/**
+ * Leases up to `limit` due jobs from one queue, highest priority first, then oldest. Each claim
+ * uses up an attempt. A job whose lease expired, say because its worker crashed, is due again, so
+ * a job may run more than once and every handler must be idempotent.
+ */
+export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTable[]> => {
+    const now = ctx.clock.now();
+    const jobs = await ctx.db.updateTable("jobs")
+        .set((eb) => ({
+            lease_owner: options.worker,
+            lease_expires_at: new Date(now.getTime() + options.leaseMs),
+            attempts: eb("attempts", "+", 1),
+        }))
+        .where("id", "in", (eb) =>
+            eb.selectFrom("jobs").select("id")
+                .where("queue", "=", options.queue)
+                .where("run_at", "<=", now)
+                .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
+                .where((eb) =>
+                    eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
+                )
+                .orderBy("priority", "desc").orderBy("run_at").orderBy("id")
+                .limit(options.limit)
+                .$call((query) => skippingLocked(ctx.db, query)))
+        .returningAll()
+        .execute();
+    return jobs.toSorted((a, b) =>
+        b.priority - a.priority || a.run_at.getTime() - b.run_at.getTime() ||
+        a.id.localeCompare(b.id)
+    );
+};
+
+/**
+ * Deletes a job that ran successfully. Like `fail`, it only touches the job while this claim
+ * still holds it, so a worker that lost its lease can't undo someone else's newer claim.
+ */
+export const complete = async (ctx: Context, job: JobsTable): Promise<void> => {
+    await ctx.db.deleteFrom("jobs")
+        .where("id", "=", job.id)
+        .where("lease_owner", "=", job.lease_owner)
+        .where("attempts", "=", job.attempts)
+        .execute();
+};
+
+/**
+ * Exponential backoff with jitter: about 30 seconds after the first attempt, doubling each time,
+ * at most six hours. Each wait is scaled by a random factor between ½ and 1, so jobs that failed
+ * together don't all retry together.
+ */
+export const backoffMs = (attempts: number, random: () => number = Math.random): number =>
+    Math.min(30_000 * 2 ** (attempts - 1), 6 * 60 * 60 * 1000) * (0.5 + random() / 2);
+
+/**
+ * Records a failed run. The job is retried after a backoff, or, once its attempts are used up,
+ * stays in the table as a dead letter.
+ */
+export const fail = async (
+    ctx: Context,
+    job: JobsTable,
+    error: string,
+    random?: () => number,
+): Promise<void> => {
+    const dead = job.attempts >= job.max_attempts;
+    await ctx.db.updateTable("jobs")
+        .set({
+            lease_owner: null,
+            lease_expires_at: null,
+            last_error: error,
+            ...(dead ? {} : {
+                run_at: new Date(ctx.clock.now().getTime() + backoffMs(job.attempts, random)),
+            }),
+        })
+        .where("id", "=", job.id)
+        .where("lease_owner", "=", job.lease_owner)
+        .where("attempts", "=", job.attempts)
+        .execute();
 };
