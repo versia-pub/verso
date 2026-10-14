@@ -16,6 +16,7 @@ stdenvNoCC.mkDerivation {
       ../deno.json
       ../deno.lock
       ../app
+      ../packages
     ];
   };
 

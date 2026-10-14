@@ -34,9 +34,15 @@ in
     ${image} | tar -x
     config=$(jq -r '.[0].Config' manifest.json)
     entrypoint=$(jq -r '.config.Entrypoint[0]' "$config")
-    version=$("$entrypoint" --version)
+    version=$("$entrypoint" --version 2>stderr)
     if [ "$version" != "verso ${image.imageTag}" ]; then
       echo "The image's entrypoint answered '$version', expected 'verso ${image.imageTag}'."
+      exit 1
+    fi
+    # Warnings here, such as a missing workspace member, mean the package is incomplete.
+    if [ -s stderr ]; then
+      echo "The image's entrypoint printed warnings:"
+      cat stderr
       exit 1
     fi
     touch $out
