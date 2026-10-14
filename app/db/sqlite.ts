@@ -7,9 +7,23 @@ import { sqliteTypes } from "./columns.ts";
  * better-sqlite3, which has the same shape apart from how it tells whether a statement returns
  * rows. Closing Kysely closes the database.
  *
- * SQLite has no date type, so dates are written as ISO 8601 text and read back as `Date` from
- * columns declared with the `timestamp` helper.
+ * SQLite has no date, JSON or boolean types. Dates are written as ISO 8601 text and booleans as
+ * 1 or 0 (JSON arrives as text from the `jsonValues` plugin). Reading converts them back, going by
+ * each column's declared type.
  */
+const write = (value: unknown) =>
+  value instanceof Date
+    ? value.toISOString()
+    : typeof value === "boolean"
+    ? Number(value)
+    : value;
+
+const readers: Record<string, (value: unknown) => unknown> = {
+  [sqliteTypes.timestamp]: (value) => new Date(value as string),
+  [sqliteTypes.json]: (value) => JSON.parse(value as string),
+  boolean: (value) => value !== 0,
+};
+
 export const sqliteDialect = (database: DatabaseSync): Dialect =>
   new SqliteDialect({
     database: {
@@ -17,18 +31,16 @@ export const sqliteDialect = (database: DatabaseSync): Dialect =>
       prepare: (sql) => {
         const statement = database.prepare(sql);
         const columns = statement.columns();
-        const timestamps = columns
-          .filter((column) => column.type === sqliteTypes.timestamp)
-          .map((column) => column.name);
+        const converted = columns.flatMap((column) => {
+          const convert = column.type && readers[column.type.toLowerCase()];
+          return convert ? [[column.name, convert] as const] : [];
+        });
         const values = (parameters: readonly unknown[]) =>
-          parameters.map((value) =>
-            value instanceof Date ? value.toISOString() : value
-          ) as SQLInputValue[];
+          parameters.map(write) as SQLInputValue[];
         const read = (row: unknown) => {
           const record = row as Record<string, unknown>;
-          for (const name of timestamps) {
-            const value = record[name];
-            if (typeof value === "string") record[name] = new Date(value);
+          for (const [name, convert] of converted) {
+            if (record[name] !== null) record[name] = convert(record[name]);
           }
           return record;
         };

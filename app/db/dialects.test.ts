@@ -1,13 +1,15 @@
 import { PGlite } from "@electric-sql/pglite";
 import { assertEquals, assertRejects } from "@std/assert";
-import { type Dialect, Kysely, PGliteDialect } from "kysely";
+import { type Dialect, PGliteDialect, sql } from "kysely";
 import { DatabaseSync } from "node:sqlite";
 import { columnTypes } from "./columns.ts";
+import { connect } from "./database.ts";
 import { sqliteDialect } from "./sqlite.ts";
 
 type Database = {
   notes: { id: number; text: string };
   events: { id: number; at: Date | null };
+  documents: { id: number; doc: unknown; flag: boolean | null };
 };
 
 const dialects: Record<string, () => Promise<Dialect>> = {
@@ -17,7 +19,7 @@ const dialects: Record<string, () => Promise<Dialect>> = {
 
 for (const [name, dialect] of Object.entries(dialects)) {
   const open = async () => {
-    const db = new Kysely<Database>({ dialect: await dialect() });
+    const db = connect<Database>(await dialect());
     await db.schema.createTable("notes")
       .addColumn("id", "integer", (column) => column.primaryKey())
       .addColumn("text", "text", (column) => column.notNull())
@@ -25,6 +27,11 @@ for (const [name, dialect] of Object.entries(dialects)) {
     await db.schema.createTable("events")
       .addColumn("id", "integer", (column) => column.primaryKey())
       .addColumn("at", columnTypes(db).timestamp)
+      .execute();
+    await db.schema.createTable("documents")
+      .addColumn("id", "integer", (column) => column.primaryKey())
+      .addColumn("doc", columnTypes(db).json)
+      .addColumn("flag", "boolean")
       .execute();
     return db;
   };
@@ -124,5 +131,51 @@ for (const [name, dialect] of Object.entries(dialects)) {
     const later = await db.selectFrom("events").select("id")
       .where("at", ">", times[0]).orderBy("id").execute();
     assertEquals(later, [{ id: 2 }, { id: 4 }]);
+  });
+
+  Deno.test(`${name}: JSON objects and arrays come back as written`, async () => {
+    await using db = await open();
+    const docs = [
+      { a: [1, "two", null, { b: true }], c: "\u00e9" },
+      [1, [2, 3], { d: [] }],
+      [],
+      {},
+    ];
+    await db.insertInto("documents")
+      .values(docs.map((doc, id) => ({ id, doc, flag: null })))
+      .execute();
+    await db.insertInto("documents")
+      .values({ id: docs.length, doc: null, flag: null })
+      .execute();
+    assertEquals(
+      await db.selectFrom("documents").select("doc").orderBy("id").execute(),
+      [...docs, null].map((doc) => ({ doc })),
+    );
+    // Stored as JSON, not as a JSON string or a Postgres array.
+    const typeOf = sql.raw(name === "SQLite" ? "json_type" : "jsonb_typeof");
+    assertEquals(
+      await db.selectFrom("documents")
+        .select(sql<string>`${typeOf}(doc)`.as("type"))
+        .where("doc", "is not", null).orderBy("id").execute(),
+      ["object", "array", "array", "object"].map((type) => ({ type })),
+    );
+  });
+
+  Deno.test(`${name}: booleans come back as booleans`, async () => {
+    await using db = await open();
+    await db.insertInto("documents").values([
+      { id: 1, doc: null, flag: true },
+      { id: 2, doc: null, flag: false },
+      { id: 3, doc: null, flag: null },
+    ]).execute();
+    assertEquals(
+      await db.selectFrom("documents").select("flag").orderBy("id").execute(),
+      [{ flag: true }, { flag: false }, { flag: null }],
+    );
+    assertEquals(
+      await db.selectFrom("documents").select("id").where("flag", "=", true)
+        .execute(),
+      [{ id: 1 }],
+    );
   });
 }
