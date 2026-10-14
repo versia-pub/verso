@@ -8,9 +8,10 @@
 let
   src = lib.fileset.toSource {
     root = ../.;
+    # The lockfile, plus every deno.json in the workspace.
     fileset = lib.fileset.unions [
-      ../deno.json
       ../deno.lock
+      (lib.fileset.fileFilter (file: file.name == "deno.json") ../.)
     ];
   };
 in

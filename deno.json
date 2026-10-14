@@ -2,14 +2,20 @@
   "version": "0.0.0",
   "license": "AGPL-3.0-or-later",
   "vendor": true,
+  "workspace": [
+    "./packages/protocol"
+  ],
   "tasks": {
     "fmt": "deno fmt",
     "lint": "deno lint",
-    "check": "deno check"
+    "check": "deno check",
+    "test": "deno test"
   },
   "lint": {
     "rules": {
-      "tags": ["recommended"],
+      "tags": [
+        "recommended"
+      ],
       "include": [
         "ban-ts-comment",
         "explicit-module-boundary-types",

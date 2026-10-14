@@ -24,6 +24,7 @@ in
   fmt = denoTask "fmt" "fmt --check";
   lint = denoTask "lint" "lint";
   typecheck = denoTask "typecheck" "check";
+  test = denoTask "test" "test";
 
   media-spike = import ./media-spike.nix { inherit pkgs; };
 
