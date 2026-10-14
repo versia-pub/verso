@@ -9,7 +9,9 @@
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/toml@1.0.11": "1.0.11",
+    "npm:@electric-sql/pglite@0.5.9": "0.5.9",
     "npm:fast-check@4.10.2": "4.10.2",
+    "npm:kysely@0.29.6": "0.29.6",
     "npm:zod@4.6.7": "4.6.7"
   },
   "jsr": {
@@ -46,11 +48,17 @@
     }
   },
   "npm": {
+    "@electric-sql/pglite@0.5.9": {
+      "integrity": "sha512-GoQTRMZ/o4J3sMW4mLDtDFGNOm1xy5oH+iHDALWll3uERY6OF4BSnL1t7FZH2Mlw+RPceDBlFJgSaecO73c4EA=="
+    },
     "fast-check@4.10.2": {
       "integrity": "sha512-iK2f+YrcmoeGqk6fA0ea2bptcu/itMIm4NfEozq6N25+aG6h7s5HZbB/k1aV7b5w5sFLMCbbtRUsTVR+BgC3xw==",
       "dependencies": [
         "pure-rand"
       ]
+    },
+    "kysely@0.29.6": {
+      "integrity": "sha512-hHaB8C/rfzDDtr/t8YZwxAuPJTT0zHyaPoVzcXwDYhYNAgH/4sIfVhi/XLLIY+bL/FqaIJnjATDbi8ObSELmxg=="
     },
     "pure-rand@8.4.2": {
       "integrity": "sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng=="
@@ -65,7 +73,9 @@
       "jsr:@std/assert@1.0.19",
       "jsr:@std/cli@1.0.32",
       "jsr:@std/toml@1.0.11",
+      "npm:@electric-sql/pglite@0.5.9",
       "npm:fast-check@4.10.2",
+      "npm:kysely@0.29.6",
       "npm:zod@4.6.7"
     ]
   }
