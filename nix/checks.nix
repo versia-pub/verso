@@ -4,14 +4,16 @@
   deps,
 }:
 let
-  # Runs a deno.json task against the read-only source, so a task that tries to write fails loudly.
-  # Deno writes to its cache, so it gets a writable copy of the dependencies.
+  # Runs a deno.json task in a read-only copy of the source and its vendored dependencies, so a
+  # task that tries to write there fails loudly.
   denoTask =
     name: task:
     pkgs.runCommand name { nativeBuildInputs = [ pkgs.deno ]; } ''
-      cp -r --no-preserve=mode ${deps} "$TMPDIR/deno"
       export DENO_DIR="$TMPDIR/deno" DENO_NO_UPDATE_CHECK=1
-      cd ${src}
+      cp -r --no-preserve=mode ${src} "$TMPDIR/src"
+      cp -r --no-preserve=mode ${deps}/vendor ${deps}/node_modules "$TMPDIR/src/"
+      chmod -R a-w "$TMPDIR/src"
+      cd "$TMPDIR/src"
       deno task ${task}
       touch $out
     '';

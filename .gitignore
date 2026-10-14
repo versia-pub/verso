@@ -4,3 +4,7 @@ result-*
 
 # direnv cache
 .direnv/
+
+# Dependencies installed by deno install (see nix/deps.nix)
+vendor/
+node_modules/
