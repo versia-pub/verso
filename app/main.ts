@@ -8,7 +8,7 @@ const banner = `
    ▀▀▀    ▀▀▀▀▀▀▀▀ ▀▀▀   ▀▀▀  ▀▀▀▀▀▀▀    ▀▀▀▀▀▀
 `;
 
-function serve(): void {
+const serve = (): void => {
   // deno-lint-ignore no-console -- the banner is command output, not a log line
   console.log(banner);
 
@@ -20,7 +20,7 @@ function serve(): void {
     }
     return new Response("Not Found", { status: 404 });
   });
-}
+};
 
 if (import.meta.main) {
   switch (Deno.args[0]) {

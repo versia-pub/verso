@@ -12,6 +12,9 @@
     "test": "deno test"
   },
   "lint": {
+    "plugins": [
+      "./lint/plugin.ts"
+    ],
     "rules": {
       "tags": [
         "recommended"

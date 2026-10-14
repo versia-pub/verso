@@ -58,6 +58,8 @@ hash, the `deps-hash` check fails and tells you what to run.
 - The lint rules are strict on purpose: no `any`, no `@ts-ignore`, no non-null
   `!`, and exported functions declare their return types. If you really need to
   break a rule, add a `deno-lint-ignore` comment with the reason after `--`.
+- Write functions as arrow functions, not with the `function` keyword. Methods
+  and generators are the exception. Our own lint rules live in `lint/plugin.ts`.
 - Don't use `console` for logging. Logs go through LogTape so they stay
   structured. Printing command output, like `--version`, is fine with a
   lint-ignore comment.

@@ -16,10 +16,10 @@ const idPattern = /^[A-Za-z0-9_-]+$/;
  * request, or served the entity we fetched. A bare id refers to an entity on that instance.
  * Returns undefined if the reference is invalid.
  */
-export function parseReference(
+export const parseReference = (
   text: string,
   origin: string,
-): Reference | undefined {
+): Reference | undefined => {
   // Ids can't contain a colon, but hostnames can (ports, IPv6), so split at the last one.
   const separator = text.lastIndexOf(":");
   const host = separator === -1 ? origin : text.slice(0, separator);
@@ -30,17 +30,19 @@ export function parseReference(
     return undefined;
   }
   return { host: canonicalHost, id };
-}
+};
 
 /**
  * Formats a reference to put inside an entity that `origin` will send or serve. The hostname is
  * left out when the referenced entity also lives on `origin`.
  */
-export function formatReference(reference: Reference, origin: string): string {
-  return reference.host === canonicalize(origin)
+export const formatReference = (
+  reference: Reference,
+  origin: string,
+): string =>
+  reference.host === canonicalize(origin)
     ? reference.id
     : `${reference.host}:${reference.id}`;
-}
 
 /**
  * Returns the canonical form of a hostname with an optional port, as the URL parser writes it:
@@ -48,7 +50,7 @@ export function formatReference(reference: Reference, origin: string): string {
  * non-ASCII names (the spec wants Punycode), unbracketed IPv6, and anything that isn't just a
  * hostname and port.
  */
-function canonicalize(host: string): string | undefined {
+const canonicalize = (host: string): string | undefined => {
   if (!/^[\x21-\x7e]+$/.test(host)) {
     return undefined;
   }
@@ -56,4 +58,4 @@ function canonicalize(host: string): string | undefined {
   const onlyHost = url !== null && url.pathname === "/" && url.search === "" &&
     url.hash === "" && url.username === "" && url.password === "";
   return onlyHost ? url.host : undefined;
-}
+};
