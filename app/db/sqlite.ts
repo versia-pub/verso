@@ -2,15 +2,6 @@ import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { type Dialect, SqliteDialect } from "kysely";
 import { sqliteTypes } from "./columns.ts";
 
-/**
- * Runs Kysely on SQLite through Deno's built-in `node:sqlite`. Kysely's SQLite dialect expects
- * better-sqlite3, which has the same shape apart from how it tells whether a statement returns
- * rows. Closing Kysely closes the database.
- *
- * SQLite has no date, JSON or boolean types. Dates are written as ISO 8601 text and booleans as
- * 1 or 0 (JSON arrives as text from the `jsonValues` plugin). Reading converts them back, going by
- * each column's declared type.
- */
 const write = (value: unknown) =>
   value instanceof Date
     ? value.toISOString()
@@ -24,6 +15,15 @@ const readers: Record<string, (value: unknown) => unknown> = {
   boolean: (value) => value !== 0,
 };
 
+/**
+ * Runs Kysely on SQLite through Deno's built-in `node:sqlite`. Kysely's SQLite dialect expects
+ * better-sqlite3, which has the same shape apart from how it tells whether a statement returns
+ * rows. Closing Kysely closes the database.
+ *
+ * SQLite has no date, JSON or boolean types. Dates are written as ISO 8601 text and booleans as
+ * 1 or 0 (JSON arrives as text from the `jsonValues` plugin). Reading converts them back, going by
+ * each column's declared type.
+ */
 export const sqliteDialect = (database: DatabaseSync): Dialect =>
   new SqliteDialect({
     database: {
