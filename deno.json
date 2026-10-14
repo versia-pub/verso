@@ -1,0 +1,22 @@
+{
+  "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
+  "tasks": {
+    "fmt": "deno fmt",
+    "lint": "deno lint",
+    "check": "deno check"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "include": [
+        "ban-ts-comment",
+        "explicit-module-boundary-types",
+        "no-console",
+        "no-explicit-any",
+        "no-non-null-assertion",
+        "no-unused-vars"
+      ]
+    }
+  }
+}
