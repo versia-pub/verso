@@ -9,6 +9,7 @@ self:
 let
   cfg = config.services.verso;
   settingsFormat = pkgs.formats.toml { };
+  configFile = settingsFormat.generate "config.toml" cfg.settings;
 in
 {
   options.services.verso = {
@@ -66,7 +67,8 @@ in
       environment.DENO_DIR = "%C/verso";
 
       serviceConfig = {
-        ExecStart = "${lib.getExe cfg.package} serve --config ${settingsFormat.generate "config.toml" cfg.settings}";
+        ExecStartPre = "${lib.getExe cfg.package} migrate --config ${configFile}";
+        ExecStart = "${lib.getExe cfg.package} serve --config ${configFile}";
         Restart = "on-failure";
 
         # The dynamic user is named verso, so PostgreSQL's peer authentication maps it to the

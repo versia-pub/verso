@@ -1,5 +1,5 @@
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
-import { type Dialect, SqliteDialect } from "kysely";
+import { type Dialect, SqliteAdapter, SqliteDialect } from "kysely";
 import { sqliteTypes } from "./columns.ts";
 
 const write = (value: unknown) =>
@@ -16,6 +16,23 @@ const readers: Record<string, (value: unknown) => unknown> = {
 };
 
 /**
+ * Kysely assumes SQLite can't undo schema changes in a rolled-back transaction, but it can, so
+ * migrations get a transaction here too. `PRAGMA foreign_keys` can't change inside one, though,
+ * so a migration that rebuilds a table uses `PRAGMA defer_foreign_keys` instead.
+ */
+class TransactionalSqliteAdapter extends SqliteAdapter {
+  override get supportsTransactionalDdl(): boolean {
+    return true;
+  }
+}
+
+class NodeSqliteDialect extends SqliteDialect {
+  override createAdapter(): SqliteAdapter {
+    return new TransactionalSqliteAdapter();
+  }
+}
+
+/**
  * Runs Kysely on SQLite through Deno's built-in `node:sqlite`. Kysely's SQLite dialect expects
  * better-sqlite3, which has the same shape apart from how it tells whether a statement returns
  * rows. Closing Kysely closes the database.
@@ -25,7 +42,7 @@ const readers: Record<string, (value: unknown) => unknown> = {
  * each column's declared type.
  */
 export const sqliteDialect = (database: DatabaseSync): Dialect =>
-  new SqliteDialect({
+  new NodeSqliteDialect({
     database: {
       close: () => database.close(),
       prepare: (sql) => {

@@ -84,6 +84,10 @@ in
           "sudo -u postgres psql -tAc \"select pg_get_userbyid(datdba) from pg_database where datname = 'verso'\""
       )
       assert owner.strip() == "verso", f"the verso database is owned by {owner!r}"
+      migrations = machine.succeed(
+          "sudo -u postgres psql -d verso -tAc \"select tableowner from pg_tables where tablename = 'kysely_migration'\""
+      )
+      assert migrations.strip() == "verso", f"the migrations table is owned by {migrations!r}"
     '';
   };
 
