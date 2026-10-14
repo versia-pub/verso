@@ -4,7 +4,7 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
   outputs =
-    { nixpkgs, ... }:
+    { self, nixpkgs }:
     let
       systems = [
         "x86_64-linux"
@@ -19,5 +19,13 @@
       devShells = forAllSystems (pkgs: {
         default = pkgs.callPackage ./nix/devshell.nix { };
       });
+
+      checks = forAllSystems (
+        pkgs:
+        import ./nix/checks.nix {
+          inherit pkgs;
+          src = self;
+        }
+      );
     };
 }
