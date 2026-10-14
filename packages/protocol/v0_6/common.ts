@@ -80,3 +80,7 @@ export const Entity = z.object({
   extensions: optional(Extensions),
 });
 export type Entity = z.infer<typeof Entity>;
+
+/** An entity that can't be fetched later, such as Follow or Delete, so it has no `id`. */
+export const TransientEntity = Entity.omit({ id: true });
+export type TransientEntity = z.infer<typeof TransientEntity>;
