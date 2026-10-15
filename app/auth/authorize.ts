@@ -158,6 +158,11 @@ export const authorize = async (
         : { result: "choose", browserSecret, issuers: providers.map((p) => p.issuer) };
 };
 
+/** Deletes flows past their expiry: logins never finished, and codes never traded for tokens. */
+export const deleteExpiredFlows = async (ctx: Context): Promise<void> => {
+    await ctx.db.deleteFrom("oauth_flows").where("expires_at", "<=", ctx.clock.now()).execute();
+};
+
 /** The unexpired flow tied to a browser by its cookie, if there is one. */
 export const findFlow = async (
     ctx: Context,

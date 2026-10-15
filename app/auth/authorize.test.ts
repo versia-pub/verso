@@ -1,5 +1,8 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { createApp } from "../http/app.ts";
+import { queues, tasks } from "../jobs/queues.ts";
+import { schedule } from "../jobs/scheduler.ts";
+import { drain } from "../jobs/worker.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { registerApp } from "./apps.ts";
 import type { IdentityProvider } from "./identity.ts";
@@ -211,4 +214,17 @@ Deno.test("a login must be finished within half an hour", async () => {
     test.clock.advance(30 * 60_000);
 
     assertEquals((await test.chooseIssuer("https://a.example", cookie)).status, 400);
+});
+
+Deno.test("each hour, flows past their expiry are deleted", async () => {
+    await using test = await open();
+    await test.authorize();
+    test.clock.advance(20 * 60_000);
+    await test.authorize();
+
+    test.clock.advance(10 * 60_000);
+    await schedule(test.ctx, tasks);
+    await drain(test.ctx, queues);
+
+    assertEquals((await test.flows()).length, 1);
 });
