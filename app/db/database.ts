@@ -2,7 +2,7 @@ import { type Dialect, Kysely, PostgresDialect } from "kysely";
 import { DatabaseSync } from "node:sqlite";
 import pg from "pg";
 import type { AccountsTable, IdentitiesTable } from "../accounts/tables.ts";
-import type { AppsTable } from "../auth/tables.ts";
+import type { AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
 import type { JobsTable } from "../jobs/queue.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
@@ -14,6 +14,7 @@ export type Database = {
     apps: AppsTable;
     identities: IdentitiesTable;
     jobs: JobsTable;
+    oauth_flows: OAuthFlowsTable;
 };
 
 /** Kysely on any of the dialects, set up the same way. Tests use it to open PGlite. */

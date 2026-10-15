@@ -51,6 +51,8 @@ export const oidcProvider = (
     };
 
     return {
+        issuer,
+
         beginLogin: async (redirectUri) => {
             const flow = {
                 redirectUri,

@@ -1,3 +1,4 @@
+import type { LoginFlow } from "./identity.ts";
 import type { Scope } from "./scopes.ts";
 
 /** A client app, registered through `POST /api/v1/apps`. */
@@ -12,5 +13,31 @@ export type AppsTable = {
     client_id: string;
     /** The secret is shown once, when the app registers, and only its hash is kept. */
     client_secret_hash: string;
+    created_at: Date;
+};
+
+/**
+ * One user authorising one app, from `/oauth/authorize` until the app trades its code for a token.
+ * It is tied to the browser that started it by a cookie, whose hash is the id.
+ */
+export type OAuthFlowsTable = {
+    id: string;
+    app_id: string;
+    /** One of the app's redirect URIs, which the client chose. */
+    redirect_uri: string;
+    scopes: Scope[];
+    /** The client's `state`, sent back to it unchanged. */
+    state: string | null;
+    /** The client's S256 PKCE challenge, if it sent one. */
+    code_challenge: string | null;
+    /** The issuer the user logs in with, once chosen. */
+    issuer: string | null;
+    /** What the issuer's login needs back when the browser returns. */
+    login: LoginFlow | null;
+    /** The user, once logged in. */
+    account_id: string | null;
+    /** The hash of the code the app trades for a token, once the user allows it. */
+    code_hash: string | null;
+    expires_at: Date;
     created_at: Date;
 };

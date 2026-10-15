@@ -1,4 +1,5 @@
 import type { Kysely } from "kysely";
+import type { IdentityProvider } from "../auth/identity.ts";
 import type { Database } from "../db/database.ts";
 import { migrate } from "../db/migrate.ts";
 import { testDatabase } from "../db/testing.ts";
@@ -17,6 +18,8 @@ export type TestContextOptions = {
     readonly transport?: FakeTransport;
     /** Defaults to a new, empty test database. It is migrated, and closed on disposal. */
     readonly db?: Kysely<Database>;
+    /** Defaults to none. */
+    readonly identityProviders?: Readonly<Record<string, IdentityProvider>>;
 };
 
 export type TestContext = AsyncDisposable & {
@@ -48,7 +51,7 @@ export const createTestContext = async (
         ids: idGenerator(clock, countingRandom()),
         urls: urlBuilder(options.domain ?? "social.example"),
         transport,
-        identityProviders: {},
+        identityProviders: options.identityProviders ?? {},
         db,
     });
 
