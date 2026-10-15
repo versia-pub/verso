@@ -1,11 +1,12 @@
 import { getLogger } from "@logtape/logtape";
 import { parseArgs } from "@std/cli";
 import denoConfig from "../deno.json" with { type: "json" };
-import { devLoginProvider, devLoginRoutes } from "./auth/dev_login.ts";
+import { devLogin } from "./auth/dev_login.ts";
 import { oidcProviders } from "./auth/oidc.ts";
 import { openDatabase } from "./db/database.ts";
 import { migrate } from "./db/migrate.ts";
 import { createApp } from "./http/app.ts";
+import type { Route } from "./http/route.ts";
 import { routes } from "./http/routes.ts";
 import { queues, tasks } from "./jobs/queues.ts";
 import { runScheduler } from "./jobs/scheduler.ts";
@@ -27,8 +28,13 @@ const banner = `
    ▀▀▀    ▀▀▀▀▀▀▀▀ ▀▀▀   ▀▀▀  ▀▀▀▀▀▀▀    ▀▀▀▀▀▀
 `;
 
-/** Serves HTTP until `signal` aborts. */
-const serve = (ctx: Context, config: Config, signal: AbortSignal): Promise<void> => {
+/** Serves `served` over HTTP until `signal` aborts. */
+const serve = (
+    ctx: Context,
+    config: Config,
+    served: readonly Route[],
+    signal: AbortSignal,
+): Promise<void> => {
     // deno-lint-ignore no-console -- the banner is command output, not a log line
     console.log(banner);
 
@@ -45,7 +51,6 @@ const serve = (ctx: Context, config: Config, signal: AbortSignal): Promise<void>
         logger.warn("The development login is on, so anyone can log in as any user");
     }
 
-    const served = config.auth.dev_login ? [...routes, ...devLoginRoutes] : routes;
     const server = Deno.serve(
         { port: config.http.port, onListen, signal },
         createApp(ctx, served).fetch,
@@ -61,15 +66,11 @@ const run = async (role: string, config: Config): Promise<void> => {
     await using db = openDatabase(config.database);
 
     const urls = urlBuilder(config.domain, config.http.origin);
-    const identityProviders = oidcProviders(config.auth.issuers, {
-        transport: fetchTransport,
-        clock: systemClock,
-    });
-
-    if (config.auth.dev_login) {
-        const dev = devLoginProvider(urls);
-        identityProviders[dev.issuer.url] = dev;
-    }
+    const dev = devLogin(config.auth.dev_login, urls);
+    const identityProviders = {
+        ...oidcProviders(config.auth.issuers, { transport: fetchTransport, clock: systemClock }),
+        ...dev.providers,
+    };
 
     const ctx = createContext({
         clock: systemClock,
@@ -94,7 +95,9 @@ const run = async (role: string, config: Config): Promise<void> => {
     }
 
     await Promise.all([
-        role === "work" ? undefined : serve(ctx, config, stopping.signal),
+        role === "work"
+            ? undefined
+            : serve(ctx, config, [...routes, ...dev.routes], stopping.signal),
         role === "serve"
             ? undefined
             : work(ctx, queues, { worker, pollMs: 1000, signal: stopping.signal, wakeups }),

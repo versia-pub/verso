@@ -7,7 +7,7 @@ import type { UrlBuilder } from "../kernel/urls.ts";
 import { randomToken } from "./secrets.ts";
 
 /** The dev login, as an issuer anyone may register with. */
-export const devIssuer = (urls: UrlBuilder): Issuer => ({
+const devIssuer = (urls: UrlBuilder): Issuer => ({
     name: "Development login",
     url: urls.url`/oauth/dev-login`,
     username_claim: "preferred_username",
@@ -18,7 +18,7 @@ export const devIssuer = (urls: UrlBuilder): Issuer => ({
  * Logs in as any username, with no password, for running Verso locally without an identity
  * provider. The config only allows it in development mode.
  */
-export const devLoginProvider = (urls: UrlBuilder): IdentityProvider => {
+const devLoginProvider = (urls: UrlBuilder): IdentityProvider => {
     const issuer = devIssuer(urls);
 
     return {
@@ -70,5 +70,16 @@ const getDevLogin = defineRoute({
         }),
 });
 
-/** Added only when `auth.dev_login` is on, so production servers don't have them at all. */
-export const devLoginRoutes: readonly Route[] = [getDevLogin];
+/**
+ * The identity provider and routes the dev login adds to the server, when `enabled` by
+ * `auth.dev_login`. Otherwise there are none, so production servers don't have its page at all.
+ */
+export const devLogin = (enabled: boolean, urls: UrlBuilder): {
+    readonly providers: Readonly<Record<string, IdentityProvider>>;
+    readonly routes: readonly Route[];
+} => {
+    if (!enabled) return { providers: {}, routes: [] };
+
+    const provider = devLoginProvider(urls);
+    return { providers: { [provider.issuer.url]: provider }, routes: [getDevLogin] };
+};

@@ -3,15 +3,14 @@ import { createApp } from "../http/app.ts";
 import { routes } from "../http/routes.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { urlBuilder } from "../kernel/urls.ts";
-import { devIssuer, devLoginProvider, devLoginRoutes } from "./dev_login.ts";
+import { devLogin } from "./dev_login.ts";
 import { flowCookie, registerTestApp } from "./testing.ts";
 
-const open = async () => {
-    const urls = urlBuilder("social.example");
-    const test = await createTestContext({
-        identityProviders: { [devIssuer(urls).url]: devLoginProvider(urls) },
-    });
-    const verso = createApp(test.ctx, [...routes, ...devLoginRoutes], { checkResponses: true });
+/** A server set up as `main.ts` sets it up, with the dev login on unless `enabled` is false. */
+const open = async (enabled = true) => {
+    const dev = devLogin(enabled, urlBuilder("social.example"));
+    const test = await createTestContext({ identityProviders: dev.providers });
+    const verso = createApp(test.ctx, [...routes, ...dev.routes], { checkResponses: true });
 
     const { app } = await registerTestApp(test.ctx);
 
@@ -25,7 +24,8 @@ const open = async () => {
         const response = await verso.request(`/oauth/authorize?${params}`);
         return {
             cookie: `__Host-oauth_flow=${flowCookie(response)}`,
-            page: new URL(response.headers.get("location") ?? ""),
+            page: new URL(response.headers.get("location") ?? "https://none.invalid"),
+            text: await response.text(),
         };
     };
 
@@ -65,9 +65,9 @@ Deno.test("a dev login with another state, or no username, is denied", async () 
     }
 });
 
-Deno.test("without the dev login, its page doesn't exist", async () => {
-    await using test = await open();
-    const verso = createApp(test.ctx, routes);
+Deno.test("without the dev login, nobody can use it", async () => {
+    await using test = await open(false);
 
-    assertEquals((await verso.request("/oauth/dev-login?state=s")).status, 404);
+    assertEquals((await test.verso.request("/oauth/dev-login?state=s")).status, 404);
+    assertStringIncludes(await (await test.start()).text, "Logging in isn&#39;t set up");
 });
