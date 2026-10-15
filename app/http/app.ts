@@ -1,4 +1,5 @@
 import { type Context as HonoContext, Hono } from "@hono/hono";
+import { bodyLimit } from "@hono/hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
@@ -7,6 +8,7 @@ import { authenticateToken } from "../auth/tokens.ts";
 import type { Context } from "../kernel/context.ts";
 import {
     BadRequest,
+    ContentTooLarge,
     Forbidden,
     HttpError,
     NotFound,
@@ -25,6 +27,9 @@ import {
 } from "./route.ts";
 
 const logger = getLogger(["verso", "http"]);
+
+/** The largest body a route takes, enough for any form or JSON. Uploads will need their own. */
+const maxBodyBytes = 64 * 1024;
 
 /** Parses each part of the input, reporting every problem in all parts at once. */
 const validate = <K extends string>(
@@ -185,6 +190,14 @@ export const createApp = (
         await next();
         c.res.headers.set("cache-control", "no-store");
     });
+
+    // Checked before anything reads the body, so a huge one is refused, not held in memory.
+    app.use(bodyLimit({
+        maxSize: maxBodyBytes,
+        onError: () => {
+            throw new ContentTooLarge();
+        },
+    }));
 
     // For load balancers and orchestrators, not clients, so it stays plain text.
     app.get("/health/live", (c) => c.text("ok"));

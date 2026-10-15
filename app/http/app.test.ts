@@ -155,6 +155,24 @@ Deno.test("a body must be well-formed JSON or form data", async () => {
     assertEquals((await test.send("/things/a?notify=1", "--x", "multipart/form-data")).status, 400);
 });
 
+Deno.test("a body over 64 KiB is refused before it is read", async () => {
+    await using test = await open();
+    const atLimit = `"${"x".repeat(64 * 1024 - 2)}"`;
+
+    const stated = await test.app.request("/things/a?notify=1", {
+        method: "POST",
+        body: "{}",
+        headers: { "content-type": "application/json", "content-length": String(1024 ** 3) },
+    });
+
+    assertEquals(await test.send("/things/a?notify=1", `${atLimit} `), {
+        status: 413,
+        body: { error: "Content too large" },
+    });
+    assertEquals(stated.status, 413);
+    assertEquals((await test.send("/things/a?notify=1", atLimit)).status, 422);
+});
+
 Deno.test("errors use Mastodon's shape, without internal details", async () => {
     await using test = await open();
     assertEquals(await test.send("/things/missing?notify=1", '{"name":"b"}'), {

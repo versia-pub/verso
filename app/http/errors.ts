@@ -45,6 +45,12 @@ export class NotFound extends HttpError {
     }
 }
 
+export class ContentTooLarge extends HttpError {
+    constructor() {
+        super(413, "Content too large");
+    }
+}
+
 export class UnsupportedMediaType extends HttpError {
     constructor(description?: string) {
         super(415, "Unsupported media type", description);
