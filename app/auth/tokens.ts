@@ -1,5 +1,6 @@
 import type { Context } from "../kernel/context.ts";
 import type { Scope } from "./scopes.ts";
+import { findAppByClientId } from "./apps.ts";
 import { takeFlowByCode } from "./flows.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { AppsTable } from "./tables.ts";
@@ -13,15 +14,19 @@ export type Viewer = {
     readonly scopes: readonly Scope[];
 };
 
+/** A token this server gave out, found by its hash, since that's all that is kept. */
+const findToken = async (ctx: Context, token: string) =>
+    await ctx.db.selectFrom("access_tokens")
+        .selectAll()
+        .where("token_hash", "=", await hashToken(token))
+        .executeTakeFirst();
+
 /** The viewer an access token stands for, if it's a token this server gave out. */
 export const authenticateToken = async (
     ctx: Context,
     token: string,
 ): Promise<Viewer | undefined> => {
-    const row = await ctx.db.selectFrom("access_tokens")
-        .select(["id", "app_id", "account_id", "scopes"])
-        .where("token_hash", "=", await hashToken(token))
-        .executeTakeFirst();
+    const row = await findToken(ctx, token);
 
     return row && {
         tokenId: row.id,
@@ -69,10 +74,7 @@ export const authenticateClient = async (
 ): Promise<AppsTable | undefined> => {
     if (!credentials) return undefined;
 
-    const app = await ctx.db.selectFrom("apps")
-        .selectAll()
-        .where("client_id", "=", credentials.clientId)
-        .executeTakeFirst();
+    const app = await findAppByClientId(ctx, credentials.clientId);
 
     return app?.client_secret_hash === await hashToken(credentials.clientSecret) ? app : undefined;
 };
@@ -159,11 +161,7 @@ export const revokeToken = async (
     app: AppsTable | undefined,
     token: string,
 ): Promise<boolean> => {
-    const row = await ctx.db.selectFrom("access_tokens")
-        .select(["id", "app_id"])
-        .where("token_hash", "=", await hashToken(token))
-        .executeTakeFirst();
-
+    const row = await findToken(ctx, token);
     if (!row) return true;
     if (row.app_id !== app?.id) return false;
 

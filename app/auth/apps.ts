@@ -33,6 +33,16 @@ export const registerApp = async (
     return { app, clientSecret };
 };
 
+/** An app by the client id it sends, if it is registered. */
+export const findAppByClientId = async (
+    ctx: Context,
+    clientId: string | undefined,
+): Promise<AppsTable | undefined> =>
+    clientId === undefined
+        ? undefined
+        : await ctx.db.selectFrom("apps").selectAll().where("client_id", "=", clientId)
+            .executeTakeFirst();
+
 /** An app by its id, which must exist, as it does for a viewer's token. */
 export const getApp = (ctx: Context, id: string): Promise<AppsTable> =>
     ctx.db.selectFrom("apps").selectAll().where("id", "=", id).executeTakeFirstOrThrow();

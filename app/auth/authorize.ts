@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
 import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
+import { findAppByClientId } from "./apps.ts";
 import { createFlow, findFormFlow, recordLogin } from "./flows.ts";
 import { requestedScopes } from "./scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
@@ -79,12 +80,6 @@ export const withParams = (
     return url.href;
 };
 
-const findApp = (ctx: Context, clientId: string | undefined) =>
-    clientId === undefined
-        ? undefined
-        : ctx.db.selectFrom("apps").selectAll().where("client_id", "=", clientId)
-            .executeTakeFirst();
-
 /**
  * Checks an app's request to log a user in, and starts the flow. The flow is tied to the browser
  * by `browserSecret`, which goes in a cookie, so another browser can't finish it.
@@ -93,7 +88,7 @@ export const authorize = async (
     ctx: Context,
     request: AuthorizeRequest,
 ): Promise<Authorization> => {
-    const app = await findApp(ctx, request.client_id);
+    const app = await findAppByClientId(ctx, request.client_id);
     if (!app) return { result: "refused", description: "The app isn't registered here." };
 
     const redirectUri = request.redirect_uri;

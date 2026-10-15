@@ -1,6 +1,8 @@
 import { getLogger } from "@logtape/logtape";
+import { getUsername } from "../accounts/accounts.ts";
 import { provision } from "../accounts/provision.ts";
 import type { Context } from "../kernel/context.ts";
+import { getApp } from "./apps.ts";
 import { deleteFlow, findFlow, findFormFlow, markLoggedIn, setCode } from "./flows.ts";
 import type { Scope } from "./scopes.ts";
 import { randomToken } from "./secrets.ts";
@@ -75,16 +77,12 @@ export const consentRequest = async (
     const flow = await findFlow(ctx, browserSecret);
     if (!flow?.account_id || flow.form_token === null || flow.code_hash !== null) return undefined;
 
-    const { name } = await ctx.db.selectFrom("apps")
-        .select("name")
-        .where("id", "=", flow.app_id)
-        .executeTakeFirstOrThrow();
-    const { username } = await ctx.db.selectFrom("accounts")
-        .select("username")
-        .where("id", "=", flow.account_id)
-        .executeTakeFirstOrThrow();
-
-    return { appName: name, username, scopes: flow.scopes, formToken: flow.form_token };
+    return {
+        appName: (await getApp(ctx, flow.app_id)).name,
+        username: await getUsername(ctx, flow.account_id),
+        scopes: flow.scopes,
+        formToken: flow.form_token,
+    };
 };
 
 /**
