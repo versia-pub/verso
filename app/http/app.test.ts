@@ -1,9 +1,11 @@
-import { assertEquals } from "@std/assert";
+import { html } from "@hono/hono/html";
+import { assertEquals, assertStringIncludes } from "@std/assert";
 import { z } from "zod";
 import { createTestContext } from "../kernel/testing.ts";
 import { createApp } from "./app.ts";
 import { NotFound } from "./errors.ts";
-import { defineRoute } from "./route.ts";
+import { layout } from "./page.ts";
+import { defineRoute, Page, Redirect } from "./route.ts";
 
 const rename = defineRoute({
     method: "POST",
@@ -38,9 +40,34 @@ const sloppy = defineRoute({
     handler: () => Promise.resolve({ status: 200, body: JSON.parse('{"count":"3"}') }),
 });
 
+const welcome = defineRoute({
+    method: "GET",
+    path: "/welcome",
+    summary: "Greets someone, or sends them away",
+    query: z.object({ name: z.string() }),
+    responses: { 200: Page, 303: Redirect },
+    handler: ({ urls }, { query }) =>
+        Promise.resolve(
+            query.name === "away"
+                ? { status: 303, location: urls.url`/elsewhere` }
+                : { status: 200, page: layout("Welcome", html`<p>Hello, ${query.name}</p>`) },
+        ),
+});
+
+/** Declares a page, and sends JSON. */
+const notAPage = defineRoute({
+    method: "GET",
+    path: "/not-a-page",
+    summary: "Replies with JSON instead of its page",
+    responses: { 200: Page },
+    handler: () => Promise.resolve({ status: 200, body: {} } as never),
+});
+
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [rename, sloppy], { checkResponses: true });
+    const app = createApp(test.ctx, [rename, sloppy, welcome, notAPage], {
+        checkResponses: true,
+    });
 
     const send = async (path: string, body: string, type = "application/json") => {
         const response = await app.request(path, {
@@ -127,6 +154,35 @@ Deno.test("with checks on, a reply that doesn't match its schema is a 500", asyn
     assertEquals(await response.json(), { error: "Internal server error" });
 });
 
+Deno.test("a page is escaped HTML that other sites can't frame", async () => {
+    await using test = await open();
+
+    const response = await test.app.request("/welcome?name=<script>");
+
+    assertEquals(response.headers.get("content-type"), "text/html; charset=UTF-8");
+    assertEquals(response.headers.get("x-frame-options"), "DENY");
+    assertStringIncludes(
+        response.headers.get("content-security-policy") ?? "",
+        "frame-ancestors 'none'",
+    );
+    assertStringIncludes(await response.text(), "<p>Hello, &lt;script&gt;</p>");
+});
+
+Deno.test("a redirect sends its location", async () => {
+    await using test = await open();
+
+    const response = await test.app.request("/welcome?name=away");
+
+    assertEquals(response.status, 303);
+    assertEquals(response.headers.get("location"), "https://social.example/elsewhere");
+});
+
+Deno.test("with checks on, JSON where a page is declared is a 500", async () => {
+    await using test = await open();
+
+    assertEquals((await test.app.request("/not-a-page")).status, 500);
+});
+
 Deno.test("with checks off, replies are sent as they are", async () => {
     await using test = await open();
     const app = createApp(test.ctx, [sloppy]);
@@ -153,5 +209,14 @@ Deno.test("a handler can only reply with a declared status and body", () => {
         responses: { 200: z.object({ ok: z.boolean() }) },
         // @ts-expect-error: the body doesn't match the schema
         handler: () => Promise.resolve({ status: 200, body: { ok: "yes" } }),
+    });
+
+    defineRoute({
+        method: "GET",
+        path: "/",
+        summary: "Type checks only",
+        responses: { 200: Redirect },
+        // @ts-expect-error: a redirect needs a redirect status
+        handler: () => Promise.resolve({ status: 200, location: "/" }),
     });
 });

@@ -9,7 +9,7 @@ import {
     UnsupportedMediaType,
     ValidationFailed,
 } from "./errors.ts";
-import type { Route } from "./route.ts";
+import { Page, Redirect, type Reply, type Responses, type Route } from "./route.ts";
 
 const logger = getLogger(["verso", "http"]);
 
@@ -69,16 +69,45 @@ const bodyOf = async (c: HonoContext, route: Route) => {
     }
 };
 
-/** Throws when a reply doesn't match the schema its route declares for its status. */
-const checkReply = (route: Route, reply: { status: number; body: unknown }) => {
-    const schema = route.responses[reply.status as keyof Route["responses"]];
-    const result = schema?.safeParse(reply.body);
-    if (result?.success) return;
+const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
+    declared !== Page && declared !== Redirect;
 
-    const problem = result ? z.prettifyError(result.error) : "the status isn't declared";
+/** Why a reply doesn't match what its route declares for its status, if it doesn't. */
+const replyProblem = (route: Route, reply: Reply<Responses>) => {
+    const declared = route.responses[reply.status];
+
+    if (declared === undefined) return "the status isn't declared";
+    if (declared === Page) return "page" in reply ? undefined : "it isn't a page";
+    if (declared === Redirect) return "location" in reply ? undefined : "it isn't a redirect";
+    if (!isSchema(declared) || !("body" in reply)) return "it has no body";
+
+    const result = declared.safeParse(reply.body);
+    return result.success ? undefined : z.prettifyError(result.error);
+};
+
+/** Throws when a reply doesn't match what its route declares for its status. */
+const checkReply = (route: Route, reply: Reply<Responses>) => {
+    const problem = replyProblem(route, reply);
+    if (problem === undefined) return;
+
     throw new Error(
         `${route.method} ${route.path} replied ${reply.status} with an undeclared shape: ${problem}`,
     );
+};
+
+/** For pages: no scripts or framing, so a page like the consent form can't be clickjacked. */
+const pageHeaders = {
+    "content-security-policy":
+        "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+    "referrer-policy": "no-referrer",
+    "x-frame-options": "DENY",
+};
+
+const send = (c: HonoContext, reply: Reply<Responses>) => {
+    if ("location" in reply) return c.redirect(reply.location, reply.status);
+    if ("page" in reply) return c.html(reply.page, reply.status, pageHeaders);
+
+    return c.json(reply.body, reply.status);
 };
 
 export type AppOptions = {
@@ -108,7 +137,7 @@ export const createApp = (
             const reply = await route.handler(ctx, input);
             if (options.checkResponses) checkReply(route, reply);
 
-            return c.json(reply.body, reply.status);
+            return send(c, reply);
         });
     }
 

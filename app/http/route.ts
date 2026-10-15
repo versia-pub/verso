@@ -1,14 +1,33 @@
-import type { ContentfulStatusCode } from "@hono/hono/utils/http-status";
+import type { HtmlEscapedString } from "@hono/hono/utils/html";
+import type { ContentfulStatusCode, RedirectStatusCode } from "@hono/hono/utils/http-status";
 import type { z } from "zod";
 import type { Context } from "../kernel/context.ts";
 
 type Schema = z.ZodType;
 type Empty = z.ZodType<Record<string, never>>;
-type Responses = Partial<Record<ContentfulStatusCode, Schema>>;
 
-/** One of the responses a route declares, with a body its schema accepts. */
+/** Declares a response that is an HTML page, for the few that browsers see rather than clients. */
+export const Page = { kind: "page" } as const;
+
+/** Declares a response that redirects, to the URL in its `Location` header. */
+export const Redirect = { kind: "redirect" } as const;
+
+/** A JSON body's schema, or a page or a redirect, for each status. */
+export type Responses = Partial<
+    Record<ContentfulStatusCode, Schema | typeof Page | typeof Redirect>
+>;
+
+/** HTML from Hono's `html` template, which escapes every value put into it. */
+export type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
+
+type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
+    : R extends typeof Redirect ? { status: S & RedirectStatusCode; location: string }
+    : R extends Schema ? { status: S; body: z.input<R> }
+    : never;
+
+/** One of the responses a route declares: a body its schema accepts, a page, or a redirect. */
 export type Reply<R extends Responses> = {
-    [S in keyof R & ContentfulStatusCode]: { status: S; body: z.input<NonNullable<R[S]>> };
+    [S in keyof R & ContentfulStatusCode]: ReplyFor<S, NonNullable<R[S]>>;
 }[keyof R & ContentfulStatusCode];
 
 /**
