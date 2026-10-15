@@ -25,6 +25,20 @@ export class BadRequest extends HttpError {
     }
 }
 
+/** No valid access token, where a route needs one. */
+export class Unauthorized extends HttpError {
+    constructor() {
+        super(401, "The access token is invalid");
+    }
+}
+
+/** The access token lacks the scope a route needs. */
+export class Forbidden extends HttpError {
+    constructor() {
+        super(403, "This action is outside the authorized scopes");
+    }
+}
+
 export class NotFound extends HttpError {
     constructor(description?: string) {
         super(404, "Record not found", description);
@@ -34,6 +48,13 @@ export class NotFound extends HttpError {
 export class UnsupportedMediaType extends HttpError {
     constructor(description?: string) {
         super(415, "Unsupported media type", description);
+    }
+}
+
+/** An app's own token, where a route acts for a user. Mastodon answers 422 here. */
+export class UserRequired extends HttpError {
+    constructor() {
+        super(422, "This method requires an authenticated user");
     }
 }
 

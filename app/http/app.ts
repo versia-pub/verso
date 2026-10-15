@@ -2,12 +2,17 @@ import { type Context as HonoContext, Hono } from "@hono/hono";
 import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
+import { grants } from "../auth/scopes.ts";
+import { authenticateToken } from "../auth/tokens.ts";
 import type { Context } from "../kernel/context.ts";
 import {
     BadRequest,
+    Forbidden,
     HttpError,
     NotFound,
+    Unauthorized,
     UnsupportedMediaType,
+    UserRequired,
     ValidationFailed,
 } from "./errors.ts";
 import {
@@ -101,6 +106,26 @@ const bodyOf = async (c: HonoContext, route: Route) => {
 const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
     declared !== Page && declared !== Redirect;
 
+/**
+ * Who is calling, checked against the route's `auth` as Mastodon checks it. A token sent where none
+ * is needed is ignored; on other routes, a token sent must be valid.
+ */
+const viewerOf = async (ctx: Context, c: HonoContext, route: Route) => {
+    if (!route.auth) return undefined;
+
+    const authorization = c.req.header("authorization");
+    if (authorization === undefined && route.auth.require === "optional") return undefined;
+
+    const token = /^Bearer\s+(\S+)$/i.exec(authorization ?? "")?.[1];
+    const viewer = token === undefined ? undefined : await authenticateToken(ctx, token);
+
+    if (!viewer) throw new Unauthorized();
+    if (route.auth.require === "user" && viewer.accountId === null) throw new UserRequired();
+    if (route.auth.scope && !grants(viewer.scopes, route.auth.scope)) throw new Forbidden();
+
+    return viewer;
+};
+
 /** Why a reply doesn't match what its route declares for its status, if it doesn't. */
 const replyProblem = (route: Route, reply: Reply<Responses>) => {
     const declared = route.responses[reply.status];
@@ -166,6 +191,7 @@ export const createApp = (
 
     for (const route of routes) {
         app.on(route.method, route.path, async (c) => {
+            const viewer = await viewerOf(ctx, c, route);
             const input = validate({
                 params: { schema: route.params, value: c.req.param() },
                 query: { schema: route.query, value: queryOf(c) },
@@ -174,7 +200,7 @@ export const createApp = (
                 headers: { schema: route.headers, value: c.req.header() },
             });
 
-            const reply = await route.handler(ctx, input);
+            const reply = await route.handler(ctx, { ...input, viewer });
             if (options.checkResponses) checkReply(route, reply);
 
             return send(c, reply);

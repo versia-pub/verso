@@ -75,3 +75,26 @@ export const requestedScopes = (
     const scopes = parsed.data.length > 0 ? parsed.data : ["read" as const];
     return scopes.every((scope) => registered.includes(scope)) ? scopes : undefined;
 };
+
+/** The granular scopes the deprecated `follow` scope stands for. */
+const followScopes: readonly Scope[] = [
+    "read:blocks",
+    "read:follows",
+    "read:mutes",
+    "write:blocks",
+    "write:follows",
+    "write:mutes",
+];
+
+/**
+ * Whether a token with `granted` may do what needs `needed`: it has that scope, or one that covers
+ * it. `read` covers `read:statuses`, `admin:read` covers `admin:read:accounts`, `follow` covers the
+ * scopes it was split into, and `read:accounts` covers `profile`, as in Mastodon.
+ */
+export const grants = (granted: readonly Scope[], needed: Scope): boolean =>
+    granted.some((scope) =>
+        scope === needed ||
+        needed.startsWith(`${scope}:`) ||
+        (scope === "follow" && followScopes.includes(needed))
+    ) ||
+    (needed === "profile" && grants(granted, "read:accounts"));

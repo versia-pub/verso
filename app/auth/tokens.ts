@@ -3,6 +3,33 @@ import type { Scope } from "./scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { AppsTable } from "./tables.ts";
 
+/** Who is calling, as their access token says. */
+export type Viewer = {
+    readonly tokenId: string;
+    readonly appId: string;
+    /** The user the app acts for, or `null` if the app acts for itself. */
+    readonly accountId: string | null;
+    readonly scopes: readonly Scope[];
+};
+
+/** The viewer an access token stands for, if it's a token this server gave out. */
+export const authenticateToken = async (
+    ctx: Context,
+    token: string,
+): Promise<Viewer | undefined> => {
+    const row = await ctx.db.selectFrom("access_tokens")
+        .select(["id", "app_id", "account_id", "scopes"])
+        .where("token_hash", "=", await hashToken(token))
+        .executeTakeFirst();
+
+    return row && {
+        tokenId: row.id,
+        appId: row.app_id,
+        accountId: row.account_id,
+        scopes: row.scopes,
+    };
+};
+
 export type ClientCredentials = { readonly clientId: string; readonly clientSecret: string };
 
 /**
