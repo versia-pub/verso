@@ -13,7 +13,9 @@ dockerTools.streamLayeredImage {
 
   config = {
     Entrypoint = [ (lib.getExe verso) ];
-    Cmd = [ "serve" ];
+    # Web and jobs in one container, as for a small instance. Run "serve" and "work" separately to
+    # scale them apart.
+    Cmd = [ "all" ];
     Env = [ "DENO_DIR=/tmp/deno" ];
     ExposedPorts."8080/tcp" = { };
     # The unprivileged "nobody" user. A numeric id needs no /etc/passwd in the image.
