@@ -26,6 +26,8 @@ export type WorkOptions = {
 
 const logger = getLogger(["verso", "jobs"]);
 
+const defaultLeaseMs = 5 * 60_000;
+
 const errorText = (error: unknown) =>
     error instanceof Error ? (error.stack ?? error.message) : String(error);
 
@@ -83,7 +85,7 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
                     queue: name,
                     worker: options.worker,
                     limit: free,
-                    leaseMs: queue.leaseMs ?? 5 * 60_000,
+                    leaseMs: queue.leaseMs ?? defaultLeaseMs,
                 });
             } catch (error) {
                 logger.error("Couldn't claim jobs from {queue}: {error}", { queue: name, error });
@@ -117,4 +119,29 @@ export const work = async (
         stopped,
         ...Object.entries(queues).map(([name, queue]) => workQueue(ctx, name, queue, options)),
     ]);
+};
+
+/**
+ * Runs due jobs one at a time, in the order a worker would claim them, until none are left, and
+ * returns how many ran. Jobs enqueued along the way run too if they are due. A failed job waits
+ * out its backoff, so with a fake clock this always ends. For tests, in place of `work`.
+ */
+export const drain = async (
+    ctx: Context,
+    queues: Record<string, Queue>,
+    worker = "drain",
+): Promise<number> => {
+    let ran = 0;
+    for (;;) {
+        let claimed = 0;
+        for (const [name, queue] of Object.entries(queues)) {
+            const leaseMs = queue.leaseMs ?? defaultLeaseMs;
+            for (const job of await claim(ctx, { queue: name, worker, limit: 1, leaseMs })) {
+                await runJob(ctx, name, queue, job);
+                claimed++;
+            }
+        }
+        if (claimed === 0) return ran;
+        ran += claimed;
+    }
 };

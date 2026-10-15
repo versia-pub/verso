@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../kernel/testing.ts";
 import { enqueue } from "./queue.ts";
-import { type Queue, work } from "./worker.ts";
+import { drain, type Queue, work } from "./worker.ts";
 
 const open = () => createTestContext();
 
@@ -94,4 +94,49 @@ Deno.test("with no queues, work runs until stopped", async () => {
     await stop();
     await done;
     assertEquals(stopped, true);
+});
+
+Deno.test("drain runs due jobs, and the jobs they enqueue, until none are left", async () => {
+    await using test = await open();
+    const ran: unknown[] = [];
+    const queues: Record<string, Queue> = {
+        deliver: {
+            handler: async (ctx, job) => {
+                ran.push(job.payload.n);
+                await enqueue(ctx, { queue: "notify", payload: { n: `notify ${job.payload.n}` } });
+            },
+            concurrency: 1,
+        },
+        notify: {
+            handler: (_, job) => Promise.resolve(void ran.push(job.payload.n)),
+            concurrency: 1,
+        },
+    };
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 1 } });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 2 } });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 3 } });
+    await enqueue(test.ctx, { queue: "notify", payload: { n: "later" }, runAt: new Date(9e12) });
+
+    assertEquals(await drain(test.ctx, queues), 6);
+    assertEquals(ran, [1, "notify 1", 2, "notify 2", 3, "notify 3"]);
+    assertEquals(await test.ctx.db.selectFrom("jobs").select("queue").execute(), [{
+        queue: "notify",
+    }]);
+});
+
+Deno.test("drain runs a failed job again only once the clock passes its backoff", async () => {
+    await using test = await open();
+    let runs = 0;
+    const queues: Record<string, Queue> = {
+        deliver: {
+            handler: () => Promise.reject(new Error(`failure ${++runs}`)),
+            concurrency: 1,
+        },
+    };
+    await enqueue(test.ctx, { queue: "deliver", payload: {} });
+    assertEquals(await drain(test.ctx, queues), 1);
+    assertEquals(await drain(test.ctx, queues), 0);
+    test.clock.advance(30_000);
+    assertEquals(await drain(test.ctx, queues), 1);
+    assertEquals(runs, 2);
 });
