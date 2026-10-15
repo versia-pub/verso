@@ -52,13 +52,28 @@ const validate = <K extends string>(
     return valid as Record<K, unknown>;
 };
 
-const queryOf = (c: HonoContext) =>
-    Object.fromEntries(
-        Object.entries(c.req.queries()).map(([key, values]) => [
-            key,
-            values.length === 1 ? values[0] : values,
+/**
+ * The query's values. A key given more than once is an array, and so is a Rails-style `key[]`,
+ * read as `key`, even when given once.
+ */
+const queryOf = (c: HonoContext) => {
+    const values = new Map<string, string[]>();
+    const arrays = new Set<string>();
+
+    for (const [key, given] of Object.entries(c.req.queries())) {
+        const name = key.replace(/\[\]$/, "");
+        if (name !== key) arrays.add(name);
+
+        values.set(name, [...values.get(name) ?? [], ...given]);
+    }
+
+    return Object.fromEntries(
+        [...values].map(([name, given]) => [
+            name,
+            given.length === 1 && !arrays.has(name) ? given[0] : given,
         ]),
     );
+};
 
 /**
  * Verso's cookies, without their `__Host-` prefix. Browsers only accept such cookies from this

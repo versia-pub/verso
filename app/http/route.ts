@@ -82,8 +82,8 @@ export type RouteDefinition<
     readonly auth?: A;
     readonly params?: P;
     /**
-     * Query values are strings, so use `z.coerce` for other types. A key given more than once is
-     * an array of strings.
+     * Query values are strings, so use `z.coerce` for other types. A key given more than once, or
+     * as `key[]`, is an array of strings.
      */
     readonly query?: Q;
     /**

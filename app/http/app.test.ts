@@ -121,6 +121,17 @@ Deno.test("a route gets its validated input and sends its reply", async () => {
     });
 });
 
+Deno.test("a query key[] is read as key, and is an array even when given once", async () => {
+    await using test = await open();
+    const tags = async (query: string) =>
+        (await test.send(`/things/a?notify=1&${query}`, '{"name":"b"}')).body.tag;
+
+    assertEquals(await tags("tag[]=x"), ["x"]);
+    assertEquals(await tags("tag[]=x&tag[]=y"), ["x", "y"]);
+    assertEquals(await tags("tag=x&tag[]=y"), ["x", "y"]);
+    assertEquals(await tags("tag[]="), [""]);
+});
+
 Deno.test("invalid input is a 422 listing each problem by field path", async () => {
     await using test = await open();
     const { status, body } = await test.send("/things/a?notify=7", '{"name":""}');
