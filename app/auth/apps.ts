@@ -32,3 +32,7 @@ export const registerApp = async (
 
     return { app, clientSecret };
 };
+
+/** An app by its id, which must exist, as it does for a viewer's token. */
+export const getApp = (ctx: Context, id: string): Promise<AppsTable> =>
+    ctx.db.selectFrom("apps").selectAll().where("id", "=", id).executeTakeFirstOrThrow();

@@ -1,8 +1,8 @@
-import { type Application, CredentialApplication, Token } from "@versia/client-api";
+import { Application, CredentialApplication, Token } from "@versia/client-api";
 import { HttpError } from "../http/errors.ts";
 import { z } from "zod";
 import { defineRoute, Page, Redirect, type Route } from "../http/route.ts";
-import { registerApp } from "./apps.ts";
+import { getApp, registerApp } from "./apps.ts";
 import { authorize, chooseIssuer, outOfBand, withParams } from "./authorize.ts";
 import { consentRequest, decide, finishLogin, type SendBack } from "./consent.ts";
 import { chooserPage, codePage, consentPage, errorPage } from "./pages.ts";
@@ -101,6 +101,22 @@ const sendBack = ({ redirectUri, params }: Omit<SendBack, "result">) => {
         ? { status: 400, page: errorPage(params.error_description ?? "") } as const
         : { status: 200, page: codePage(params.code) } as const;
 };
+
+/**
+ * Any valid token works, with no scope needed, as since Mastodon 4.3.
+ * @see https://docs.joinmastodon.org/methods/apps/#verify_credentials
+ */
+const verifyAppCredentials = defineRoute({
+    method: "GET",
+    path: "/api/v1/apps/verify_credentials",
+    summary: "Shows the app a token belongs to",
+    auth: { require: "app" },
+    responses: { 200: Application },
+    handler: async (ctx, { viewer }) => ({
+        status: 200,
+        body: applicationOf(await getApp(ctx, viewer.appId)),
+    }),
+});
 
 /** The cookie that ties a login to the browser that started it. */
 const FlowCookie = z.object({ oauth_flow: z.string().optional() });
@@ -297,6 +313,7 @@ const postToken = defineRoute({
 
 export const authRoutes: readonly Route[] = [
     postApps,
+    verifyAppCredentials,
     getAuthorize,
     postIssuer,
     getCallback,

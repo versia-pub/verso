@@ -3,6 +3,7 @@ import { createApp } from "../http/app.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
+import { tokenFor } from "./testing.ts";
 
 const open = async () => {
     const test = await createTestContext();
@@ -19,7 +20,27 @@ const open = async () => {
         return { status: response.status, body: await response.json() };
     };
 
-    return { ...test, register };
+    /** An app token from the token endpoint, as a client would get one. */
+    const token = async (clientId: string, clientSecret: string) => {
+        const response = await app.request("/oauth/token", {
+            method: "POST",
+            body: new URLSearchParams({
+                grant_type: "client_credentials",
+                client_id: clientId,
+                client_secret: clientSecret,
+            }),
+        });
+        return (await response.json()).access_token;
+    };
+
+    const verify = async (authorization: string) => {
+        const response = await app.request("/api/v1/apps/verify_credentials", {
+            headers: { authorization },
+        });
+        return { status: response.status, body: await response.json() };
+    };
+
+    return { ...test, register, token, verify };
 };
 
 Deno.test("an app registers with Mastodon's defaults", async () => {
@@ -108,4 +129,30 @@ Deno.test("invalid registrations are refused with each problem", async () => {
     assertEquals(await refused({ client_name: "x", redirect_uris: [long, long, long] }), [
         "body.redirect_uris",
     ]);
+});
+
+Deno.test("an app's token shows the app, without its secret", async () => {
+    await using test = await open();
+    const { body: registered } = await test.register({
+        client_name: "Phanpy",
+        redirect_uris: "https://phanpy.example/",
+    });
+    const token = await test.token(registered.client_id, registered.client_secret);
+
+    const verified = await test.verify(`Bearer ${token}`);
+
+    assertEquals(verified.status, 200);
+    assertEquals(verified.body, {
+        id: registered.id,
+        name: "Phanpy",
+        website: null,
+        scopes: ["read"],
+        redirect_uris: ["https://phanpy.example/"],
+        redirect_uri: "https://phanpy.example/",
+    });
+    assertEquals(
+        (await test.verify(`Bearer ${await tokenFor(test.ctx, null, ["write"])}`)).status,
+        200,
+    );
+    assertEquals((await test.verify("Bearer unknown")).status, 401);
 });
