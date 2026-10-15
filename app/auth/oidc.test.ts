@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import type { Issuer } from "../accounts/provision.ts";
+import type { IssuerConfig } from "../kernel/identity.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
 import { createFakeIdentityProvider } from "../testing/fake_idp.ts";
@@ -16,7 +16,7 @@ const open = async () => {
     });
     const transport = fakeTransport({ "idp.test": idp.app.fetch });
 
-    const issuer: Issuer = {
+    const issuer: IssuerConfig = {
         name: "Example ID",
         url: idp.issuer,
         client_id: "verso",

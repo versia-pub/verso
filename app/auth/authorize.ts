@@ -1,6 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
-import type { IdentityProvider } from "./identity.ts";
+import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import { requestedScopes } from "./scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
@@ -48,7 +48,7 @@ export type Authorization =
         readonly result: "choose";
         readonly browserSecret: string;
         readonly formToken: string;
-        readonly issuers: IdentityProvider["issuer"][];
+        readonly issuers: Issuer[];
     }
     /** The browser goes to the only issuer to log in. */
     | { readonly result: "login"; readonly browserSecret: string; readonly url: URL };

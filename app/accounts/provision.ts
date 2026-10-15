@@ -1,10 +1,5 @@
-import type { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-
-export type Issuer = Config["auth"]["issuers"][number];
-
-/** The claims of a verified ID token. */
-export type Claims = { readonly sub: string } & Readonly<Record<string, unknown>>;
+import type { Claims, Issuer } from "../kernel/identity.ts";
 
 export type Provisioned =
     | { readonly ok: true; readonly accountId: string; readonly created: boolean }

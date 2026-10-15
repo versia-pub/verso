@@ -1,9 +1,8 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import type { Issuer } from "../accounts/provision.ts";
 import { createApp } from "../http/app.ts";
+import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { registerApp } from "./apps.ts";
-import type { IdentityProvider } from "./identity.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
 
@@ -12,8 +11,6 @@ const stubProvider = (registration: Issuer["registration"] = "open"): IdentityPr
     issuer: {
         name: "Example",
         url: "https://id.example",
-        client_id: "verso",
-        client_secret: "s3cret",
         username_claim: "preferred_username",
         registration,
     },

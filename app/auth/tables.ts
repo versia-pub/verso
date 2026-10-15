@@ -1,4 +1,4 @@
-import type { LoginFlow } from "./identity.ts";
+import type { LoginFlow } from "../kernel/identity.ts";
 import type { Scope } from "./scopes.ts";
 
 /** A client app, registered through `POST /api/v1/apps`. */

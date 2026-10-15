@@ -1,12 +1,11 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { createTestContext } from "../kernel/testing.ts";
-import { type Issuer, provision, usernameFrom } from "./provision.ts";
+import type { Issuer } from "../kernel/identity.ts";
+import { provision, usernameFrom } from "./provision.ts";
 
 const issuer: Issuer = {
     name: "Example ID",
     url: "https://id.example",
-    client_id: "verso",
-    client_secret: "s3cret",
     username_claim: "preferred_username",
     registration: "open",
 };

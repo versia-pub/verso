@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import type { Issuer } from "../accounts/provision.ts";
+import type { IssuerConfig } from "../kernel/identity.ts";
 import { createApp } from "../http/app.ts";
 import { routes } from "../http/routes.ts";
 import { fakeClock } from "../kernel/clock.ts";
@@ -9,7 +9,7 @@ import { createFakeIdentityProvider } from "../testing/fake_idp.ts";
 import { oidcProvider } from "./oidc.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 
-const issuer: Issuer = {
+const issuer: IssuerConfig = {
     name: "Example ID",
     url: "https://idp.test",
     client_id: "verso",

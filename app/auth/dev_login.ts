@@ -1,18 +1,15 @@
 import { html } from "@hono/hono/html";
 import { z } from "zod";
-import type { Issuer } from "../accounts/provision.ts";
 import { layout } from "../http/page.ts";
 import { defineRoute, Page, type Route } from "../http/route.ts";
+import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import type { UrlBuilder } from "../kernel/urls.ts";
-import type { IdentityProvider } from "./identity.ts";
 import { randomToken } from "./secrets.ts";
 
 /** The dev login, as an issuer anyone may register with. */
 export const devIssuer = (urls: UrlBuilder): Issuer => ({
     name: "Development login",
     url: urls.url`/oauth/dev-login`,
-    client_id: "verso",
-    client_secret: "unused",
     username_claim: "preferred_username",
     registration: "open",
 });

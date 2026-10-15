@@ -2,14 +2,14 @@ import { html } from "@hono/hono/html";
 import { layout } from "../http/page.ts";
 import type { Html } from "../http/route.ts";
 import type { ConsentRequest } from "./consent.ts";
-import type { IdentityProvider } from "./identity.ts";
+import type { Issuer } from "../kernel/identity.ts";
 
 /** Tells the user why they can't log in, when there is no app to send them back to. */
 export const errorPage = (description: string): Html =>
     layout("Can't log in", html`<p>${description}</p>`);
 
 /** One button for each issuer the user can log in with. */
-export const chooserPage = (issuers: IdentityProvider["issuer"][], formToken: string): Html =>
+export const chooserPage = (issuers: Issuer[], formToken: string): Html =>
     layout(
         "Log in",
         html`

@@ -1,7 +1,7 @@
 import type { Kysely } from "kysely";
-import type { IdentityProvider } from "../auth/identity.ts";
 import type { Database } from "../db/database.ts";
 import type { Clock } from "./clock.ts";
+import type { IdentityProvider } from "./identity.ts";
 import type { IdGenerator } from "./ids.ts";
 import type { Transport } from "./transport.ts";
 import type { UrlBuilder } from "./urls.ts";

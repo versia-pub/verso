@@ -1,10 +1,10 @@
 import type { Kysely } from "kysely";
-import type { IdentityProvider } from "../auth/identity.ts";
 import type { Database } from "../db/database.ts";
 import { migrate } from "../db/migrate.ts";
 import { testDatabase } from "../db/testing.ts";
 import { type FakeClock, fakeClock } from "./clock.ts";
 import { type Context, createContext } from "./context.ts";
+import type { IdentityProvider } from "./identity.ts";
 import { type FakeTransport, fakeTransport } from "./fake_transport.ts";
 import { countingRandom, idGenerator } from "./ids.ts";
 import { urlBuilder } from "./urls.ts";

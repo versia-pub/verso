@@ -1,8 +1,7 @@
 import * as client from "@panva/openid-client";
-import type { Claims, Issuer } from "../accounts/provision.ts";
 import type { Clock } from "../kernel/clock.ts";
+import type { Claims, IdentityProvider, IssuerConfig } from "../kernel/identity.ts";
 import type { Transport } from "../kernel/transport.ts";
-import type { IdentityProvider } from "./identity.ts";
 
 export type OidcOptions = {
     readonly transport: Transport;
@@ -17,7 +16,7 @@ export const openidFetch = (transport: Transport): client.CustomFetch => (url, o
  * An identity provider for an OpenID Connect issuer, using the code flow with PKCE. The issuer is
  * discovered on first use; if that fails, the next login tries again.
  */
-export const oidcProvider = (issuer: Issuer, options: OidcOptions): IdentityProvider => {
+export const oidcProvider = (issuer: IssuerConfig, options: OidcOptions): IdentityProvider => {
     const fetch = openidFetch(options.transport);
     let discovered: Promise<client.ServerMetadata> | undefined;
 
@@ -89,7 +88,7 @@ export const oidcProvider = (issuer: Issuer, options: OidcOptions): IdentityProv
 
 /** A provider for each configured issuer, by issuer URL. */
 export const oidcProviders = (
-    issuers: readonly Issuer[],
+    issuers: readonly IssuerConfig[],
     options: OidcOptions,
 ): Record<string, IdentityProvider> =>
     Object.fromEntries(issuers.map((issuer) => [issuer.url, oidcProvider(issuer, options)]));

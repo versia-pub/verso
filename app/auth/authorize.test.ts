@@ -3,9 +3,9 @@ import { createApp } from "../http/app.ts";
 import { queues, tasks } from "../jobs/queues.ts";
 import { schedule } from "../jobs/scheduler.ts";
 import { drain } from "../jobs/worker.ts";
+import type { IdentityProvider } from "../kernel/identity.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { registerApp } from "./apps.ts";
-import type { IdentityProvider } from "./identity.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
 
@@ -14,8 +14,6 @@ const stubProvider = (url: string, name: string): IdentityProvider => ({
     issuer: {
         name,
         url,
-        client_id: "verso",
-        client_secret: "s3cret",
         username_claim: "preferred_username",
         registration: "open",
     },
