@@ -12,6 +12,7 @@ import { type Config, readConfig } from "./kernel/config.ts";
 import { createContext } from "./kernel/context.ts";
 import { idGenerator } from "./kernel/ids.ts";
 import { setUpLogging } from "./kernel/logging.ts";
+import { fetchTransport } from "./kernel/transport.ts";
 import { urlBuilder } from "./kernel/urls.ts";
 
 const banner = `
@@ -54,6 +55,7 @@ const run = async (role: string, config: Config): Promise<void> => {
         clock: systemClock,
         ids: idGenerator(systemClock),
         urls: urlBuilder(config.domain),
+        transport: fetchTransport,
         db,
     });
     const stopping = new AbortController();

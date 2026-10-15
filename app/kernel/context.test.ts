@@ -3,6 +3,7 @@ import type { Kysely } from "kysely";
 import { testDatabase } from "../db/testing.ts";
 import { fakeClock } from "./clock.ts";
 import { type Context, createContext } from "./context.ts";
+import { fakeTransport } from "./fake_transport.ts";
 import { countingRandom, idGenerator } from "./ids.ts";
 import { urlBuilder } from "./urls.ts";
 
@@ -17,6 +18,7 @@ const open = async () => {
         clock,
         ids: idGenerator(clock, countingRandom()),
         urls: urlBuilder("social.example"),
+        transport: fakeTransport(),
         db,
     });
     return { db, ctx, [Symbol.asyncDispose]: () => db.destroy() };

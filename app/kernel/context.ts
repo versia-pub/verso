@@ -2,6 +2,7 @@ import type { Kysely } from "kysely";
 import type { Database } from "../db/database.ts";
 import type { Clock } from "./clock.ts";
 import type { IdGenerator } from "./ids.ts";
+import type { Transport } from "./transport.ts";
 import type { UrlBuilder } from "./urls.ts";
 
 /** What every service gets as its first argument. Ports join it as they are added. */
@@ -9,6 +10,7 @@ export type Context<DB = Database> = {
     readonly clock: Clock;
     readonly ids: IdGenerator;
     readonly urls: UrlBuilder;
+    readonly transport: Transport;
     /** The database, or the current transaction inside `transaction`. */
     readonly db: Kysely<DB>;
     /**
