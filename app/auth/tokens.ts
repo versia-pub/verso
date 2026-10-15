@@ -151,3 +151,25 @@ export const exchangeCode = (
 
         return valid ? await issueToken(tx, app, flow.account_id, flow.scopes) : undefined;
     });
+
+/**
+ * Revokes a token, if `app` may: only the app it was issued to can. A token that doesn't exist,
+ * or no longer does, is already revoked, so that is fine too.
+ * @see https://www.rfc-editor.org/rfc/rfc7009#section-2.2
+ */
+export const revokeToken = async (
+    ctx: Context,
+    app: AppsTable | undefined,
+    token: string,
+): Promise<boolean> => {
+    const row = await ctx.db.selectFrom("access_tokens")
+        .select(["id", "app_id"])
+        .where("token_hash", "=", await hashToken(token))
+        .executeTakeFirst();
+
+    if (!row) return true;
+    if (row.app_id !== app?.id) return false;
+
+    await ctx.db.deleteFrom("access_tokens").where("id", "=", row.id).execute();
+    return true;
+};

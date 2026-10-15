@@ -1,4 +1,4 @@
-import { Application, CredentialApplication, Token } from "@versia/client-api";
+import { Application, CredentialApplication, OAuthServerMetadata, Token } from "@versia/client-api";
 import { HttpError } from "../http/errors.ts";
 import { z } from "zod";
 import { defineRoute, Page, Redirect, type Route } from "../http/route.ts";
@@ -6,7 +6,7 @@ import { getApp, registerApp } from "./apps.ts";
 import { authorize, chooseIssuer, outOfBand, withParams } from "./authorize.ts";
 import { consentRequest, decide, finishLogin, type SendBack } from "./consent.ts";
 import { chooserPage, codePage, consentPage, errorPage } from "./pages.ts";
-import { requestedScopes, ScopeList } from "./scopes.ts";
+import { requestedScopes, ScopeList, scopes } from "./scopes.ts";
 import type { AppsTable } from "./tables.ts";
 import {
     authenticateClient,
@@ -14,6 +14,7 @@ import {
     exchangeCode,
     type IssuedToken,
     issueToken,
+    revokeToken,
 } from "./tokens.ts";
 
 const scriptSchemes = ["data:", "javascript:", "vbscript:"];
@@ -311,6 +312,71 @@ const postToken = defineRoute({
     },
 });
 
+/**
+ * Revokes a token, for the app it was issued to.
+ * @see https://docs.joinmastodon.org/methods/oauth/#revoke
+ */
+const postRevoke = defineRoute({
+    method: "POST",
+    path: "/oauth/revoke",
+    summary: "Revokes an access token",
+    body: z.object({
+        client_id: z.string().optional(),
+        client_secret: z.string().optional(),
+        token: z.string().optional(),
+    }),
+    headers: z.object({ authorization: z.string().optional() }),
+    responses: { 200: z.strictObject({}) },
+    handler: async (ctx, { body, headers }) => {
+        const app = await authenticateClient(
+            ctx,
+            clientCredentialsFrom(headers.authorization, body),
+        );
+        const revoked = body.token !== undefined && await revokeToken(ctx, app, body.token);
+
+        if (!revoked) {
+            throw new HttpError(
+                403,
+                "unauthorized_client",
+                "You are not authorized to revoke this token",
+            );
+        }
+
+        return { status: 200, body: {} };
+    },
+});
+
+/**
+ * For clients that discover the OAuth endpoints instead of assuming Mastodon's paths.
+ * @see https://docs.joinmastodon.org/methods/oauth/#authorization-server-metadata
+ */
+const getOAuthMetadata = defineRoute({
+    method: "GET",
+    path: "/.well-known/oauth-authorization-server",
+    summary: "Describes the OAuth endpoints",
+    responses: { 200: OAuthServerMetadata },
+    handler: ({ urls }) =>
+        Promise.resolve({
+            status: 200,
+            body: {
+                issuer: urls.origin,
+                authorization_endpoint: urls.url`/oauth/authorize`,
+                token_endpoint: urls.url`/oauth/token`,
+                revocation_endpoint: urls.url`/oauth/revoke`,
+                app_registration_endpoint: urls.url`/api/v1/apps`,
+                scopes_supported: [...scopes],
+                response_types_supported: ["code"],
+                response_modes_supported: ["query"],
+                grant_types_supported: ["authorization_code", "client_credentials"],
+                token_endpoint_auth_methods_supported: [
+                    "client_secret_basic",
+                    "client_secret_post",
+                ],
+                code_challenge_methods_supported: ["S256"],
+            },
+        }),
+});
+
 export const authRoutes: readonly Route[] = [
     postApps,
     verifyAppCredentials,
@@ -320,4 +386,6 @@ export const authRoutes: readonly Route[] = [
     getConsent,
     postConsent,
     postToken,
+    postRevoke,
+    getOAuthMetadata,
 ];

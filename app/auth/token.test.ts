@@ -72,7 +72,16 @@ const open = async () => {
             ...changes,
         });
 
-    return { ...test, app, credentials, basic, token, allowedCode, exchange };
+    const revoke = async (form: Record<string, string>) => {
+        const response = await http.request("/oauth/revoke", {
+            method: "POST",
+            body: new URLSearchParams(form),
+        });
+
+        return { status: response.status, body: await response.json() };
+    };
+
+    return { ...test, app, credentials, basic, token, allowedCode, exchange, revoke };
 };
 
 Deno.test("an app gets a token for itself, stored only as a hash", async () => {
@@ -229,4 +238,45 @@ Deno.test("a code grant without a code is an invalid request", async () => {
     });
 
     assertEquals([status, body.error], [400, "invalid_request"]);
+});
+
+Deno.test("an app revokes its token, which then stops working, and again is fine", async () => {
+    await using test = await open();
+    const issued = await test.token({ ...test.credentials, grant_type: "client_credentials" });
+    const revoke = { ...test.credentials, token: issued.body.access_token };
+
+    const first = await test.revoke(revoke);
+    const again = await test.revoke(revoke);
+
+    assertEquals([first.status, first.body], [200, {}]);
+    assertEquals([again.status, again.body], [200, {}]);
+    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+});
+
+Deno.test("only the app a token was issued to may revoke it", async () => {
+    await using test = await open();
+    const issued = await test.token({ ...test.credentials, grant_type: "client_credentials" });
+    const token = issued.body.access_token;
+    const other = await registerApp(test.ctx, {
+        name: "Elk",
+        website: null,
+        redirectUris: ["https://elk.example/back"],
+        scopes: ["read"],
+    });
+
+    const refused = [
+        await test.revoke({
+            client_id: other.app.client_id,
+            client_secret: other.clientSecret,
+            token,
+        }),
+        await test.revoke({ client_id: test.app.client_id, client_secret: "wrong", token }),
+        await test.revoke({ token }),
+        await test.revoke(test.credentials),
+    ];
+
+    for (const { status, body } of refused) {
+        assertEquals([status, body.error], [403, "unauthorized_client"]);
+    }
+    assertEquals((await test.ctx.db.selectFrom("access_tokens").selectAll().execute()).length, 1);
 });
