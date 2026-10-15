@@ -3,6 +3,10 @@
   "specifiers": {
     "jsr:@hono/hono@4.13.13": "4.13.13",
     "jsr:@logtape/logtape@2.4.1": "2.4.1",
+    "jsr:@panva/jose@6.2.12": "6.2.12",
+    "jsr:@panva/jose@^6.2.12": "6.2.12",
+    "jsr:@panva/oauth4webapi@^3.8.8": "3.8.8",
+    "jsr:@panva/openid-client@6.8.8": "6.8.8",
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/cli@1.0.32": "1.0.32",
     "jsr:@std/collections@^1.1.3": "1.4.0",
@@ -23,6 +27,19 @@
     },
     "@logtape/logtape@2.4.1": {
       "integrity": "0f371ab59edecff804e444f9769f5b339d08772f59874e8de1eb88120508bcae"
+    },
+    "@panva/jose@6.2.12": {
+      "integrity": "45dd3888cff0c45dbd91ca5279f7fd4324227042d19df91504aa2c0678b3edcc"
+    },
+    "@panva/oauth4webapi@3.8.8": {
+      "integrity": "0d119480343e3a4198a63846831b92655702036d5d823c8d81bab478a10646ba"
+    },
+    "@panva/openid-client@6.8.8": {
+      "integrity": "217727b85484ddd1564d242d8e24d0da760bc5d5d6e73c7770e3c1018fea2784",
+      "dependencies": [
+        "jsr:@panva/jose@^6.2.12",
+        "jsr:@panva/oauth4webapi"
+      ]
     },
     "@std/assert@1.0.19": {
       "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
@@ -162,6 +179,8 @@
     "dependencies": [
       "jsr:@hono/hono@4.13.13",
       "jsr:@logtape/logtape@2.4.1",
+      "jsr:@panva/jose@6.2.12",
+      "jsr:@panva/openid-client@6.8.8",
       "jsr:@std/assert@1.0.19",
       "jsr:@std/cli@1.0.32",
       "jsr:@std/toml@1.0.11",
