@@ -14,15 +14,17 @@ const rename = defineRoute({
         notify: z.coerce.number().int().max(1),
         tag: z.array(z.string()).optional(),
     }),
-    body: z.object({ name: z.string().min(1) }),
-    responses: { 200: z.object({ id: z.string(), name: z.string(), tag: z.unknown() }) },
+    body: z.object({ name: z.string().min(1), aliases: z.array(z.string()).optional() }),
+    responses: {
+        200: z.object({ id: z.string(), name: z.string(), tag: z.unknown(), aliases: z.unknown() }),
+    },
     handler: (_, { params, query, body }) => {
         if (params.id === "missing") throw new NotFound();
         if (params.id === "broken") throw new Error("secret detail");
 
         return Promise.resolve({
             status: 200,
-            body: { id: params.id, name: body.name, tag: query.tag },
+            body: { id: params.id, name: body.name, tag: query.tag, aliases: body.aliases },
         });
     },
 });
@@ -76,10 +78,29 @@ Deno.test("invalid input is a 422 listing each problem by field path", async () 
     assertEquals(Object.keys(body.details).toSorted(), ["body.name", "query.notify"]);
 });
 
-Deno.test("a body must be well-formed JSON", async () => {
+Deno.test("a body can also be a form, with repeated or key[] fields as arrays", async () => {
+    await using test = await open();
+    const form = new FormData();
+    form.append("name", "b");
+    form.append("aliases", "c");
+    form.append("aliases", "d");
+
+    const multipart = await test.app.request("/things/a?notify=1", { method: "POST", body: form });
+    const encoded = await test.send(
+        "/things/a?notify=1",
+        "name=b&aliases[]=c",
+        "application/x-www-form-urlencoded",
+    );
+
+    assertEquals((await multipart.json()).aliases, ["c", "d"]);
+    assertEquals(encoded.body.aliases, ["c"]);
+});
+
+Deno.test("a body must be well-formed JSON or form data", async () => {
     await using test = await open();
     assertEquals((await test.send("/things/a?notify=1", "name=b", "text/plain")).status, 415);
     assertEquals((await test.send("/things/a?notify=1", "{")).status, 400);
+    assertEquals((await test.send("/things/a?notify=1", "--x", "multipart/form-data")).status, 400);
 });
 
 Deno.test("errors use Mastodon's shape, without internal details", async () => {

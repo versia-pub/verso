@@ -42,17 +42,30 @@ const queryOf = (c: HonoContext) =>
         ]),
     );
 
+/** A form's fields, with Rails-style `key[]` names read as `key`. */
+const formOf = async (c: HonoContext) => {
+    const form = await c.req.parseBody({ all: true });
+
+    return Object.fromEntries(
+        Object.entries(form).map(([key, value]) => [key.replace(/\[\]$/, ""), value]),
+    );
+};
+
+/** Mastodon clients send JSON or forms, so every route accepts both. */
 const bodyOf = async (c: HonoContext, route: Route) => {
     if (!route.body) return {};
 
-    if (c.req.header("content-type")?.split(";")[0].trim() !== "application/json") {
-        throw new UnsupportedMediaType("The body must be application/json");
+    const type = c.req.header("content-type")?.split(";")[0].trim().toLowerCase();
+    const forms = ["application/x-www-form-urlencoded", "multipart/form-data"];
+
+    if (type !== "application/json" && !forms.includes(type ?? "")) {
+        throw new UnsupportedMediaType("The body must be JSON or a form");
     }
 
     try {
-        return await c.req.json();
+        return type === "application/json" ? await c.req.json() : await formOf(c);
     } catch {
-        throw new BadRequest("The body isn't valid JSON");
+        throw new BadRequest("The body isn't valid JSON or form data");
     }
 };
 

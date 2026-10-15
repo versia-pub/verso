@@ -33,7 +33,10 @@ export type RouteDefinition<
      * an array of strings.
      */
     readonly query?: Q;
-    /** A JSON body. Only POST, PUT, PATCH and DELETE routes take one. */
+    /**
+     * A JSON or form body. Only POST, PUT, PATCH and DELETE routes take one. As in the query, form
+     * values are strings (or files), and a key given more than once, or as `key[]`, is an array.
+     */
     readonly body?: B;
     readonly responses: R;
     readonly handler: (
