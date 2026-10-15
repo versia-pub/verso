@@ -1,20 +1,17 @@
 import { assertEquals } from "@std/assert";
 import { createApp } from "../http/app.ts";
 import { createTestContext } from "../kernel/testing.ts";
+import { createLocalAccount } from "../accounts/testing.ts";
 import { registerApp } from "./apps.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
+import { registerTestApp } from "./testing.ts";
 
 const open = async () => {
     const test = await createTestContext();
     const http = createApp(test.ctx, authRoutes, { checkResponses: true });
 
-    const { app, clientSecret } = await registerApp(test.ctx, {
-        name: "Phanpy",
-        website: null,
-        redirectUris: ["https://phanpy.example/back"],
-        scopes: ["read", "write"],
-    });
+    const { app, clientSecret } = await registerTestApp(test.ctx);
 
     const token = async (form: Record<string, string>, authorization?: string) => {
         const response = await http.request("/oauth/token", {
@@ -29,15 +26,7 @@ const open = async () => {
     const credentials = { client_id: app.client_id, client_secret: clientSecret };
     const basic = (id: string, secret: string) => `Basic ${btoa(`${id}:${secret}`)}`;
 
-    await test.ctx.db.insertInto("accounts")
-        .values({
-            id: "alice",
-            username: "alice",
-            instance_id: null,
-            remote_id: null,
-            created_at: test.clock.now(),
-        })
-        .execute();
+    await createLocalAccount(test.ctx, "alice");
 
     /** A code alice allowed, as the consent page leaves it, valid for ten minutes. */
     const allowedCode = async (challenge: string | null = null) => {

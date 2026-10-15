@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import { createLocalAccount } from "../accounts/testing.ts";
 import { z } from "zod";
 import { tokenFor } from "../auth/testing.ts";
 import { createTestContext } from "../kernel/testing.ts";
@@ -53,15 +54,7 @@ const open = async () => {
     const test = await createTestContext();
     const http = createApp(test.ctx, [me, app, maybe, anyone], { checkResponses: true });
 
-    await test.ctx.db.insertInto("accounts")
-        .values({
-            id: "alice",
-            username: "alice",
-            instance_id: null,
-            remote_id: null,
-            created_at: test.clock.now(),
-        })
-        .execute();
+    await createLocalAccount(test.ctx, "alice");
 
     const call = async (path: string, authorization?: string) => {
         const response = await http.request(path, {

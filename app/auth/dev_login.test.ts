@@ -3,8 +3,8 @@ import { createApp } from "../http/app.ts";
 import { routes } from "../http/routes.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { urlBuilder } from "../kernel/urls.ts";
-import { registerApp } from "./apps.ts";
 import { devIssuer, devLoginProvider, devLoginRoutes } from "./dev_login.ts";
+import { flowCookie, registerTestApp } from "./testing.ts";
 
 const open = async () => {
     const urls = urlBuilder("social.example");
@@ -13,12 +13,7 @@ const open = async () => {
     });
     const verso = createApp(test.ctx, [...routes, ...devLoginRoutes], { checkResponses: true });
 
-    const { app } = await registerApp(test.ctx, {
-        name: "Phanpy",
-        website: null,
-        redirectUris: ["https://phanpy.example/back"],
-        scopes: ["read"],
-    });
+    const { app } = await registerTestApp(test.ctx);
 
     /** Starts a login, and returns its cookie and the dev login page's URL. */
     const start = async () => {
@@ -28,10 +23,8 @@ const open = async () => {
             response_type: "code",
         });
         const response = await verso.request(`/oauth/authorize?${params}`);
-        const set = response.headers.get("set-cookie") ?? "";
-
         return {
-            cookie: /(__Host-oauth_flow=[^;]*)/.exec(set)?.[1] ?? "",
+            cookie: `__Host-oauth_flow=${flowCookie(response)}`,
             page: new URL(response.headers.get("location") ?? ""),
         };
     };

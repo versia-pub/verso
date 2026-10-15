@@ -5,32 +5,16 @@ import { schedule } from "../jobs/scheduler.ts";
 import { drain } from "../jobs/worker.ts";
 import type { IdentityProvider } from "../kernel/identity.ts";
 import { createTestContext } from "../kernel/testing.ts";
-import { registerApp } from "./apps.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
+import { flowCookie, formTokenIn, registerTestApp, stubProvider } from "./testing.ts";
 
-/** An issuer that sends the browser to its own `/authorize`, naming where it should come back. */
-const stubProvider = (url: string, name: string): IdentityProvider => ({
-    issuer: {
-        name,
-        url,
-        username_claim: "preferred_username",
-        registration: "open",
-    },
-    beginLogin: (redirectUri) =>
-        Promise.resolve({
-            url: new URL(`${url}/authorize?back=${encodeURIComponent(redirectUri)}`),
-            flow: { redirectUri, state: "s", nonce: "n", codeVerifier: "v" },
-        }),
-    completeLogin: () => Promise.reject(new Error("Not used here")),
-});
-
-const issuerA = stubProvider("https://a.example", "Example A");
+const issuerA = stubProvider({ url: "https://a.example", name: "Example A" });
 const issuerDown: IdentityProvider = {
-    ...stubProvider("https://down.example", "Example Down"),
+    ...stubProvider({ url: "https://down.example", name: "Example Down" }),
     beginLogin: () => Promise.reject(new TypeError("Connection refused")),
 };
-const issuerB = stubProvider("https://b.example", "Example B");
+const issuerB = stubProvider({ url: "https://b.example", name: "Example B" });
 
 const open = async (providers: IdentityProvider[] = [issuerA]) => {
     const test = await createTestContext({
@@ -38,12 +22,7 @@ const open = async (providers: IdentityProvider[] = [issuerA]) => {
     });
     const http = createApp(test.ctx, authRoutes, { checkResponses: true });
 
-    const { app } = await registerApp(test.ctx, {
-        name: "Phanpy",
-        website: null,
-        redirectUris: ["https://phanpy.example/back", "urn:ietf:wg:oauth:2.0:oob"],
-        scopes: ["read", "write"],
-    });
+    const { app } = await registerTestApp(test.ctx);
 
     /** Opens `/oauth/authorize` with a valid request, changed by `changes`. */
     const authorize = (changes: Record<string, string | undefined> = {}) => {
@@ -80,13 +59,10 @@ const open = async (providers: IdentityProvider[] = [issuerA]) => {
     return { ...test, app, authorize, chooseIssuer, flows };
 };
 
-const flowCookie = (response: Response) =>
-    /__Host-oauth_flow=([^;]+)/.exec(response.headers.get("set-cookie") ?? "")?.[1] ?? "";
-
 /** The chooser's cookie and form token, as the browser has them. */
 const chooser = async (response: Response) => ({
     cookie: flowCookie(response),
-    formToken: /name="form_token" value="([^"]+)"/.exec(await response.text())?.[1] ?? "",
+    formToken: formTokenIn(await response.text()),
 });
 
 Deno.test("with one issuer, the browser goes straight to it, tied to the flow by a cookie", async () => {

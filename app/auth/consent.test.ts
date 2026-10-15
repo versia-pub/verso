@@ -1,29 +1,9 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { createApp } from "../http/app.ts";
-import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import { createTestContext } from "../kernel/testing.ts";
-import { registerApp } from "./apps.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
-
-/** An issuer that logs in alice when the browser comes back with `code=good`. */
-const stubProvider = (registration: Issuer["registration"] = "open"): IdentityProvider => ({
-    issuer: {
-        name: "Example",
-        url: "https://id.example",
-        username_claim: "preferred_username",
-        registration,
-    },
-    beginLogin: (redirectUri) =>
-        Promise.resolve({
-            url: new URL("https://id.example/authorize"),
-            flow: { redirectUri, state: "s", nonce: "n", codeVerifier: "v" },
-        }),
-    completeLogin: (callback) =>
-        callback.searchParams.get("code") === "good"
-            ? Promise.resolve({ sub: "1", preferred_username: "alice" })
-            : Promise.reject(new Error("The issuer refused the code")),
-});
+import { flowCookie, formTokenIn, registerTestApp, stubProvider } from "./testing.ts";
 
 const open = async (provider = stubProvider()) => {
     const test = await createTestContext({
@@ -31,12 +11,7 @@ const open = async (provider = stubProvider()) => {
     });
     const http = createApp(test.ctx, authRoutes, { checkResponses: true });
 
-    const { app } = await registerApp(test.ctx, {
-        name: "Phanpy",
-        website: null,
-        redirectUris: ["https://phanpy.example/back", "urn:ietf:wg:oauth:2.0:oob"],
-        scopes: ["read", "write"],
-    });
+    const { app } = await registerTestApp(test.ctx);
 
     const request = (
         path: string,
@@ -62,8 +37,7 @@ const open = async (provider = stubProvider()) => {
         });
         const response = await http.request(`/oauth/authorize?${params}`);
 
-        return /__Host-oauth_flow=([^;]+)/.exec(response.headers.get("set-cookie") ?? "")?.[1] ??
-            "";
+        return flowCookie(response);
     };
 
     const callback = (cookie: string | undefined, code = "good") =>
@@ -96,8 +70,6 @@ const open = async (provider = stubProvider()) => {
 };
 
 const backTo = (response: Response) => new URL(response.headers.get("location") ?? "");
-
-const formTokenIn = (page: string) => /name="form_token" value="([^"]+)"/.exec(page)?.[1] ?? "none";
 
 Deno.test("after logging in, the user is asked to allow the app", async () => {
     await using test = await open();
@@ -169,7 +141,7 @@ Deno.test("an out-of-band app's user is shown the code to copy", async () => {
 
 Deno.test("a failed login, or a closed registration, is denied to the app", async () => {
     await using failed = await open();
-    await using closed = await open(stubProvider("closed"));
+    await using closed = await open(stubProvider({ registration: "closed" }));
 
     const notLoggedIn = await failed.callback(await failed.start(), "bad");
     const notRegistered = await closed.callback(await closed.start());

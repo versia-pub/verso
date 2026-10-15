@@ -8,6 +8,7 @@ import { createTestContext } from "../kernel/testing.ts";
 import { createFakeIdentityProvider } from "../testing/fake_idp.ts";
 import { oidcProvider } from "./oidc.ts";
 import { hashToken, randomToken } from "./secrets.ts";
+import { formTokenIn } from "./testing.ts";
 
 const issuer: IssuerConfig = {
     name: "Example ID",
@@ -92,7 +93,7 @@ Deno.test("a client logs a user in through the issuer and uses the token", async
     const fromIssuer = await test.browse(locationOf(toIssuer));
     const toConsent = await test.browse(locationOf(fromIssuer));
     const consent = await (await test.browse(locationOf(toConsent))).text();
-    const formToken = /name="form_token" value="([^"]+)"/.exec(consent)?.[1] ?? "";
+    const formToken = formTokenIn(consent);
 
     assertEquals(toConsent.status, 303);
     assertStringIncludes(consent, "@alice");
