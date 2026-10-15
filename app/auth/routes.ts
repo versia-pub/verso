@@ -2,7 +2,7 @@ import { type Application, CredentialApplication } from "@versia/client-api";
 import { z } from "zod";
 import { defineRoute, Page, Redirect, type Route } from "../http/route.ts";
 import { registerApp } from "./apps.ts";
-import { authorize, outOfBand, withParams } from "./authorize.ts";
+import { authorize, chooseIssuer, outOfBand, withParams } from "./authorize.ts";
 import { chooserPage, errorPage } from "./pages.ts";
 import { ScopeList } from "./scopes.ts";
 import type { AppsTable } from "./tables.ts";
@@ -69,6 +69,9 @@ const postApps = defineRoute({
     },
 });
 
+/** The cookie that ties a login to the browser that started it. */
+const FlowCookie = z.object({ oauth_flow: z.string().optional() });
+
 const getAuthorize = defineRoute({
     method: "GET",
     path: "/oauth/authorize",
@@ -115,4 +118,21 @@ const getAuthorize = defineRoute({
     },
 });
 
-export const authRoutes: readonly Route[] = [postApps, getAuthorize];
+const postIssuer = defineRoute({
+    method: "POST",
+    path: "/oauth/authorize/issuer",
+    summary: "Logs in with the issuer the user chose",
+    body: z.object({ issuer: z.string() }),
+    cookies: FlowCookie,
+    responses: { 303: Redirect, 400: Page },
+    handler: async (ctx, { body, cookies }) => {
+        const url = await chooseIssuer(ctx, cookies.oauth_flow, body.issuer);
+
+        return url ? { status: 303, location: url.href } : {
+            status: 400,
+            page: errorPage("This login has expired. Go back to the app to try again."),
+        };
+    },
+});
+
+export const authRoutes: readonly Route[] = [postApps, getAuthorize, postIssuer];

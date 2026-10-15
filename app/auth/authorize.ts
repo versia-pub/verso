@@ -138,3 +138,37 @@ export const authorize = async (
         ? { result: "login", browserSecret, url: login.url }
         : { result: "choose", browserSecret, issuers: providers.map((p) => p.issuer) };
 };
+
+/** The unexpired flow tied to a browser, before the user has logged in. */
+const findLoginFlow = async (ctx: Context, browserSecret: string) =>
+    await ctx.db.selectFrom("oauth_flows")
+        .selectAll()
+        .where("id", "=", await hashToken(browserSecret))
+        .where("expires_at", ">", ctx.clock.now())
+        .where("account_id", "is", null)
+        .executeTakeFirst();
+
+/**
+ * Starts the login at the issuer the user chose. Returns where to send the browser, or nothing if
+ * the browser has no flow waiting for a login, or the issuer isn't configured.
+ */
+export const chooseIssuer = async (
+    ctx: Context,
+    browserSecret: string | undefined,
+    issuerUrl: string,
+): Promise<URL | undefined> => {
+    const provider = Object.hasOwn(ctx.identityProviders, issuerUrl)
+        ? ctx.identityProviders[issuerUrl]
+        : undefined;
+    const flow = browserSecret === undefined ? undefined : await findLoginFlow(ctx, browserSecret);
+    if (!provider || !flow) return undefined;
+
+    const { url, flow: login } = await provider.beginLogin(ctx.urls.url`/oauth/callback`);
+
+    await ctx.db.updateTable("oauth_flows")
+        .set({ issuer: issuerUrl, login })
+        .where("id", "=", flow.id)
+        .execute();
+
+    return url;
+};
