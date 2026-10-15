@@ -43,6 +43,7 @@ in
       export VERSO_TEST_DATABASE=postgresql://postgres@127.0.0.1:5432/postgres
     '';
   };
+  import-cycles = denoTask "import-cycles" "import-cycles";
   unused-dependencies = denoTask "unused-dependencies" "unused-dependencies";
 
   media-spike = import ./media-spike.nix { inherit pkgs; };
