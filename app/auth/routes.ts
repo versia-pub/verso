@@ -3,7 +3,8 @@ import { z } from "zod";
 import { defineRoute, Page, Redirect, type Route } from "../http/route.ts";
 import { registerApp } from "./apps.ts";
 import { authorize, chooseIssuer, outOfBand, withParams } from "./authorize.ts";
-import { chooserPage, errorPage } from "./pages.ts";
+import { consentRequest, finishLogin, type SendBack } from "./consent.ts";
+import { chooserPage, consentPage, errorPage } from "./pages.ts";
 import { ScopeList } from "./scopes.ts";
 import type { AppsTable } from "./tables.ts";
 
@@ -69,6 +70,20 @@ const postApps = defineRoute({
     },
 });
 
+const expired = {
+    status: 400,
+    page: errorPage("This login has expired. Go back to the app to try again."),
+} as const;
+
+/**
+ * Sends the browser back to the app with an error. An out-of-band app has nowhere to send it,
+ * so the user is shown the error.
+ */
+const sendBack = ({ redirectUri, params }: Omit<SendBack, "result">) =>
+    redirectUri === outOfBand
+        ? { status: 400, page: errorPage(params.error_description ?? "") } as const
+        : { status: 302, location: withParams(redirectUri, params) } as const;
+
 /** The cookie that ties a login to the browser that started it. */
 const FlowCookie = z.object({ oauth_flow: z.string().optional() });
 
@@ -94,12 +109,7 @@ const getAuthorize = defineRoute({
                 return { status: 400, page: errorPage(authorization.description) };
 
             case "error":
-                return authorization.redirectUri === outOfBand
-                    ? { status: 400, page: errorPage(authorization.params.error_description ?? "") }
-                    : {
-                        status: 302,
-                        location: withParams(authorization.redirectUri, authorization.params),
-                    };
+                return sendBack(authorization);
 
             case "choose":
                 return {
@@ -128,11 +138,47 @@ const postIssuer = defineRoute({
     handler: async (ctx, { body, cookies }) => {
         const url = await chooseIssuer(ctx, cookies.oauth_flow, body.issuer);
 
-        return url ? { status: 303, location: url.href } : {
-            status: 400,
-            page: errorPage("This login has expired. Go back to the app to try again."),
-        };
+        return url ? { status: 303, location: url.href } : expired;
     },
 });
 
-export const authRoutes: readonly Route[] = [postApps, getAuthorize, postIssuer];
+const getCallback = defineRoute({
+    method: "GET",
+    path: "/oauth/callback",
+    summary: "Finishes the login when the issuer sends the user back",
+    query: z.record(z.string(), z.string()),
+    cookies: FlowCookie,
+    responses: { 200: Page, 302: Redirect, 303: Redirect, 400: Page },
+    handler: async (ctx, { query, cookies }) => {
+        const callback = new URL(withParams(ctx.urls.url`/oauth/callback`, query));
+        const login = await finishLogin(ctx, cookies.oauth_flow, callback);
+
+        // A redirect, so reloading the consent page doesn't send the issuer's code again.
+        if (login.result === "consent") {
+            return { status: 303, location: ctx.urls.url`/oauth/consent` };
+        }
+
+        return login.result === "expired" ? expired : sendBack(login);
+    },
+});
+
+const getConsent = defineRoute({
+    method: "GET",
+    path: "/oauth/consent",
+    summary: "Asks the user whether to let the app use their account",
+    cookies: FlowCookie,
+    responses: { 200: Page, 400: Page },
+    handler: async (ctx, { cookies }) => {
+        const request = await consentRequest(ctx, cookies.oauth_flow);
+
+        return request ? { status: 200, page: consentPage(request) } : expired;
+    },
+});
+
+export const authRoutes: readonly Route[] = [
+    postApps,
+    getAuthorize,
+    postIssuer,
+    getCallback,
+    getConsent,
+];

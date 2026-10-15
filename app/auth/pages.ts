@@ -1,6 +1,7 @@
 import { html } from "@hono/hono/html";
 import { layout } from "../http/page.ts";
 import type { Html } from "../http/route.ts";
+import type { ConsentRequest } from "./consent.ts";
 import type { IdentityProvider } from "./identity.ts";
 
 /** Tells the user why they can't log in, when there is no app to send them back to. */
@@ -16,6 +17,21 @@ export const chooserPage = (issuers: IdentityProvider["issuer"][]): Html =>
                 ${issuers.map((issuer) =>
                     html`<p><button name="issuer" value="${issuer.url}">${issuer.name}</button></p>`
                 )}
+            </form>
+        `,
+    );
+
+/** Asks the user whether to let the app use their account. */
+export const consentPage = (request: ConsentRequest): Html =>
+    layout(
+        `Allow ${request.appName}?`,
+        html`
+            <p>${request.appName} wants to use your account @${request
+                .username} with these permissions:</p>
+            <ul>${request.scopes.map((scope) => html`<li><code>${scope}</code></li>`)}</ul>
+            <form method="post" action="/oauth/consent">
+                <button name="decision" value="allow">Allow</button>
+                <button name="decision" value="deny">Deny</button>
             </form>
         `,
     );
