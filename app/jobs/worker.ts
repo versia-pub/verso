@@ -20,6 +20,8 @@ export type WorkOptions = {
     readonly pollMs: number;
     /** Stops claiming jobs; `work` resolves once the jobs already running have finished. */
     readonly signal: AbortSignal;
+    /** Fires an event named after a queue when it gets a new job, to look before the next poll. */
+    readonly wakeups?: EventTarget;
 };
 
 const logger = getLogger(["verso", "jobs"]);
@@ -47,20 +49,26 @@ const runJob = async (ctx: Context, name: string, queue: Queue, job: JobsTable) 
     }
 };
 
-/** Waits until `ms` pass, `signal` aborts or one of `running` settles, whichever comes first. */
+/**
+ * Waits until `ms` pass, `signal` aborts, one of `running` settles or `wakeup` fires, whichever
+ * comes first.
+ */
 export const pause = (
     ms: number,
     signal: AbortSignal,
     running: Iterable<Promise<void>> = [],
+    wakeup?: { readonly events: EventTarget; readonly name: string },
 ): Promise<void> =>
     new Promise<void>((resolve) => {
         const done = () => {
             clearTimeout(timer);
             signal.removeEventListener("abort", done);
+            wakeup?.events.removeEventListener(wakeup.name, done);
             resolve();
         };
         const timer = setTimeout(done, ms);
         signal.addEventListener("abort", done);
+        wakeup?.events.addEventListener(wakeup.name, done);
         for (const run of running) run.then(done);
     });
 
@@ -86,7 +94,10 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
             running.add(run);
         }
         // A full batch means more may be due; otherwise wait for a free slot or the next poll.
-        if (free === 0 || jobs.length < free) await pause(options.pollMs, options.signal, running);
+        if (free === 0 || jobs.length < free) {
+            const wakeup = options.wakeups && { events: options.wakeups, name };
+            await pause(options.pollMs, options.signal, running, wakeup);
+        }
     }
     await Promise.all(running);
 };

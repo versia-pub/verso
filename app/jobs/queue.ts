@@ -1,5 +1,7 @@
 import { skippingLocked } from "../db/locking.ts";
+import { notify } from "../db/notify.ts";
 import type { Context } from "../kernel/context.ts";
+import { jobsChannel } from "./wakeups.ts";
 
 /** A row of the jobs table. */
 export type JobsTable = {
@@ -42,7 +44,8 @@ export type NewJob = {
 
 /**
  * Adds a job inside the caller's unit of work, so it exists exactly when the change that caused
- * it commits. Returns its id, or `undefined` when its dedupe key is already queued.
+ * it commits, and wakes idle workers on Postgres once it does. Returns its id, or `undefined`
+ * when its dedupe key is already queued.
  */
 export const enqueue = async (
     ctx: Context,
@@ -69,6 +72,7 @@ export const enqueue = async (
         .onConflict((conflict) => conflict.column("dedupe_key").doNothing())
         .returning("id")
         .executeTakeFirst();
+    if (inserted) await notify(ctx.db, jobsChannel, job.queue);
     return inserted?.id;
 };
 

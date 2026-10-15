@@ -5,6 +5,7 @@ import { openDatabase } from "./db/database.ts";
 import { migrate } from "./db/migrate.ts";
 import { queues, tasks } from "./jobs/queues.ts";
 import { runScheduler } from "./jobs/scheduler.ts";
+import { listenForJobs } from "./jobs/wakeups.ts";
 import { work } from "./jobs/worker.ts";
 import { systemClock } from "./kernel/clock.ts";
 import { type Config, readConfig } from "./kernel/config.ts";
@@ -62,6 +63,7 @@ const run = async (role: string, config: Config): Promise<void> => {
 
     const logger = getLogger(["verso"]);
     const worker = ctx.ids();
+    await using wakeups = role === "serve" ? undefined : await listenForJobs(config.database);
     if (role !== "serve") {
         logger.info("Working on {queues} as {worker}", { queues: Object.keys(queues), worker });
     }
@@ -69,7 +71,7 @@ const run = async (role: string, config: Config): Promise<void> => {
         role === "work" ? undefined : serve(config, stopping.signal),
         role === "serve"
             ? undefined
-            : work(ctx, queues, { worker, pollMs: 1000, signal: stopping.signal }),
+            : work(ctx, queues, { worker, pollMs: 1000, signal: stopping.signal, wakeups }),
         role === "serve"
             ? undefined
             : runScheduler(ctx, tasks, { intervalMs: 60_000, signal: stopping.signal }),
