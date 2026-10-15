@@ -2,32 +2,17 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { PostgresDialect } from "kysely";
 import pg from "pg";
 import { connect, type Database } from "../db/database.ts";
-import { migrate } from "../db/migrate.ts";
-import { testDatabase, testDatabaseKind, testPostgresUrl } from "../db/testing.ts";
-import { fakeClock } from "../kernel/clock.ts";
-import { type Context, createContext } from "../kernel/context.ts";
-import { countingRandom, idGenerator } from "../kernel/ids.ts";
-import { urlBuilder } from "../kernel/urls.ts";
+import { testDatabaseKind, testPostgresUrl } from "../db/testing.ts";
+import { createTestContext } from "../kernel/testing.ts";
 import { enqueue } from "./queue.ts";
 import { listenForJobs } from "./wakeups.ts";
 import { work } from "./worker.ts";
 
-const contextFor = (db: Context["db"]) => {
-    const clock = fakeClock();
-    return createContext({
-        clock,
-        ids: idGenerator(clock, countingRandom()),
-        urls: urlBuilder("social.example"),
-        db,
-    });
-};
-
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 Deno.test("a wakeup starts an idle queue's new job before the next poll", async () => {
-    await using db = await testDatabase<Database>();
-    await migrate(db);
-    const ctx = contextFor(db);
+    await using test = await createTestContext();
+    const ctx = test.ctx;
     const wakeups = new EventTarget();
     const stopping = new AbortController();
     let ran = false;
@@ -57,11 +42,12 @@ Deno.test({
     fn: async () => {
         const url = await testPostgresUrl();
         if (!url) return;
-        await using db = connect<Database>(
-            new PostgresDialect({ pool: new pg.Pool({ connectionString: url }) }),
-        );
-        await migrate(db);
-        const ctx = contextFor(db);
+        await using test = await createTestContext({
+            db: connect<Database>(
+                new PostgresDialect({ pool: new pg.Pool({ connectionString: url }) }),
+            ),
+        });
+        const ctx = test.ctx;
         await using wakeups = await listenForJobs({ postgres: url });
         const heard: string[] = [];
         wakeups?.addEventListener("deliver", () => heard.push("deliver"));

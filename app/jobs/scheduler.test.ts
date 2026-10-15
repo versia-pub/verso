@@ -1,30 +1,17 @@
 import { assertEquals } from "@std/assert";
-import type { Database } from "../db/database.ts";
-import { migrate } from "../db/migrate.ts";
-import { testDatabase } from "../db/testing.ts";
-import { fakeClock } from "../kernel/clock.ts";
-import { createContext } from "../kernel/context.ts";
-import { countingRandom, idGenerator } from "../kernel/ids.ts";
-import { urlBuilder } from "../kernel/urls.ts";
+import { createTestContext } from "../kernel/testing.ts";
 import { claim, complete, deleteExpiredJobs } from "./queue.ts";
 import { schedule, type Task } from "./scheduler.ts";
 
 const minute = 60_000;
 
 const open = async () => {
-    const db = await testDatabase<Database>();
-    await migrate(db);
-    const clock = fakeClock(new Date("2026-10-14T03:20:00Z"));
-    const ctx = createContext({
-        clock,
-        ids: idGenerator(clock, countingRandom()),
-        urls: urlBuilder("social.example"),
-        db,
-    });
+    const test = await createTestContext({ now: new Date("2026-10-14T03:20:00Z") });
+    const ctx = test.ctx;
     const jobs = () =>
         ctx.db.selectFrom("jobs").select(["dedupe_key", "keep_until", "finished_at"])
             .orderBy("dedupe_key").execute();
-    return { ctx, clock, jobs, [Symbol.asyncDispose]: () => db.destroy() };
+    return { ...test, jobs };
 };
 
 const cleanup: Task[] = [{ queue: "cleanup", every: "hour" }];

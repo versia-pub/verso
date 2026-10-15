@@ -1,26 +1,9 @@
 import { assertEquals } from "@std/assert";
-import type { Database } from "../db/database.ts";
-import { migrate } from "../db/migrate.ts";
-import { testDatabase } from "../db/testing.ts";
-import { fakeClock } from "../kernel/clock.ts";
-import { createContext } from "../kernel/context.ts";
-import { countingRandom, idGenerator } from "../kernel/ids.ts";
-import { urlBuilder } from "../kernel/urls.ts";
+import { createTestContext } from "../kernel/testing.ts";
 import { enqueue } from "./queue.ts";
 import { type Queue, work } from "./worker.ts";
 
-const open = async () => {
-    const db = await testDatabase<Database>();
-    await migrate(db);
-    const clock = fakeClock();
-    const ctx = createContext({
-        clock,
-        ids: idGenerator(clock, countingRandom()),
-        urls: urlBuilder("social.example"),
-        db,
-    });
-    return { ctx, [Symbol.asyncDispose]: () => db.destroy() };
-};
+const open = () => createTestContext();
 
 /** Starts a worker and returns a function that stops it and waits for it to finish. */
 const start = (ctx: Parameters<typeof work>[0], queues: Record<string, Queue>) => {

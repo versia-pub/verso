@@ -1,27 +1,10 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import type { Database } from "../db/database.ts";
-import { migrate } from "../db/migrate.ts";
-import { testDatabase } from "../db/testing.ts";
-import { fakeClock } from "../kernel/clock.ts";
-import { createContext } from "../kernel/context.ts";
-import { countingRandom, idGenerator } from "../kernel/ids.ts";
-import { urlBuilder } from "../kernel/urls.ts";
+import { createTestContext } from "../kernel/testing.ts";
 import { backoffMs, claim, complete, enqueue, fail } from "./queue.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";
 
-const open = async () => {
-    const db = await testDatabase<Database>();
-    await migrate(db);
-    const clock = fakeClock();
-    const ctx = createContext({
-        clock,
-        ids: idGenerator(clock, countingRandom()),
-        urls: urlBuilder("social.example"),
-        db,
-    });
-    return { ctx, clock, [Symbol.asyncDispose]: () => db.destroy() };
-};
+const open = () => createTestContext();
 
 Deno.test("an enqueued job is due now with its attempts unused", async () => {
     await using test = await open();
