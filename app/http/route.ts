@@ -48,6 +48,7 @@ export type RouteDefinition<
     Q extends Schema,
     B extends Schema,
     C extends Schema,
+    H extends Schema,
     R extends Responses,
 > = {
     readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -68,15 +69,23 @@ export type RouteDefinition<
     readonly body?: B;
     /** The cookies the route reads, which are strings. Only the ones Verso set are seen. */
     readonly cookies?: C;
+    /** The request headers the route reads, by lowercase name. */
+    readonly headers?: H;
     readonly responses: R;
     readonly handler: (
         ctx: Context,
-        input: { params: z.output<P>; query: z.output<Q>; body: z.output<B>; cookies: z.output<C> },
+        input: {
+            params: z.output<P>;
+            query: z.output<Q>;
+            body: z.output<B>;
+            cookies: z.output<C>;
+            headers: z.output<H>;
+        },
     ) => Promise<Reply<R>>;
 };
 
 /** A route with its types erased, so routes of every shape fit in one array. */
-export type Route = RouteDefinition<Schema, Schema, Schema, Schema, Responses>;
+export type Route = RouteDefinition<Schema, Schema, Schema, Schema, Schema, Responses>;
 
 /** Checks a route's types and erases them. */
 export const defineRoute = <
@@ -84,5 +93,6 @@ export const defineRoute = <
     Q extends Schema = Empty,
     B extends Schema = Empty,
     C extends Schema = Empty,
+    H extends Schema = Empty,
     R extends Responses = Responses,
->(route: RouteDefinition<P, Q, B, C, R>): Route => route as unknown as Route;
+>(route: RouteDefinition<P, Q, B, C, H, R>): Route => route as unknown as Route;

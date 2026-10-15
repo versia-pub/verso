@@ -69,6 +69,16 @@ const visit = defineRoute({
         }),
 });
 
+const agent = defineRoute({
+    method: "GET",
+    path: "/agent",
+    summary: "Names the client",
+    headers: z.object({ "user-agent": z.string() }),
+    responses: { 200: z.object({ agent: z.string() }) },
+    handler: (_, { headers }) =>
+        Promise.resolve({ status: 200, body: { agent: headers["user-agent"] } }),
+});
+
 /** Declares a page, and sends JSON. */
 const notAPage = defineRoute({
     method: "GET",
@@ -80,7 +90,7 @@ const notAPage = defineRoute({
 
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [rename, sloppy, welcome, visit, notAPage], {
+    const app = createApp(test.ctx, [rename, sloppy, welcome, visit, agent, notAPage], {
         checkResponses: true,
     });
 
@@ -214,6 +224,25 @@ Deno.test("routes read only their own cookies, and can delete them", async () =>
     assertEquals(await planted.json(), { seen: false });
     assertEquals(await returning.json(), { seen: true });
     assertStringIncludes(returning.headers.get("set-cookie") ?? "", "__Host-seen=; Max-Age=0");
+});
+
+Deno.test("routes read headers by lowercase name", async () => {
+    await using test = await open();
+
+    const named = await test.app.request("/agent", { headers: { "User-Agent": "Tusky" } });
+    const missing = await test.app.request(new Request("http://localhost/agent"));
+
+    assertEquals(await named.json(), { agent: "Tusky" });
+    assertEquals((await missing.json()).details["headers.user-agent"] !== undefined, true);
+});
+
+Deno.test("nothing may cache a reply, an error or a check", async () => {
+    await using test = await open();
+
+    for (const path of ["/agent", "/missing", "/health/live", "/welcome?name=away"]) {
+        const response = await test.app.request(path, { headers: { "user-agent": "Tusky" } });
+        assertEquals(response.headers.get("cache-control"), "no-store", path);
+    }
 });
 
 Deno.test("with checks on, JSON where a page is declared is a 500", async () => {

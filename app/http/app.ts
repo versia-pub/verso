@@ -154,6 +154,13 @@ export const createApp = (
 ): Hono => {
     const app = new Hono();
 
+    // Replies are about one user, or carry secrets such as tokens, so nothing may cache them.
+    // Errors skip this, so the error handler sets it too.
+    app.use(async (c, next) => {
+        await next();
+        c.res.headers.set("cache-control", "no-store");
+    });
+
     // For load balancers and orchestrators, not clients, so it stays plain text.
     app.get("/health/live", (c) => c.text("ok"));
 
@@ -164,6 +171,7 @@ export const createApp = (
                 query: { schema: route.query, value: queryOf(c) },
                 body: { schema: route.body, value: await bodyOf(c, route) },
                 cookies: { schema: route.cookies, value: cookiesOf(c) },
+                headers: { schema: route.headers, value: c.req.header() },
             });
 
             const reply = await route.handler(ctx, input);
@@ -178,6 +186,7 @@ export const createApp = (
     });
 
     app.onError((error, c) => {
+        c.header("cache-control", "no-store");
         if (error instanceof HttpError) return c.json(error, error.status);
 
         logger.error("{method} {path} failed: {error}", {
