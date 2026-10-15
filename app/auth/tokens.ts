@@ -2,6 +2,7 @@ import type { Context } from "../kernel/context.ts";
 import type { Scope } from "./scopes.ts";
 import { findAppByClientId } from "./apps.ts";
 import { takeFlowByCode } from "./flows.ts";
+import { requestedScopes } from "./scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { AppsTable } from "./tables.ts";
 
@@ -151,6 +152,67 @@ export const exchangeCode = (
         return valid ? await issueToken(tx, app, flow.account_id, flow.scopes) : undefined;
     });
 
+/** What an app sends to `/oauth/token`, besides its credentials. */
+export type TokenRequest = {
+    readonly grantType: string | undefined;
+    readonly code: string | undefined;
+    readonly redirectUri: string | undefined;
+    readonly codeVerifier: string | undefined;
+    readonly scope: string | undefined;
+};
+
+/** Why a token wasn't granted, as an OAuth error code and its description. */
+export type GrantRefused = {
+    readonly error:
+        | "invalid_request"
+        | "invalid_grant"
+        | "invalid_scope"
+        | "unsupported_grant_type";
+    readonly description: string;
+};
+
+/**
+ * A token for the grant the app asked for: a code the user allowed, or the app's own credentials.
+ * @see https://www.rfc-editor.org/rfc/rfc6749#section-5.2
+ */
+export const grantToken = async (
+    ctx: Context,
+    app: AppsTable,
+    request: TokenRequest,
+): Promise<{ readonly issued: IssuedToken } | GrantRefused> => {
+    switch (request.grantType) {
+        case undefined:
+            return { error: "invalid_request", description: "The grant type is missing." };
+
+        // Mastodon ignores `scope` here: the token gets the scopes the user allowed.
+        case "authorization_code": {
+            if (request.code === undefined) {
+                return { error: "invalid_request", description: "The code is missing." };
+            }
+
+            const issued = await exchangeCode(ctx, app, { ...request, code: request.code });
+            return issued ? { issued } : {
+                error: "invalid_grant",
+                description: "The code is wrong, used, expired or another app's, or PKCE failed.",
+            };
+        }
+
+        case "client_credentials": {
+            const scopes = requestedScopes(request.scope, app.scopes);
+            return scopes ? { issued: await issueToken(ctx, app, null, scopes) } : {
+                error: "invalid_scope",
+                description: "The app didn't register all of these scopes.",
+            };
+        }
+
+        default:
+            return {
+                error: "unsupported_grant_type",
+                description: "That grant type isn't supported.",
+            };
+    }
+};
+
 /**
  * Revokes a token, if `app` may: only the app it was issued to can. A token that doesn't exist,
  * or no longer does, is already revoked, so that is fine too.
@@ -158,12 +220,12 @@ export const exchangeCode = (
  */
 export const revokeToken = async (
     ctx: Context,
-    app: AppsTable | undefined,
+    app: AppsTable,
     token: string,
 ): Promise<boolean> => {
     const row = await findToken(ctx, token);
     if (!row) return true;
-    if (row.app_id !== app?.id) return false;
+    if (row.app_id !== app.id) return false;
 
     await ctx.db.deleteFrom("access_tokens").where("id", "=", row.id).execute();
     return true;

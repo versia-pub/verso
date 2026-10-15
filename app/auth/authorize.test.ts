@@ -121,6 +121,7 @@ Deno.test("other errors go back to the app, with its state", async () => {
     };
 
     assertEquals(await errorOf({ response_type: "token" }), "unsupported_response_type");
+    assertEquals(await errorOf({ response_type: undefined }), "invalid_request");
     assertEquals(await errorOf({ scope: "read push" }), "invalid_scope");
     assertEquals(await errorOf({ scope: "read bogus" }), "invalid_scope");
     assertEquals(await errorOf({ code_challenge: "a".repeat(43) }), "invalid_request");

@@ -70,7 +70,13 @@ const open = async () => {
         return { status: response.status, body: await response.json() };
     };
 
-    return { ...test, app, credentials, basic, token, allowedCode, exchange, revoke };
+    /** Posts a body as it is, for requests the helpers above can't make. */
+    const post = async (path: string, body: BodyInit, headers: Record<string, string> = {}) => {
+        const response = await http.request(path, { method: "POST", body, headers });
+        return { status: response.status, body: await response.json() };
+    };
+
+    return { ...test, app, credentials, basic, token, allowedCode, exchange, revoke, post };
 };
 
 Deno.test("an app gets a token for itself, stored only as a hash", async () => {
@@ -139,7 +145,7 @@ Deno.test("an unknown grant or scope is refused in OAuth's shape", async () => {
     });
 
     assertEquals([password.status, password.body.error], [400, "unsupported_grant_type"]);
-    assertEquals([missing.status, missing.body.error], [400, "unsupported_grant_type"]);
+    assertEquals([missing.status, missing.body.error], [400, "invalid_request"]);
     assertEquals([push.status, push.body.error], [400, "invalid_scope"]);
     assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
 });
@@ -261,11 +267,38 @@ Deno.test("only the app a token was issued to may revoke it", async () => {
         }),
         await test.revoke({ client_id: test.app.client_id, client_secret: "wrong", token }),
         await test.revoke({ token }),
-        await test.revoke(test.credentials),
+        await test.revoke({}),
     ];
 
     for (const { status, body } of refused) {
         assertEquals([status, body.error], [403, "unauthorized_client"]);
     }
     assertEquals((await test.ctx.db.selectFrom("access_tokens").selectAll().execute()).length, 1);
+});
+
+Deno.test("an app that leaves out the token revokes nothing, as in Mastodon", async () => {
+    await using test = await open();
+    await test.token({ ...test.credentials, grant_type: "client_credentials" });
+
+    const { status, body } = await test.revoke(test.credentials);
+
+    assertEquals([status, body], [200, {}]);
+    assertEquals((await test.ctx.db.selectFrom("access_tokens").selectAll().execute()).length, 1);
+});
+
+Deno.test("input OAuth endpoints can't read is an invalid request, in OAuth's shape", async () => {
+    await using test = await open();
+    const form = new URLSearchParams({ ...test.credentials, grant_type: "client_credentials" });
+    form.append("scope", "read");
+    form.append("scope", "write");
+
+    const repeated = await test.post("/oauth/token", form);
+    const json = await test.post("/oauth/revoke", "token=x", { "content-type": "text/plain" });
+
+    assertEquals(repeated.status, 400);
+    assertEquals(repeated.body, {
+        error: "invalid_request",
+        error_description: "These are invalid: body.scope.",
+    });
+    assertEquals([json.status, json.body.error], [400, "invalid_request"]);
 });

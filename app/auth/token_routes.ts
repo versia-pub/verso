@@ -2,13 +2,12 @@ import { OAuthServerMetadata, Token } from "@versia/client-api";
 import { z } from "zod";
 import { HttpError } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { requestedScopes, scopes } from "./scopes.ts";
+import { scopes } from "./scopes.ts";
 import {
     authenticateClient,
     clientCredentialsFrom,
-    exchangeCode,
+    grantToken,
     type IssuedToken,
-    issueToken,
     revokeToken,
 } from "./tokens.ts";
 
@@ -27,6 +26,7 @@ const postToken = defineRoute({
     method: "POST",
     path: "/oauth/token",
     summary: "Gives an app an access token",
+    oauthErrors: true,
     body: z.object({
         grant_type: z.string().optional(),
         client_id: z.string().optional(),
@@ -43,60 +43,29 @@ const postToken = defineRoute({
         const app = await authenticateClient(ctx, credentials);
         if (!app) throw new HttpError(401, "invalid_client", "The app's credentials are wrong.");
 
-        switch (body.grant_type) {
-            // Mastodon ignores `scope` here: the token gets the scopes the user allowed.
-            case "authorization_code": {
-                if (body.code === undefined) {
-                    throw new HttpError(400, "invalid_request", "The code is missing.");
-                }
+        const grant = await grantToken(ctx, app, {
+            grantType: body.grant_type,
+            code: body.code,
+            redirectUri: body.redirect_uri,
+            codeVerifier: body.code_verifier,
+            scope: body.scope,
+        });
+        if ("error" in grant) throw new HttpError(400, grant.error, grant.description);
 
-                const issued = await exchangeCode(ctx, app, {
-                    code: body.code,
-                    redirectUri: body.redirect_uri,
-                    codeVerifier: body.code_verifier,
-                });
-                if (!issued) {
-                    throw new HttpError(
-                        400,
-                        "invalid_grant",
-                        "The code is wrong, used, expired or another app's, or PKCE failed.",
-                    );
-                }
-
-                return { status: 200, body: tokenOf(issued) };
-            }
-
-            case "client_credentials": {
-                const scopes = requestedScopes(body.scope, app.scopes);
-                if (!scopes) {
-                    throw new HttpError(
-                        400,
-                        "invalid_scope",
-                        "The app didn't register all of these scopes.",
-                    );
-                }
-
-                return { status: 200, body: tokenOf(await issueToken(ctx, app, null, scopes)) };
-            }
-
-            default:
-                throw new HttpError(
-                    400,
-                    "unsupported_grant_type",
-                    "That grant type isn't supported.",
-                );
-        }
+        return { status: 200, body: tokenOf(grant.issued) };
     },
 });
 
 /**
- * Revokes a token, for the app it was issued to.
+ * Revokes a token, for the app it was issued to. As in Mastodon, the app must always send its
+ * credentials, and leaving out the token isn't an error.
  * @see https://docs.joinmastodon.org/methods/oauth/#revoke
  */
 const postRevoke = defineRoute({
     method: "POST",
     path: "/oauth/revoke",
     summary: "Revokes an access token",
+    oauthErrors: true,
     body: z.object({
         client_id: z.string().optional(),
         client_secret: z.string().optional(),
@@ -109,9 +78,10 @@ const postRevoke = defineRoute({
             ctx,
             clientCredentialsFrom(headers.authorization, body),
         );
-        const revoked = body.token !== undefined && await revokeToken(ctx, app, body.token);
+        const allowed = app !== undefined &&
+            (body.token === undefined || await revokeToken(ctx, app, body.token));
 
-        if (!revoked) {
+        if (!allowed) {
             throw new HttpError(
                 403,
                 "unauthorized_client",

@@ -123,6 +123,28 @@ const bodyOf = async (c: HonoContext, route: Route) => {
     }
 };
 
+/** The route's validated input, or the reason it isn't valid. */
+const inputOf = async (c: HonoContext, route: Route) =>
+    validate({
+        params: { schema: route.params, value: c.req.param() },
+        query: { schema: route.query, value: queryOf(c) },
+        body: { schema: route.body, value: await bodyOf(c, route) },
+        cookies: { schema: route.cookies, value: cookiesOf(c) },
+        headers: { schema: route.headers, value: c.req.header() },
+    });
+
+/** An input error as OAuth's `invalid_request`, naming what was wrong. */
+const asOAuthError = (error: unknown) => {
+    if (error instanceof ValidationFailed) {
+        const fields = Object.keys(error.details).join(", ");
+        return new HttpError(400, "invalid_request", `These are invalid: ${fields}.`);
+    }
+
+    return error instanceof HttpError
+        ? new HttpError(400, "invalid_request", error.description ?? error.message)
+        : error;
+};
+
 const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
     declared !== Page && declared !== Redirect;
 
@@ -220,12 +242,8 @@ export const createApp = (
     for (const route of routes) {
         app.on(route.method, route.path, async (c) => {
             const viewer = await viewerOf(ctx, c, route);
-            const input = validate({
-                params: { schema: route.params, value: c.req.param() },
-                query: { schema: route.query, value: queryOf(c) },
-                body: { schema: route.body, value: await bodyOf(c, route) },
-                cookies: { schema: route.cookies, value: cookiesOf(c) },
-                headers: { schema: route.headers, value: c.req.header() },
+            const input = await inputOf(c, route).catch((error) => {
+                throw route.oauthErrors ? asOAuthError(error) : error;
             });
 
             const reply = await route.handler(ctx, { ...input, viewer });

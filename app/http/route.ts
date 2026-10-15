@@ -78,6 +78,12 @@ export type RouteDefinition<
     readonly path: string;
     /** One line for the API documentation. */
     readonly summary: string;
+    /**
+     * Answers input it can't read as OAuth does, with 400 `invalid_request`, rather than Mastodon's
+     * 422. For the endpoints apps call as OAuth clients, such as `/oauth/token`.
+     * @see https://www.rfc-editor.org/rfc/rfc6749#section-5.2
+     */
+    readonly oauthErrors?: boolean;
     /** Without it, anyone may call the route, and tokens are ignored. */
     readonly auth?: A;
     readonly params?: P;

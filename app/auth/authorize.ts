@@ -105,6 +105,10 @@ export const authorize = async (
         params: { error, error_description: description, state: request.state },
     });
 
+    if (request.response_type === undefined) {
+        return error("invalid_request", "The response type is missing.");
+    }
+
     if (request.response_type !== "code") {
         return error("unsupported_response_type", "Only the code flow is supported.");
     }
