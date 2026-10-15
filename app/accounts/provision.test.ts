@@ -1,7 +1,9 @@
 import { assertEquals, assertRejects } from "@std/assert";
+import { sql } from "kysely";
+import { testDatabaseKind } from "../db/testing.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import type { Issuer } from "../kernel/identity.ts";
-import { provision, usernameFrom } from "./provision.ts";
+import { provision, type Provisioned, usernameFrom } from "./provision.ts";
 
 const issuer: Issuer = {
     name: "Example ID",
@@ -58,6 +60,60 @@ Deno.test("a taken username, in any case, gets a number", async () => {
     await provision(test.ctx, issuer, { sub: "3", preferred_username: "ALICE" });
 
     assertEquals(await test.usernames(), ["ALICE3", "Alice2", "alice"]);
+});
+
+Deno.test("a long username is cut to 30 characters, with room for its number", async () => {
+    await using test = await open();
+    const long = "a".repeat(40);
+
+    await provision(test.ctx, issuer, { sub: "1", preferred_username: long });
+    await provision(test.ctx, issuer, { sub: "2", preferred_username: long });
+
+    assertEquals(await test.usernames(), ["a".repeat(29) + "2", "a".repeat(30)]);
+});
+
+Deno.test({
+    name: "a login that another request links meanwhile gets that request's account",
+    // Only Postgres runs transactions side by side; PGlite and SQLite take them one at a time.
+    ignore: testDatabaseKind === "pglite" || testDatabaseKind === "sqlite",
+    fn: async () => {
+        await using test = await open();
+        let provisioned: Promise<Provisioned> | undefined;
+
+        // The other request links the identity, and doesn't commit until this login waits for it.
+        await test.ctx.db.transaction().execute(async (other) => {
+            await other.insertInto("accounts")
+                .values({
+                    id: "first",
+                    username: "first",
+                    instance_id: null,
+                    remote_id: null,
+                    created_at: test.clock.now(),
+                })
+                .execute();
+            await other.insertInto("identities")
+                .values({
+                    issuer: issuer.url,
+                    subject: "1",
+                    account_id: "first",
+                    created_at: test.clock.now(),
+                })
+                .execute();
+
+            provisioned = provision(test.ctx, issuer, { sub: "1", preferred_username: "alice" });
+
+            const waiting = async () => {
+                const { rows } = await sql<{ count: string }>`
+                    select count(*) from pg_stat_activity where wait_event_type = 'Lock'
+                `.execute(test.ctx.db);
+                return rows[0].count !== "0";
+            };
+            while (!await waiting()) await new Promise((resolve) => setTimeout(resolve, 5));
+        });
+
+        assertEquals(await provisioned, { ok: true, accountId: "first", created: false });
+        assertEquals(await test.usernames(), ["first"]);
+    },
 });
 
 Deno.test("without a usable claim, the username is user and a number", async () => {
