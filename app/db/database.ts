@@ -22,6 +22,17 @@ export type Database = {
 export const connect = <DB = Database>(dialect: Dialect): Kysely<DB> =>
     new Kysely({ dialect, plugins: [jsonValues] });
 
+/**
+ * Opens a SQLite file so `verso serve` and `verso work` can share it: in WAL mode, readers don't
+ * wait for a writer, and a writer waits up to five seconds for another instead of failing at once.
+ */
+const openSqlite = (path: string) => {
+    const database = new DatabaseSync(path);
+    database.exec("PRAGMA journal_mode = WAL");
+    database.exec("PRAGMA busy_timeout = 5000");
+    return database;
+};
+
 /** Opens the configured database. Postgres connects lazily, on the first query. */
 export const openDatabase = (config: Config["database"]): Kysely<Database> =>
     connect(
@@ -29,5 +40,5 @@ export const openDatabase = (config: Config["database"]): Kysely<Database> =>
             ? new PostgresDialect({
                 pool: new pg.Pool({ connectionString: config.postgres }),
             })
-            : sqliteDialect(new DatabaseSync(config.sqlite)),
+            : sqliteDialect(openSqlite(config.sqlite)),
     );
