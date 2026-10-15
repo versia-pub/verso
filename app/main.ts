@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import { parseArgs } from "@std/cli";
 import denoConfig from "../deno.json" with { type: "json" };
+import { devLoginProvider, devLoginRoutes } from "./auth/dev_login.ts";
 import { oidcProviders } from "./auth/oidc.ts";
 import { openDatabase } from "./db/database.ts";
 import { migrate } from "./db/migrate.ts";
@@ -40,9 +41,10 @@ const serve = (ctx: Context, config: Config, signal: AbortSignal): Promise<void>
             domain: config.domain,
         });
 
+    const served = config.auth.dev_login ? [...routes, ...devLoginRoutes] : routes;
     const server = Deno.serve(
         { port: config.http.port, onListen, signal },
-        createApp(ctx, routes).fetch,
+        createApp(ctx, served).fetch,
     );
     return server.finished;
 };
@@ -54,15 +56,23 @@ const serve = (ctx: Context, config: Config, signal: AbortSignal): Promise<void>
 const run = async (role: string, config: Config): Promise<void> => {
     await using db = openDatabase(config.database);
 
+    const urls = urlBuilder(config.domain, config.http.origin);
+    const identityProviders = await oidcProviders(config.auth.issuers, {
+        transport: fetchTransport,
+        clock: systemClock,
+    });
+
+    if (config.auth.dev_login) {
+        const dev = devLoginProvider(urls);
+        identityProviders[dev.issuer.url] = dev;
+    }
+
     const ctx = createContext({
         clock: systemClock,
         ids: idGenerator(systemClock),
-        urls: urlBuilder(config.domain, config.http.origin),
+        urls,
         transport: fetchTransport,
-        identityProviders: await oidcProviders(config.auth.issuers, {
-            transport: fetchTransport,
-            clock: systemClock,
-        }),
+        identityProviders,
         db,
     });
 
