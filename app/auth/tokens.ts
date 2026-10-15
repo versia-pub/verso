@@ -1,5 +1,6 @@
 import type { Context } from "../kernel/context.ts";
 import type { Scope } from "./scopes.ts";
+import { takeFlowByCode } from "./flows.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { AppsTable } from "./tables.ts";
 
@@ -139,11 +140,7 @@ export const exchangeCode = (
     exchange: CodeExchange,
 ): Promise<IssuedToken | undefined> =>
     ctx.transaction(async (tx) => {
-        const flow = await tx.db.deleteFrom("oauth_flows")
-            .where("code_hash", "=", await hashToken(exchange.code))
-            .where("expires_at", ">", tx.clock.now())
-            .returningAll()
-            .executeTakeFirst();
+        const flow = await takeFlowByCode(tx, exchange.code);
 
         const valid = flow?.account_id && flow.app_id === app.id &&
             flow.redirect_uri === exchange.redirectUri &&

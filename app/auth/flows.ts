@@ -1,0 +1,103 @@
+/**
+ * Every query on the `oauth_flows` table, so its rules are kept in one place.
+ * @module
+ */
+import type { Context } from "../kernel/context.ts";
+import type { LoginFlow } from "../kernel/identity.ts";
+import { hashToken } from "./secrets.ts";
+import type { OAuthFlowsTable } from "./tables.ts";
+
+export const createFlow = async (ctx: Context, flow: OAuthFlowsTable): Promise<void> => {
+    await ctx.db.insertInto("oauth_flows").values(flow).execute();
+};
+
+/** The unexpired flow tied to a browser by its cookie, if there is one. */
+export const findFlow = async (
+    ctx: Context,
+    browserSecret: string | undefined,
+): Promise<OAuthFlowsTable | undefined> =>
+    browserSecret === undefined ? undefined : await ctx.db.selectFrom("oauth_flows")
+        .selectAll()
+        .where("id", "=", await hashToken(browserSecret))
+        .where("expires_at", ">", ctx.clock.now())
+        .executeTakeFirst();
+
+/**
+ * The flow a form the user sent was for, if it is still the browser's flow. Another login started
+ * in the browser since replaces the cookie, so a form left open from before is refused.
+ */
+export const findFormFlow = async (
+    ctx: Context,
+    browserSecret: string | undefined,
+    formToken: string,
+): Promise<OAuthFlowsTable | undefined> => {
+    const flow = await findFlow(ctx, browserSecret);
+    return flow?.form_token === formToken ? flow : undefined;
+};
+
+/** Records the issuer the user chose, and the login started there. */
+export const recordLogin = async (
+    ctx: Context,
+    flowId: string,
+    issuer: string,
+    login: LoginFlow,
+): Promise<void> => {
+    await ctx.db.updateTable("oauth_flows")
+        .set({ issuer, login })
+        .where("id", "=", flowId)
+        .execute();
+};
+
+/** Records who logged in. */
+export const markLoggedIn = async (
+    ctx: Context,
+    flowId: string,
+    accountId: string,
+): Promise<void> => {
+    await ctx.db.updateTable("oauth_flows")
+        .set({ account_id: accountId })
+        .where("id", "=", flowId)
+        .execute();
+};
+
+/**
+ * Gives the flow its code, keeping only the hash, and a new expiry. Returns false if it already
+ * had one, so when the form is sent twice at once, only the first answer counts.
+ */
+export const setCode = async (
+    ctx: Context,
+    flowId: string,
+    code: string,
+    expiresAt: Date,
+): Promise<boolean> => {
+    const { numUpdatedRows } = await ctx.db.updateTable("oauth_flows")
+        .set({ code_hash: await hashToken(code), expires_at: expiresAt })
+        .where("id", "=", flowId)
+        .where("code_hash", "is", null)
+        .executeTakeFirstOrThrow();
+
+    return numUpdatedRows > 0n;
+};
+
+/**
+ * Removes the unexpired flow with this code and returns it. Removing it first means a code can
+ * only be tried once, even by two requests at once.
+ */
+export const takeFlowByCode = async (
+    ctx: Context,
+    code: string,
+): Promise<OAuthFlowsTable | undefined> =>
+    await ctx.db.deleteFrom("oauth_flows")
+        .where("code_hash", "=", await hashToken(code))
+        .where("expires_at", ">", ctx.clock.now())
+        .returningAll()
+        .executeTakeFirst();
+
+export const deleteFlow = async (ctx: Context, flowId: string): Promise<void> => {
+    await ctx.db.deleteFrom("oauth_flows").where("id", "=", flowId).execute();
+};
+
+/** Deletes flows past their expiry: logins never finished, and codes never traded for tokens. */
+export const deleteExpiredFlows = async (ctx: Context): Promise<void> => {
+    await ctx.db.deleteFrom("oauth_flows").where("expires_at", "<=", ctx.clock.now()).execute();
+};

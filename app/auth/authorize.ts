@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
 import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
+import { createFlow, findFormFlow, recordLogin } from "./flows.ts";
 import { requestedScopes } from "./scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
@@ -154,7 +155,7 @@ export const authorize = async (
         created_at: ctx.clock.now(),
     };
 
-    await ctx.db.insertInto("oauth_flows").values(flow).execute();
+    await createFlow(ctx, flow);
 
     return login ? { result: "login", browserSecret, url: login.url } : {
         result: "choose",
@@ -162,35 +163,6 @@ export const authorize = async (
         formToken,
         issuers: providers.map((p) => p.issuer),
     };
-};
-
-/** Deletes flows past their expiry: logins never finished, and codes never traded for tokens. */
-export const deleteExpiredFlows = async (ctx: Context): Promise<void> => {
-    await ctx.db.deleteFrom("oauth_flows").where("expires_at", "<=", ctx.clock.now()).execute();
-};
-
-/** The unexpired flow tied to a browser by its cookie, if there is one. */
-export const findFlow = async (
-    ctx: Context,
-    browserSecret: string | undefined,
-): Promise<OAuthFlowsTable | undefined> =>
-    browserSecret === undefined ? undefined : await ctx.db.selectFrom("oauth_flows")
-        .selectAll()
-        .where("id", "=", await hashToken(browserSecret))
-        .where("expires_at", ">", ctx.clock.now())
-        .executeTakeFirst();
-
-/**
- * The flow a form the user sent was for, if it is still the browser's flow. Another login started
- * in the browser since replaces the cookie, so a form left open from before is refused.
- */
-export const findFormFlow = async (
-    ctx: Context,
-    browserSecret: string | undefined,
-    formToken: string,
-): Promise<OAuthFlowsTable | undefined> => {
-    const flow = await findFlow(ctx, browserSecret);
-    return flow?.form_token === formToken ? flow : undefined;
 };
 
 /**
@@ -214,10 +186,7 @@ export const chooseIssuer = async (
     const login = await beginLogin(ctx, provider);
     if (!login) return { result: "unreachable", issuer: provider.issuer.name };
 
-    await ctx.db.updateTable("oauth_flows")
-        .set({ issuer: issuerUrl, login: login.flow })
-        .where("id", "=", flow.id)
-        .execute();
+    await recordLogin(ctx, flow.id, issuerUrl, login.flow);
 
     return { result: "login", url: login.url };
 };

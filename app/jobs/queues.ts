@@ -1,4 +1,4 @@
-import { deleteExpiredFlows } from "../auth/authorize.ts";
+import { deleteExpiredFlows } from "../auth/flows.ts";
 import { deleteExpiredJobs } from "./queue.ts";
 import type { Task } from "./scheduler.ts";
 import type { Queue } from "./worker.ts";

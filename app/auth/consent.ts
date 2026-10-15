@@ -1,9 +1,9 @@
 import { getLogger } from "@logtape/logtape";
 import { provision } from "../accounts/provision.ts";
 import type { Context } from "../kernel/context.ts";
-import { findFlow, findFormFlow } from "./authorize.ts";
+import { deleteFlow, findFlow, findFormFlow, markLoggedIn, setCode } from "./flows.ts";
 import type { Scope } from "./scopes.ts";
-import { hashToken, randomToken } from "./secrets.ts";
+import { randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
 
 const logger = getLogger(["verso", "auth"]);
@@ -55,10 +55,7 @@ export const finishLogin = async (
     const account = await provision(ctx, provider.issuer, claims);
     if (!account.ok) return denied(flow, "This server doesn't take new users from that login.");
 
-    await ctx.db.updateTable("oauth_flows")
-        .set({ account_id: account.accountId })
-        .where("id", "=", flow.id)
-        .execute();
+    await markLoggedIn(ctx, flow.id, account.accountId);
 
     return { result: "consent" };
 };
@@ -104,21 +101,14 @@ export const decide = async (
     if (!flow?.account_id || flow.code_hash !== null) return { result: "expired" };
 
     if (!allow) {
-        await ctx.db.deleteFrom("oauth_flows").where("id", "=", flow.id).execute();
+        await deleteFlow(ctx, flow.id);
         return denied(flow, "The user denied access.");
     }
 
     const code = randomToken();
+    const expiresAt = new Date(ctx.clock.now().getTime() + codeLifetimeMs);
 
-    // Only the first answer counts, if the form is sent twice at once.
-    const { numUpdatedRows } = await ctx.db.updateTable("oauth_flows")
-        .set({
-            code_hash: await hashToken(code),
-            expires_at: new Date(ctx.clock.now().getTime() + codeLifetimeMs),
-        })
-        .where("id", "=", flow.id)
-        .where("code_hash", "is", null)
-        .executeTakeFirstOrThrow();
-
-    return numUpdatedRows === 0n ? { result: "expired" } : sendBack(flow, { code });
+    return await setCode(ctx, flow.id, code, expiresAt)
+        ? sendBack(flow, { code })
+        : { result: "expired" };
 };
