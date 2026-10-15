@@ -1,7 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
 import type { IdentityProvider } from "./identity.ts";
-import { ScopeList } from "./scopes.ts";
+import { requestedScopes } from "./scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
 
@@ -112,9 +112,8 @@ export const authorize = async (
         return error("unsupported_response_type", "Only the code flow is supported.");
     }
 
-    const parsed = ScopeList.safeParse(request.scope ?? "");
-    const scopes = parsed.success && parsed.data.length > 0 ? parsed.data : ["read" as const];
-    if (!parsed.success || !scopes.every((scope) => app.scopes.includes(scope))) {
+    const scopes = requestedScopes(request.scope, app.scopes);
+    if (!scopes) {
         return error("invalid_scope", "The app didn't register all of these scopes.");
     }
 

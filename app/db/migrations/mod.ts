@@ -4,6 +4,7 @@ import { keptJobs } from "./0002_kept_jobs.ts";
 import { accounts } from "./0003_accounts.ts";
 import { apps } from "./0004_apps.ts";
 import { oauthFlows } from "./0005_oauth_flows.ts";
+import { accessTokens } from "./0006_access_tokens.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -15,4 +16,5 @@ export const migrations: Record<string, Migration> = {
     "0003_accounts": accounts,
     "0004_apps": apps,
     "0005_oauth_flows": oauthFlows,
+    "0006_access_tokens": accessTokens,
 };

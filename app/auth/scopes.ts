@@ -60,3 +60,18 @@ export type Scope = typeof scopes[number];
 export const ScopeList = z.string()
     .transform((text) => [...new Set(text.split(/\s+/).filter((scope) => scope !== ""))])
     .pipe(z.array(z.enum(scopes, { error: "Unknown scope" })));
+
+/**
+ * The scopes a client asks for, as a space-separated list, or `read` if it names none. Returns
+ * nothing if any is unknown, or isn't one the app registered.
+ */
+export const requestedScopes = (
+    requested: string | undefined,
+    registered: readonly Scope[],
+): Scope[] | undefined => {
+    const parsed = ScopeList.safeParse(requested ?? "");
+    if (!parsed.success) return undefined;
+
+    const scopes = parsed.data.length > 0 ? parsed.data : ["read" as const];
+    return scopes.every((scope) => registered.includes(scope)) ? scopes : undefined;
+};

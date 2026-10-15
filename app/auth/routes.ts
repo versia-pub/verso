@@ -1,12 +1,19 @@
-import { type Application, CredentialApplication } from "@versia/client-api";
+import { type Application, CredentialApplication, Token } from "@versia/client-api";
+import { HttpError } from "../http/errors.ts";
 import { z } from "zod";
 import { defineRoute, Page, Redirect, type Route } from "../http/route.ts";
 import { registerApp } from "./apps.ts";
 import { authorize, chooseIssuer, outOfBand, withParams } from "./authorize.ts";
 import { consentRequest, decide, finishLogin, type SendBack } from "./consent.ts";
 import { chooserPage, codePage, consentPage, errorPage } from "./pages.ts";
-import { ScopeList } from "./scopes.ts";
+import { requestedScopes, ScopeList } from "./scopes.ts";
 import type { AppsTable } from "./tables.ts";
+import {
+    authenticateClient,
+    clientCredentialsFrom,
+    type IssuedToken,
+    issueToken,
+} from "./tokens.ts";
 
 const scriptSchemes = ["data:", "javascript:", "vbscript:"];
 
@@ -210,6 +217,51 @@ const postConsent = defineRoute({
     },
 });
 
+const tokenOf = (issued: IssuedToken): Token => ({
+    access_token: issued.token,
+    token_type: "Bearer",
+    scope: issued.scopes.join(" "),
+    created_at: Math.floor(issued.createdAt.getTime() / 1000),
+});
+
+/**
+ * Gives an app a token. Errors are in OAuth's shape, as RFC 6749 requires.
+ * @see https://docs.joinmastodon.org/methods/oauth/#token
+ */
+const postToken = defineRoute({
+    method: "POST",
+    path: "/oauth/token",
+    summary: "Gives an app an access token",
+    body: z.object({
+        grant_type: z.string().optional(),
+        client_id: z.string().optional(),
+        client_secret: z.string().optional(),
+        scope: z.string().optional(),
+    }),
+    headers: z.object({ authorization: z.string().optional() }),
+    responses: { 200: Token },
+    handler: async (ctx, { body, headers }) => {
+        const credentials = clientCredentialsFrom(headers.authorization, body);
+        const app = await authenticateClient(ctx, credentials);
+        if (!app) throw new HttpError(401, "invalid_client", "The app's credentials are wrong.");
+
+        if (body.grant_type !== "client_credentials") {
+            throw new HttpError(400, "unsupported_grant_type", "That grant type isn't supported.");
+        }
+
+        const scopes = requestedScopes(body.scope, app.scopes);
+        if (!scopes) {
+            throw new HttpError(
+                400,
+                "invalid_scope",
+                "The app didn't register all of these scopes.",
+            );
+        }
+
+        return { status: 200, body: tokenOf(await issueToken(ctx, app, null, scopes)) };
+    },
+});
+
 export const authRoutes: readonly Route[] = [
     postApps,
     getAuthorize,
@@ -217,4 +269,5 @@ export const authRoutes: readonly Route[] = [
     getCallback,
     getConsent,
     postConsent,
+    postToken,
 ];

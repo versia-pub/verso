@@ -2,7 +2,7 @@ import { type Dialect, Kysely, PostgresDialect } from "kysely";
 import { DatabaseSync } from "node:sqlite";
 import pg from "pg";
 import type { AccountsTable, IdentitiesTable } from "../accounts/tables.ts";
-import type { AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
+import type { AccessTokensTable, AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
 import type { JobsTable } from "../jobs/queue.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
@@ -10,6 +10,7 @@ import { sqliteDialect } from "./sqlite.ts";
 
 /** Every table, as migrations add them. */
 export type Database = {
+    access_tokens: AccessTokensTable;
     accounts: AccountsTable;
     apps: AppsTable;
     identities: IdentitiesTable;

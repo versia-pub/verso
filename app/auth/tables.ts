@@ -41,3 +41,14 @@ export type OAuthFlowsTable = {
     expires_at: Date;
     created_at: Date;
 };
+
+/** A token an app sends to act for a user, or for itself. Only its hash is kept. */
+export type AccessTokensTable = {
+    id: string;
+    token_hash: string;
+    app_id: string;
+    /** The user the app acts for, or `null` for a token the app got for itself. */
+    account_id: string | null;
+    scopes: Scope[];
+    created_at: Date;
+};
