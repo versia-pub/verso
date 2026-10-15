@@ -1,5 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import * as client from "@panva/openid-client";
+import { openidFetch } from "../auth/oidc.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
 import { createFakeIdentityProvider } from "./fake_idp.ts";
 
@@ -14,10 +15,7 @@ const open = async () => {
         "verso",
         "s3cret",
         undefined,
-        {
-            [client.customFetch]: (url, options) =>
-                transport(new Request(url, options as RequestInit)),
-        },
+        { [client.customFetch]: openidFetch(transport) },
     );
 
     /** Starts a login and follows the redirect back, as a browser would. */

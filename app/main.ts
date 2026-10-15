@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import { parseArgs } from "@std/cli";
 import denoConfig from "../deno.json" with { type: "json" };
+import { oidcProviders } from "./auth/oidc.ts";
 import { openDatabase } from "./db/database.ts";
 import { migrate } from "./db/migrate.ts";
 import { createApp } from "./http/app.ts";
@@ -58,6 +59,10 @@ const run = async (role: string, config: Config): Promise<void> => {
         ids: idGenerator(systemClock),
         urls: urlBuilder(config.domain),
         transport: fetchTransport,
+        identityProviders: await oidcProviders(config.auth.issuers, {
+            transport: fetchTransport,
+            clock: systemClock,
+        }),
         db,
     });
 

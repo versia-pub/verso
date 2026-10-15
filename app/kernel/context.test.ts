@@ -21,6 +21,7 @@ const open = async () => {
         ids: idGenerator(clock, countingRandom()),
         urls: urlBuilder("social.example"),
         transport: fakeTransport(),
+        identityProviders: {},
         db,
     });
 

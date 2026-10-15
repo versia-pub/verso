@@ -48,6 +48,7 @@ export const createTestContext = async (
         ids: idGenerator(clock, countingRandom()),
         urls: urlBuilder(options.domain ?? "social.example"),
         transport,
+        identityProviders: {},
         db,
     });
 

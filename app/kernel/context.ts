@@ -1,4 +1,5 @@
 import type { Kysely } from "kysely";
+import type { IdentityProvider } from "../auth/identity.ts";
 import type { Database } from "../db/database.ts";
 import type { Clock } from "./clock.ts";
 import type { IdGenerator } from "./ids.ts";
@@ -11,6 +12,8 @@ export type Context<DB = Database> = {
     readonly ids: IdGenerator;
     readonly urls: UrlBuilder;
     readonly transport: Transport;
+    /** One for each configured issuer, by issuer URL. */
+    readonly identityProviders: Readonly<Record<string, IdentityProvider>>;
     /** The database, or the current transaction inside `transaction`. */
     readonly db: Kysely<DB>;
     /**

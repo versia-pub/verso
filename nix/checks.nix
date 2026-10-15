@@ -73,7 +73,18 @@ in
       services.verso = {
         enable = true;
         settings.domain = "verso.test";
+        # Secrets reach the service as systemd credentials, never through the Nix store.
+        settings.auth.issuers = [
+          {
+            name = "Example ID";
+            url = "https://id.verso.test";
+            client_id = "verso";
+            client_secret_file = "/run/credentials/verso.service/oidc";
+          }
+        ];
       };
+      systemd.services.verso.serviceConfig.LoadCredential = [ "oidc:/etc/verso-oidc" ];
+      environment.etc.verso-oidc.text = "s3cret";
       environment.systemPackages = [ pkgs.curl ];
     };
     testScript = ''
