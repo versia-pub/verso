@@ -1,0 +1,140 @@
+import type { Context } from "../kernel/context.ts";
+import type { IdentityProvider } from "./identity.ts";
+import { ScopeList } from "./scopes.ts";
+import { hashToken, randomToken } from "./secrets.ts";
+import type { OAuthFlowsTable } from "./tables.ts";
+
+/** How long a user has to log in and allow the app. */
+const flowLifetimeMs = 30 * 60_000;
+
+/** Mastodon's redirect URI for apps that show the user the code, instead of receiving it. */
+export const outOfBand = "urn:ietf:wg:oauth:2.0:oob";
+
+/** An S256 PKCE challenge: a SHA-256 hash in base64url. */
+const s256Challenge = /^[A-Za-z0-9_-]{43}$/;
+
+/**
+ * The query of `/oauth/authorize`.
+ * @see https://docs.joinmastodon.org/methods/oauth/#authorize
+ */
+export type AuthorizeRequest = {
+    readonly client_id?: string;
+    readonly redirect_uri?: string;
+    readonly response_type?: string;
+    readonly scope?: string;
+    readonly state?: string;
+    readonly code_challenge?: string;
+    readonly code_challenge_method?: string;
+};
+
+export type Authorization =
+    /** The app or its redirect URI is wrong, so the user is told instead of redirected. */
+    | { readonly result: "refused"; readonly description: string }
+    /** An OAuth error, to send back to the app's redirect URI. */
+    | {
+        readonly result: "error";
+        readonly redirectUri: string;
+        readonly params: Readonly<Record<string, string | undefined>>;
+    }
+    /** The user picks one of several issuers. */
+    | {
+        readonly result: "choose";
+        readonly browserSecret: string;
+        readonly issuers: IdentityProvider["issuer"][];
+    }
+    /** The browser goes to the only issuer to log in. */
+    | { readonly result: "login"; readonly browserSecret: string; readonly url: URL };
+
+/** `uri` with `params` added to its query, leaving out undefined ones. */
+export const withParams = (
+    uri: string,
+    params: Readonly<Record<string, string | undefined>>,
+): string => {
+    const url = new URL(uri);
+
+    for (const [name, value] of Object.entries(params)) {
+        if (value !== undefined) url.searchParams.set(name, value);
+    }
+
+    return url.href;
+};
+
+const findApp = (ctx: Context, clientId: string | undefined) =>
+    clientId === undefined
+        ? undefined
+        : ctx.db.selectFrom("apps").selectAll().where("client_id", "=", clientId)
+            .executeTakeFirst();
+
+/**
+ * Checks an app's request to log a user in, and starts the flow. The flow is tied to the browser
+ * by `browserSecret`, which goes in a cookie, so another browser can't finish it.
+ */
+export const authorize = async (
+    ctx: Context,
+    request: AuthorizeRequest,
+): Promise<Authorization> => {
+    const app = await findApp(ctx, request.client_id);
+    if (!app) return { result: "refused", description: "The app isn't registered here." };
+
+    const redirectUri = request.redirect_uri;
+    if (redirectUri === undefined || !app.redirect_uris.includes(redirectUri)) {
+        return {
+            result: "refused",
+            description: "The app sent a redirect URI it didn't register.",
+        };
+    }
+
+    const error = (error: string, description: string): Authorization => ({
+        result: "error",
+        redirectUri,
+        params: { error, error_description: description, state: request.state },
+    });
+
+    if (request.response_type !== "code") {
+        return error("unsupported_response_type", "Only the code flow is supported.");
+    }
+
+    const parsed = ScopeList.safeParse(request.scope ?? "");
+    const scopes = parsed.success && parsed.data.length > 0 ? parsed.data : ["read" as const];
+    if (!parsed.success || !scopes.every((scope) => app.scopes.includes(scope))) {
+        return error("invalid_scope", "The app didn't register all of these scopes.");
+    }
+
+    const challenge = request.code_challenge;
+    if (
+        challenge !== undefined &&
+        (request.code_challenge_method !== "S256" || !s256Challenge.test(challenge))
+    ) {
+        return error("invalid_request", "PKCE must use S256.");
+    }
+
+    const providers = Object.values(ctx.identityProviders);
+    if (providers.length === 0) {
+        return { result: "refused", description: "Logging in isn't set up on this server." };
+    }
+
+    const only = providers.length === 1 ? providers[0] : undefined;
+    const login = await only?.beginLogin(ctx.urls.url`/oauth/callback`);
+    const browserSecret = randomToken();
+
+    const flow: OAuthFlowsTable = {
+        id: await hashToken(browserSecret),
+        app_id: app.id,
+        redirect_uri: redirectUri,
+        scopes,
+        state: request.state ?? null,
+        code_challenge: challenge ?? null,
+        issuer: only?.issuer.url ?? null,
+        login: login?.flow ?? null,
+        account_id: null,
+        code_hash: null,
+        expires_at: new Date(ctx.clock.now().getTime() + flowLifetimeMs),
+        created_at: ctx.clock.now(),
+    };
+
+    await ctx.db.insertInto("oauth_flows").values(flow).execute();
+
+    return login
+        ? { result: "login", browserSecret, url: login.url }
+        : { result: "choose", browserSecret, issuers: providers.map((p) => p.issuer) };
+};

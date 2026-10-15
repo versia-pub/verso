@@ -1,7 +1,9 @@
 import { type Application, CredentialApplication } from "@versia/client-api";
 import { z } from "zod";
-import { defineRoute, type Route } from "../http/route.ts";
+import { defineRoute, Page, Redirect, type Route } from "../http/route.ts";
 import { registerApp } from "./apps.ts";
+import { authorize, outOfBand, withParams } from "./authorize.ts";
+import { chooserPage, errorPage } from "./pages.ts";
 import { ScopeList } from "./scopes.ts";
 import type { AppsTable } from "./tables.ts";
 
@@ -67,4 +69,50 @@ const postApps = defineRoute({
     },
 });
 
-export const authRoutes: readonly Route[] = [postApps];
+const getAuthorize = defineRoute({
+    method: "GET",
+    path: "/oauth/authorize",
+    summary: "Starts logging a user in to an app",
+    query: z.object({
+        client_id: z.string().optional(),
+        redirect_uri: z.string().optional(),
+        response_type: z.string().optional(),
+        scope: z.string().optional(),
+        state: z.string().optional(),
+        code_challenge: z.string().optional(),
+        code_challenge_method: z.string().optional(),
+    }),
+    responses: { 200: Page, 302: Redirect, 400: Page },
+    handler: async (ctx, { query }) => {
+        const authorization = await authorize(ctx, query);
+
+        switch (authorization.result) {
+            case "refused":
+                return { status: 400, page: errorPage(authorization.description) };
+
+            case "error":
+                return authorization.redirectUri === outOfBand
+                    ? { status: 400, page: errorPage(authorization.params.error_description ?? "") }
+                    : {
+                        status: 302,
+                        location: withParams(authorization.redirectUri, authorization.params),
+                    };
+
+            case "choose":
+                return {
+                    status: 200,
+                    page: chooserPage(authorization.issuers),
+                    cookies: { oauth_flow: authorization.browserSecret },
+                };
+
+            case "login":
+                return {
+                    status: 302,
+                    location: authorization.url.href,
+                    cookies: { oauth_flow: authorization.browserSecret },
+                };
+        }
+    },
+});
+
+export const authRoutes: readonly Route[] = [postApps, getAuthorize];
