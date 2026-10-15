@@ -78,3 +78,49 @@ export const issueToken = async (
 
     return { token, scopes, createdAt };
 };
+
+/** A PKCE code verifier: 43 to 128 of these characters. */
+const codeVerifier = /^[A-Za-z0-9._~-]{43,128}$/;
+
+/** What an app sends to trade a code for a token. */
+export type CodeExchange = {
+    readonly code: string;
+    readonly redirectUri: string | undefined;
+    readonly codeVerifier: string | undefined;
+};
+
+/**
+ * Whether the verifier matches the flow's S256 challenge, which is its SHA-256 in base64url, the
+ * same as `hashToken`. Without a challenge, a verifier is refused rather than ignored, so an
+ * attacker can't strip the challenge from the user's request.
+ * @see https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1
+ */
+const pkceMatches = async (challenge: string | null, verifier: string | undefined) =>
+    challenge === null
+        ? verifier === undefined
+        : verifier !== undefined && codeVerifier.test(verifier) &&
+            await hashToken(verifier) === challenge;
+
+/**
+ * Trades a code for a token to act for the user who allowed it, with the scopes they allowed. The
+ * code must be for this app and redirect URI, unexpired, and pass PKCE. It can only be tried once,
+ * so a failed try uses it up too.
+ */
+export const exchangeCode = (
+    ctx: Context,
+    app: AppsTable,
+    exchange: CodeExchange,
+): Promise<IssuedToken | undefined> =>
+    ctx.transaction(async (tx) => {
+        const flow = await tx.db.deleteFrom("oauth_flows")
+            .where("code_hash", "=", await hashToken(exchange.code))
+            .where("expires_at", ">", tx.clock.now())
+            .returningAll()
+            .executeTakeFirst();
+
+        const valid = flow?.account_id && flow.app_id === app.id &&
+            flow.redirect_uri === exchange.redirectUri &&
+            await pkceMatches(flow.code_challenge, exchange.codeVerifier);
+
+        return valid ? await issueToken(tx, app, flow.account_id, flow.scopes) : undefined;
+    });

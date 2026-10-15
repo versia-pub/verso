@@ -3,7 +3,7 @@ import { createApp } from "../http/app.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { registerApp } from "./apps.ts";
 import { authRoutes } from "./routes.ts";
-import { hashToken } from "./secrets.ts";
+import { hashToken, randomToken } from "./secrets.ts";
 
 const open = async () => {
     const test = await createTestContext();
@@ -29,7 +29,50 @@ const open = async () => {
     const credentials = { client_id: app.client_id, client_secret: clientSecret };
     const basic = (id: string, secret: string) => `Basic ${btoa(`${id}:${secret}`)}`;
 
-    return { ...test, app, credentials, basic, token };
+    await test.ctx.db.insertInto("accounts")
+        .values({
+            id: "alice",
+            username: "alice",
+            instance_id: null,
+            remote_id: null,
+            created_at: test.clock.now(),
+        })
+        .execute();
+
+    /** A code alice allowed, as the consent page leaves it, valid for ten minutes. */
+    const allowedCode = async (challenge: string | null = null) => {
+        const code = randomToken();
+
+        await test.ctx.db.insertInto("oauth_flows")
+            .values({
+                id: test.ctx.ids(),
+                app_id: app.id,
+                redirect_uri: "https://phanpy.example/back",
+                scopes: ["read", "write"],
+                state: null,
+                code_challenge: challenge,
+                issuer: "https://id.example",
+                login: null,
+                account_id: "alice",
+                code_hash: await hashToken(code),
+                expires_at: new Date(test.clock.now().getTime() + 10 * 60_000),
+                created_at: test.clock.now(),
+            })
+            .execute();
+
+        return code;
+    };
+
+    const exchange = (code: string, changes: Record<string, string> = {}) =>
+        token({
+            ...credentials,
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: "https://phanpy.example/back",
+            ...changes,
+        });
+
+    return { ...test, app, credentials, basic, token, allowedCode, exchange };
 };
 
 Deno.test("an app gets a token for itself, stored only as a hash", async () => {
@@ -101,4 +144,89 @@ Deno.test("an unknown grant or scope is refused in OAuth's shape", async () => {
     assertEquals([missing.status, missing.body.error], [400, "unsupported_grant_type"]);
     assertEquals([push.status, push.body.error], [400, "invalid_scope"]);
     assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+});
+
+Deno.test("a code becomes a token for the user who allowed it, once", async () => {
+    await using test = await open();
+    const code = await test.allowedCode();
+
+    const first = await test.exchange(code, { scope: "read" });
+    const again = await test.exchange(code);
+    const [stored] = await test.ctx.db.selectFrom("access_tokens").selectAll().execute();
+
+    assertEquals(first.status, 200);
+    assertEquals(first.body.scope, "read write");
+    assertEquals([stored.account_id, stored.token_hash], [
+        "alice",
+        await hashToken(first.body.access_token),
+    ]);
+    assertEquals([again.status, again.body.error], [400, "invalid_grant"]);
+    assertEquals(await test.ctx.db.selectFrom("oauth_flows").selectAll().execute(), []);
+});
+
+Deno.test("with PKCE, the verifier must match the challenge", async () => {
+    await using test = await open();
+    const verifier = "v".repeat(43);
+    const challenge = await hashToken(verifier);
+
+    const refused = [
+        await test.exchange(await test.allowedCode(challenge), { code_verifier: "w".repeat(43) }),
+        await test.exchange(await test.allowedCode(challenge)),
+        await test.exchange(await test.allowedCode(await hashToken("short")), {
+            code_verifier: "short",
+        }),
+        // Without a challenge, a verifier means one was stripped from the request.
+        await test.exchange(await test.allowedCode(), { code_verifier: verifier }),
+    ];
+    const matched = await test.exchange(await test.allowedCode(challenge), {
+        code_verifier: verifier,
+    });
+
+    for (const { status, body } of refused) {
+        assertEquals([status, body.error], [400, "invalid_grant"]);
+    }
+    assertEquals(matched.status, 200);
+});
+
+Deno.test("a code is only for its app, its redirect URI and ten minutes, and one try", async () => {
+    await using test = await open();
+    const other = await registerApp(test.ctx, {
+        name: "Elk",
+        website: null,
+        redirectUris: ["https://phanpy.example/back"],
+        scopes: ["read", "write"],
+    });
+
+    const stolen = await test.allowedCode();
+    const misdirected = await test.allowedCode();
+    const late = await test.allowedCode();
+
+    const refused = [
+        await test.exchange(stolen, {
+            client_id: other.app.client_id,
+            client_secret: other.clientSecret,
+        }),
+        await test.exchange(stolen),
+        await test.exchange(misdirected, { redirect_uri: "https://phanpy.example/other" }),
+        await test.exchange(misdirected),
+    ];
+
+    test.clock.advance(10 * 60_000);
+    refused.push(await test.exchange(late));
+
+    for (const { status, body } of refused) {
+        assertEquals([status, body.error], [400, "invalid_grant"]);
+    }
+    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+});
+
+Deno.test("a code grant without a code is an invalid request", async () => {
+    await using test = await open();
+
+    const { status, body } = await test.token({
+        ...test.credentials,
+        grant_type: "authorization_code",
+    });
+
+    assertEquals([status, body.error], [400, "invalid_request"]);
 });

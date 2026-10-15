@@ -11,6 +11,7 @@ import type { AppsTable } from "./tables.ts";
 import {
     authenticateClient,
     clientCredentialsFrom,
+    exchangeCode,
     type IssuedToken,
     issueToken,
 } from "./tokens.ts";
@@ -236,6 +237,9 @@ const postToken = defineRoute({
         grant_type: z.string().optional(),
         client_id: z.string().optional(),
         client_secret: z.string().optional(),
+        code: z.string().optional(),
+        redirect_uri: z.string().optional(),
+        code_verifier: z.string().optional(),
         scope: z.string().optional(),
     }),
     headers: z.object({ authorization: z.string().optional() }),
@@ -245,20 +249,49 @@ const postToken = defineRoute({
         const app = await authenticateClient(ctx, credentials);
         if (!app) throw new HttpError(401, "invalid_client", "The app's credentials are wrong.");
 
-        if (body.grant_type !== "client_credentials") {
-            throw new HttpError(400, "unsupported_grant_type", "That grant type isn't supported.");
-        }
+        switch (body.grant_type) {
+            // Mastodon ignores `scope` here: the token gets the scopes the user allowed.
+            case "authorization_code": {
+                if (body.code === undefined) {
+                    throw new HttpError(400, "invalid_request", "The code is missing.");
+                }
 
-        const scopes = requestedScopes(body.scope, app.scopes);
-        if (!scopes) {
-            throw new HttpError(
-                400,
-                "invalid_scope",
-                "The app didn't register all of these scopes.",
-            );
-        }
+                const issued = await exchangeCode(ctx, app, {
+                    code: body.code,
+                    redirectUri: body.redirect_uri,
+                    codeVerifier: body.code_verifier,
+                });
+                if (!issued) {
+                    throw new HttpError(
+                        400,
+                        "invalid_grant",
+                        "The code is wrong, used, expired or another app's, or PKCE failed.",
+                    );
+                }
 
-        return { status: 200, body: tokenOf(await issueToken(ctx, app, null, scopes)) };
+                return { status: 200, body: tokenOf(issued) };
+            }
+
+            case "client_credentials": {
+                const scopes = requestedScopes(body.scope, app.scopes);
+                if (!scopes) {
+                    throw new HttpError(
+                        400,
+                        "invalid_scope",
+                        "The app didn't register all of these scopes.",
+                    );
+                }
+
+                return { status: 200, body: tokenOf(await issueToken(ctx, app, null, scopes)) };
+            }
+
+            default:
+                throw new HttpError(
+                    400,
+                    "unsupported_grant_type",
+                    "That grant type isn't supported.",
+                );
+        }
     },
 });
 
