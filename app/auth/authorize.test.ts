@@ -65,7 +65,7 @@ const chooser = async (response: Response) => ({
     formToken: formTokenIn(await response.text()),
 });
 
-Deno.test("with one issuer, the browser goes straight to it, tied to the flow by a cookie", async () => {
+Deno.test("with one issuer, the browser goes straight to it, with the flow's cookie", async () => {
     await using test = await open();
 
     const response = await test.authorize({
@@ -136,7 +136,7 @@ Deno.test("other errors go back to the app, with its state", async () => {
     assertEquals(await test.flows(), []);
 });
 
-Deno.test("an out-of-band app is shown its errors, having no redirect to send them to", async () => {
+Deno.test("an out-of-band app's errors are shown, having no redirect to go to", async () => {
     await using test = await open();
 
     const response = await test.authorize({

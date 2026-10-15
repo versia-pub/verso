@@ -185,7 +185,8 @@ Deno.test("values can come from the environment or files, before they are checke
     };
 
     const filled = await parseConfig(
-        'domain = "social.example"\n[database]\npostgres = "postgresql://verso:${env:PGPASS}@db/verso"',
+        'domain = "social.example"\n[database]\n' +
+            'postgres = "postgresql://verso:${env:PGPASS}@db/verso"',
         sources,
     );
     const missing = await parseConfig(minimal + '[http]\norigin = "${file:/origin}"', sources);

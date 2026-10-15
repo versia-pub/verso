@@ -20,7 +20,7 @@ const until = async (condition: () => boolean | Promise<boolean>) => {
     while (!(await condition())) await new Promise((resolve) => setTimeout(resolve, 5));
 };
 
-Deno.test("each queue's jobs run, at most `concurrency` at a time, and are then deleted", async () => {
+Deno.test("each queue's jobs run, at most `concurrency` at a time, then are deleted", async () => {
     await using test = await open();
 
     const ran: unknown[] = [];

@@ -27,8 +27,9 @@ export const columnTypes = <DB>(
         timestamp: sql.raw(sqlite ? sqliteTypes.timestamp : "timestamptz"),
 
         /**
-         * A JSON object or array, read back as one: `jsonb` on Postgres, text on SQLite. Bare strings,
-         * numbers and booleans aren't allowed at the top level, since they aren't sent as JSON.
+         * A JSON object or array, read back as one: `jsonb` on Postgres, text on SQLite. Bare
+         * strings, numbers and booleans aren't allowed at the top level, since they aren't sent as
+         * JSON.
          */
         json: sql.raw(sqlite ? sqliteTypes.json : "jsonb"),
     };

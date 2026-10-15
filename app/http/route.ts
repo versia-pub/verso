@@ -47,7 +47,10 @@ export type Auth = {
      * anyone, but a token sent must be valid.
      */
     readonly require: "user" | "app" | "optional";
-    /** The scope the token needs, such as `read:statuses`. Scopes that cover it, like `read`, do too. */
+    /**
+     * The scope the token needs, such as `read:statuses`. Scopes that cover it, like `read`, do
+     * too.
+     */
     readonly scope?: Scope;
 };
 

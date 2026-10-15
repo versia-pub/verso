@@ -86,7 +86,7 @@ Deno.test("missing, unknown and non-bearer tokens are refused", async () => {
     }
 });
 
-Deno.test("an app's own token is refused where a user is needed, and allowed for apps", async () => {
+Deno.test("an app's own token is refused where a user is needed, allowed for apps", async () => {
     await using test = await open();
     const token = `Bearer ${await tokenFor(test.ctx, null, ["read"])}`;
 

@@ -5,7 +5,9 @@ import { z } from "zod";
  * @see https://docs.joinmastodon.org/entities/Application/
  */
 export const Application = z.object({
-    /** Mastodon's ids are numbers in strings and Verso's are UUIDs; clients treat both as opaque. */
+    /**
+     * Mastodon's ids are numbers in strings and Verso's are UUIDs; clients treat both as opaque.
+     */
     id: z.string(),
     name: z.string(),
     /** The app's home page, or `null` if it gave none. */

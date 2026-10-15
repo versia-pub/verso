@@ -195,7 +195,7 @@ Deno.test("a closed issuer still logs in identities that are already linked", as
     assertEquals(later.ok && created.ok && later.accountId === created.accountId, true);
 });
 
-Deno.test("deleting an account deletes its identities, and an identity needs an account", async () => {
+Deno.test("an account's identities go with it, and an identity needs an account", async () => {
     await using test = await open();
     await provision(test.ctx, issuer, { sub: "1" });
 

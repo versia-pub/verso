@@ -45,9 +45,14 @@ const keepsCookies = (origin: string) => {
         hostname === "127.0.0.1";
 };
 
-/** Everything an instance can be configured with. Unknown keys are errors, so typos don't go unnoticed. */
+/**
+ * Everything an instance can be configured with. Unknown keys are errors, so typos don't go
+ * unnoticed.
+ */
 export const Config = z.strictObject({
-    /** `development` allows settings that are unsafe on a public server, for running Verso locally. */
+    /**
+     * `development` allows settings that are unsafe on a public server, for running Verso locally.
+     */
     mode: z.enum(["production", "development"]).default("production"),
     /**
      * The instance's domain, without a port.

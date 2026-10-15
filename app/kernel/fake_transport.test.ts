@@ -34,7 +34,7 @@ Deno.test("unknown and down hosts can't be reached, like with fetch", async () =
     ]);
 });
 
-Deno.test("hosts include the port, so servers on one name but other ports are separate", async () => {
+Deno.test("hosts include the port, so one name on other ports is another server", async () => {
     const transport = fakeTransport({ "b.test:8443": echo });
 
     await assertRejects(() => transport(new Request("https://b.test/")), TypeError);

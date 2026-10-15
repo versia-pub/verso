@@ -187,7 +187,8 @@ const checkReply = (route: Route, reply: Reply<Responses>) => {
     if (problem === undefined) return;
 
     throw new Error(
-        `${route.method} ${route.path} replied ${reply.status} with an undeclared shape: ${problem}`,
+        `${route.method} ${route.path} replied ${reply.status} with an undeclared shape: ` +
+            problem,
     );
 };
 

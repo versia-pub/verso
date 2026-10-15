@@ -12,7 +12,12 @@ export const layout = (title: string, content: Html): Html =>
                 <meta name="color-scheme" content="light dark">
                 <title>${title}</title>
                 <style>
-                    body { font: 16px/1.5 system-ui, sans-serif; max-width: 32rem; margin: 3rem auto; padding: 0 1rem; }
+                    body {
+                        font: 16px/1.5 system-ui, sans-serif;
+                        max-width: 32rem;
+                        margin: 3rem auto;
+                        padding: 0 1rem;
+                    }
                     button { font: inherit; padding: 0.5rem 1rem; }
                 </style>
             </head>

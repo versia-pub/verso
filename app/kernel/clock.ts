@@ -1,4 +1,7 @@
-/** Where the current time comes from. Code never calls `Date.now()` itself, so tests can control time. */
+/**
+ * Where the current time comes from. Code never calls `Date.now()` itself, so tests can control
+ * time.
+ */
 export interface Clock {
     now(): Date;
 }
