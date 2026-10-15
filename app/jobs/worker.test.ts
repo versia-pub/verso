@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../kernel/testing.ts";
 import { enqueue } from "./queue.ts";
-import { drain, type Queue, work } from "./worker.ts";
+import { drain, pause, type Queue, work } from "./worker.ts";
 
 const open = () => createTestContext();
 
@@ -166,4 +166,32 @@ Deno.test("drain runs a failed job again only once the clock passes its backoff"
     test.clock.advance(30_000);
     assertEquals(await drain(test.ctx, queues), 1);
     assertEquals(runs, 2);
+});
+
+Deno.test("a pause removes every listener it added, however it ends", async () => {
+    /** An event target that counts the listeners on it. */
+    class Counting extends EventTarget {
+        listening = 0;
+
+        override addEventListener(...args: Parameters<EventTarget["addEventListener"]>) {
+            this.listening++;
+            super.addEventListener(...args);
+        }
+
+        override removeEventListener(...args: Parameters<EventTarget["removeEventListener"]>) {
+            this.listening--;
+            super.removeEventListener(...args);
+        }
+    }
+
+    const events = new Counting();
+    const stop = new AbortController();
+    const wakeups = [{ events, name: "a" }, { events, name: "b" }];
+
+    await pause(1, stop.signal, wakeups);
+    const woken = pause(60_000, stop.signal, wakeups);
+    events.dispatchEvent(new Event("b"));
+    await woken;
+
+    assertEquals(events.listening, 0);
 });

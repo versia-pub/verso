@@ -53,35 +53,45 @@ const runJob = async (ctx: Context, name: string, queue: Queue, job: JobsTable) 
     }
 };
 
+/** An event that ends a pause early. */
+type Wakeup = { readonly events: EventTarget; readonly name: string };
+
 /**
- * Waits until `ms` pass, `signal` aborts, one of `running` settles or `wakeup` fires, whichever
- * comes first.
+ * Waits until `ms` pass, `signal` aborts or one of `wakeups` fires, whichever comes first. Its
+ * listeners are all removed when it ends, so pausing again and again doesn't pile them up.
  */
 export const pause = (
     ms: number,
     signal: AbortSignal,
-    running: Iterable<Promise<void>> = [],
-    wakeup?: { readonly events: EventTarget; readonly name: string },
+    wakeups: readonly Wakeup[] = [],
 ): Promise<void> =>
     new Promise<void>((resolve) => {
         const done = () => {
             clearTimeout(timer);
             signal.removeEventListener("abort", done);
-            wakeup?.events.removeEventListener(wakeup.name, done);
+            for (const { events, name } of wakeups) events.removeEventListener(name, done);
             resolve();
         };
 
         const timer = setTimeout(done, ms);
         signal.addEventListener("abort", done);
-        wakeup?.events.addEventListener(wakeup.name, done);
-        for (const run of running) run.then(done);
+        for (const { events, name } of wakeups) events.addEventListener(name, done);
     });
 
 const workQueue = async (ctx: Context, name: string, queue: Queue, options: WorkOptions) => {
     const running = new Set<Promise<void>>();
 
+    // Fires when a job finishes, freeing a slot. The count catches one that finishes before the
+    // pause starts listening.
+    const finished = new EventTarget();
+    let finishedCount = 0;
+
+    const wakeups: Wakeup[] = [{ events: finished, name: "finished" }];
+    if (options.wakeups) wakeups.push({ events: options.wakeups, name });
+
     while (!options.signal.aborted) {
         const free = queue.concurrency - running.size;
+        const finishedBefore = finishedCount;
 
         let jobs: JobsTable[] = [];
         if (free > 0) {
@@ -98,14 +108,19 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
         }
 
         for (const job of jobs) {
-            const run = runJob(ctx, name, queue, job).finally(() => running.delete(run));
+            const run = runJob(ctx, name, queue, job).finally(() => {
+                running.delete(run);
+                finishedCount++;
+                finished.dispatchEvent(new Event("finished"));
+            });
             running.add(run);
         }
 
-        // A full batch means more may be due; otherwise wait for a free slot or the next poll.
-        if (free === 0 || jobs.length < free) {
-            const wakeup = options.wakeups && { events: options.wakeups, name };
-            await pause(options.pollMs, options.signal, running, wakeup);
+        // A full batch means more may be due, and so may a slot freed meanwhile. Otherwise wait for
+        // a free slot, a new job or the next poll.
+        const waiting = free === 0 || jobs.length < free;
+        if (waiting && finishedCount === finishedBefore) {
+            await pause(options.pollMs, options.signal, wakeups);
         }
     }
 
