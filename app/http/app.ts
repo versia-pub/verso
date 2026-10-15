@@ -56,8 +56,29 @@ const bodyOf = async (c: HonoContext, route: Route) => {
     }
 };
 
+/** Throws when a reply doesn't match the schema its route declares for its status. */
+const checkReply = (route: Route, reply: { status: number; body: unknown }) => {
+    const schema = route.responses[reply.status as keyof Route["responses"]];
+    const result = schema?.safeParse(reply.body);
+    if (result?.success) return;
+
+    const problem = result ? z.prettifyError(result.error) : "the status isn't declared";
+    throw new Error(
+        `${route.method} ${route.path} replied ${reply.status} with an undeclared shape: ${problem}`,
+    );
+};
+
+export type AppOptions = {
+    /** Checks every reply against its route's declared response schemas. For tests. */
+    readonly checkResponses?: boolean;
+};
+
 /** Every route the server answers. Tests call its `fetch` directly, with no network in between. */
-export const createApp = (ctx: Context, routes: readonly Route[]): Hono => {
+export const createApp = (
+    ctx: Context,
+    routes: readonly Route[],
+    options: AppOptions = {},
+): Hono => {
     const app = new Hono();
 
     // For load balancers and orchestrators, not clients, so it stays plain text.
@@ -72,6 +93,8 @@ export const createApp = (ctx: Context, routes: readonly Route[]): Hono => {
             });
 
             const reply = await route.handler(ctx, input);
+            if (options.checkResponses) checkReply(route, reply);
+
             return c.json(reply.body, reply.status);
         });
     }

@@ -44,7 +44,7 @@ export const createNetwork = async (
     const instances: Record<string, Instance> = {};
     for (const domain of domains) {
         const test = stack.use(await createTestContext({ domain, clock, transport }));
-        const app = createApp(test.ctx, routes);
+        const app = createApp(test.ctx, routes, { checkResponses: true });
         transport.servers.set(domain, app.fetch);
         instances[domain] = { ...test, app };
     }

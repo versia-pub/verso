@@ -27,9 +27,18 @@ const rename = defineRoute({
     },
 });
 
+/** Declares one shape and, typed loosely as data from elsewhere might be, sends another. */
+const sloppy = defineRoute({
+    method: "GET",
+    path: "/sloppy",
+    summary: "Replies with an undeclared shape",
+    responses: { 200: z.object({ count: z.number() }) },
+    handler: () => Promise.resolve({ status: 200, body: JSON.parse('{"count":"3"}') }),
+});
+
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [rename]);
+    const app = createApp(test.ctx, [rename, sloppy], { checkResponses: true });
 
     const send = async (path: string, body: string, type = "application/json") => {
         const response = await app.request(path, {
@@ -86,6 +95,24 @@ Deno.test("errors use Mastodon's shape, without internal details", async () => {
 
     assertEquals((await test.app.request("/nothing")).status, 404);
     assertEquals((await test.app.request("/things/a?notify=1")).status, 404);
+});
+
+Deno.test("with checks on, a reply that doesn't match its schema is a 500", async () => {
+    await using test = await open();
+
+    const response = await test.app.request("/sloppy");
+
+    assertEquals(response.status, 500);
+    assertEquals(await response.json(), { error: "Internal server error" });
+});
+
+Deno.test("with checks off, replies are sent as they are", async () => {
+    await using test = await open();
+    const app = createApp(test.ctx, [sloppy]);
+
+    const response = await app.request("/sloppy");
+
+    assertEquals(await response.json(), { count: "3" });
 });
 
 Deno.test("a handler can only reply with a declared status and body", () => {
