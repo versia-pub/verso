@@ -25,6 +25,10 @@ const stubProvider = (url: string, name: string): IdentityProvider => ({
 });
 
 const issuerA = stubProvider("https://a.example", "Example A");
+const issuerDown: IdentityProvider = {
+    ...stubProvider("https://down.example", "Example Down"),
+    beginLogin: () => Promise.reject(new TypeError("Connection refused")),
+};
 const issuerB = stubProvider("https://b.example", "Example B");
 
 const open = async (providers: IdentityProvider[] = [issuerA]) => {
@@ -182,6 +186,22 @@ Deno.test("with several issuers, the user chooses, in the browser that started",
     assertEquals(chosen.status, 303);
     assertStringIncludes(chosen.headers.get("location") ?? "", "https://b.example/authorize");
     assertEquals((await test.flows())[0].issuer, "https://b.example");
+});
+
+Deno.test("if the issuer can't be reached, the user is told, and nothing is stored", async () => {
+    await using only = await open([issuerDown]);
+    await using several = await open([issuerA, issuerDown]);
+
+    const direct = await only.authorize();
+    const cookie = flowCookie(await several.authorize());
+    const chosen = await several.chooseIssuer("https://down.example", cookie);
+
+    assertEquals(direct.status, 502);
+    assertStringIncludes(await direct.text(), "Can&#39;t reach Example Down right now");
+    assertEquals(await only.flows(), []);
+
+    assertEquals(chosen.status, 502);
+    assertEquals((await several.flows())[0].issuer, null);
 });
 
 Deno.test("a login must be finished within half an hour", async () => {

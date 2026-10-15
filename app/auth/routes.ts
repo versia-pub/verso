@@ -75,6 +75,11 @@ const expired = {
     page: errorPage("This login has expired. Go back to the app to try again."),
 } as const;
 
+const unreachable = (issuer: string) => ({
+    status: 502,
+    page: errorPage(`Can't reach ${issuer} right now. Try again in a moment.`),
+} as const);
+
 /**
  * Sends the browser back to the app with a code or an error. An out-of-band app has nowhere to
  * send it, so the user is shown the code to copy, or the error.
@@ -105,11 +110,14 @@ const getAuthorize = defineRoute({
         code_challenge: z.string().optional(),
         code_challenge_method: z.string().optional(),
     }),
-    responses: { 200: Page, 302: Redirect, 400: Page },
+    responses: { 200: Page, 302: Redirect, 400: Page, 502: Page },
     handler: async (ctx, { query }) => {
         const authorization = await authorize(ctx, query);
 
         switch (authorization.result) {
+            case "unreachable":
+                return unreachable(authorization.issuer);
+
             case "refused":
                 return { status: 400, page: errorPage(authorization.description) };
 
@@ -139,11 +147,18 @@ const postIssuer = defineRoute({
     summary: "Logs in with the issuer the user chose",
     body: z.object({ issuer: z.string() }),
     cookies: FlowCookie,
-    responses: { 303: Redirect, 400: Page },
+    responses: { 303: Redirect, 400: Page, 502: Page },
     handler: async (ctx, { body, cookies }) => {
-        const url = await chooseIssuer(ctx, cookies.oauth_flow, body.issuer);
+        const login = await chooseIssuer(ctx, cookies.oauth_flow, body.issuer);
 
-        return url ? { status: 303, location: url.href } : expired;
+        switch (login.result) {
+            case "expired":
+                return expired;
+            case "unreachable":
+                return unreachable(login.issuer);
+            case "login":
+                return { status: 303, location: login.url.href };
+        }
     },
 });
 

@@ -1,8 +1,11 @@
+import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
 import type { IdentityProvider } from "./identity.ts";
 import { ScopeList } from "./scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
+
+const logger = getLogger(["verso", "auth"]);
 
 /** How long a user has to log in and allow the app. */
 const flowLifetimeMs = 30 * 60_000;
@@ -27,7 +30,11 @@ export type AuthorizeRequest = {
     readonly code_challenge_method?: string;
 };
 
+/** The issuer, by name, couldn't be reached to start the login. */
+export type Unreachable = { readonly result: "unreachable"; readonly issuer: string };
+
 export type Authorization =
+    | Unreachable
     /** The app or its redirect URI is wrong, so the user is told instead of redirected. */
     | { readonly result: "refused"; readonly description: string }
     /** An OAuth error, to send back to the app's redirect URI. */
@@ -44,6 +51,17 @@ export type Authorization =
     }
     /** The browser goes to the only issuer to log in. */
     | { readonly result: "login"; readonly browserSecret: string; readonly url: URL };
+
+/** Starts a login at the issuer, or returns nothing if it can't be reached. */
+const beginLogin = async (ctx: Context, provider: IdentityProvider) => {
+    try {
+        return await provider.beginLogin(ctx.urls.url`/oauth/callback`);
+    } catch (error) {
+        const issuer = provider.issuer.url;
+        logger.warn("Can't start a login at {issuer}: {error}", { issuer, error });
+        return undefined;
+    }
+};
 
 /** `uri` with `params` added to its query, leaving out undefined ones. */
 export const withParams = (
@@ -114,7 +132,9 @@ export const authorize = async (
     }
 
     const only = providers.length === 1 ? providers[0] : undefined;
-    const login = await only?.beginLogin(ctx.urls.url`/oauth/callback`);
+    const login = only && await beginLogin(ctx, only);
+    if (only && !login) return { result: "unreachable", issuer: only.issuer.name };
+
     const browserSecret = randomToken();
 
     const flow: OAuthFlowsTable = {
@@ -151,26 +171,29 @@ export const findFlow = async (
         .executeTakeFirst();
 
 /**
- * Starts the login at the issuer the user chose. Returns where to send the browser, or nothing if
- * the browser has no flow waiting for a login, or the issuer isn't configured.
+ * Starts the login at the issuer the user chose, if the browser has a flow waiting for a login and
+ * the issuer is configured.
  */
 export const chooseIssuer = async (
     ctx: Context,
     browserSecret: string | undefined,
     issuerUrl: string,
-): Promise<URL | undefined> => {
+): Promise<
+    { readonly result: "expired" } | Unreachable | { readonly result: "login"; readonly url: URL }
+> => {
     const provider = Object.hasOwn(ctx.identityProviders, issuerUrl)
         ? ctx.identityProviders[issuerUrl]
         : undefined;
     const flow = await findFlow(ctx, browserSecret);
-    if (!provider || !flow || flow.account_id !== null) return undefined;
+    if (!provider || !flow || flow.account_id !== null) return { result: "expired" };
 
-    const { url, flow: login } = await provider.beginLogin(ctx.urls.url`/oauth/callback`);
+    const login = await beginLogin(ctx, provider);
+    if (!login) return { result: "unreachable", issuer: provider.issuer.name };
 
     await ctx.db.updateTable("oauth_flows")
-        .set({ issuer: issuerUrl, login })
+        .set({ issuer: issuerUrl, login: login.flow })
         .where("id", "=", flow.id)
         .execute();
 
-    return url;
+    return { result: "login", url: login.url };
 };
