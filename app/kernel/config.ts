@@ -1,5 +1,6 @@
 import { parse } from "@std/toml";
 import { z } from "zod";
+import { interpolate, type Sources, systemSources } from "./interpolate.ts";
 
 /**
  * Who may get an account on first login with an issuer: anyone (`open`), nobody (`closed`, so only
@@ -98,8 +99,14 @@ export type ConfigResult =
     | { readonly ok: true; readonly config: Config }
     | { readonly ok: false; readonly error: string };
 
-/** Parses and checks the text of a TOML config file. */
-export const parseConfig = (toml: string): ConfigResult => {
+/**
+ * Parses and checks the text of a TOML config file, after filling in its `${env:…}` and
+ * `${file:…}` references from `sources`.
+ */
+export const parseConfig = async (
+    toml: string,
+    sources: Sources = systemSources,
+): Promise<ConfigResult> => {
     let data: unknown;
     try {
         data = parse(toml);
@@ -110,14 +117,20 @@ export const parseConfig = (toml: string): ConfigResult => {
         };
     }
 
-    const result = Config.safeParse(data);
+    const filled = await interpolate(data, sources);
+    if (!filled.ok) return filled;
+
+    const result = Config.safeParse(filled.data);
     return result.success
         ? { ok: true, config: result.data }
         : { ok: false, error: z.prettifyError(result.error) };
 };
 
 /** Reads the config file at `path`. */
-export const readConfig = async (path: string): Promise<ConfigResult> => {
+export const readConfig = async (
+    path: string,
+    sources: Sources = systemSources,
+): Promise<ConfigResult> => {
     let text: string;
     try {
         text = await Deno.readTextFile(path);
@@ -125,5 +138,5 @@ export const readConfig = async (path: string): Promise<ConfigResult> => {
         return { ok: false, error: (error as Error).message };
     }
 
-    return parseConfig(text);
+    return await parseConfig(text, sources);
 };

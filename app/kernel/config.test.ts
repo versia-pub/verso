@@ -8,8 +8,8 @@ domain = "social.example"
 sqlite = "verso.db"
 `;
 
-Deno.test("a minimal config gets the defaults", () => {
-    assertEquals(parseConfig(minimal), {
+Deno.test("a minimal config gets the defaults", async () => {
+    assertEquals(await parseConfig(minimal), {
         ok: true,
         config: {
             mode: "production",
@@ -22,8 +22,8 @@ Deno.test("a minimal config gets the defaults", () => {
     });
 });
 
-Deno.test("a full config is read as written", () => {
-    const result = parseConfig(`
+Deno.test("a full config is read as written", async () => {
+    const result = await parseConfig(`
 domain = "Social.Example"
 
 [database]
@@ -85,55 +85,55 @@ level = "debug"
     });
 });
 
-const errors = (toml: string) => {
-    const result = parseConfig(toml);
+const errors = async (toml: string) => {
+    const result = await parseConfig(toml);
     assertEquals(result.ok, false, toml);
     return result.ok ? "" : result.error;
 };
 
-Deno.test("bad configs explain what is wrong", () => {
-    assertStringIncludes(errors(""), "domain");
+Deno.test("bad configs explain what is wrong", async () => {
+    assertStringIncludes(await errors(""), "domain");
     assertStringIncludes(
-        errors(minimal.replace("social.example", "social.example:8080")),
+        await errors(minimal.replace("social.example", "social.example:8080")),
         "domain",
     );
-    assertStringIncludes(errors(minimal + "[http]\nport = 0"), "http.port");
-    assertStringIncludes(errors('domian = "typo.example"' + minimal), "domian");
+    assertStringIncludes(await errors(minimal + "[http]\nport = 0"), "http.port");
+    assertStringIncludes(await errors('domian = "typo.example"' + minimal), "domian");
     assertStringIncludes(
-        errors(minimal + '[logging]\nlevel = "loud"'),
+        await errors(minimal + '[logging]\nlevel = "loud"'),
         "logging.level",
     );
 
     const exactlyOne = 'Set exactly one of "postgres" or "sqlite"';
-    assertStringIncludes(errors('domain = "social.example"'), exactlyOne);
+    assertStringIncludes(await errors('domain = "social.example"'), exactlyOne);
     assertStringIncludes(
-        errors(minimal + 'postgres = "postgresql:///verso"'),
+        await errors(minimal + 'postgres = "postgresql:///verso"'),
         exactlyOne,
     );
 
-    assertStringIncludes(errors("domain = "), "Invalid TOML");
+    assertStringIncludes(await errors("domain = "), "Invalid TOML");
 });
 
-Deno.test("bad issuers explain what is wrong", () => {
+Deno.test("bad issuers explain what is wrong", async () => {
     const issuer = (fields: string) =>
         errors(`${minimal}[[auth.issuers]]\nname = "ID"\nclient_id = "verso"\n${fields}`);
     const secret = 'client_secret = "s"';
     assertStringIncludes(
-        issuer(`url = "http://id.example"\n${secret}`),
+        await issuer(`url = "http://id.example"\n${secret}`),
         "Must be an https URL",
     );
     const oneSecret = 'Set exactly one of "client_secret" or "client_secret_file"';
-    assertStringIncludes(issuer('url = "https://id.example"'), oneSecret);
+    assertStringIncludes(await issuer('url = "https://id.example"'), oneSecret);
     assertStringIncludes(
-        issuer(`url = "https://id.example"\n${secret}\nclient_secret_file = "/s"`),
+        await issuer(`url = "https://id.example"\n${secret}\nclient_secret_file = "/s"`),
         oneSecret,
     );
     assertStringIncludes(
-        issuer(`url = "https://id.example"\n${secret}\nregistration = "maybe"`),
+        await issuer(`url = "https://id.example"\n${secret}\nregistration = "maybe"`),
         "registration",
     );
     assertStringIncludes(
-        errors(
+        await errors(
             `${minimal}[[auth.issuers]]\nname = "A"\nurl = "https://id.example"\n` +
                 `client_id = "a"\n${secret}\n` +
                 `[[auth.issuers]]\nname = "B"\nurl = "https://id.example"\n` +
@@ -143,31 +143,52 @@ Deno.test("bad issuers explain what is wrong", () => {
     );
 });
 
-Deno.test("development settings need development mode", () => {
+Deno.test("development settings need development mode", async () => {
     const local = '[http]\norigin = "http://localhost:8080"\n[auth]\ndev_login = true\n';
     const development = minimal.replace("social.example", "localhost");
 
-    const production = errors(development + local);
+    const production = await errors(development + local);
     assertStringIncludes(production, "http.origin");
     assertStringIncludes(production, "auth.dev_login");
     assertStringIncludes(production, 'Only allowed with mode = "development"');
 
-    const result = parseConfig('mode = "development"\n' + development + local);
+    const result = await parseConfig('mode = "development"\n' + development + local);
     assertEquals(result.ok && [result.config.http.origin, result.config.auth.dev_login], [
         "http://localhost:8080",
         true,
     ]);
 });
 
-Deno.test("a development origin is a bare origin on the domain", () => {
+Deno.test("a development origin is a bare origin on the domain", async () => {
     const origin = (url: string) =>
         errors(`mode = "development"\n${minimal}[http]\norigin = "${url}"\n`);
 
-    assertStringIncludes(origin("http://localhost:8080"), "Must be on the domain");
-    assertStringIncludes(origin("http://social.example/verso"), "with no path");
-    assertStringIncludes(origin("ftp://social.example"), "http.origin");
-    const valid = parseConfig(
+    assertStringIncludes(await origin("http://localhost:8080"), "Must be on the domain");
+    assertStringIncludes(await origin("http://social.example/verso"), "with no path");
+    assertStringIncludes(await origin("ftp://social.example"), "http.origin");
+    const valid = await parseConfig(
         `mode = "development"\n${minimal}[http]\norigin = "http://social.example:8080/"\n`,
     );
     assertEquals(valid.ok && valid.config.http.origin, "http://social.example:8080");
+});
+
+Deno.test("values can come from the environment or files, before they are checked", async () => {
+    const sources = {
+        env: (name: string) => name === "PGPASS" ? "hunter2" : undefined,
+        readFile: () => Promise.reject(new Error("No such file")),
+    };
+
+    const filled = await parseConfig(
+        'domain = "social.example"\n[database]\npostgres = "postgresql://verso:${env:PGPASS}@db/verso"',
+        sources,
+    );
+    const missing = await parseConfig(minimal + '[http]\norigin = "${file:/origin}"', sources);
+
+    assertEquals(filled.ok && filled.config.database, {
+        postgres: "postgresql://verso:hunter2@db/verso",
+    });
+    assertEquals(missing, {
+        ok: false,
+        error: "✖ Can't read /origin: No such file\n  → at http.origin",
+    });
 });
