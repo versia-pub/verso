@@ -1,17 +1,18 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { createApp } from "../http/app.ts";
+import type { AppRegistration } from "./apps.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
 import { flowCookie, formTokenIn, registerTestApp, stubProvider } from "./testing.ts";
 
-const open = async (provider = stubProvider()) => {
+const open = async (provider = stubProvider(), registration: Partial<AppRegistration> = {}) => {
     const test = await createTestContext({
         identityProviders: { [provider.issuer.url]: provider },
     });
     const http = createApp(test.ctx, authRoutes, { checkResponses: true });
 
-    const { app } = await registerTestApp(test.ctx);
+    const { app } = await registerTestApp(test.ctx, registration);
 
     const request = (
         path: string,
@@ -191,4 +192,28 @@ Deno.test("only Verso's own pages can answer", async () => {
     assertEquals((await test.decide(cookie, "allow", { site: "same-site" })).status, 422);
     assertEquals((await test.decide(cookie, "allow", { site: "cross-site" })).status, 422);
     assertEquals((await test.flows())[0].code_hash, null);
+});
+
+Deno.test("the app's name is shown as text, never as HTML", async () => {
+    await using test = await open(stubProvider(), { name: `<script>alert("hi")</script>` });
+    const cookie = await test.start();
+    await test.callback(cookie);
+
+    const page = await (await test.consent(cookie)).text();
+
+    assertEquals(page.includes("<script>"), false);
+    assertStringIncludes(page, "&lt;script&gt;alert(&quot;hi&quot;)&lt;/script&gt; wants to use");
+});
+
+Deno.test("a redirect URI with a query keeps it, with the code added", async () => {
+    const redirectUri = "https://phanpy.example/back?from=verso";
+    await using test = await open(stubProvider(), { redirectUris: [redirectUri] });
+    const cookie = await test.start(redirectUri);
+    await test.callback(cookie);
+
+    const back = backTo(await test.decide(cookie, "allow"));
+
+    assertEquals(back.origin + back.pathname, "https://phanpy.example/back");
+    assertEquals([...back.searchParams.keys()], ["from", "code", "state"]);
+    assertEquals(back.searchParams.get("from"), "verso");
 });
