@@ -165,10 +165,17 @@ Deno.test("a development origin is a bare origin on the domain", async () => {
     assertStringIncludes(await origin("http://localhost:8080"), "Must be on the domain");
     assertStringIncludes(await origin("http://social.example/verso"), "with no path");
     assertStringIncludes(await origin("ftp://social.example"), "http.origin");
+    assertStringIncludes(await origin("http://social.example:8080"), "http on localhost");
     const valid = await parseConfig(
-        `mode = "development"\n${minimal}[http]\norigin = "http://social.example:8080/"\n`,
+        `mode = "development"\n${minimal}[http]\norigin = "https://social.example:8443/"\n`,
     );
-    assertEquals(valid.ok && valid.config.http.origin, "http://social.example:8080");
+    assertEquals(valid.ok && valid.config.http.origin, "https://social.example:8443");
+
+    for (const local of ["localhost", "verso.localhost", "127.0.0.1"]) {
+        const config = `mode = "development"\ndomain = "${local}"\n[database]\nsqlite = "v.db"\n`;
+        const result = await parseConfig(`${config}[http]\norigin = "http://${local}:8080"\n`);
+        assertEquals(result.ok, true, local);
+    }
 });
 
 Deno.test("values can come from the environment or files, before they are checked", async () => {

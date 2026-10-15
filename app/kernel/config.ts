@@ -35,6 +35,16 @@ const Origin = z.url({ protocol: /^https?$/ })
 
 const developmentOnly = 'Only allowed with mode = "development"';
 
+/**
+ * Whether browsers keep `__Host-` cookies set by the origin, which needs https, or a local host
+ * they trust without it.
+ */
+const keepsCookies = (origin: string) => {
+    const { protocol, hostname } = new URL(origin);
+    return protocol === "https:" || hostname === "localhost" || hostname.endsWith(".localhost") ||
+        hostname === "127.0.0.1";
+};
+
 /** Everything an instance can be configured with. Unknown keys are errors, so typos don't go unnoticed. */
 export const Config = z.strictObject({
     /** `development` allows settings that are unsafe on a public server, for running Verso locally. */
@@ -86,6 +96,14 @@ export const Config = z.strictObject({
             code: "custom",
             path: ["http", "origin"],
             message: "Must be on the domain",
+        });
+    }
+
+    if (config.http.origin !== undefined && !keepsCookies(config.http.origin)) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["http", "origin"],
+            message: "Must be https, or http on localhost, for browsers to keep the login cookie",
         });
     }
 });

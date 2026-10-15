@@ -41,6 +41,10 @@ const serve = (ctx: Context, config: Config, signal: AbortSignal): Promise<void>
             domain: config.domain,
         });
 
+    if (config.auth.dev_login) {
+        logger.warn("The development login is on, so anyone can log in as any user");
+    }
+
     const served = config.auth.dev_login ? [...routes, ...devLoginRoutes] : routes;
     const server = Deno.serve(
         { port: config.http.port, onListen, signal },
