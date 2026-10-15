@@ -1,0 +1,25 @@
+/** A row of the jobs table. */
+export type JobsTable = {
+    id: string;
+    queue: string;
+    payload: JobPayload;
+    /** Higher runs first among jobs that are due. */
+    priority: number;
+    /** When the job may next run: when enqueued, or after a retry's backoff. */
+    run_at: Date;
+    attempts: number;
+    /** A job that has used all its attempts is a dead letter, kept for inspection and retry. */
+    max_attempts: number;
+    lease_owner: string | null;
+    lease_expires_at: Date | null;
+    dedupe_key: string | null;
+    last_error: string | null;
+    created_at: Date;
+    /** A finished job is kept until then instead of deleted, so its dedupe key stays taken. */
+    keep_until: Date | null;
+    /** Set on a finished job that is being kept. */
+    finished_at: Date | null;
+};
+
+/** A JSON object, serialised when enqueued, so later changes can't alter a job already queued. */
+export type JobPayload = Record<string, unknown>;

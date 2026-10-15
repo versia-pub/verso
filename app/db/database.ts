@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import pg from "pg";
 import type { AccountsTable, IdentitiesTable } from "../accounts/tables.ts";
 import type { AccessTokensTable, AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
-import type { JobsTable } from "../jobs/queue.ts";
+import type { JobsTable } from "../jobs/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
 import { sqliteDialect } from "./sqlite.ts";

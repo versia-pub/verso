@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
-import { enqueue, type JobPayload } from "./queue.ts";
+import { enqueue } from "./queue.ts";
+import type { JobPayload } from "./tables.ts";
 import { pause } from "./worker.ts";
 
 /** Work that recurs: one job in `queue` for each minute, hour or day, in UTC. */

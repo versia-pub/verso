@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
-import { claim, complete, fail, type JobsTable } from "./queue.ts";
+import { claim, complete, fail } from "./queue.ts";
+import type { JobsTable } from "./tables.ts";
 
 /** Runs one job. It may run more than once for the same job, so it must be idempotent. */
 export type Handler = (ctx: Context, job: JobsTable) => Promise<void>;
