@@ -1,4 +1,5 @@
 import { type Context as HonoContext, Hono } from "@hono/hono";
+import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
 import type { Context } from "../kernel/context.ts";
@@ -9,7 +10,14 @@ import {
     UnsupportedMediaType,
     ValidationFailed,
 } from "./errors.ts";
-import { Page, Redirect, type Reply, type Responses, type Route } from "./route.ts";
+import {
+    type CookieChanges,
+    Page,
+    Redirect,
+    type Reply,
+    type Responses,
+    type Route,
+} from "./route.ts";
 
 const logger = getLogger(["verso", "http"]);
 
@@ -41,6 +49,27 @@ const queryOf = (c: HonoContext) =>
             values.length === 1 ? values[0] : values,
         ]),
     );
+
+/**
+ * Verso's cookies, without their `__Host-` prefix. Browsers only accept such cookies from this
+ * host over HTTPS, so a subdomain or an insecure page can't plant one.
+ */
+const cookiesOf = (c: HonoContext) =>
+    Object.fromEntries(
+        Object.entries(getCookie(c))
+            .filter(([name]) => name.startsWith("__Host-"))
+            .map(([name, value]) => [name.slice("__Host-".length), value]),
+    );
+
+const setCookies = (c: HonoContext, cookies: CookieChanges = {}) => {
+    for (const [name, value] of Object.entries(cookies)) {
+        if (value === null) {
+            deleteCookie(c, name, { prefix: "host" });
+        } else {
+            setCookie(c, name, value, { prefix: "host", httpOnly: true, sameSite: "Lax" });
+        }
+    }
+};
 
 /** A form's fields, with Rails-style `key[]` names read as `key`. */
 const formOf = async (c: HonoContext) => {
@@ -104,6 +133,8 @@ const pageHeaders = {
 };
 
 const send = (c: HonoContext, reply: Reply<Responses>) => {
+    setCookies(c, reply.cookies);
+
     if ("location" in reply) return c.redirect(reply.location, reply.status);
     if ("page" in reply) return c.html(reply.page, reply.status, pageHeaders);
 
@@ -132,6 +163,7 @@ export const createApp = (
                 params: { schema: route.params, value: c.req.param() },
                 query: { schema: route.query, value: queryOf(c) },
                 body: { schema: route.body, value: await bodyOf(c, route) },
+                cookies: { schema: route.cookies, value: cookiesOf(c) },
             });
 
             const reply = await route.handler(ctx, input);

@@ -25,9 +25,17 @@ type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
     : R extends Schema ? { status: S; body: z.input<R> }
     : never;
 
+/**
+ * Cookies a reply sets, by name, or deletes with `null`. They last until the browser closes, and
+ * scripts and other sites can't read them.
+ */
+export type CookieChanges = Readonly<Record<string, string | null>>;
+
 /** One of the responses a route declares: a body its schema accepts, a page, or a redirect. */
 export type Reply<R extends Responses> = {
-    [S in keyof R & ContentfulStatusCode]: ReplyFor<S, NonNullable<R[S]>>;
+    [S in keyof R & ContentfulStatusCode]: ReplyFor<S, NonNullable<R[S]>> & {
+        cookies?: CookieChanges;
+    };
 }[keyof R & ContentfulStatusCode];
 
 /**
@@ -39,6 +47,7 @@ export type RouteDefinition<
     P extends Schema,
     Q extends Schema,
     B extends Schema,
+    C extends Schema,
     R extends Responses,
 > = {
     readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -57,20 +66,23 @@ export type RouteDefinition<
      * values are strings (or files), and a key given more than once, or as `key[]`, is an array.
      */
     readonly body?: B;
+    /** The cookies the route reads, which are strings. Only the ones Verso set are seen. */
+    readonly cookies?: C;
     readonly responses: R;
     readonly handler: (
         ctx: Context,
-        input: { params: z.output<P>; query: z.output<Q>; body: z.output<B> },
+        input: { params: z.output<P>; query: z.output<Q>; body: z.output<B>; cookies: z.output<C> },
     ) => Promise<Reply<R>>;
 };
 
 /** A route with its types erased, so routes of every shape fit in one array. */
-export type Route = RouteDefinition<Schema, Schema, Schema, Responses>;
+export type Route = RouteDefinition<Schema, Schema, Schema, Schema, Responses>;
 
 /** Checks a route's types and erases them. */
 export const defineRoute = <
     P extends Schema = Empty,
     Q extends Schema = Empty,
     B extends Schema = Empty,
+    C extends Schema = Empty,
     R extends Responses = Responses,
->(route: RouteDefinition<P, Q, B, R>): Route => route as unknown as Route;
+>(route: RouteDefinition<P, Q, B, C, R>): Route => route as unknown as Route;

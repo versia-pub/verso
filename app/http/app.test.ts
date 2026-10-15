@@ -54,6 +54,21 @@ const welcome = defineRoute({
         ),
 });
 
+/** Remembers a visit in a cookie, and forgets it on the next one. */
+const visit = defineRoute({
+    method: "GET",
+    path: "/visit",
+    summary: "Counts visits in a cookie",
+    cookies: z.object({ seen: z.string().optional() }),
+    responses: { 200: z.object({ seen: z.boolean() }) },
+    handler: (_, { cookies }) =>
+        Promise.resolve({
+            status: 200,
+            body: { seen: cookies.seen !== undefined },
+            cookies: { seen: cookies.seen === undefined ? "yes" : null },
+        }),
+});
+
 /** Declares a page, and sends JSON. */
 const notAPage = defineRoute({
     method: "GET",
@@ -65,7 +80,7 @@ const notAPage = defineRoute({
 
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [rename, sloppy, welcome, notAPage], {
+    const app = createApp(test.ctx, [rename, sloppy, welcome, visit, notAPage], {
         checkResponses: true,
     });
 
@@ -175,6 +190,30 @@ Deno.test("a redirect sends its location", async () => {
 
     assertEquals(response.status, 303);
     assertEquals(response.headers.get("location"), "https://social.example/elsewhere");
+});
+
+Deno.test("cookies are host-only, secure and hidden from scripts", async () => {
+    await using test = await open();
+
+    const response = await test.app.request("/visit");
+
+    assertEquals(await response.json(), { seen: false });
+    assertEquals(
+        response.headers.get("set-cookie"),
+        "__Host-seen=yes; Path=/; HttpOnly; Secure; SameSite=Lax",
+    );
+});
+
+Deno.test("routes read only their own cookies, and can delete them", async () => {
+    await using test = await open();
+    const visit = (cookie: string) => test.app.request("/visit", { headers: { cookie } });
+
+    const planted = await visit("seen=yes; __Secure-seen=yes; __Fake-seen=yes");
+    const returning = await visit("__Host-seen=yes");
+
+    assertEquals(await planted.json(), { seen: false });
+    assertEquals(await returning.json(), { seen: true });
+    assertStringIncludes(returning.headers.get("set-cookie") ?? "", "__Host-seen=; Max-Age=0");
 });
 
 Deno.test("with checks on, JSON where a page is declared is a 500", async () => {
