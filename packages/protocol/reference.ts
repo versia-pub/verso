@@ -1,6 +1,6 @@
 /**
  * Points at an entity: its id, and the hostname of the instance that created it.
- * See https://versia.pub/types#reference.
+ * @see https://versia.pub/types#reference
  */
 export interface Reference {
     readonly host: string;

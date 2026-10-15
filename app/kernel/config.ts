@@ -31,7 +31,10 @@ const Issuer = z.strictObject({
 
 /** Everything an instance can be configured with. Unknown keys are errors, so typos don't go unnoticed. */
 export const Config = z.strictObject({
-    /** The instance's domain, without a port. https://versia.pub/api/basics#domain */
+    /**
+     * The instance's domain, without a port.
+     * @see https://versia.pub/api/basics#domain
+     */
     domain: z.hostname().transform((domain) => domain.toLowerCase()),
     /** Exactly one of a libpq connection string for PostgreSQL, or the path of a SQLite file. */
     database: z.union([

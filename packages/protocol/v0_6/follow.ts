@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { ReferenceText, TransientEntity } from "./common.ts";
 
-/** `author` asks to follow `followee`. https://versia.pub/entities/follow */
+/**
+ * `author` asks to follow `followee`.
+ * @see https://versia.pub/entities/follow
+ */
 export const Follow = TransientEntity.extend({
     type: z.literal("Follow"),
     author: ReferenceText,
@@ -9,7 +12,10 @@ export const Follow = TransientEntity.extend({
 });
 export type Follow = z.infer<typeof Follow>;
 
-/** `author` accepts `follower`. https://versia.pub/entities/follow-accept */
+/**
+ * `author` accepts `follower`.
+ * @see https://versia.pub/entities/follow-accept
+ */
 export const FollowAccept = TransientEntity.extend({
     type: z.literal("FollowAccept"),
     author: ReferenceText,
@@ -17,7 +23,10 @@ export const FollowAccept = TransientEntity.extend({
 });
 export type FollowAccept = z.infer<typeof FollowAccept>;
 
-/** `author` rejects `follower`. https://versia.pub/entities/follow-reject */
+/**
+ * `author` rejects `follower`.
+ * @see https://versia.pub/entities/follow-reject
+ */
 export const FollowReject = TransientEntity.extend({
     type: z.literal("FollowReject"),
     author: ReferenceText,
@@ -25,7 +34,10 @@ export const FollowReject = TransientEntity.extend({
 });
 export type FollowReject = z.infer<typeof FollowReject>;
 
-/** `author` stops following `followee`. https://versia.pub/entities/unfollow */
+/**
+ * `author` stops following `followee`.
+ * @see https://versia.pub/entities/unfollow
+ */
 export const Unfollow = TransientEntity.extend({
     type: z.literal("Unfollow"),
     author: ReferenceText,

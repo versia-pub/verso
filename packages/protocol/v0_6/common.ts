@@ -6,7 +6,10 @@ export const optional = <T extends z.ZodType>(
     schema: T,
 ): z.ZodOptional<z.ZodNullable<T>> => schema.nullish();
 
-/** https://versia.pub/entities#entity-definition */
+/**
+ * An entity id: letters, digits, `_` and `-`.
+ * @see https://versia.pub/entities#entity-definition
+ */
 export const Id = z.string().regex(/^[A-Za-z0-9_-]+$/);
 
 /** A date and time with a time zone, as RFC 3339 requires. */
@@ -15,13 +18,19 @@ export const Rfc3339 = z.iso.datetime({ offset: true });
 /** Whole numbers from 0, for the spec's `u64` fields. */
 export const Unsigned = z.number().int().nonnegative();
 
-/** Keys are `namespace:name`, such as `pub.versia:custom_emojis`. https://versia.pub/extensions#naming */
+/**
+ * Keys are `namespace:name`, such as `pub.versia:custom_emojis`.
+ * @see https://versia.pub/extensions#naming
+ */
 export const Extensions = z.record(
     z.string().regex(/^[a-z0-9.-]+:[a-z0-9_]+$/),
     z.unknown(),
 );
 
-/** https://versia.pub/structures/content-format */
+/**
+ * The same content in one or more media types.
+ * @see https://versia.pub/structures/content-format
+ */
 export const ContentFormat = z.record(
     z.string().regex(/^[\w.+-]+\/[\w.+-]+$/),
     z.object({

@@ -3,7 +3,10 @@ import { contentFormatOf, optional, TransientEntity } from "./common.ts";
 
 const Image = contentFormatOf("image/");
 
-/** https://versia.pub/entities/instance-metadata */
+/**
+ * What an instance says about itself.
+ * @see https://versia.pub/entities/instance-metadata
+ */
 export const InstanceMetadata = TransientEntity.extend({
     type: z.literal("InstanceMetadata"),
     name: z.string(),
@@ -13,7 +16,10 @@ export const InstanceMetadata = TransientEntity.extend({
         extensions: z.array(z.string()),
     }),
     description: optional(z.string()),
-    /** A hostname without a port. https://versia.pub/api/basics#domain */
+    /**
+     * A hostname without a port.
+     * @see https://versia.pub/api/basics#domain
+     */
     domain: z.hostname(),
     public_key: z.object({
         algorithm: z.literal("ed25519"),

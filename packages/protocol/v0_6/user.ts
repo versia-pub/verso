@@ -4,7 +4,10 @@ import { contentFormatOf, Entity, optional } from "./common.ts";
 const Text = contentFormatOf("text/");
 const Image = contentFormatOf("image/");
 
-/** https://versia.pub/entities/user */
+/**
+ * A user on any instance.
+ * @see https://versia.pub/entities/user
+ */
 export const User = Entity.extend({
     type: z.literal("User"),
     avatar: optional(Image),

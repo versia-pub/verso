@@ -8,9 +8,10 @@ const keyPattern = /^[A-Za-z0-9\-_.#/:]+$/;
 const numberPattern = /^-?(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$/;
 
 /**
- * Parses a request or response body under the rules at https://versia.pub/json. `JSON.parse`
- * accepts more than Versia does, and hides duplicate keys and how numbers were written, so the
- * raw text is scanned as well.
+ * Parses a request or response body under Versia's JSON rules. `JSON.parse` accepts more than
+ * Versia does, and hides duplicate keys and how numbers were written, so the raw text is scanned
+ * as well.
+ * @see https://versia.pub/json
  */
 export const parseJson = (body: Uint8Array): JsonResult => {
     let text: string;

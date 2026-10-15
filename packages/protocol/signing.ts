@@ -1,8 +1,9 @@
 /**
- * Signs and verifies Versia requests and responses. See https://versia.pub/signatures.
+ * Signs and verifies Versia requests and responses.
  *
  * Signatures cover the raw body bytes, so verify the bytes exactly as they arrived, and send the
  * bytes exactly as they were signed. Parsing and re-serialising JSON in between breaks them.
+ * @see https://versia.pub/signatures
  */
 import { canonicalize } from "./reference.ts";
 
@@ -121,7 +122,10 @@ const decodeSignature = (
     }
 };
 
-/** `$method $pathname $timestamp $sha256`, as https://versia.pub/signatures#calculating-the-signature describes. */
+/**
+ * `$method $pathname $timestamp $sha256`, the text a signature covers.
+ * @see https://versia.pub/signatures#calculating-the-signature
+ */
 const signedText = async (
     message: SignedMessage,
     signedAt: string,

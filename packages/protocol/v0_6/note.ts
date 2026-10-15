@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { contentFormatOf, Entity, optional, ReferenceText, WebUrl } from "./common.ts";
 
-/** https://versia.pub/entities/note */
+/**
+ * A post.
+ * @see https://versia.pub/entities/note
+ */
 export const Note = Entity.extend({
     type: z.literal("Note"),
     attachments: z.array(contentFormatOf("", true)),

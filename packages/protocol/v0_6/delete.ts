@@ -2,10 +2,11 @@ import { z } from "zod";
 import { optional, ReferenceText, TransientEntity } from "./common.ts";
 
 /**
- * Deletes the entity `deleted`. https://versia.pub/entities/delete
+ * Deletes the entity `deleted`.
  *
  * The spec's table requires `author`, but its changelog made "null authors" optional. Here a
  * missing author means the instance that signed the request.
+ * @see https://versia.pub/entities/delete
  */
 export const Delete = TransientEntity.extend({
     type: z.literal("Delete"),
