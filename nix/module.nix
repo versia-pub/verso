@@ -10,6 +10,26 @@ let
   cfg = config.services.verso;
   settingsFormat = pkgs.formats.toml { };
   configFile = settingsFormat.generate "config.toml" cfg.settings;
+
+  # A whole value of the form ${env:NAME} or ${file:PATH}, which Verso fills in when it starts.
+  isReference = value: builtins.match "\\$\\{(env|file):[^}]+}" value != null;
+
+  # The password in a libpq URL (postgresql://user:password@host, or ?password=) or keyword string
+  # (password=…), if there is one.
+  postgresPassword =
+    connection:
+    let
+      inUserInfo = builtins.match "[a-z]+://[^/@:]*:(.*)@.*" connection;
+      inParameters = builtins.match "(.*[ ?&])?password *= *([^ &]*).*" connection;
+    in
+    if inUserInfo != null then
+      builtins.head inUserInfo
+    else if inParameters != null then
+      builtins.elemAt inParameters 1
+    else
+      null;
+
+  secretAdvice = "The Nix store, where settings end up, can be read by anyone on the machine. Pass the secret in services.verso.credentials and refer to it as \${file:/run/credentials/verso.service/<name>}.";
 in
 {
   options.services.verso = {
@@ -35,6 +55,15 @@ in
       description = "Verso's config.toml. Verso checks it on startup and refuses unknown keys.";
     };
 
+    credentials = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.strMatching "/.*");
+      default = { };
+      example = {
+        oidc = "/run/secrets/verso-oidc";
+      };
+      description = "Secret files, by name, given to Verso as systemd credentials so they stay out of the Nix store. Refer to one in `settings` as `\${file:/run/credentials/verso.service/<name>}`.";
+    };
+
     database.createLocally = lib.mkOption {
       type = lib.types.bool;
       default = true;
@@ -43,6 +72,22 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions =
+      map (issuer: {
+        assertion = isReference (issuer.client_secret or "");
+        message = "services.verso: the client secret of ${issuer.name or "an issuer"} is written in settings. ${secretAdvice}";
+      }) (cfg.settings.auth.issuers or [ ])
+      ++ [
+        {
+          assertion =
+            let
+              password = postgresPassword (cfg.settings.database.postgres or "");
+            in
+            password == null || isReference password;
+          message = "services.verso: the database password is written in settings.database.postgres. ${secretAdvice}";
+        }
+      ];
+
     services.verso.settings.database = lib.mkIf cfg.database.createLocally {
       postgres = "postgresql://verso@/verso?host=/run/postgresql";
     };
@@ -70,6 +115,7 @@ in
         ExecStartPre = "${lib.getExe cfg.package} migrate --config ${configFile}";
         ExecStart = "${lib.getExe cfg.package} all --config ${configFile}";
         Restart = "on-failure";
+        LoadCredential = lib.mapAttrsToList (name: path: "${name}:${path}") cfg.credentials;
 
         # The dynamic user is named verso, so PostgreSQL's peer authentication maps it to the
         # verso role.

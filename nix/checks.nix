@@ -82,8 +82,8 @@ in
             client_secret = "\${file:/run/credentials/verso.service/oidc}";
           }
         ];
+        credentials.oidc = "/etc/verso-oidc";
       };
-      systemd.services.verso.serviceConfig.LoadCredential = [ "oidc:/etc/verso-oidc" ];
       environment.etc.verso-oidc.text = "s3cret";
       environment.systemPackages = [ pkgs.curl ];
     };
@@ -101,6 +101,66 @@ in
       assert migrations.strip() == "verso", f"the migrations table is owned by {migrations!r}"
     '';
   };
+
+  # The module refuses settings that would put a secret in the Nix store.
+  nixos-module-secrets =
+    let
+      failures =
+        settings:
+        let
+          system = pkgs.nixos {
+            imports = [ module ];
+            system.stateVersion = pkgs.lib.trivial.release;
+            services.verso = {
+              enable = true;
+              database.createLocally = !(settings ? database);
+              settings = {
+                domain = "verso.test";
+              }
+              // settings;
+            };
+          };
+        in
+        builtins.length (
+          builtins.filter (
+            check: !check.assertion && pkgs.lib.hasPrefix "services.verso" check.message
+          ) system.config.assertions
+        );
+      issuer = secret: {
+        auth.issuers = [
+          {
+            name = "ID";
+            url = "https://id.verso.test";
+            client_id = "verso";
+            client_secret = secret;
+          }
+        ];
+      };
+      postgres = connection: { database.postgres = connection; };
+      expected = {
+        "a written secret" = failures (issuer "s3cret") == 1;
+        "a file reference" = failures (issuer "\${file:/run/credentials/verso.service/oidc}") == 0;
+        "an env reference" = failures (issuer "\${env:OIDC_SECRET}") == 0;
+        "an escaped reference" = failures (issuer "$\${file:/s}") == 1;
+        "a local database" = failures { } == 0;
+        "a URL password" = failures (postgres "postgresql://verso:hunter2@db/verso") == 1;
+        "a query password" = failures (postgres "postgresql://db/verso?password=hunter2") == 1;
+        "a keyword password" = failures (postgres "host=db password=hunter2") == 1;
+        "a password reference" =
+          failures (postgres "postgresql://verso:\${file:/run/credentials/verso.service/db}@db/verso") == 0;
+        "no password" = failures (postgres "postgresql://verso@db:5432/verso") == 0;
+      };
+      wrong = builtins.attrNames (pkgs.lib.filterAttrs (_: ok: !ok) expected);
+    in
+    pkgs.runCommand "nixos-module-secrets" { } (
+      if wrong == [ ] then
+        "touch $out"
+      else
+        ''
+          echo "The module's secret checks are wrong for: ${builtins.concatStringsSep ", " wrong}"
+          exit 1
+        ''
+    );
 
   # Nix reuses a fixed-output derivation whose hash is already in the store, so a stale hash would
   # silently keep the old dependencies.
