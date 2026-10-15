@@ -1,6 +1,34 @@
 import { parse } from "@std/toml";
 import { z } from "zod";
 
+/**
+ * Who may get an account on first login with an issuer: anyone (`open`), nobody (`closed`, so only
+ * identities an admin linked), or anyone whose ID token claim contains a value, such as
+ * `{ claim = "groups", contains = "versia-users" }`.
+ */
+const Registration = z.union([
+    z.enum(["open", "closed"]),
+    z.strictObject({ claim: z.string().min(1), contains: z.string().min(1) }),
+]);
+
+/** An OpenID Connect provider users log in with. Verso is a client registered with it. */
+const Issuer = z.strictObject({
+    /** Shown on the login page when there is more than one issuer. */
+    name: z.string().min(1),
+    /** The issuer's URL. Accounts are linked to it, so changing it unlinks them all. */
+    url: z.url({ protocol: /^https$/, error: "Must be an https URL" }),
+    client_id: z.string().min(1),
+    /** Keep secrets out of the config file with `client_secret_file`, for example on NixOS. */
+    client_secret: z.string().min(1).optional(),
+    client_secret_file: z.string().min(1).optional(),
+    /** The claim a new account's username comes from. */
+    username_claim: z.string().min(1).default("preferred_username"),
+    registration: Registration.default("closed"),
+}).refine(
+    (issuer) => (issuer.client_secret === undefined) !== (issuer.client_secret_file === undefined),
+    { error: 'Set exactly one of "client_secret" or "client_secret_file"' },
+);
+
 /** Everything an instance can be configured with. Unknown keys are errors, so typos don't go unnoticed. */
 export const Config = z.strictObject({
     /** The instance's domain, without a port. https://versia.pub/api/basics#domain */
@@ -12,6 +40,13 @@ export const Config = z.strictObject({
     ], { error: 'Set exactly one of "postgres" or "sqlite"' }),
     http: z.strictObject({
         port: z.int().min(1).max(65535).default(8080),
+    }).prefault({}),
+    auth: z.strictObject({
+        /** Without any, the server runs but nobody can log in. */
+        issuers: z.array(Issuer).default([]).refine(
+            (issuers) => new Set(issuers.map((issuer) => issuer.url)).size === issuers.length,
+            { error: "Each issuer URL can only be listed once" },
+        ),
     }).prefault({}),
     logging: z.strictObject({
         level: z.enum(["trace", "debug", "info", "warning", "error", "fatal"])
