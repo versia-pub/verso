@@ -25,7 +25,7 @@ runCommand "verso-deno-deps"
       jq
     ];
     outputHashMode = "recursive";
-    outputHash = "sha256-zcB4VYCUucA18+lpmY+eK/grlkBgFFQ7rn6wicDotgY=";
+    outputHash = "sha256-Wu2FhjBy8gxSQJ5i1hgpJ0Wx2xcaAP+RF5yAKeHrPcU=";
   }
   ''
     export DENO_DIR="$TMPDIR/deno" DENO_NO_UPDATE_CHECK=1

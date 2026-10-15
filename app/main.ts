@@ -3,6 +3,7 @@ import { parseArgs } from "@std/cli";
 import denoConfig from "../deno.json" with { type: "json" };
 import { openDatabase } from "./db/database.ts";
 import { migrate } from "./db/migrate.ts";
+import { createApp } from "./http/app.ts";
 import { queues, tasks } from "./jobs/queues.ts";
 import { runScheduler } from "./jobs/scheduler.ts";
 import { listenForJobs } from "./jobs/wakeups.ts";
@@ -35,13 +36,7 @@ const serve = (config: Config, signal: AbortSignal): Promise<void> => {
             port,
             domain: config.domain,
         });
-    const server = Deno.serve({ port: config.http.port, onListen, signal }, (request) => {
-        const { pathname } = new URL(request.url);
-        if (request.method === "GET" && pathname === "/health/live") {
-            return new Response("ok");
-        }
-        return new Response("Not Found", { status: 404 });
-    });
+    const server = Deno.serve({ port: config.http.port, onListen, signal }, createApp().fetch);
     return server.finished;
 };
 
