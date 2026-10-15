@@ -11,8 +11,10 @@ type Notes = { notes: { id: string } };
 
 const open = async () => {
     const db = await testDatabase<Notes>();
+
     await db.schema.createTable("notes").addColumn("id", "text", (column) => column.primaryKey())
         .execute();
+
     const clock = fakeClock();
     const ctx = createContext({
         clock,
@@ -21,12 +23,14 @@ const open = async () => {
         transport: fakeTransport(),
         db,
     });
+
     return { db, ctx, [Symbol.asyncDispose]: () => db.destroy() };
 };
 
 const addNote = async (ctx: Context<Notes>) => {
     const id = ctx.ids();
     await ctx.db.insertInto("notes").values({ id }).execute();
+
     return id;
 };
 
@@ -36,11 +40,13 @@ const noteIds = async (db: Kysely<Notes>) =>
 Deno.test("a transaction commits when its work resolves", async () => {
     await using test = await open();
     const ids = await test.ctx.transaction(async (tx) => [await addNote(tx), await addNote(tx)]);
+
     assertEquals(await noteIds(test.db), ids);
 });
 
 Deno.test("a transaction leaves nothing behind when its work throws", async () => {
     await using test = await open();
+
     await assertRejects(
         () =>
             test.ctx.transaction(async (tx) => {
@@ -50,19 +56,23 @@ Deno.test("a transaction leaves nothing behind when its work throws", async () =
         Error,
         "oops",
     );
+
     assertEquals(await noteIds(test.db), []);
 });
 
 Deno.test("a nested transaction joins the outer one", async () => {
     await using test = await open();
+
     await assertRejects(
         () =>
             test.ctx.transaction(async (outer) => {
                 await addNote(outer);
+
                 const inner = await outer.transaction(async (tx) => {
                     assertStrictEquals(tx.db, outer.db);
                     return await addNote(tx);
                 });
+
                 // The outer unit sees the inner write before anything commits.
                 assertEquals((await noteIds(outer.db)).at(-1), inner);
                 throw new Error("oops");
@@ -70,5 +80,6 @@ Deno.test("a nested transaction joins the outer one", async () => {
         Error,
         "oops",
     );
+
     assertEquals(await noteIds(test.db), []);
 });

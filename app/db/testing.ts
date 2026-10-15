@@ -18,10 +18,13 @@ const postgresPool = (url: string) =>
 /** The URL of a new, empty PostgreSQL database, or `undefined` when tests run in-process. */
 export const testPostgresUrl = async (): Promise<string | undefined> => {
     if (testDatabaseKind === "pglite" || testDatabaseKind === "sqlite") return undefined;
+
     const url = new URL(testDatabaseKind);
     const name = `test_${crypto.randomUUID().replaceAll("-", "")}`;
+
     await using server = connect(postgresPool(url.href));
     await sql`create database ${sql.id(name)}`.execute(server);
+
     url.pathname = `/${name}`;
     return url.href;
 };
@@ -29,7 +32,10 @@ export const testPostgresUrl = async (): Promise<string | undefined> => {
 /** A new, empty database for one test. */
 export const testDatabase = async <DB>(): Promise<Kysely<DB>> => {
     const postgres = await testPostgresUrl();
+
     if (postgres) return connect(postgresPool(postgres));
+
     if (testDatabaseKind === "sqlite") return connect(sqliteDialect(new DatabaseSync(":memory:")));
+
     return connect(new PGliteDialect({ pglite: await PGlite.create() }));
 };

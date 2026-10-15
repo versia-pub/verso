@@ -4,8 +4,10 @@ import { openDatabase } from "./database.ts";
 
 Deno.test("a sqlite config opens that database", async () => {
     await using db = openDatabase({ sqlite: ":memory:" });
+
     const { rows } = await sql<{ answer: number }>`select 42 as answer`
         .execute(db);
+
     assertEquals(rows, [{ answer: 42 }]);
 });
 

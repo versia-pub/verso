@@ -42,6 +42,7 @@ Deno.test("the spec's example InstanceMetadata is valid", () => {
 
 Deno.test("invalid InstanceMetadata is rejected", () => {
     const text = { "text/plain": { content: "logo", remote: false } };
+
     for (
         const bad of [
             { ...instance, name: undefined },

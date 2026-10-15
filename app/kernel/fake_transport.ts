@@ -17,16 +17,20 @@ export type FakeTransport = Transport & {
 export const fakeTransport = (servers: Record<string, Server> = {}): FakeTransport => {
     const transport: FakeTransport = Object.assign(async (request: Request) => {
         transport.sent.push(request.clone());
+
         const host = new URL(request.url).host;
         const server = transport.servers.get(host);
+
         if (!server || transport.down.has(host)) {
             throw new TypeError(`Can't reach ${host}`);
         }
+
         return await server(request);
     }, {
         servers: new Map(Object.entries(servers)),
         down: new Set<string>(),
         sent: [],
     });
+
     return transport;
 };

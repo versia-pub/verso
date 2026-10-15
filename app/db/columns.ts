@@ -17,6 +17,7 @@ export const columnTypes = <DB>(
     db: Kysely<DB>,
 ): { timestamp: Expression<unknown>; json: Expression<unknown> } => {
     const sqlite = db.getExecutor().adapter instanceof SqliteAdapter;
+
     return {
         /**
          * A point in time, read as a `Date`: `timestamptz` on Postgres, ISO 8601 text on SQLite.
@@ -24,6 +25,7 @@ export const columnTypes = <DB>(
          * defaults: SQLite writes those in a different format, which breaks reading and ordering.
          */
         timestamp: sql.raw(sqlite ? sqliteTypes.timestamp : "timestamptz"),
+
         /**
          * A JSON object or array, read back as one: `jsonb` on Postgres, text on SQLite. Bare strings,
          * numbers and booleans aren't allowed at the top level, since they aren't sent as JSON.

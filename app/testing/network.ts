@@ -35,9 +35,11 @@ export const createNetwork = async (
     options: NetworkOptions = {},
 ): Promise<Network> => {
     if (new Set(domains).size !== domains.length) throw new Error("Domains must be different");
+
     const clock = options.clock ?? fakeClock();
     const transport = fakeTransport();
     const queues = options.queues ?? allQueues;
+
     await using stack = new AsyncDisposableStack();
     const instances: Record<string, Instance> = {};
     for (const domain of domains) {
@@ -46,18 +48,22 @@ export const createNetwork = async (
         transport.servers.set(domain, app.fetch);
         instances[domain] = { ...test, app };
     }
+
     const owned = stack.move();
+
     return {
         instances,
         clock,
         transport,
         drain: async () => {
             let ran = 0;
+
             for (;;) {
                 let round = 0;
                 for (const instance of Object.values(instances)) {
                     round += await drain(instance.ctx, queues, instance.ctx.urls.origin);
                 }
+
                 if (round === 0) return ran;
                 ran += round;
             }

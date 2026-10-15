@@ -23,9 +23,11 @@ const periods = {
  */
 export const schedule = async (ctx: Context, tasks: readonly Task[]): Promise<void> => {
     const now = ctx.clock.now().getTime();
+
     for (const task of tasks) {
         const period = periods[task.every];
         const start = now - (now % period.ms);
+
         await enqueue(ctx, {
             queue: task.queue,
             payload: task.payload ?? {},
@@ -42,12 +44,14 @@ export const runScheduler = async (
     options: { readonly intervalMs: number; readonly signal: AbortSignal },
 ): Promise<void> => {
     const logger = getLogger(["verso", "jobs", "scheduler"]);
+
     while (!options.signal.aborted) {
         try {
             await schedule(ctx, tasks);
         } catch (error) {
             logger.error("Couldn't schedule jobs: {error}", { error });
         }
+
         await pause(options.intervalMs, options.signal);
     }
 };

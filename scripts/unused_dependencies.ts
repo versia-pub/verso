@@ -8,6 +8,7 @@ const skipped = new Set(["vendor", "node_modules", ".git", ".direnv"]);
 
 const typeScriptFiles = async (directory: string): Promise<string[]> => {
     const files: string[] = [];
+
     for await (const entry of Deno.readDir(directory)) {
         const path = `${directory}/${entry.name}`;
         if (entry.isDirectory && !skipped.has(entry.name)) {
@@ -16,6 +17,7 @@ const typeScriptFiles = async (directory: string): Promise<string[]> => {
             files.push(path);
         }
     }
+
     return files;
 };
 
@@ -23,15 +25,18 @@ const importsOf = async (file: string): Promise<string[]> => {
     const output = await new Deno.Command("deno", {
         args: ["info", "--json", file],
     }).output();
+
     if (!output.success) {
         throw new Error(
             `deno info failed for ${file}: ${new TextDecoder().decode(output.stderr)}`,
         );
     }
+
     const info: { modules: { dependencies?: { specifier: string }[] }[] } = JSON
         .parse(
             new TextDecoder().decode(output.stdout),
         );
+
     return info.modules.flatMap((module) => module.dependencies ?? []).map((
         dependency,
     ) => dependency.specifier);
@@ -50,6 +55,7 @@ const isUsed = (name: string) =>
 const unused = Object.keys(denoConfig.imports).filter((name) =>
     !isUsed(name.startsWith("@types/") ? name.slice("@types/".length) : name)
 );
+
 if (unused.length > 0) {
     // deno-lint-ignore no-console -- this script's whole output is its report
     console.error(`Unused dependencies in deno.json: ${unused.join(", ")}`);

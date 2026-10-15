@@ -52,6 +52,7 @@ export const enqueue = async (
     job: NewJob,
 ): Promise<string | undefined> => {
     const now = ctx.clock.now();
+
     const inserted = await ctx.db.insertInto("jobs")
         .values({
             id: ctx.ids(),
@@ -72,6 +73,7 @@ export const enqueue = async (
         .onConflict((conflict) => conflict.column("dedupe_key").doNothing())
         .returning("id")
         .executeTakeFirst();
+
     if (inserted) await notify(ctx.db, jobsChannel, job.queue);
     return inserted?.id;
 };
@@ -92,6 +94,7 @@ export type ClaimOptions = {
  */
 export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTable[]> => {
     const now = ctx.clock.now();
+
     const jobs = await ctx.db.updateTable("jobs")
         .set((eb) => ({
             lease_owner: options.worker,
@@ -112,6 +115,7 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
                 .$call((query) => skippingLocked(ctx.db, query)))
         .returningAll()
         .execute();
+
     return jobs.toSorted((a, b) =>
         b.priority - a.priority || a.run_at.getTime() - b.run_at.getTime() ||
         a.id.localeCompare(b.id)
@@ -125,7 +129,9 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
  */
 export const complete = async (ctx: Context, job: JobsTable): Promise<void> => {
     const now = ctx.clock.now();
+
     const stillClaimed = { id: job.id, lease_owner: job.lease_owner, attempts: job.attempts };
+
     if (job.keep_until !== null && job.keep_until > now) {
         await ctx.db.updateTable("jobs")
             .set({ lease_owner: null, lease_expires_at: null, finished_at: now })
@@ -163,6 +169,7 @@ export const fail = async (
     random?: () => number,
 ): Promise<void> => {
     const dead = job.attempts >= job.max_attempts;
+
     await ctx.db.updateTable("jobs")
         .set({
             lease_owner: null,

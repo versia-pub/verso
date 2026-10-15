@@ -9,6 +9,7 @@ const privateKey = await crypto.subtle.importKey(
     false,
     ["sign"],
 );
+
 const publicKey = await crypto.subtle.importKey(
     "spki",
     Uint8Array.fromBase64(vectors.public_key),
@@ -16,8 +17,10 @@ const publicKey = await crypto.subtle.importKey(
     false,
     ["verify"],
 );
+
 const importedKey = await importPublicKey(vectors.public_key);
 const keyOf = () => Promise.resolve(importedKey);
+
 const bytes = (text: string) => new TextEncoder().encode(text);
 const dateOf = (signedAt: string) => new Date(Number(signedAt) * 1000);
 
@@ -48,11 +51,13 @@ for (const vector of vectors.vectors) {
             "Versia-Signed-By": vectors.signed_by,
             "Versia-Signed-At": vector.signed_at,
         });
+
         const headers = new Headers({
             "Versia-Signature": vector.signature,
             "Versia-Signed-By": vectors.signed_by,
             "Versia-Signed-At": vector.signed_at,
         });
+
         assertEquals(await verify(message, headers, keyOf, now), {
             ok: true,
             signedBy: vectors.signed_by,
@@ -64,11 +69,13 @@ Deno.test("the same JSON with different bytes doesn't verify", async () => {
     // Servers must verify the body exactly as received, before parsing it. Re-serialising the
     // parsed JSON can change whitespace, key order or escapes, and with them the signature.
     const [vector] = vectors.vectors;
+
     const headers = new Headers({
         "Versia-Signature": vector.signature,
         "Versia-Signed-By": vectors.signed_by,
         "Versia-Signed-At": vector.signed_at,
     });
+
     for (
         const body of [
             '{ "content": "Hello, world!" }',
@@ -77,11 +84,13 @@ Deno.test("the same JSON with different bytes doesn't verify", async () => {
         ]
     ) {
         assertEquals(JSON.parse(body), JSON.parse(vector.body));
+
         const message = {
             method: vector.method,
             pathname: vector.pathname,
             body: bytes(body),
         };
+
         assertEquals(
             await verify(message, headers, keyOf, dateOf(vector.signed_at)),
             { ok: false, reason: "invalid" },

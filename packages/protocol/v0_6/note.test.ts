@@ -92,6 +92,7 @@ Deno.test("invalid Notes are rejected", () => {
     const remoteText = {
         "text/plain": { content: "https://a.example/t", remote: true },
     };
+
     for (
         const bad of [
             { ...note, type: "User" },

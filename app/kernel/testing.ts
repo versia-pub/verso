@@ -34,11 +34,13 @@ export const createTestContext = async (
     options: TestContextOptions = {},
 ): Promise<TestContext> => {
     const db = options.db ?? await testDatabase<Database>();
+
     const migrated = await migrate(db);
     if (!migrated.ok) {
         await db.destroy();
         throw migrated.error;
     }
+
     const clock = options.clock ?? fakeClock();
     const transport = options.transport ?? fakeTransport();
     const ctx = createContext({
@@ -48,5 +50,6 @@ export const createTestContext = async (
         transport,
         db,
     });
+
     return { ctx, clock, transport, [Symbol.asyncDispose]: () => db.destroy() };
 };

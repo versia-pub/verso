@@ -47,14 +47,18 @@ export const sqliteDialect = (database: DatabaseSync): Dialect =>
             close: () => database.close(),
             prepare: (sql) => {
                 const statement = database.prepare(sql);
+
                 const columns = statement.columns();
+
                 const converted = columns.flatMap((column) => {
                     const convert = column.type &&
                         readers[column.type.toLowerCase()];
                     return convert ? [[column.name, convert] as const] : [];
                 });
+
                 const values = (parameters: readonly unknown[]) =>
                     parameters.map(write) as SQLInputValue[];
+
                 const read = (row: unknown) => {
                     const record = row as Record<string, unknown>;
                     for (const [name, convert] of converted) {
@@ -64,6 +68,7 @@ export const sqliteDialect = (database: DatabaseSync): Dialect =>
                     }
                     return record;
                 };
+
                 return {
                     reader: columns.length > 0,
                     all: (parameters) => statement.all(...values(parameters)).map(read),

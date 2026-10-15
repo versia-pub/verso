@@ -37,6 +37,7 @@ Deno.test("the spec's example User is valid", () => {
 
 Deno.test("invalid Users are rejected", () => {
     const text = { "text/plain": { content: "hi", remote: false } };
+
     for (
         const bad of [
             { ...user, type: "Note" },

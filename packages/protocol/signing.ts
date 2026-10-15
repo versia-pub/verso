@@ -49,11 +49,13 @@ export const sign = async (
     now: Date,
 ): Promise<Record<string, string>> => {
     const signedAt = Math.floor(now.getTime() / 1000).toString();
+
     const signature = await crypto.subtle.sign(
         "Ed25519",
         privateKey,
         await signedText(message, signedAt),
     );
+
     return {
         "Versia-Signature": new Uint8Array(signature).toBase64(),
         "Versia-Signed-By": signedBy,
@@ -76,6 +78,7 @@ export const verify = async (
     const signature = decodeSignature(headers.get("Versia-Signature"));
     const signedBy = canonicalize(headers.get("Versia-Signed-By") ?? "");
     const signedAt = headers.get("Versia-Signed-At");
+
     if (
         signature === undefined || signedBy === undefined ||
         signedAt === null ||
@@ -83,6 +86,7 @@ export const verify = async (
     ) {
         return { ok: false, reason: "invalid" };
     }
+
     if (
         Math.abs(now.getTime() / 1000 - Number(signedAt)) > maxClockSkewSeconds
     ) {
@@ -101,6 +105,7 @@ export const verify = async (
     } catch {
         // The key can't be used for Ed25519, so it can't have made this signature.
     }
+
     return valid ? { ok: true, signedBy } : { ok: false, reason: "invalid" };
 };
 
@@ -122,6 +127,7 @@ const signedText = async (
     signedAt: string,
 ): Promise<Uint8Array<ArrayBuffer>> => {
     const digest = await crypto.subtle.digest("SHA-256", message.body);
+
     return new TextEncoder().encode(
         `${message.method.toLowerCase()} ${message.pathname} ${signedAt} ${
             new Uint8Array(digest).toBase64()

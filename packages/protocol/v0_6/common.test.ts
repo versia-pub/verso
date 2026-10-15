@@ -27,6 +27,7 @@ Deno.test("the spec's ContentFormat examples are valid", () => {
 
 Deno.test("optional fields may be missing or null", () => {
     const text = { content: "Hello", remote: false };
+
     assertEquals(ContentFormat.safeParse({ "text/plain": text }).success, true);
     assertEquals(
         ContentFormat.safeParse({ "text/plain": { ...text, size: null } })
@@ -37,6 +38,7 @@ Deno.test("optional fields may be missing or null", () => {
 
 Deno.test("invalid ContentFormat values are rejected", () => {
     const png = image["image/png"];
+
     for (
         const bad of [
             { "image/png": { ...png, hash: "not hex" } },
@@ -67,6 +69,7 @@ Deno.test("the spec's example entity with extensions is valid", () => {
             "pub.versia:location": { latitude: 37.7749, longitude: -122.4194 },
         },
     };
+
     assertEquals(Entity.safeParse(entity).success, true);
     assertEquals(
         Entity.safeParse({ ...entity, id: "has space" }).success,

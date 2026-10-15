@@ -35,6 +35,7 @@ export const parseConfig = (toml: string): ConfigResult => {
             error: `Invalid TOML: ${(error as Error).message}`,
         };
     }
+
     const result = Config.safeParse(data);
     return result.success
         ? { ok: true, config: result.data }
@@ -49,5 +50,6 @@ export const readConfig = async (path: string): Promise<ConfigResult> => {
     } catch (error) {
         return { ok: false, error: (error as Error).message };
     }
+
     return parseConfig(text);
 };

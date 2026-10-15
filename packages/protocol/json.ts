@@ -15,15 +15,18 @@ const numberPattern = /^-?(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$/;
 export const parseJson = (body: Uint8Array): JsonResult => {
     let text: string;
     let value: unknown;
+
     try {
         text = new TextDecoder("utf-8", { fatal: true }).decode(body);
         value = JSON.parse(text);
     } catch (error) {
         return { ok: false, reason: String(error) };
     }
+
     if (text.includes("\r")) {
         return { ok: false, reason: "Line endings must be LF, not CRLF" };
     }
+
     const reason = findViolation(text);
     return reason === undefined ? { ok: true, value } : { ok: false, reason };
 };
@@ -35,6 +38,7 @@ const findViolation = (text: string): string | undefined => {
     // Sticky, so it matches at lastIndex without copying the rest of the text for each number.
     const numberToken = /-?[0-9.eE+-]+/y;
     let i = 0;
+
     while (i < text.length) {
         const char = text[i];
         if (char === "{" || char === "[") {
@@ -46,6 +50,7 @@ const findViolation = (text: string): string | undefined => {
         } else if (char === '"') {
             const end = stringEnd(text, i);
             const keys = scopes.at(-1);
+
             // Inside an object, a string followed by a colon is a key.
             let next = end;
             while (/\s/.test(text[next])) next++;
@@ -59,6 +64,7 @@ const findViolation = (text: string): string | undefined => {
                 }
                 keys.add(key);
             }
+
             i = end;
         } else if (char === "-" || (char >= "0" && char <= "9")) {
             numberToken.lastIndex = i;
@@ -66,11 +72,13 @@ const findViolation = (text: string): string | undefined => {
             if (!numberPattern.test(raw) || raw === "-0" || outsideRange(raw)) {
                 return `Invalid number ${raw}`;
             }
+
             i += raw.length;
         } else {
             i++;
         }
     }
+
     return undefined;
 };
 
@@ -79,14 +87,17 @@ const outsideRange = (raw: string): boolean => {
     const [whole, fraction] = raw.replace("-", "").split(".");
     const magnitude = BigInt(whole);
     const limit = 2n ** 53n;
+
     return magnitude > limit || (magnitude === limit && fraction !== undefined);
 };
 
 /** Returns the index just after the string that starts at `start`. */
 const stringEnd = (text: string, start: number): number => {
     let i = start + 1;
+
     while (text[i] !== '"') {
         i += text[i] === "\\" ? 2 : 1;
     }
+
     return i + 1;
 };

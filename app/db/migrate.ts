@@ -19,6 +19,7 @@ export const migrate = async <DB>(
         db,
         provider: { getMigrations: () => Promise.resolve(migrations) },
     });
+
     const { error, results = [] } = await migrator.migrateToLatest();
     return error === undefined
         ? { ok: true, applied: results.map((result) => result.migrationName) }

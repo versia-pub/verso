@@ -40,6 +40,7 @@ Deno.test("hostnames are stored in canonical form", () => {
             canonical,
         );
     }
+
     assertEquals(parseReference(id, "Example.com")?.host, "example.com");
 });
 

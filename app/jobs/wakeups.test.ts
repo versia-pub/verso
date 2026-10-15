@@ -12,10 +12,12 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 Deno.test("a wakeup starts an idle queue's new job before the next poll", async () => {
     await using test = await createTestContext();
+
     const ctx = test.ctx;
     const wakeups = new EventTarget();
     const stopping = new AbortController();
     let ran = false;
+
     const done = work(
         ctx,
         { deliver: { handler: () => Promise.resolve(void (ran = true)), concurrency: 1 } },
@@ -26,13 +28,17 @@ Deno.test("a wakeup starts an idle queue's new job before the next poll", async 
             wakeups,
         },
     );
+
     await delay(50);
     await enqueue(ctx, { queue: "deliver", payload: {} });
     wakeups.dispatchEvent(new Event("deliver"));
+
     const started = Date.now();
     while (!ran && Date.now() - started < 5_000) await delay(5);
+
     stopping.abort();
     await done;
+
     assertEquals(ran, true);
 });
 
@@ -42,12 +48,15 @@ Deno.test({
     fn: async () => {
         const url = await testPostgresUrl();
         if (!url) return;
+
         await using test = await createTestContext({
             db: connect<Database>(
                 new PostgresDialect({ pool: new pg.Pool({ connectionString: url }) }),
             ),
         });
+
         const ctx = test.ctx;
+
         await using wakeups = await listenForJobs({ postgres: url });
         const heard: string[] = [];
         wakeups?.addEventListener("deliver", () => heard.push("deliver"));
@@ -58,14 +67,17 @@ Deno.test({
                 throw new Error("rolled back");
             })
         );
+
         await ctx.transaction(async (tx) => {
             await enqueue(tx, { queue: "deliver", payload: {} });
             await delay(100);
             assertEquals(heard, []);
         });
+
         const started = Date.now();
         while (heard.length === 0 && Date.now() - started < 5_000) await delay(5);
         await delay(100);
+
         assertEquals(heard, ["deliver"]);
     },
 });

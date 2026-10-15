@@ -7,15 +7,18 @@ const plugin: Deno.lint.Plugin = {
         "prefer-arrow-functions": {
             create(context) {
                 const message = "Use an arrow function instead of `function`.";
+
                 return {
                     FunctionDeclaration(node) {
                         if (!node.generator) context.report({ node, message });
                     },
+
                     FunctionExpression(node) {
                         const parent = node.parent;
                         const isMethod = parent.type === "MethodDefinition" ||
                             (parent.type === "Property" &&
                                 (parent.method || parent.kind !== "init"));
+
                         if (!node.generator && !isMethod) {
                             context.report({ node, message });
                         }

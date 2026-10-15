@@ -33,6 +33,7 @@ port = 3000
 [logging]
 level = "debug"
 `);
+
     assertEquals(result, {
         ok: true,
         config: {
@@ -52,6 +53,7 @@ Deno.test("bad configs explain what is wrong", () => {
         assertEquals(result.ok, false, toml);
         return result.ok ? "" : result.error;
     };
+
     assertStringIncludes(errors(""), "domain");
     assertStringIncludes(
         errors(minimal.replace("social.example", "social.example:8080")),
@@ -63,11 +65,13 @@ Deno.test("bad configs explain what is wrong", () => {
         errors(minimal + '[logging]\nlevel = "loud"'),
         "logging.level",
     );
+
     const exactlyOne = 'Set exactly one of "postgres" or "sqlite"';
     assertStringIncludes(errors('domain = "social.example"'), exactlyOne);
     assertStringIncludes(
         errors(minimal + 'postgres = "postgresql:///verso"'),
         exactlyOne,
     );
+
     assertStringIncludes(errors("domain = "), "Invalid TOML");
 });

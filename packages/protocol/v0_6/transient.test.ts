@@ -45,6 +45,7 @@ Deno.test("invalid references and missing fields are rejected", () => {
                 `${example.type} without ${key}`,
             );
         }
+
         assertEquals(
             schema.safeParse({ ...example, author: "bad id!" }).success,
             false,
@@ -54,6 +55,7 @@ Deno.test("invalid references and missing fields are rejected", () => {
 
 Deno.test("a Delete without an author comes from the instance", () => {
     const [, example] = examples[4];
+
     assertEquals(
         Delete.safeParse({ ...example, author: undefined }).success,
         true,

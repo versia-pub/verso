@@ -10,6 +10,7 @@ Deno.test("urls are https on the instance's domain", () => {
         urls.url`/api/v1/instance`,
         "https://social.example/api/v1/instance",
     );
+
     const id = "019b76da-a800-7000-8000-000000000001";
     assertEquals(
         urls.url`/api/v1/accounts/${id}/statuses`,
@@ -34,10 +35,12 @@ Deno.test("any value gives a URL with the same host and one segment for it", () 
             fc.string({ unit: "grapheme" }).filter((value) => !["", ".", ".."].includes(value)),
             (value) => {
                 const url = new URL(urls.url`/tags/${value}/feed`);
+
                 assertEquals(url.protocol, "https:");
                 assertEquals(url.host, "social.example");
                 assertEquals(url.search, "");
                 assertEquals(url.hash, "");
+
                 const [tags, segment, feed, ...rest] = url.pathname.slice(1)
                     .split("/");
                 assertEquals([tags, decodeURIComponent(segment), feed, rest], [
@@ -55,5 +58,6 @@ Deno.test("values that would bend the path are refused", () => {
     for (const value of ["", ".", ".."]) {
         assertThrows(() => urls.url`/tags/${value}`, Error, "path segment");
     }
+
     assertThrows(() => urls.url`api/v1/instance`, Error, 'start with "/"');
 });

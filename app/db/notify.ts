@@ -11,5 +11,6 @@ export const notify = async <DB>(
     payload: string,
 ): Promise<void> => {
     if (db.getExecutor().adapter instanceof SqliteAdapter) return;
+
     await sql`select pg_notify(${channel}, ${payload})`.execute(db);
 };

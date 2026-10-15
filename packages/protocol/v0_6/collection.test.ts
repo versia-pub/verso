@@ -39,6 +39,7 @@ Deno.test("the spec's example URI Collection is valid", () => {
 Deno.test("the author is optional", () => {
     const { author: _, ...anonymous } = collection;
     assertEquals(Collection.safeParse(anonymous).success, true);
+
     assertEquals(
         URICollection.safeParse({ total: 0, items: [] }).success,
         true,
@@ -61,6 +62,7 @@ Deno.test("invalid collections are rejected", () => {
             JSON.stringify(bad),
         );
     }
+
     assertEquals(
         URICollection.safeParse({ total: 1, items: ["host:"] }).success,
         false,

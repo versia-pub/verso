@@ -15,6 +15,7 @@ export type UrlBuilder = {
 /** Makes the builder for `domain`, which must be a bare hostname such as `config.domain`. */
 export const urlBuilder = (domain: string): UrlBuilder => {
     const origin = `https://${domain}`;
+
     return {
         origin,
         url: (path, ...values) => {
@@ -23,6 +24,7 @@ export const urlBuilder = (domain: string): UrlBuilder => {
                     `URL paths start with "/": ${path.join("${…}")}`,
                 );
             }
+
             const encoded = values.map((value) => {
                 // An empty value leaves a gap in the path, and URL parsing reads "." and ".." as
                 // "this folder" and "the folder above".
@@ -31,6 +33,7 @@ export const urlBuilder = (domain: string): UrlBuilder => {
                 }
                 return encodeURIComponent(value);
             });
+
             return origin + String.raw({ raw: path }, ...encoded);
         },
     };

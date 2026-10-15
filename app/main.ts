@@ -31,12 +31,14 @@ const serve = (ctx: Context, config: Config, signal: AbortSignal): Promise<void>
     console.log(banner);
 
     const logger = getLogger(["verso", "http"]);
+
     const onListen = ({ hostname, port }: Deno.NetAddr) =>
         logger.info("Listening on {hostname} port {port} as {domain}", {
             hostname,
             port,
             domain: config.domain,
         });
+
     const server = Deno.serve(
         { port: config.http.port, onListen, signal },
         createApp(ctx, routes).fetch,
@@ -50,6 +52,7 @@ const serve = (ctx: Context, config: Config, signal: AbortSignal): Promise<void>
  */
 const run = async (role: string, config: Config): Promise<void> => {
     await using db = openDatabase(config.database);
+
     const ctx = createContext({
         clock: systemClock,
         ids: idGenerator(systemClock),
@@ -57,6 +60,7 @@ const run = async (role: string, config: Config): Promise<void> => {
         transport: fetchTransport,
         db,
     });
+
     const stopping = new AbortController();
     const stop = () => stopping.abort();
     const signals = ["SIGINT", "SIGTERM"] as const;
@@ -64,10 +68,12 @@ const run = async (role: string, config: Config): Promise<void> => {
 
     const logger = getLogger(["verso"]);
     const worker = ctx.ids();
+
     await using wakeups = role === "serve" ? undefined : await listenForJobs(config.database);
     if (role !== "serve") {
         logger.info("Working on {queues} as {worker}", { queues: Object.keys(queues), worker });
     }
+
     await Promise.all([
         role === "work" ? undefined : serve(ctx, config, stopping.signal),
         role === "serve"
@@ -77,6 +83,7 @@ const run = async (role: string, config: Config): Promise<void> => {
             ? undefined
             : runScheduler(ctx, tasks, { intervalMs: 60_000, signal: stopping.signal }),
     ]);
+
     for (const signal of signals) Deno.removeSignalListener(signal, stop);
     logger.info("Stopped");
 };
@@ -84,17 +91,21 @@ const run = async (role: string, config: Config): Promise<void> => {
 /** Applies pending migrations and returns the exit code. */
 const runMigrations = async (config: Config): Promise<number> => {
     const logger = getLogger(["verso", "db"]);
+
     await using db = openDatabase(config.database);
     const result = await migrate(db);
+
     if (!result.ok) {
         logger.fatal("Migrating failed, so nothing was applied: {error}", {
             error: result.error,
         });
         return 1;
     }
+
     for (const name of result.applied) {
         logger.info("Applied migration {name}", { name });
     }
+
     if (result.applied.length === 0) logger.info("The database is up to date");
     return 0;
 };
@@ -108,6 +119,7 @@ if (import.meta.main) {
         string: ["config"],
         default: { config: "config.toml" },
     });
+
     if (args.version) {
         // deno-lint-ignore no-console -- the version is command output, not a log line
         console.log(`verso ${denoConfig.version}`);
@@ -118,8 +130,10 @@ if (import.meta.main) {
             console.error(`Can't load ${args.config}:\n${result.error}`);
             Deno.exit(1);
         }
+
         await setUpLogging(result.config.logging.level);
         if (args._[0] === "migrate") Deno.exit(await runMigrations(result.config));
+
         await run(String(args._[0]), result.config);
     } else {
         // deno-lint-ignore no-console -- usage errors are command output, not log lines

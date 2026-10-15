@@ -31,5 +31,6 @@ export const createContext = <DB = Database>(
                 ? work(context)
                 : parts.db.transaction().execute((db) => work(createContext({ ...parts, db }))),
     };
+
     return context;
 };

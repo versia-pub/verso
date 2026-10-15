@@ -15,16 +15,20 @@ export const listenForJobs = async (
     config: Config["database"],
 ): Promise<(EventTarget & AsyncDisposable) | undefined> => {
     if (!("postgres" in config)) return undefined;
+
     const logger = getLogger(["verso", "jobs"]);
     const events = new EventTarget();
     const client = new pg.Client({ connectionString: config.postgres });
+
     client.on("notification", ({ payload }) => {
         if (payload) events.dispatchEvent(new Event(payload));
     });
     client.on("error", (error) => {
         logger.error("Stopped listening for new jobs, so workers only poll: {error}", { error });
     });
+
     await client.connect();
     await client.query(`listen ${jobsChannel}`);
+
     return Object.assign(events, { [Symbol.asyncDispose]: () => client.end() });
 };

@@ -25,6 +25,7 @@ Deno.test("keys may only use the allowed characters", () => {
     ) {
         assertEquals(accepts(`{"${key}": 1}`), true, key);
     }
+
     for (const key of ["invalid key", "invalid@key", "", "\\u0020", "é"]) {
         assertEquals(accepts(`{"${key}": 1}`), false, key);
     }
@@ -60,6 +61,7 @@ Deno.test("numbers must be plain decimals", () => {
     ) {
         assertEquals(accepts(`{"n": ${number}}`), true, number);
     }
+
     for (
         const number of [
             "1e3",

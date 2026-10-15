@@ -29,6 +29,7 @@ export const parseReference = (
     if (canonicalHost === undefined || !idPattern.test(id)) {
         return undefined;
     }
+
     return { host: canonicalHost, id };
 };
 
@@ -52,6 +53,7 @@ export const canonicalize = (host: string): string | undefined => {
     if (!/^[\x21-\x7e]+$/.test(host)) {
         return undefined;
     }
+
     const url = URL.parse(`https://${host}`);
     const onlyHost = url !== null && url.pathname === "/" &&
         url.search === "" &&

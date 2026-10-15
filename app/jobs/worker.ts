@@ -42,6 +42,7 @@ const runJob = async (ctx: Context, name: string, queue: Queue, job: JobsTable) 
             outcome: job.attempts >= job.max_attempts ? "giving up" : "will retry",
             error,
         });
+
         try {
             await fail(ctx, job, errorText(error));
         } catch (error) {
@@ -68,6 +69,7 @@ export const pause = (
             wakeup?.events.removeEventListener(wakeup.name, done);
             resolve();
         };
+
         const timer = setTimeout(done, ms);
         signal.addEventListener("abort", done);
         wakeup?.events.addEventListener(wakeup.name, done);
@@ -76,8 +78,10 @@ export const pause = (
 
 const workQueue = async (ctx: Context, name: string, queue: Queue, options: WorkOptions) => {
     const running = new Set<Promise<void>>();
+
     while (!options.signal.aborted) {
         const free = queue.concurrency - running.size;
+
         let jobs: JobsTable[] = [];
         if (free > 0) {
             try {
@@ -91,16 +95,19 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
                 logger.error("Couldn't claim jobs from {queue}: {error}", { queue: name, error });
             }
         }
+
         for (const job of jobs) {
             const run = runJob(ctx, name, queue, job).finally(() => running.delete(run));
             running.add(run);
         }
+
         // A full batch means more may be due; otherwise wait for a free slot or the next poll.
         if (free === 0 || jobs.length < free) {
             const wakeup = options.wakeups && { events: options.wakeups, name };
             await pause(options.pollMs, options.signal, running, wakeup);
         }
     }
+
     await Promise.all(running);
 };
 
@@ -115,6 +122,7 @@ export const work = async (
             ? resolve()
             : options.signal.addEventListener("abort", () => resolve(), { once: true })
     );
+
     await Promise.all([
         stopped,
         ...Object.entries(queues).map(([name, queue]) => workQueue(ctx, name, queue, options)),
@@ -132,8 +140,10 @@ export const drain = async (
     worker = "drain",
 ): Promise<number> => {
     let ran = 0;
+
     for (;;) {
         let claimed = 0;
+
         for (const [name, queue] of Object.entries(queues)) {
             const leaseMs = queue.leaseMs ?? defaultLeaseMs;
             for (const job of await claim(ctx, { queue: name, worker, limit: 1, leaseMs })) {
@@ -141,6 +151,7 @@ export const drain = async (
                 claimed++;
             }
         }
+
         if (claimed === 0) return ran;
         ran += claimed;
     }
