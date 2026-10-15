@@ -3,6 +3,7 @@
     "license": "AGPL-3.0-or-later",
     "vendor": true,
     "workspace": [
+        "./packages/client-api",
         "./packages/protocol"
     ],
     "tasks": {
