@@ -47,6 +47,7 @@ export type Authorization =
     | {
         readonly result: "choose";
         readonly browserSecret: string;
+        readonly formToken: string;
         readonly issuers: IdentityProvider["issuer"][];
     }
     /** The browser goes to the only issuer to log in. */
@@ -135,6 +136,7 @@ export const authorize = async (
     if (only && !login) return { result: "unreachable", issuer: only.issuer.name };
 
     const browserSecret = randomToken();
+    const formToken = randomToken();
 
     const flow: OAuthFlowsTable = {
         id: await hashToken(browserSecret),
@@ -146,6 +148,7 @@ export const authorize = async (
         issuer: only?.issuer.url ?? null,
         login: login?.flow ?? null,
         account_id: null,
+        form_token: formToken,
         code_hash: null,
         expires_at: new Date(ctx.clock.now().getTime() + flowLifetimeMs),
         created_at: ctx.clock.now(),
@@ -153,9 +156,12 @@ export const authorize = async (
 
     await ctx.db.insertInto("oauth_flows").values(flow).execute();
 
-    return login
-        ? { result: "login", browserSecret, url: login.url }
-        : { result: "choose", browserSecret, issuers: providers.map((p) => p.issuer) };
+    return login ? { result: "login", browserSecret, url: login.url } : {
+        result: "choose",
+        browserSecret,
+        formToken,
+        issuers: providers.map((p) => p.issuer),
+    };
 };
 
 /** Deletes flows past their expiry: logins never finished, and codes never traded for tokens. */
@@ -175,12 +181,26 @@ export const findFlow = async (
         .executeTakeFirst();
 
 /**
+ * The flow a form the user sent was for, if it is still the browser's flow. Another login started
+ * in the browser since replaces the cookie, so a form left open from before is refused.
+ */
+export const findFormFlow = async (
+    ctx: Context,
+    browserSecret: string | undefined,
+    formToken: string,
+): Promise<OAuthFlowsTable | undefined> => {
+    const flow = await findFlow(ctx, browserSecret);
+    return flow?.form_token === formToken ? flow : undefined;
+};
+
+/**
  * Starts the login at the issuer the user chose, if the browser has a flow waiting for a login and
  * the issuer is configured.
  */
 export const chooseIssuer = async (
     ctx: Context,
     browserSecret: string | undefined,
+    formToken: string,
     issuerUrl: string,
 ): Promise<
     { readonly result: "expired" } | Unreachable | { readonly result: "login"; readonly url: URL }
@@ -188,7 +208,7 @@ export const chooseIssuer = async (
     const provider = Object.hasOwn(ctx.identityProviders, issuerUrl)
         ? ctx.identityProviders[issuerUrl]
         : undefined;
-    const flow = await findFlow(ctx, browserSecret);
+    const flow = await findFormFlow(ctx, browserSecret, formToken);
     if (!provider || !flow || flow.account_id !== null) return { result: "expired" };
 
     const login = await beginLogin(ctx, provider);

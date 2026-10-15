@@ -9,11 +9,12 @@ export const errorPage = (description: string): Html =>
     layout("Can't log in", html`<p>${description}</p>`);
 
 /** One button for each issuer the user can log in with. */
-export const chooserPage = (issuers: IdentityProvider["issuer"][]): Html =>
+export const chooserPage = (issuers: IdentityProvider["issuer"][], formToken: string): Html =>
     layout(
         "Log in",
         html`
             <form method="post" action="/oauth/authorize/issuer">
+                <input type="hidden" name="form_token" value="${formToken}">
                 ${issuers.map((issuer) =>
                     html`<p><button name="issuer" value="${issuer.url}">${issuer.name}</button></p>`
                 )}
@@ -30,6 +31,7 @@ export const consentPage = (request: ConsentRequest): Html =>
                 .username} with these permissions:</p>
             <ul>${request.scopes.map((scope) => html`<li><code>${scope}</code></li>`)}</ul>
             <form method="post" action="/oauth/consent">
+                <input type="hidden" name="form_token" value="${request.formToken}">
                 <button name="decision" value="allow">Allow</button>
                 <button name="decision" value="deny">Deny</button>
             </form>

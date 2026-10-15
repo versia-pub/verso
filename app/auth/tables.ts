@@ -36,6 +36,11 @@ export type OAuthFlowsTable = {
     login: LoginFlow | null;
     /** The user, once logged in. */
     account_id: string | null;
+    /**
+     * Sent back by the forms shown during this flow, so a form left open from another flow, or
+     * posted by another site, can't act on this one. `null` for flows from before it was added.
+     */
+    form_token: string | null;
     /** The hash of the code the app trades for a token, once the user allows it. */
     code_hash: string | null;
     expires_at: Date;

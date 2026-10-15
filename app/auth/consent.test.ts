@@ -41,11 +41,18 @@ const open = async (provider = stubProvider()) => {
         scopes: ["read", "write"],
     });
 
-    const request = (path: string, cookie: string | undefined, init: RequestInit = {}) =>
-        http.request(path, {
-            ...init,
-            headers: cookie === undefined ? {} : { cookie: `__Host-oauth_flow=${cookie}` },
-        });
+    const request = (
+        path: string,
+        cookie: string | undefined,
+        init: RequestInit = {},
+        headers: Record<string, string> = {},
+    ) => http.request(path, {
+        ...init,
+        headers: cookie === undefined ? headers : {
+            ...headers,
+            cookie: `__Host-oauth_flow=${cookie}`,
+        },
+    });
 
     /** Starts a flow and returns its cookie. */
     const start = async (redirectUri = "https://phanpy.example/back") => {
@@ -68,16 +75,23 @@ const open = async (provider = stubProvider()) => {
     const chooseIssuer = (cookie: string) =>
         request("/oauth/authorize/issuer", cookie, {
             method: "POST",
-            body: new URLSearchParams({ issuer: "https://id.example" }),
+            body: new URLSearchParams({ issuer: "https://id.example", form_token: "none" }),
         });
 
     const consent = (cookie: string | undefined) => request("/oauth/consent", cookie);
 
-    const decide = (cookie: string | undefined, decision: "allow" | "deny") =>
-        request("/oauth/consent", cookie, {
-            method: "POST",
-            body: new URLSearchParams({ decision }),
-        });
+    /** Answers on the consent page, as shown now unless an older one's form token is given. */
+    const decide = async (
+        cookie: string | undefined,
+        decision: "allow" | "deny",
+        { formToken, site = "same-origin" }: { formToken?: string; site?: string } = {},
+    ) => request("/oauth/consent", cookie, {
+        method: "POST",
+        body: new URLSearchParams({
+            decision,
+            form_token: formToken ?? formTokenIn(await (await consent(cookie)).text()),
+        }),
+    }, { "sec-fetch-site": site });
 
     const flows = () => test.ctx.db.selectFrom("oauth_flows").selectAll().execute();
 
@@ -85,6 +99,8 @@ const open = async (provider = stubProvider()) => {
 };
 
 const backTo = (response: Response) => new URL(response.headers.get("location") ?? "");
+
+const formTokenIn = (page: string) => /name="form_token" value="([^"]+)"/.exec(page)?.[1] ?? "none";
 
 Deno.test("after logging in, the user is asked to allow the app", async () => {
     await using test = await open();
@@ -181,4 +197,29 @@ Deno.test("each step needs the browser that started, in the right order", async 
     assertEquals((await test.consent(undefined)).status, 400);
     assertEquals((await test.decide(undefined, "allow")).status, 400);
     assertEquals((await test.consent(cookie)).status, 200);
+});
+
+Deno.test("a consent page left open from an older login can't answer for a newer one", async () => {
+    await using test = await open();
+    const first = await test.start();
+    await test.callback(first);
+    const olderPage = await (await test.consent(first)).text();
+
+    const second = await test.start();
+    await test.callback(second);
+    const older = await test.decide(second, "allow", { formToken: formTokenIn(olderPage) });
+
+    assertEquals(older.status, 400);
+    assertEquals((await test.flows()).map((flow) => flow.code_hash), [null, null]);
+    assertEquals((await test.decide(second, "allow")).status, 302);
+});
+
+Deno.test("only Verso's own pages can answer", async () => {
+    await using test = await open();
+    const cookie = await test.start();
+    await test.callback(cookie);
+
+    assertEquals((await test.decide(cookie, "allow", { site: "same-site" })).status, 422);
+    assertEquals((await test.decide(cookie, "allow", { site: "cross-site" })).status, 422);
+    assertEquals((await test.flows())[0].code_hash, null);
 });

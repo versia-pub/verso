@@ -1,7 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import { provision } from "../accounts/provision.ts";
 import type { Context } from "../kernel/context.ts";
-import { findFlow } from "./authorize.ts";
+import { findFlow, findFormFlow } from "./authorize.ts";
 import type { Scope } from "./scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
@@ -67,6 +67,7 @@ export type ConsentRequest = {
     readonly appName: string;
     readonly username: string;
     readonly scopes: Scope[];
+    readonly formToken: string;
 };
 
 /** What the logged-in user is asked to allow, if their browser has a flow waiting for it. */
@@ -75,7 +76,7 @@ export const consentRequest = async (
     browserSecret: string | undefined,
 ): Promise<ConsentRequest | undefined> => {
     const flow = await findFlow(ctx, browserSecret);
-    if (!flow?.account_id || flow.code_hash !== null) return undefined;
+    if (!flow?.account_id || flow.form_token === null || flow.code_hash !== null) return undefined;
 
     const { name } = await ctx.db.selectFrom("apps")
         .select("name")
@@ -86,7 +87,7 @@ export const consentRequest = async (
         .where("id", "=", flow.account_id)
         .executeTakeFirstOrThrow();
 
-    return { appName: name, username, scopes: flow.scopes };
+    return { appName: name, username, scopes: flow.scopes, formToken: flow.form_token };
 };
 
 /**
@@ -96,9 +97,10 @@ export const consentRequest = async (
 export const decide = async (
     ctx: Context,
     browserSecret: string | undefined,
+    formToken: string,
     allow: boolean,
 ): Promise<{ readonly result: "expired" } | SendBack> => {
-    const flow = await findFlow(ctx, browserSecret);
+    const flow = await findFormFlow(ctx, browserSecret, formToken);
     if (!flow?.account_id || flow.code_hash !== null) return { result: "expired" };
 
     if (!allow) {

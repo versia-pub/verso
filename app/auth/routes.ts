@@ -122,6 +122,12 @@ const verifyAppCredentials = defineRoute({
 /** The cookie that ties a login to the browser that started it. */
 const FlowCookie = z.object({ oauth_flow: z.string().optional() });
 
+/**
+ * Refuses forms posted from other origins, which the form token already stops. Sibling subdomains
+ * count as the same site, so SameSite cookies don't. Browsers too old to send it are let through.
+ */
+const SameOrigin = z.object({ "sec-fetch-site": z.literal("same-origin").optional() });
+
 const getAuthorize = defineRoute({
     method: "GET",
     path: "/oauth/authorize",
@@ -152,7 +158,7 @@ const getAuthorize = defineRoute({
             case "choose":
                 return {
                     status: 200,
-                    page: chooserPage(authorization.issuers),
+                    page: chooserPage(authorization.issuers, authorization.formToken),
                     cookies: { oauth_flow: authorization.browserSecret },
                 };
 
@@ -170,11 +176,12 @@ const postIssuer = defineRoute({
     method: "POST",
     path: "/oauth/authorize/issuer",
     summary: "Logs in with the issuer the user chose",
-    body: z.object({ issuer: z.string() }),
+    body: z.object({ issuer: z.string(), form_token: z.string() }),
     cookies: FlowCookie,
+    headers: SameOrigin,
     responses: { 303: Redirect, 400: Page, 502: Page },
     handler: async (ctx, { body, cookies }) => {
-        const login = await chooseIssuer(ctx, cookies.oauth_flow, body.issuer);
+        const login = await chooseIssuer(ctx, cookies.oauth_flow, body.form_token, body.issuer);
 
         switch (login.result) {
             case "expired":
@@ -224,11 +231,13 @@ const postConsent = defineRoute({
     method: "POST",
     path: "/oauth/consent",
     summary: "Records whether the user lets the app use their account",
-    body: z.object({ decision: z.enum(["allow", "deny"]) }),
+    body: z.object({ decision: z.enum(["allow", "deny"]), form_token: z.string() }),
     cookies: FlowCookie,
+    headers: SameOrigin,
     responses: { 200: Page, 302: Redirect, 400: Page },
     handler: async (ctx, { body, cookies }) => {
-        const decision = await decide(ctx, cookies.oauth_flow, body.decision === "allow");
+        const allow = body.decision === "allow";
+        const decision = await decide(ctx, cookies.oauth_flow, body.form_token, allow);
         if (decision.result === "expired") return expired;
 
         return { ...sendBack(decision), cookies: { oauth_flow: null } };

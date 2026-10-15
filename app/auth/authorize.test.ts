@@ -63,12 +63,19 @@ const open = async (providers: IdentityProvider[] = [issuerA]) => {
         return http.request(`/oauth/authorize?${new URLSearchParams(defined)}`);
     };
 
-    const chooseIssuer = (issuer: string, cookie?: string) =>
-        http.request("/oauth/authorize/issuer", {
-            method: "POST",
-            body: new URLSearchParams({ issuer }),
-            headers: cookie === undefined ? {} : { cookie: `__Host-oauth_flow=${cookie}` },
-        });
+    const chooseIssuer = (
+        issuer: string,
+        cookie?: string,
+        formToken = "none",
+        site = "same-origin",
+    ) => http.request("/oauth/authorize/issuer", {
+        method: "POST",
+        body: new URLSearchParams({ issuer, form_token: formToken }),
+        headers: {
+            "sec-fetch-site": site,
+            ...(cookie === undefined ? {} : { cookie: `__Host-oauth_flow=${cookie}` }),
+        },
+    });
 
     const flows = () => test.ctx.db.selectFrom("oauth_flows").selectAll().execute();
 
@@ -77,6 +84,12 @@ const open = async (providers: IdentityProvider[] = [issuerA]) => {
 
 const flowCookie = (response: Response) =>
     /__Host-oauth_flow=([^;]+)/.exec(response.headers.get("set-cookie") ?? "")?.[1] ?? "";
+
+/** The chooser's cookie and form token, as the browser has them. */
+const chooser = async (response: Response) => ({
+    cookie: flowCookie(response),
+    formToken: /name="form_token" value="([^"]+)"/.exec(await response.text())?.[1] ?? "",
+});
 
 Deno.test("with one issuer, the browser goes straight to it, tied to the flow by a cookie", async () => {
     await using test = await open();
@@ -169,22 +182,27 @@ Deno.test("without issuers, nobody can log in", async () => {
 Deno.test("with several issuers, the user chooses, in the browser that started", async () => {
     await using test = await open([issuerA, issuerB]);
 
-    const chooser = await test.authorize();
-    const cookie = flowCookie(chooser);
-    const page = await chooser.text();
+    const response = await test.authorize();
+    const page = await response.clone().text();
+    const { cookie, formToken } = await chooser(response);
 
-    assertEquals(chooser.status, 200);
+    assertEquals(response.status, 200);
     assertStringIncludes(
         page,
         `<button name="issuer" value="https://b.example">Example B</button>`,
     );
 
-    assertEquals((await test.chooseIssuer("https://b.example")).status, 400);
-    assertEquals((await test.chooseIssuer("https://b.example", "other")).status, 400);
-    assertEquals((await test.chooseIssuer("https://c.example", cookie)).status, 400);
-    assertEquals((await test.chooseIssuer("constructor", cookie)).status, 400);
+    assertEquals((await test.chooseIssuer("https://b.example", undefined, formToken)).status, 400);
+    assertEquals((await test.chooseIssuer("https://b.example", "other", formToken)).status, 400);
+    assertEquals((await test.chooseIssuer("https://b.example", cookie)).status, 400);
+    assertEquals((await test.chooseIssuer("https://c.example", cookie, formToken)).status, 400);
+    assertEquals((await test.chooseIssuer("constructor", cookie, formToken)).status, 400);
+    assertEquals(
+        (await test.chooseIssuer("https://b.example", cookie, formToken, "same-site")).status,
+        422,
+    );
 
-    const chosen = await test.chooseIssuer("https://b.example", cookie);
+    const chosen = await test.chooseIssuer("https://b.example", cookie, formToken);
 
     assertEquals(chosen.status, 303);
     assertStringIncludes(chosen.headers.get("location") ?? "", "https://b.example/authorize");
@@ -196,8 +214,8 @@ Deno.test("if the issuer can't be reached, the user is told, and nothing is stor
     await using several = await open([issuerA, issuerDown]);
 
     const direct = await only.authorize();
-    const cookie = flowCookie(await several.authorize());
-    const chosen = await several.chooseIssuer("https://down.example", cookie);
+    const { cookie, formToken } = await chooser(await several.authorize());
+    const chosen = await several.chooseIssuer("https://down.example", cookie, formToken);
 
     assertEquals(direct.status, 502);
     assertStringIncludes(await direct.text(), "Can&#39;t reach Example Down right now");
@@ -209,11 +227,11 @@ Deno.test("if the issuer can't be reached, the user is told, and nothing is stor
 
 Deno.test("a login must be finished within half an hour", async () => {
     await using test = await open([issuerA, issuerB]);
-    const cookie = flowCookie(await test.authorize());
+    const { cookie, formToken } = await chooser(await test.authorize());
 
     test.clock.advance(30 * 60_000);
 
-    assertEquals((await test.chooseIssuer("https://a.example", cookie)).status, 400);
+    assertEquals((await test.chooseIssuer("https://a.example", cookie, formToken)).status, 400);
 });
 
 Deno.test("each hour, flows past their expiry are deleted", async () => {

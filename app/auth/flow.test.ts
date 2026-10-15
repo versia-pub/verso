@@ -91,15 +91,16 @@ Deno.test("a client logs a user in through the issuer and uses the token", async
     const toIssuer = await test.browse(`https://social.example/oauth/authorize?${authorize}`);
     const fromIssuer = await test.browse(locationOf(toIssuer));
     const toConsent = await test.browse(locationOf(fromIssuer));
-    const consent = await test.browse(locationOf(toConsent));
+    const consent = await (await test.browse(locationOf(toConsent))).text();
+    const formToken = /name="form_token" value="([^"]+)"/.exec(consent)?.[1] ?? "";
 
     assertEquals(toConsent.status, 303);
-    assertStringIncludes(await consent.text(), "@alice");
+    assertStringIncludes(consent, "@alice");
 
     // The user allows the app, which gets a code with its state.
     const allowed = await test.browse("https://social.example/oauth/consent", {
         method: "POST",
-        body: new URLSearchParams({ decision: "allow" }),
+        body: new URLSearchParams({ decision: "allow", form_token: formToken }),
     });
     const back = new URL(locationOf(allowed));
 
