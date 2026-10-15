@@ -24,7 +24,7 @@ const open = async () => {
         username_claim: "preferred_username",
         registration: "open",
     };
-    const provider = oidcProvider(issuer, "s3cret", { transport, clock });
+    const provider = oidcProvider(issuer, { transport, clock });
 
     /** Starts a login and follows the issuer's redirect back, as a browser would. */
     const login = async () => {

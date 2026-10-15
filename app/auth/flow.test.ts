@@ -30,7 +30,7 @@ const open = async () => {
         clock,
         transport,
         identityProviders: {
-            [issuer.url]: oidcProvider(issuer, "s3cret", { transport, clock }),
+            [issuer.url]: oidcProvider(issuer, { transport, clock }),
         },
     });
     const verso = createApp(test.ctx, routes, { checkResponses: true });

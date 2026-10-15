@@ -19,16 +19,12 @@ const Issuer = z.strictObject({
     /** The issuer's URL. Accounts are linked to it, so changing it unlinks them all. */
     url: z.url({ protocol: /^https$/, error: "Must be an https URL" }),
     client_id: z.string().min(1),
-    /** Keep secrets out of the config file with `client_secret_file`, for example on NixOS. */
-    client_secret: z.string().min(1).optional(),
-    client_secret_file: z.string().min(1).optional(),
+    /** Keep it out of the config file with a reference, such as `${file:/run/secrets/oidc}`. */
+    client_secret: z.string().min(1),
     /** The claim a new account's username comes from. */
     username_claim: z.string().min(1).default("preferred_username"),
     registration: Registration.default("closed"),
-}).refine(
-    (issuer) => (issuer.client_secret === undefined) !== (issuer.client_secret_file === undefined),
-    { error: 'Set exactly one of "client_secret" or "client_secret_file"' },
-);
+});
 
 /** An origin with no path, such as `http://localhost:8080`. */
 const Origin = z.url({ protocol: /^https?$/ })

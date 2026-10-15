@@ -57,7 +57,7 @@ const run = async (role: string, config: Config): Promise<void> => {
     await using db = openDatabase(config.database);
 
     const urls = urlBuilder(config.domain, config.http.origin);
-    const identityProviders = await oidcProviders(config.auth.issuers, {
+    const identityProviders = oidcProviders(config.auth.issuers, {
         transport: fetchTransport,
         clock: systemClock,
     });

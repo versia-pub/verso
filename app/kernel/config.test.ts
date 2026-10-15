@@ -36,7 +36,7 @@ port = 3000
 name = "Example ID"
 url = "https://id.example"
 client_id = "verso"
-client_secret_file = "/run/secrets/verso-oidc"
+client_secret = "first"
 
 [[auth.issuers]]
 name = "Partner ID"
@@ -65,7 +65,7 @@ level = "debug"
                         name: "Example ID",
                         url: "https://id.example",
                         client_id: "verso",
-                        client_secret_file: "/run/secrets/verso-oidc",
+                        client_secret: "first",
                         username_claim: "preferred_username",
                         registration: "closed",
                     },
@@ -122,11 +122,10 @@ Deno.test("bad issuers explain what is wrong", async () => {
         await issuer(`url = "http://id.example"\n${secret}`),
         "Must be an https URL",
     );
-    const oneSecret = 'Set exactly one of "client_secret" or "client_secret_file"';
-    assertStringIncludes(await issuer('url = "https://id.example"'), oneSecret);
+    assertStringIncludes(await issuer('url = "https://id.example"'), "client_secret");
     assertStringIncludes(
-        await issuer(`url = "https://id.example"\n${secret}\nclient_secret_file = "/s"`),
-        oneSecret,
+        await issuer(`url = "https://id.example"\nclient_secret_file = "/s"`),
+        "client_secret_file",
     );
     assertStringIncludes(
         await issuer(`url = "https://id.example"\n${secret}\nregistration = "maybe"`),

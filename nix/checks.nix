@@ -79,7 +79,7 @@ in
             name = "Example ID";
             url = "https://id.verso.test";
             client_id = "verso";
-            client_secret_file = "/run/credentials/verso.service/oidc";
+            client_secret = "\${file:/run/credentials/verso.service/oidc}";
           }
         ];
       };

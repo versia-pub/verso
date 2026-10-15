@@ -17,11 +17,7 @@ export const openidFetch = (transport: Transport): client.CustomFetch => (url, o
  * An identity provider for an OpenID Connect issuer, using the code flow with PKCE. The issuer is
  * discovered on first use; if that fails, the next login tries again.
  */
-export const oidcProvider = (
-    issuer: Issuer,
-    clientSecret: string,
-    options: OidcOptions,
-): IdentityProvider => {
+export const oidcProvider = (issuer: Issuer, options: OidcOptions): IdentityProvider => {
     const fetch = openidFetch(options.transport);
     let discovered: Promise<client.ServerMetadata> | undefined;
 
@@ -43,7 +39,7 @@ export const oidcProvider = (
     const configuration = async () => {
         const skew = Math.round((options.clock.now().getTime() - Date.now()) / 1000);
         const configuration = new client.Configuration(await discover(), issuer.client_id, {
-            client_secret: clientSecret,
+            client_secret: issuer.client_secret,
             [client.clockSkew]: skew,
         });
         configuration[client.customFetch] = fetch;
@@ -91,27 +87,9 @@ export const oidcProvider = (
     };
 };
 
-const readClientSecret = async (issuer: Issuer): Promise<string> => {
-    if (issuer.client_secret !== undefined) return issuer.client_secret;
-
-    try {
-        return (await Deno.readTextFile(issuer.client_secret_file ?? "")).trim();
-    } catch (error) {
-        throw new Error(`Can't read the client secret of ${issuer.name}: ${error}`);
-    }
-};
-
-/**
- * A provider for each configured issuer, by issuer URL. Secret files are read now, so a missing one
- * stops startup instead of the first login.
- */
-export const oidcProviders = async (
+/** A provider for each configured issuer, by issuer URL. */
+export const oidcProviders = (
     issuers: readonly Issuer[],
     options: OidcOptions,
-): Promise<Record<string, IdentityProvider>> =>
-    Object.fromEntries(
-        await Promise.all(issuers.map(async (issuer) => [
-            issuer.url,
-            oidcProvider(issuer, await readClientSecret(issuer), options),
-        ])),
-    );
+): Record<string, IdentityProvider> =>
+    Object.fromEntries(issuers.map((issuer) => [issuer.url, oidcProvider(issuer, options)]));
