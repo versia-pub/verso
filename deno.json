@@ -36,7 +36,7 @@
         }
     },
     "imports": {
-        "@electric-sql/pglite": "npm:@electric-sql/pglite@0.5.9",
+        "@electric-sql/pglite": "npm:@electric-sql/pglite@0.5.10",
         "@hono/hono": "jsr:@hono/hono@4.13.13",
         "@logtape/logtape": "jsr:@logtape/logtape@2.4.1",
         "@panva/jose": "jsr:@panva/jose@6.2.12",

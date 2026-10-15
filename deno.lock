@@ -14,7 +14,7 @@
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/toml@1.0.11": "1.0.11",
-    "npm:@electric-sql/pglite@0.5.9": "0.5.9",
+    "npm:@electric-sql/pglite@0.5.10": "0.5.10",
     "npm:@types/pg@8.23.1": "8.23.1",
     "npm:fast-check@4.10.2": "4.10.2",
     "npm:kysely@0.29.6": "0.29.6",
@@ -71,8 +71,8 @@
     }
   },
   "npm": {
-    "@electric-sql/pglite@0.5.9": {
-      "integrity": "sha512-GoQTRMZ/o4J3sMW4mLDtDFGNOm1xy5oH+iHDALWll3uERY6OF4BSnL1t7FZH2Mlw+RPceDBlFJgSaecO73c4EA=="
+    "@electric-sql/pglite@0.5.10": {
+      "integrity": "sha512-tXc/25U3ulOkiRQuTFdwIv+JhBqtMdAF7Gvo6CfZZWtSB4+hgC4Wr2vwK5ngvvN5PJfAAEGIsfyCVy1JhCOBYw=="
     },
     "@types/node@26.6.4": {
       "integrity": "sha512-ldVPDCzj7fsaGZrLB0NuHuTvJcsNasysBAqMolr/cgxrLd1xbqxIr3XJiPnHHJUCxj5sNF1vnRj9aWnrVh5Jcg==",
@@ -184,7 +184,7 @@
       "jsr:@std/assert@1.0.19",
       "jsr:@std/cli@1.0.32",
       "jsr:@std/toml@1.0.11",
-      "npm:@electric-sql/pglite@0.5.9",
+      "npm:@electric-sql/pglite@0.5.10",
       "npm:@types/pg@8.23.1",
       "npm:fast-check@4.10.2",
       "npm:kysely@0.29.6",
