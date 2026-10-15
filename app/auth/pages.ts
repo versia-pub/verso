@@ -35,3 +35,7 @@ export const consentPage = (request: ConsentRequest): Html =>
             </form>
         `,
     );
+
+/** Shows the code to an app that can't receive it, for the user to copy into the app. */
+export const codePage = (code: string): Html =>
+    layout("Copy this code into the app", html`<p><code>${code}</code></p>`);

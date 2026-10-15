@@ -3,8 +3,8 @@ import { z } from "zod";
 import { defineRoute, Page, Redirect, type Route } from "../http/route.ts";
 import { registerApp } from "./apps.ts";
 import { authorize, chooseIssuer, outOfBand, withParams } from "./authorize.ts";
-import { consentRequest, finishLogin, type SendBack } from "./consent.ts";
-import { chooserPage, consentPage, errorPage } from "./pages.ts";
+import { consentRequest, decide, finishLogin, type SendBack } from "./consent.ts";
+import { chooserPage, codePage, consentPage, errorPage } from "./pages.ts";
 import { ScopeList } from "./scopes.ts";
 import type { AppsTable } from "./tables.ts";
 
@@ -76,13 +76,18 @@ const expired = {
 } as const;
 
 /**
- * Sends the browser back to the app with an error. An out-of-band app has nowhere to send it,
- * so the user is shown the error.
+ * Sends the browser back to the app with a code or an error. An out-of-band app has nowhere to
+ * send it, so the user is shown the code to copy, or the error.
  */
-const sendBack = ({ redirectUri, params }: Omit<SendBack, "result">) =>
-    redirectUri === outOfBand
+const sendBack = ({ redirectUri, params }: Omit<SendBack, "result">) => {
+    if (redirectUri !== outOfBand) {
+        return { status: 302, location: withParams(redirectUri, params) } as const;
+    }
+
+    return params.code === undefined
         ? { status: 400, page: errorPage(params.error_description ?? "") } as const
-        : { status: 302, location: withParams(redirectUri, params) } as const;
+        : { status: 200, page: codePage(params.code) } as const;
+};
 
 /** The cookie that ties a login to the browser that started it. */
 const FlowCookie = z.object({ oauth_flow: z.string().optional() });
@@ -175,10 +180,26 @@ const getConsent = defineRoute({
     },
 });
 
+const postConsent = defineRoute({
+    method: "POST",
+    path: "/oauth/consent",
+    summary: "Records whether the user lets the app use their account",
+    body: z.object({ decision: z.enum(["allow", "deny"]) }),
+    cookies: FlowCookie,
+    responses: { 200: Page, 302: Redirect, 400: Page },
+    handler: async (ctx, { body, cookies }) => {
+        const decision = await decide(ctx, cookies.oauth_flow, body.decision === "allow");
+        if (decision.result === "expired") return expired;
+
+        return { ...sendBack(decision), cookies: { oauth_flow: null } };
+    },
+});
+
 export const authRoutes: readonly Route[] = [
     postApps,
     getAuthorize,
     postIssuer,
     getCallback,
     getConsent,
+    postConsent,
 ];

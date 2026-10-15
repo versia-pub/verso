@@ -5,6 +5,7 @@ import { createTestContext } from "../kernel/testing.ts";
 import { registerApp } from "./apps.ts";
 import type { IdentityProvider } from "./identity.ts";
 import { authRoutes } from "./routes.ts";
+import { hashToken } from "./secrets.ts";
 
 /** An issuer that logs in alice when the browser comes back with `code=good`. */
 const stubProvider = (registration: Issuer["registration"] = "open"): IdentityProvider => ({
@@ -72,9 +73,15 @@ const open = async (provider = stubProvider()) => {
 
     const consent = (cookie: string | undefined) => request("/oauth/consent", cookie);
 
+    const decide = (cookie: string | undefined, decision: "allow" | "deny") =>
+        request("/oauth/consent", cookie, {
+            method: "POST",
+            body: new URLSearchParams({ decision }),
+        });
+
     const flows = () => test.ctx.db.selectFrom("oauth_flows").selectAll().execute();
 
-    return { ...test, start, callback, chooseIssuer, consent, flows };
+    return { ...test, start, callback, chooseIssuer, consent, decide, flows };
 };
 
 const backTo = (response: Response) => new URL(response.headers.get("location") ?? "");
@@ -91,6 +98,60 @@ Deno.test("after logging in, the user is asked to allow the app", async () => {
     assertStringIncludes(page, "<title>Allow Phanpy?</title>");
     assertStringIncludes(page, "@alice");
     assertStringIncludes(page, "<li><code>write</code></li>");
+});
+
+Deno.test("allowing sends the app a single-use code with its state", async () => {
+    await using test = await open();
+    const cookie = await test.start();
+    await test.callback(cookie);
+
+    const allowed = await test.decide(cookie, "allow");
+    const code = backTo(allowed).searchParams.get("code") ?? "";
+    const [flow] = await test.flows();
+
+    assertEquals(allowed.status, 302);
+    assertEquals(backTo(allowed).searchParams.get("state"), "xyz");
+    assertEquals(flow.code_hash, await hashToken(code));
+    assertEquals(flow.expires_at.getTime() - test.clock.now().getTime(), 10 * 60_000);
+    assertStringIncludes(allowed.headers.get("set-cookie") ?? "", "__Host-oauth_flow=; Max-Age=0");
+
+    assertEquals((await test.decide(cookie, "allow")).status, 400);
+    assertEquals((await test.consent(cookie)).status, 400);
+});
+
+Deno.test("allowing twice at once gives one code", async () => {
+    await using test = await open();
+    const cookie = await test.start();
+    await test.callback(cookie);
+
+    const answers = await Promise.all([test.decide(cookie, "allow"), test.decide(cookie, "allow")]);
+
+    assertEquals(answers.map((answer) => answer.status).toSorted(), [302, 400]);
+});
+
+Deno.test("denying tells the app, and ends the flow", async () => {
+    await using test = await open();
+    const cookie = await test.start();
+    await test.callback(cookie);
+
+    const denied = await test.decide(cookie, "deny");
+
+    assertEquals(backTo(denied).searchParams.get("error"), "access_denied");
+    assertEquals(backTo(denied).searchParams.get("state"), "xyz");
+    assertEquals(await test.flows(), []);
+});
+
+Deno.test("an out-of-band app's user is shown the code to copy", async () => {
+    await using test = await open();
+    const cookie = await test.start("urn:ietf:wg:oauth:2.0:oob");
+    await test.callback(cookie);
+
+    const allowed = await test.decide(cookie, "allow");
+    const [flow] = await test.flows();
+    const code = /<code>([^<]+)<\/code>/.exec(await allowed.text())?.[1] ?? "";
+
+    assertEquals(allowed.status, 200);
+    assertEquals(flow.code_hash, await hashToken(code));
 });
 
 Deno.test("a failed login, or a closed registration, is denied to the app", async () => {
@@ -110,6 +171,7 @@ Deno.test("each step needs the browser that started, in the right order", async 
     const cookie = await test.start();
 
     assertEquals((await test.consent(cookie)).status, 400);
+    assertEquals((await test.decide(cookie, "allow")).status, 400);
     assertEquals((await test.callback(undefined)).status, 400);
     assertEquals((await test.callback("other")).status, 400);
 
@@ -117,5 +179,6 @@ Deno.test("each step needs the browser that started, in the right order", async 
     assertEquals((await test.callback(cookie)).status, 400);
     assertEquals((await test.chooseIssuer(cookie)).status, 400);
     assertEquals((await test.consent(undefined)).status, 400);
+    assertEquals((await test.decide(undefined, "allow")).status, 400);
     assertEquals((await test.consent(cookie)).status, 200);
 });

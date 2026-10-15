@@ -3,9 +3,13 @@ import { provision } from "../accounts/provision.ts";
 import type { Context } from "../kernel/context.ts";
 import { findFlow } from "./authorize.ts";
 import type { Scope } from "./scopes.ts";
+import { hashToken, randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
 
 const logger = getLogger(["verso", "auth"]);
+
+/** How long an app has to trade its code for a token, as in Mastodon. */
+const codeLifetimeMs = 10 * 60_000;
 
 /** Where to send the browser back to, and what to tell the app. */
 export type SendBack = {
@@ -83,4 +87,36 @@ export const consentRequest = async (
         .executeTakeFirstOrThrow();
 
     return { appName: name, username, scopes: flow.scopes };
+};
+
+/**
+ * Records the user's answer. Allowing gives the app a code, valid for ten minutes, to trade for a
+ * token; only its hash is kept. Denying ends the flow.
+ */
+export const decide = async (
+    ctx: Context,
+    browserSecret: string | undefined,
+    allow: boolean,
+): Promise<{ readonly result: "expired" } | SendBack> => {
+    const flow = await findFlow(ctx, browserSecret);
+    if (!flow?.account_id || flow.code_hash !== null) return { result: "expired" };
+
+    if (!allow) {
+        await ctx.db.deleteFrom("oauth_flows").where("id", "=", flow.id).execute();
+        return denied(flow, "The user denied access.");
+    }
+
+    const code = randomToken();
+
+    // Only the first answer counts, if the form is sent twice at once.
+    const { numUpdatedRows } = await ctx.db.updateTable("oauth_flows")
+        .set({
+            code_hash: await hashToken(code),
+            expires_at: new Date(ctx.clock.now().getTime() + codeLifetimeMs),
+        })
+        .where("id", "=", flow.id)
+        .where("code_hash", "is", null)
+        .executeTakeFirstOrThrow();
+
+    return numUpdatedRows === 0n ? { result: "expired" } : sendBack(flow, { code });
 };
