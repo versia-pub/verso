@@ -1,5 +1,6 @@
 import type { Hono } from "@hono/hono";
 import { createApp } from "../http/app.ts";
+import { routes } from "../http/routes.ts";
 import { queues as allQueues } from "../jobs/queues.ts";
 import { drain, type Queue } from "../jobs/worker.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
@@ -41,7 +42,7 @@ export const createNetwork = async (
     const instances: Record<string, Instance> = {};
     for (const domain of domains) {
         const test = stack.use(await createTestContext({ domain, clock, transport }));
-        const app = createApp();
+        const app = createApp(test.ctx, routes);
         transport.servers.set(domain, app.fetch);
         instances[domain] = { ...test, app };
     }

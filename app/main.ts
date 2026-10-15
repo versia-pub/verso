@@ -4,13 +4,14 @@ import denoConfig from "../deno.json" with { type: "json" };
 import { openDatabase } from "./db/database.ts";
 import { migrate } from "./db/migrate.ts";
 import { createApp } from "./http/app.ts";
+import { routes } from "./http/routes.ts";
 import { queues, tasks } from "./jobs/queues.ts";
 import { runScheduler } from "./jobs/scheduler.ts";
 import { listenForJobs } from "./jobs/wakeups.ts";
 import { work } from "./jobs/worker.ts";
 import { systemClock } from "./kernel/clock.ts";
 import { type Config, readConfig } from "./kernel/config.ts";
-import { createContext } from "./kernel/context.ts";
+import { type Context, createContext } from "./kernel/context.ts";
 import { idGenerator } from "./kernel/ids.ts";
 import { setUpLogging } from "./kernel/logging.ts";
 import { fetchTransport } from "./kernel/transport.ts";
@@ -25,7 +26,7 @@ const banner = `
 `;
 
 /** Serves HTTP until `signal` aborts. */
-const serve = (config: Config, signal: AbortSignal): Promise<void> => {
+const serve = (ctx: Context, config: Config, signal: AbortSignal): Promise<void> => {
     // deno-lint-ignore no-console -- the banner is command output, not a log line
     console.log(banner);
 
@@ -36,7 +37,10 @@ const serve = (config: Config, signal: AbortSignal): Promise<void> => {
             port,
             domain: config.domain,
         });
-    const server = Deno.serve({ port: config.http.port, onListen, signal }, createApp().fetch);
+    const server = Deno.serve(
+        { port: config.http.port, onListen, signal },
+        createApp(ctx, routes).fetch,
+    );
     return server.finished;
 };
 
@@ -65,7 +69,7 @@ const run = async (role: string, config: Config): Promise<void> => {
         logger.info("Working on {queues} as {worker}", { queues: Object.keys(queues), worker });
     }
     await Promise.all([
-        role === "work" ? undefined : serve(config, stopping.signal),
+        role === "work" ? undefined : serve(ctx, config, stopping.signal),
         role === "serve"
             ? undefined
             : work(ctx, queues, { worker, pollMs: 1000, signal: stopping.signal, wakeups }),
