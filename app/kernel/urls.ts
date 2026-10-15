@@ -3,7 +3,7 @@
  * WebFinger links, media) comes from here, so none are glued together from strings elsewhere.
  */
 export type UrlBuilder = {
-    /** `https://` plus the instance's domain, with no trailing slash. */
+    /** `https://` plus the instance's domain, or the development origin, with no trailing slash. */
     readonly origin: string;
     /**
      * A URL on this instance, written as a tagged template: `` urls.url`/api/v1/accounts/${id}` ``.
@@ -12,10 +12,11 @@ export type UrlBuilder = {
     url(path: TemplateStringsArray, ...values: string[]): string;
 };
 
-/** Makes the builder for `domain`, which must be a bare hostname such as `config.domain`. */
-export const urlBuilder = (domain: string): UrlBuilder => {
-    const origin = `https://${domain}`;
-
+/**
+ * Makes the builder for `domain`, which must be a bare hostname such as `config.domain`. In
+ * development, `origin` can replace `https://<domain>`, such as with `http://localhost:8080`.
+ */
+export const urlBuilder = (domain: string, origin = `https://${domain}`): UrlBuilder => {
     return {
         origin,
         url: (path, ...values) => {

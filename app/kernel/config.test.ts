@@ -12,10 +12,11 @@ Deno.test("a minimal config gets the defaults", () => {
     assertEquals(parseConfig(minimal), {
         ok: true,
         config: {
+            mode: "production",
             domain: "social.example",
             database: { sqlite: "verso.db" },
             http: { port: 8080 },
-            auth: { issuers: [] },
+            auth: { issuers: [], dev_login: false },
             logging: { level: "info" },
         },
     });
@@ -52,6 +53,7 @@ level = "debug"
     assertEquals(result, {
         ok: true,
         config: {
+            mode: "production",
             domain: "social.example",
             database: {
                 postgres: "postgresql://verso@/verso?host=/run/postgresql",
@@ -76,6 +78,7 @@ level = "debug"
                         registration: { claim: "groups", contains: "versia-users" },
                     },
                 ],
+                dev_login: false,
             },
             logging: { level: "debug" },
         },
@@ -138,4 +141,33 @@ Deno.test("bad issuers explain what is wrong", () => {
         ),
         "Each issuer URL can only be listed once",
     );
+});
+
+Deno.test("development settings need development mode", () => {
+    const local = '[http]\norigin = "http://localhost:8080"\n[auth]\ndev_login = true\n';
+    const development = minimal.replace("social.example", "localhost");
+
+    const production = errors(development + local);
+    assertStringIncludes(production, "http.origin");
+    assertStringIncludes(production, "auth.dev_login");
+    assertStringIncludes(production, 'Only allowed with mode = "development"');
+
+    const result = parseConfig('mode = "development"\n' + development + local);
+    assertEquals(result.ok && [result.config.http.origin, result.config.auth.dev_login], [
+        "http://localhost:8080",
+        true,
+    ]);
+});
+
+Deno.test("a development origin is a bare origin on the domain", () => {
+    const origin = (url: string) =>
+        errors(`mode = "development"\n${minimal}[http]\norigin = "${url}"\n`);
+
+    assertStringIncludes(origin("http://localhost:8080"), "Must be on the domain");
+    assertStringIncludes(origin("http://social.example/verso"), "with no path");
+    assertStringIncludes(origin("ftp://social.example"), "http.origin");
+    const valid = parseConfig(
+        `mode = "development"\n${minimal}[http]\norigin = "http://social.example:8080/"\n`,
+    );
+    assertEquals(valid.ok && valid.config.http.origin, "http://social.example:8080");
 });

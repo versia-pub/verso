@@ -29,8 +29,19 @@ const Issuer = z.strictObject({
     { error: 'Set exactly one of "client_secret" or "client_secret_file"' },
 );
 
+/** An origin with no path, such as `http://localhost:8080`. */
+const Origin = z.url({ protocol: /^https?$/ })
+    .refine((url) => new URL(url).origin === url.replace(/\/$/, ""), {
+        error: "Must be an origin, such as http://localhost:8080, with no path",
+    })
+    .transform((url) => new URL(url).origin);
+
+const developmentOnly = 'Only allowed with mode = "development"';
+
 /** Everything an instance can be configured with. Unknown keys are errors, so typos don't go unnoticed. */
 export const Config = z.strictObject({
+    /** `development` allows settings that are unsafe on a public server, for running Verso locally. */
+    mode: z.enum(["production", "development"]).default("production"),
     /**
      * The instance's domain, without a port.
      * @see https://versia.pub/api/basics#domain
@@ -43,6 +54,11 @@ export const Config = z.strictObject({
     ], { error: 'Set exactly one of "postgres" or "sqlite"' }),
     http: z.strictObject({
         port: z.int().min(1).max(65535).default(8080),
+        /**
+         * Where the instance is reached, if not at `https://<domain>`, such as
+         * `http://localhost:8080`. Development only.
+         */
+        origin: Origin.optional(),
     }).prefault({}),
     auth: z.strictObject({
         /** Without any, the server runs but nobody can log in. */
@@ -50,11 +66,31 @@ export const Config = z.strictObject({
             (issuers) => new Set(issuers.map((issuer) => issuer.url)).size === issuers.length,
             { error: "Each issuer URL can only be listed once" },
         ),
+        /** A form that logs in as any username, with no password. Development only. */
+        dev_login: z.boolean().default(false),
     }).prefault({}),
     logging: z.strictObject({
         level: z.enum(["trace", "debug", "info", "warning", "error", "fatal"])
             .default("info"),
     }).prefault({}),
+}).superRefine((config, ctx) => {
+    if (config.mode === "production" && config.http.origin !== undefined) {
+        ctx.addIssue({ code: "custom", path: ["http", "origin"], message: developmentOnly });
+    }
+
+    if (config.mode === "production" && config.auth.dev_login) {
+        ctx.addIssue({ code: "custom", path: ["auth", "dev_login"], message: developmentOnly });
+    }
+
+    if (
+        config.http.origin !== undefined && new URL(config.http.origin).hostname !== config.domain
+    ) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["http", "origin"],
+            message: "Must be on the domain",
+        });
+    }
 });
 export type Config = z.infer<typeof Config>;
 

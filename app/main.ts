@@ -57,7 +57,7 @@ const run = async (role: string, config: Config): Promise<void> => {
     const ctx = createContext({
         clock: systemClock,
         ids: idGenerator(systemClock),
-        urls: urlBuilder(config.domain),
+        urls: urlBuilder(config.domain, config.http.origin),
         transport: fetchTransport,
         identityProviders: await oidcProviders(config.auth.issuers, {
             transport: fetchTransport,

@@ -61,3 +61,10 @@ Deno.test("values that would bend the path are refused", () => {
 
     assertThrows(() => urls.url`api/v1/instance`, Error, 'start with "/"');
 });
+
+Deno.test("in development, URLs can use another origin", () => {
+    const local = urlBuilder("localhost", "http://localhost:8080");
+
+    assertEquals(local.origin, "http://localhost:8080");
+    assertEquals(local.url`/oauth/callback`, "http://localhost:8080/oauth/callback");
+});
