@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import { fakeClock } from "../kernel/clock.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { claim, complete, deleteExpiredJobs } from "./queue.ts";
 import { schedule, type Task } from "./scheduler.ts";
@@ -6,7 +7,7 @@ import { schedule, type Task } from "./scheduler.ts";
 const minute = 60_000;
 
 const open = async () => {
-    const test = await createTestContext({ now: new Date("2026-10-14T03:20:00Z") });
+    const test = await createTestContext({ clock: fakeClock(new Date("2026-10-14T03:20:00Z")) });
     const ctx = test.ctx;
     const jobs = () =>
         ctx.db.selectFrom("jobs").select(["dedupe_key", "keep_until", "finished_at"])

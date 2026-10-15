@@ -11,8 +11,8 @@ import { urlBuilder } from "./urls.ts";
 export type TestContextOptions = {
     /** Defaults to `social.example`. */
     readonly domain?: string;
-    /** Where the fake clock starts. */
-    readonly now?: Date;
+    /** Defaults to a new fake clock. */
+    readonly clock?: FakeClock;
     /** Defaults to a network with no other servers on it. */
     readonly transport?: FakeTransport;
     /** Defaults to a new, empty test database. It is migrated, and closed on disposal. */
@@ -39,7 +39,7 @@ export const createTestContext = async (
         await db.destroy();
         throw migrated.error;
     }
-    const clock = fakeClock(options.now);
+    const clock = options.clock ?? fakeClock();
     const transport = options.transport ?? fakeTransport();
     const ctx = createContext({
         clock,
