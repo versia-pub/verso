@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
-import { sign } from "@versia/protocol";
+import { importPublicKey, sign, verify } from "@versia/protocol";
 import { z } from "zod";
+import { instanceKey } from "../instances/keys.ts";
 import { remoteKeys } from "../instances/remote_keys.ts";
 import { type KeyPair, keyPair, metadataServer } from "../instances/testing.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
@@ -9,6 +10,13 @@ import { createApp } from "./app.ts";
 import { defineRoute } from "./route.ts";
 
 const routes = [
+    defineRoute({
+        method: "GET",
+        path: "/public",
+        summary: "Anyone's",
+        responses: { 200: z.object({}) },
+        handler: () => Promise.resolve({ status: 200, body: {} }),
+    }),
     defineRoute({
         method: "GET",
         path: "/federated",
@@ -133,4 +141,37 @@ Deno.test("a rotated key is fetched again, at most once in a while", async () =>
     assertEquals((await test.send({}, { key: rotated })).status, 200);
     assertEquals(await test.send({}, { key: test.pair }), badSignature);
     assertEquals(test.transport.sent.length, 2);
+});
+
+Deno.test("replies to signed requests are signed by this instance, over what was sent", async () => {
+    await using test = await open();
+    const ours = await importPublicKey((await instanceKey(test.ctx)).publicKey);
+    const checked = async (method: string, path: string, body?: string) => {
+        const headers = await sign(
+            { method, pathname: path, body: new TextEncoder().encode(body ?? "") },
+            test.pair.privateKey,
+            "b.example",
+            test.clock.now(),
+        );
+        const response = await test.app.request(path, {
+            method,
+            body,
+            headers: { ...headers, "content-type": "application/json" },
+        });
+        const bytes = new Uint8Array(await response.arrayBuffer());
+
+        return await verify(
+            { method, pathname: path, body: bytes },
+            response.headers,
+            (domain) => Promise.resolve(domain === "social.example" ? ours : undefined),
+            test.clock.now(),
+        );
+    };
+
+    assertEquals(await checked("GET", "/federated"), { ok: true, signedBy: "social.example" });
+    assertEquals((await test.app.request("/public")).headers.get("versia-signature"), null);
+    assertEquals(await checked("POST", "/inbox", '{"text":"Hi"}'), {
+        ok: true,
+        signedBy: "social.example",
+    });
 });

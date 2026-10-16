@@ -132,7 +132,8 @@ export type RouteDefinition<
     readonly auth?: A;
     /**
      * Only other instances may call the route: the request must carry a valid Versia signature,
-     * which is checked before anything else. The handler gets the signer's domain as `signedBy`.
+     * which is checked before anything else. The handler gets the signer's domain as `signedBy`,
+     * and its replies are signed as this instance.
      * @see https://versia.pub/signatures
      */
     readonly signed?: true;

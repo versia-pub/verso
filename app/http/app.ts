@@ -2,13 +2,14 @@ import { type Context as HonoContext, Hono } from "@hono/hono";
 import { bodyLimit } from "@hono/hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
-import { verify } from "@versia/protocol";
+import { sign, verify } from "@versia/protocol";
 import qs from "qs";
 import { z } from "zod";
 import type { Permission } from "../accounts/permissions.ts";
 import { accountPermissions } from "../accounts/roles.ts";
 import { grants } from "../auth/scopes.ts";
 import { authenticateToken, type Viewer } from "../auth/tokens.ts";
+import { instanceKey } from "../instances/keys.ts";
 import { type RemoteKeys, remoteKeys } from "../instances/remote_keys.ts";
 import { Permissions } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
@@ -361,6 +362,27 @@ const signerOf = async (ctx: Context, c: HonoContext, keys: RemoteKeys) => {
     return again.signedBy;
 };
 
+/**
+ * Signs a reply as this instance, over the request's method and path and the reply's exact bytes,
+ * so the instance that asked can tell it came from here unchanged.
+ * @see https://versia.pub/signatures
+ */
+const signReply = async (ctx: Context, c: HonoContext, response: Response) => {
+    const headers = await sign(
+        {
+            method: c.req.method,
+            pathname: new URL(c.req.url).pathname,
+            body: new Uint8Array(await response.clone().arrayBuffer()),
+        },
+        (await instanceKey(ctx)).privateKey,
+        new URL(ctx.urls.origin).hostname,
+        ctx.clock.now(),
+    );
+
+    for (const [name, value] of Object.entries(headers)) response.headers.set(name, value);
+    return response;
+};
+
 /** The server's HTTP app. */
 export type App = Hono<AppEnv>;
 
@@ -416,7 +438,8 @@ export const createApp = (
             const reply = await route.handler(ctx, { ...input, viewer, signedBy });
             if (options.checkResponses) checkReply(route, reply);
 
-            return send(c, route, reply);
+            const response = await send(c, route, reply);
+            return route.signed ? await signReply(ctx, c, response) : response;
         });
     };
 
