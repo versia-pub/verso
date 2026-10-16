@@ -1,5 +1,6 @@
 import { roleRoutes } from "../accounts/role_routes.ts";
 import { accountRoutes } from "../accounts/routes.ts";
+import { webfingerRoutes } from "../accounts/webfinger.ts";
 import { authRoutes } from "../auth/routes.ts";
 import { type AboutSettings, instanceRoutes } from "../instances/routes.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
@@ -13,6 +14,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => [
     ...authRoutes,
     ...accountRoutes(settings.limits),
     ...roleRoutes,
+    ...webfingerRoutes,
     ...instanceRoutes(settings),
     ...versiaInstanceRoutes(settings.instance),
 ];
