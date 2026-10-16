@@ -1,3 +1,4 @@
+import { roleRoutes } from "../accounts/role_routes.ts";
 import { accountRoutes } from "../accounts/routes.ts";
 import { authRoutes } from "../auth/routes.ts";
 import type { Limits } from "../kernel/config.ts";
@@ -7,4 +8,5 @@ import type { Route } from "./route.ts";
 export const routes = (limits: Limits): readonly Route[] => [
     ...authRoutes,
     ...accountRoutes(limits),
+    ...roleRoutes,
 ];

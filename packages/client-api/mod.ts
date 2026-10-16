@@ -5,3 +5,4 @@ export * from "./oauth_metadata.ts";
 export * from "./relationship.ts";
 export * from "./role.ts";
 export * from "./token.ts";
+export * from "./versia_role.ts";

@@ -30,6 +30,10 @@ export const createRole = async (ctx: Context, role: NewRole): Promise<RoleRow |
         .returningAll()
         .executeTakeFirst();
 
+/** The role with this id. */
+export const findRoleById = async (ctx: Context, id: string): Promise<RoleRow | undefined> =>
+    await ctx.db.selectFrom("roles").selectAll().where("id", "=", id).executeTakeFirst();
+
 /** The role with this name, in any case. */
 export const findRole = async (ctx: Context, name: string): Promise<RoleRow | undefined> =>
     await ctx.db.selectFrom("roles")
