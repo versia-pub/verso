@@ -61,6 +61,43 @@ export const Limits = z.strictObject({
 }).prefault({});
 export type Limits = z.infer<typeof Limits>;
 
+/**
+ * A long text about the instance, such as its privacy policy, and the day it last changed. Long
+ * texts are best kept in a file and read with `${file:…}`.
+ */
+const Document = z.strictObject({
+    /** Plain text, with a blank line between paragraphs. */
+    text: z.string().trim().min(1),
+    /** A TOML date, such as `2026-10-01`. */
+    updated: z.date({ error: "Must be a date, such as 2026-10-01, without quotes" }),
+});
+
+/** What the instance tells people about itself. */
+const Instance = z.strictObject({
+    /** Its name. Without one, it goes by its domain. */
+    name: z.string().trim().min(1).optional(),
+    /** A short paragraph about it, in plain text. */
+    description: z.string().trim().default(""),
+    /** Who to contact about it. */
+    contact: z.strictObject({
+        email: z.email().optional(),
+        /** A local account, by username. */
+        account: z.string().min(1).optional(),
+    }).prefault({}),
+    /** What people agree to follow there, each with an optional hint saying more. */
+    rules: z.array(
+        z.strictObject({
+            text: z.string().trim().min(1),
+            hint: z.string().trim().default(""),
+        }),
+    ).default([]),
+    /** A longer text about it, for its about page. */
+    extended_description: Document.optional(),
+    privacy_policy: Document.optional(),
+    /** In force from its `updated` date. */
+    terms_of_service: Document.optional(),
+}).prefault({});
+
 /** What everyone may do, before any role adds more. */
 export const Permissions = z.strictObject({
     /** For requests without a user, such as a logged-out visitor's. */
@@ -136,6 +173,7 @@ export const Config = z.strictObject({
         /** A form that logs in as any username, with no password. Development only. */
         dev_login: z.boolean().default(false),
     }).prefault({}),
+    instance: Instance,
     limits: Limits,
     permissions: Permissions,
     logging: z.strictObject({

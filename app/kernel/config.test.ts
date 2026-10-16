@@ -21,6 +21,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 rate_limit: { limit: 300, window_seconds: 300, store: "memory" },
             },
             auth: { issuers: [], dev_login: false },
+            instance: { description: "", contact: {}, rules: [] },
             limits: {
                 display_name: 60,
                 note: 10_000,
@@ -67,6 +68,20 @@ registration = { claim = "groups", contains = "versia-users" }
 claim = "groups"
 contains = "verso-admins"
 role = "Admin"
+
+[instance]
+name = " Example Social "
+description = " A place to talk. "
+contact = { email = "admin@social.example", account = "admin" }
+privacy_policy = { text = " We keep little. ", updated = 2026-10-01 }
+terms_of_service = { text = "Be kind.", updated = 2026-09-01T12:00:00Z }
+
+[[instance.rules]]
+text = " Be kind "
+
+[[instance.rules]]
+text = "No spam"
+hint = " Ads included "
 
 [limits]
 note = 500
@@ -117,6 +132,17 @@ level = "debug"
                     },
                 ],
                 dev_login: false,
+            },
+            instance: {
+                name: "Example Social",
+                description: "A place to talk.",
+                contact: { email: "admin@social.example", account: "admin" },
+                rules: [{ text: "Be kind", hint: "" }, { text: "No spam", hint: "Ads included" }],
+                privacy_policy: { text: "We keep little.", updated: new Date("2026-10-01") },
+                terms_of_service: {
+                    text: "Be kind.",
+                    updated: new Date("2026-09-01T12:00:00Z"),
+                },
             },
             limits: { display_name: 60, note: 500, fields: 4, field_name: 255, field_value: 255 },
             permissions: { anonymous: [], default: ["owner:account"] },
@@ -269,4 +295,30 @@ Deno.test("values can come from the environment or files, before they are checke
         ok: false,
         error: "✖ Can't read /origin: No such file\n  → at http.origin",
     });
+});
+
+Deno.test("bad instance details explain what is wrong", async () => {
+    for (
+        const [section, path] of [
+            ['contact = { email = "admin" }', "instance.contact.email"],
+            ['contact = { account = "" }', "instance.contact.account"],
+            ['name = "  "', "instance.name"],
+            ['rules = [{ text = " " }]', "instance.rules[0].text"],
+            ['rules = [{ text = "Be kind", why = "" }]', "instance.rules[0]"],
+            [
+                'privacy_policy = { text = "  ", updated = 2026-10-01 }',
+                "instance.privacy_policy.text",
+            ],
+            ['logo = "a.png"', "logo"],
+        ]
+    ) {
+        assertStringIncludes(await errors(`${minimal}[instance]\n${section}`), path, section);
+    }
+
+    assertStringIncludes(
+        await errors(
+            `${minimal}[instance]\nterms_of_service = { text = "Hi", updated = "2026-10-01" }`,
+        ),
+        "Must be a date, such as 2026-10-01, without quotes\n  → at instance.terms_of_service.updated",
+    );
 });
