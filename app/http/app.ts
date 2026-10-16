@@ -2,23 +2,27 @@ import { type Context as HonoContext, Hono } from "@hono/hono";
 import { bodyLimit } from "@hono/hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
+import { verify } from "@versia/protocol";
 import qs from "qs";
 import { z } from "zod";
 import type { Permission } from "../accounts/permissions.ts";
 import { accountPermissions } from "../accounts/roles.ts";
 import { grants } from "../auth/scopes.ts";
 import { authenticateToken, type Viewer } from "../auth/tokens.ts";
+import { type RemoteKeys, remoteKeys } from "../instances/remote_keys.ts";
 import { Permissions } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import { type Cidr, parseAddress } from "../kernel/ip.ts";
 import { clientIp } from "./client_ip.ts";
 import {
     BadRequest,
+    BadSignature,
     ContentTooLarge,
     Forbidden,
     HttpError,
     NotFound,
     NotPermitted,
+    StaleSignature,
     Unauthorized,
     UnsupportedMediaType,
     UserRequired,
@@ -323,6 +327,40 @@ const send = (c: HonoContext, route: Route, reply: Reply<Responses>) => {
         : c.body(JSON.stringify(reply.body), reply.status, { "content-type": route.contentType });
 };
 
+/**
+ * The domain of the instance that signed the request. When the key Verso has for it doesn't
+ * verify, the key is fetched again, at most so often, in case the instance rotated it.
+ */
+const signerOf = async (ctx: Context, c: HonoContext, keys: RemoteKeys) => {
+    const message = {
+        method: c.req.method,
+        pathname: new URL(c.req.url).pathname,
+        body: new Uint8Array(await c.req.arrayBuffer()),
+    };
+    const now = ctx.clock.now();
+
+    let known = false;
+    const first = await verify(message, c.req.raw.headers, async (domain) => {
+        const key = await keys.get(ctx, domain);
+        known = key !== undefined;
+        return key;
+    }, now);
+
+    if (first.ok) return first.signedBy;
+    if (first.reason === "expired") throw new StaleSignature();
+    if (!known) throw new BadSignature();
+
+    const again = await verify(
+        message,
+        c.req.raw.headers,
+        (domain) => keys.refresh(ctx, domain),
+        now,
+    );
+    if (!again.ok) throw new BadSignature();
+
+    return again.signedBy;
+};
+
 /** The server's HTTP app. */
 export type App = Hono<AppEnv>;
 
@@ -335,6 +373,8 @@ export type AppOptions = {
     readonly trustedProxies?: readonly Cidr[];
     /** What everyone may do, before roles add more. Without it, what config allows by default. */
     readonly permissions?: Permissions;
+    /** Other instances' keys, to check signatures with. Without it, the app keeps its own. */
+    readonly remoteKeys?: RemoteKeys;
 };
 
 /** Every route the server answers. Tests call its `fetch` directly, with no network in between. */
@@ -345,6 +385,7 @@ export const createApp = (
 ): App => {
     const app = new Hono<AppEnv>();
     const permissions = options.permissions ?? Permissions.parse({});
+    const keys = options.remoteKeys ?? remoteKeys();
     useHeaders(app, ctx.urls.origin);
 
     // Replies are about one user, or carry secrets such as tokens, so nothing may cache them,
@@ -364,6 +405,7 @@ export const createApp = (
 
     const handle = (route: Route) => {
         app.on(route.method, route.path, async (c) => {
+            const signedBy = route.signed ? await signerOf(ctx, c, keys) : undefined;
             const bearer = await viewerOf(ctx, c, route);
             const viewer = bearer && withPermissions(ctx, bearer, permissions);
             await checkPermission(route, viewer, permissions);
@@ -371,7 +413,7 @@ export const createApp = (
                 throw route.oauthErrors ? asOAuthError(error) : error;
             });
 
-            const reply = await route.handler(ctx, { ...input, viewer });
+            const reply = await route.handler(ctx, { ...input, viewer, signedBy });
             if (options.checkResponses) checkReply(route, reply);
 
             return send(c, route, reply);

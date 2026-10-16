@@ -32,6 +32,13 @@ export class Unauthorized extends HttpError {
     }
 }
 
+/** A request to a route only other instances call, without a valid Versia signature. */
+export class BadSignature extends HttpError {
+    constructor() {
+        super(401, "The signature is missing or invalid");
+    }
+}
+
 /** The access token lacks the scope a route needs. */
 export class Forbidden extends HttpError {
     constructor() {
@@ -75,6 +82,13 @@ export class UnsupportedMediaType extends HttpError {
 export class UserRequired extends HttpError {
     constructor() {
         super(422, "This method requires an authenticated user");
+    }
+}
+
+/** A Versia signature made more than five minutes from now, either way. */
+export class StaleSignature extends HttpError {
+    constructor() {
+        super(422, "The signature is too old, or from the future");
     }
 }
 

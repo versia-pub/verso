@@ -130,6 +130,12 @@ export type RouteDefinition<
     readonly rateLimit?: false;
     /** Without it, anyone may call the route, and tokens are ignored. */
     readonly auth?: A;
+    /**
+     * Only other instances may call the route: the request must carry a valid Versia signature,
+     * which is checked before anything else. The handler gets the signer's domain as `signedBy`.
+     * @see https://versia.pub/signatures
+     */
+    readonly signed?: true;
     readonly params?: P;
     /**
      * Query values are strings, so use `z.coerce` for other types. A key given more than once, or
@@ -155,6 +161,8 @@ export type RouteDefinition<
             cookies: z.output<C>;
             headers: z.output<H>;
             viewer: ViewerFor<A>;
+            /** The domain of the instance that signed the request, on `signed` routes. */
+            signedBy: string | undefined;
         },
     ) => Promise<Reply<R>>;
 };

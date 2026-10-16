@@ -2,31 +2,7 @@ import { assert, assertEquals, assertFalse } from "@std/assert";
 import { fakeTransport, type Server } from "../kernel/fake_transport.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { remoteKeys } from "./remote_keys.ts";
-
-/** A new Ed25519 key pair, with its public half as InstanceMetadata shows it. */
-const keyPair = async () => {
-    const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
-    if (!("privateKey" in pair)) throw new Error("Ed25519 didn't make a key pair");
-    const spki = new Uint8Array(await crypto.subtle.exportKey("spki", pair.publicKey)).toBase64();
-
-    return { privateKey: pair.privateKey, spki };
-};
-type KeyPair = Awaited<ReturnType<typeof keyPair>>;
-
-/** Metadata saying an instance is `domain`, with this public key. */
-const metadata = (domain: string, spki: string, algorithm = "ed25519") => ({
-    type: "InstanceMetadata",
-    created_at: "2026-01-01T00:00:00Z",
-    name: domain,
-    software: { name: "Test", version: "1.0.0" },
-    compatibility: { versions: ["0.6.0"], extensions: [] },
-    domain,
-    public_key: { algorithm, key: spki },
-});
-
-/** An instance that answers with its metadata, which says it is `domain`. */
-const metadataServer = (domain: string, pair: { spki: string }): Server => () =>
-    Response.json(metadata(domain, pair.spki));
+import { type KeyPair, keyPair, metadata, metadataServer } from "./testing.ts";
 
 /** Whether `key` is the public half of `pair`. */
 const isKeyOf = async (key: CryptoKey | undefined, pair: KeyPair) => {
