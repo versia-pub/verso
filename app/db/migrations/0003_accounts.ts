@@ -18,7 +18,8 @@ export const accounts: Migration = {
         // Postgres treats nulls as distinct, so local accounts are keyed on an empty instance.
         await db.schema.createIndex("accounts_by_username").on("accounts")
             .unique()
-            .expression(sql`coalesce(instance_id, ''), lower(username)`)
+            .column(sql`coalesce(instance_id, '')`)
+            .column(sql`lower(username)`)
             .execute();
 
         await db.schema.createIndex("accounts_by_remote_id").on("accounts")
