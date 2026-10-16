@@ -17,6 +17,7 @@ import {
     UserRequired,
     ValidationFailed,
 } from "./errors.ts";
+import { useHeaders } from "./headers.ts";
 import {
     type CookieChanges,
     Page,
@@ -223,6 +224,7 @@ export const createApp = (
     options: AppOptions = {},
 ): Hono => {
     const app = new Hono();
+    useHeaders(app, ctx.urls.origin);
 
     // Replies are about one user, or carry secrets such as tokens, so nothing may cache them.
     // Errors skip this, so the error handler sets it too.
