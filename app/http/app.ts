@@ -2,6 +2,7 @@ import { type Context as HonoContext, Hono } from "@hono/hono";
 import { bodyLimit } from "@hono/hono/body-limit";
 import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
+import qs from "qs";
 import { z } from "zod";
 import { grants } from "../auth/scopes.ts";
 import { authenticateToken, type Viewer } from "../auth/tokens.ts";
@@ -107,13 +108,27 @@ const setCookies = (c: HonoContext, cookies: CookieChanges = {}) => {
     }
 };
 
-/** A form's fields, with Rails-style `key[]` names read as `key`. */
+/**
+ * A form's fields, with Rails-style names read as JSON would have them: `key[]` as an array, and
+ * `a[b]` as `b` in the object `a`. Files need plain names, such as `avatar`, as Mastodon's have.
+ * @see https://github.com/ljharb/qs#parsing-objects
+ */
 const formOf = async (c: HonoContext) => {
-    const form = await c.req.parseBody({ all: true });
+    const text = new URLSearchParams();
+    const files = new Map<string, File>();
 
-    return Object.fromEntries(
-        Object.entries(form).map(([key, value]) => [key.replace(/\[\]$/, ""), value]),
-    );
+    for (const [name, value] of await c.req.formData()) {
+        if (typeof value === "string") {
+            text.append(name, value);
+        } else if (/^\w+$/.test(name) && !files.has(name)) {
+            files.set(name, value);
+        } else {
+            throw new BadRequest(`A file must have a plain name, used once, unlike "${name}"`);
+        }
+    }
+
+    // Names nested deeper than five are refused, rather than read as one long key.
+    return { ...qs.parse(text.toString(), { strictDepth: true }), ...Object.fromEntries(files) };
 };
 
 /** Mastodon clients send JSON or forms, so every route accepts both. */
@@ -129,7 +144,8 @@ const bodyOf = async (c: HonoContext, route: Route) => {
 
     try {
         return type === "application/json" ? await c.req.json() : await formOf(c);
-    } catch {
+    } catch (error) {
+        if (error instanceof HttpError) throw error;
         throw new BadRequest("The body isn't valid JSON or form data");
     }
 };

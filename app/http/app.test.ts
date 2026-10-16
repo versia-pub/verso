@@ -125,10 +125,20 @@ const notAFile = defineRoute({
     handler: () => Promise.resolve({ status: 200, body: {} } as never),
 });
 
+const echo = defineRoute({
+    method: "POST",
+    path: "/echo",
+    summary: "Answers with the body it was sent",
+    body: z.record(z.string(), z.unknown()),
+    responses: { 200: z.record(z.string(), z.unknown()) },
+    handler: (_, { body }) => Promise.resolve({ status: 200, body }),
+});
+
 const open = async () => {
     const test = await createTestContext();
     const app = createApp(test.ctx, [
         rename,
+        echo,
         sloppy,
         welcome,
         visit,
@@ -215,6 +225,59 @@ Deno.test("a body can also be a form, with repeated or key[] fields as arrays", 
 
     assertEquals((await multipart.json()).aliases, ["c", "d"]);
     assertEquals(encoded.body.aliases, ["c"]);
+});
+
+Deno.test("a form's Rails-style names are read as the JSON it stands for", async () => {
+    await using test = await open();
+    const form = [
+        "source[privacy]=unlisted",
+        "fields_attributes[0][name]=Site",
+        "fields_attributes[0][value]=x",
+        "fields_attributes[1][name]=Pronouns",
+        "poll[options][]=yes",
+        "poll[options][]=no",
+    ].join("&");
+
+    assertEquals(await test.send("/echo", form, "application/x-www-form-urlencoded"), {
+        status: 200,
+        body: {
+            source: { privacy: "unlisted" },
+            fields_attributes: [{ name: "Site", value: "x" }, { name: "Pronouns" }],
+            poll: { options: ["yes", "no"] },
+        },
+    });
+});
+
+Deno.test("form names can't reach prototypes or nest without end", async () => {
+    await using test = await open();
+    const send = (form: string) => test.send("/echo", form, "application/x-www-form-urlencoded");
+
+    const sneaky = await send("__proto__[admin]=1&constructor[prototype][admin]=1&a=b");
+    assertEquals(sneaky, { status: 200, body: { a: "b" } });
+    assertEquals(Reflect.get({}, "admin"), undefined);
+
+    assertEquals((await send("a[b][c][d][e][f]=1")).status, 200);
+    assertEquals((await send("a[b][c][d][e][f][g]=1")).status, 400);
+});
+
+Deno.test("a form's files must have plain names", async () => {
+    await using test = await open();
+    const post = (name: string, times = 1) => {
+        const form = new FormData();
+        for (let i = 0; i < times; i++) form.append(name, new File(["x"], "x.png"));
+        return test.app.request("/echo", { method: "POST", body: form });
+    };
+
+    const plain = await post("avatar");
+    assertEquals([plain.status, Object.keys(await plain.json())], [200, ["avatar"]]);
+
+    for (const [name, times] of [["avatar[0]", 1], ["avatars[]", 1], ["avatar", 2]] as const) {
+        const refused = await post(name, times);
+        assertEquals(
+            [refused.status, (await refused.json()).error_description],
+            [400, `A file must have a plain name, used once, unlike "${name}"`],
+        );
+    }
 });
 
 Deno.test("a body must be well-formed JSON or form data", async () => {
