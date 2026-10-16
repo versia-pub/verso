@@ -13,8 +13,12 @@ const open = async (settings: AboutSettings = defaultSettings()) => {
     const app = createApp(test.ctx, instanceRoutes(settings), { checkResponses: true });
 
     const get = async () => (await app.request("/api/v2/instance")).json();
+    const fetch = async (path: string) => {
+        const response = await app.request(path);
+        return { status: response.status, body: await response.json() };
+    };
 
-    return { ...test, app, get };
+    return { ...test, app, get, fetch };
 };
 
 /** Settings from a config file, after the minimal parts every config has. */
@@ -198,4 +202,115 @@ Deno.test("the thumbnail is the domain's banner, which anyone may cache for a da
         new Uint8Array(await response.arrayBuffer()),
         await identiconBanner("social.example"),
     );
+});
+
+Deno.test("older clients get the instance as Mastodon described it before 4.0", async () => {
+    await using test = await open(
+        await configured(`
+[instance]
+name = "Example Social"
+description = "A place to talk.\\n\\nAnd <listen>."
+contact = { email = "admin@social.example", account = "alice" }
+rules = [{ text = "Be kind", hint = "Always" }]
+`),
+    );
+    await createLocalAccount(test.ctx, "alice");
+    await createLocalAccount(test.ctx, "bob");
+    await test.ctx.db.insertInto("accounts")
+        .values({
+            id: "remote",
+            username: "erin",
+            instance_id: await createInstance(test.ctx, "b.example"),
+            remote_id: "erin",
+            created_at: test.ctx.clock.now(),
+        })
+        .execute();
+    const v2 = await test.get();
+
+    const { body, status } = await test.fetch("/api/v1/instance");
+
+    assertEquals(status, 200);
+    assertEquals({ ...body, contact_account: body.contact_account?.username }, {
+        uri: "social.example",
+        title: "Example Social",
+        short_description: "A place to talk.\n\nAnd <listen>.",
+        description: "<p>A place to talk.</p><p>And &lt;listen&gt;.</p>",
+        email: "admin@social.example",
+        version: "4.3.0 (compatible; Verso 0.0.0)",
+        urls: { streaming_api: "wss://social.example" },
+        stats: { user_count: 2, status_count: 0, domain_count: 1 },
+        thumbnail: "https://social.example/instance/thumbnail.png",
+        languages: [],
+        registrations: false,
+        approval_required: false,
+        invites_enabled: false,
+        configuration: {
+            accounts: { max_featured_tags: 0 },
+            statuses: v2.configuration.statuses,
+            media_attachments: v2.configuration.media_attachments,
+            polls: v2.configuration.polls,
+        },
+        contact_account: "alice",
+        rules: [{ id: "1", text: "Be kind", hint: "Always" }],
+    });
+    assertEquals(await test.fetch("/api/v1/instance/rules"), { status: 200, body: v2.rules });
+});
+
+Deno.test("the about text and policies are HTML, dated as configured", async () => {
+    await using test = await open(
+        await configured(`
+[instance]
+extended_description = { text = "About us.\\n\\nMore & more.", updated = 2026-01-02 }
+privacy_policy = { text = "We keep little.", updated = 2026-01-03T04:05:06Z }
+terms_of_service = { text = "Be kind.", updated = 2026-01-04 }
+`),
+    );
+
+    assertEquals(await test.fetch("/api/v1/instance/extended_description"), {
+        status: 200,
+        body: {
+            updated_at: "2026-01-02T00:00:00.000Z",
+            content: "<p>About us.</p><p>More &amp; more.</p>",
+        },
+    });
+    assertEquals(await test.fetch("/api/v1/instance/privacy_policy"), {
+        status: 200,
+        body: { updated_at: "2026-01-03T04:05:06.000Z", content: "<p>We keep little.</p>" },
+    });
+
+    const terms = (effective: boolean) => ({
+        status: 200,
+        body: {
+            effective_date: "2026-01-04",
+            effective,
+            content: "<p>Be kind.</p>",
+            succeeded_by: null,
+        },
+    });
+    // The clock starts at 2026-01-01, so this is the moment before the terms come into force.
+    test.clock.advance(3 * 24 * 60 * 60 * 1000 - 1);
+    assertEquals(await test.fetch("/api/v1/instance/terms_of_service"), terms(false));
+    test.clock.advance(1);
+    assertEquals(await test.fetch("/api/v1/instance/terms_of_service"), terms(true));
+    assertEquals(await test.fetch("/api/v1/instance/terms_of_service/2026-01-04"), terms(true));
+    assertEquals((await test.fetch("/api/v1/instance/terms_of_service/2026-01-03")).status, 404);
+});
+
+Deno.test("texts that aren't configured aren't found, and there are no custom emojis yet", async () => {
+    await using test = await open();
+
+    for (
+        const path of [
+            "extended_description",
+            "privacy_policy",
+            "terms_of_service",
+            "terms_of_service/2026-01-04",
+        ]
+    ) {
+        assertEquals(await test.fetch(`/api/v1/instance/${path}`), {
+            status: 404,
+            body: { error: "Record not found" },
+        });
+    }
+    assertEquals(await test.fetch("/api/v1/custom_emojis"), { status: 200, body: [] });
 });

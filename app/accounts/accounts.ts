@@ -65,3 +65,13 @@ export const countActiveAccounts = async (ctx: Context, since: Date): Promise<nu
 
     return Number(count);
 };
+
+/** How many accounts this instance has. */
+export const countLocalAccounts = async (ctx: Context): Promise<number> => {
+    const { count } = await ctx.db.selectFrom("accounts")
+        .select((eb) => eb.fn.countAll<number | string | bigint>().as("count"))
+        .where("instance_id", "is", null)
+        .executeTakeFirstOrThrow();
+
+    return Number(count);
+};
