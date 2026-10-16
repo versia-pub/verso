@@ -10,7 +10,7 @@ import { instanceKey } from "./keys.ts";
  * The type Versia's entity endpoints answer with.
  * @see https://versia.pub/federation/http#http-response-content-type
  */
-const versiaJson = "application/vnd.versia+json; charset=utf-8";
+export const versiaJson = "application/vnd.versia+json; charset=utf-8";
 
 /**
  * How other instances find out about this one: which versions of Versia it speaks, then what it
