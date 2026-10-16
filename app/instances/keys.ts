@@ -48,18 +48,20 @@ export const instanceKey = async (ctx: Context): Promise<InstanceKey> => {
     };
 };
 
-/** Makes a new key pair and makes it current. */
+/** Makes a new key pair and makes it current. Returns its id. */
 export const createInstanceKey = async (
     ctx: Pick<Context, "db" | "clock" | "ids">,
-): Promise<void> => {
+): Promise<string> => {
     const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
 
     // Ed25519 always makes a pair, but the type covers every algorithm.
     if (!("privateKey" in pair)) throw new Error("Ed25519 didn't make a key pair");
 
+    const id = ctx.ids();
+
     await ctx.db.insertInto("instance_keys")
         .values({
-            id: ctx.ids(),
+            id,
             public_key: new Uint8Array(await crypto.subtle.exportKey("spki", pair.publicKey))
                 .toBase64(),
             private_key: new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey))
@@ -67,7 +69,22 @@ export const createInstanceKey = async (
             created_at: ctx.clock.now(),
         })
         .execute();
+
+    return id;
 };
+
+/**
+ * Replaces the key pair with a new one, such as when the old one may have leaked, and returns the
+ * new public key. The old pair is deleted, so it can't sign anything more. Other instances fetch
+ * the new public key when a signature from this one stops verifying.
+ */
+export const rotateInstanceKey = (ctx: Context): Promise<string> =>
+    ctx.transaction(async (tx) => {
+        const id = await createInstanceKey(tx);
+        await tx.db.deleteFrom("instance_keys").where("id", "!=", id).execute();
+
+        return (await instanceKey(tx)).publicKey;
+    });
 
 /** Makes the instance's first key pair, unless it has one. Returns whether it made one. */
 export const ensureInstanceKey = async (

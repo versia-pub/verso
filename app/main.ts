@@ -1,9 +1,11 @@
 import { getLogger } from "@logtape/logtape";
 import { parseArgs } from "@std/cli";
+import type { Kysely } from "kysely";
 import denoConfig from "../deno.json" with { type: "json" };
+import { type AdminCommand, adminUsage, findAdminCommand, runAdminCommand } from "./admin/cli.ts";
 import { devLogin } from "./auth/dev_login.ts";
 import { oidcProviders } from "./auth/oidc.ts";
-import { openDatabase } from "./db/database.ts";
+import { type Database, openDatabase } from "./db/database.ts";
 import { migrate } from "./db/migrate.ts";
 import { createApp } from "./http/app.ts";
 import { databaseRateLimitStore, memoryRateLimitStore } from "./http/rate_limits.ts";
@@ -71,13 +73,8 @@ const serve = (
     return server.finished;
 };
 
-/**
- * Runs as a web node (`serve`), a job worker (`work`) or both (`all`) until SIGINT or SIGTERM,
- * then finishes the requests and jobs in progress. Returns the exit code.
- */
-const run = async (role: string, config: Config): Promise<number> => {
-    await using db = openDatabase(config.database);
-
+/** The context every command runs with, and the development login's routes if it is on. */
+const contextFor = (config: Config, db: Kysely<Database>) => {
     const urls = urlBuilder(config.domain, config.http.origin);
     const dev = devLogin(config.auth.dev_login, urls);
     const identityProviders = {
@@ -93,6 +90,17 @@ const run = async (role: string, config: Config): Promise<number> => {
         identityProviders,
         db,
     });
+
+    return { ctx, devRoutes: dev.routes };
+};
+
+/**
+ * Runs as a web node (`serve`), a job worker (`work`) or both (`all`) until SIGINT or SIGTERM,
+ * then finishes the requests and jobs in progress. Returns the exit code.
+ */
+const run = async (role: string, config: Config): Promise<number> => {
+    await using db = openDatabase(config.database);
+    const { ctx, devRoutes } = contextFor(config, db);
 
     const logger = getLogger(["verso"]);
 
@@ -119,7 +127,7 @@ const run = async (role: string, config: Config): Promise<number> => {
     await Promise.all([
         role === "work"
             ? undefined
-            : serve(ctx, config, [...routes, ...dev.routes], stopping.signal),
+            : serve(ctx, config, [...routes, ...devRoutes], stopping.signal),
         role === "serve"
             ? undefined
             : work(ctx, queues, { worker, pollMs: 1000, signal: stopping.signal, wakeups }),
@@ -160,8 +168,28 @@ const runMigrations = async (config: Config): Promise<number> => {
     return 0;
 };
 
+/** Runs an admin command and prints its result. Returns the exit code. */
+const runAdmin = async (command: AdminCommand, config: Config): Promise<number> => {
+    await using db = openDatabase(config.database);
+    const { ctx } = contextFor(config, db);
+
+    // deno-lint-ignore no-console -- the result is command output, not a log line
+    console.log(await runAdminCommand(ctx, command));
+    return 0;
+};
+
 const commands = ["serve", "work", "all", "migrate"];
-const usage = "usage: verso serve|work|all|migrate [--config <path>] | verso --version";
+const usage = "usage: verso serve|work|all|migrate|admin [--config <path>] | verso --version";
+
+/** Reads the config, or exits saying what is wrong with it. */
+const configOrExit = async (path: string): Promise<Config> => {
+    const result = await readConfig(path);
+    if (result.ok) return result.config;
+
+    // deno-lint-ignore no-console -- there is no logger before the config is read
+    console.error(`Can't load ${path}:\n${result.error}`);
+    Deno.exit(1);
+};
 
 if (import.meta.main) {
     const args = parseArgs(Deno.args, {
@@ -173,18 +201,23 @@ if (import.meta.main) {
     if (args.version) {
         // deno-lint-ignore no-console -- the version is command output, not a log line
         console.log(`verso ${denoConfig.version}`);
-    } else if (args._.length === 1 && commands.includes(String(args._[0]))) {
-        const result = await readConfig(args.config);
-        if (!result.ok) {
-            // deno-lint-ignore no-console -- there is no logger before the config is read
-            console.error(`Can't load ${args.config}:\n${result.error}`);
-            Deno.exit(1);
+    } else if (args._[0] === "admin") {
+        const command = findAdminCommand(args._.slice(1));
+        if (!command) {
+            // deno-lint-ignore no-console -- usage errors are command output, not log lines
+            console.error(adminUsage);
+            Deno.exit(2);
         }
 
-        await setUpLogging(result.config.logging.level);
-        if (args._[0] === "migrate") Deno.exit(await runMigrations(result.config));
+        const config = await configOrExit(args.config);
+        await setUpLogging(config.logging.level);
+        Deno.exit(await runAdmin(command, config));
+    } else if (args._.length === 1 && commands.includes(String(args._[0]))) {
+        const config = await configOrExit(args.config);
+        await setUpLogging(config.logging.level);
+        if (args._[0] === "migrate") Deno.exit(await runMigrations(config));
 
-        Deno.exit(await run(String(args._[0]), result.config));
+        Deno.exit(await run(String(args._[0]), config));
     } else {
         // deno-lint-ignore no-console -- usage errors are command output, not log lines
         console.error(usage);
