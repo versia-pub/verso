@@ -3,7 +3,7 @@ export type AccountsTable = {
     id: string;
     /** Unique per instance, ignoring case. */
     username: string;
-    /** The instance the account lives on, or `null` for this one. */
+    /** The instance the account lives on, in `instances`, or `null` for this one. */
     instance_id: string | null;
     /** The account's id on its own instance, opaque to us, or `null` for local accounts. */
     remote_id: string | null;

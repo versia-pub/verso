@@ -7,6 +7,7 @@ import { oauthFlows } from "./0005_oauth_flows.ts";
 import { accessTokens } from "./0006_access_tokens.ts";
 import { flowFormTokens } from "./0007_flow_form_tokens.ts";
 import { rateLimits } from "./0008_rate_limits.ts";
+import { instances } from "./0009_instances.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -21,4 +22,5 @@ export const migrations: Record<string, Migration> = {
     "0006_access_tokens": accessTokens,
     "0007_flow_form_tokens": flowFormTokens,
     "0008_rate_limits": rateLimits,
+    "0009_instances": instances,
 };

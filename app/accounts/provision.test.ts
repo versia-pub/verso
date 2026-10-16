@@ -2,6 +2,7 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { sql } from "kysely";
 import { testDatabaseKind } from "../db/testing.ts";
 import { createTestContext } from "../kernel/testing.ts";
+import { createInstance } from "../instances/testing.ts";
 import type { Issuer } from "../kernel/identity.ts";
 import { provision, type Provisioned, usernameFrom } from "./provision.ts";
 
@@ -135,7 +136,7 @@ Deno.test("an account on another instance doesn't take a local username", async 
         .values({
             id: "r",
             username: "alice",
-            instance_id: "b",
+            instance_id: await createInstance(test.ctx, "b.example"),
             remote_id: "1",
             created_at: test.clock.now(),
         })
@@ -159,10 +160,13 @@ Deno.test("a remote account is stored once per instance", async () => {
             })
             .execute();
 
-    await remote("r1", "b", "alice");
-    await remote("r2", "c", "alice");
+    const b = await createInstance(test.ctx, "b.example");
+    const c = await createInstance(test.ctx, "c.example");
 
-    await assertRejects(() => remote("r3", "b", "renamed"));
+    await remote("r1", b, "alice");
+    await remote("r2", c, "alice");
+
+    await assertRejects(() => remote("r3", b, "renamed"));
 });
 
 Deno.test("the registration policy decides who gets a new account", async () => {
