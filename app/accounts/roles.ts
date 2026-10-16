@@ -30,6 +30,51 @@ export const createRole = async (ctx: Context, role: NewRole): Promise<RoleRow |
         .returningAll()
         .executeTakeFirst();
 
+/** The role with this name, in any case. */
+export const findRole = async (ctx: Context, name: string): Promise<RoleRow | undefined> =>
+    await ctx.db.selectFrom("roles")
+        .selectAll()
+        .where((eb) => eb(eb.fn("lower", ["name"]), "=", name.toLowerCase()))
+        .executeTakeFirst();
+
+/** Gives an account a role, as an admin. Returns whether it didn't have it from an admin yet. */
+export const grantRole = async (
+    ctx: Context,
+    accountId: string,
+    roleId: string,
+): Promise<boolean> => {
+    const granted = await ctx.db.insertInto("account_roles")
+        .values({
+            account_id: accountId,
+            role_id: roleId,
+            issuer: null,
+            created_at: ctx.clock.now(),
+        })
+        .onConflict((conflict) => conflict.doNothing())
+        .returning("role_id")
+        .executeTakeFirst();
+
+    return granted !== undefined;
+};
+
+/**
+ * Takes away a role an admin gave an account. Returns whether it had it. A role its issuer's
+ * claims gave stays, since the next login would give it back.
+ */
+export const revokeRole = async (
+    ctx: Context,
+    accountId: string,
+    roleId: string,
+): Promise<boolean> => {
+    const { numDeletedRows } = await ctx.db.deleteFrom("account_roles")
+        .where("account_id", "=", accountId)
+        .where("role_id", "=", roleId)
+        .where("issuer", "is", null)
+        .executeTakeFirstOrThrow();
+
+    return numDeletedRows > 0n;
+};
+
 /** Every role, highest priority first. */
 export const listRoles = async (ctx: Context): Promise<RoleRow[]> =>
     await ctx.db.selectFrom("roles").selectAll().orderBy("priority", "desc").orderBy("name")

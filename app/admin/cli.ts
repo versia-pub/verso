@@ -5,7 +5,8 @@
  */
 import { Command, EnumType, ValidationError } from "@cliffy/command";
 import { permissions } from "../accounts/permissions.ts";
-import { createRole, listRoles } from "../accounts/roles.ts";
+import { findLocalAccount } from "../accounts/accounts.ts";
+import { createRole, findRole, grantRole, listRoles, revokeRole } from "../accounts/roles.ts";
 import { rotateInstanceKey } from "../instances/keys.ts";
 import type { Context } from "../kernel/context.ts";
 
@@ -19,6 +20,17 @@ export type AdminIo = {
 
 /** Why a command, used correctly, failed. The caller prints it and exits with 1. */
 export class AdminError extends Error {}
+
+/** A local account and a role, both by name, or an error saying which doesn't exist. */
+const accountAndRole = async (ctx: Context, username: string, roleName: string) => {
+    const account = await findLocalAccount(ctx, username);
+    if (!account) throw new AdminError(`There is no local account named ${username}`);
+
+    const role = await findRole(ctx, roleName);
+    if (!role) throw new AdminError(`There is no role named ${roleName}`);
+
+    return { account, role };
+};
 
 /** Refuses a command run without one of its subcommands, as a usage error. */
 export const missingCommand = (): never => {
@@ -68,6 +80,33 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
                 .command("list", "Print every role, highest priority first.")
                 .action(async ({ config }) => {
                     io.print(JSON.stringify(await io.withContext(config, listRoles)));
+                }),
+        )
+        .command(
+            "users",
+            new Command<{ config: string }>()
+                .description("Manage local accounts.")
+                .action(missingCommand)
+                .command("grant-role <username:string> <role:string>", "Give an account a role.")
+                .action(async ({ config }, username, roleName) => {
+                    const result = await io.withContext(config, async (ctx) => {
+                        const { account, role } = await accountAndRole(ctx, username, roleName);
+                        const changed = await grantRole(ctx, account.id, role.id);
+                        return { username: account.username, role: role.name, changed };
+                    });
+                    io.print(JSON.stringify(result));
+                })
+                .command(
+                    "revoke-role <username:string> <role:string>",
+                    "Take away a role an admin gave an account.",
+                )
+                .action(async ({ config }, username, roleName) => {
+                    const result = await io.withContext(config, async (ctx) => {
+                        const { account, role } = await accountAndRole(ctx, username, roleName);
+                        const changed = await revokeRole(ctx, account.id, role.id);
+                        return { username: account.username, role: role.name, changed };
+                    });
+                    io.print(JSON.stringify(result));
                 }),
         )
         .reset();
