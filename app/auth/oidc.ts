@@ -58,7 +58,7 @@ export const oidcProvider = (issuer: IssuerConfig, options: OidcOptions): Identi
 
             const url = client.buildAuthorizationUrl(await configuration(), {
                 redirect_uri: redirectUri,
-                scope: "openid profile",
+                scope: [...new Set(["openid", "profile", ...issuer.scopes])].join(" "),
                 state: flow.state,
                 nonce: flow.nonce,
                 code_challenge: await client.calculatePKCECodeChallenge(flow.codeVerifier),
@@ -74,14 +74,21 @@ export const oidcProvider = (issuer: IssuerConfig, options: OidcOptions): Identi
             const returned = new URL(flow.redirectUri);
             returned.search = callback.search;
 
-            const tokens = await client.authorizationCodeGrant(await configuration(), returned, {
+            const config = await configuration();
+            const tokens = await client.authorizationCodeGrant(config, returned, {
                 pkceCodeVerifier: flow.codeVerifier,
                 expectedState: flow.state,
                 expectedNonce: flow.nonce,
                 idTokenExpected: true,
             });
+            const claims = tokens.claims() as Claims;
 
-            return tokens.claims() as Claims;
+            // Many issuers leave claims such as groups out of the ID token, and only give them
+            // here. Where both have a claim, the signed ID token's wins.
+            if (config.serverMetadata().userinfo_endpoint === undefined) return claims;
+
+            const userinfo = await client.fetchUserInfo(config, tokens.access_token, claims.sub);
+            return { ...userinfo, ...claims };
         },
     };
 };

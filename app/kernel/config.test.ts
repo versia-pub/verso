@@ -60,6 +60,7 @@ url = "https://id.partner.example"
 client_id = "verso"
 client_secret = "s3cret"
 username_claim = "nickname"
+scopes = ["groups"]
 registration = { claim = "groups", contains = "versia-users" }
 
 [limits]
@@ -95,6 +96,7 @@ level = "debug"
                         client_id: "verso",
                         client_secret: "first",
                         username_claim: "preferred_username",
+                        scopes: [],
                         registration: "closed",
                     },
                     {
@@ -103,6 +105,7 @@ level = "debug"
                         client_id: "verso",
                         client_secret: "s3cret",
                         username_claim: "nickname",
+                        scopes: ["groups"],
                         registration: { claim: "groups", contains: "versia-users" },
                     },
                 ],
@@ -164,6 +167,10 @@ Deno.test("bad issuers explain what is wrong", async () => {
     assertStringIncludes(
         await issuer(`url = "https://id.example"\n${secret}\nregistration = "maybe"`),
         "registration",
+    );
+    assertStringIncludes(
+        await issuer(`url = "https://id.example"\n${secret}\nscopes = ["read write"]`),
+        "A scope can't contain spaces\n  → at auth.issuers[0].scopes[0]",
     );
     assertStringIncludes(
         await errors(

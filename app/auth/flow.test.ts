@@ -17,6 +17,7 @@ const issuer: IssuerConfig = {
     client_id: "verso",
     client_secret: "s3cret",
     username_claim: "preferred_username",
+    scopes: [],
     registration: "open",
 };
 

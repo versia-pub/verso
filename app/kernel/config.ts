@@ -25,6 +25,9 @@ const Issuer = z.strictObject({
     client_secret: z.string().min(1),
     /** The claim a new account's username comes from. */
     username_claim: z.string().min(1).default("preferred_username"),
+    /** Scopes to ask for besides `openid` and `profile`, such as `groups` for a groups claim. */
+    scopes: z.array(z.string().regex(/^\S+$/, { error: "A scope can't contain spaces" }))
+        .default([]),
     registration: Registration.default("closed"),
 });
 

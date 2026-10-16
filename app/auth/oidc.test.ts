@@ -7,12 +7,15 @@ import { oidcProvider } from "./oidc.ts";
 
 const redirectUri = "https://social.example/oauth/callback";
 
-const open = async () => {
+const open = async (
+    { scopes = [], userinfo = true }: { scopes?: string[]; userinfo?: boolean } = {},
+) => {
     // Years before the real time, so ID tokens would look expired unless the adapter uses it.
     const clock = fakeClock(new Date("2020-01-01T00:00:00Z"));
     const idp = await createFakeIdentityProvider({
         client: { id: "verso", secret: "s3cret" },
         clock,
+        userinfo,
     });
     const transport = fakeTransport({ "idp.test": idp.app.fetch });
 
@@ -22,6 +25,7 @@ const open = async () => {
         client_id: "verso",
         client_secret: "s3cret",
         username_claim: "preferred_username",
+        scopes,
         registration: "open",
     };
     const provider = oidcProvider(issuer, { transport, clock });
@@ -78,4 +82,47 @@ Deno.test("if the issuer can't be reached, the next login discovers it again", a
     test.transport.down.delete("idp.test");
     const { flow, callback } = await test.login();
     assertEquals((await test.provider.completeLogin(callback, flow)).sub, "alice");
+});
+
+Deno.test("a login asks for openid, profile and the issuer's other scopes, once each", async () => {
+    const test = await open({ scopes: ["groups", "profile"] });
+
+    const { url } = await test.provider.beginLogin(redirectUri);
+
+    assertEquals(url.searchParams.get("scope"), "openid profile groups");
+});
+
+Deno.test("claims only userinfo gives are added, but the ID token's win", async () => {
+    const test = await open();
+    test.idp.login = { sub: "u1", preferred_username: "alice" };
+    test.idp.userinfo = { preferred_username: "mallory", groups: ["admins"] };
+
+    const { flow, callback } = await test.login();
+    const claims = await test.provider.completeLogin(callback, flow);
+
+    assertEquals([claims.sub, claims.preferred_username, claims.groups], [
+        "u1",
+        "alice",
+        ["admins"],
+    ]);
+});
+
+Deno.test("userinfo about someone else is refused", async () => {
+    const test = await open();
+    test.idp.userinfo = { sub: "someone-else" };
+
+    const { flow, callback } = await test.login();
+
+    await assertRejects(() => test.provider.completeLogin(callback, flow));
+});
+
+Deno.test("an issuer without userinfo gives the ID token's claims alone", async () => {
+    const test = await open({ userinfo: false });
+    test.idp.login = { sub: "u1" };
+    test.idp.userinfo = { groups: ["admins"] };
+
+    const { flow, callback } = await test.login();
+    const claims = await test.provider.completeLogin(callback, flow);
+
+    assertEquals([claims.sub, claims.groups], ["u1", undefined]);
 });
