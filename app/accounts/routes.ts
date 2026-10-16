@@ -1,7 +1,7 @@
 import { Account, CredentialAccount, Relationship } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
-import { Binary, defineRoute, type Route } from "../http/route.ts";
+import { Binary, defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
@@ -9,6 +9,7 @@ import { type AccountRow, findAccount, findLocalAccount, localAccountIds } from 
 import { identicon, identiconBanner } from "./identicon.ts";
 import { updateProfile } from "./profile.ts";
 import { renderAccount, renderCredentialAccount, renderRelationship } from "./render.ts";
+import { rolesOf } from "./roles.ts";
 
 const AccountId = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
 
@@ -19,6 +20,21 @@ const AccountId = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
 const shown = (row: AccountRow | undefined) => {
     if (row === undefined || row.domain !== null) throw new NotFound();
     return row;
+};
+
+/** An account as anyone sees it, with its roles. */
+const publicAccount = async (ctx: Context, row: AccountRow) =>
+    renderAccount(ctx, row, await rolesOf(ctx, row.id));
+
+/** The viewer's own account, with its roles and what it may do. */
+const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly accountId: string }) => {
+    const row = shown(await findAccount(ctx, viewer.accountId));
+    return renderCredentialAccount(
+        ctx,
+        row,
+        await rolesOf(ctx, row.id),
+        await viewer.permissions(),
+    );
 };
 
 /**
@@ -85,10 +101,7 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
         tags: ["accounts"],
         auth: { require: "user", scope: "profile" },
         responses: { 200: CredentialAccount },
-        handler: async (ctx, { viewer }) => ({
-            status: 200,
-            body: renderCredentialAccount(ctx, shown(await findAccount(ctx, viewer.accountId))),
-        }),
+        handler: async (ctx, { viewer }) => ({ status: 200, body: await ownAccount(ctx, viewer) }),
     }),
     defineRoute({
         method: "PATCH",
@@ -113,10 +126,7 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
                 defaultLanguage: body.source?.language,
             });
 
-            return {
-                status: 200,
-                body: renderCredentialAccount(ctx, shown(await findAccount(ctx, viewer.accountId))),
-            };
+            return { status: 200, body: await ownAccount(ctx, viewer) };
         },
     }),
     defineRoute({
@@ -153,7 +163,7 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
 
             return {
                 status: 200,
-                body: renderAccount(ctx, shown(await findLocalAccount(ctx, username))),
+                body: await publicAccount(ctx, shown(await findLocalAccount(ctx, username))),
             };
         },
     }),
@@ -166,7 +176,7 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
         responses: { 200: Account },
         handler: async (ctx, { params }) => ({
             status: 200,
-            body: renderAccount(ctx, shown(await findAccount(ctx, params.id))),
+            body: await publicAccount(ctx, shown(await findAccount(ctx, params.id))),
         }),
     }),
     defineRoute({

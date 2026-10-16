@@ -75,6 +75,20 @@ export const revokeRole = async (
     return numDeletedRows > 0n;
 };
 
+/** The roles an account has, from anyone, each once, highest priority first. */
+export const rolesOf = async (ctx: Context, accountId: string): Promise<RoleRow[]> => {
+    const given = ctx.db.selectFrom("account_roles")
+        .select("role_id")
+        .where("account_id", "=", accountId);
+
+    return await ctx.db.selectFrom("roles")
+        .selectAll()
+        .where("id", "in", given)
+        .orderBy("priority", "desc")
+        .orderBy("name")
+        .execute();
+};
+
 /** Every role, highest priority first. */
 export const listRoles = async (ctx: Context): Promise<RoleRow[]> =>
     await ctx.db.selectFrom("roles").selectAll().orderBy("priority", "desc").orderBy("name")

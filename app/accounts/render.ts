@@ -5,16 +5,24 @@
 import type { Account, CredentialAccount, Field, Relationship, Role } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import type { AccountRow } from "./accounts.ts";
+import { mastodonPermissions, type Permission } from "./permissions.ts";
+import type { RoleRow } from "./roles.ts";
 import type { ProfileField } from "./tables.ts";
 
-/** The role Mastodon gives users without one, which grants nothing. */
-const everyone: Role = {
-    id: "-99",
-    name: "",
-    color: "",
-    permissions: "0",
-    highlighted: false,
-    collection_limit: 0,
+/** The role Mastodon gives users without one. */
+const everyone = { id: "-99", name: "", color: "", highlighted: false };
+
+/**
+ * The account's highest role, as Mastodon gives each user one, with everything the account may do,
+ * from all its roles and what every user may.
+ */
+const renderRole = (roles: readonly RoleRow[], permissions: Iterable<Permission>): Role => {
+    const [highest] = roles;
+    const role = highest
+        ? { id: highest.id, name: highest.name, color: highest.color, highlighted: highest.visible }
+        : everyone;
+
+    return { ...role, permissions: mastodonPermissions(permissions), collection_limit: 0 };
 };
 
 /** Fields as HTML, or as their owner wrote them, for them to edit. */
@@ -38,8 +46,12 @@ const userUri = (ctx: Context, row: AccountRow) => {
 const midnight = (date: Date) =>
     new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 
-/** An account as anyone sees it. */
-export const renderAccount = (ctx: Context, row: AccountRow): Account => {
+/** An account as anyone sees it, with its roles, highest first. */
+export const renderAccount = (
+    ctx: Context,
+    row: AccountRow,
+    roles: readonly RoleRow[],
+): Account => {
     const avatar = ctx.urls.url`/accounts/${row.id}/avatar.png`;
     const header = ctx.urls.url`/accounts/${row.id}/header.png`;
     const local = row.domain === null;
@@ -75,16 +87,27 @@ export const renderAccount = (ctx: Context, row: AccountRow): Account => {
         show_media: true,
         show_media_replies: true,
         show_featured: true,
-        // Roles arrive with permissions; remote accounts have none here.
-        roles: local ? [] : null,
+        // Only the roles shown on profiles. Remote accounts have none here.
+        roles: local
+            ? roles.filter((role) => role.visible)
+                .map((role) => ({ id: role.id, name: role.name, color: role.color }))
+            : null,
         // Verso has no collections, so nobody can feature anyone.
         feature_approval: { automatic: [], manual: [], current_user: "denied" },
     };
 };
 
-/** An account as its owner sees it, with the settings they can change. */
-export const renderCredentialAccount = (ctx: Context, row: AccountRow): CredentialAccount => ({
-    ...renderAccount(ctx, row),
+/**
+ * An account as its owner sees it, with the settings they can change, its roles, highest first,
+ * and everything it may do.
+ */
+export const renderCredentialAccount = (
+    ctx: Context,
+    row: AccountRow,
+    roles: readonly RoleRow[],
+    permissions: Iterable<Permission>,
+): CredentialAccount => ({
+    ...renderAccount(ctx, row, roles),
     source: {
         note: row.note,
         fields: renderFields(row.fields, false),
@@ -99,7 +122,7 @@ export const renderCredentialAccount = (ctx: Context, row: AccountRow): Credenti
         // Verso doesn't restrict quotes.
         quote_policy: "public",
     },
-    role: everyone,
+    role: renderRole(roles, permissions),
 });
 
 /** The viewer's relationship with the account `id`: none at all, until follows, blocks and mutes. */

@@ -5,6 +5,7 @@ import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { findAccount } from "./accounts.ts";
 import { renderAccount, renderCredentialAccount } from "./render.ts";
+import type { RoleRow } from "./roles.ts";
 import type { ProfileField } from "./tables.ts";
 import { createLocalAccount } from "./testing.ts";
 
@@ -21,7 +22,7 @@ Deno.test("a local account links to itself on this instance", async () => {
         .set({ created_at: new Date("2026-01-31T15:04:05Z") })
         .execute();
 
-    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id)));
+    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), []));
 
     assertEquals(account.acct, "alice");
     assertEquals(account.url, "https://social.example/@alice");
@@ -47,7 +48,7 @@ Deno.test("a remote account links to its own instance", async () => {
         })
         .execute();
 
-    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, "r")));
+    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, "r"), []));
 
     assertEquals(account.acct, "bob@b.example");
     assertEquals(account.url, null);
@@ -77,11 +78,11 @@ Deno.test("others see the bio and fields as HTML, and their owner as written", a
         .execute();
     const row = await find(test.ctx, id);
 
-    const account = renderAccount(test.ctx, row);
+    const account = renderAccount(test.ctx, row, []);
     assertEquals(account.note, "<p><strong>Hi</strong></p>");
     assertEquals(account.fields, [{ name: "Site", value: "<em>me</em>", verified_at: null }]);
 
-    const own = renderCredentialAccount(test.ctx, row);
+    const own = renderCredentialAccount(test.ctx, row, [], []);
     assertEquals(own.source.note, "**Hi**");
     assertEquals(own.source.fields, [{ name: "Site", value: "*me*", verified_at: null }]);
 });
@@ -94,7 +95,7 @@ Deno.test("an owner sees their settings, and the role everyone has", async () =>
         .execute();
 
     const own = CredentialAccount.parse(
-        renderCredentialAccount(test.ctx, await find(test.ctx, id)),
+        renderCredentialAccount(test.ctx, await find(test.ctx, id), [], ["owner:account"]),
     );
 
     assertEquals(own.source.privacy, "unlisted");
@@ -109,4 +110,53 @@ Deno.test("an account that doesn't exist isn't found", async () => {
     await using test = await createTestContext();
 
     assertEquals(await findAccount(test.ctx, "missing"), undefined);
+});
+
+const role = (id: string, priority: number, visible: boolean): RoleRow => ({
+    id,
+    name: `The ${id}s`,
+    description: "",
+    permissions: [],
+    priority,
+    visible,
+    color: visible ? "#ff3838" : "",
+    icon: null,
+    created_at: new Date(0),
+});
+
+Deno.test("others see an account's visible roles, highest first", async () => {
+    await using test = await createTestContext();
+    const id = await createLocalAccount(test.ctx, "alice");
+    const roles = [role("admin", 100, true), role("hidden", 50, false), role("mod", 10, true)];
+
+    const account = renderAccount(test.ctx, await find(test.ctx, id), roles);
+
+    assertEquals(account.roles, [
+        { id: "admin", name: "The admins", color: "#ff3838" },
+        { id: "mod", name: "The mods", color: "#ff3838" },
+    ]);
+});
+
+Deno.test("an owner sees their highest role, with everything they may do", async () => {
+    await using test = await createTestContext();
+    const id = await createLocalAccount(test.ctx, "alice");
+    const roles = [role("hidden", 100, false), role("mod", 10, true)];
+
+    const own = CredentialAccount.parse(
+        renderCredentialAccount(test.ctx, await find(test.ctx, id), roles, ["roles"]),
+    );
+
+    assertEquals(own.role, {
+        id: "hidden",
+        name: "The hiddens",
+        color: "",
+        permissions: "131072",
+        highlighted: false,
+        collection_limit: 0,
+    });
+    assertEquals(
+        renderCredentialAccount(test.ctx, await find(test.ctx, id), [roles[1]], []).role
+            .highlighted,
+        true,
+    );
 });

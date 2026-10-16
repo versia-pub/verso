@@ -9,7 +9,7 @@ import { createInstance } from "../instances/testing.ts";
 import { Limits } from "../kernel/config.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { accountRoutes } from "./routes.ts";
-import { createLocalAccount } from "./testing.ts";
+import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 
 const ping = defineRoute({
     method: "GET",
@@ -321,4 +321,35 @@ Deno.test("relationships need a user's token that may read follows", async () =>
         403,
     );
     assertEquals((await test.get(path, await tokenFor(test.ctx, null))).status, 422);
+});
+
+Deno.test("accounts show their roles, and their owner the highest, with what they may do", async () => {
+    await using test = await openApi();
+    await createRole(test.ctx, "Admin", ["roles"]);
+    await createRole(test.ctx, "Mod", []);
+    await test.ctx.db.updateTable("roles")
+        .set({ visible: true, color: "#ff3838", priority: 100 })
+        .where("id", "=", "Admin")
+        .execute();
+    await giveRole(test.ctx, "alice", "Admin");
+    await giveRole(test.ctx, "alice", "Admin", "https://id.example");
+    await giveRole(test.ctx, "alice", "Mod");
+    const token = await tokenFor(test.ctx, "alice");
+    const shown = [{ id: "Admin", name: "Admin", color: "#ff3838" }];
+
+    const own = await test.get("/api/v1/accounts/verify_credentials", token);
+    const updated = await test.update("{}", "application/json", token);
+
+    assertEquals(own.body.roles, shown);
+    assertEquals(own.body.role, {
+        id: "Admin",
+        name: "Admin",
+        color: "#ff3838",
+        permissions: "131072",
+        highlighted: true,
+        collection_limit: 0,
+    });
+    assertEquals(updated.body.role.id, "Admin");
+    assertEquals((await test.get("/api/v1/accounts/alice")).body.roles, shown);
+    assertEquals((await test.get("/api/v1/accounts/lookup?acct=alice")).body.roles, shown);
 });
