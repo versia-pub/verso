@@ -3,7 +3,7 @@
  * stop browsers from misusing replies.
  * @module
  */
-import type { Hono, MiddlewareHandler } from "@hono/hono";
+import type { Env, Hono, MiddlewareHandler } from "@hono/hono";
 import { cors } from "@hono/hono/cors";
 
 /** Headers scripts on other sites may read, besides the few browsers always allow. */
@@ -45,7 +45,7 @@ const securityHeaders = (https: boolean): MiddlewareHandler => async (c, next) =
  * Adds the headers to `app`, before anything else, so errors carry them too. A web client can't
  * read an error without CORS headers on it.
  */
-export const useHeaders = (app: Hono, origin: string): void => {
+export const useHeaders = <E extends Env>(app: Hono<E>, origin: string): void => {
     app.use(securityHeaders(origin.startsWith("https://")));
 
     for (const { path, methods } of corsRules) {

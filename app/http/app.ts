@@ -4,8 +4,10 @@ import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
 import { grants } from "../auth/scopes.ts";
-import { authenticateToken } from "../auth/tokens.ts";
+import { authenticateToken, type Viewer } from "../auth/tokens.ts";
 import type { Context } from "../kernel/context.ts";
+import { type Cidr, parseAddress } from "../kernel/ip.ts";
+import { clientIp } from "./client_ip.ts";
 import {
     BadRequest,
     ContentTooLarge,
@@ -18,6 +20,7 @@ import {
     ValidationFailed,
 } from "./errors.ts";
 import { useHeaders } from "./headers.ts";
+import { rateLimit, type RateLimits } from "./rate_limits.ts";
 import {
     type CookieChanges,
     Page,
@@ -28,6 +31,13 @@ import {
 } from "./route.ts";
 
 const logger = getLogger(["verso", "http"]);
+
+/** What Hono carries for each request. */
+type AppEnv = {
+    /** From `Deno.serve`. Tests that call the app directly may leave it out. */
+    Bindings: { readonly remoteAddr?: { readonly hostname: string } } | undefined;
+    Variables: { bearer?: Promise<Viewer | undefined> };
+};
 
 /** The largest body a route takes, enough for any form or JSON. Uploads will need their own. */
 const maxBodyBytes = 64 * 1024;
@@ -153,20 +163,54 @@ const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType 
  * Who is calling, checked against the route's `auth` as Mastodon checks it. A token sent where none
  * is needed is ignored; on other routes, a token sent must be valid.
  */
-const viewerOf = async (ctx: Context, c: HonoContext, route: Route) => {
+const viewerOf = async (ctx: Context, c: HonoContext<AppEnv>, route: Route) => {
     if (!route.auth) return undefined;
 
-    const authorization = c.req.header("authorization");
-    if (authorization === undefined && route.auth.require === "optional") return undefined;
+    if (c.req.header("authorization") === undefined && route.auth.require === "optional") {
+        return undefined;
+    }
 
-    const token = /^Bearer\s+(\S+)$/i.exec(authorization ?? "")?.[1];
-    const viewer = token === undefined ? undefined : await authenticateToken(ctx, token);
+    const viewer = await bearerOf(ctx, c);
 
     if (!viewer) throw new Unauthorized();
     if (route.auth.require === "user" && viewer.accountId === null) throw new UserRequired();
     if (route.auth.scope && !grants(viewer.scopes, route.auth.scope)) throw new Forbidden();
 
     return viewer;
+};
+
+/**
+ * The viewer the request's bearer token stands for, if it is valid. It is looked up once, though
+ * both the rate limit and the route ask.
+ */
+const bearerOf = (ctx: Context, c: HonoContext<AppEnv>) => {
+    const token = /^Bearer\s+(\S+)$/i.exec(c.req.header("authorization") ?? "")?.[1];
+    if (token === undefined) return Promise.resolve(undefined);
+
+    const bearer = c.get("bearer") ?? authenticateToken(ctx, token);
+    c.set("bearer", bearer);
+
+    return bearer;
+};
+
+/**
+ * Who a request counts against: its access token, if valid, or else the client's IP address. A
+ * token that isn't valid doesn't count, or a client could send a new made-up one each time.
+ */
+const rateLimitKey = async (
+    ctx: Context,
+    c: HonoContext<AppEnv>,
+    trustedProxies: readonly Cidr[],
+) => {
+    const viewer = await bearerOf(ctx, c);
+    if (viewer) return `token:${viewer.tokenId}`;
+
+    const peer = c.env?.remoteAddr?.hostname ?? "unknown";
+    const ip = clientIp(peer, c.req.header("x-forwarded-for"), trustedProxies);
+    const address = parseAddress(ip);
+
+    // A machine is usually given a whole /64 of IPv6 addresses, so it counts as one client.
+    return address?.bits === 128 ? `ip:${(address.value >> 64n).toString(16)}/64` : `ip:${ip}`;
 };
 
 /** Why a reply doesn't match what its route declares for its status, if it doesn't. */
@@ -212,9 +256,16 @@ const send = (c: HonoContext, route: Route, reply: Reply<Responses>) => {
         : c.body(JSON.stringify(reply.body), reply.status, { "content-type": route.contentType });
 };
 
+/** The server's HTTP app. */
+export type App = Hono<AppEnv>;
+
 export type AppOptions = {
     /** Checks every reply against its route's declared response schemas. For tests. */
     readonly checkResponses?: boolean;
+    /** Without them, requests aren't limited. */
+    readonly rateLimits?: RateLimits;
+    /** The reverse proxies believed about who the client is. */
+    readonly trustedProxies?: readonly Cidr[];
 };
 
 /** Every route the server answers. Tests call its `fetch` directly, with no network in between. */
@@ -222,8 +273,8 @@ export const createApp = (
     ctx: Context,
     routes: readonly Route[],
     options: AppOptions = {},
-): Hono => {
-    const app = new Hono();
+): App => {
+    const app = new Hono<AppEnv>();
     useHeaders(app, ctx.urls.origin);
 
     // Replies are about one user, or carry secrets such as tokens, so nothing may cache them.
@@ -243,6 +294,17 @@ export const createApp = (
 
     // For load balancers and orchestrators, not clients, so it stays plain text.
     app.get("/health/live", (c) => c.text("ok"));
+
+    // After the health check, so orchestrators are never limited. Preflights were answered
+    // before this, by the CORS headers.
+    const limits = options.rateLimits;
+    if (limits) {
+        app.use(rateLimit<AppEnv>(
+            ctx.clock,
+            limits,
+            (c) => rateLimitKey(ctx, c, options.trustedProxies ?? []),
+        ));
+    }
 
     for (const route of routes) {
         app.on(route.method, route.path, async (c) => {

@@ -6,6 +6,7 @@ import { oidcProviders } from "./auth/oidc.ts";
 import { openDatabase } from "./db/database.ts";
 import { migrate } from "./db/migrate.ts";
 import { createApp } from "./http/app.ts";
+import { memoryRateLimitStore } from "./http/rate_limits.ts";
 import type { Route } from "./http/route.ts";
 import { routes } from "./http/routes.ts";
 import { queues, tasks } from "./jobs/queues.ts";
@@ -53,7 +54,16 @@ const serve = (
 
     const server = Deno.serve(
         { port: config.http.port, onListen, signal },
-        createApp(ctx, served).fetch,
+        createApp(ctx, served, {
+            rateLimits: {
+                store: memoryRateLimitStore(ctx.clock),
+                policy: {
+                    limit: config.http.rate_limit.limit,
+                    windowSeconds: config.http.rate_limit.window_seconds,
+                },
+            },
+            trustedProxies: config.http.trusted_proxies,
+        }).fetch,
     );
     return server.finished;
 };

@@ -1,5 +1,11 @@
 import { assertEquals } from "@std/assert";
+import { z } from "zod";
+import { tokenFor } from "../auth/testing.ts";
 import { fakeClock } from "../kernel/clock.ts";
+import { CidrText } from "../kernel/ip.ts";
+import { createTestContext } from "../kernel/testing.ts";
+import { createApp } from "./app.ts";
+import { defineRoute } from "./route.ts";
 import { consume, memoryRateLimitStore } from "./rate_limits.ts";
 
 // Shorter than the memory store's sweep, so windows end before a sweep could forget them.
@@ -50,4 +56,102 @@ Deno.test("the memory store forgets windows that have ended", async () => {
     await store.hit("new", 1_000);
 
     assertEquals(store.size, 2);
+});
+
+const ping = defineRoute({
+    method: "GET",
+    path: "/api/v1/ping",
+    summary: "Answers anyone",
+    responses: { 200: z.object({}) },
+    handler: () => Promise.resolve({ status: 200, body: {} }),
+});
+
+/** An app allowing two requests every 30 seconds, behind a proxy at 10.0.0.1. */
+const open = async () => {
+    const test = await createTestContext();
+    const app = createApp(test.ctx, [ping], {
+        rateLimits: { store: memoryRateLimitStore(test.clock), policy },
+        trustedProxies: [CidrText.parse("10.0.0.1")],
+    });
+
+    /** The status of a request from `peer`, with these headers. */
+    const status = async (peer: string, headers: Record<string, string> = {}) => {
+        const response = await app.request("/api/v1/ping", { headers }, {
+            remoteAddr: { hostname: peer },
+        });
+        await response.body?.cancel();
+        return response.status;
+    };
+
+    return { ...test, app, status };
+};
+
+Deno.test("replies say how much of the quota is left, and when it is gone", async () => {
+    await using test = await open();
+    const request = () =>
+        test.app.request("/api/v1/ping", {}, { remoteAddr: { hostname: "203.0.113.9" } });
+
+    const first = await request();
+    await first.body?.cancel();
+    assertEquals(first.headers.get("ratelimit-limit"), "2, 2;w=30");
+    assertEquals(first.headers.get("ratelimit-remaining"), "1");
+    assertEquals(first.headers.get("ratelimit-reset"), "30");
+
+    test.clock.advance(5_000);
+    await (await request()).body?.cancel();
+    const refused = await request();
+
+    assertEquals(refused.status, 429);
+    assertEquals(await refused.json(), { error: "Too many requests" });
+    assertEquals(refused.headers.get("ratelimit-remaining"), "0");
+    assertEquals(refused.headers.get("retry-after"), "25");
+    assertEquals(refused.headers.get("ratelimit-reset"), "25");
+    assertEquals(refused.headers.get("access-control-allow-origin"), "*");
+});
+
+Deno.test("clients are told apart by IP, through trusted proxies only", async () => {
+    await using test = await open();
+
+    for (let i = 0; i < 2; i++) await test.status("203.0.113.9");
+    assertEquals(await test.status("203.0.113.9"), 429);
+    assertEquals(await test.status("203.0.113.10"), 200);
+
+    // Naming a client only counts against it when a trusted proxy does it.
+    const forwarded = { "x-forwarded-for": "203.0.113.9" };
+    assertEquals(await test.status("203.0.113.11", forwarded), 200);
+    assertEquals(await test.status("10.0.0.1", forwarded), 429);
+});
+
+Deno.test("an IPv6 /64 counts as one client", async () => {
+    await using test = await open();
+
+    await test.status("2001:db8:0:1::1");
+    await test.status("2001:db8:0:1::2");
+
+    assertEquals(await test.status("2001:db8:0:1:ffff::3"), 429);
+    assertEquals(await test.status("2001:db8:0:2::1"), 200);
+});
+
+Deno.test("a valid token has its own quota, and a made-up one doesn't", async () => {
+    await using test = await open();
+    const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
+
+    await test.status("203.0.113.9", bearer("made-up-1"));
+    await test.status("203.0.113.9", bearer("made-up-2"));
+    assertEquals(await test.status("203.0.113.9", bearer("made-up-3")), 429);
+
+    const token = await tokenFor(test.ctx, null);
+    for (let i = 0; i < 2; i++) {
+        assertEquals(await test.status("203.0.113.9", bearer(token)), 200);
+    }
+    assertEquals(await test.status("198.51.100.1", bearer(token)), 429);
+});
+
+Deno.test("health checks are never limited", async () => {
+    await using test = await open();
+
+    for (let i = 0; i < 3; i++) {
+        const response = await test.app.request("/health/live");
+        assertEquals([response.status, await response.text()], [200, "ok"]);
+    }
 });

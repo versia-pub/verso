@@ -51,6 +51,13 @@ export class ContentTooLarge extends HttpError {
     }
 }
 
+/** Over the rate limit. The reply's headers say when to come back. */
+export class TooManyRequests extends HttpError {
+    constructor() {
+        super(429, "Too many requests");
+    }
+}
+
 export class UnsupportedMediaType extends HttpError {
     constructor(description?: string) {
         super(415, "Unsupported media type", description);

@@ -77,6 +77,14 @@ export const Config = z.strictObject({
          * `127.0.0.1` or `10.0.0.0/8`. Only these are believed about who the client is.
          */
         trusted_proxies: z.array(CidrText).default([]),
+        /**
+         * How many requests each client may make in a window of time, as in Mastodon: per access
+         * token, or per IP address without a valid one.
+         */
+        rate_limit: z.strictObject({
+            limit: z.int().min(1).default(300),
+            window_seconds: z.int().min(1).default(300),
+        }).prefault({}),
     }).prefault({}),
     auth: z.strictObject({
         /** Without any, the server runs but nobody can log in. */

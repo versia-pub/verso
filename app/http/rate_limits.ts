@@ -4,7 +4,9 @@
  * @see https://datatracker.ietf.org/doc/html/draft-polli-ratelimit-headers-02
  * @module
  */
+import type { Context as HonoContext, Env, MiddlewareHandler } from "@hono/hono";
 import type { Clock } from "../kernel/clock.ts";
+import { TooManyRequests } from "./errors.ts";
 
 /** A key's requests in its current window. */
 export type Hits = {
@@ -98,4 +100,35 @@ export const consume = async (
         resetSeconds: Math.max(Math.ceil(untilReset / 1000), 0),
         windowSeconds: policy.windowSeconds,
     };
+};
+
+/** The limit every client is held to, and where their counts are kept. */
+export type RateLimits = {
+    readonly store: RateLimitStore;
+    readonly policy: Policy;
+};
+
+/**
+ * Counts each request against the client `keyOf` names, and refuses it once they are over the
+ * limit. Every reply says how much of the quota is left.
+ */
+export const rateLimit = <E extends Env>(
+    clock: Clock,
+    limits: RateLimits,
+    keyOf: (c: HonoContext<E>) => Promise<string>,
+): MiddlewareHandler<E> =>
+async (c, next) => {
+    const quota = await consume(limits.store, clock, limits.policy, await keyOf(c));
+
+    c.header("ratelimit-limit", `${quota.limit}, ${quota.limit};w=${quota.windowSeconds}`);
+    c.header("ratelimit-remaining", String(quota.remaining));
+    c.header("ratelimit-reset", String(quota.resetSeconds));
+
+    if (!quota.allowed) {
+        // The same moment as RateLimit-Reset, as the draft asks.
+        c.header("retry-after", String(quota.resetSeconds));
+        throw new TooManyRequests();
+    }
+
+    await next();
 };

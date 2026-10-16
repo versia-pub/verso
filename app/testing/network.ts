@@ -1,5 +1,4 @@
-import type { Hono } from "@hono/hono";
-import { createApp } from "../http/app.ts";
+import { type App, createApp } from "../http/app.ts";
 import { routes } from "../http/routes.ts";
 import { queues as allQueues } from "../jobs/queues.ts";
 import { drain, type Queue } from "../jobs/worker.ts";
@@ -7,7 +6,7 @@ import { type FakeClock, fakeClock } from "../kernel/clock.ts";
 import { type FakeTransport, fakeTransport } from "../kernel/fake_transport.ts";
 import { createTestContext, type TestContext } from "../kernel/testing.ts";
 
-export type Instance = TestContext & { readonly app: Hono };
+export type Instance = TestContext & { readonly app: App };
 
 export type Network = AsyncDisposable & {
     /** Instances by domain. */
