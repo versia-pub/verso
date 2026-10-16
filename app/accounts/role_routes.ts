@@ -1,11 +1,35 @@
 import { VersiaRole } from "@versia/client-api";
 import { z } from "zod";
-import { NotFound } from "../http/errors.ts";
+import { NotFound, NotPermitted, ValidationFailed } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
+import { Flag, Integer, Text } from "../http/schemas.ts";
 import { findAccount } from "./accounts.ts";
-import { findRoleById, listRoles, type RoleRow, rolesOf } from "./roles.ts";
+import { Permission } from "./permissions.ts";
+import {
+    createRole,
+    findRoleById,
+    listRoles,
+    refusal,
+    roleManager,
+    type RoleRow,
+    rolesOf,
+} from "./roles.ts";
 
 const Id = z.object({ id: z.string() });
+
+/** What a role is made of, as clients send it. */
+const RoleFields = z.object({
+    name: z.string().trim().pipe(z.string().min(1).pipe(Text(128))),
+    permissions: z.array(Permission),
+    priority: Integer,
+    description: z.string().trim().pipe(Text(1024)),
+    visible: Flag,
+    color: z.union([
+        z.literal(""),
+        z.string().regex(/^#[0-9a-f]{6}$/i, { error: "Must be a hex colour, such as #ff3838" }),
+    ]),
+    icon: z.url({ protocol: /^https?$/ }).nullable(),
+});
 
 /** A role as Versia's role endpoints show it. */
 export const renderVersiaRole = (role: RoleRow): VersiaRole => ({
@@ -33,6 +57,30 @@ export const roleRoutes: readonly Route[] = [
             status: 200,
             body: (await listRoles(ctx)).map(renderVersiaRole),
         }),
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v1/roles",
+        summary: "Creates a role below the viewer's highest, with permissions they have",
+        tags: ["roles"],
+        auth: { require: "user", scope: "write:accounts", permission: "roles" },
+        body: RoleFields.partial().required({ name: true }),
+        responses: { 201: VersiaRole },
+        handler: async (ctx, { viewer, body }) => {
+            const role = {
+                ...body,
+                permissions: body.permissions ?? [],
+                priority: body.priority ?? 0,
+            };
+            const manager = await roleManager(ctx, viewer.accountId, await viewer.permissions());
+            const refused = refusal(manager, role);
+            if (refused !== undefined) throw new NotPermitted(refused);
+
+            const created = await createRole(ctx, role);
+            if (!created) throw new ValidationFailed({ name: ["A role with this name exists"] });
+
+            return { status: 201, body: renderVersiaRole(created) };
+        },
     }),
     defineRoute({
         method: "GET",

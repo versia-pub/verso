@@ -14,6 +14,10 @@ export type NewRole = {
     readonly name: string;
     readonly permissions: readonly Permission[];
     readonly priority: number;
+    readonly description?: string;
+    readonly visible?: boolean;
+    readonly color?: string;
+    readonly icon?: string | null;
 };
 
 /** Creates a role, unless one with its name, in any case, exists. */
@@ -24,6 +28,10 @@ export const createRole = async (ctx: Context, role: NewRole): Promise<RoleRow |
             name: role.name,
             permissions: [...new Set(role.permissions)],
             priority: role.priority,
+            description: role.description,
+            visible: role.visible,
+            color: role.color,
+            icon: role.icon,
             created_at: ctx.clock.now(),
         })
         .onConflict((conflict) => conflict.doNothing())
@@ -161,4 +169,39 @@ export const syncClaimedRoles = async (
         })))
         .onConflict((conflict) => conflict.doNothing())
         .execute();
+};
+
+/**
+ * What an account may do to roles through the API: change only those below its highest role, and
+ * give them only permissions it has itself. Without roles, it may change none.
+ */
+export type RoleManager = {
+    readonly highest: number;
+    readonly permissions: ReadonlySet<Permission>;
+};
+
+export const roleManager = async (
+    ctx: Context,
+    accountId: string,
+    permissions: ReadonlySet<Permission>,
+): Promise<RoleManager> => ({
+    highest: (await rolesOf(ctx, accountId))[0]?.priority ?? -Infinity,
+    permissions,
+});
+
+/** Why `manager` may not make a role with this priority and these permissions, if it may not. */
+export const refusal = (
+    manager: RoleManager,
+    role: { readonly priority?: number; readonly permissions?: readonly Permission[] },
+): string | undefined => {
+    if (role.priority !== undefined && role.priority >= manager.highest) {
+        return "Roles you manage must have a lower priority than your highest role";
+    }
+
+    const missing = role.permissions?.filter((permission) => !manager.permissions.has(permission));
+    if (missing !== undefined && missing.length > 0) {
+        return `You can't give permissions you don't have: ${missing.join(", ")}`;
+    }
+
+    return undefined;
 };

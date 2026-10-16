@@ -11,3 +11,11 @@ export const Text = (max: number): z.ZodType<string, string> =>
     z.string().refine((text) => Array.from(text).length <= max, {
         error: `Must be at most ${max} characters`,
     });
+
+/** A whole number, as JSON sends it or as a form does, in digits. */
+export const Integer: z.ZodType<number, number | string> = z.union([
+    z.int(),
+    z.string().regex(/^-?\d+$/, { error: "Must be a whole number" }).transform(Number).pipe(
+        z.int(),
+    ),
+]);

@@ -41,8 +41,8 @@ export class Forbidden extends HttpError {
 
 /** The caller's roles don't allow what a route does. */
 export class NotPermitted extends HttpError {
-    constructor() {
-        super(403, "This action is not allowed");
+    constructor(description?: string) {
+        super(403, "This action is not allowed", description);
     }
 }
 
