@@ -25,6 +25,19 @@ export const findLocalAccount = (
         .where((eb) => eb(eb.fn("lower", ["accounts.username"]), "=", username.toLowerCase()))
         .executeTakeFirst();
 
+/** Which of `ids` are local accounts, in no particular order. */
+export const localAccountIds = async (ctx: Context, ids: readonly string[]): Promise<string[]> => {
+    if (ids.length === 0) return [];
+
+    const rows = await ctx.db.selectFrom("accounts")
+        .select("id")
+        .where("id", "in", ids)
+        .where("instance_id", "is", null)
+        .execute();
+
+    return rows.map((row) => row.id);
+};
+
 /** The username of an account, which must exist. */
 export const getUsername = async (ctx: Context, accountId: string): Promise<string> => {
     const { username } = await ctx.db.selectFrom("accounts")

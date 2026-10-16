@@ -1,14 +1,14 @@
-import { Account, CredentialAccount } from "@versia/client-api";
+import { Account, CredentialAccount, Relationship } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-import { type AccountRow, findAccount, findLocalAccount } from "./accounts.ts";
+import { type AccountRow, findAccount, findLocalAccount, localAccountIds } from "./accounts.ts";
 import { identicon, identiconBanner } from "./identicon.ts";
 import { updateProfile } from "./profile.ts";
-import { renderAccount, renderCredentialAccount } from "./render.ts";
+import { renderAccount, renderCredentialAccount, renderRelationship } from "./render.ts";
 
 const AccountId = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
 
@@ -116,6 +116,27 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
             return {
                 status: 200,
                 body: renderCredentialAccount(ctx, shown(await findAccount(ctx, viewer.accountId))),
+            };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/accounts/relationships",
+        summary: "How the viewer is connected to each of some accounts",
+        tags: ["accounts"],
+        auth: { require: "user", scope: "read:follows" },
+        // `id[]=1&id[]=2`, or a single `id=1`.
+        query: z.object({
+            id: z.union([z.string().transform((id) => [id]), z.array(z.string())]).default([]),
+        }),
+        responses: { 200: z.array(Relationship) },
+        handler: async (ctx, { query }) => {
+            const asked = [...new Set(query.id)];
+            const found = new Set(await localAccountIds(ctx, asked));
+
+            return {
+                status: 200,
+                body: asked.filter((id) => found.has(id)).map(renderRelationship),
             };
         },
     }),

@@ -2,7 +2,7 @@
  * Turns accounts into the client API's entities.
  * @module
  */
-import type { Account, CredentialAccount, Field, Role } from "@versia/client-api";
+import type { Account, CredentialAccount, Field, Relationship, Role } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import type { AccountRow } from "./accounts.ts";
 import type { ProfileField } from "./tables.ts";
@@ -100,4 +100,24 @@ export const renderCredentialAccount = (ctx: Context, row: AccountRow): Credenti
         quote_policy: "public",
     },
     role: everyone,
+});
+
+/** The viewer's relationship with the account `id`: none at all, until follows, blocks and mutes. */
+export const renderRelationship = (id: string): Relationship => ({
+    id,
+    following: false,
+    showing_reblogs: false,
+    notifying: false,
+    languages: null,
+    followed_by: false,
+    blocking: false,
+    blocked_by: false,
+    muting: false,
+    muting_notifications: false,
+    muting_expires_at: null,
+    requested: false,
+    requested_by: false,
+    domain_blocking: false,
+    endorsed: false,
+    note: "",
 });

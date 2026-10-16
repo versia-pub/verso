@@ -271,3 +271,54 @@ Deno.test("only a token that may write accounts changes a profile", async () => 
         200,
     );
 });
+
+Deno.test("relationships are none yet, for each local account asked about, in order", async () => {
+    await using test = await openApi();
+    await createLocalAccount(test.ctx, "carol");
+    const token = await tokenFor(test.ctx, "alice");
+    const ids = (body: { id: string }[]) => body.map((relationship) => relationship.id);
+
+    const many = await test.get(
+        "/api/v1/accounts/relationships?id[]=carol&id[]=bob&id[]=missing&id[]=alice&id[]=carol",
+        token,
+    );
+    assertEquals([many.status, ids(many.body)], [200, ["carol", "alice"]]);
+    assertEquals(many.body[0], {
+        id: "carol",
+        following: false,
+        showing_reblogs: false,
+        notifying: false,
+        languages: null,
+        followed_by: false,
+        blocking: false,
+        blocked_by: false,
+        muting: false,
+        muting_notifications: false,
+        muting_expires_at: null,
+        requested: false,
+        requested_by: false,
+        domain_blocking: false,
+        endorsed: false,
+        note: "",
+    });
+
+    assertEquals(ids((await test.get("/api/v1/accounts/relationships?id=alice", token)).body), [
+        "alice",
+    ]);
+    assertEquals((await test.get("/api/v1/accounts/relationships", token)).body, []);
+});
+
+Deno.test("relationships need a user's token that may read follows", async () => {
+    await using test = await openApi();
+    const path = "/api/v1/accounts/relationships?id=alice";
+
+    assertEquals(
+        (await test.get(path, await tokenFor(test.ctx, "alice", ["read:follows"]))).status,
+        200,
+    );
+    assertEquals(
+        (await test.get(path, await tokenFor(test.ctx, "alice", ["read:accounts"]))).status,
+        403,
+    );
+    assertEquals((await test.get(path, await tokenFor(test.ctx, null))).status, 422);
+});
