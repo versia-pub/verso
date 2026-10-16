@@ -3,35 +3,37 @@
  * JSON, so scripts can read it.
  * @module
  */
+import { Command, ValidationError } from "@cliffy/command";
 import { rotateInstanceKey } from "../instances/keys.ts";
 import type { Context } from "../kernel/context.ts";
 
-export type AdminCommand = {
-    /** One line for the usage message. */
-    readonly summary: string;
-    readonly run: (ctx: Context) => Promise<unknown>;
+/** What admin commands need from whoever runs them. */
+export type AdminIo = {
+    /** Runs `work` with the context of the instance the config file at `path` describes. */
+    readonly withContext: <T>(path: string, work: (ctx: Context) => Promise<T>) => Promise<T>;
+    /** Prints one line of output. */
+    readonly print: (line: string) => void;
 };
 
-/** Every admin command, by the words that name it. */
-export const adminCommands: Readonly<Record<string, AdminCommand>> = {
-    "keys rotate": {
-        summary: "Replace the instance's key pair, and print the new public key",
-        run: async (ctx) => ({ public_key: await rotateInstanceKey(ctx) }),
-    },
+/** Refuses a command run without one of its subcommands, as a usage error. */
+export const missingCommand = (): never => {
+    throw new ValidationError("Missing command");
 };
 
-/** The command `words` name, such as `["keys", "rotate"]`, if there is one. */
-export const findAdminCommand = (words: readonly unknown[]): AdminCommand | undefined =>
-    Object.hasOwn(adminCommands, words.join(" ")) ? adminCommands[words.join(" ")] : undefined;
-
-export const adminUsage: string = [
-    "usage: verso admin <command> [--config <path>]",
-    "",
-    ...Object.entries(adminCommands).map(([name, command]) =>
-        `  ${name.padEnd(16)}${command.summary}`
-    ),
-].join("\n");
-
-/** Runs `command` and returns the line of JSON to print. */
-export const runAdminCommand = async (ctx: Context, command: AdminCommand): Promise<string> =>
-    JSON.stringify(await command.run(ctx));
+/** The `admin` command, to add to the main one, which has the global `--config` option. */
+export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
+    new Command<{ config: string }>()
+        .description("Manage the instance.")
+        .action(missingCommand)
+        .command(
+            "keys",
+            new Command<{ config: string }>()
+                .description("Manage the instance's key pair.")
+                .action(missingCommand)
+                .command("rotate", "Replace the instance's key pair, and print the new public key.")
+                .action(async ({ config }) => {
+                    const publicKey = await io.withContext(config, rotateInstanceKey);
+                    io.print(JSON.stringify({ public_key: publicKey }));
+                }),
+        )
+        .reset();

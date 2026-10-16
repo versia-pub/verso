@@ -1,8 +1,8 @@
+import { Command } from "@cliffy/command";
 import { getLogger } from "@logtape/logtape";
-import { parseArgs } from "@std/cli";
 import type { Kysely } from "kysely";
 import denoConfig from "../deno.json" with { type: "json" };
-import { type AdminCommand, adminUsage, findAdminCommand, runAdminCommand } from "./admin/cli.ts";
+import { adminCommand, missingCommand } from "./admin/cli.ts";
 import { devLogin } from "./auth/dev_login.ts";
 import { oidcProviders } from "./auth/oidc.ts";
 import { type Database, openDatabase } from "./db/database.ts";
@@ -169,19 +169,6 @@ const runMigrations = async (config: Config): Promise<number> => {
     return 0;
 };
 
-/** Runs an admin command and prints its result. Returns the exit code. */
-const runAdmin = async (command: AdminCommand, config: Config): Promise<number> => {
-    await using db = openDatabase(config.database);
-    const { ctx } = contextFor(config, db);
-
-    // deno-lint-ignore no-console -- the result is command output, not a log line
-    console.log(await runAdminCommand(ctx, command));
-    return 0;
-};
-
-const commands = ["serve", "work", "all", "migrate"];
-const usage = "usage: verso serve|work|all|migrate|admin [--config <path>] | verso --version";
-
 /** Reads the config, or exits saying what is wrong with it. */
 const configOrExit = async (path: string): Promise<Config> => {
     const result = await readConfig(path);
@@ -192,36 +179,50 @@ const configOrExit = async (path: string): Promise<Config> => {
     Deno.exit(1);
 };
 
-if (import.meta.main) {
-    const args = parseArgs(Deno.args, {
-        boolean: ["version"],
-        string: ["config"],
-        default: { config: "config.toml" },
-    });
+/** Reads the config at `path` and sets up logging, before any command that needs them. */
+const setUp = async (path: string): Promise<Config> => {
+    const config = await configOrExit(path);
+    await setUpLogging(config.logging.level);
+    return config;
+};
 
-    if (args.version) {
-        // deno-lint-ignore no-console -- the version is command output, not a log line
-        console.log(`verso ${denoConfig.version}`);
-    } else if (args._[0] === "admin") {
-        const command = findAdminCommand(args._.slice(1));
-        if (!command) {
-            // deno-lint-ignore no-console -- usage errors are command output, not log lines
-            console.error(adminUsage);
-            Deno.exit(2);
-        }
+/** Runs `work` with the context for the config at `path`, for admin commands. */
+const withContext = async <T>(path: string, work: (ctx: Context) => Promise<T>): Promise<T> => {
+    const config = await setUp(path);
+    await using db = openDatabase(config.database);
+    return await work(contextFor(config, db).ctx);
+};
 
-        const config = await configOrExit(args.config);
-        await setUpLogging(config.logging.level);
-        Deno.exit(await runAdmin(command, config));
-    } else if (args._.length === 1 && commands.includes(String(args._[0]))) {
-        const config = await configOrExit(args.config);
-        await setUpLogging(config.logging.level);
-        if (args._[0] === "migrate") Deno.exit(await runMigrations(config));
+const version = `verso ${denoConfig.version}`;
 
-        Deno.exit(await run(String(args._[0]), config));
-    } else {
-        // deno-lint-ignore no-console -- usage errors are command output, not log lines
-        console.error(usage);
-        Deno.exit(2);
-    }
-}
+const cli = new Command()
+    .name("verso")
+    .version(denoConfig.version)
+    .versionOption("-V, --version", "Show Verso's version.", {
+        action: () => {
+            // deno-lint-ignore no-console -- the version is command output, not a log line
+            console.log(version);
+            Deno.exit(0);
+        },
+    })
+    .description("A Versia server, with a Mastodon-compatible API.")
+    .globalOption("-c, --config <path:string>", "The config file.", { default: "config.toml" })
+    .action(missingCommand)
+    .command("serve", "Answer HTTP requests, until stopped.")
+    .action(async ({ config }) => Deno.exit(await run("serve", await setUp(config))))
+    .command("work", "Run jobs, until stopped.")
+    .action(async ({ config }) => Deno.exit(await run("work", await setUp(config))))
+    .command("all", "Answer HTTP requests and run jobs, until stopped.")
+    .action(async ({ config }) => Deno.exit(await run("all", await setUp(config))))
+    .command("migrate", "Bring the database up to date, and make the instance's key pair.")
+    .action(async ({ config }) => Deno.exit(await runMigrations(await setUp(config))))
+    .command(
+        "admin",
+        adminCommand({
+            withContext,
+            // deno-lint-ignore no-console -- the result is command output, not a log line
+            print: (line) => console.log(line),
+        }),
+    );
+
+if (import.meta.main) await cli.parse(Deno.args);
