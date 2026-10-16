@@ -96,7 +96,8 @@ Deno.test("adding instances keeps accounts, their logins and their tokens", asyn
         })
         .execute();
 
-    assertEquals(await migrate(db), { ok: true, applied: ["0009_instances"] });
+    const result = await migrate(db);
+    assertEquals(result.ok && result.applied[0], "0009_instances");
 
     assertEquals(await db.selectFrom("accounts").selectAll().execute(), [
         { id: "a", username: "alice", instance_id: null, remote_id: null, created_at: createdAt },

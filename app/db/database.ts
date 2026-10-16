@@ -4,7 +4,7 @@ import pg from "pg";
 import type { AccountsTable, IdentitiesTable } from "../accounts/tables.ts";
 import type { AccessTokensTable, AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
 import type { RateLimitsTable } from "../http/tables.ts";
-import type { InstancesTable } from "../instances/tables.ts";
+import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
@@ -16,6 +16,7 @@ export type Database = {
     accounts: AccountsTable;
     apps: AppsTable;
     identities: IdentitiesTable;
+    instance_keys: InstanceKeysTable;
     instances: InstancesTable;
     jobs: JobsTable;
     oauth_flows: OAuthFlowsTable;

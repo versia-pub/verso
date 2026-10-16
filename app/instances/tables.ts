@@ -17,3 +17,13 @@ export type InstancesTable = {
     key_fetched_at: Date | null;
     created_at: Date;
 };
+
+/** This instance's key pairs. The newest one is current; the others were rotated out. */
+export type InstanceKeysTable = {
+    id: string;
+    /** SPKI, in base64, as InstanceMetadata shows it. */
+    public_key: string;
+    /** PKCS #8, in base64. */
+    private_key: string;
+    created_at: Date;
+};

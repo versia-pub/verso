@@ -9,6 +9,7 @@ import { createApp } from "./http/app.ts";
 import { databaseRateLimitStore, memoryRateLimitStore } from "./http/rate_limits.ts";
 import type { Route } from "./http/route.ts";
 import { routes } from "./http/routes.ts";
+import { ensureInstanceKey, instanceKey } from "./instances/keys.ts";
 import { queues, tasks } from "./jobs/queues.ts";
 import { runScheduler } from "./jobs/scheduler.ts";
 import { listenForJobs } from "./jobs/wakeups.ts";
@@ -72,9 +73,9 @@ const serve = (
 
 /**
  * Runs as a web node (`serve`), a job worker (`work`) or both (`all`) until SIGINT or SIGTERM,
- * then finishes the requests and jobs in progress.
+ * then finishes the requests and jobs in progress. Returns the exit code.
  */
-const run = async (role: string, config: Config): Promise<void> => {
+const run = async (role: string, config: Config): Promise<number> => {
     await using db = openDatabase(config.database);
 
     const urls = urlBuilder(config.domain, config.http.origin);
@@ -93,12 +94,21 @@ const run = async (role: string, config: Config): Promise<void> => {
         db,
     });
 
+    const logger = getLogger(["verso"]);
+
+    // Everything Verso sends is signed, so it can't do anything useful without a key.
+    try {
+        await instanceKey(ctx);
+    } catch (error) {
+        logger.fatal("{error}", { error: error instanceof Error ? error.message : error });
+        return 1;
+    }
+
     const stopping = new AbortController();
     const stop = () => stopping.abort();
     const signals = ["SIGINT", "SIGTERM"] as const;
     for (const signal of signals) Deno.addSignalListener(signal, stop);
 
-    const logger = getLogger(["verso"]);
     const worker = ctx.ids();
 
     await using wakeups = role === "serve" ? undefined : await listenForJobs(config.database);
@@ -120,6 +130,7 @@ const run = async (role: string, config: Config): Promise<void> => {
 
     for (const signal of signals) Deno.removeSignalListener(signal, stop);
     logger.info("Stopped");
+    return 0;
 };
 
 /** Applies pending migrations and returns the exit code. */
@@ -141,6 +152,11 @@ const runMigrations = async (config: Config): Promise<number> => {
     }
 
     if (result.applied.length === 0) logger.info("The database is up to date");
+
+    if (await ensureInstanceKey({ db, clock: systemClock, ids: idGenerator(systemClock) })) {
+        logger.info("Made the instance's key pair");
+    }
+
     return 0;
 };
 
@@ -168,7 +184,7 @@ if (import.meta.main) {
         await setUpLogging(result.config.logging.level);
         if (args._[0] === "migrate") Deno.exit(await runMigrations(result.config));
 
-        await run(String(args._[0]), result.config);
+        Deno.exit(await run(String(args._[0]), result.config));
     } else {
         // deno-lint-ignore no-console -- usage errors are command output, not log lines
         console.error(usage);

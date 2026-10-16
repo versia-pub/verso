@@ -1,0 +1,17 @@
+import type { Kysely } from "kysely";
+import type { Migration } from "kysely/migration";
+import { columnTypes } from "../columns.ts";
+
+/** The key itself is made by the `migrate` command afterwards, since each instance needs its own. */
+export const instanceKeys: Migration = {
+    up: async (db: Kysely<unknown>) => {
+        const types = columnTypes(db);
+
+        await db.schema.createTable("instance_keys")
+            .addColumn("id", "text", (column) => column.primaryKey())
+            .addColumn("public_key", "text", (column) => column.notNull())
+            .addColumn("private_key", "text", (column) => column.notNull())
+            .addColumn("created_at", types.timestamp, (column) => column.notNull())
+            .execute();
+    },
+};

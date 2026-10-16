@@ -1,6 +1,7 @@
 import type { Kysely } from "kysely";
 import type { Database } from "../db/database.ts";
 import { migrate } from "../db/migrate.ts";
+import { ensureInstanceKey } from "../instances/keys.ts";
 import { testDatabase } from "../db/testing.ts";
 import { type FakeClock, fakeClock } from "./clock.ts";
 import { type Context, createContext } from "./context.ts";
@@ -45,6 +46,10 @@ export const createTestContext = async (
     }
 
     const clock = options.clock ?? fakeClock();
+
+    // Its own ids, so making the key doesn't shift the ids tests expect.
+    await ensureInstanceKey({ db, clock, ids: idGenerator(clock) });
+
     const transport = options.transport ?? fakeTransport();
     const ctx = createContext({
         clock,
