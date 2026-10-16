@@ -47,6 +47,7 @@
         "@std/toml": "jsr:@std/toml@1.0.11",
         "@types/pg": "npm:@types/pg@8.23.1",
         "fast-check": "npm:fast-check@4.10.2",
+        "fast-png": "npm:fast-png@8.0.0",
         "kysely": "npm:kysely@0.29.6",
         "pg": "npm:pg@8.23.1",
         "zod": "npm:zod@4.6.7"
