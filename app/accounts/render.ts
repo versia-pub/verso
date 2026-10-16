@@ -29,33 +29,12 @@ const everyone: Role = {
     collection_limit: 0,
 };
 
-const escapes: Record<string, string> = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-};
-
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (char) => escapes[char]);
-
-/**
- * Plain text as HTML: each run of text between blank lines is a paragraph, and the other line
- * breaks stay line breaks.
- */
-export const textToHtml = (text: string): string =>
-    text.replace(/\r\n?/g, "\n")
-        .split(/\n{2,}/)
-        .map((paragraph) => paragraph.trim())
-        .filter((paragraph) => paragraph !== "")
-        .map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll("\n", "<br>")}</p>`)
-        .join("");
-
-/** Fields with their values as HTML, or as written for their owner to edit. */
+/** Fields as HTML, or as their owner wrote them, for them to edit. */
 const renderFields = (fields: readonly ProfileField[], html: boolean): Field[] =>
-    fields.map(({ name, value }) => ({
-        name,
-        value: html ? escapeHtml(value) : value,
+    fields.map((field) => ({
+        // Mastodon's names are plain text, so the HTML is only for federation.
+        name: field.name,
+        value: html ? field.value_html : field.value,
         verified_at: null,
     }));
 
@@ -85,7 +64,7 @@ export const renderAccount = (ctx: Context, row: AccountRow): Account => {
         url: local ? ctx.urls.url`/@${row.username}` : null,
         uri: userUri(ctx, row),
         display_name: row.display_name,
-        note: textToHtml(row.note),
+        note: row.note_html,
         avatar,
         avatar_static: avatar,
         avatar_description: "",

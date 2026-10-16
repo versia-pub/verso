@@ -3,7 +3,8 @@ import { Account, CredentialAccount } from "@versia/client-api";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../kernel/testing.ts";
-import { findAccount, renderAccount, renderCredentialAccount, textToHtml } from "./render.ts";
+import { findAccount, renderAccount, renderCredentialAccount } from "./render.ts";
+import type { ProfileField } from "./tables.ts";
 import { createLocalAccount } from "./testing.ts";
 
 const find = async (ctx: Context, id: string) => {
@@ -55,32 +56,33 @@ Deno.test("a remote account links to its own instance", async () => {
     assertEquals(account.roles, null);
 });
 
-Deno.test("the bio and field values are escaped into HTML, but not for their owner", async () => {
+Deno.test("others see the bio and fields as HTML, and their owner as written", async () => {
     await using test = await createTestContext();
     const id = await createLocalAccount(test.ctx, "alice");
-    const fields = [{ name: "Site", value: "<a href=x>me</a> & co" }];
+    const field: ProfileField = {
+        name: "Site",
+        value: "*me*",
+        format: "text/markdown",
+        name_html: "<b>Site</b>",
+        value_html: "<em>me</em>",
+    };
     await test.ctx.db.updateTable("accounts")
-        .set({ note: "Hi <b>all</b>\nsecond line\r\n\r\nnew 'paragraph'", fields })
+        .set({
+            note: "**Hi**",
+            note_format: "text/markdown",
+            note_html: "<p><strong>Hi</strong></p>",
+            fields: [field],
+        })
         .execute();
     const row = await find(test.ctx, id);
 
     const account = renderAccount(test.ctx, row);
-    assertEquals(
-        account.note,
-        "<p>Hi &lt;b&gt;all&lt;/b&gt;<br>second line</p><p>new &#39;paragraph&#39;</p>",
-    );
-    assertEquals(account.fields, [
-        { name: "Site", value: "&lt;a href=x&gt;me&lt;/a&gt; &amp; co", verified_at: null },
-    ]);
+    assertEquals(account.note, "<p><strong>Hi</strong></p>");
+    assertEquals(account.fields, [{ name: "Site", value: "<em>me</em>", verified_at: null }]);
 
     const own = renderCredentialAccount(test.ctx, row);
-    assertEquals(own.source.note, row.note);
-    assertEquals(own.source.fields, [{ ...fields[0], verified_at: null }]);
-});
-
-Deno.test("blank text is no HTML at all", () => {
-    assertEquals(textToHtml(""), "");
-    assertEquals(textToHtml(" \n\n \n"), "");
+    assertEquals(own.source.note, "**Hi**");
+    assertEquals(own.source.fields, [{ name: "Site", value: "*me*", verified_at: null }]);
 });
 
 Deno.test("an owner sees their settings, and the role everyone has", async () => {
