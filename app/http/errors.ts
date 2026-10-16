@@ -39,6 +39,13 @@ export class Forbidden extends HttpError {
     }
 }
 
+/** The caller's roles don't allow what a route does. */
+export class NotPermitted extends HttpError {
+    constructor() {
+        super(403, "This action is not allowed");
+    }
+}
+
 export class NotFound extends HttpError {
     constructor(description?: string) {
         super(404, "Record not found", description);

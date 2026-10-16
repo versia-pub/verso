@@ -4,8 +4,10 @@ import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
 import qs from "qs";
 import { z } from "zod";
+import { accountPermissions } from "../accounts/roles.ts";
 import { grants } from "../auth/scopes.ts";
 import { authenticateToken, type Viewer } from "../auth/tokens.ts";
+import { Permissions } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import { type Cidr, parseAddress } from "../kernel/ip.ts";
 import { clientIp } from "./client_ip.ts";
@@ -15,6 +17,7 @@ import {
     Forbidden,
     HttpError,
     NotFound,
+    NotPermitted,
     Unauthorized,
     UnsupportedMediaType,
     UserRequired,
@@ -196,6 +199,26 @@ const viewerOf = async (ctx: Context, c: HonoContext<AppEnv>, route: Route) => {
 };
 
 /**
+ * Throws unless the viewer may do what the route needs: a user, what every user may and their roles
+ * allow, and anyone else, such as an app acting for itself, what anonymous visitors may.
+ */
+const checkPermission = async (
+    ctx: Context,
+    route: Route,
+    viewer: Viewer | undefined,
+    permissions: Permissions,
+) => {
+    const needed = route.auth?.permission;
+    if (needed === undefined) return;
+
+    const granted = viewer?.accountId
+        ? await accountPermissions(ctx, viewer.accountId, permissions.default)
+        : new Set(permissions.anonymous);
+
+    if (!granted.has(needed)) throw new NotPermitted();
+};
+
+/**
  * The viewer the request's bearer token stands for, if it is valid. It is looked up once, though
  * both the rate limit and the route ask.
  */
@@ -294,6 +317,8 @@ export type AppOptions = {
     readonly rateLimits?: RateLimits;
     /** The reverse proxies believed about who the client is. */
     readonly trustedProxies?: readonly Cidr[];
+    /** What everyone may do, before roles add more. Without it, what config allows by default. */
+    readonly permissions?: Permissions;
 };
 
 /** Every route the server answers. Tests call its `fetch` directly, with no network in between. */
@@ -303,6 +328,7 @@ export const createApp = (
     options: AppOptions = {},
 ): App => {
     const app = new Hono<AppEnv>();
+    const permissions = options.permissions ?? Permissions.parse({});
     useHeaders(app, ctx.urls.origin);
 
     // Replies are about one user, or carry secrets such as tokens, so nothing may cache them,
@@ -323,6 +349,7 @@ export const createApp = (
     const handle = (route: Route) => {
         app.on(route.method, route.path, async (c) => {
             const viewer = await viewerOf(ctx, c, route);
+            await checkPermission(ctx, route, viewer, permissions);
             const input = await inputOf(c, route).catch((error) => {
                 throw route.oauthErrors ? asOAuthError(error) : error;
             });

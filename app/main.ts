@@ -68,6 +68,7 @@ const serve = (
                 },
             },
             trustedProxies: config.http.trusted_proxies,
+            permissions: config.permissions,
         }).fetch,
     );
     return server.finished;

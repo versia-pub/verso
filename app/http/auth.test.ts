@@ -1,7 +1,9 @@
 import { assertEquals } from "@std/assert";
-import { createLocalAccount } from "../accounts/testing.ts";
 import { z } from "zod";
+import type { Permission } from "../accounts/permissions.ts";
+import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
+import type { Permissions } from "../kernel/config.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { createApp } from "./app.ts";
 import { defineRoute } from "./route.ts";
@@ -50,9 +52,32 @@ const anyone = defineRoute({
         Promise.resolve({ status: 200, body: { app: viewer ?? null, account: null } }),
 });
 
-const open = async () => {
+const allowed = (path: string, permission: Permission) =>
+    defineRoute({
+        method: "GET",
+        path,
+        summary: "Needs a permission, from anyone",
+        auth: { require: "optional", permission },
+        responses: { 200: Answer },
+        handler: (_, { viewer }) =>
+            Promise.resolve({
+                status: 200,
+                body: { app: viewer?.appId ?? null, account: viewer?.accountId ?? null },
+            }),
+    });
+
+const routes = [
+    me,
+    app,
+    maybe,
+    anyone,
+    allowed("/roles", "roles"),
+    allowed("/read", "read:account"),
+];
+
+const open = async (permissions?: Permissions) => {
     const test = await createTestContext();
-    const http = createApp(test.ctx, [me, app, maybe, anyone], { checkResponses: true });
+    const http = createApp(test.ctx, routes, { checkResponses: true, permissions });
 
     await createLocalAccount(test.ctx, "alice");
 
@@ -119,6 +144,39 @@ Deno.test("a route without auth ignores tokens", async () => {
         status: 200,
         body: { app: null, account: null },
     });
+});
+
+Deno.test("a route needing a permission is refused unless a role gives it", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "bob");
+    await createRole(test.ctx, "Admin", ["roles"]);
+    await giveRole(test.ctx, "bob", "Admin");
+    const call = async (account: string) =>
+        await test.call("/roles", `Bearer ${await tokenFor(test.ctx, account)}`);
+
+    assertEquals(await call("alice"), {
+        status: 403,
+        body: { error: "This action is not allowed" },
+    });
+    assertEquals((await call("bob")).status, 200);
+});
+
+Deno.test("users get the permissions config gives every user, anyone else the anonymous ones", async () => {
+    await using members = await open({ anonymous: [], default: ["read:account"] });
+    const user = `Bearer ${await tokenFor(members.ctx, "alice")}`;
+    const app = `Bearer ${await tokenFor(members.ctx, null)}`;
+
+    assertEquals((await members.call("/read", user)).status, 200);
+    assertEquals((await members.call("/read", app)).status, 403);
+    assertEquals((await members.call("/read")).status, 403);
+
+    await using visitors = await open({ anonymous: ["read:account"], default: [] });
+
+    assertEquals((await visitors.call("/read")).status, 200);
+    assertEquals(
+        (await visitors.call("/read", `Bearer ${await tokenFor(visitors.ctx, "alice")}`)).status,
+        403,
+    );
 });
 
 Deno.test("the viewer's type follows the route's auth", () => {

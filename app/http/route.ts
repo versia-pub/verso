@@ -1,6 +1,7 @@
 import type { HtmlEscapedString } from "@hono/hono/utils/html";
 import type { ContentfulStatusCode, RedirectStatusCode } from "@hono/hono/utils/http-status";
 import type { z } from "zod";
+import type { Permission } from "../accounts/permissions.ts";
 import type { Scope } from "../auth/scopes.ts";
 import type { Viewer } from "../auth/tokens.ts";
 import type { Context } from "../kernel/context.ts";
@@ -62,6 +63,11 @@ export type Auth = {
      * too.
      */
     readonly scope?: Scope;
+    /**
+     * What the caller must be allowed to do, checked after the scope. Users may do what config
+     * lets every user, and what their roles allow; anyone else, what it lets anonymous visitors.
+     */
+    readonly permission?: Permission;
 };
 
 /** The viewer a route's handler sees, which its `auth` decides. */
