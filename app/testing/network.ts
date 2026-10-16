@@ -1,5 +1,6 @@
 import { type App, createApp } from "../http/app.ts";
 import { routes } from "../http/routes.ts";
+import { Limits } from "../kernel/config.ts";
 import { queues as allQueues } from "../jobs/queues.ts";
 import { drain, type Queue } from "../jobs/worker.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
@@ -43,7 +44,7 @@ export const createNetwork = async (
     const instances: Record<string, Instance> = {};
     for (const domain of domains) {
         const test = stack.use(await createTestContext({ domain, clock, transport }));
-        const app = createApp(test.ctx, routes, { checkResponses: true });
+        const app = createApp(test.ctx, routes(Limits.parse({})), { checkResponses: true });
         transport.servers.set(domain, app.fetch);
         instances[domain] = { ...test, app };
     }

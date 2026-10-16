@@ -34,6 +34,18 @@ const Origin = z.url({ protocol: /^https?$/ })
     })
     .transform((url) => new URL(url).origin);
 
+/** How long and how many of what users write may be, in characters, counted by code point. */
+export const Limits = z.strictObject({
+    display_name: z.int().min(1).default(60),
+    /** The bio. */
+    note: z.int().min(1).default(10_000),
+    /** How many profile fields an account may have. */
+    fields: z.int().min(0).default(16),
+    field_name: z.int().min(1).default(255),
+    field_value: z.int().min(1).default(255),
+}).prefault({});
+export type Limits = z.infer<typeof Limits>;
+
 const developmentOnly = 'Only allowed with mode = "development"';
 
 /**
@@ -100,6 +112,7 @@ export const Config = z.strictObject({
         /** A form that logs in as any username, with no password. Development only. */
         dev_login: z.boolean().default(false),
     }).prefault({}),
+    limits: Limits,
     logging: z.strictObject({
         level: z.enum(["trace", "debug", "info", "warning", "error", "fatal"])
             .default("info"),

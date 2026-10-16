@@ -6,6 +6,7 @@ import { createApp } from "../http/app.ts";
 import { memoryRateLimitStore } from "../http/rate_limits.ts";
 import { defineRoute } from "../http/route.ts";
 import { createInstance } from "../instances/testing.ts";
+import { Limits } from "../kernel/config.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { accountRoutes } from "./routes.ts";
 import { createLocalAccount } from "./testing.ts";
@@ -20,7 +21,7 @@ const ping = defineRoute({
 
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [...accountRoutes, ping], {
+    const app = createApp(test.ctx, [...accountRoutes(Limits.parse({})), ping], {
         checkResponses: true,
         rateLimits: {
             store: memoryRateLimitStore(test.clock),
@@ -68,9 +69,9 @@ Deno.test("pictures aren't rate limited, unlike the API", async () => {
 });
 
 /** The API, without rate limits, with alice on this instance and bob on another. */
-const openApi = async () => {
+const openApi = async (limits: Limits = Limits.parse({})) => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, accountRoutes, { checkResponses: true });
+    const app = createApp(test.ctx, accountRoutes(limits), { checkResponses: true });
 
     await createLocalAccount(test.ctx, "alice");
     await createInstance(test.ctx, "b.example");
@@ -90,7 +91,19 @@ const openApi = async () => {
         return { status: response.status, body: await response.json() };
     };
 
-    return { ...test, get };
+    const update = async (body: string, type = "application/json", token?: string) => {
+        const response = await app.request("/api/v1/accounts/update_credentials", {
+            method: "PATCH",
+            body,
+            headers: {
+                "content-type": type,
+                authorization: `Bearer ${token ?? await tokenFor(test.ctx, "alice")}`,
+            },
+        });
+        return { status: response.status, body: await response.json() };
+    };
+
+    return { ...test, get, update };
 };
 
 Deno.test("a user sees their own account, with their settings", async () => {
@@ -157,4 +170,104 @@ Deno.test("a local account is looked up by its username or address", async () =>
     }
 
     assertEquals((await test.get("/api/v1/accounts/lookup")).status, 422);
+});
+
+Deno.test("a user changes their profile with JSON, and gets it back as HTML", async () => {
+    await using test = await openApi();
+
+    const { status, body } = await test.update(JSON.stringify({
+        display_name: " Alice ",
+        note: "Hi <you>\n\nthere",
+        locked: true,
+        fields_attributes: [{ name: "Site", value: "a & b" }, { name: " ", value: "" }],
+        source: { privacy: "unlisted", language: "fr" },
+    }));
+
+    assertEquals(status, 200);
+    assertEquals(body.display_name, "Alice");
+    assertEquals(body.note, "<p>Hi &lt;you&gt;</p><p>there</p>");
+    assertEquals(body.source.note, "Hi <you>\n\nthere");
+    assertEquals(body.fields, [{ name: "Site", value: "a &amp; b", verified_at: null }]);
+    assertEquals(body.source.fields, [{ name: "Site", value: "a & b", verified_at: null }]);
+    assertEquals([body.locked, body.source.privacy, body.source.language], [
+        true,
+        "unlisted",
+        "fr",
+    ]);
+
+    const again = await test.get("/api/v1/accounts/alice");
+    assertEquals([again.body.display_name, again.body.locked], ["Alice", true]);
+});
+
+Deno.test("a user changes their profile with a form, and the rest stays", async () => {
+    await using test = await openApi();
+    await test.update(JSON.stringify({ note: "Kept", bot: true }));
+
+    const form = [
+        "locked=1",
+        "bot=0",
+        "fields_attributes[0][name]=Site",
+        "fields_attributes[0][value]=x",
+        "source[sensitive]=true",
+    ].join("&");
+    const { status, body } = await test.update(form, "application/x-www-form-urlencoded");
+
+    assertEquals(status, 200);
+    assertEquals([body.locked, body.bot, body.source.sensitive], [true, false, true]);
+    assertEquals(body.source.fields, [{ name: "Site", value: "x", verified_at: null }]);
+    assertEquals(body.source.note, "Kept");
+
+    assertEquals((await test.update("{}")).body.source.note, "Kept");
+});
+
+Deno.test("profile changes are held to the configured limits", async () => {
+    await using test = await openApi(
+        Limits.parse({ display_name: 3, note: 4, fields: 2, field_name: 5, field_value: 6 }),
+    );
+    const field = { name: "a", value: "b" };
+
+    for (
+        const changes of [
+            { display_name: "x".repeat(4) },
+            { note: "x".repeat(5) },
+            { fields_attributes: [field, field, field] },
+            { fields_attributes: [{ name: "x".repeat(6) }] },
+            { fields_attributes: [{ name: "a", value: "x".repeat(7) }] },
+            { locked: "yes" },
+            { source: { privacy: "direct" } },
+            { source: { language: "fra" } },
+        ]
+    ) {
+        assertEquals(
+            (await test.update(JSON.stringify(changes))).status,
+            422,
+            JSON.stringify(changes),
+        );
+    }
+
+    const fits = await test.update(JSON.stringify({
+        display_name: "🦊🦊🦊",
+        note: "xxxx",
+        fields_attributes: [field, { name: "x".repeat(5), value: "x".repeat(6) }],
+    }));
+    assertEquals([fits.status, fits.body.display_name, fits.body.fields.length], [
+        200,
+        "🦊🦊🦊",
+        2,
+    ]);
+});
+
+Deno.test("only a token that may write accounts changes a profile", async () => {
+    await using test = await openApi();
+    const readOnly = await tokenFor(test.ctx, "alice", ["read"]);
+
+    assertEquals((await test.update("{}", "application/json", readOnly)).status, 403);
+    assertEquals(
+        (await test.update(
+            "{}",
+            "application/json",
+            await tokenFor(test.ctx, "alice", ["write:accounts"]),
+        )).status,
+        200,
+    );
 });

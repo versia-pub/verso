@@ -127,7 +127,7 @@ const run = async (role: string, config: Config): Promise<number> => {
     await Promise.all([
         role === "work"
             ? undefined
-            : serve(ctx, config, [...routes, ...devRoutes], stopping.signal),
+            : serve(ctx, config, [...routes(config.limits), ...devRoutes], stopping.signal),
         role === "serve"
             ? undefined
             : work(ctx, queues, { worker, pollMs: 1000, signal: stopping.signal, wakeups }),

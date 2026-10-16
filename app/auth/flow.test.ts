@@ -2,6 +2,7 @@ import { assertEquals, assertStringIncludes } from "@std/assert";
 import type { IssuerConfig } from "../kernel/identity.ts";
 import { createApp } from "../http/app.ts";
 import { routes } from "../http/routes.ts";
+import { Limits } from "../kernel/config.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
 import { createTestContext } from "../kernel/testing.ts";
@@ -34,7 +35,7 @@ const open = async () => {
             [issuer.url]: oidcProvider(issuer, { transport, clock }),
         },
     });
-    const verso = createApp(test.ctx, routes, { checkResponses: true });
+    const verso = createApp(test.ctx, routes(Limits.parse({})), { checkResponses: true });
 
     /** A browser that sends Verso's requests to Verso and the rest to the network, with cookies. */
     let cookie = "";

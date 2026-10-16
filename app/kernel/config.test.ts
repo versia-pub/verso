@@ -21,6 +21,13 @@ Deno.test("a minimal config gets the defaults", async () => {
                 rate_limit: { limit: 300, window_seconds: 300, store: "memory" },
             },
             auth: { issuers: [], dev_login: false },
+            limits: {
+                display_name: 60,
+                note: 10_000,
+                fields: 16,
+                field_name: 255,
+                field_value: 255,
+            },
             logging: { level: "info" },
         },
     });
@@ -50,6 +57,10 @@ client_id = "verso"
 client_secret = "s3cret"
 username_claim = "nickname"
 registration = { claim = "groups", contains = "versia-users" }
+
+[limits]
+note = 500
+fields = 4
 
 [logging]
 level = "debug"
@@ -89,6 +100,7 @@ level = "debug"
                 ],
                 dev_login: false,
             },
+            limits: { display_name: 60, note: 500, fields: 4, field_name: 255, field_value: 255 },
             logging: { level: "debug" },
         },
     });
