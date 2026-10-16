@@ -5,12 +5,14 @@ import { createTestContext } from "../kernel/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Issuer } from "../kernel/identity.ts";
 import { displayNameFrom, provision, type Provisioned, usernameFrom } from "./provision.ts";
+import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 
 const issuer: Issuer = {
     name: "Example ID",
     url: "https://id.example",
     username_claim: "preferred_username",
     registration: "open",
+    roles: [],
 };
 
 const open = async () => {
@@ -263,4 +265,97 @@ Deno.test("an account's identities go with it, and an identity needs an account"
             })
             .execute()
     );
+});
+
+Deno.test("a login gives the roles its claims match, by name in any case", async () => {
+    await using test = await open();
+    await createRole(test.ctx, "Admin", ["roles"]);
+    await createRole(test.ctx, "Staff", []);
+    await createRole(test.ctx, "Unused", []);
+    const roles: Issuer["roles"] = [
+        { claim: "groups", contains: "verso-admins", role: "admin" },
+        { claim: "groups", contains: "verso-admins", role: "Missing" },
+        { claim: "department", contains: "staff", role: "Staff" },
+        { claim: "groups", contains: "verso-users", role: "Unused" },
+    ];
+
+    const login = await provision(test.ctx, { ...issuer, roles }, {
+        sub: "1",
+        preferred_username: "alice",
+        groups: ["verso-admins", "other"],
+        department: "staff",
+    });
+
+    assertEquals(login.ok, true);
+    assertEquals(
+        await test.ctx.db.selectFrom("account_roles").select(["role_id", "issuer"]).orderBy(
+            "role_id",
+        )
+            .execute(),
+        [
+            { role_id: "Admin", issuer: "https://id.example" },
+            { role_id: "Staff", issuer: "https://id.example" },
+        ],
+    );
+});
+
+Deno.test("each login replaces only the roles its own issuer gave", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "alice");
+    await createLocalAccount(test.ctx, "bob");
+    await test.ctx.db.insertInto("identities")
+        .values({
+            issuer: issuer.url,
+            subject: "1",
+            account_id: "alice",
+            created_at: test.ctx.clock.now(),
+        })
+        .execute();
+    for (const name of ["Admin", "Staff", "Mod"]) await createRole(test.ctx, name, []);
+    await giveRole(test.ctx, "alice", "Admin");
+    await giveRole(test.ctx, "alice", "Admin", "https://other.example");
+    await giveRole(test.ctx, "alice", "Admin", issuer.url);
+    await giveRole(test.ctx, "alice", "Staff", issuer.url);
+    await giveRole(test.ctx, "bob", "Staff", issuer.url);
+    const roles: Issuer["roles"] = [
+        { claim: "groups", contains: "admins", role: "Admin" },
+        { claim: "groups", contains: "staff", role: "Staff" },
+        { claim: "groups", contains: "mods", role: "Mod" },
+    ];
+    const assignments = async () =>
+        (await test.ctx.db.selectFrom("account_roles").select(["account_id", "role_id", "issuer"])
+            .execute())
+            .map((row) => `${row.account_id}: ${row.role_id} from ${row.issuer ?? "an admin"}`)
+            .sort();
+
+    await provision(test.ctx, { ...issuer, roles }, { sub: "1", groups: ["staff", "mods"] });
+
+    assertEquals(await assignments(), [
+        "alice: Admin from an admin",
+        "alice: Admin from https://other.example",
+        "alice: Mod from https://id.example",
+        "alice: Staff from https://id.example",
+        "bob: Staff from https://id.example",
+    ]);
+
+    await provision(test.ctx, { ...issuer, roles }, { sub: "1" });
+
+    assertEquals(await assignments(), [
+        "alice: Admin from an admin",
+        "alice: Admin from https://other.example",
+        "bob: Staff from https://id.example",
+    ]);
+});
+
+Deno.test("a refused login gives no roles", async () => {
+    await using test = await open();
+    await createRole(test.ctx, "Admin", []);
+    const closed: Issuer = {
+        ...issuer,
+        registration: "closed",
+        roles: [{ claim: "sub", contains: "1", role: "Admin" }],
+    };
+
+    assertEquals((await provision(test.ctx, closed, { sub: "1" })).ok, false);
+    assertEquals(await test.ctx.db.selectFrom("account_roles").selectAll().execute(), []);
 });

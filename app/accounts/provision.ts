@@ -1,5 +1,7 @@
 import type { Context } from "../kernel/context.ts";
 import type { Claims, Issuer } from "../kernel/identity.ts";
+import { claimContains } from "./claims.ts";
+import { syncClaimedRoles } from "./roles.ts";
 
 /** Mastodon's limit for local usernames. */
 const maxUsernameLength = 30;
@@ -35,10 +37,7 @@ const mayRegister = (registration: Issuer["registration"], claims: Claims): bool
     if (registration === "open") return true;
     if (registration === "closed") return false;
 
-    const value = claims[registration.claim];
-    return Array.isArray(value)
-        ? value.includes(registration.contains)
-        : value === registration.contains;
+    return claimContains(claims, registration);
 };
 
 /**
@@ -78,45 +77,53 @@ const createAccount = async (
  * allows. Logins are linked by issuer and subject only, never by email, so another issuer can't
  * claim an account by asserting the same address.
  */
+const linkAccount = async (tx: Context, issuer: Issuer, claims: Claims): Promise<Provisioned> => {
+    const linked = await tx.db.selectFrom("identities")
+        .select("account_id")
+        .where("issuer", "=", issuer.url)
+        .where("subject", "=", claims.sub)
+        .executeTakeFirst();
+
+    if (linked) return { ok: true, accountId: linked.account_id, created: false };
+    if (!mayRegister(issuer.registration, claims)) {
+        return { ok: false, reason: "registration-closed" };
+    }
+
+    const accountId = await createAccount(
+        tx,
+        usernameFrom(claims[issuer.username_claim]),
+        displayNameFrom(claims.name),
+    );
+    const identity = await tx.db.insertInto("identities")
+        .values({
+            issuer: issuer.url,
+            subject: claims.sub,
+            account_id: accountId,
+            created_at: tx.clock.now(),
+        })
+        .onConflict((conflict) => conflict.doNothing())
+        .returning("account_id")
+        .executeTakeFirst();
+
+    if (identity) return { ok: true, accountId, created: true };
+
+    // The same login finished first in another request, such as a double-submitted callback.
+    // Its account is the user's, so the one made here goes.
+    await tx.db.deleteFrom("accounts").where("id", "=", accountId).execute();
+    const winner = await tx.db.selectFrom("identities")
+        .select("account_id")
+        .where("issuer", "=", issuer.url)
+        .where("subject", "=", claims.sub)
+        .executeTakeFirstOrThrow();
+
+    return { ok: true, accountId: winner.account_id, created: false };
+};
+
+/** Links a login to its account, as `linkAccount` does, and gives it the roles its claims match. */
 export const provision = (ctx: Context, issuer: Issuer, claims: Claims): Promise<Provisioned> =>
     ctx.transaction(async (tx) => {
-        const linked = await tx.db.selectFrom("identities")
-            .select("account_id")
-            .where("issuer", "=", issuer.url)
-            .where("subject", "=", claims.sub)
-            .executeTakeFirst();
+        const provisioned = await linkAccount(tx, issuer, claims);
+        if (provisioned.ok) await syncClaimedRoles(tx, issuer, provisioned.accountId, claims);
 
-        if (linked) return { ok: true, accountId: linked.account_id, created: false };
-        if (!mayRegister(issuer.registration, claims)) {
-            return { ok: false, reason: "registration-closed" };
-        }
-
-        const accountId = await createAccount(
-            tx,
-            usernameFrom(claims[issuer.username_claim]),
-            displayNameFrom(claims.name),
-        );
-        const identity = await tx.db.insertInto("identities")
-            .values({
-                issuer: issuer.url,
-                subject: claims.sub,
-                account_id: accountId,
-                created_at: tx.clock.now(),
-            })
-            .onConflict((conflict) => conflict.doNothing())
-            .returning("account_id")
-            .executeTakeFirst();
-
-        if (identity) return { ok: true, accountId, created: true };
-
-        // The same login finished first in another request, such as a double-submitted callback.
-        // Its account is the user's, so the one made here goes.
-        await tx.db.deleteFrom("accounts").where("id", "=", accountId).execute();
-        const winner = await tx.db.selectFrom("identities")
-            .select("account_id")
-            .where("issuer", "=", issuer.url)
-            .where("subject", "=", claims.sub)
-            .executeTakeFirstOrThrow();
-
-        return { ok: true, accountId: winner.account_id, created: false };
+        return provisioned;
     });

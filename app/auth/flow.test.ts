@@ -19,6 +19,7 @@ const issuer: IssuerConfig = {
     username_claim: "preferred_username",
     scopes: [],
     registration: "open",
+    roles: [],
 };
 
 const open = async () => {

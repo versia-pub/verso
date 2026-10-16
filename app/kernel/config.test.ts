@@ -63,6 +63,11 @@ username_claim = "nickname"
 scopes = ["groups"]
 registration = { claim = "groups", contains = "versia-users" }
 
+[[auth.issuers.roles]]
+claim = "groups"
+contains = "verso-admins"
+role = "Admin"
+
 [limits]
 note = 500
 fields = 4
@@ -98,6 +103,7 @@ level = "debug"
                         username_claim: "preferred_username",
                         scopes: [],
                         registration: "closed",
+                        roles: [],
                     },
                     {
                         name: "Partner ID",
@@ -107,6 +113,7 @@ level = "debug"
                         username_claim: "nickname",
                         scopes: ["groups"],
                         registration: { claim: "groups", contains: "versia-users" },
+                        roles: [{ claim: "groups", contains: "verso-admins", role: "Admin" }],
                     },
                 ],
                 dev_login: false,
@@ -171,6 +178,10 @@ Deno.test("bad issuers explain what is wrong", async () => {
     assertStringIncludes(
         await issuer(`url = "https://id.example"\n${secret}\nscopes = ["read write"]`),
         "A scope can't contain spaces\n  → at auth.issuers[0].scopes[0]",
+    );
+    assertStringIncludes(
+        await issuer(`url = "https://id.example"\n${secret}\nroles = [{ claim = "groups" }]`),
+        "auth.issuers[0].roles[0].role",
     );
     assertStringIncludes(
         await errors(

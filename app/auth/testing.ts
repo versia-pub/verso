@@ -50,6 +50,7 @@ export const stubProvider = (issuer: Partial<Issuer> = {}): IdentityProvider => 
             url,
             username_claim: "preferred_username",
             registration: "open",
+            roles: [],
             ...issuer,
         },
         beginLogin: (redirectUri) =>

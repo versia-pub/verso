@@ -12,6 +12,7 @@ const devIssuer = (urls: UrlBuilder): Issuer => ({
     url: urls.url`/oauth/dev-login`,
     username_claim: "preferred_username",
     registration: "open",
+    roles: [],
 });
 
 /**

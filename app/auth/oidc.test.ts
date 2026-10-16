@@ -27,6 +27,7 @@ const open = async (
         username_claim: "preferred_username",
         scopes,
         registration: "open",
+        roles: [],
     };
     const provider = oidcProvider(issuer, { transport, clock });
 

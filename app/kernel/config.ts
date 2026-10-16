@@ -5,14 +5,23 @@ import { CidrText } from "./ip.ts";
 import { interpolate, type Sources, systemSources } from "./interpolate.ts";
 
 /**
- * Who may get an account on first login with an issuer: anyone (`open`), nobody (`closed`, so only
- * identities an admin linked), or anyone whose ID token claim contains a value, such as
- * `{ claim = "groups", contains = "versia-users" }`.
+ * Whether a login's claim contains a value: a string claim equals it, or a list claim holds it,
+ * such as `{ claim = "groups", contains = "versia-users" }`.
  */
-const Registration = z.union([
-    z.enum(["open", "closed"]),
-    z.strictObject({ claim: z.string().min(1), contains: z.string().min(1) }),
-]);
+const ClaimTest = z.strictObject({ claim: z.string().min(1), contains: z.string().min(1) });
+export type ClaimTest = z.infer<typeof ClaimTest>;
+
+/**
+ * Who may get an account on first login with an issuer: anyone (`open`), nobody (`closed`, so only
+ * identities an admin linked), or anyone whose claim contains a value.
+ */
+const Registration = z.union([z.enum(["open", "closed"]), ClaimTest]);
+
+/**
+ * A role the issuer gives to whoever's claim contains a value, by the role's name. Roles live in
+ * the database, so a rule may name one that doesn't exist yet; logins skip it until it does.
+ */
+const RoleRule = ClaimTest.extend({ role: z.string().min(1) });
 
 /** An OpenID Connect provider users log in with. Verso is a client registered with it. */
 const Issuer = z.strictObject({
@@ -29,6 +38,8 @@ const Issuer = z.strictObject({
     scopes: z.array(z.string().regex(/^\S+$/, { error: "A scope can't contain spaces" }))
         .default([]),
     registration: Registration.default("closed"),
+    /** Re-checked at every login, which replaces the roles the issuer gave before. */
+    roles: z.array(RoleRule).default([]),
 });
 
 /** An origin with no path, such as `http://localhost:8080`. */

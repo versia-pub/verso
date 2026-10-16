@@ -4,7 +4,10 @@ import type { Config } from "./config.ts";
 export type IssuerConfig = Config["auth"]["issuers"][number];
 
 /** What the rest of Verso knows about an issuer. */
-export type Issuer = Pick<IssuerConfig, "name" | "url" | "username_claim" | "registration">;
+export type Issuer = Pick<
+    IssuerConfig,
+    "name" | "url" | "username_claim" | "registration" | "roles"
+>;
 
 /** The claims of a verified ID token. */
 export type Claims = { readonly sub: string } & Readonly<Record<string, unknown>>;
