@@ -17,8 +17,8 @@ const readers: Record<string, (value: unknown) => unknown> = {
 
 /**
  * Kysely assumes SQLite can't undo schema changes in a rolled-back transaction, but it can, so
- * migrations get a transaction here too. `PRAGMA foreign_keys` can't change inside one, though,
- * so a migration that rebuilds a table uses `PRAGMA defer_foreign_keys` instead.
+ * migrations get a transaction here too. `PRAGMA foreign_keys` can't change inside one, so
+ * `migrate` turns foreign keys off around it.
  */
 class TransactionalSqliteAdapter extends SqliteAdapter {
     override get supportsTransactionalDdl(): boolean {

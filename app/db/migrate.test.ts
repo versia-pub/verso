@@ -1,7 +1,8 @@
 import { assertEquals } from "@std/assert";
 import { type Kysely, sql } from "kysely";
+import { checkForeignKeys } from "./columns.ts";
 import { migrate } from "./migrate.ts";
-import { testDatabase } from "./testing.ts";
+import { testDatabase, testDatabaseKind } from "./testing.ts";
 
 const createNotes = {
     up: async (db: Kysely<unknown>) => {
@@ -76,4 +77,68 @@ Deno.test("Verso's own migrations apply cleanly", async () => {
     await using db = await testDatabase();
 
     assertEquals((await migrate(db)).ok, true);
+});
+
+/** A parent table with a child whose rows are deleted with their parent. */
+const createFamily = {
+    up: async (db: Kysely<unknown>) => {
+        await sql`create table parents (id text primary key)`.execute(db);
+        await sql`create table children (
+            id text primary key,
+            parent_id text not null references parents (id) on delete cascade
+        )`.execute(db);
+        await sql`insert into parents values ('p')`.execute(db);
+        await sql`insert into children values ('c', 'p')`.execute(db);
+    },
+};
+
+/** Rebuilds `parents`, as SQLite needs to change a table, copying the rows `copy` selects. */
+const rebuildParents = (copy: string) => ({
+    up: async (db: Kysely<unknown>) => {
+        await sql`create table parents_new (id text primary key, name text)`.execute(db);
+        await sql.raw(`insert into parents_new (id) select id from parents ${copy}`).execute(db);
+        await sql`drop table parents`.execute(db);
+        await sql`alter table parents_new rename to parents`.execute(db);
+        await checkForeignKeys(db);
+    },
+});
+
+const sqliteOnly = testDatabaseKind !== "sqlite";
+
+Deno.test({
+    name: "rebuilding a table on SQLite keeps the rows that refer to it",
+    ignore: sqliteOnly,
+    fn: async () => {
+        await using db = await testDatabase();
+        await migrate(db, { "0001_family": createFamily });
+
+        const result = await migrate(db, {
+            "0001_family": createFamily,
+            "0002_rebuild": rebuildParents(""),
+        });
+        const children = await sql`select id from children`.execute(db);
+        const { rows: [pragma] } = await sql`PRAGMA foreign_keys`.execute(db);
+
+        assertEquals(result, { ok: true, applied: ["0002_rebuild"] });
+        assertEquals(children.rows, [{ id: "c" }]);
+        assertEquals(pragma, { foreign_keys: 1 });
+    },
+});
+
+Deno.test({
+    name: "a rebuild on SQLite that loses a referenced row fails, and changes nothing",
+    ignore: sqliteOnly,
+    fn: async () => {
+        await using db = await testDatabase();
+        await migrate(db, { "0001_family": createFamily });
+
+        const result = await migrate(db, {
+            "0001_family": createFamily,
+            "0002_rebuild": rebuildParents("where false"),
+        });
+        const parents = await sql`select * from parents`.execute(db);
+
+        assertEquals(result.ok, false);
+        assertEquals(parents.rows, [{ id: "p" }]);
+    },
 });
