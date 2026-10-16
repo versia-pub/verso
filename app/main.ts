@@ -2,7 +2,7 @@ import { Command } from "@cliffy/command";
 import { getLogger } from "@logtape/logtape";
 import type { Kysely } from "kysely";
 import denoConfig from "../deno.json" with { type: "json" };
-import { adminCommand, missingCommand } from "./admin/cli.ts";
+import { adminCommand, AdminError, missingCommand } from "./admin/cli.ts";
 import { devLogin } from "./auth/dev_login.ts";
 import { oidcProviders } from "./auth/oidc.ts";
 import { type Database, openDatabase } from "./db/database.ts";
@@ -225,4 +225,14 @@ const cli = new Command()
         }),
     );
 
-if (import.meta.main) await cli.parse(Deno.args);
+if (import.meta.main) {
+    try {
+        await cli.parse(Deno.args);
+    } catch (error) {
+        if (!(error instanceof AdminError)) throw error;
+
+        // deno-lint-ignore no-console -- the failure is command output, not a log line
+        console.error(error.message);
+        Deno.exit(1);
+    }
+}
