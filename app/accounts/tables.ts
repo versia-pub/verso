@@ -1,4 +1,5 @@
 import type { Generated } from "kysely";
+import type { Permission } from "./permissions.ts";
 
 /** What a user wrote text in, which decides how it becomes HTML. */
 export type TextFormat = "text/plain" | "text/markdown";
@@ -72,5 +73,35 @@ export type IdentitiesTable = {
     /** The ID token's `sub` claim, which the issuer never reuses. */
     subject: string;
     account_id: string;
+    created_at: Date;
+};
+
+/** A named set of permissions, which accounts are given by an admin or by an IdP claim. */
+export type RolesTable = {
+    id: string;
+    /** Unique, ignoring case. */
+    name: string;
+    description: Generated<string>;
+    permissions: Permission[];
+    /** Accounts may only manage roles below their own highest. */
+    priority: Generated<number>;
+    /** Whether the role shows on its accounts' profiles. */
+    visible: Generated<boolean>;
+    /** A hex color such as `#ff0000`, or empty for none. */
+    color: Generated<string>;
+    /** The URL of an image for the role. */
+    icon: string | null;
+    created_at: Date;
+};
+
+/**
+ * A role given to an account, by an admin or by an issuer mapping its claims. An account may have
+ * the same role from several of them, so a login through one issuer only changes what it gave.
+ */
+export type AccountRolesTable = {
+    account_id: string;
+    role_id: string;
+    /** The issuer whose claims gave the role, or `null` if an admin did. */
+    issuer: string | null;
     created_at: Date;
 };
