@@ -157,7 +157,7 @@ const asOAuthError = (error: unknown) => {
 };
 
 const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
-    declared !== Page && declared !== Redirect;
+    declared instanceof z.ZodType;
 
 /**
  * Who is calling, checked against the route's `auth` as Mastodon checks it. A token sent where none
@@ -220,7 +220,8 @@ const replyProblem = (route: Route, reply: Reply<Responses>) => {
     if (declared === undefined) return "the status isn't declared";
     if (declared === Page) return "page" in reply ? undefined : "it isn't a page";
     if (declared === Redirect) return "location" in reply ? undefined : "it isn't a redirect";
-    if (!isSchema(declared) || !("body" in reply)) return "it has no body";
+    if (!isSchema(declared)) return "file" in reply ? undefined : "it isn't a file";
+    if (!("body" in reply)) return "it has no body";
 
     const result = declared.safeParse(reply.body);
     return result.success ? undefined : z.prettifyError(result.error);
@@ -248,8 +249,19 @@ const pageHeaders = {
 const send = (c: HonoContext, route: Route, reply: Reply<Responses>) => {
     setCookies(c, reply.cookies);
 
+    if (route.maxAge !== undefined && reply.status < 300) {
+        c.header("cache-control", `public, max-age=${route.maxAge}`);
+    }
+
     if ("location" in reply) return c.redirect(reply.location, reply.status);
     if ("page" in reply) return c.html(reply.page, reply.status, pageHeaders);
+
+    if ("file" in reply) {
+        const declared = route.responses[reply.status];
+        const type = declared && "type" in declared ? declared.type : "application/octet-stream";
+
+        return c.body(new Uint8Array(reply.file), reply.status, { "content-type": type });
+    }
 
     return route.contentType === undefined
         ? c.json(reply.body, reply.status)
@@ -277,11 +289,11 @@ export const createApp = (
     const app = new Hono<AppEnv>();
     useHeaders(app, ctx.urls.origin);
 
-    // Replies are about one user, or carry secrets such as tokens, so nothing may cache them.
-    // Errors skip this, so the error handler sets it too.
+    // Replies are about one user, or carry secrets such as tokens, so nothing may cache them,
+    // unless their route says. Errors skip this, so the error handler sets it too.
     app.use(async (c, next) => {
         await next();
-        c.res.headers.set("cache-control", "no-store");
+        if (!c.res.headers.has("cache-control")) c.res.headers.set("cache-control", "no-store");
     });
 
     // Checked before anything reads the body, so a huge one is refused, not held in memory.
@@ -292,21 +304,7 @@ export const createApp = (
         },
     }));
 
-    // For load balancers and orchestrators, not clients, so it stays plain text.
-    app.get("/health/live", (c) => c.text("ok"));
-
-    // After the health check, so orchestrators are never limited. Preflights were answered
-    // before this, by the CORS headers.
-    const limits = options.rateLimits;
-    if (limits) {
-        app.use(rateLimit<AppEnv>(
-            ctx.clock,
-            limits,
-            (c) => rateLimitKey(ctx, c, options.trustedProxies ?? []),
-        ));
-    }
-
-    for (const route of routes) {
+    const handle = (route: Route) => {
         app.on(route.method, route.path, async (c) => {
             const viewer = await viewerOf(ctx, c, route);
             const input = await inputOf(c, route).catch((error) => {
@@ -318,7 +316,25 @@ export const createApp = (
 
             return send(c, route, reply);
         });
+    };
+
+    // For load balancers and orchestrators, not clients, so it stays plain text.
+    app.get("/health/live", (c) => c.text("ok"));
+
+    // Before the rate limit, which runs only for what is added after it.
+    for (const route of routes) if (route.rateLimit === false) handle(route);
+
+    // Preflights were answered before this, by the CORS headers.
+    const limits = options.rateLimits;
+    if (limits) {
+        app.use(rateLimit<AppEnv>(
+            ctx.clock,
+            limits,
+            (c) => rateLimitKey(ctx, c, options.trustedProxies ?? []),
+        ));
     }
+
+    for (const route of routes) if (route.rateLimit !== false) handle(route);
 
     app.notFound(() => {
         throw new NotFound();

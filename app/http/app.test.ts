@@ -5,7 +5,7 @@ import { createTestContext } from "../kernel/testing.ts";
 import { createApp } from "./app.ts";
 import { NotFound } from "./errors.ts";
 import { layout } from "./page.ts";
-import { defineRoute, Page, Redirect } from "./route.ts";
+import { Binary, defineRoute, Page, Redirect } from "./route.ts";
 
 const rename = defineRoute({
     method: "POST",
@@ -98,9 +98,46 @@ const entity = defineRoute({
     handler: () => Promise.resolve({ status: 200, body: { type: "Note" } }),
 });
 
+/** A cacheable file, or an error: thrown for `missing`, replied for `gone`. */
+const picture = defineRoute({
+    method: "GET",
+    path: "/pictures/:name",
+    summary: "Sends a file anyone may cache",
+    maxAge: 60,
+    params: z.object({ name: z.string() }),
+    responses: { 200: Binary("image/png"), 410: z.object({ error: z.string() }) },
+    handler: (_, { params }) => {
+        if (params.name === "missing") throw new NotFound();
+        if (params.name === "gone") {
+            return Promise.resolve({ status: 410, body: { error: "Gone" } });
+        }
+
+        return Promise.resolve({ status: 200, file: new Uint8Array([1, 2, 3]) });
+    },
+});
+
+/** Declares a file, and sends JSON. */
+const notAFile = defineRoute({
+    method: "GET",
+    path: "/not-a-file",
+    summary: "Replies with JSON instead of its file",
+    responses: { 200: Binary("image/png") },
+    handler: () => Promise.resolve({ status: 200, body: {} } as never),
+});
+
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [rename, sloppy, welcome, visit, agent, notAPage, entity], {
+    const app = createApp(test.ctx, [
+        rename,
+        sloppy,
+        welcome,
+        visit,
+        agent,
+        notAPage,
+        entity,
+        picture,
+        notAFile,
+    ], {
         checkResponses: true,
     });
 
@@ -295,10 +332,26 @@ Deno.test("nothing may cache a reply, an error or a check", async () => {
     }
 });
 
-Deno.test("with checks on, JSON where a page is declared is a 500", async () => {
+Deno.test("with checks on, JSON where a page or a file is declared is a 500", async () => {
     await using test = await open();
 
     assertEquals((await test.app.request("/not-a-page")).status, 500);
+    assertEquals((await test.app.request("/not-a-file")).status, 500);
+});
+
+Deno.test("a file is sent as its declared type, and cached only when it is sent", async () => {
+    await using test = await open();
+    const sent = await test.app.request("/pictures/cat");
+    const missing = await test.app.request("/pictures/missing");
+    const gone = await test.app.request("/pictures/gone");
+    await missing.body?.cancel();
+    await gone.body?.cancel();
+
+    assertEquals(sent.headers.get("content-type"), "image/png");
+    assertEquals(sent.headers.get("cache-control"), "public, max-age=60");
+    assertEquals([...new Uint8Array(await sent.arrayBuffer())], [1, 2, 3]);
+    assertEquals(missing.headers.get("cache-control"), "no-store");
+    assertEquals(gone.headers.get("cache-control"), "no-store");
 });
 
 Deno.test("with checks off, replies are sent as they are", async () => {

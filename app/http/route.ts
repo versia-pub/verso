@@ -14,9 +14,18 @@ export const Page = { kind: "page" } as const;
 /** Declares a response that redirects, to the URL in its `Location` header. */
 export const Redirect = { kind: "redirect" } as const;
 
-/** A JSON body's schema, or a page or a redirect, for each status. */
+/** Declares a response that is a file, such as a picture, of this media type. */
+export const Binary = <T extends string>(
+    type: T,
+): { readonly kind: "binary"; readonly type: T } => ({
+    kind: "binary",
+    type,
+});
+type Binary = ReturnType<typeof Binary>;
+
+/** A JSON body's schema, or a page, a redirect or a file, for each status. */
 export type Responses = Partial<
-    Record<ContentfulStatusCode, Schema | typeof Page | typeof Redirect>
+    Record<ContentfulStatusCode, Schema | typeof Page | typeof Redirect | Binary>
 >;
 
 /** HTML from Hono's `html` template, which escapes every value put into it. */
@@ -24,6 +33,7 @@ export type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 
 type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
     : R extends typeof Redirect ? { status: S & RedirectStatusCode; location: string }
+    : R extends Binary ? { status: S; file: Uint8Array }
     : R extends Schema ? { status: S; body: z.input<R> }
     : never;
 
@@ -95,6 +105,13 @@ export type RouteDefinition<
      * @see https://www.rfc-editor.org/rfc/rfc6749#section-5.2
      */
     readonly oauthErrors?: boolean;
+    /**
+     * How many seconds anyone may cache the route's successful replies, for ones that are the same
+     * for everyone, such as pictures. Without it, nothing may cache them.
+     */
+    readonly maxAge?: number;
+    /** `false` exempts the route from rate limits, for files a page loads many of at once. */
+    readonly rateLimit?: false;
     /** Without it, anyone may call the route, and tokens are ignored. */
     readonly auth?: A;
     readonly params?: P;
