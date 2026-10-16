@@ -47,3 +47,21 @@ export const getUsername = async (ctx: Context, accountId: string): Promise<stri
 
     return username;
 };
+
+/** How many local accounts got an access token since `since`, as a measure of who is active. */
+export const countActiveAccounts = async (ctx: Context, since: Date): Promise<number> => {
+    const { count } = await ctx.db.selectFrom("accounts")
+        .select((eb) => eb.fn.countAll<number | string | bigint>().as("count"))
+        .where("instance_id", "is", null)
+        .where((eb) =>
+            eb.exists(
+                eb.selectFrom("access_tokens")
+                    .select("id")
+                    .whereRef("access_tokens.account_id", "=", "accounts.id")
+                    .where("access_tokens.created_at", ">=", since),
+            )
+        )
+        .executeTakeFirstOrThrow();
+
+    return Number(count);
+};

@@ -73,7 +73,7 @@ const Document = z.strictObject({
 });
 
 /** What the instance tells people about itself. */
-const Instance = z.strictObject({
+export const Instance = z.strictObject({
     /** Its name. Without one, it goes by its domain. */
     name: z.string().trim().min(1).optional(),
     /** A short paragraph about it, in plain text. */
