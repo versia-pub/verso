@@ -18,7 +18,7 @@ Deno.test("a minimal config gets the defaults", async () => {
             http: {
                 port: 8080,
                 trusted_proxies: [],
-                rate_limit: { limit: 300, window_seconds: 300 },
+                rate_limit: { limit: 300, window_seconds: 300, store: "memory" },
             },
             auth: { issuers: [], dev_login: false },
             logging: { level: "info" },
@@ -35,7 +35,7 @@ postgres = "postgresql://verso@/verso?host=/run/postgresql"
 
 [http]
 port = 3000
-rate_limit = { limit = 30, window_seconds = 60 }
+rate_limit = { limit = 30, window_seconds = 60, store = "database" }
 
 [[auth.issuers]]
 name = "Example ID"
@@ -66,7 +66,7 @@ level = "debug"
             http: {
                 port: 3000,
                 trusted_proxies: [],
-                rate_limit: { limit: 30, window_seconds: 60 },
+                rate_limit: { limit: 30, window_seconds: 60, store: "database" },
             },
             auth: {
                 issuers: [

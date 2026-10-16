@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import pg from "pg";
 import type { AccountsTable, IdentitiesTable } from "../accounts/tables.ts";
 import type { AccessTokensTable, AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
+import type { RateLimitsTable } from "../http/tables.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
@@ -16,6 +17,7 @@ export type Database = {
     identities: IdentitiesTable;
     jobs: JobsTable;
     oauth_flows: OAuthFlowsTable;
+    rate_limits: RateLimitsTable;
 };
 
 /** Kysely on any of the dialects, set up the same way. Tests use it to open PGlite. */

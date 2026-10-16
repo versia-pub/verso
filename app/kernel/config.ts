@@ -84,6 +84,11 @@ export const Config = z.strictObject({
         rate_limit: z.strictObject({
             limit: z.int().min(1).default(300),
             window_seconds: z.int().min(1).default(300),
+            /**
+             * Where counts are kept: in each server's memory, or in the database, so that several
+             * web nodes share them. The database costs a write per request.
+             */
+            store: z.enum(["memory", "database"]).default("memory"),
         }).prefault({}),
     }).prefault({}),
     auth: z.strictObject({

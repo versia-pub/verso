@@ -1,49 +1,101 @@
 import { assertEquals } from "@std/assert";
 import { z } from "zod";
 import { tokenFor } from "../auth/testing.ts";
-import { fakeClock } from "../kernel/clock.ts";
+import { type FakeClock, fakeClock } from "../kernel/clock.ts";
 import { CidrText } from "../kernel/ip.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { createApp } from "./app.ts";
 import { defineRoute } from "./route.ts";
-import { consume, memoryRateLimitStore } from "./rate_limits.ts";
+import {
+    consume,
+    databaseRateLimitStore,
+    deleteEndedRateLimits,
+    memoryRateLimitStore,
+    type RateLimitStore,
+} from "./rate_limits.ts";
 
 // Shorter than the memory store's sweep, so windows end before a sweep could forget them.
 const policy = { limit: 2, windowSeconds: 30 };
 
-Deno.test("requests over the limit are refused until the window ends", async () => {
-    const clock = fakeClock();
-    const store = memoryRateLimitStore(clock);
-    const take = () => consume(store, clock, policy, "client");
+/** A store, and the clock it runs on. */
+type Subject = AsyncDisposable & { readonly store: RateLimitStore; readonly clock: FakeClock };
 
-    assertEquals(await take(), {
-        allowed: true,
-        limit: 2,
-        remaining: 1,
-        resetSeconds: 30,
-        windowSeconds: 30,
+const stores: Record<string, () => Promise<Subject>> = {
+    memory: () => {
+        const clock = fakeClock();
+        return Promise.resolve({
+            store: memoryRateLimitStore(clock),
+            clock,
+            [Symbol.asyncDispose]: () => Promise.resolve(),
+        });
+    },
+    database: async () => {
+        const test = await createTestContext();
+        return { ...test, store: databaseRateLimitStore(test.ctx) };
+    },
+};
+
+for (const [name, open] of Object.entries(stores)) {
+    Deno.test(`${name}: requests over the limit are refused until the window ends`, async () => {
+        await using subject = await open();
+        const { store, clock } = subject;
+        const take = () => consume(store, clock, policy, "client");
+
+        assertEquals(await take(), {
+            allowed: true,
+            limit: 2,
+            remaining: 1,
+            resetSeconds: 30,
+            windowSeconds: 30,
+        });
+        clock.advance(10_500);
+        assertEquals((await take()).remaining, 0);
+
+        const refused = await take();
+        assertEquals([refused.allowed, refused.remaining, refused.resetSeconds], [false, 0, 20]);
+
+        clock.advance(19_500);
+        assertEquals([(await take()).allowed, (await take()).remaining], [true, 0]);
     });
-    clock.advance(10_500);
-    assertEquals((await take()).remaining, 0);
 
-    const refused = await take();
-    assertEquals([refused.allowed, refused.remaining, refused.resetSeconds], [false, 0, 20]);
+    Deno.test(`${name}: each key has its own window, starting at its first request`, async () => {
+        await using subject = await open();
+        const { store, clock } = subject;
 
-    clock.advance(19_500);
-    assertEquals([(await take()).allowed, (await take()).remaining], [true, 0]);
-});
+        await consume(store, clock, policy, "a");
+        clock.advance(10_000);
+        const b = await consume(store, clock, policy, "b");
+        const a = await consume(store, clock, policy, "a");
 
-Deno.test("each key has its own window, starting at its first request", async () => {
-    const clock = fakeClock();
-    const store = memoryRateLimitStore(clock);
+        assertEquals([a.remaining, a.resetSeconds], [0, 20]);
+        assertEquals([b.remaining, b.resetSeconds], [1, 30]);
+    });
 
-    await consume(store, clock, policy, "a");
-    clock.advance(10_000);
-    const b = await consume(store, clock, policy, "b");
-    const a = await consume(store, clock, policy, "a");
+    Deno.test(`${name}: requests at the same moment are each counted once`, async () => {
+        await using subject = await open();
+        const hits = await Promise.all(
+            Array.from({ length: 20 }, () => subject.store.hit("client", 30_000)),
+        );
 
-    assertEquals([a.remaining, a.resetSeconds], [0, 20]);
-    assertEquals([b.remaining, b.resetSeconds], [1, 30]);
+        assertEquals(
+            hits.map((hit) => hit.count).sort((a, b) => a - b),
+            [...Array(20).keys()].map((i) => i + 1),
+        );
+        assertEquals(new Set(hits.map((hit) => hit.resetsAt.getTime())).size, 1);
+    });
+}
+
+Deno.test("the database store's ended windows are deleted", async () => {
+    await using test = await createTestContext();
+    const store = databaseRateLimitStore(test.ctx);
+
+    await store.hit("short", 1_000);
+    await store.hit("long", 120_000);
+    test.clock.advance(60_000);
+    await deleteEndedRateLimits(test.ctx);
+
+    const keys = await test.ctx.db.selectFrom("rate_limits").select("key").execute();
+    assertEquals(keys, [{ key: "long" }]);
 });
 
 Deno.test("the memory store forgets windows that have ended", async () => {
