@@ -15,7 +15,7 @@ Deno.test("a minimal config gets the defaults", async () => {
             mode: "production",
             domain: "social.example",
             database: { sqlite: "verso.db" },
-            http: { port: 8080 },
+            http: { port: 8080, trusted_proxies: [] },
             auth: { issuers: [], dev_login: false },
             logging: { level: "info" },
         },
@@ -58,7 +58,7 @@ level = "debug"
             database: {
                 postgres: "postgresql://verso@/verso?host=/run/postgresql",
             },
-            http: { port: 3000 },
+            http: { port: 3000, trusted_proxies: [] },
             auth: {
                 issuers: [
                     {
@@ -140,6 +140,25 @@ Deno.test("bad issuers explain what is wrong", async () => {
         ),
         "Each issuer URL can only be listed once",
     );
+});
+
+Deno.test("trusted proxies are addresses or CIDR ranges", async () => {
+    const proxies = (list: string) => parseConfig(`${minimal}[http]\ntrusted_proxies = ${list}`);
+
+    const result = await proxies('["127.0.0.1", "fd00::/8"]');
+    assertEquals(result.ok && result.config.http.trusted_proxies, [
+        { network: { bits: 32, value: 0x7f000001n }, prefix: 32 },
+        { network: { bits: 128, value: 0xfdn << 120n }, prefix: 8 },
+    ]);
+
+    for (const bad of ['["10.0.0.0/33"]', '["proxy.example"]', '["10.0.0.0/8/8"]']) {
+        const invalid = await proxies(bad);
+        assertStringIncludes(
+            invalid.ok ? "" : invalid.error,
+            "Must be an IP address or a CIDR range",
+            bad,
+        );
+    }
 });
 
 Deno.test("development settings need development mode", async () => {

@@ -1,5 +1,6 @@
 import { parse } from "@std/toml";
 import { z } from "zod";
+import { CidrText } from "./ip.ts";
 import { interpolate, type Sources, systemSources } from "./interpolate.ts";
 
 /**
@@ -71,6 +72,11 @@ export const Config = z.strictObject({
          * `http://localhost:8080`. Development only.
          */
         origin: Origin.optional(),
+        /**
+         * The reverse proxies in front of Verso, as addresses or CIDR ranges such as
+         * `127.0.0.1` or `10.0.0.0/8`. Only these are believed about who the client is.
+         */
+        trusted_proxies: z.array(CidrText).default([]),
     }).prefault({}),
     auth: z.strictObject({
         /** Without any, the server runs but nobody can log in. */
