@@ -3,7 +3,8 @@ import { Account, CredentialAccount } from "@versia/client-api";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../kernel/testing.ts";
-import { findAccount, renderAccount, renderCredentialAccount } from "./render.ts";
+import { findAccount } from "./accounts.ts";
+import { renderAccount, renderCredentialAccount } from "./render.ts";
 import type { ProfileField } from "./tables.ts";
 import { createLocalAccount } from "./testing.ts";
 

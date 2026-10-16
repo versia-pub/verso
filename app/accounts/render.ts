@@ -3,21 +3,9 @@
  * @module
  */
 import type { Account, CredentialAccount, Field, Role } from "@versia/client-api";
-import type { Selectable } from "kysely";
 import type { Context } from "../kernel/context.ts";
-import type { AccountsTable, ProfileField } from "./tables.ts";
-
-/** An account, with the domain of its instance, or `null` for this one. */
-export type AccountRow = Selectable<AccountsTable> & { readonly domain: string | null };
-
-/** The account `id`, with its instance's domain, or `undefined` if there is none. */
-export const findAccount = (ctx: Context, id: string): Promise<AccountRow | undefined> =>
-    ctx.db.selectFrom("accounts")
-        .leftJoin("instances", "instances.id", "accounts.instance_id")
-        .selectAll("accounts")
-        .select("instances.domain")
-        .where("accounts.id", "=", id)
-        .executeTakeFirst();
+import type { AccountRow } from "./accounts.ts";
+import type { ProfileField } from "./tables.ts";
 
 /** The role Mastodon gives users without one, which grants nothing. */
 const everyone: Role = {

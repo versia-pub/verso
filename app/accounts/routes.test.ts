@@ -1,11 +1,14 @@
 import { assertEquals } from "@std/assert";
 import { decode } from "fast-png";
 import { z } from "zod";
+import { tokenFor } from "../auth/testing.ts";
 import { createApp } from "../http/app.ts";
 import { memoryRateLimitStore } from "../http/rate_limits.ts";
 import { defineRoute } from "../http/route.ts";
+import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { accountRoutes } from "./routes.ts";
+import { createLocalAccount } from "./testing.ts";
 
 const ping = defineRoute({
     method: "GET",
@@ -62,4 +65,96 @@ Deno.test("pictures aren't rate limited, unlike the API", async () => {
     for (let i = 0; i < 3; i++) assertEquals(await status("/accounts/019a/avatar.png"), 200);
     for (let i = 0; i < 2; i++) assertEquals(await status("/api/v1/ping"), 200);
     assertEquals(await status("/api/v1/ping"), 429);
+});
+
+/** The API, without rate limits, with alice on this instance and bob on another. */
+const openApi = async () => {
+    const test = await createTestContext();
+    const app = createApp(test.ctx, accountRoutes, { checkResponses: true });
+
+    await createLocalAccount(test.ctx, "alice");
+    await createInstance(test.ctx, "b.example");
+    await test.ctx.db.insertInto("accounts")
+        .values({
+            id: "bob",
+            username: "bob",
+            instance_id: "b.example",
+            remote_id: "1",
+            created_at: test.clock.now(),
+        })
+        .execute();
+
+    const get = async (path: string, token?: string) => {
+        const headers: HeadersInit = token ? { authorization: `Bearer ${token}` } : {};
+        const response = await app.request(path, { headers });
+        return { status: response.status, body: await response.json() };
+    };
+
+    return { ...test, get };
+};
+
+Deno.test("a user sees their own account, with their settings", async () => {
+    await using test = await openApi();
+    const path = "/api/v1/accounts/verify_credentials";
+
+    const own = await test.get(path, await tokenFor(test.ctx, "alice"));
+    assertEquals(own.status, 200);
+    assertEquals(own.body.username, "alice");
+    assertEquals(own.body.source.privacy, "public");
+
+    assertEquals(
+        (await test.get(path, await tokenFor(test.ctx, "alice", ["profile"]))).status,
+        200,
+    );
+    assertEquals((await test.get(path)).status, 401);
+    assertEquals((await test.get(path, await tokenFor(test.ctx, null))).status, 422);
+    assertEquals(
+        (await test.get(path, await tokenFor(test.ctx, "alice", ["read:statuses"]))).status,
+        403,
+    );
+});
+
+Deno.test("anyone sees a local account by its id, without its settings", async () => {
+    await using test = await openApi();
+
+    const alice = await test.get("/api/v1/accounts/alice");
+    assertEquals(alice.status, 200);
+    assertEquals(alice.body.acct, "alice");
+    assertEquals(alice.body.source, undefined);
+
+    for (const id of ["missing", "bob", "a.b"]) {
+        assertEquals(
+            await test.get(`/api/v1/accounts/${id}`),
+            { status: 404, body: { error: "Record not found" } },
+            id,
+        );
+    }
+});
+
+Deno.test("a local account is looked up by its username or address", async () => {
+    await using test = await openApi();
+    const lookup = (acct: string) =>
+        test.get(`/api/v1/accounts/lookup?acct=${encodeURIComponent(acct)}`);
+
+    for (
+        const acct of ["alice", "ALICE", "@alice", "alice@social.example", "alice@Social.Example"]
+    ) {
+        const found = await lookup(acct);
+        assertEquals([found.status, found.body.id], [200, "alice"], acct);
+    }
+
+    for (
+        const acct of [
+            "",
+            "carol",
+            "bob",
+            "bob@b.example",
+            "alice@b.example",
+            "alice@social.example@x",
+        ]
+    ) {
+        assertEquals((await lookup(acct)).status, 404, acct);
+    }
+
+    assertEquals((await test.get("/api/v1/accounts/lookup")).status, 422);
 });
