@@ -1,18 +1,22 @@
 import { VersiaRole } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound, NotPermitted, ValidationFailed } from "../http/errors.ts";
-import { defineRoute, type Route } from "../http/route.ts";
+import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Integer, Text } from "../http/schemas.ts";
+import type { Context } from "../kernel/context.ts";
 import { findAccount } from "./accounts.ts";
 import { Permission } from "./permissions.ts";
 import {
     createRole,
+    deleteRole,
+    findRole,
     findRoleById,
     listRoles,
     refusal,
     roleManager,
     type RoleRow,
     rolesOf,
+    updateRole,
 } from "./roles.ts";
 
 const Id = z.object({ id: z.string() });
@@ -43,6 +47,25 @@ export const renderVersiaRole = (role: RoleRow): VersiaRole => ({
     icon: role.icon ?? undefined,
     color: role.color,
 });
+
+/**
+ * The role with this id, if it is below the viewer's highest, so they may change it, and what they
+ * may give it.
+ */
+const managedRole = async (
+    ctx: Context,
+    viewer: RouteViewer & { accountId: string },
+    id: string,
+) => {
+    const role = await findRoleById(ctx, id);
+    if (!role) throw new NotFound();
+
+    const manager = await roleManager(ctx, viewer.accountId, await viewer.permissions());
+    const refused = refusal(manager, { priority: role.priority });
+    if (refused !== undefined) throw new NotPermitted(refused);
+
+    return { role, manager };
+};
 
 /** Versia Server's role endpoints, which any user may read. */
 export const roleRoutes: readonly Route[] = [
@@ -95,6 +118,51 @@ export const roleRoutes: readonly Route[] = [
             if (!role) throw new NotFound();
 
             return { status: 200, body: renderVersiaRole(role) };
+        },
+    }),
+    defineRoute({
+        method: "PATCH",
+        path: "/api/v1/roles/:id",
+        summary: "Changes a role below the viewer's highest, keeping it there",
+        tags: ["roles"],
+        auth: { require: "user", scope: "write:accounts", permission: "roles" },
+        params: Id,
+        body: RoleFields.partial(),
+        responses: { 200: VersiaRole },
+        handler: async (ctx, { viewer, params, body }) => {
+            const { role, manager } = await managedRole(ctx, viewer, params.id);
+
+            // Permissions the role has already may stay, even ones the viewer lacks.
+            const added = body.permissions?.filter((permission) =>
+                !role.permissions.includes(permission)
+            );
+            const refused = refusal(manager, { priority: body.priority, permissions: added });
+            if (refused !== undefined) throw new NotPermitted(refused);
+
+            const named = body.name === undefined ? undefined : await findRole(ctx, body.name);
+            if (named && named.id !== role.id) {
+                throw new ValidationFailed({ name: ["A role with this name exists"] });
+            }
+
+            const updated = await updateRole(ctx, role.id, body);
+            if (!updated) throw new NotFound();
+
+            return { status: 200, body: renderVersiaRole(updated) };
+        },
+    }),
+    defineRoute({
+        method: "DELETE",
+        path: "/api/v1/roles/:id",
+        summary: "Deletes a role below the viewer's highest, taking it from everyone who has it",
+        tags: ["roles"],
+        auth: { require: "user", scope: "write:accounts", permission: "roles" },
+        params: Id,
+        responses: { 200: z.strictObject({}) },
+        handler: async (ctx, { viewer, params }) => {
+            const { role } = await managedRole(ctx, viewer, params.id);
+            await deleteRole(ctx, role.id);
+
+            return { status: 200, body: {} };
         },
     }),
     defineRoute({

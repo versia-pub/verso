@@ -38,6 +38,31 @@ export const createRole = async (ctx: Context, role: NewRole): Promise<RoleRow |
         .returningAll()
         .executeTakeFirst();
 
+/** Changes a role, and returns it as it is now, or `undefined` if there is no such role. */
+export const updateRole = async (
+    ctx: Context,
+    id: string,
+    changes: Partial<NewRole>,
+): Promise<RoleRow | undefined> => {
+    const { permissions, ...rest } = changes;
+    const values = permissions === undefined
+        ? rest
+        : { ...rest, permissions: [...new Set(permissions)] };
+
+    if (Object.keys(values).length === 0) return await findRoleById(ctx, id);
+
+    return await ctx.db.updateTable("roles")
+        .set(values)
+        .where("id", "=", id)
+        .returningAll()
+        .executeTakeFirst();
+};
+
+/** Deletes a role, and takes it away from everyone. */
+export const deleteRole = async (ctx: Context, id: string): Promise<void> => {
+    await ctx.db.deleteFrom("roles").where("id", "=", id).execute();
+};
+
 /** The role with this id. */
 export const findRoleById = async (ctx: Context, id: string): Promise<RoleRow | undefined> =>
     await ctx.db.selectFrom("roles").selectAll().where("id", "=", id).executeTakeFirst();

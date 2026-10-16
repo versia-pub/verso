@@ -35,14 +35,16 @@ const open = async () => {
         return { status: response.status, body: await response.json() };
     };
 
-    const post = async (
+    const send = async (
+        method: "POST" | "PATCH" | "DELETE",
+        path: string,
         account: string,
-        body: string,
+        body?: string,
         type = "application/json",
         scope: "write:accounts" | "read:accounts" = "write:accounts",
     ) => {
-        const response = await app.request("/api/v1/roles", {
-            method: "POST",
+        const response = await app.request(path, {
+            method,
             body,
             headers: {
                 "content-type": type,
@@ -52,7 +54,10 @@ const open = async () => {
         return { status: response.status, body: await response.json() };
     };
 
-    return { ...test, get, post };
+    const post = (account: string, body: string, type?: string, scope?: "read:accounts") =>
+        send("POST", "/api/v1/roles", account, body, type, scope);
+
+    return { ...test, get, send, post };
 };
 
 const admin: VersiaRole = {
@@ -214,4 +219,128 @@ Deno.test("only role managers create roles, and need a free name", async () => {
     ) {
         assertEquals((await test.post("alice", body)).status, 422, body);
     }
+});
+
+const tooHigh = {
+    status: 403,
+    body: {
+        error: "This action is not allowed",
+        error_description: "Roles you manage must have a lower priority than your highest role",
+    },
+};
+
+Deno.test("a role manager changes roles below their own, keeping what they lack", async () => {
+    await using test = await open();
+    await giveRole(test.ctx, "alice", "Admin");
+    await test.ctx.db.updateTable("roles").set({ permissions: ["owner:account"] })
+        .where("id", "=", "Hidden").execute();
+
+    const json = await test.send(
+        "PATCH",
+        "/api/v1/roles/Hidden",
+        "alice",
+        JSON.stringify({
+            name: " Helpers ",
+            permissions: ["roles", "owner:account", "roles"],
+            priority: 99,
+            description: " Help out ",
+            visible: true,
+            color: "#00ff00",
+            icon: "https://social.example/helpers.png",
+        }),
+    );
+    const helpers = {
+        id: "Hidden",
+        name: "Helpers",
+        permissions: ["roles", "owner:account"],
+        priority: 99,
+        description: "Help out",
+        visible: true,
+        icon: "https://social.example/helpers.png",
+        color: "#00ff00",
+    };
+
+    assertEquals(json, { status: 200, body: helpers });
+    assertEquals(await test.get("/api/v1/roles/Hidden"), json);
+    assertEquals(await test.send("PATCH", "/api/v1/roles/Hidden", "alice", "{}"), json);
+    assertEquals(
+        await test.send(
+            "PATCH",
+            "/api/v1/roles/Hidden",
+            "alice",
+            "name=HELPERS&priority=-5",
+            "application/x-www-form-urlencoded",
+        ),
+        { status: 200, body: { ...helpers, name: "HELPERS", priority: -5 } },
+    );
+
+    const { icon: _, ...withoutIcon } = helpers;
+    assertEquals(
+        await test.send("PATCH", "/api/v1/roles/Hidden", "alice", '{"icon":null}'),
+        { status: 200, body: { ...withoutIcon, name: "HELPERS", priority: -5 } },
+    );
+});
+
+Deno.test("changes to roles at or above the manager's own, or giving more, are refused", async () => {
+    await using test = await open();
+    await giveRole(test.ctx, "alice", "Admin");
+    await giveRole(test.ctx, "bob", "Hidden");
+    const patch = (body: string, id = "Hidden", account = "alice") =>
+        test.send("PATCH", `/api/v1/roles/${id}`, account, body);
+
+    assertEquals(await patch('{"description":"Mine"}', "Admin"), tooHigh);
+    assertEquals(await patch('{"priority":100}'), tooHigh);
+    assertEquals(await patch('{"permissions":["roles","owner:account"]}'), {
+        status: 403,
+        body: {
+            error: "This action is not allowed",
+            error_description: "You can't give permissions you don't have: owner:account",
+        },
+    });
+    assertEquals(await patch('{"name":"admin"}'), {
+        status: 422,
+        body: { error: "Validation failed", details: { name: ["A role with this name exists"] } },
+    });
+    assertEquals((await patch('{"priority":-1}', "missing")).status, 404);
+    assertEquals(await patch('{"priority":-1}', "Hidden", "bob"), {
+        status: 403,
+        body: { error: "This action is not allowed" },
+    });
+    assertEquals(
+        (await test.send(
+            "PATCH",
+            "/api/v1/roles/Hidden",
+            "alice",
+            '{"priority":-1}',
+            "application/json",
+            "read:accounts",
+        )).status,
+        403,
+    );
+    assertEquals((await patch('{"priority":1.5}')).status, 422);
+    assertEquals(await test.get("/api/v1/roles"), { status: 200, body: [admin, hidden] });
+});
+
+Deno.test("a role manager deletes roles below their own, taking them from everyone", async () => {
+    await using test = await open();
+    await giveRole(test.ctx, "alice", "Admin");
+    await giveRole(test.ctx, "bob", "Hidden");
+    await giveRole(test.ctx, "bob", "Hidden", "https://id.example");
+    const remove = (id: string, account = "alice") =>
+        test.send("DELETE", `/api/v1/roles/${id}`, account);
+
+    assertEquals(await remove("Admin"), tooHigh);
+    assertEquals(await remove("Hidden", "bob"), {
+        status: 403,
+        body: { error: "This action is not allowed" },
+    });
+    assertEquals(await remove("Hidden"), { status: 200, body: {} });
+    assertEquals(await remove("Hidden"), {
+        status: 404,
+        body: { error: "Record not found" },
+    });
+
+    assertEquals(await test.get("/api/v1/roles"), { status: 200, body: [admin] });
+    assertEquals(await test.get("/api/v1/accounts/bob/roles"), { status: 200, body: [] });
+    assertEquals(await test.get("/api/v1/accounts/alice/roles"), { status: 200, body: [admin] });
 });
