@@ -4,7 +4,7 @@ import { testDatabaseKind } from "../db/testing.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Issuer } from "../kernel/identity.ts";
-import { provision, type Provisioned, usernameFrom } from "./provision.ts";
+import { displayNameFrom, provision, type Provisioned, usernameFrom } from "./provision.ts";
 
 const issuer: Issuer = {
     name: "Example ID",
@@ -51,6 +51,51 @@ Deno.test("usernames keep only the allowed characters", () => {
     assertEquals(usernameFrom("日本"), undefined);
     assertEquals(usernameFrom(""), undefined);
     assertEquals(usernameFrom(42), undefined);
+});
+
+Deno.test("display names are trimmed and cut to 30 characters, whole ones", () => {
+    assertEquals(displayNameFrom("  Alice Liddell  "), "Alice Liddell");
+    assertEquals(displayNameFrom("🐇".repeat(31)), "🐇".repeat(30));
+    assertEquals(displayNameFrom("a".repeat(29) + " b"), "a".repeat(29));
+    assertEquals(displayNameFrom(undefined), "");
+    assertEquals(displayNameFrom(["Alice"]), "");
+});
+
+Deno.test("a new account starts with the name claim and default settings", async () => {
+    await using test = await open();
+    const result = await provision(test.ctx, issuer, {
+        sub: "1",
+        preferred_username: "alice",
+        name: "Alice Liddell",
+    });
+
+    const account = await test.ctx.db.selectFrom("accounts")
+        .selectAll()
+        .where("id", "=", result.ok ? result.accountId : "")
+        .executeTakeFirstOrThrow();
+
+    assertEquals(account, {
+        id: account.id,
+        username: "alice",
+        instance_id: null,
+        remote_id: null,
+        created_at: test.clock.now(),
+        display_name: "Alice Liddell",
+        note: "",
+        fields: [],
+        locked: false,
+        bot: false,
+        discoverable: false,
+        indexable: false,
+        hide_collections: false,
+        default_visibility: "public",
+        default_sensitive: false,
+        default_language: "",
+        statuses_count: 0,
+        followers_count: 0,
+        following_count: 0,
+        last_status_at: null,
+    });
 });
 
 Deno.test("a taken username, in any case, gets a number", async () => {

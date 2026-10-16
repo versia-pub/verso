@@ -4,6 +4,9 @@ import type { Claims, Issuer } from "../kernel/identity.ts";
 /** Mastodon's limit for local usernames. */
 const maxUsernameLength = 30;
 
+/** Mastodon's limit for display names, in characters. */
+const maxDisplayNameLength = 30;
+
 export type Provisioned =
     | { readonly ok: true; readonly accountId: string; readonly created: boolean }
     | { readonly ok: false; readonly reason: "registration-closed" };
@@ -18,6 +21,15 @@ export const usernameFrom = (claim: unknown): string | undefined => {
     const username = claim.normalize("NFKD").replace(/[^A-Za-z0-9_-]/g, "");
     return username === "" ? undefined : username;
 };
+
+/**
+ * Turns a claim, such as `name`, into a display name: trimmed, and cut to Mastodon's limit without
+ * splitting a character in two. Anything else gives none.
+ */
+export const displayNameFrom = (claim: unknown): string =>
+    typeof claim === "string"
+        ? Array.from(claim.trim()).slice(0, maxDisplayNameLength).join("").trim()
+        : "";
 
 const mayRegister = (registration: Issuer["registration"], claims: Claims): boolean => {
     if (registration === "open") return true;
@@ -34,7 +46,11 @@ const mayRegister = (registration: Issuer["registration"], claims: Claims): bool
  * base, the names are `user1`, `user2` and so on. The base is shortened to leave room for the
  * number, so every name fits Mastodon's limit.
  */
-const createAccount = async (ctx: Context, base: string | undefined): Promise<string> => {
+const createAccount = async (
+    ctx: Context,
+    base: string | undefined,
+    displayName: string,
+): Promise<string> => {
     const id = ctx.ids();
 
     for (let n = 1;; n++) {
@@ -47,6 +63,7 @@ const createAccount = async (ctx: Context, base: string | undefined): Promise<st
                 instance_id: null,
                 remote_id: null,
                 created_at: ctx.clock.now(),
+                display_name: displayName,
             })
             .onConflict((conflict) => conflict.doNothing())
             .returning("id")
@@ -74,7 +91,11 @@ export const provision = (ctx: Context, issuer: Issuer, claims: Claims): Promise
             return { ok: false, reason: "registration-closed" };
         }
 
-        const accountId = await createAccount(tx, usernameFrom(claims[issuer.username_claim]));
+        const accountId = await createAccount(
+            tx,
+            usernameFrom(claims[issuer.username_claim]),
+            displayNameFrom(claims.name),
+        );
         const identity = await tx.db.insertInto("identities")
             .values({
                 issuer: issuer.url,
