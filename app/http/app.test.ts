@@ -88,9 +88,19 @@ const notAPage = defineRoute({
     handler: () => Promise.resolve({ status: 200, body: {} } as never),
 });
 
+const entity = defineRoute({
+    method: "GET",
+    path: "/entity",
+    summary: "Replies with JSON of its own media type",
+    tags: ["federation"],
+    contentType: "application/vnd.versia+json; charset=utf-8",
+    responses: { 200: z.object({ type: z.string() }) },
+    handler: () => Promise.resolve({ status: 200, body: { type: "Note" } }),
+});
+
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [rename, sloppy, welcome, visit, agent, notAPage], {
+    const app = createApp(test.ctx, [rename, sloppy, welcome, visit, agent, notAPage, entity], {
         checkResponses: true,
     });
 
@@ -119,6 +129,17 @@ Deno.test("a route gets its validated input and sends its reply", async () => {
         status: 200,
         body: { id: "a", name: "b", tag: ["x", "y"] },
     });
+});
+
+Deno.test("JSON is sent as the route's media type, or as application/json", async () => {
+    await using test = await open();
+    const entity = await test.app.request("/entity");
+    const plain = await test.app.request("/agent", { headers: { "user-agent": "test" } });
+
+    assertEquals(entity.headers.get("content-type"), "application/vnd.versia+json; charset=utf-8");
+    assertEquals(await entity.json(), { type: "Note" });
+    assertEquals(plain.headers.get("content-type"), "application/json");
+    await plain.body?.cancel();
 });
 
 Deno.test("a query key[] is read as key, and is an array even when given once", async () => {

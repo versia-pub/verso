@@ -200,13 +200,15 @@ const pageHeaders = {
     "x-frame-options": "DENY",
 };
 
-const send = (c: HonoContext, reply: Reply<Responses>) => {
+const send = (c: HonoContext, route: Route, reply: Reply<Responses>) => {
     setCookies(c, reply.cookies);
 
     if ("location" in reply) return c.redirect(reply.location, reply.status);
     if ("page" in reply) return c.html(reply.page, reply.status, pageHeaders);
 
-    return c.json(reply.body, reply.status);
+    return route.contentType === undefined
+        ? c.json(reply.body, reply.status)
+        : c.body(JSON.stringify(reply.body), reply.status, { "content-type": route.contentType });
 };
 
 export type AppOptions = {
@@ -250,7 +252,7 @@ export const createApp = (
             const reply = await route.handler(ctx, { ...input, viewer });
             if (options.checkResponses) checkReply(route, reply);
 
-            return send(c, reply);
+            return send(c, route, reply);
         });
     }
 

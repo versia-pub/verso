@@ -81,6 +81,14 @@ export type RouteDefinition<
     readonly path: string;
     /** One line for the API documentation. */
     readonly summary: string;
+    /** The groups the route is listed under in the API documentation, such as `accounts`. */
+    readonly tags?: readonly string[];
+    /**
+     * The media type of the route's JSON bodies, if not `application/json`. Versia's entity
+     * endpoints, for one, must answer `application/vnd.versia+json; charset=utf-8`.
+     * @see https://versia.pub/federation/http#http-response-content-type
+     */
+    readonly contentType?: string;
     /**
      * Answers input it can't read as OAuth does, with 400 `invalid_request`, rather than Mastodon's
      * 422. For the endpoints apps call as OAuth clients, such as `/oauth/token`.
