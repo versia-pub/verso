@@ -4,15 +4,17 @@ import { NotFound, NotPermitted, ValidationFailed } from "../http/errors.ts";
 import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Integer, Text } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
-import { findAccount } from "./accounts.ts";
+import { type AccountRow, findAccount } from "./accounts.ts";
 import { Permission } from "./permissions.ts";
 import {
     createRole,
     deleteRole,
     findRole,
     findRoleById,
+    grantRole,
     listRoles,
     refusal,
+    revokeRole,
     roleManager,
     type RoleRow,
     rolesOf,
@@ -20,6 +22,7 @@ import {
 } from "./roles.ts";
 
 const Id = z.object({ id: z.string() });
+const AccountAndRole = z.object({ id: z.string(), role_id: z.string() });
 
 /** What a role is made of, as clients send it. */
 const RoleFields = z.object({
@@ -65,6 +68,14 @@ const managedRole = async (
     if (refused !== undefined) throw new NotPermitted(refused);
 
     return { role, manager };
+};
+
+/** The local account with this id. Remote accounts aren't shown yet, and have no roles here. */
+const localAccount = async (ctx: Context, id: string): Promise<AccountRow> => {
+    const account = await findAccount(ctx, id);
+    if (account?.domain !== null) throw new NotFound();
+
+    return account;
 };
 
 /** Versia Server's role endpoints, which any user may read. */
@@ -174,11 +185,48 @@ export const roleRoutes: readonly Route[] = [
         params: Id,
         responses: { 200: z.array(VersiaRole) },
         handler: async (ctx, { params }) => {
-            // Remote accounts aren't shown yet, and have no roles here anyway.
-            const account = await findAccount(ctx, params.id);
-            if (account?.domain !== null) throw new NotFound();
+            const account = await localAccount(ctx, params.id);
 
             return { status: 200, body: (await rolesOf(ctx, account.id)).map(renderVersiaRole) };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v1/accounts/:id/roles/:role_id",
+        summary: "Gives an account a role below the viewer's highest, with permissions they have",
+        tags: ["roles"],
+        auth: { require: "user", scope: "write:accounts", permission: "roles" },
+        params: AccountAndRole,
+        responses: { 200: z.strictObject({}) },
+        handler: async (ctx, { viewer, params }) => {
+            const account = await localAccount(ctx, params.id);
+            const { role, manager } = await managedRole(ctx, viewer, params.role_id);
+
+            // Or anyone with a lower role could give themselves permissions they lack.
+            const refused = refusal(manager, { permissions: role.permissions });
+            if (refused !== undefined) throw new NotPermitted(refused);
+
+            await grantRole(ctx, account.id, role.id);
+
+            return { status: 200, body: {} };
+        },
+    }),
+    defineRoute({
+        method: "DELETE",
+        path: "/api/v1/accounts/:id/roles/:role_id",
+        summary: "Takes from an account a role below the viewer's highest, that an admin gave",
+        tags: ["roles"],
+        auth: { require: "user", scope: "write:accounts", permission: "roles" },
+        params: AccountAndRole,
+        responses: { 200: z.strictObject({}) },
+        handler: async (ctx, { viewer, params }) => {
+            const account = await localAccount(ctx, params.id);
+            const { role } = await managedRole(ctx, viewer, params.role_id);
+
+            // Roles from an issuer's claims stay, since the next login would give them back.
+            await revokeRole(ctx, account.id, role.id);
+
+            return { status: 200, body: {} };
         },
     }),
 ];

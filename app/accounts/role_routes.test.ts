@@ -3,6 +3,7 @@ import { VersiaRole } from "@versia/client-api";
 import { tokenFor } from "../auth/testing.ts";
 import { createApp } from "../http/app.ts";
 import { createInstance } from "../instances/testing.ts";
+import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { roleRoutes } from "./role_routes.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
@@ -343,4 +344,74 @@ Deno.test("a role manager deletes roles below their own, taking them from everyo
     assertEquals(await test.get("/api/v1/roles"), { status: 200, body: [admin] });
     assertEquals(await test.get("/api/v1/accounts/bob/roles"), { status: 200, body: [] });
     assertEquals(await test.get("/api/v1/accounts/alice/roles"), { status: 200, body: [admin] });
+});
+
+/** Who has which role, and from whom. */
+const assignments = async (ctx: Context) =>
+    (await ctx.db.selectFrom("account_roles").select(["account_id", "role_id", "issuer"]).execute())
+        .map((row) => `${row.account_id}: ${row.role_id} from ${row.issuer ?? "an admin"}`)
+        .sort();
+
+Deno.test("a role manager gives and takes away roles below their own, as an admin", async () => {
+    await using test = await open();
+    await giveRole(test.ctx, "alice", "Admin");
+    await giveRole(test.ctx, "bob", "Hidden", "https://id.example");
+    const send = (method: "POST" | "DELETE") =>
+        test.send(method, "/api/v1/accounts/bob/roles/Hidden", "alice");
+
+    assertEquals(await send("POST"), { status: 200, body: {} });
+    assertEquals(await send("POST"), { status: 200, body: {} });
+    assertEquals(await assignments(test.ctx), [
+        "alice: Admin from an admin",
+        "bob: Hidden from an admin",
+        "bob: Hidden from https://id.example",
+    ]);
+
+    assertEquals(await send("DELETE"), { status: 200, body: {} });
+    assertEquals(await send("DELETE"), { status: 200, body: {} });
+    assertEquals(await assignments(test.ctx), [
+        "alice: Admin from an admin",
+        "bob: Hidden from https://id.example",
+    ]);
+});
+
+Deno.test("roles at or above the manager's own, or with more than they have, aren't given", async () => {
+    await using test = await open();
+    await giveRole(test.ctx, "alice", "Admin");
+    await createRole(test.ctx, "Owners", ["owner:account"]);
+    await test.ctx.db.insertInto("accounts")
+        .values({
+            id: "remote",
+            username: "carol",
+            instance_id: await createInstance(test.ctx, "b.example"),
+            remote_id: "carol",
+            created_at: test.ctx.clock.now(),
+        })
+        .execute();
+    const before = await assignments(test.ctx);
+
+    for (const method of ["POST", "DELETE"] as const) {
+        const send = (path: string, account = "alice", scope?: "read:accounts") =>
+            test.send(method, `/api/v1/accounts/${path}`, account, undefined, undefined, scope);
+
+        assertEquals(await send("bob/roles/Admin"), tooHigh, method);
+        assertEquals(await send("alice/roles/Admin"), tooHigh, method);
+        assertEquals((await send("missing/roles/Hidden")).status, 404, method);
+        assertEquals((await send("remote/roles/Hidden")).status, 404, method);
+        assertEquals((await send("bob/roles/missing")).status, 404, method);
+        assertEquals(await send("alice/roles/Hidden", "bob"), {
+            status: 403,
+            body: { error: "This action is not allowed" },
+        });
+        assertEquals((await send("bob/roles/Hidden", "alice", "read:accounts")).status, 403);
+    }
+
+    assertEquals(await test.send("POST", "/api/v1/accounts/alice/roles/Owners", "alice"), {
+        status: 403,
+        body: {
+            error: "This action is not allowed",
+            error_description: "You can't give permissions you don't have: owner:account",
+        },
+    });
+    assertEquals(await assignments(test.ctx), before);
 });
