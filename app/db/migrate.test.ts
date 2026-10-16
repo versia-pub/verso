@@ -1,7 +1,7 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
 import { type Kysely, sql } from "kysely";
 import { checkForeignKeys } from "./columns.ts";
-import { migrate } from "./migrate.ts";
+import { firstMigratedAt, migrate } from "./migrate.ts";
 import { testDatabase, testDatabaseKind } from "./testing.ts";
 
 const createNotes = {
@@ -141,4 +141,23 @@ Deno.test({
         assertEquals(result.ok, false);
         assertEquals(parents.rows, [{ id: "p" }]);
     },
+});
+
+Deno.test("the database was set up when its first migration ran", async () => {
+    await using db = await testDatabase();
+    await assertRejects(
+        () => firstMigratedAt(db, { "1_notes": createNotes }),
+        Error,
+        "The database isn't set up",
+    );
+
+    const before = Date.now();
+    await migrate(db, { "1_notes": createNotes });
+    const after = Date.now();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await migrate(db, { "1_notes": createNotes, "2_text": addText });
+
+    const setUp = (await firstMigratedAt(db, { "1_notes": createNotes, "2_text": addText }))
+        .getTime();
+    assert(before <= setUp && setUp <= after, `${before} <= ${setUp} <= ${after}`);
 });

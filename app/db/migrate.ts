@@ -41,3 +41,20 @@ export const migrate = async <DB>(
         ? { ok: true, applied: results.map((result) => result.migrationName) }
         : { ok: false, error };
 };
+
+/** When the database was set up: when its first migration ran. */
+export const firstMigratedAt = async <DB>(
+    db: Kysely<DB>,
+    migrations: Record<string, Migration> = all,
+): Promise<Date> => {
+    const migrator = new Migrator({
+        db,
+        provider: { getMigrations: () => Promise.resolve(migrations) },
+    });
+    const times = (await migrator.getMigrations())
+        .flatMap((migration) => migration.executedAt ? [migration.executedAt.getTime()] : []);
+
+    if (times.length === 0) throw new Error("The database isn't set up. Run `verso migrate`.");
+
+    return new Date(Math.min(...times));
+};
