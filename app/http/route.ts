@@ -70,12 +70,22 @@ export type Auth = {
     readonly permission?: Permission;
 };
 
+/** Who is calling, as a route's handler sees them. */
+export type RouteViewer = Viewer & {
+    /**
+     * What the caller may do: a user, what config lets every user and their roles allow, and an
+     * app acting for itself, what it lets anonymous visitors. Looked up once, when first asked.
+     */
+    readonly permissions: () => Promise<ReadonlySet<Permission>>;
+};
+
 /** The viewer a route's handler sees, which its `auth` decides. */
-export type ViewerFor<A> = A extends { require: "user" } ? Viewer & { readonly accountId: string }
-    : A extends { require: "app" } ? Viewer
-    : A extends { require: "optional" } ? Viewer | undefined
+export type ViewerFor<A> = A extends { require: "user" }
+    ? RouteViewer & { readonly accountId: string }
+    : A extends { require: "app" } ? RouteViewer
+    : A extends { require: "optional" } ? RouteViewer | undefined
     // A route whose types were erased could be any of them.
-    : A extends Auth ? Viewer | undefined
+    : A extends Auth ? RouteViewer | undefined
     : undefined;
 
 /**

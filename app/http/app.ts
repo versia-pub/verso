@@ -4,6 +4,7 @@ import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
 import qs from "qs";
 import { z } from "zod";
+import type { Permission } from "../accounts/permissions.ts";
 import { accountPermissions } from "../accounts/roles.ts";
 import { grants } from "../auth/scopes.ts";
 import { authenticateToken, type Viewer } from "../auth/tokens.ts";
@@ -32,6 +33,7 @@ import {
     type Reply,
     type Responses,
     type Route,
+    type RouteViewer,
 } from "./route.ts";
 
 const logger = getLogger(["verso", "http"]);
@@ -199,22 +201,36 @@ const viewerOf = async (ctx: Context, c: HonoContext<AppEnv>, route: Route) => {
 };
 
 /**
- * Throws unless the viewer may do what the route needs: a user, what every user may and their roles
- * allow, and anyone else, such as an app acting for itself, what anonymous visitors may.
+ * The viewer, able to say what it may do: a user, what every user may and their roles allow, and
+ * anyone else, such as an app acting for itself, what anonymous visitors may. That is looked up
+ * once, the first time something asks.
  */
-const checkPermission = async (
+const withPermissions = (
     ctx: Context,
+    viewer: Viewer,
+    permissions: Permissions,
+): RouteViewer => {
+    let granted: Promise<ReadonlySet<Permission>> | undefined;
+
+    return {
+        ...viewer,
+        permissions: () =>
+            granted ??= viewer.accountId === null
+                ? Promise.resolve(new Set(permissions.anonymous))
+                : accountPermissions(ctx, viewer.accountId, permissions.default),
+    };
+};
+
+/** Throws unless the viewer, or an anonymous visitor if there is none, may do what `route` needs. */
+const checkPermission = async (
     route: Route,
-    viewer: Viewer | undefined,
+    viewer: RouteViewer | undefined,
     permissions: Permissions,
 ) => {
     const needed = route.auth?.permission;
     if (needed === undefined) return;
 
-    const granted = viewer?.accountId
-        ? await accountPermissions(ctx, viewer.accountId, permissions.default)
-        : new Set(permissions.anonymous);
-
+    const granted = viewer ? await viewer.permissions() : new Set(permissions.anonymous);
     if (!granted.has(needed)) throw new NotPermitted();
 };
 
@@ -348,8 +364,9 @@ export const createApp = (
 
     const handle = (route: Route) => {
         app.on(route.method, route.path, async (c) => {
-            const viewer = await viewerOf(ctx, c, route);
-            await checkPermission(ctx, route, viewer, permissions);
+            const bearer = await viewerOf(ctx, c, route);
+            const viewer = bearer && withPermissions(ctx, bearer, permissions);
+            await checkPermission(route, viewer, permissions);
             const input = await inputOf(c, route).catch((error) => {
                 throw route.oauthErrors ? asOAuthError(error) : error;
             });

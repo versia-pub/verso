@@ -66,6 +66,24 @@ const allowed = (path: string, permission: Permission) =>
             }),
     });
 
+const Granted = z.object({ first: z.array(z.string()), second: z.array(z.string()) });
+
+/** Reads the viewer's permissions, gives it a role, and reads them again. */
+const permissionsRoute = defineRoute({
+    method: "GET",
+    path: "/permissions",
+    summary: "Says what the caller may do",
+    auth: { require: "app" },
+    responses: { 200: Granted },
+    handler: async (ctx, { viewer }) => {
+        const first = [...await viewer.permissions()].sort();
+        if (viewer.accountId) await giveRole(ctx, viewer.accountId, "Late");
+        const second = [...await viewer.permissions()].sort();
+
+        return { status: 200, body: { first, second } };
+    },
+});
+
 const routes = [
     me,
     app,
@@ -73,6 +91,7 @@ const routes = [
     anyone,
     allowed("/roles", "roles"),
     allowed("/read", "read:account"),
+    permissionsRoute,
 ];
 
 const open = async (permissions?: Permissions) => {
@@ -199,4 +218,18 @@ Deno.test("the viewer's type follows the route's auth", () => {
         // @ts-expect-error: an app's own token has no account
         handler: (_, { viewer }) => Promise.resolve({ status: 200, body: viewer.accountId }),
     });
+});
+
+Deno.test("handlers see what the caller may do, looked up once per request", async () => {
+    await using test = await open({ anonymous: ["read:account"], default: ["owner:account"] });
+    await createRole(test.ctx, "Admin", ["roles"]);
+    await createRole(test.ctx, "Late", ["read:account"]);
+    await giveRole(test.ctx, "alice", "Admin");
+
+    const user = await test.call("/permissions", `Bearer ${await tokenFor(test.ctx, "alice")}`);
+    const app = await test.call("/permissions", `Bearer ${await tokenFor(test.ctx, null)}`);
+
+    const users = ["owner:account", "roles"];
+    assertEquals(user.body, { first: users, second: users });
+    assertEquals(app.body, { first: ["read:account"], second: ["read:account"] });
 });
