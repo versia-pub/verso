@@ -1,5 +1,5 @@
 import { assertEquals, assertFalse } from "@std/assert";
-import { Instance } from "./instance.ts";
+import { ExtendedDescription, Instance, TermsOfService, V1Instance } from "./instance.ts";
 
 /** An instance as a server claiming Mastodon 4.3 describes itself. */
 const instance = {
@@ -74,4 +74,58 @@ Deno.test("what Mastodon 4.3 had is required", () => {
     assertFalse(Instance.safeParse(withoutApiVersions).success);
     assertFalse(Instance.safeParse({ ...instance, rules: [{ id: "1", text: "Be kind" }] }).success);
     assertFalse(Instance.safeParse({ ...instance, contact: { account: null } }).success);
+});
+
+Deno.test("an instance may still describe itself as before Mastodon 4.0", () => {
+    const v1 = {
+        uri: "social.example",
+        title: "Example Social",
+        short_description: "A place to talk.",
+        description: "<p>A place to talk.</p>",
+        email: "",
+        version: instance.version,
+        urls: { streaming_api: "wss://social.example" },
+        stats: { user_count: 1, status_count: 0, domain_count: 0 },
+        thumbnail: null,
+        languages: [],
+        registrations: false,
+        approval_required: false,
+        invites_enabled: false,
+        configuration: {
+            accounts: { max_featured_tags: 0 },
+            statuses: instance.configuration.statuses,
+            media_attachments: instance.configuration.media_attachments,
+            polls: instance.configuration.polls,
+        },
+        contact_account: null,
+        rules: instance.rules,
+    } satisfies V1Instance;
+
+    assertEquals(V1Instance.parse(v1), v1);
+    assertFalse(V1Instance.safeParse({ ...v1, thumbnail: undefined }).success);
+    assertFalse(V1Instance.safeParse({ ...v1, stats: { user_count: 1, status_count: 0 } }).success);
+});
+
+Deno.test("policies have a date and HTML", () => {
+    for (const updated_at of ["2022-11-03T04:09:07Z", "2022-10-07T00:00:00+00:00"]) {
+        const description = { updated_at, content: "<p>Hi</p>" };
+        assertEquals(ExtendedDescription.parse(description), description);
+    }
+    assertFalse(ExtendedDescription.safeParse({ updated_at: "2022-10-07", content: "" }).success);
+
+    const terms = {
+        effective_date: "2025-04-15",
+        effective: true,
+        content: "<p>Be kind</p>",
+        succeeded_by: null,
+    };
+    assertEquals(TermsOfService.parse(terms), terms);
+    assertEquals(
+        TermsOfService.parse({ ...terms, succeeded_by: "2026-01-01" }).succeeded_by,
+        "2026-01-01",
+    );
+    assertFalse(
+        TermsOfService.safeParse({ ...terms, effective_date: "2025-04-15T00:00:00Z" }).success,
+    );
+    assertFalse(TermsOfService.safeParse({ ...terms, succeeded_by: undefined }).success);
 });

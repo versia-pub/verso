@@ -135,3 +135,76 @@ export const Instance = z.object({
     rules: z.array(Rule),
 });
 export type Instance = z.infer<typeof Instance>;
+
+/**
+ * An instance as Mastodon described itself before 4.0, which older clients still read.
+ * @deprecated Use {@link Instance}.
+ * @see https://docs.joinmastodon.org/entities/V1_Instance/
+ */
+export const V1Instance = z.object({
+    /** The domain, not a URL. */
+    uri: z.string(),
+    title: z.string(),
+    /** In plain text. */
+    short_description: z.string(),
+    /** In HTML. */
+    description: z.string(),
+    /** Empty if there is none. */
+    email: z.string(),
+    version: z.string(),
+    urls: z.object({ streaming_api: z.url() }),
+    stats: z.object({
+        user_count: z.int().min(0),
+        status_count: z.int().min(0),
+        /** Other instances it knows of. */
+        domain_count: z.int().min(0),
+    }),
+    thumbnail: z.url().nullable(),
+    languages: z.array(z.string()),
+    registrations: z.boolean(),
+    approval_required: z.boolean(),
+    invites_enabled: z.boolean(),
+    configuration: z.object({
+        accounts: z.object({ max_featured_tags: z.int().min(0) }),
+        statuses: Instance.shape.configuration.shape.statuses,
+        media_attachments: Instance.shape.configuration.shape.media_attachments,
+        polls: Instance.shape.configuration.shape.polls,
+    }),
+    contact_account: Account.nullable(),
+    rules: z.array(Rule),
+});
+export type V1Instance = z.infer<typeof V1Instance>;
+
+/**
+ * A longer text about the instance, for its about page.
+ * @see https://docs.joinmastodon.org/entities/ExtendedDescription/
+ */
+export const ExtendedDescription = z.object({
+    updated_at: z.iso.datetime({ offset: true }),
+    /** In HTML. */
+    content: z.string(),
+});
+export type ExtendedDescription = z.infer<typeof ExtendedDescription>;
+
+/**
+ * The instance's privacy policy.
+ * @see https://docs.joinmastodon.org/entities/PrivacyPolicy/
+ */
+export const PrivacyPolicy = ExtendedDescription;
+export type PrivacyPolicy = z.infer<typeof PrivacyPolicy>;
+
+/**
+ * The instance's terms of service. Mastodon 4.4 and later.
+ * @see https://docs.joinmastodon.org/entities/TermsOfService/
+ */
+export const TermsOfService = z.object({
+    /** The day they come, or came, into force, such as `2026-10-01`. */
+    effective_date: z.iso.date(),
+    /** Whether they are in force now. */
+    effective: z.boolean(),
+    /** In HTML. */
+    content: z.string(),
+    /** The day newer terms come into force, or `null` if there are none. */
+    succeeded_by: z.iso.date().nullable(),
+});
+export type TermsOfService = z.infer<typeof TermsOfService>;
