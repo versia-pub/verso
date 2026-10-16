@@ -28,6 +28,10 @@ Deno.test("a minimal config gets the defaults", async () => {
                 field_name: 255,
                 field_value: 255,
             },
+            permissions: {
+                anonymous: ["read:account"],
+                default: ["read:account", "owner:account"],
+            },
             logging: { level: "info" },
         },
     });
@@ -61,6 +65,10 @@ registration = { claim = "groups", contains = "versia-users" }
 [limits]
 note = 500
 fields = 4
+
+[permissions]
+anonymous = []
+default = ["owner:account"]
 
 [logging]
 level = "debug"
@@ -101,6 +109,7 @@ level = "debug"
                 dev_login: false,
             },
             limits: { display_name: 60, note: 500, fields: 4, field_name: 255, field_value: 255 },
+            permissions: { anonymous: [], default: ["owner:account"] },
             logging: { level: "debug" },
         },
     });
@@ -123,6 +132,10 @@ Deno.test("bad configs explain what is wrong", async () => {
     assertStringIncludes(
         await errors(minimal + '[logging]\nlevel = "loud"'),
         "logging.level",
+    );
+    assertStringIncludes(
+        await errors(minimal + '[permissions]\ndefault = ["owner:note"]'),
+        "Unknown permission\n  → at permissions.default[0]",
     );
 
     const exactlyOne = 'Set exactly one of "postgres" or "sqlite"';

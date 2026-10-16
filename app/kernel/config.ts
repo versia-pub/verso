@@ -1,5 +1,6 @@
 import { parse } from "@std/toml";
 import { z } from "zod";
+import { Permission } from "../accounts/permissions.ts";
 import { CidrText } from "./ip.ts";
 import { interpolate, type Sources, systemSources } from "./interpolate.ts";
 
@@ -45,6 +46,15 @@ export const Limits = z.strictObject({
     field_value: z.int().min(1).default(255),
 }).prefault({});
 export type Limits = z.infer<typeof Limits>;
+
+/** What everyone may do, before any role adds more. */
+export const Permissions = z.strictObject({
+    /** For requests without a user, such as a logged-out visitor's. */
+    anonymous: z.array(Permission).default(["read:account"]),
+    /** For every user. */
+    default: z.array(Permission).default(["read:account", "owner:account"]),
+}).prefault({});
+export type Permissions = z.infer<typeof Permissions>;
 
 const developmentOnly = 'Only allowed with mode = "development"';
 
@@ -113,6 +123,7 @@ export const Config = z.strictObject({
         dev_login: z.boolean().default(false),
     }).prefault({}),
     limits: Limits,
+    permissions: Permissions,
     logging: z.strictObject({
         level: z.enum(["trace", "debug", "info", "warning", "error", "fatal"])
             .default("info"),
