@@ -13,20 +13,9 @@ export type InstanceKey = {
     readonly publicKey: string;
 };
 
-/** Imported private keys, by key id. A key's row never changes, so neither does its entry. */
-const imported = new Map<string, Promise<CryptoKey>>();
-
-const importPrivateKey = (id: string, pkcs8: string) => {
-    let key = imported.get(id);
-    if (!key) {
-        key = crypto.subtle.importKey("pkcs8", Uint8Array.fromBase64(pkcs8), "Ed25519", false, [
-            "sign",
-        ]);
-        imported.set(id, key);
-    }
-
-    return key;
-};
+/** A private key, as kept, for signing. Importing one takes microseconds, so it isn't kept. */
+const importPrivateKey = (pkcs8: string) =>
+    crypto.subtle.importKey("pkcs8", Uint8Array.fromBase64(pkcs8), "Ed25519", false, ["sign"]);
 
 /**
  * The current key: the newest. It is read through `ctx.db`, so it also works in a transaction,
@@ -43,7 +32,7 @@ export const instanceKey = async (ctx: Context): Promise<InstanceKey> => {
     if (!row) throw new Error("This instance has no key yet. Run `verso migrate` to make one.");
 
     return {
-        privateKey: await importPrivateKey(row.id, row.private_key),
+        privateKey: await importPrivateKey(row.private_key),
         publicKey: row.public_key,
     };
 };

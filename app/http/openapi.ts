@@ -90,24 +90,29 @@ const securitySchemes = {
  * in its components, and refers to it there. A schema that contains itself, as an account contains
  * the one it moved to, can only be described this way.
  */
-const entities = new Map<z.ZodType, string>();
-for (const [id, schema] of Object.entries(clientApi)) {
-    // A schema exported under two names keeps the first.
-    if (schema instanceof z.ZodType && !entities.has(schema)) entities.set(schema, id);
-}
+const naming = () => {
+    const entities = new Map<z.ZodType, string>();
+    for (const [id, schema] of Object.entries(clientApi)) {
+        // A schema exported under two names keeps the first.
+        if (schema instanceof z.ZodType && !entities.has(schema)) entities.set(schema, id);
+    }
 
-const named = z.registry<{ id: string }>();
-for (const [schema, id] of entities) named.add(schema, { id });
-const ids = new Set(entities.values());
+    const registry = z.registry<{ id: string }>();
+    for (const [schema, id] of entities) registry.add(schema, { id });
+
+    return { entities, registry, ids: new Set(entities.values()) };
+};
+
+type Naming = ReturnType<typeof naming>;
 
 /**
  * A schema as JSON Schema, in the shape it is sent: requests before they are parsed, and replies as
  * handlers give them, which are sent without being parsed either. Named schemas are left in `$defs`.
  */
-const toJson = (schema: z.ZodType) =>
+const toJson = (schema: z.ZodType, names: Naming) =>
     z.toJSONSchema(schema, {
         io: "input",
-        metadata: named,
+        metadata: names.registry,
         // Descriptions are kept in Zod's own registry, which `metadata` takes the place of.
         override: ({ zodSchema, jsonSchema }) => {
             const { id: _, ...meta } = z.globalRegistry.get(zodSchema) ?? {};
@@ -123,6 +128,7 @@ const toJson = (schema: z.ZodType) =>
 const resolve = (
     json: string,
     defs: Readonly<Record<string, unknown>>,
+    names: Naming,
     within: readonly string[] = [],
 ): JsonSchema =>
     JSON.parse(json, (_key, value) => {
@@ -135,22 +141,22 @@ const resolve = (
         }
 
         const { $ref: _, ...rest } = value;
-        return ids.has(id)
+        return names.ids.has(id)
             ? { ...value, $ref: `#/components/schemas/${id}` }
-            : { ...rest, ...resolve(JSON.stringify(defs[id]), defs, [...within, id]) };
+            : { ...rest, ...resolve(JSON.stringify(defs[id]), defs, names, [...within, id]) };
     });
 
-const jsonSchema = (schema: z.ZodType): JsonSchema => {
-    const { $schema: _, $defs = {}, ...rest } = toJson(schema);
-    return resolve(JSON.stringify(rest), $defs);
+const jsonSchema = (schema: z.ZodType, names: Naming): JsonSchema => {
+    const { $schema: _, $defs = {}, ...rest } = toJson(schema, names);
+    return resolve(JSON.stringify(rest), $defs, names);
 };
 
 /** Every named schema, as the document's components describe it. */
-const components = () =>
+const components = (names: Naming) =>
     Object.fromEntries(
-        [...entities].map(([schema, id]) => {
-            const { $defs = {} } = toJson(schema);
-            return [id, resolve(JSON.stringify($defs[id]), $defs)];
+        [...names.entities].map(([schema, id]) => {
+            const { $defs = {} } = toJson(schema, names);
+            return [id, resolve(JSON.stringify($defs[id]), $defs, names)];
         }),
     );
 
@@ -161,11 +167,12 @@ const bodyTypes = ["application/json", "application/x-www-form-urlencoded", "mul
 const parameters = (
     where: Parameter["in"],
     schema: z.ZodType | undefined,
+    names: Naming,
     name: (key: string) => string = (key) => key,
 ): Parameter[] => {
     if (!schema) return [];
 
-    const { properties = {}, required = [] } = jsonSchema(schema);
+    const { properties = {}, required = [] } = jsonSchema(schema, names);
     return Object.entries(properties).map(([key, property]) => ({
         name: name(key),
         in: where,
@@ -174,9 +181,13 @@ const parameters = (
     }));
 };
 
-const response = (route: Route, declared: NonNullable<Responses[200]>): Response => {
+const response = (
+    route: Route,
+    declared: NonNullable<Responses[200]>,
+    names: Naming,
+): Response => {
     if (declared instanceof z.ZodType) {
-        const schema = jsonSchema(declared);
+        const schema = jsonSchema(declared, names);
         return {
             description: schema.description ?? "A JSON body",
             content: { [route.contentType ?? "application/json"]: { schema } },
@@ -217,15 +228,15 @@ const restrictions = (route: Route) =>
         route.auth?.permission ? `Needs the \`${route.auth.permission}\` permission.` : "",
     ].filter((line) => line !== "").join(" ");
 
-const operation = (route: Route): Operation => {
+const operation = (route: Route, names: Naming): Operation => {
     const all = [
-        ...parameters("path", route.params),
-        ...parameters("query", route.query),
-        ...parameters("header", route.headers),
+        ...parameters("path", route.params, names),
+        ...parameters("query", route.query, names),
+        ...parameters("header", route.headers, names),
         // Verso's cookies are sent with a prefix that the route doesn't see.
-        ...parameters("cookie", route.cookies, (key) => `__Host-${key}`),
+        ...parameters("cookie", route.cookies, names, (key) => `__Host-${key}`),
     ];
-    const body = route.body && jsonSchema(route.body);
+    const body = route.body && jsonSchema(route.body, names);
     const description = restrictions(route);
     const needed = security(route);
 
@@ -243,7 +254,7 @@ const operation = (route: Route): Operation => {
         },
         responses: Object.fromEntries(
             Object.entries(route.responses).flatMap(([status, declared]) =>
-                declared ? [[status, response(route, declared)]] : []
+                declared ? [[status, response(route, declared, names)]] : []
             ),
         ),
     };
@@ -258,12 +269,13 @@ export const openApiDocument = (
     info: Document["info"],
     origin: string,
 ): Document => {
+    const names = naming();
     const paths: Record<string, Record<string, Operation>> = {};
 
     for (const route of routes) {
         // Hono's `:id` is OpenAPI's `{id}`.
         const path = route.path.replaceAll(/:(\w+)/g, "{$1}");
-        (paths[path] ??= {})[route.method.toLowerCase()] = operation(route);
+        (paths[path] ??= {})[route.method.toLowerCase()] = operation(route, names);
     }
 
     return {
@@ -271,7 +283,7 @@ export const openApiDocument = (
         info,
         servers: [{ url: origin }],
         paths,
-        components: { schemas: components(), securitySchemes },
+        components: { schemas: components(names), securitySchemes },
     };
 };
 
