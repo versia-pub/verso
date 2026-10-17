@@ -36,7 +36,7 @@ export const webfingerRoutes: readonly Route[] = [
             const match = acctUri.exec(query.resource ?? "");
             if (!match) throw new BadRequest("The resource must be an acct: URI");
 
-            const domain = new URL(ctx.urls.origin).hostname;
+            const domain = ctx.urls.domain;
             const [, username, host] = match;
             const account = host.toLowerCase() === domain
                 ? await findLocalAccount(ctx, username)

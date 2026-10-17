@@ -30,7 +30,7 @@ export const instances: Migration = {
             return;
         }
 
-        // SQLite can't add a constraint to a table, so the table is rebuilt with it, as in 0003.
+        // SQLite can't add a constraint to a table, so the table is rebuilt with it.
         await db.schema.createTable("accounts_new")
             .addColumn("id", "text", (column) => column.primaryKey())
             .addColumn("username", "text", (column) => column.notNull())

@@ -3,6 +3,8 @@
  * WebFinger links, media) comes from here, so none are glued together from strings elsewhere.
  */
 export type UrlBuilder = {
+    /** The instance's domain, as Versia names instances: a bare hostname, without a port. */
+    readonly domain: string;
     /** `https://` plus the instance's domain, or the development origin, with no trailing slash. */
     readonly origin: string;
     /**
@@ -18,6 +20,7 @@ export type UrlBuilder = {
  */
 export const urlBuilder = (domain: string, origin = `https://${domain}`): UrlBuilder => {
     return {
+        domain,
         origin,
         url: (path, ...values) => {
             if (!path[0].startsWith("/")) {

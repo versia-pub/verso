@@ -31,7 +31,7 @@ export const versiaInstanceRoutes = (instance: Config["instance"]): readonly Rou
         contentType: versiaJson,
         responses: { 200: v0_6.InstanceMetadata },
         handler: async (ctx) => {
-            const domain = new URL(ctx.urls.origin).hostname;
+            const domain = ctx.urls.domain;
             const metadata: v0_6.InstanceMetadata = {
                 type: "InstanceMetadata",
                 created_at: (await firstMigratedAt(ctx.db)).toISOString(),

@@ -1,4 +1,5 @@
 import { type Selectable, sql, type Updateable } from "kysely";
+import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
 import type { AccountsTable } from "./tables.ts";
 
@@ -49,32 +50,30 @@ export const getUsername = async (ctx: Context, accountId: string): Promise<stri
 };
 
 /** How many local accounts got an access token since `since`, as a measure of who is active. */
-export const countActiveAccounts = async (ctx: Context, since: Date): Promise<number> => {
-    const { count } = await ctx.db.selectFrom("accounts")
-        .select((eb) => eb.fn.countAll<number | string | bigint>().as("count"))
-        .where("instance_id", "is", null)
-        .where((eb) =>
-            eb.exists(
-                eb.selectFrom("access_tokens")
-                    .select("id")
-                    .whereRef("access_tokens.account_id", "=", "accounts.id")
-                    .where("access_tokens.created_at", ">=", since),
+export const countActiveAccounts = async (ctx: Context, since: Date): Promise<number> =>
+    readCount(
+        await ctx.db.selectFrom("accounts")
+            .select(countAll)
+            .where("instance_id", "is", null)
+            .where((eb) =>
+                eb.exists(
+                    eb.selectFrom("access_tokens")
+                        .select("id")
+                        .whereRef("access_tokens.account_id", "=", "accounts.id")
+                        .where("access_tokens.created_at", ">=", since),
+                )
             )
-        )
-        .executeTakeFirstOrThrow();
-
-    return Number(count);
-};
+            .executeTakeFirstOrThrow(),
+    );
 
 /** How many accounts this instance has. */
-export const countLocalAccounts = async (ctx: Context): Promise<number> => {
-    const { count } = await ctx.db.selectFrom("accounts")
-        .select((eb) => eb.fn.countAll<number | string | bigint>().as("count"))
-        .where("instance_id", "is", null)
-        .executeTakeFirstOrThrow();
-
-    return Number(count);
-};
+export const countLocalAccounts = async (ctx: Context): Promise<number> =>
+    readCount(
+        await ctx.db.selectFrom("accounts")
+            .select(countAll)
+            .where("instance_id", "is", null)
+            .executeTakeFirstOrThrow(),
+    );
 
 /**
  * The usernames of local accounts that start with `start`, ignoring case, in lowercase. In `like`,

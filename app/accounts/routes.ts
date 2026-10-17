@@ -41,7 +41,7 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
  */
 const localUsername = (ctx: Context, acct: string) => {
     const [username, domain, ...rest] = acct.replace(/^@/, "").split("@");
-    const ours = domain === undefined || domain.toLowerCase() === new URL(ctx.urls.origin).hostname;
+    const ours = domain === undefined || domain.toLowerCase() === ctx.urls.domain;
 
     return rest.length === 0 && ours ? username : undefined;
 };

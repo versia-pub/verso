@@ -302,7 +302,7 @@ export const openApiRoute = (documented: readonly Route[], name: string | undefi
         responses: { 200: z.looseObject({ openapi: z.literal("3.1.1") }) },
         handler: (ctx) => {
             document ??= openApiDocument([...documented, route], {
-                title: name ?? new URL(ctx.urls.origin).hostname,
+                title: name ?? ctx.urls.domain,
                 version: denoConfig.version,
             }, ctx.urls.origin);
             return Promise.resolve({ status: 200, body: document });

@@ -65,7 +65,7 @@ export const signReply = async (
             body: new Uint8Array(await response.clone().arrayBuffer()),
         },
         await services.signingKey(ctx),
-        new URL(ctx.urls.origin).hostname,
+        ctx.urls.domain,
         ctx.clock.now(),
     );
 

@@ -12,13 +12,12 @@ import { createLocalAccount } from "./testing.ts";
  * signed by `to`.
  */
 const fetchSigned = async (from: Context, to: Context, path: string) => {
-    const domain = (ctx: Context) => new URL(ctx.urls.origin).hostname;
     // The query isn't signed.
     const { pathname } = new URL(path, to.urls.origin);
     const headers = await sign(
         { method: "GET", pathname, body: new Uint8Array() },
         (await instanceKey(from)).privateKey,
-        domain(from),
+        from.urls.domain,
         from.clock.now(),
     );
 
@@ -32,7 +31,7 @@ const fetchSigned = async (from: Context, to: Context, path: string) => {
     const signature = await verify(
         { method: "GET", pathname, body },
         response.headers,
-        (signer) => Promise.resolve(signer === domain(to) ? theirs : undefined),
+        (signer) => Promise.resolve(signer === to.urls.domain ? theirs : undefined),
         from.clock.now(),
     );
 

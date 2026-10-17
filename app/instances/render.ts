@@ -53,8 +53,6 @@ const registrationMessage = (issuers: AboutSettings["auth"]["issuers"]) => {
     return `<p>${escapeHtml(text)}</p>`;
 };
 
-export const domainOf = (ctx: Context): string => new URL(ctx.urls.origin).hostname;
-
 /** The contact account, if config names a local account that exists. */
 const contactAccount = async (ctx: Context, username: string | undefined) => {
     const row = username === undefined ? undefined : await findLocalAccount(ctx, username);
@@ -111,7 +109,7 @@ const configuration = (
 /** The instance as Mastodon's API describes it, claiming Mastodon 4.3. */
 export const renderInstance = async (ctx: Context, settings: AboutSettings): Promise<Instance> => {
     const { instance, limits } = settings;
-    const domain = domainOf(ctx);
+    const domain = ctx.urls.domain;
     const since = new Date(ctx.clock.now().getTime() - activeWindowMs);
 
     return {

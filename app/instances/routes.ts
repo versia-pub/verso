@@ -13,7 +13,6 @@ import { NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route } from "../http/route.ts";
 import {
     type AboutSettings,
-    domainOf,
     renderDocument,
     renderInstance,
     renderRules,
@@ -34,7 +33,7 @@ const thumbnailRoute = () => {
         responses: { 200: Binary("image/png") },
         handler: async (ctx) => ({
             status: 200,
-            file: await (drawn ??= identiconBanner(domainOf(ctx))),
+            file: await (drawn ??= identiconBanner(ctx.urls.domain)),
         }),
     });
 };

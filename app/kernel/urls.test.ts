@@ -5,7 +5,7 @@ import { urlBuilder } from "./urls.ts";
 const urls = urlBuilder("social.example");
 
 Deno.test("urls are https on the instance's domain", () => {
-    assertEquals(urls.origin, "https://social.example");
+    assertEquals([urls.domain, urls.origin], ["social.example", "https://social.example"]);
     assertEquals(
         urls.url`/api/v1/instance`,
         "https://social.example/api/v1/instance",
@@ -65,6 +65,7 @@ Deno.test("values that would bend the path are refused", () => {
 Deno.test("in development, URLs can use another origin", () => {
     const local = urlBuilder("localhost", "http://localhost:8080");
 
-    assertEquals(local.origin, "http://localhost:8080");
+    // The domain has no port, unlike the origin.
+    assertEquals([local.domain, local.origin], ["localhost", "http://localhost:8080"]);
     assertEquals(local.url`/oauth/callback`, "http://localhost:8080/oauth/callback");
 });
