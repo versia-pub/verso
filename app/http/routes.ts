@@ -5,12 +5,14 @@ import { webfingerRoutes } from "../accounts/webfinger.ts";
 import { authRoutes } from "../auth/routes.ts";
 import { type AboutSettings, instanceRoutes } from "../instances/routes.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
+import { docsRoute } from "./docs.ts";
 import { openApiRoute } from "./openapi.ts";
 import type { Route } from "./route.ts";
 
 /**
  * Every module's routes, with what they accept held to the configured limits, the instance
- * described as configured, and the OpenAPI document describing them all.
+ * described as configured, and the API documentation, with the OpenAPI document describing them
+ * all.
  */
 export const routes = (settings: AboutSettings): readonly Route[] => {
     const documented = [
@@ -21,6 +23,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...userEntityRoutes,
         ...instanceRoutes(settings),
         ...versiaInstanceRoutes(settings.instance),
+        docsRoute,
     ];
 
     return [...documented, openApiRoute(documented, settings.instance.name)];

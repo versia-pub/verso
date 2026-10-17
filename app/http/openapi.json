@@ -3592,6 +3592,26 @@
                 }
             }
         },
+        "/docs": {
+            "get": {
+                "summary": "This API's documentation",
+                "tags": [
+                    "docs"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page",
+                        "content": {
+                            "text/html": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/openapi.json": {
             "get": {
                 "summary": "This API, described with OpenAPI",
