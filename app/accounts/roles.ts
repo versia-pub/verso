@@ -3,7 +3,7 @@ import type { Selectable } from "kysely";
 import type { Context } from "../kernel/context.ts";
 import type { Claims, Issuer } from "../kernel/identity.ts";
 import { claimContains } from "./claims.ts";
-import type { Permission } from "./permissions.ts";
+import type { Permission } from "../kernel/permissions.ts";
 import type { RolesTable } from "./tables.ts";
 
 const logger = getLogger(["verso", "accounts"]);

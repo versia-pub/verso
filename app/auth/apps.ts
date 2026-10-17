@@ -1,5 +1,5 @@
 import type { Context } from "../kernel/context.ts";
-import type { Scope } from "./scopes.ts";
+import type { Scope } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { AppsTable } from "./tables.ts";
 

@@ -2,7 +2,7 @@ import { OAuthServerMetadata, Token } from "@versia/client-api";
 import { z } from "zod";
 import { HttpError } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { scopes } from "./scopes.ts";
+import { scopes } from "../kernel/scopes.ts";
 import {
     authenticateClient,
     clientCredentialsFrom,

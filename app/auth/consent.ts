@@ -4,7 +4,7 @@ import { provision } from "../accounts/provision.ts";
 import type { Context } from "../kernel/context.ts";
 import { getApp } from "./apps.ts";
 import { deleteFlow, findFlow, findFormFlow, markLoggedIn, setCode } from "./flows.ts";
-import type { Scope } from "./scopes.ts";
+import type { Scope } from "../kernel/scopes.ts";
 import { randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
 

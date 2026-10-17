@@ -5,7 +5,8 @@
 import type { Account, CredentialAccount, Field, Relationship, Role } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import type { AccountRow } from "./accounts.ts";
-import { mastodonPermissions, type Permission } from "./permissions.ts";
+import type { Permission } from "../kernel/permissions.ts";
+import { mastodonPermissions } from "./permissions.ts";
 import type { RoleRow } from "./roles.ts";
 import type { ProfileField } from "./tables.ts";
 

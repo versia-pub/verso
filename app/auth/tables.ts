@@ -1,5 +1,5 @@
 import type { LoginFlow } from "../kernel/identity.ts";
-import type { Scope } from "./scopes.ts";
+import type { Scope } from "../kernel/scopes.ts";
 
 /** A client app, registered through `POST /api/v1/apps`. */
 export type AppsTable = {

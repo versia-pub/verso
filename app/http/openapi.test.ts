@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { Account, CredentialAccount } from "@versia/client-api";
 import { z } from "zod";
-import { scopes } from "../auth/scopes.ts";
+import { scopes } from "../kernel/scopes.ts";
 import { openApiDocument } from "./openapi.ts";
 import { Binary, defineRoute, Page, Redirect, type Route } from "./route.ts";
 

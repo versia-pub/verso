@@ -1,9 +1,8 @@
 import type { HtmlEscapedString } from "@hono/hono/utils/html";
 import type { ContentfulStatusCode, RedirectStatusCode } from "@hono/hono/utils/http-status";
 import type { z } from "zod";
-import type { Permission } from "../accounts/permissions.ts";
-import type { Scope } from "../auth/scopes.ts";
-import type { Viewer } from "../auth/tokens.ts";
+import type { Permission } from "../kernel/permissions.ts";
+import type { Scope } from "../kernel/scopes.ts";
 import type { Context } from "../kernel/context.ts";
 
 type Schema = z.ZodType;
@@ -68,6 +67,15 @@ export type Auth = {
      * lets every user, and what their roles allow; anyone else, what it lets anonymous visitors.
      */
     readonly permission?: Permission;
+};
+
+/** Who is calling, as their access token says. */
+export type Viewer = {
+    readonly tokenId: string;
+    readonly appId: string;
+    /** The user the app acts for, or `null` if the app acts for itself. */
+    readonly accountId: string | null;
+    readonly scopes: readonly Scope[];
 };
 
 /** Who is calling, as a route's handler sees them. */

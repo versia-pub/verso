@@ -1,5 +1,5 @@
 import type { Generated } from "kysely";
-import type { Permission } from "./permissions.ts";
+import type { Permission } from "../kernel/permissions.ts";
 
 /** What a user wrote text in, which decides how it becomes HTML. */
 export type TextFormat = "text/plain" | "text/markdown";

@@ -1,5 +1,5 @@
 import type { Context } from "../kernel/context.ts";
-import type { Permission } from "./permissions.ts";
+import type { Permission } from "../kernel/permissions.ts";
 
 /** A local account, for tests that skip logging in. Its id is its username. */
 export const createLocalAccount = async (ctx: Context, username: string): Promise<string> => {

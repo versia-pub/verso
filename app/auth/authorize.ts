@@ -3,7 +3,7 @@ import type { Context } from "../kernel/context.ts";
 import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import { findAppByClientId } from "./apps.ts";
 import { createFlow, findFormFlow, recordLogin } from "./flows.ts";
-import { requestedScopes } from "./scopes.ts";
+import { requestedScopes } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
 

@@ -1,7 +1,7 @@
 import type { Context } from "../kernel/context.ts";
 import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import { type AppRegistration, registerApp } from "./apps.ts";
-import type { Scope } from "./scopes.ts";
+import type { Scope } from "../kernel/scopes.ts";
 import type { AppsTable } from "./tables.ts";
 import { issueToken } from "./tokens.ts";
 

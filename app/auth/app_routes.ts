@@ -2,7 +2,7 @@ import { Application, CredentialApplication } from "@versia/client-api";
 import { z } from "zod";
 import { defineRoute, type Route } from "../http/route.ts";
 import { getApp, registerApp } from "./apps.ts";
-import { ScopeList } from "./scopes.ts";
+import { ScopeList } from "../kernel/scopes.ts";
 import type { AppsTable } from "./tables.ts";
 
 const scriptSchemes = ["data:", "javascript:", "vbscript:"];

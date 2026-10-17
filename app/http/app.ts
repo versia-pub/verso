@@ -5,10 +5,10 @@ import { getLogger } from "@logtape/logtape";
 import { sign, verify } from "@versia/protocol";
 import qs from "qs";
 import { z } from "zod";
-import type { Permission } from "../accounts/permissions.ts";
+import type { Permission } from "../kernel/permissions.ts";
 import { accountPermissions } from "../accounts/roles.ts";
-import { grants } from "../auth/scopes.ts";
-import { authenticateToken, type Viewer } from "../auth/tokens.ts";
+import { grants } from "../kernel/scopes.ts";
+import { authenticateToken } from "../auth/tokens.ts";
 import { instanceKey } from "../instances/keys.ts";
 import { type RemoteKeys, remoteKeys } from "../instances/remote_keys.ts";
 import { Permissions } from "../kernel/config.ts";
@@ -39,6 +39,7 @@ import {
     type Responses,
     type Route,
     type RouteViewer,
+    type Viewer,
 } from "./route.ts";
 
 const logger = getLogger(["verso", "http"]);

@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { z } from "zod";
-import type { Permission } from "../accounts/permissions.ts";
+import type { Permission } from "../kernel/permissions.ts";
 import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import type { Permissions } from "../kernel/config.ts";

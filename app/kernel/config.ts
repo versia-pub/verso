@@ -1,6 +1,6 @@
 import { parse } from "@std/toml";
 import { z } from "zod";
-import { Permission } from "../accounts/permissions.ts";
+import { Permission } from "./permissions.ts";
 import { CidrText } from "./ip.ts";
 import { interpolate, type Sources, systemSources } from "./interpolate.ts";
 

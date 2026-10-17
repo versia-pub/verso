@@ -1,19 +1,11 @@
+import type { Viewer } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
-import type { Scope } from "./scopes.ts";
+import type { Scope } from "../kernel/scopes.ts";
 import { findAppByClientId } from "./apps.ts";
 import { takeFlowByCode } from "./flows.ts";
-import { requestedScopes } from "./scopes.ts";
+import { requestedScopes } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { AppsTable } from "./tables.ts";
-
-/** Who is calling, as their access token says. */
-export type Viewer = {
-    readonly tokenId: string;
-    readonly appId: string;
-    /** The user the app acts for, or `null` if the app acts for itself. */
-    readonly accountId: string | null;
-    readonly scopes: readonly Scope[];
-};
 
 /** A token this server gave out, found by its hash, since that's all that is kept. */
 const findToken = async (ctx: Context, token: string) =>

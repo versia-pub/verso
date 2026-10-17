@@ -5,7 +5,7 @@ import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Integer, Text } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
 import { type AccountRow, findAccount } from "./accounts.ts";
-import { Permission } from "./permissions.ts";
+import { Permission } from "../kernel/permissions.ts";
 import {
     createRole,
     deleteRole,

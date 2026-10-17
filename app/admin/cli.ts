@@ -4,7 +4,7 @@
  * @module
  */
 import { Command, EnumType, ValidationError } from "@cliffy/command";
-import { permissions } from "../accounts/permissions.ts";
+import { permissions } from "../kernel/permissions.ts";
 import { findLocalAccount } from "../accounts/accounts.ts";
 import { createRole, findRole, grantRole, listRoles, revokeRole } from "../accounts/roles.ts";
 import { rotateInstanceKey } from "../instances/keys.ts";

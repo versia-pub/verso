@@ -5,7 +5,7 @@
 import * as clientApi from "@versia/client-api";
 import { z } from "zod";
 import denoConfig from "../../deno.json" with { type: "json" };
-import { scopes } from "../auth/scopes.ts";
+import { scopes } from "../kernel/scopes.ts";
 import { defineRoute, type Responses, type Route } from "./route.ts";
 
 type JsonSchema = z.core.JSONSchema.JSONSchema;
