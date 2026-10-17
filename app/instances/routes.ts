@@ -62,6 +62,14 @@ const contactAccount = async (ctx: Context, username: string | undefined) => {
     return row ? renderAccount(ctx, row, await rolesOf(ctx, row.id)) : null;
 };
 
+/** The rules, numbered from 1 in the order config lists them. */
+const renderRules = (instance: AboutSettings["instance"]): Rule[] =>
+    instance.rules.map((rule, index) => ({
+        id: String(index + 1),
+        text: rule.text,
+        hint: rule.hint,
+    }));
+
 /** The instance as Mastodon's API describes it, claiming Mastodon 4.3. */
 const renderInstance = async (ctx: Context, settings: AboutSettings): Promise<Instance> => {
     const { instance, limits } = settings;
@@ -124,11 +132,7 @@ const renderInstance = async (ctx: Context, settings: AboutSettings): Promise<In
             email: instance.contact.email ?? "",
             account: await contactAccount(ctx, instance.contact.account),
         },
-        rules: instance.rules.map((rule, index) => ({
-            id: String(index + 1),
-            text: rule.text,
-            hint: rule.hint,
-        })),
+        rules: renderRules(instance),
     };
 };
 
@@ -229,10 +233,7 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => [
         summary: "What people agree to follow on the instance",
         tags: ["instance"],
         responses: { 200: z.array(Rule) },
-        handler: async (ctx) => ({
-            status: 200,
-            body: (await renderInstance(ctx, settings)).rules,
-        }),
+        handler: () => Promise.resolve({ status: 200, body: renderRules(settings.instance) }),
     }),
     defineRoute({
         method: "GET",
