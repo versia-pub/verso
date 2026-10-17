@@ -8,8 +8,8 @@ export const jobsChannel = "verso_jobs";
 /**
  * Listens for newly enqueued jobs on a dedicated Postgres connection and fires an event named
  * after each job's queue, so idle workers can start at once instead of on their next poll.
- * Returns `undefined` on SQLite, where workers only poll. If the connection fails, workers fall
- * back to polling too.
+ * Returns `undefined` on SQLite, where workers only poll, or when it can't connect. If the connection
+ * fails later, workers fall back to polling too.
  */
 export const listenForJobs = async (
     config: Config["database"],
@@ -27,8 +27,14 @@ export const listenForJobs = async (
         logger.error("Stopped listening for new jobs, so workers only poll: {error}", { error });
     });
 
-    await client.connect();
-    await client.query(`listen ${jobsChannel}`);
+    try {
+        await client.connect();
+        await client.query(`listen ${jobsChannel}`);
+    } catch (error) {
+        logger.warning("Couldn't listen for new jobs, so workers only poll: {error}", { error });
+        await client.end().catch(() => {});
+        return undefined;
+    }
 
     return Object.assign(events, { [Symbol.asyncDispose]: () => client.end() });
 };

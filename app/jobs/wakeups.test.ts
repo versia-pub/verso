@@ -81,3 +81,10 @@ Deno.test({
         assertEquals(heard, ["deliver"]);
     },
 });
+
+Deno.test("when Postgres can't be reached, workers are left to poll", async () => {
+    assertEquals(
+        await listenForJobs({ postgres: "postgres://verso@127.0.0.1:1/verso" }),
+        undefined,
+    );
+});
