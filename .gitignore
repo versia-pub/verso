@@ -8,3 +8,7 @@ result-*
 # Dependencies installed by deno install (see nix/deps.nix)
 vendor/
 node_modules/
+
+# A local instance (see CONTRIBUTING.md)
+/config.toml
+/verso.db*

@@ -1,0 +1,92 @@
+# An example config.toml, with every setting. Settings that are commented out show their default.
+# Unknown keys are errors, so a typo stops Verso from starting rather than being ignored.
+#
+# Any string can take its value from the environment or a file, such as a secret:
+# "${env:NAME}" or "${file:/run/secrets/name}". Write "$${" for a literal "${".
+
+# "development" allows the settings marked "development only", for running Verso locally.
+# mode = "production"
+
+# The instance's domain, without a port. Accounts and federation are tied to it, so it can't
+# change later.
+domain = "social.example"
+
+# Exactly one of these: a PostgreSQL connection string, or the path of a SQLite file.
+database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
+# database = { sqlite = "verso.db" }
+
+[http]
+# port = 8080
+# Where the instance is reached, if not at https://<domain>. Development only.
+# origin = "http://localhost:8080"
+# The reverse proxies in front of Verso, as addresses or CIDR ranges. Only these are believed
+# about who the client is (the X-Forwarded-For header).
+trusted_proxies = ["127.0.0.1", "::1"]
+
+[http.rate_limit]
+# How many requests each client may make in a window, per access token, or per IP address
+# without one.
+# limit = 300
+# window_seconds = 300
+# Where counts are kept: "memory", in each server, or "database", shared by several web nodes.
+# store = "memory"
+
+[auth]
+# A login form that takes any username, with no password. Development only.
+# dev_login = false
+
+# The OpenID Connect providers users log in with. Without any, nobody can log in.
+[[auth.issuers]]
+# Shown on the login page when there is more than one.
+name = "Example ID"
+# Accounts are linked to the issuer's URL, so changing it unlinks them all.
+url = "https://id.social.example"
+client_id = "verso"
+client_secret = "${file:/run/secrets/oidc-client-secret}"
+# The claim a new account's username comes from.
+# username_claim = "preferred_username"
+# Scopes to ask for besides openid and profile, such as "groups" for a groups claim.
+scopes = ["groups"]
+# Who gets an account on first login: "open", "closed", or anyone whose claim holds a value.
+registration = { claim = "groups", contains = "social-users" }
+# Roles given to whoever's claim holds a value, re-checked at every login.
+roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
+
+[federation]
+# Lets Verso reach other instances at internal addresses, such as on a local network.
+# Development only.
+# allow_internal_addresses = false
+
+[instance]
+# Without a name, the instance goes by its domain.
+name = "Example Social"
+description = "A small place to talk."
+contact = { email = "admin@social.example", account = "admin" }
+rules = [
+    { text = "Be kind" },
+    { text = "No spam", hint = "Advertising counts as spam." },
+]
+
+# Long texts, in plain text with a blank line between paragraphs, and the day they last changed.
+[instance.privacy_policy]
+text = "${file:/etc/verso/privacy.txt}"
+updated = 2026-10-01
+
+# [instance.extended_description]
+# [instance.terms_of_service]
+
+[limits]
+# How long what users write may be, in characters.
+# display_name = 60
+# note = 10000
+# fields = 16
+# field_name = 255
+# field_value = 255
+
+[permissions]
+# What everyone may do, before roles add more: logged-out visitors, and every user.
+# anonymous = ["read:account"]
+# default = ["read:account", "owner:account"]
+
+[logging]
+# level = "info"

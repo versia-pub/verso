@@ -21,17 +21,20 @@ or `nix flake check`, or Nix will act as if it isn't there.
 
 ## Commands
 
-| Command                         | What it does                                          |
-| ------------------------------- | ----------------------------------------------------- |
-| `deno task fmt`                 | Format the code                                       |
-| `deno task lint`                | Lint the code                                         |
-| `deno task check`               | Type-check the code                                   |
-| `deno task test`                | Run the tests                                         |
-| `deno task unused-dependencies` | List dependencies nothing imports                     |
-| `nix fmt`                       | Format the Nix files                                  |
-| `nix flake check`               | Run everything CI runs                                |
-| `nix build`                     | Build the server package                              |
-| `nix run .#update-hashes`       | Update the dependency hash after changing `deno.lock` |
+| Command                         | What it does                                               |
+| ------------------------------- | ---------------------------------------------------------- |
+| `deno task fmt`                 | Format the code                                            |
+| `deno task lint`                | Lint the code                                              |
+| `deno task check`               | Type-check the code                                        |
+| `deno task test`                | Run the tests                                              |
+| `deno task unused-dependencies` | List dependencies nothing imports                          |
+| `deno task import-cycles`       | Find imports that go round in a circle                     |
+| `deno task update-openapi`      | Rewrite the OpenAPI snapshot after a deliberate API change |
+| `deno task verso <command>`     | Run Verso, as below                                        |
+| `nix fmt`                       | Format the Nix files                                       |
+| `nix flake check`               | Run everything CI runs                                     |
+| `nix build`                     | Build the server package                                   |
+| `nix run .#update-hashes`       | Update the dependency hash after changing `deno.lock`      |
 
 CI runs `nix flake check` and nothing else. It runs the same Deno tasks inside the Nix sandbox,
 without network access. If it passes on your machine, it should pass in CI.
@@ -40,6 +43,34 @@ Tests run on PGlite, an in-process PostgreSQL, by default. To run them on SQLite
 `VERSO_TEST_DATABASE=sqlite`. To run them on a real PostgreSQL server, set it to the server's URL
 and add `--allow-net` for its address. Each test creates its own database there, so use a throwaway
 server. `nix flake check` runs all three.
+
+## Running Verso locally
+
+Verso reads `config.toml` from where it runs; `docs/config.example.toml` lists every setting. For a
+local instance, this is enough:
+
+```toml
+mode = "development"
+domain = "localhost"
+database = { sqlite = "verso.db" }
+
+[http]
+origin = "http://localhost:8080"
+
+[auth]
+# A login form that takes any username, with no password.
+dev_login = true
+```
+
+Then create the database and start Verso:
+
+```sh
+deno task verso migrate
+deno task verso all
+```
+
+The API is at `http://localhost:8080`, and its documentation at `/docs`. `config.toml` and
+`verso.db` are ignored by git.
 
 ## Dependencies
 

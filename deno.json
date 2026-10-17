@@ -10,9 +10,10 @@
         "fmt": "deno fmt",
         "lint": "deno lint",
         "check": "deno check",
-        "test": "deno test --allow-read=node_modules --allow-env",
+        "test": "deno test --allow-read=node_modules,docs/config.example.toml --allow-env",
         "import-cycles": "deno run --allow-read=. --allow-run=deno scripts/import_cycles.ts",
         "update-openapi": "UPDATE_OPENAPI=1 deno test --allow-read=node_modules --allow-env --allow-write=app/http/openapi.json app/http/routes.test.ts && deno fmt app/http/openapi.json",
+        "verso": "deno run --allow-net --allow-read --allow-write --allow-env app/main.ts",
         "unused-dependencies": "deno run --allow-read=. --allow-run=deno scripts/unused_dependencies.ts"
     },
     "fmt": {

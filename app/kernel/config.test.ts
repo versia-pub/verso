@@ -330,3 +330,18 @@ Deno.test("bad instance details explain what is wrong", async () => {
         "Must be a date, such as 2026-10-01, without quotes\n  → at instance.terms_of_service.updated",
     );
 });
+
+Deno.test("the example config in the docs is valid", async () => {
+    const example = await Deno.readTextFile(
+        new URL("../../docs/config.example.toml", import.meta.url),
+    );
+    const result = await parseConfig(example, {
+        env: (name) => name === "PGPASSWORD" ? "secret" : undefined,
+        readFile: (path) => Promise.resolve(`Contents of ${path}`),
+    });
+
+    assertEquals(result.ok && [result.config.domain, result.config.instance.name], [
+        "social.example",
+        "Example Social",
+    ]);
+});
