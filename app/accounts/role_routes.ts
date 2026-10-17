@@ -6,26 +6,23 @@ import { Flag, Integer, Text } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
 import { type AccountRow, findAccount } from "./accounts.ts";
 import { Permission } from "../kernel/permissions.ts";
+import { findRoleById, listRoles, type RoleRow, rolesOf } from "./role_queries.ts";
 import {
-    createRole,
-    deleteRole,
-    findRole,
-    findRoleById,
-    grantRole,
-    listRoles,
-    revokeRole,
-    type RoleRow,
-    rolesOf,
-    updateRole,
-} from "./role_queries.ts";
-import { refusal, type RoleManager, roleManager } from "./roles.ts";
+    changeManagedRole,
+    createManagedRole,
+    deleteManagedRole,
+    type Managed,
+    roleManager,
+    RoleName,
+    updateManagedRole,
+} from "./roles.ts";
 
 const Id = z.object({ id: z.string() });
 const AccountAndRole = z.object({ id: z.string(), role_id: z.string() });
 
 /** What a role is made of, as clients send it. */
 const RoleFields = z.object({
-    name: z.string().trim().pipe(z.string().min(1).pipe(Text(128))),
+    name: RoleName,
     permissions: z.array(Permission),
     priority: Integer,
     description: z.string().trim().pipe(Text(1024)),
@@ -50,23 +47,22 @@ export const renderVersiaRole = (role: RoleRow): VersiaRole => ({
     color: role.color,
 });
 
-/**
- * The role with this id, if it is below the viewer's highest, so they may change it, and what they
- * may give it.
- */
-const managedRole = async (
-    ctx: Context,
-    viewer: RouteViewer & { accountId: string },
-    id: string,
-) => {
-    const role = await findRoleById(ctx, id);
-    if (!role) throw new NotFound();
+/** The viewer, as a manager of roles. */
+const managerOf = async (ctx: Context, viewer: RouteViewer & { accountId: string }) =>
+    await roleManager(ctx, viewer.accountId, await viewer.permissions());
 
-    const manager = await roleManager(ctx, viewer.accountId, await viewer.permissions());
-    const refused = refusal(manager, { priority: role.priority });
-    if (refused !== undefined) throw new NotPermitted(refused);
+/** The result of a change to roles, or the error that says why it was refused. */
+const orRefusal = <T>(result: Managed<T>): T => {
+    if (result.ok) return result.value;
 
-    return { role, manager };
+    switch (result.reason) {
+        case "not-found":
+            throw new NotFound();
+        case "name-taken":
+            throw new ValidationFailed({ name: ["A role with this name exists"] });
+        case "not-permitted":
+            throw new NotPermitted(result.description);
+    }
 };
 
 /** The local account with this id. Remote accounts aren't shown yet, and have no roles here. */
@@ -75,24 +71,6 @@ const localAccount = async (ctx: Context, id: string): Promise<AccountRow> => {
     if (account?.domain !== null) throw new NotFound();
 
     return account;
-};
-
-/**
- * Refuses unless `account` is the viewer's own, or ranks below them: its highest role is lower than
- * the viewer's, as with the roles they manage. Or a manager could take roles from their admins.
- */
-const checkOutranked = async (
-    ctx: Context,
-    viewer: RouteViewer & { accountId: string },
-    manager: RoleManager,
-    account: AccountRow,
-) => {
-    if (account.id === viewer.accountId) return;
-
-    const highest = (await rolesOf(ctx, account.id))[0]?.priority ?? -Infinity;
-    if (highest >= manager.highest) {
-        throw new NotPermitted("You can only change the roles of accounts below your highest role");
-    }
 };
 
 /** Versia Server's role endpoints, which any user may read. */
@@ -123,12 +101,9 @@ export const roleRoutes: readonly Route[] = [
                 permissions: body.permissions ?? [],
                 priority: body.priority ?? 0,
             };
-            const manager = await roleManager(ctx, viewer.accountId, await viewer.permissions());
-            const refused = refusal(manager, role);
-            if (refused !== undefined) throw new NotPermitted(refused);
-
-            const created = await createRole(ctx, role);
-            if (!created) throw new ValidationFailed({ name: ["A role with this name exists"] });
+            const created = orRefusal(
+                await createManagedRole(ctx, await managerOf(ctx, viewer), role),
+            );
 
             return { status: 201, body: renderVersiaRole(created) };
         },
@@ -158,22 +133,8 @@ export const roleRoutes: readonly Route[] = [
         body: RoleFields.partial(),
         responses: { 200: VersiaRole },
         handler: async (ctx, { viewer, params, body }) => {
-            const { role, manager } = await managedRole(ctx, viewer, params.id);
-
-            // Permissions the role has already may stay, even ones the viewer lacks.
-            const added = body.permissions?.filter((permission) =>
-                !role.permissions.includes(permission)
-            );
-            const refused = refusal(manager, { priority: body.priority, permissions: added });
-            if (refused !== undefined) throw new NotPermitted(refused);
-
-            const named = body.name === undefined ? undefined : await findRole(ctx, body.name);
-            if (named && named.id !== role.id) {
-                throw new ValidationFailed({ name: ["A role with this name exists"] });
-            }
-
-            const updated = await updateRole(ctx, role.id, body);
-            if (!updated) throw new NotFound();
+            const manager = await managerOf(ctx, viewer);
+            const updated = orRefusal(await updateManagedRole(ctx, manager, params.id, body));
 
             return { status: 200, body: renderVersiaRole(updated) };
         },
@@ -187,8 +148,7 @@ export const roleRoutes: readonly Route[] = [
         params: Id,
         responses: { 200: z.strictObject({}) },
         handler: async (ctx, { viewer, params }) => {
-            const { role } = await managedRole(ctx, viewer, params.id);
-            await deleteRole(ctx, role.id);
+            orRefusal(await deleteManagedRole(ctx, await managerOf(ctx, viewer), params.id));
 
             return { status: 200, body: {} };
         },
@@ -218,14 +178,8 @@ export const roleRoutes: readonly Route[] = [
         responses: { 200: z.strictObject({}) },
         handler: async (ctx, { viewer, params }) => {
             const account = await localAccount(ctx, params.id);
-            const { role, manager } = await managedRole(ctx, viewer, params.role_id);
-            await checkOutranked(ctx, viewer, manager, account);
-
-            // Or anyone with a lower role could give themselves permissions they lack.
-            const refused = refusal(manager, { permissions: role.permissions });
-            if (refused !== undefined) throw new NotPermitted(refused);
-
-            await grantRole(ctx, account.id, role.id);
+            const change = { accountId: account.id, roleId: params.role_id, give: true };
+            orRefusal(await changeManagedRole(ctx, await managerOf(ctx, viewer), change));
 
             return { status: 200, body: {} };
         },
@@ -241,11 +195,8 @@ export const roleRoutes: readonly Route[] = [
         responses: { 200: z.strictObject({}) },
         handler: async (ctx, { viewer, params }) => {
             const account = await localAccount(ctx, params.id);
-            const { role, manager } = await managedRole(ctx, viewer, params.role_id);
-            await checkOutranked(ctx, viewer, manager, account);
-
-            // Roles from an issuer's claims stay, since the next login would give them back.
-            await revokeRole(ctx, account.id, role.id);
+            const change = { accountId: account.id, roleId: params.role_id, give: false };
+            orRefusal(await changeManagedRole(ctx, await managerOf(ctx, viewer), change));
 
             return { status: 200, body: {} };
         },

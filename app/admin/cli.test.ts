@@ -100,6 +100,7 @@ Deno.test("roles need a free name, known permissions and a whole priority", asyn
         const [args, message] of [
             [[], "Missing argument"],
             [[" "], "A role needs a name"],
+            [["x".repeat(129)], "Must be at most 128 characters"],
             [["A", "--permissions", "fly"], "fly"],
             [["A", "--priority", "high"], "high"],
             [["A", "--colour", "red"], "colour"],

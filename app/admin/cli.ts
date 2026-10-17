@@ -13,6 +13,7 @@ import {
     listRoles,
     revokeRole,
 } from "../accounts/role_queries.ts";
+import { RoleName } from "../accounts/roles.ts";
 import { rotateInstanceKey } from "../instances/keys.ts";
 import type { Context } from "../kernel/context.ts";
 
@@ -73,11 +74,17 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
                     default: 0,
                 })
                 .action(async ({ config, permissions, priority }, name) => {
-                    if (name.trim() === "") throw new ValidationError("A role needs a name");
+                    // The same rules as the API's, so a role made here can be changed there.
+                    const checked = RoleName.safeParse(name);
+                    if (!checked.success) {
+                        throw new ValidationError(
+                            checked.error.issues[0]?.message ?? "Invalid name",
+                        );
+                    }
 
                     const role = await io.withContext(
                         config,
-                        (ctx) => createRole(ctx, { name: name.trim(), permissions, priority }),
+                        (ctx) => createRole(ctx, { name: checked.data, permissions, priority }),
                     );
                     if (!role) throw new AdminError(`There is already a role named ${name}`);
 
