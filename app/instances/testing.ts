@@ -1,7 +1,7 @@
 import { Instance, Limits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Server } from "../kernel/fake_transport.ts";
-import type { AboutSettings } from "./routes.ts";
+import type { AboutSettings } from "./render.ts";
 
 /** A Versia instance with no key yet, for tests that need remote accounts. Its id is its domain. */
 export const createInstance = async (ctx: Context, domain: string): Promise<string> => {

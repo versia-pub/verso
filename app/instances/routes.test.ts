@@ -5,7 +5,8 @@ import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts
 import { createTestApp } from "../testing/app.ts";
 import { parseConfig } from "../kernel/config.ts";
 import { createTestContext } from "../testing/context.ts";
-import { type AboutSettings, instanceRoutes } from "./routes.ts";
+import type { AboutSettings } from "./render.ts";
+import { instanceRoutes } from "./routes.ts";
 import { createInstance, defaultSettings } from "./testing.ts";
 
 const open = async (settings: AboutSettings = defaultSettings()) => {
