@@ -18,9 +18,10 @@ const issuer: Issuer = {
 const open = async () => {
     const test = await createTestContext();
 
+    // Sorted here, by code point, since databases sort text by their locale.
     const usernames = async () =>
-        (await test.ctx.db.selectFrom("accounts").select("username").orderBy("username").execute())
-            .map((account) => account.username);
+        (await test.ctx.db.selectFrom("accounts").select("username").execute())
+            .map((account) => account.username).toSorted();
 
     return { ...test, usernames };
 };
