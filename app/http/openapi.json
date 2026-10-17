@@ -873,7 +873,7 @@
         "/api/v1/accounts/update_credentials": {
             "patch": {
                 "summary": "Changes the viewer's profile and settings",
-                "description": "Needs a token for a user, not one an app got for itself.",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
                 "tags": [
                     "accounts"
                 ],
@@ -1299,8 +1299,15 @@
         "/api/v1/accounts/lookup": {
             "get": {
                 "summary": "An account, by its username or WebFinger address",
+                "description": "Needs the `read:account` permission.",
                 "tags": [
                     "accounts"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": []
+                    }
                 ],
                 "parameters": [
                     {
@@ -1329,8 +1336,15 @@
         "/api/v1/accounts/{id}": {
             "get": {
                 "summary": "An account",
+                "description": "Needs the `read:account` permission.",
                 "tags": [
                     "accounts"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": []
+                    }
                 ],
                 "parameters": [
                     {
@@ -2132,8 +2146,15 @@
         "/.well-known/webfinger": {
             "get": {
                 "summary": "A local account, by its acct: address",
+                "description": "Needs the `read:account` permission.",
                 "tags": [
                     "versia"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": []
+                    }
                 ],
                 "parameters": [
                     {

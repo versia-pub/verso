@@ -108,7 +108,7 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
         path: "/api/v1/accounts/update_credentials",
         summary: "Changes the viewer's profile and settings",
         tags: ["accounts"],
-        auth: { require: "user", scope: "write:accounts" },
+        auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
         body: credentialChanges(limits),
         responses: { 200: CredentialAccount },
         handler: async (ctx, { viewer, body }) => {
@@ -155,6 +155,7 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
         path: "/api/v1/accounts/lookup",
         summary: "An account, by its username or WebFinger address",
         tags: ["accounts"],
+        auth: { require: "optional", permission: "read:account" },
         query: z.object({ acct: z.string() }),
         responses: { 200: Account },
         handler: async (ctx, { query }) => {
@@ -172,6 +173,7 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
         path: "/api/v1/accounts/:id",
         summary: "An account",
         tags: ["accounts"],
+        auth: { require: "optional", permission: "read:account" },
         params: z.object({ id: z.string() }),
         responses: { 200: Account },
         handler: async (ctx, { params }) => ({

@@ -28,6 +28,7 @@ export const webfingerRoutes: readonly Route[] = [
         summary: "A local account, by its acct: address",
         tags: ["versia"],
         contentType: "application/jrd+json",
+        auth: { require: "optional", permission: "read:account" },
         // The resource is checked by hand, so a bad one gets WebFinger's 400 rather than 422.
         query: z.object({ resource: z.string().optional() }),
         responses: { 200: Jrd },

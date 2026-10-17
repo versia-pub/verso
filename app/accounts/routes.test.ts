@@ -10,6 +10,7 @@ import { Limits } from "../kernel/config.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { accountRoutes } from "./routes.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
+import { webfingerRoutes } from "./webfinger.ts";
 
 const ping = defineRoute({
     method: "GET",
@@ -352,4 +353,39 @@ Deno.test("accounts show their roles, and their owner the highest, with what the
     assertEquals(updated.body.role.id, "Admin");
     assertEquals((await test.get("/api/v1/accounts/alice")).body.roles, shown);
     assertEquals((await test.get("/api/v1/accounts/lookup?acct=alice")).body.roles, shown);
+});
+
+Deno.test("viewing accounts and changing one's own follow what config permits", async () => {
+    await using test = await createTestContext();
+    const routes = [...accountRoutes(Limits.parse({})), ...webfingerRoutes];
+    const app = createApp(test.ctx, routes, {
+        checkResponses: true,
+        // Only users may view accounts, and nobody may change their profile.
+        permissions: { anonymous: [], default: ["read:account"] },
+    });
+    const alice = await createLocalAccount(test.ctx, "alice");
+    const token = await tokenFor(test.ctx, alice);
+    const status = async (path: string, init: RequestInit = {}) => {
+        const response = await app.request(path, init);
+        await response.body?.cancel();
+        return response.status;
+    };
+    const asAlice = { headers: { authorization: `Bearer ${token}` } };
+
+    const views = [
+        `/api/v1/accounts/${alice}`,
+        "/api/v1/accounts/lookup?acct=alice",
+        "/.well-known/webfinger?resource=acct:alice@social.example",
+    ];
+    for (const path of views) {
+        assertEquals(await status(path), 403, path);
+        assertEquals(await status(path, asAlice), 200, path);
+    }
+
+    const update = {
+        method: "PATCH",
+        headers: { ...asAlice.headers, "content-type": "application/json" },
+        body: '{"display_name":"Alice"}',
+    };
+    assertEquals(await status("/api/v1/accounts/update_credentials", update), 403);
 });
