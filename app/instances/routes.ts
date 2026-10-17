@@ -12,7 +12,7 @@ import denoConfig from "../../deno.json" with { type: "json" };
 import { countActiveAccounts, countLocalAccounts, findLocalAccount } from "../accounts/accounts.ts";
 import { identiconBanner } from "../accounts/identicon.ts";
 import { renderAccount } from "../accounts/render.ts";
-import { rolesOf } from "../accounts/roles.ts";
+import { rolesOf } from "../accounts/role_queries.ts";
 import { escapeHtml, textToHtml } from "../accounts/text.ts";
 import { NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route } from "../http/route.ts";

@@ -7,7 +7,7 @@ import type { Context } from "../kernel/context.ts";
 import type { AccountRow } from "./accounts.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { mastodonPermissions } from "./permissions.ts";
-import type { RoleRow } from "./roles.ts";
+import type { RoleRow } from "./role_queries.ts";
 import type { ProfileField } from "./tables.ts";
 
 /** The role Mastodon gives users without one. */

@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
-import { accountPermissions, refusal, roleManager, rolesOf } from "./roles.ts";
+import { rolesOf } from "./role_queries.ts";
+import { accountPermissions, refusal, roleManager } from "./roles.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 
 Deno.test("an account may do what every user may, and what each of its roles allows", async () => {

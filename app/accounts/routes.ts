@@ -9,7 +9,7 @@ import { type AccountRow, findAccount, findLocalAccount, localAccountIds } from 
 import { pictureRoutes } from "./picture_routes.ts";
 import { updateProfile } from "./profile.ts";
 import { renderAccount, renderCredentialAccount, renderRelationship } from "./render.ts";
-import { rolesOf } from "./roles.ts";
+import { rolesOf } from "./role_queries.ts";
 
 /**
  * Only local accounts are shown for now: remote ones arrive with federation, along with the

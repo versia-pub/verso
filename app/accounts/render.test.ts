@@ -5,7 +5,7 @@ import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findAccount } from "./accounts.ts";
 import { renderAccount, renderCredentialAccount } from "./render.ts";
-import type { RoleRow } from "./roles.ts";
+import type { RoleRow } from "./role_queries.ts";
 import type { ProfileField } from "./tables.ts";
 import { createLocalAccount } from "./testing.ts";
 

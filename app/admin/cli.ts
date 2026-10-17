@@ -6,7 +6,13 @@
 import { Command, EnumType, ValidationError } from "@cliffy/command";
 import { permissions } from "../kernel/permissions.ts";
 import { findLocalAccount } from "../accounts/accounts.ts";
-import { createRole, findRole, grantRole, listRoles, revokeRole } from "../accounts/roles.ts";
+import {
+    createRole,
+    findRole,
+    grantRole,
+    listRoles,
+    revokeRole,
+} from "../accounts/role_queries.ts";
 import { rotateInstanceKey } from "../instances/keys.ts";
 import type { Context } from "../kernel/context.ts";
 

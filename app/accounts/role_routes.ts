@@ -13,14 +13,12 @@ import {
     findRoleById,
     grantRole,
     listRoles,
-    refusal,
     revokeRole,
-    type RoleManager,
-    roleManager,
     type RoleRow,
     rolesOf,
     updateRole,
-} from "./roles.ts";
+} from "./role_queries.ts";
+import { refusal, type RoleManager, roleManager } from "./roles.ts";
 
 const Id = z.object({ id: z.string() });
 const AccountAndRole = z.object({ id: z.string(), role_id: z.string() });
