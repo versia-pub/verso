@@ -21,7 +21,7 @@ import { type Config, readConfig } from "./kernel/config.ts";
 import { type Context, createContext } from "./kernel/context.ts";
 import { idGenerator } from "./kernel/ids.ts";
 import { setUpLogging } from "./kernel/logging.ts";
-import { fetchTransport } from "./kernel/transport.ts";
+import { federationTransport, fetchTransport } from "./kernel/transport.ts";
 import { urlBuilder } from "./kernel/urls.ts";
 
 const banner = `
@@ -87,7 +87,7 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
         clock: systemClock,
         ids: idGenerator(systemClock),
         urls,
-        transport: fetchTransport,
+        transport: federationTransport(),
         identityProviders,
         db,
     });
