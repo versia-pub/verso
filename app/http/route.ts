@@ -11,6 +11,12 @@ type Empty = z.ZodType<Record<string, never>>;
 /** Declares a response that is an HTML page, for the few that browsers see rather than clients. */
 export const Page = { kind: "page" } as const;
 
+/**
+ * The type Versia's entity endpoints answer with, for a route's `contentType`.
+ * @see https://versia.pub/federation/http#http-response-content-type
+ */
+export const versiaJson = "application/vnd.versia+json; charset=utf-8";
+
 /** Declares a response that redirects, to the URL in its `Location` header. */
 export const Redirect = { kind: "redirect" } as const;
 

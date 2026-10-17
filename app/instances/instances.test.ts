@@ -3,7 +3,7 @@ import type { Database } from "../db/database.ts";
 import { migrate } from "../db/migrate.ts";
 import { migrations } from "../db/migrations/mod.ts";
 import { testDatabase } from "../db/testing.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "./testing.ts";
 
 const remoteAccount = (instanceId: string) => ({

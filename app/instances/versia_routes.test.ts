@@ -2,7 +2,7 @@ import { assertEquals, assertNotEquals } from "@std/assert";
 import { firstMigratedAt } from "../db/migrate.ts";
 import { createTestApp } from "../testing/app.ts";
 import { Instance } from "../kernel/config.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { instanceKey, rotateInstanceKey } from "./keys.ts";
 import { versiaInstanceRoutes } from "./versia_routes.ts";
 

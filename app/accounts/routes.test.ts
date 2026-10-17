@@ -7,7 +7,7 @@ import { memoryRateLimitStore } from "../http/rate_limits.ts";
 import { defineRoute } from "../http/route.ts";
 import { createInstance } from "../instances/testing.ts";
 import { Limits } from "../kernel/config.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { accountRoutes } from "./routes.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 import { webfingerRoutes } from "./webfinger.ts";

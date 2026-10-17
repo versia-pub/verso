@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { accountPermissions, refusal, roleManager, rolesOf } from "./roles.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 

@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertNotEquals, assertRejects } from "@std/assert";
 import { importPublicKey, sign, verify } from "@versia/protocol";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createInstanceKey, ensureInstanceKey, type InstanceKey, instanceKey } from "./keys.ts";
 
 const message = { method: "GET", pathname: "/.versia/v0.6/instance", body: new Uint8Array() };

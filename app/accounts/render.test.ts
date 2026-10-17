@@ -2,7 +2,7 @@ import { assertEquals, assertExists } from "@std/assert";
 import { Account, CredentialAccount } from "@versia/client-api";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { findAccount } from "./accounts.ts";
 import { renderAccount, renderCredentialAccount } from "./render.ts";
 import type { RoleRow } from "./roles.ts";

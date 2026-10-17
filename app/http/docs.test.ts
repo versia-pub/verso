@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { docsRoute } from "./docs.ts";
 

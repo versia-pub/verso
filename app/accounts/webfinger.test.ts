@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createTestApp } from "../testing/app.ts";
 import { createInstance } from "../instances/testing.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createLocalAccount } from "./testing.ts";
 import { webfingerRoutes } from "./webfinger.ts";
 

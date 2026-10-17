@@ -4,7 +4,7 @@ import { queues, tasks } from "../jobs/queues.ts";
 import { schedule } from "../jobs/scheduler.ts";
 import { drain } from "../jobs/worker.ts";
 import type { IdentityProvider } from "../kernel/identity.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
 import { flowCookie, formTokenIn, registerTestApp, stubProvider } from "./testing.ts";

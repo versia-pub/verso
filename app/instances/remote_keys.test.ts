@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import { fakeTransport, type Server } from "../kernel/fake_transport.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { remoteKeys } from "./remote_keys.ts";
 import { type KeyPair, keyPair, metadata, metadataServer } from "./testing.ts";
 

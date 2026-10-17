@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { createTestApp } from "../testing/app.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { authRoutes } from "./routes.ts";
 
 Deno.test("the OAuth metadata names this server's endpoints", async () => {

@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { enqueue } from "./queue.ts";
 import { drain, pause, type Queue, work } from "./worker.ts";
 

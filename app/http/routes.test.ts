@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { defaultSettings } from "../instances/testing.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import snapshot from "./openapi.json" with { type: "json" };
 import { routes } from "./routes.ts";

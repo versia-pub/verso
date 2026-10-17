@@ -5,7 +5,7 @@ import { instanceKey } from "../instances/keys.ts";
 import { remoteKeys } from "../instances/remote_keys.ts";
 import { type KeyPair, keyPair, metadataServer } from "../instances/testing.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { defineRoute } from "./route.ts";
 

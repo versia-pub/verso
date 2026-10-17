@@ -5,8 +5,7 @@
 import { v0_6 } from "@versia/protocol";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
-import { defineRoute, type Route } from "../http/route.ts";
-import { versiaJson } from "../instances/versia_routes.ts";
+import { defineRoute, type Route, versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import { type AccountRow, findAccount } from "./accounts.ts";
 import type { TextFormat } from "./tables.ts";

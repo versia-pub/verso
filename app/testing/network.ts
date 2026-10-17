@@ -6,7 +6,7 @@ import { queues as allQueues } from "../jobs/queues.ts";
 import { drain, type Queue } from "../jobs/worker.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
 import { type FakeTransport, fakeTransport } from "../kernel/fake_transport.ts";
-import { createTestContext, type TestContext } from "../kernel/testing.ts";
+import { createTestContext, type TestContext } from "../testing/context.ts";
 
 export type Instance = TestContext & { readonly app: App };
 

@@ -5,7 +5,7 @@ import { routes } from "../http/routes.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createFakeIdentityProvider } from "../testing/fake_idp.ts";
 import { oidcProvider } from "./oidc.ts";
 import { hashToken, randomToken } from "./secrets.ts";

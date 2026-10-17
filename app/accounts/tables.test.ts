@@ -4,7 +4,7 @@ import { migrate } from "../db/migrate.ts";
 import { migrations } from "../db/migrations/mod.ts";
 import { testDatabase } from "../db/testing.ts";
 import type { Context } from "../kernel/context.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createLocalAccount } from "./testing.ts";
 
 /** The columns this test uses. Fields are `{ name, value }` before 0012, and gain more after. */

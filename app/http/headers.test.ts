@@ -1,7 +1,7 @@
 import { html } from "@hono/hono/html";
 import { assertEquals } from "@std/assert";
 import { z } from "zod";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { urlBuilder } from "../kernel/urls.ts";
 import { createTestApp } from "../testing/app.ts";
 import { layout } from "./page.ts";

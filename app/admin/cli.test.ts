@@ -4,7 +4,7 @@ import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { adminCommand, AdminError } from "./cli.ts";
 
 /** Runs `verso admin` with `args` on `ctx`, and returns what it printed. */

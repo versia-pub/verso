@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { backoffMs, claim, complete, deleteExpiredJobs, enqueue, fail } from "./queue.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";

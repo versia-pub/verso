@@ -2,15 +2,9 @@ import { v0_6 } from "@versia/protocol";
 import { z } from "zod";
 import denoConfig from "../../deno.json" with { type: "json" };
 import { firstMigratedAt } from "../db/migrate.ts";
-import { defineRoute, type Route } from "../http/route.ts";
+import { defineRoute, type Route, versiaJson } from "../http/route.ts";
 import type { Config } from "../kernel/config.ts";
 import { instanceKey } from "./keys.ts";
-
-/**
- * The type Versia's entity endpoints answer with.
- * @see https://versia.pub/federation/http#http-response-content-type
- */
-export const versiaJson = "application/vnd.versia+json; charset=utf-8";
 
 /**
  * How other instances find out about this one: which versions of Versia it speaks, then what it

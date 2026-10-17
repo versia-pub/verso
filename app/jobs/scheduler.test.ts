@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { fakeClock } from "../kernel/clock.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { claim, complete, deleteExpiredJobs } from "./queue.ts";
 import { schedule, type Task } from "./scheduler.ts";
 

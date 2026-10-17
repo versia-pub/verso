@@ -3,7 +3,7 @@ import { z } from "zod";
 import { tokenFor } from "../auth/testing.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
 import { CidrText } from "../kernel/ip.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { defineRoute } from "./route.ts";
 import {

@@ -1,7 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { createTestApp } from "../testing/app.ts";
 import type { AppRegistration } from "./apps.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
 import { flowCookie, formTokenIn, registerTestApp, stubProvider } from "./testing.ts";

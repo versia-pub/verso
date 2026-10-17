@@ -3,12 +3,12 @@ import type { Database } from "../db/database.ts";
 import { migrate } from "../db/migrate.ts";
 import { ensureInstanceKey } from "../instances/keys.ts";
 import { testDatabase } from "../db/testing.ts";
-import { type FakeClock, fakeClock } from "./clock.ts";
-import { type Context, createContext } from "./context.ts";
-import type { IdentityProvider } from "./identity.ts";
-import { type FakeTransport, fakeTransport } from "./fake_transport.ts";
-import { countingRandom, idGenerator } from "./ids.ts";
-import { urlBuilder } from "./urls.ts";
+import { type FakeClock, fakeClock } from "../kernel/clock.ts";
+import { type Context, createContext } from "../kernel/context.ts";
+import type { IdentityProvider } from "../kernel/identity.ts";
+import { type FakeTransport, fakeTransport } from "../kernel/fake_transport.ts";
+import { countingRandom, idGenerator } from "../kernel/ids.ts";
+import { urlBuilder } from "../kernel/urls.ts";
 
 export type TestContextOptions = {
     /** Defaults to `social.example`. */

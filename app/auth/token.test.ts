@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { createTestApp } from "../testing/app.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { registerApp } from "./apps.ts";
 import { authRoutes } from "./routes.ts";

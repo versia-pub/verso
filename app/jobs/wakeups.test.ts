@@ -3,7 +3,7 @@ import { PostgresDialect } from "kysely";
 import pg from "pg";
 import { connect, type Database } from "../db/database.ts";
 import { testDatabaseKind, testPostgresUrl } from "../db/testing.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { enqueue } from "./queue.ts";
 import { listenForJobs } from "./wakeups.ts";
 import { work } from "./worker.ts";

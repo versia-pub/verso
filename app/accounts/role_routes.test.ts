@@ -4,7 +4,7 @@ import { tokenFor } from "../auth/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { roleRoutes } from "./role_routes.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 

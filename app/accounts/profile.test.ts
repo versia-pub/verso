@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { createInstance } from "../instances/testing.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { updateProfile } from "./profile.ts";
 
 Deno.test("a remote account's profile isn't changed here", async () => {

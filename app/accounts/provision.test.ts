@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { sql } from "kysely";
 import { testDatabaseKind } from "../db/testing.ts";
-import { createTestContext } from "../kernel/testing.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Issuer } from "../kernel/identity.ts";
 import { displayNameFrom, provision, type Provisioned, usernameFrom } from "./provision.ts";
