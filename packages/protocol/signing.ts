@@ -5,7 +5,7 @@
  * bytes exactly as they were signed. Parsing and re-serialising JSON in between breaks them.
  * @see https://versia.pub/signatures
  */
-import { canonicalize } from "./reference.ts";
+import { canonicalizeDomain } from "./reference.ts";
 
 /** A request, or a response to one. Responses use the method and pathname of their request. */
 export interface SignedMessage {
@@ -66,9 +66,10 @@ export const sign = async (
 
 /**
  * Checks the Versia-* headers on `message`. `publicKeyOf` looks up the public key of the
- * instance named in Versia-Signed-By, in canonical form (see reference.ts), which is also what
- * `signedBy` holds on success. It is only called once the headers and timestamp have been checked,
- * so a malformed header can't make it fetch anything.
+ * instance named in Versia-Signed-By, in canonical form (see `canonicalizeDomain`), which is also
+ * what `signedBy` holds on success. It is only called once the headers and timestamp have been
+ * checked, and only with a domain name, never an IP address or a port, so a request can.t point it
+ * at an address inside Verso.s own network.
  */
 export const verify = async (
     message: SignedMessage,
@@ -77,7 +78,7 @@ export const verify = async (
     now: Date,
 ): Promise<Verification> => {
     const signature = decodeSignature(headers.get("Versia-Signature"));
-    const signedBy = canonicalize(headers.get("Versia-Signed-By") ?? "");
+    const signedBy = canonicalizeDomain(headers.get("Versia-Signed-By") ?? "");
     const signedAt = headers.get("Versia-Signed-At");
 
     if (

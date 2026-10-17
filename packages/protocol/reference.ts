@@ -60,3 +60,17 @@ export const canonicalize = (host: string): string | undefined => {
         url.hash === "" && url.username === "" && url.password === "";
     return onlyHost ? url.host : undefined;
 };
+
+/**
+ * Returns the canonical form of an instance's domain, as `Versia-Signed-By` gives it, or undefined
+ * if it isn't one: a name with at least two labels, whose last has a letter, and no port. Unlike a
+ * reference's hostname, an IP address or a single label such as `localhost` isn't accepted, since
+ * the instance it names is fetched from, which must not reach into Verso's own network.
+ * @see https://versia.pub/types#domain
+ */
+export const canonicalizeDomain = (domain: string): string | undefined => {
+    const host = canonicalize(domain);
+    return host !== undefined && /^([a-z0-9-]+\.)+[a-z0-9-]*[a-z][a-z0-9-]*$/.test(host)
+        ? host
+        : undefined;
+};

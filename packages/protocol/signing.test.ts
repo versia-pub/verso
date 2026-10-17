@@ -167,13 +167,27 @@ Deno.test("public keys are imported from SPKI base64 only", async () => {
     assertEquals(await importPublicKey("not base64!"), undefined);
 });
 
-Deno.test("the signer is a canonical hostname, checked before any lookup", async () => {
+Deno.test("the signer is a canonical domain name, checked before any lookup", async () => {
     assertEquals(await check({}, { "Versia-Signed-By": "BOB.com" }), {
         ok: true,
         signedBy: "bob.com",
     });
 
-    for (const signedBy of ["", "bob.com/x", "u@bob.com", "bob.com?x"]) {
+    // Addresses inside Verso's own network can't be named, as an IP address, a port or one label.
+    const refused = [
+        "",
+        "bob.com/x",
+        "u@bob.com",
+        "bob.com?x",
+        "bob.com:8443",
+        "127.0.0.1",
+        "10.0.0.5:443",
+        "0x7f.1",
+        "[::1]",
+        "localhost",
+        "bob.com.",
+    ];
+    for (const signedBy of refused) {
         let lookedUp = false;
 
         const received = new Headers(headers);
