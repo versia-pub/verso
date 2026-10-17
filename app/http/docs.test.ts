@@ -1,6 +1,6 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { createTestContext } from "../kernel/testing.ts";
-import { createApp } from "./app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { docsRoute } from "./docs.ts";
 
 const scalar =
@@ -8,7 +8,7 @@ const scalar =
 
 Deno.test("the docs page runs only pinned Scalar, which talks only to Verso", async () => {
     await using test = await createTestContext();
-    const app = createApp(test.ctx, [docsRoute], { checkResponses: true });
+    const app = createTestApp(test.ctx, [docsRoute], { checkResponses: true });
 
     const response = await app.request("/docs");
     const page = await response.text();

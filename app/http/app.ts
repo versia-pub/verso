@@ -6,11 +6,7 @@ import { sign, verify } from "@versia/protocol";
 import qs from "qs";
 import { z } from "zod";
 import type { Permission } from "../kernel/permissions.ts";
-import { accountPermissions } from "../accounts/roles.ts";
 import { grants } from "../kernel/scopes.ts";
-import { authenticateToken } from "../auth/tokens.ts";
-import { instanceKey } from "../instances/keys.ts";
-import { type RemoteKeys, remoteKeys } from "../instances/remote_keys.ts";
 import { Permissions } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import { type Cidr, parseAddress } from "../kernel/ip.ts";
@@ -190,14 +186,19 @@ const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType 
  * Who is calling, checked against the route's `auth` as Mastodon checks it. A token sent where none
  * is needed is ignored; on other routes, a token sent must be valid.
  */
-const viewerOf = async (ctx: Context, c: HonoContext<AppEnv>, route: Route) => {
+const viewerOf = async (
+    ctx: Context,
+    c: HonoContext<AppEnv>,
+    route: Route,
+    services: AppServices,
+) => {
     if (!route.auth) return undefined;
 
     if (c.req.header("authorization") === undefined && route.auth.require === "optional") {
         return undefined;
     }
 
-    const viewer = await bearerOf(ctx, c);
+    const viewer = await bearerOf(ctx, c, services);
 
     if (!viewer) throw new Unauthorized();
     if (route.auth.require === "user" && viewer.accountId === null) throw new UserRequired();
@@ -215,6 +216,7 @@ const withPermissions = (
     ctx: Context,
     viewer: Viewer,
     permissions: Permissions,
+    services: AppServices,
 ): RouteViewer => {
     let granted: Promise<ReadonlySet<Permission>> | undefined;
 
@@ -223,7 +225,7 @@ const withPermissions = (
         permissions: () =>
             granted ??= viewer.accountId === null
                 ? Promise.resolve(new Set(permissions.anonymous))
-                : accountPermissions(ctx, viewer.accountId, permissions.default),
+                : services.permissionsOf(ctx, viewer.accountId, permissions.default),
     };
 };
 
@@ -244,11 +246,11 @@ const checkPermission = async (
  * The viewer the request's bearer token stands for, if it is valid. It is looked up once, though
  * both the rate limit and the route ask.
  */
-const bearerOf = (ctx: Context, c: HonoContext<AppEnv>) => {
+const bearerOf = (ctx: Context, c: HonoContext<AppEnv>, services: AppServices) => {
     const token = /^Bearer\s+(\S+)$/i.exec(c.req.header("authorization") ?? "")?.[1];
     if (token === undefined) return Promise.resolve(undefined);
 
-    const bearer = c.get("bearer") ?? authenticateToken(ctx, token);
+    const bearer = c.get("bearer") ?? services.authenticate(ctx, token);
     c.set("bearer", bearer);
 
     return bearer;
@@ -262,8 +264,9 @@ const rateLimitKey = async (
     ctx: Context,
     c: HonoContext<AppEnv>,
     trustedProxies: readonly Cidr[],
+    services: AppServices,
 ) => {
-    const viewer = await bearerOf(ctx, c);
+    const viewer = await bearerOf(ctx, c, services);
     if (viewer) return `token:${viewer.tokenId}`;
 
     const peer = c.env?.remoteAddr?.hostname ?? "unknown";
@@ -337,7 +340,7 @@ const send = (c: HonoContext, route: Route, reply: Reply<Responses>) => {
  * The domain of the instance that signed the request. When the key Verso has for it doesn't
  * verify, the key is fetched again, at most so often, in case the instance rotated it.
  */
-const signerOf = async (ctx: Context, c: HonoContext, keys: RemoteKeys) => {
+const signerOf = async (ctx: Context, c: HonoContext, keys: AppServices["remoteKeys"]) => {
     const message = {
         method: c.req.method,
         pathname: new URL(c.req.url).pathname,
@@ -372,14 +375,19 @@ const signerOf = async (ctx: Context, c: HonoContext, keys: RemoteKeys) => {
  * so the instance that asked can tell it came from here unchanged.
  * @see https://versia.pub/signatures
  */
-const signReply = async (ctx: Context, c: HonoContext, response: Response) => {
+const signReply = async (
+    ctx: Context,
+    c: HonoContext,
+    response: Response,
+    services: AppServices,
+) => {
     const headers = await sign(
         {
             method: c.req.method,
             pathname: new URL(c.req.url).pathname,
             body: new Uint8Array(await response.clone().arrayBuffer()),
         },
-        (await instanceKey(ctx)).privateKey,
+        await services.signingKey(ctx),
         new URL(ctx.urls.origin).hostname,
         ctx.clock.now(),
     );
@@ -388,10 +396,33 @@ const signReply = async (ctx: Context, c: HonoContext, response: Response) => {
     return response;
 };
 
+/**
+ * What the app needs from the rest of Verso, which `main.ts` wires up, so the HTTP layer doesn't
+ * depend on the modules that serve it.
+ */
+export type AppServices = {
+    /** The viewer an access token stands for, if this server gave it out and it is still valid. */
+    readonly authenticate: (ctx: Context, token: string) => Promise<Viewer | undefined>;
+    /** What an account may do: what config lets every user, and what its roles allow. */
+    readonly permissionsOf: (
+        ctx: Context,
+        accountId: string,
+        everyUser: readonly Permission[],
+    ) => Promise<ReadonlySet<Permission>>;
+    /** The private key replies to other instances are signed with. */
+    readonly signingKey: (ctx: Context) => Promise<CryptoKey>;
+    /** Other instances' keys, to check their signatures with. */
+    readonly remoteKeys: {
+        readonly get: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
+        readonly refresh: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
+    };
+};
+
 /** The server's HTTP app. */
 export type App = Hono<AppEnv>;
 
 export type AppOptions = {
+    readonly services: AppServices;
     /** Checks every reply against its route's declared response schemas. For tests. */
     readonly checkResponses?: boolean;
     /** Without them, requests aren't limited. */
@@ -400,19 +431,16 @@ export type AppOptions = {
     readonly trustedProxies?: readonly Cidr[];
     /** What everyone may do, before roles add more. Without it, what config allows by default. */
     readonly permissions?: Permissions;
-    /** Other instances' keys, to check signatures with. Without it, the app keeps its own. */
-    readonly remoteKeys?: RemoteKeys;
 };
 
 /** Every route the server answers. Tests call its `fetch` directly, with no network in between. */
 export const createApp = (
     ctx: Context,
     routes: readonly Route[],
-    options: AppOptions = {},
+    options: AppOptions,
 ): App => {
     const app = new Hono<AppEnv>();
     const permissions = options.permissions ?? Permissions.parse({});
-    const keys = options.remoteKeys ?? remoteKeys();
     useHeaders(app, ctx.urls.origin);
 
     // Replies are about one user, or carry secrets such as tokens, so nothing may cache them,
@@ -432,9 +460,11 @@ export const createApp = (
 
     const handle = (route: Route) => {
         app.on(route.method, route.path, async (c) => {
-            const signedBy = route.signed ? await signerOf(ctx, c, keys) : undefined;
-            const bearer = await viewerOf(ctx, c, route);
-            const viewer = bearer && withPermissions(ctx, bearer, permissions);
+            const signedBy = route.signed
+                ? await signerOf(ctx, c, options.services.remoteKeys)
+                : undefined;
+            const bearer = await viewerOf(ctx, c, route, options.services);
+            const viewer = bearer && withPermissions(ctx, bearer, permissions, options.services);
             await checkPermission(route, viewer, permissions);
             const input = await inputOf(c, route).catch((error) => {
                 throw route.oauthErrors ? asOAuthError(error) : error;
@@ -444,7 +474,7 @@ export const createApp = (
             if (options.checkResponses) checkReply(route, reply);
 
             const response = await send(c, route, reply);
-            return route.signed ? await signReply(ctx, c, response) : response;
+            return route.signed ? await signReply(ctx, c, response, options.services) : response;
         });
     };
 
@@ -460,7 +490,7 @@ export const createApp = (
         app.use(rateLimit<AppEnv>(
             ctx.clock,
             limits,
-            (c) => rateLimitKey(ctx, c, options.trustedProxies ?? []),
+            (c) => rateLimitKey(ctx, c, options.trustedProxies ?? [], options.services),
         ));
     }
 

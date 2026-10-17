@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { VersiaRole } from "@versia/client-api";
 import { tokenFor } from "../auth/testing.ts";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../kernel/testing.ts";
@@ -11,7 +11,7 @@ import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 const open = async () => {
     const test = await createTestContext();
     // Users may do only what their roles allow, so the tests can tell what each gives.
-    const app = createApp(test.ctx, roleRoutes, {
+    const app = createTestApp(test.ctx, roleRoutes, {
         checkResponses: true,
         permissions: { anonymous: [], default: [] },
     });

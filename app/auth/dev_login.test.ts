@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { routes } from "../http/routes.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { createTestContext } from "../kernel/testing.ts";
@@ -11,7 +11,7 @@ import { flowCookie, registerTestApp } from "./testing.ts";
 const open = async (enabled = true) => {
     const dev = devLogin(enabled, urlBuilder("social.example"));
     const test = await createTestContext({ identityProviders: dev.providers });
-    const verso = createApp(test.ctx, [...routes(defaultSettings()), ...dev.routes], {
+    const verso = createTestApp(test.ctx, [...routes(defaultSettings()), ...dev.routes], {
         checkResponses: true,
     });
 

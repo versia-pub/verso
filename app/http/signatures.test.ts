@@ -6,7 +6,7 @@ import { remoteKeys } from "../instances/remote_keys.ts";
 import { type KeyPair, keyPair, metadataServer } from "../instances/testing.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
 import { createTestContext } from "../kernel/testing.ts";
-import { createApp } from "./app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { defineRoute } from "./route.ts";
 
 const routes = [
@@ -42,9 +42,9 @@ const open = async () => {
     const test = await createTestContext({ transport });
     const pair = await keyPair();
     transport.servers.set("b.example", metadataServer("b.example", pair));
-    const app = createApp(test.ctx, routes, {
+    const app = createTestApp(test.ctx, routes, {
         checkResponses: true,
-        remoteKeys: remoteKeys({ refetchAfterMs: 1000 }),
+        services: { remoteKeys: remoteKeys({ refetchAfterMs: 1000 }) },
     });
 
     /** Sends a request signed as `signedBy` with `key`, over `signed` unless the request differs. */

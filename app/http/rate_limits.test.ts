@@ -4,7 +4,7 @@ import { tokenFor } from "../auth/testing.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
 import { CidrText } from "../kernel/ip.ts";
 import { createTestContext } from "../kernel/testing.ts";
-import { createApp } from "./app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { defineRoute } from "./route.ts";
 import {
     consume,
@@ -121,7 +121,7 @@ const ping = defineRoute({
 /** An app allowing two requests every 30 seconds, behind a proxy at 10.0.0.1. */
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [ping], {
+    const app = createTestApp(test.ctx, [ping], {
         rateLimits: { store: memoryRateLimitStore(test.clock), policy },
         trustedProxies: [CidrText.parse("10.0.0.1")],
     });

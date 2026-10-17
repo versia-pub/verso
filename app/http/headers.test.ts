@@ -3,7 +3,7 @@ import { assertEquals } from "@std/assert";
 import { z } from "zod";
 import { createTestContext } from "../kernel/testing.ts";
 import { urlBuilder } from "../kernel/urls.ts";
-import { createApp } from "./app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { layout } from "./page.ts";
 import { defineRoute, Page } from "./route.ts";
 
@@ -30,7 +30,7 @@ const open = async (origin?: string) => {
         ? test.ctx
         : { ...test.ctx, urls: urlBuilder("social.example", origin) };
 
-    return { ...test, app: createApp(ctx, [thing, login]) };
+    return { ...test, app: createTestApp(ctx, [thing, login]) };
 };
 
 const headersOf = async (response: Response) => {

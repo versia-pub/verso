@@ -1,5 +1,5 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
@@ -7,7 +7,7 @@ import { tokenFor } from "./testing.ts";
 
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, authRoutes, { checkResponses: true });
+    const app = createTestApp(test.ctx, authRoutes, { checkResponses: true });
 
     const register = async (body: Record<string, unknown> | URLSearchParams) => {
         const json = !(body instanceof URLSearchParams);

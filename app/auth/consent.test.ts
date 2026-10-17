@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import type { AppRegistration } from "./apps.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { authRoutes } from "./routes.ts";
@@ -10,7 +10,7 @@ const open = async (provider = stubProvider(), registration: Partial<AppRegistra
     const test = await createTestContext({
         identityProviders: { [provider.issuer.url]: provider },
     });
-    const http = createApp(test.ctx, authRoutes, { checkResponses: true });
+    const http = createTestApp(test.ctx, authRoutes, { checkResponses: true });
 
     const { app } = await registerTestApp(test.ctx, registration);
 

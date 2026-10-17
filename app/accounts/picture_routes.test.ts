@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { pictureRoutes } from "./picture_routes.ts";
 import { createLocalAccount } from "./testing.ts";
@@ -11,7 +11,7 @@ Deno.test("an account's pictures are drawn once, and only for accounts that exis
         drawn.push(`${name}:${seed}`);
         return Promise.resolve(new TextEncoder().encode(`${name} of ${seed}`));
     };
-    const app = createApp(
+    const app = createTestApp(
         test.ctx,
         pictureRoutes({ avatar: draw("avatar"), header: draw("header") }),
     );

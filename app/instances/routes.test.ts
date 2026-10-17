@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { tokenFor } from "../auth/testing.ts";
 import { identiconBanner } from "../accounts/identicon.ts";
 import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { parseConfig } from "../kernel/config.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { type AboutSettings, instanceRoutes } from "./routes.ts";
@@ -10,7 +10,7 @@ import { createInstance, defaultSettings } from "./testing.ts";
 
 const open = async (settings: AboutSettings = defaultSettings()) => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, instanceRoutes(settings), { checkResponses: true });
+    const app = createTestApp(test.ctx, instanceRoutes(settings), { checkResponses: true });
 
     const get = async () => (await app.request("/api/v2/instance")).json();
     const fetch = async (path: string) => {

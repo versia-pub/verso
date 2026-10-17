@@ -1,6 +1,6 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { firstMigratedAt } from "../db/migrate.ts";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { Instance } from "../kernel/config.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { instanceKey, rotateInstanceKey } from "./keys.ts";
@@ -8,7 +8,7 @@ import { versiaInstanceRoutes } from "./versia_routes.ts";
 
 const open = async (instance = Instance.parse({})) => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, versiaInstanceRoutes(instance), { checkResponses: true });
+    const app = createTestApp(test.ctx, versiaInstanceRoutes(instance), { checkResponses: true });
 
     const get = async (path: string) => {
         const response = await app.request(path);

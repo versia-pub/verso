@@ -2,7 +2,7 @@ import { html } from "@hono/hono/html";
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { z } from "zod";
 import { createTestContext } from "../kernel/testing.ts";
-import { createApp } from "./app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
 import { layout } from "./page.ts";
 import { Binary, defineRoute, Page, Redirect } from "./route.ts";
@@ -145,7 +145,7 @@ const echo = defineRoute({
 
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [
+    const app = createTestApp(test.ctx, [
         rename,
         echo,
         sloppy,
@@ -441,7 +441,7 @@ Deno.test("a file is sent as its declared type, and cached only when it is sent"
 
 Deno.test("with checks off, replies are sent as they are", async () => {
     await using test = await open();
-    const app = createApp(test.ctx, [sloppy]);
+    const app = createTestApp(test.ctx, [sloppy]);
 
     const response = await app.request("/sloppy");
 

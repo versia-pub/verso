@@ -5,7 +5,7 @@ import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts
 import { tokenFor } from "../auth/testing.ts";
 import type { Permissions } from "../kernel/config.ts";
 import { createTestContext } from "../kernel/testing.ts";
-import { createApp } from "./app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { defineRoute } from "./route.ts";
 
 const Answer = z.object({ app: z.string().nullable(), account: z.string().nullable() });
@@ -96,7 +96,7 @@ const routes = [
 
 const open = async (permissions?: Permissions) => {
     const test = await createTestContext();
-    const http = createApp(test.ctx, routes, { checkResponses: true, permissions });
+    const http = createTestApp(test.ctx, routes, { checkResponses: true, permissions });
 
     await createLocalAccount(test.ctx, "alice");
 

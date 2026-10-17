@@ -1,11 +1,11 @@
 import { assertEquals } from "@std/assert";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { authRoutes } from "./routes.ts";
 
 Deno.test("the OAuth metadata names this server's endpoints", async () => {
     await using test = await createTestContext();
-    const http = createApp(test.ctx, authRoutes, { checkResponses: true });
+    const http = createTestApp(test.ctx, authRoutes, { checkResponses: true });
 
     const response = await http.request("/.well-known/oauth-authorization-server");
     const metadata = await response.json();

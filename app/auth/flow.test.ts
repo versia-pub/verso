@@ -1,6 +1,6 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import type { IssuerConfig } from "../kernel/identity.ts";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { routes } from "../http/routes.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { fakeClock } from "../kernel/clock.ts";
@@ -37,7 +37,7 @@ const open = async () => {
             [issuer.url]: oidcProvider(issuer, { transport, clock }),
         },
     });
-    const verso = createApp(test.ctx, routes(defaultSettings()), { checkResponses: true });
+    const verso = createTestApp(test.ctx, routes(defaultSettings()), { checkResponses: true });
 
     /** A browser that sends Verso's requests to Verso and the rest to the network, with cookies. */
     let cookie = "";

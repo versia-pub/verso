@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { registerApp } from "./apps.ts";
@@ -9,7 +9,7 @@ import { registerTestApp } from "./testing.ts";
 
 const open = async () => {
     const test = await createTestContext();
-    const http = createApp(test.ctx, authRoutes, { checkResponses: true });
+    const http = createTestApp(test.ctx, authRoutes, { checkResponses: true });
 
     const { app, clientSecret } = await registerTestApp(test.ctx);
 

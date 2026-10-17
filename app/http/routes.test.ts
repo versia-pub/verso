@@ -1,14 +1,14 @@
 import { assertEquals } from "@std/assert";
 import { defaultSettings } from "../instances/testing.ts";
 import { createTestContext } from "../kernel/testing.ts";
-import { createApp } from "./app.ts";
+import { createTestApp } from "../testing/app.ts";
 import snapshot from "./openapi.json" with { type: "json" };
 import { routes } from "./routes.ts";
 
 const fetchDocument = async (name?: string) => {
     await using test = await createTestContext();
     const settings = defaultSettings();
-    const app = createApp(
+    const app = createTestApp(
         test.ctx,
         routes({ ...settings, instance: { ...settings.instance, name } }),
         {

@@ -11,6 +11,7 @@ import { createApp } from "./http/app.ts";
 import { databaseRateLimitStore, memoryRateLimitStore } from "./http/rate_limits.ts";
 import type { Route } from "./http/route.ts";
 import { routes } from "./http/routes.ts";
+import { appServices } from "./services.ts";
 import { ensureInstanceKey, instanceKey } from "./instances/keys.ts";
 import { queues, tasks } from "./jobs/queues.ts";
 import { runScheduler } from "./jobs/scheduler.ts";
@@ -58,6 +59,7 @@ const serve = (
     const server = Deno.serve(
         { port: config.http.port, onListen, signal },
         createApp(ctx, served, {
+            services: appServices(),
             rateLimits: {
                 store: config.http.rate_limit.store === "database"
                     ? databaseRateLimitStore(ctx)

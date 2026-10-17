@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { decode } from "fast-png";
 import { z } from "zod";
 import { tokenFor } from "../auth/testing.ts";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { memoryRateLimitStore } from "../http/rate_limits.ts";
 import { defineRoute } from "../http/route.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -22,7 +22,7 @@ const ping = defineRoute({
 
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, [...accountRoutes(Limits.parse({})), ping], {
+    const app = createTestApp(test.ctx, [...accountRoutes(Limits.parse({})), ping], {
         checkResponses: true,
         rateLimits: {
             store: memoryRateLimitStore(test.clock),
@@ -73,7 +73,7 @@ Deno.test("pictures aren't rate limited, unlike the API", async () => {
 /** The API, without rate limits, with alice on this instance and bob on another. */
 const openApi = async (limits: Limits = Limits.parse({})) => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, accountRoutes(limits), { checkResponses: true });
+    const app = createTestApp(test.ctx, accountRoutes(limits), { checkResponses: true });
 
     await createLocalAccount(test.ctx, "alice");
     await createInstance(test.ctx, "b.example");
@@ -359,7 +359,7 @@ Deno.test("accounts show their roles, and their owner the highest, with what the
 Deno.test("viewing accounts and changing one's own follow what config permits", async () => {
     await using test = await createTestContext();
     const routes = [...accountRoutes(Limits.parse({})), ...webfingerRoutes];
-    const app = createApp(test.ctx, routes, {
+    const app = createTestApp(test.ctx, routes, {
         checkResponses: true,
         // Only users may view accounts, and nobody may change their profile.
         permissions: { anonymous: [], default: ["read:account"] },

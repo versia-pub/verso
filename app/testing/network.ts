@@ -1,4 +1,5 @@
-import { type App, createApp } from "../http/app.ts";
+import type { App } from "../http/app.ts";
+import { createTestApp } from "./app.ts";
 import { routes } from "../http/routes.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { queues as allQueues } from "../jobs/queues.ts";
@@ -44,7 +45,7 @@ export const createNetwork = async (
     const instances: Record<string, Instance> = {};
     for (const domain of domains) {
         const test = stack.use(await createTestContext({ domain, clock, transport }));
-        const app = createApp(test.ctx, routes(defaultSettings()), { checkResponses: true });
+        const app = createTestApp(test.ctx, routes(defaultSettings()), { checkResponses: true });
         transport.servers.set(domain, app.fetch);
         instances[domain] = { ...test, app };
     }

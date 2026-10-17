@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../kernel/testing.ts";
 import { createLocalAccount } from "./testing.ts";
@@ -7,7 +7,7 @@ import { webfingerRoutes } from "./webfinger.ts";
 
 const open = async () => {
     const test = await createTestContext();
-    const app = createApp(test.ctx, webfingerRoutes, { checkResponses: true });
+    const app = createTestApp(test.ctx, webfingerRoutes, { checkResponses: true });
     await createLocalAccount(test.ctx, "alice");
 
     const finger = async (resource?: string) => {

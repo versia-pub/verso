@@ -1,5 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { createApp } from "../http/app.ts";
+import { createTestApp } from "../testing/app.ts";
 import { queues, tasks } from "../jobs/queues.ts";
 import { schedule } from "../jobs/scheduler.ts";
 import { drain } from "../jobs/worker.ts";
@@ -20,7 +20,7 @@ const open = async (providers: IdentityProvider[] = [issuerA]) => {
     const test = await createTestContext({
         identityProviders: Object.fromEntries(providers.map((p) => [p.issuer.url, p])),
     });
-    const http = createApp(test.ctx, authRoutes, { checkResponses: true });
+    const http = createTestApp(test.ctx, authRoutes, { checkResponses: true });
 
     const { app } = await registerTestApp(test.ctx);
 
