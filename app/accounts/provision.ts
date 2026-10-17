@@ -1,6 +1,12 @@
-import { sql } from "kysely";
 import type { Context } from "../kernel/context.ts";
 import type { Claims, Issuer } from "../kernel/identity.ts";
+import {
+    deleteAccount,
+    insertLocalAccount,
+    linkedAccount,
+    linkIdentity,
+    localUsernamesStartingWith,
+} from "./accounts.ts";
 import { claimContains } from "./claims.ts";
 import { syncClaimedRoles } from "./roles.ts";
 
@@ -52,20 +58,11 @@ const candidate = (base: string | undefined, n: number) => {
 };
 
 /**
- * The local usernames, in lowercase, that `base` might become, and some others. Every candidate
- * starts with the base cut to leave room for ten digits, and so does each name found. In `like`,
- * `_` matches any character, which can only find a few more.
+ * The local usernames, in lowercase, that `base` might become, and some others: every candidate
+ * starts with the base cut to leave room for ten digits.
  */
-const takenFrom = async (ctx: Context, base: string | undefined) => {
-    const start = (base ?? "user").slice(0, maxUsernameLength - 10).toLowerCase();
-    const rows = await ctx.db.selectFrom("accounts")
-        .select("username")
-        .where("instance_id", "is", null)
-        .where(sql<string>`lower(username)`, "like", `${start}%`)
-        .execute();
-
-    return new Set(rows.map((row) => row.username.toLowerCase()));
-};
+const takenFrom = (ctx: Context, base: string | undefined) =>
+    localUsernamesStartingWith(ctx, (base ?? "user").slice(0, maxUsernameLength - 10));
 
 /**
  * Creates a local account with the first free username for `base`, found with one query rather than
@@ -88,20 +85,7 @@ const createAccount = async (
         while (!free(candidate(base, n))) n++;
 
         const username = candidate(base, n);
-        const inserted = await ctx.db.insertInto("accounts")
-            .values({
-                id,
-                username,
-                instance_id: null,
-                remote_id: null,
-                created_at: ctx.clock.now(),
-                display_name: displayName,
-            })
-            .onConflict((conflict) => conflict.doNothing())
-            .returning("id")
-            .executeTakeFirst();
-
-        if (inserted) return id;
+        if (await insertLocalAccount(ctx, { id, username, displayName })) return id;
         failed.add(username.toLowerCase());
     }
 };
@@ -112,13 +96,8 @@ const createAccount = async (
  * claim an account by asserting the same address.
  */
 const linkAccount = async (tx: Context, issuer: Issuer, claims: Claims): Promise<Provisioned> => {
-    const linked = await tx.db.selectFrom("identities")
-        .select("account_id")
-        .where("issuer", "=", issuer.url)
-        .where("subject", "=", claims.sub)
-        .executeTakeFirst();
-
-    if (linked) return { ok: true, accountId: linked.account_id, created: false };
+    const linked = await linkedAccount(tx, issuer.url, claims.sub);
+    if (linked !== undefined) return { ok: true, accountId: linked, created: false };
     if (!mayRegister(issuer.registration, claims)) {
         return { ok: false, reason: "registration-closed" };
     }
@@ -128,29 +107,18 @@ const linkAccount = async (tx: Context, issuer: Issuer, claims: Claims): Promise
         usernameFrom(claims[issuer.username_claim]),
         displayNameFrom(claims.name),
     );
-    const identity = await tx.db.insertInto("identities")
-        .values({
-            issuer: issuer.url,
-            subject: claims.sub,
-            account_id: accountId,
-            created_at: tx.clock.now(),
-        })
-        .onConflict((conflict) => conflict.doNothing())
-        .returning("account_id")
-        .executeTakeFirst();
-
-    if (identity) return { ok: true, accountId, created: true };
+    const identity = { issuer: issuer.url, subject: claims.sub, accountId };
+    if (await linkIdentity(tx, identity)) return { ok: true, accountId, created: true };
 
     // The same login finished first in another request, such as a double-submitted callback.
     // Its account is the user's, so the one made here goes.
-    await tx.db.deleteFrom("accounts").where("id", "=", accountId).execute();
-    const winner = await tx.db.selectFrom("identities")
-        .select("account_id")
-        .where("issuer", "=", issuer.url)
-        .where("subject", "=", claims.sub)
-        .executeTakeFirstOrThrow();
+    await deleteAccount(tx, accountId);
+    const winner = await linkedAccount(tx, issuer.url, claims.sub);
+    if (winner === undefined) {
+        throw new Error(`The login ${claims.sub} at ${issuer.url} wasn't linked`);
+    }
 
-    return { ok: true, accountId: winner.account_id, created: false };
+    return { ok: true, accountId: winner, created: false };
 };
 
 /** Links a login to its account, as `linkAccount` does, and gives it the roles its claims match. */

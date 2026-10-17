@@ -1,6 +1,6 @@
-import type { Updateable } from "kysely";
 import type { Context } from "../kernel/context.ts";
-import type { AccountsTable, ProfileField, Visibility } from "./tables.ts";
+import { type AccountChanges, updateLocalAccount } from "./accounts.ts";
+import type { ProfileField, Visibility } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
 
 /** What a user changes about their profile. Anything left out stays as it is. */
@@ -35,7 +35,7 @@ export const updateProfile = async (
     accountId: string,
     changes: ProfileChanges,
 ): Promise<void> => {
-    const set: Updateable<AccountsTable> = {
+    const set: AccountChanges = {
         display_name: changes.displayName?.trim(),
         locked: changes.locked,
         bot: changes.bot,
@@ -60,12 +60,5 @@ export const updateProfile = async (
             .map(({ name, value }) => plainField(name, value));
     }
 
-    // Kysely leaves out the columns set to `undefined`, and an update must set something.
-    if (Object.values(set).every((value) => value === undefined)) return;
-
-    await ctx.db.updateTable("accounts")
-        .set(set)
-        .where("id", "=", accountId)
-        .where("instance_id", "is", null)
-        .execute();
+    await updateLocalAccount(ctx, accountId, set);
 };

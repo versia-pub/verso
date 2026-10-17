@@ -1,4 +1,4 @@
-import type { Selectable } from "kysely";
+import { type Selectable, sql, type Updateable } from "kysely";
 import type { Context } from "../kernel/context.ts";
 import type { AccountsTable } from "./tables.ts";
 
@@ -74,4 +74,100 @@ export const countLocalAccounts = async (ctx: Context): Promise<number> => {
         .executeTakeFirstOrThrow();
 
     return Number(count);
+};
+
+/**
+ * The usernames of local accounts that start with `start`, ignoring case, in lowercase. In `like`,
+ * `_` matches any character, so a few more may be found.
+ */
+export const localUsernamesStartingWith = async (
+    ctx: Context,
+    start: string,
+): Promise<Set<string>> => {
+    const rows = await ctx.db.selectFrom("accounts")
+        .select("username")
+        .where("instance_id", "is", null)
+        .where(sql<string>`lower(username)`, "like", `${start.toLowerCase()}%`)
+        .execute();
+
+    return new Set(rows.map((row) => row.username.toLowerCase()));
+};
+
+/** Creates a local account. Returns whether it did, which it doesn't if the username is taken. */
+export const insertLocalAccount = async (
+    ctx: Context,
+    account: { readonly id: string; readonly username: string; readonly displayName: string },
+): Promise<boolean> => {
+    const inserted = await ctx.db.insertInto("accounts")
+        .values({
+            id: account.id,
+            username: account.username,
+            instance_id: null,
+            remote_id: null,
+            created_at: ctx.clock.now(),
+            display_name: account.displayName,
+        })
+        .onConflict((conflict) => conflict.doNothing())
+        .returning("id")
+        .executeTakeFirst();
+
+    return inserted !== undefined;
+};
+
+/** Deletes an account. */
+export const deleteAccount = async (ctx: Context, id: string): Promise<void> => {
+    await ctx.db.deleteFrom("accounts").where("id", "=", id).execute();
+};
+
+/** Columns of an account to change. */
+export type AccountChanges = Updateable<AccountsTable>;
+
+/** Changes a local account. Columns left out, or set to `undefined`, stay as they are. */
+export const updateLocalAccount = async (
+    ctx: Context,
+    id: string,
+    changes: AccountChanges,
+): Promise<void> => {
+    // Kysely leaves out the columns set to `undefined`, and an update must set something.
+    if (Object.values(changes).every((value) => value === undefined)) return;
+
+    await ctx.db.updateTable("accounts")
+        .set(changes)
+        .where("id", "=", id)
+        .where("instance_id", "is", null)
+        .execute();
+};
+
+/** The account a login at `issuer` as `subject` is linked to, if any. */
+export const linkedAccount = async (
+    ctx: Context,
+    issuer: string,
+    subject: string,
+): Promise<string | undefined> => {
+    const row = await ctx.db.selectFrom("identities")
+        .select("account_id")
+        .where("issuer", "=", issuer)
+        .where("subject", "=", subject)
+        .executeTakeFirst();
+
+    return row?.account_id;
+};
+
+/** Links a login to an account. Returns whether it did, which it doesn't if it was linked already. */
+export const linkIdentity = async (
+    ctx: Context,
+    identity: { readonly issuer: string; readonly subject: string; readonly accountId: string },
+): Promise<boolean> => {
+    const linked = await ctx.db.insertInto("identities")
+        .values({
+            issuer: identity.issuer,
+            subject: identity.subject,
+            account_id: identity.accountId,
+            created_at: ctx.clock.now(),
+        })
+        .onConflict((conflict) => conflict.doNothing())
+        .returning("account_id")
+        .executeTakeFirst();
+
+    return linked !== undefined;
 };
