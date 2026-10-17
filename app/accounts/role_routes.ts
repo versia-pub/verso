@@ -15,6 +15,7 @@ import {
     listRoles,
     refusal,
     revokeRole,
+    type RoleManager,
     roleManager,
     type RoleRow,
     rolesOf,
@@ -76,6 +77,24 @@ const localAccount = async (ctx: Context, id: string): Promise<AccountRow> => {
     if (account?.domain !== null) throw new NotFound();
 
     return account;
+};
+
+/**
+ * Refuses unless `account` is the viewer's own, or ranks below them: its highest role is lower than
+ * the viewer's, as with the roles they manage. Or a manager could take roles from their admins.
+ */
+const checkOutranked = async (
+    ctx: Context,
+    viewer: RouteViewer & { accountId: string },
+    manager: RoleManager,
+    account: AccountRow,
+) => {
+    if (account.id === viewer.accountId) return;
+
+    const highest = (await rolesOf(ctx, account.id))[0]?.priority ?? -Infinity;
+    if (highest >= manager.highest) {
+        throw new NotPermitted("You can only change the roles of accounts below your highest role");
+    }
 };
 
 /** Versia Server's role endpoints, which any user may read. */
@@ -193,7 +212,8 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "POST",
         path: "/api/v1/accounts/:id/roles/:role_id",
-        summary: "Gives an account a role below the viewer's highest, with permissions they have",
+        summary:
+            "Gives an account below the viewer a role below their highest, with permissions they have",
         tags: ["roles"],
         auth: { require: "user", scope: "write:accounts", permission: "roles" },
         params: AccountAndRole,
@@ -201,6 +221,7 @@ export const roleRoutes: readonly Route[] = [
         handler: async (ctx, { viewer, params }) => {
             const account = await localAccount(ctx, params.id);
             const { role, manager } = await managedRole(ctx, viewer, params.role_id);
+            await checkOutranked(ctx, viewer, manager, account);
 
             // Or anyone with a lower role could give themselves permissions they lack.
             const refused = refusal(manager, { permissions: role.permissions });
@@ -214,14 +235,16 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "DELETE",
         path: "/api/v1/accounts/:id/roles/:role_id",
-        summary: "Takes from an account a role below the viewer's highest, that an admin gave",
+        summary:
+            "Takes from an account below the viewer a role below their highest, that an admin gave",
         tags: ["roles"],
         auth: { require: "user", scope: "write:accounts", permission: "roles" },
         params: AccountAndRole,
         responses: { 200: z.strictObject({}) },
         handler: async (ctx, { viewer, params }) => {
             const account = await localAccount(ctx, params.id);
-            const { role } = await managedRole(ctx, viewer, params.role_id);
+            const { role, manager } = await managedRole(ctx, viewer, params.role_id);
+            await checkOutranked(ctx, viewer, manager, account);
 
             // Roles from an issuer's claims stay, since the next login would give them back.
             await revokeRole(ctx, account.id, role.id);

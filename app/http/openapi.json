@@ -2051,7 +2051,7 @@
         },
         "/api/v1/accounts/{id}/roles/{role_id}": {
             "post": {
-                "summary": "Gives an account a role below the viewer's highest, with permissions they have",
+                "summary": "Gives an account below the viewer a role below their highest, with permissions they have",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `roles` permission.",
                 "tags": [
                     "roles"
@@ -2097,7 +2097,7 @@
                 }
             },
             "delete": {
-                "summary": "Takes from an account a role below the viewer's highest, that an admin gave",
+                "summary": "Takes from an account below the viewer a role below their highest, that an admin gave",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `roles` permission.",
                 "tags": [
                     "roles"

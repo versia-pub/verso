@@ -415,3 +415,43 @@ Deno.test("roles at or above the manager's own, or with more than they have, are
     });
     assertEquals(await assignments(test.ctx), before);
 });
+
+Deno.test("a role manager changes only the roles of accounts below them, or their own", async () => {
+    await using test = await open();
+    await createRole(test.ctx, "Moderator", ["roles"]);
+    await test.ctx.db.updateTable("roles").set({ priority: 50 }).where("id", "=", "Moderator")
+        .execute();
+    await createLocalAccount(test.ctx, "carol");
+    await createLocalAccount(test.ctx, "dave");
+    await giveRole(test.ctx, "alice", "Admin");
+    await giveRole(test.ctx, "bob", "Moderator");
+    await giveRole(test.ctx, "carol", "Moderator");
+    const send = (method: "POST" | "DELETE", account: string) =>
+        test.send(method, `/api/v1/accounts/${account}/roles/Hidden`, "bob");
+    const outranked = {
+        status: 403,
+        body: {
+            error: "This action is not allowed",
+            error_description: "You can only change the roles of accounts below your highest role",
+        },
+    };
+
+    for (const method of ["POST", "DELETE"] as const) {
+        assertEquals(await send(method, "alice"), outranked, `${method} alice`);
+        assertEquals(await send(method, "carol"), outranked, `${method} carol`);
+    }
+    for (const account of ["dave", "bob"]) {
+        assertEquals(await send("POST", account), { status: 200, body: {} }, account);
+    }
+    assertEquals(await assignments(test.ctx), [
+        "alice: Admin from an admin",
+        "bob: Hidden from an admin",
+        "bob: Moderator from an admin",
+        "carol: Moderator from an admin",
+        "dave: Hidden from an admin",
+    ]);
+
+    for (const account of ["dave", "bob"]) {
+        assertEquals(await send("DELETE", account), { status: 200, body: {} }, account);
+    }
+});
