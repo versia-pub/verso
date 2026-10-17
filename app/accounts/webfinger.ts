@@ -43,20 +43,15 @@ export const webfingerRoutes: readonly Route[] = [
                 : undefined;
             if (!account) throw new NotFound();
 
-            const profile = ctx.urls.url`/@${account.username}`;
             const user = ctx.urls.url`/.versia/v0.6/entities/User/${account.id}`;
 
             return {
                 status: 200,
                 body: {
                     subject: `acct:${account.username}@${domain}`,
-                    aliases: [user, profile],
+                    // Verso has no profile pages to link to.
+                    aliases: [user],
                     links: [
-                        {
-                            rel: "http://webfinger.net/rel/profile-page",
-                            type: "text/html",
-                            href: profile,
-                        },
                         { rel: "self", type: "application/vnd.versia+json", href: user },
                         {
                             rel: "http://webfinger.net/rel/avatar",

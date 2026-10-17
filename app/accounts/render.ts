@@ -60,8 +60,8 @@ export const renderAccount = (
         id: row.id,
         username: row.username,
         acct: local ? row.username : `${row.username}@${row.domain}`,
-        // Versia users have no profile page of their own to link to.
-        url: local ? ctx.urls.url`/@${row.username}` : null,
+        // Verso has no profile pages to link to; a web frontend would.
+        url: null,
         uri: userUri(ctx, row),
         display_name: row.display_name,
         note: row.note_html,
