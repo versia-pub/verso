@@ -35,6 +35,7 @@ or `nix flake check`, or Nix will act as if it isn't there.
 | `nix flake check`               | Run everything CI runs                                     |
 | `nix build`                     | Build the server package                                   |
 | `nix run .#update-hashes`       | Update the dependency hash after changing `deno.lock`      |
+| `nix run .#dev-services`        | Run a throwaway PostgreSQL in `.dev/`                      |
 
 CI runs `nix flake check` and nothing else. It runs the same Deno tasks inside the Nix sandbox,
 without network access. If it passes on your machine, it should pass in CI.
@@ -42,7 +43,13 @@ without network access. If it passes on your machine, it should pass in CI.
 Tests run on PGlite, an in-process PostgreSQL, by default. To run them on SQLite, set
 `VERSO_TEST_DATABASE=sqlite`. To run them on a real PostgreSQL server, set it to the server's URL
 and add `--allow-net` for its address. Each test creates its own database there, so use a throwaway
-server. `nix flake check` runs all three.
+server, such as the one `nix run .#dev-services` starts:
+
+```sh
+VERSO_TEST_DATABASE=postgresql://verso@localhost:5433/verso deno task test --allow-net=localhost
+```
+
+`nix flake check` runs all three.
 
 ## Running Verso locally
 

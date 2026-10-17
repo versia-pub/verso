@@ -34,7 +34,7 @@ jobs:
             # instead of rebuilt. A new snapshot is saved whenever the Nix-relevant files change.
             - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
               with:
-                  primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'deno.lock', 'deno.json', '**/*.nix', 'app/**') }}
+                  primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'deno.lock', 'deno.json', '**/*.nix', 'app/**', 'packages/**', 'docs/**') }}
                   restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
                   gc-max-store-size-linux: 5G
 

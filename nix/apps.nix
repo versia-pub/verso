@@ -29,8 +29,44 @@ let
       echo "nix/deps.nix now uses $hash"
     '';
   };
+
+  # A throwaway PostgreSQL for local runs and tests, kept in .dev/ until that is deleted. Object
+  # storage and a cache join it once something uses them.
+  dev-services = pkgs.writeShellApplication {
+    name = "dev-services";
+    runtimeInputs = [ pkgs.postgresql_18 ];
+    text = ''
+      if [ ! -f flake.nix ]; then
+        echo "Run this from the root of the repository." >&2
+        exit 1
+      fi
+
+      port=''${PGPORT:-5433}
+      data=.dev/postgres
+      if [ ! -d "$data" ]; then
+        mkdir -p .dev
+        initdb --pgdata="$data" --username=verso --auth=trust --no-instructions >/dev/null
+      fi
+
+      postgres -D "$data" -p "$port" -k "$PWD/.dev" -c listen_addresses=localhost &
+      server=$!
+      trap 'kill "$server"' INT TERM
+
+      until pg_isready --host=localhost --port="$port" --username=verso --quiet; do sleep 0.2; done
+      createdb --host=localhost --port="$port" --username=verso verso 2>/dev/null || true
+
+      echo "PostgreSQL is at postgresql://verso@localhost:$port/verso. Stop it with Ctrl-C."
+      wait "$server" || true
+    '';
+  };
 in
 {
+  dev-services = {
+    type = "app";
+    program = pkgs.lib.getExe dev-services;
+    meta.description = "Run a throwaway PostgreSQL in .dev/ for local runs and tests";
+  };
+
   update-hashes = {
     type = "app";
     program = pkgs.lib.getExe update-hashes;

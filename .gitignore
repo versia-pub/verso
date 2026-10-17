@@ -12,3 +12,6 @@ node_modules/
 # A local instance (see CONTRIBUTING.md)
 /config.toml
 /verso.db*
+
+# Services from `nix run .#dev-services`
+/.dev/
