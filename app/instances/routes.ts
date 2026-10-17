@@ -183,6 +183,24 @@ const renderTerms = (ctx: Context, terms: Document | undefined): TermsOfService 
     };
 };
 
+/** The instance's picture, drawn from its domain once, when first asked for. */
+const thumbnailRoute = () => {
+    let drawn: Promise<Uint8Array> | undefined;
+
+    return defineRoute({
+        method: "GET",
+        path: "/instance/thumbnail.png",
+        summary: "The instance's picture, drawn from its domain",
+        tags: ["instance"],
+        maxAge: 24 * 60 * 60,
+        responses: { 200: Binary("image/png") },
+        handler: async (ctx) => ({
+            status: 200,
+            file: await (drawn ??= identiconBanner(domainOf(ctx))),
+        }),
+    });
+};
+
 /** What the instance tells clients about itself. */
 export const instanceRoutes = (settings: AboutSettings): readonly Route[] => [
     defineRoute({
@@ -193,15 +211,7 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => [
         responses: { 200: Instance },
         handler: async (ctx) => ({ status: 200, body: await renderInstance(ctx, settings) }),
     }),
-    defineRoute({
-        method: "GET",
-        path: "/instance/thumbnail.png",
-        summary: "The instance's picture, drawn from its domain",
-        tags: ["instance"],
-        maxAge: 24 * 60 * 60,
-        responses: { 200: Binary("image/png") },
-        handler: async (ctx) => ({ status: 200, file: await identiconBanner(domainOf(ctx)) }),
-    }),
+    thumbnailRoute(),
     defineRoute({
         method: "GET",
         path: "/api/v1/instance",

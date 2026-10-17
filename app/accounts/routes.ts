@@ -1,17 +1,15 @@
 import { Account, CredentialAccount, Relationship } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
-import { Binary, defineRoute, type Route, type RouteViewer } from "../http/route.ts";
+import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import { type AccountRow, findAccount, findLocalAccount, localAccountIds } from "./accounts.ts";
-import { identicon, identiconBanner } from "./identicon.ts";
+import { pictureRoutes } from "./picture_routes.ts";
 import { updateProfile } from "./profile.ts";
 import { renderAccount, renderCredentialAccount, renderRelationship } from "./render.ts";
 import { rolesOf } from "./roles.ts";
-
-const AccountId = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
 
 /**
  * Only local accounts are shown for now: remote ones arrive with federation, along with the
@@ -85,13 +83,7 @@ const credentialChanges = (limits: Limits) => {
     });
 };
 
-/** A day: the pictures never change, but how they are drawn might. */
-const pictureMaxAge = 24 * 60 * 60;
-
-/**
- * Accounts, and the default pictures of accounts without their own. Timelines load many pictures,
- * so those have no rate limit.
- */
+/** Accounts, and the default pictures of accounts without their own. */
 export const accountRoutes = (limits: Limits): readonly Route[] => [
     // Before `/api/v1/accounts/:id`, which would otherwise take these paths.
     defineRoute({
@@ -181,26 +173,5 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
             body: await publicAccount(ctx, shown(await findAccount(ctx, params.id))),
         }),
     }),
-    defineRoute({
-        method: "GET",
-        path: "/accounts/:id/avatar.png",
-        summary: "An account's default avatar",
-        tags: ["accounts"],
-        maxAge: pictureMaxAge,
-        rateLimit: false,
-        params: AccountId,
-        responses: { 200: Binary("image/png") },
-        handler: async (_, { params }) => ({ status: 200, file: await identicon(params.id) }),
-    }),
-    defineRoute({
-        method: "GET",
-        path: "/accounts/:id/header.png",
-        summary: "An account's default header",
-        tags: ["accounts"],
-        maxAge: pictureMaxAge,
-        rateLimit: false,
-        params: AccountId,
-        responses: { 200: Binary("image/png") },
-        handler: async (_, { params }) => ({ status: 200, file: await identiconBanner(params.id) }),
-    }),
+    ...pictureRoutes(),
 ];

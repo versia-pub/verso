@@ -29,6 +29,7 @@ const open = async () => {
             policy: { limit: 2, windowSeconds: 60 },
         },
     });
+    await createLocalAccount(test.ctx, "019a");
 
     return { ...test, app };
 };
