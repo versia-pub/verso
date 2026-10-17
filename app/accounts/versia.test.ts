@@ -13,8 +13,10 @@ import { createLocalAccount } from "./testing.ts";
  */
 const fetchSigned = async (from: Context, to: Context, path: string) => {
     const domain = (ctx: Context) => new URL(ctx.urls.origin).hostname;
+    // The query isn't signed.
+    const { pathname } = new URL(path, to.urls.origin);
     const headers = await sign(
-        { method: "GET", pathname: path, body: new Uint8Array() },
+        { method: "GET", pathname, body: new Uint8Array() },
         (await instanceKey(from)).privateKey,
         domain(from),
         from.clock.now(),
@@ -28,7 +30,7 @@ const fetchSigned = async (from: Context, to: Context, path: string) => {
     const body = new Uint8Array(await response.arrayBuffer());
     const theirs = await importPublicKey((await instanceKey(to)).publicKey);
     const signature = await verify(
-        { method: "GET", pathname: path, body },
+        { method: "GET", pathname, body },
         response.headers,
         (signer) => Promise.resolve(signer === domain(to) ? theirs : undefined),
         from.clock.now(),
@@ -160,4 +162,32 @@ Deno.test("only local users are given, and only to other instances", async () =>
             id,
         );
     }
+});
+
+Deno.test("a local user's collections are given, empty until there is something in them", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"].ctx;
+    const b = network.instances["b.test"].ctx;
+    await createLocalAccount(a, "alice");
+    const collection = (path: string) => fetchSigned(b, a, `/.versia/v0.6/entities/User/${path}`);
+
+    for (const name of ["outbox", "featured", "followers", "following"]) {
+        assertEquals(await collection(`alice/collections/${name}?offset=10&limit=20`), {
+            status: 200,
+            type: "application/vnd.versia+json; charset=utf-8",
+            signedBy: "a.test",
+            body: { author: "alice", total: 0, items: [] },
+        }, name);
+    }
+
+    assertEquals((await collection("alice/collections/likes")).status, 404);
+    assertEquals((await collection("missing/collections/outbox")).status, 404);
+    for (const query of ["offset=-1", "offset=a", "limit=1.5"]) {
+        assertEquals((await collection(`alice/collections/outbox?${query}`)).status, 422, query);
+    }
+
+    const unsigned = await b.transport(
+        new Request("https://a.test/.versia/v0.6/entities/User/alice/collections/outbox"),
+    );
+    assertEquals(unsigned.status, 401);
 });
