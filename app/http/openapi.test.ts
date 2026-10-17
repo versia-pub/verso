@@ -1,8 +1,9 @@
 import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
 import { Account, CredentialAccount } from "@versia/client-api";
 import { z } from "zod";
+import { scopes } from "../auth/scopes.ts";
 import { openApiDocument } from "./openapi.ts";
-import { Binary, defineRoute, Page, Redirect } from "./route.ts";
+import { Binary, defineRoute, Page, Redirect, type Route } from "./route.ts";
 
 const info = { title: "social.example", version: "0.0.0" };
 const unused = () => Promise.reject(new Error("Not called"));
@@ -231,4 +232,58 @@ Deno.test("a schema that contains itself must be named", () => {
             "A schema that contains itself must be named",
         );
     }
+});
+
+Deno.test("who may call a route is its security, and what OpenAPI can't say is described", () => {
+    const route = (path: string, access: Pick<Route, "auth" | "signed">) =>
+        defineRoute({
+            method: "GET",
+            path,
+            summary: path,
+            ...access,
+            responses: { 200: z.object({}) },
+            handler: unused,
+        });
+    const routes = [
+        route("/open", {}),
+        route("/user", { auth: { require: "user", scope: "read:accounts" } }),
+        route("/app", { auth: { require: "app" } }),
+        route("/optional", { auth: { require: "optional", scope: "read" } }),
+        route("/staff", { auth: { require: "user", permission: "roles" } }),
+        route("/federated", { signed: true }),
+    ];
+
+    const document = openApiDocument(routes, info);
+    const access = (path: string) => {
+        const { security, description } = document.paths[path].get;
+        return { security, description };
+    };
+    const user = "Needs a token for a user, not one an app got for itself.";
+    assertEquals(access("/open"), { security: undefined, description: undefined });
+    assertEquals(access("/user"), {
+        security: [{ OAuth2: ["read:accounts"] }],
+        description: user,
+    });
+    assertEquals(access("/app"), { security: [{ OAuth2: [] }], description: undefined });
+    assertEquals(access("/optional"), {
+        security: [{}, { OAuth2: ["read"] }],
+        description: undefined,
+    });
+    assertEquals(access("/staff"), {
+        security: [{ OAuth2: [] }],
+        description: `${user} Needs the \`roles\` permission.`,
+    });
+    assertEquals(access("/federated"), {
+        security: [{ VersiaSignature: [] }],
+        description: undefined,
+    });
+
+    const { OAuth2, VersiaSignature } = document.components.securitySchemes;
+    assertEquals(OAuth2.flows.authorizationCode.authorizationUrl, "/oauth/authorize");
+    assertEquals(OAuth2.flows.authorizationCode.tokenUrl, "/oauth/token");
+    assertEquals(OAuth2.flows.clientCredentials.tokenUrl, "/oauth/token");
+    for (const flow of [OAuth2.flows.authorizationCode, OAuth2.flows.clientCredentials]) {
+        assertEquals(Object.keys(flow.scopes), [...scopes]);
+    }
+    assertEquals([VersiaSignature.in, VersiaSignature.name], ["header", "Versia-Signature"]);
 });

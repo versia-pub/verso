@@ -4,6 +4,7 @@
  */
 import * as clientApi from "@versia/client-api";
 import { z } from "zod";
+import { scopes } from "../auth/scopes.ts";
 import type { Responses, Route } from "./route.ts";
 
 type JsonSchema = z.core.JSONSchema.JSONSchema;
@@ -26,10 +27,18 @@ type Response = {
     readonly content?: Content;
 };
 
+/**
+ * Each alternative names the schemes a request must satisfy together, with the scopes it needs.
+ * @see https://spec.openapis.org/oas/v3.1.1.html#security-requirement-object
+ */
+type Security = readonly Readonly<Record<string, readonly string[]>>[];
+
 /** @see https://spec.openapis.org/oas/v3.1.1.html#operation-object */
 type Operation = {
     readonly summary: string;
+    readonly description?: string;
     readonly tags?: readonly string[];
+    readonly security?: Security;
     readonly parameters?: readonly Parameter[];
     readonly requestBody?: { readonly required: true; readonly content: Content };
     readonly responses: Readonly<Record<string, Response>>;
@@ -40,8 +49,39 @@ type Document = {
     readonly openapi: "3.1.1";
     readonly info: { readonly title: string; readonly version: string };
     readonly paths: Readonly<Record<string, Readonly<Record<string, Operation>>>>;
-    readonly components: { readonly schemas: Readonly<Record<string, JsonSchema>> };
+    readonly components: {
+        readonly schemas: Readonly<Record<string, JsonSchema>>;
+        readonly securitySchemes: typeof securitySchemes;
+    };
 };
+
+/** Every scope, which OpenAPI wants described; Mastodon's names say what they allow. */
+const scopeList = Object.fromEntries(scopes.map((scope) => [scope, ""]));
+
+/**
+ * How clients get tokens, and how other instances sign their requests.
+ * @see https://spec.openapis.org/oas/v3.1.1.html#security-scheme-object
+ */
+const securitySchemes = {
+    OAuth2: {
+        type: "oauth2",
+        flows: {
+            authorizationCode: {
+                authorizationUrl: "/oauth/authorize",
+                tokenUrl: "/oauth/token",
+                scopes: scopeList,
+            },
+            clientCredentials: { tokenUrl: "/oauth/token", scopes: scopeList },
+        },
+    },
+    VersiaSignature: {
+        type: "apiKey",
+        in: "header",
+        name: "Versia-Signature",
+        description: "A Versia signature by another instance, which `Versia-Signed-By` names, " +
+            "made at `Versia-Signed-At`. See https://versia.pub/signatures.",
+    },
+} as const;
 
 /**
  * The client API's entities, named as the package exports them, so the document describes each once,
@@ -157,6 +197,24 @@ const response = (route: Route, declared: NonNullable<Responses[200]>): Response
     }
 };
 
+/** Who may call the route: another instance, or a client with a token, and with which scope. */
+const security = (route: Route): Security | undefined => {
+    if (route.signed) return [{ VersiaSignature: [] }];
+    if (!route.auth) return undefined;
+
+    const token = { OAuth2: route.auth.scope ? [route.auth.scope] : [] };
+    return route.auth.require === "optional" ? [{}, token] : [token];
+};
+
+/** What OpenAPI can't say about who may call the route. */
+const restrictions = (route: Route) =>
+    [
+        route.auth?.require === "user"
+            ? "Needs a token for a user, not one an app got for itself."
+            : "",
+        route.auth?.permission ? `Needs the \`${route.auth.permission}\` permission.` : "",
+    ].filter((line) => line !== "").join(" ");
+
 const operation = (route: Route): Operation => {
     const all = [
         ...parameters("path", route.params),
@@ -166,10 +224,14 @@ const operation = (route: Route): Operation => {
         ...parameters("cookie", route.cookies, (key) => `__Host-${key}`),
     ];
     const body = route.body && jsonSchema(route.body);
+    const description = restrictions(route);
+    const needed = security(route);
 
     return {
         summary: route.summary,
+        ...description && { description },
         ...route.tags && { tags: route.tags },
+        ...needed && { security: needed },
         ...all.length > 0 && { parameters: all },
         ...body && {
             requestBody: {
@@ -201,5 +263,10 @@ export const openApiDocument = (
         (paths[path] ??= {})[route.method.toLowerCase()] = operation(route);
     }
 
-    return { openapi: "3.1.1", info, paths, components: { schemas: components() } };
+    return {
+        openapi: "3.1.1",
+        info,
+        paths,
+        components: { schemas: components(), securitySchemes },
+    };
 };
