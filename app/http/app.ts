@@ -1,163 +1,23 @@
-import { type Context as HonoContext, Hono } from "@hono/hono";
+import { Hono } from "@hono/hono";
 import { bodyLimit } from "@hono/hono/body-limit";
-import { deleteCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
-import { sign, verify } from "@versia/protocol";
-import { z } from "zod";
 import { Permissions } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Cidr } from "../kernel/ip.ts";
-import { BadSignature, ContentTooLarge, HttpError, NotFound, StaleSignature } from "./errors.ts";
 import type { AppEnv, AppServices } from "./env.ts";
+import { ContentTooLarge, HttpError, NotFound } from "./errors.ts";
 import { useHeaders } from "./headers.ts";
 import { asOAuthError, inputOf } from "./input.ts";
 import { rateLimit, type RateLimits } from "./rate_limits.ts";
+import { checkReply, send } from "./reply.ts";
+import type { Route } from "./route.ts";
+import { signerOf, signReply } from "./signatures.ts";
 import { checkPermission, rateLimitKey, viewerOf, withPermissions } from "./viewer.ts";
-import {
-    type CookieChanges,
-    Page,
-    Redirect,
-    type Reply,
-    type Responses,
-    type Route,
-} from "./route.ts";
 
 const logger = getLogger(["verso", "http"]);
 
 /** The largest body a route takes, enough for any form or JSON. Uploads will need their own. */
 const maxBodyBytes = 64 * 1024;
-
-const setCookies = (c: HonoContext, cookies: CookieChanges = {}) => {
-    for (const [name, value] of Object.entries(cookies)) {
-        if (value === null) {
-            deleteCookie(c, name, { prefix: "host" });
-        } else {
-            setCookie(c, name, value, { prefix: "host", httpOnly: true, sameSite: "Lax" });
-        }
-    }
-};
-
-const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
-    declared instanceof z.ZodType;
-
-/** Why a reply doesn't match what its route declares for its status, if it doesn't. */
-const replyProblem = (route: Route, reply: Reply<Responses>) => {
-    const declared = route.responses[reply.status];
-
-    if (declared === undefined) return "the status isn't declared";
-    if (declared === Page) return "page" in reply ? undefined : "it isn't a page";
-    if (declared === Redirect) return "location" in reply ? undefined : "it isn't a redirect";
-    if (!isSchema(declared)) return "file" in reply ? undefined : "it isn't a file";
-    if (!("body" in reply)) return "it has no body";
-
-    const result = declared.safeParse(reply.body);
-    return result.success ? undefined : z.prettifyError(result.error);
-};
-
-/** Throws when a reply doesn't match what its route declares for its status. */
-const checkReply = (route: Route, reply: Reply<Responses>) => {
-    const problem = replyProblem(route, reply);
-    if (problem === undefined) return;
-
-    throw new Error(
-        `${route.method} ${route.path} replied ${reply.status} with an undeclared shape: ` +
-            problem,
-    );
-};
-
-/**
- * For pages: no scripts unless the route allows them, and never framing, so a page like the consent
- * form can't be clickjacked.
- */
-const pageHeaders = (route: Route) => ({
-    "content-security-policy": `${
-        route.pagePolicy ?? "default-src 'none'; style-src 'unsafe-inline'"
-    }; frame-ancestors 'none'`,
-    "referrer-policy": "no-referrer",
-    "x-frame-options": "DENY",
-});
-
-const send = (c: HonoContext, route: Route, reply: Reply<Responses>) => {
-    setCookies(c, reply.cookies);
-
-    if (route.maxAge !== undefined && reply.status < 300) {
-        c.header("cache-control", `public, max-age=${route.maxAge}`);
-    }
-
-    if ("location" in reply) return c.redirect(reply.location, reply.status);
-    if ("page" in reply) return c.html(reply.page, reply.status, pageHeaders(route));
-
-    if ("file" in reply) {
-        const declared = route.responses[reply.status];
-        const type = declared && "type" in declared ? declared.type : "application/octet-stream";
-
-        return c.body(new Uint8Array(reply.file), reply.status, { "content-type": type });
-    }
-
-    return route.contentType === undefined
-        ? c.json(reply.body, reply.status)
-        : c.body(JSON.stringify(reply.body), reply.status, { "content-type": route.contentType });
-};
-
-/**
- * The domain of the instance that signed the request. When the key Verso has for it doesn't
- * verify, the key is fetched again, at most so often, in case the instance rotated it.
- */
-const signerOf = async (ctx: Context, c: HonoContext, keys: AppServices["remoteKeys"]) => {
-    const message = {
-        method: c.req.method,
-        pathname: new URL(c.req.url).pathname,
-        body: new Uint8Array(await c.req.arrayBuffer()),
-    };
-    const now = ctx.clock.now();
-
-    let known = false;
-    const first = await verify(message, c.req.raw.headers, async (domain) => {
-        const key = await keys.get(ctx, domain);
-        known = key !== undefined;
-        return key;
-    }, now);
-
-    if (first.ok) return first.signedBy;
-    if (first.reason === "expired") throw new StaleSignature();
-    if (!known) throw new BadSignature();
-
-    const again = await verify(
-        message,
-        c.req.raw.headers,
-        (domain) => keys.refresh(ctx, domain),
-        now,
-    );
-    if (!again.ok) throw new BadSignature();
-
-    return again.signedBy;
-};
-
-/**
- * Signs a reply as this instance, over the request's method and path and the reply's exact bytes,
- * so the instance that asked can tell it came from here unchanged.
- * @see https://versia.pub/signatures
- */
-const signReply = async (
-    ctx: Context,
-    c: HonoContext,
-    response: Response,
-    services: AppServices,
-) => {
-    const headers = await sign(
-        {
-            method: c.req.method,
-            pathname: new URL(c.req.url).pathname,
-            body: new Uint8Array(await response.clone().arrayBuffer()),
-        },
-        await services.signingKey(ctx),
-        new URL(ctx.urls.origin).hostname,
-        ctx.clock.now(),
-    );
-
-    for (const [name, value] of Object.entries(headers)) response.headers.set(name, value);
-    return response;
-};
 
 /** The server's HTTP app. */
 export type App = Hono<AppEnv>;
