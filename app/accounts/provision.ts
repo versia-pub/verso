@@ -1,3 +1,4 @@
+import { sql } from "kysely";
 import type { Context } from "../kernel/context.ts";
 import type { Claims, Issuer } from "../kernel/identity.ts";
 import { claimContains } from "./claims.ts";
@@ -41,9 +42,34 @@ const mayRegister = (registration: Issuer["registration"], claims: Claims): bool
 };
 
 /**
- * Creates a local account named `base`, or `base2`, `base3` and so on if that is taken. Without a
- * base, the names are `user1`, `user2` and so on. The base is shortened to leave room for the
- * number, so every name fits Mastodon's limit.
+ * The `n`th username to try for `base`: `base`, `base2`, `base3` and so on, or without a base,
+ * `user1`, `user2` and so on. The base is shortened to leave room for the number, so every name fits
+ * Mastodon's limit.
+ */
+const candidate = (base: string | undefined, n: number) => {
+    const suffix = base === undefined || n > 1 ? String(n) : "";
+    return (base ?? "user").slice(0, maxUsernameLength - suffix.length) + suffix;
+};
+
+/**
+ * The local usernames, in lowercase, that `base` might become, and some others. Every candidate
+ * starts with the base cut to leave room for ten digits, and so does each name found. In `like`,
+ * `_` matches any character, which can only find a few more.
+ */
+const takenFrom = async (ctx: Context, base: string | undefined) => {
+    const start = (base ?? "user").slice(0, maxUsernameLength - 10).toLowerCase();
+    const rows = await ctx.db.selectFrom("accounts")
+        .select("username")
+        .where("instance_id", "is", null)
+        .where(sql<string>`lower(username)`, "like", `${start}%`)
+        .execute();
+
+    return new Set(rows.map((row) => row.username.toLowerCase()));
+};
+
+/**
+ * Creates a local account with the first free username for `base`, found with one query rather than
+ * one insert per number taken.
  */
 const createAccount = async (
     ctx: Context,
@@ -51,10 +77,17 @@ const createAccount = async (
     displayName: string,
 ): Promise<string> => {
     const id = ctx.ids();
+    const failed = new Set<string>();
 
-    for (let n = 1;; n++) {
-        const suffix = base === undefined || n > 1 ? String(n) : "";
-        const username = (base ?? "user").slice(0, maxUsernameLength - suffix.length) + suffix;
+    // Another login may take the name between looking and inserting; then look again.
+    for (;;) {
+        const taken = await takenFrom(ctx, base);
+        const free = (name: string) =>
+            !taken.has(name.toLowerCase()) && !failed.has(name.toLowerCase());
+        let n = 1;
+        while (!free(candidate(base, n))) n++;
+
+        const username = candidate(base, n);
         const inserted = await ctx.db.insertInto("accounts")
             .values({
                 id,
@@ -69,6 +102,7 @@ const createAccount = async (
             .executeTakeFirst();
 
         if (inserted) return id;
+        failed.add(username.toLowerCase());
     }
 };
 

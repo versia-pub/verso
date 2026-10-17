@@ -112,6 +112,18 @@ Deno.test("a taken username, in any case, gets a number", async () => {
     assertEquals(await test.usernames(), ["ALICE3", "Alice2", "alice"]);
 });
 
+Deno.test("a username gets the first number that is free", async () => {
+    await using test = await open();
+
+    for (const [sub, username] of [["1", "alice"], ["2", "alice2"], ["3", "alice4"]]) {
+        await provision(test.ctx, issuer, { sub, preferred_username: username });
+    }
+    await provision(test.ctx, issuer, { sub: "4", preferred_username: "Alice" });
+    await provision(test.ctx, issuer, { sub: "5", preferred_username: "alice" });
+
+    assertEquals(await test.usernames(), ["Alice3", "alice", "alice2", "alice4", "alice5"]);
+});
+
 Deno.test("a long username is cut to 30 characters, with room for its number", async () => {
     await using test = await open();
     const long = "a".repeat(40);
