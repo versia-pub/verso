@@ -5,14 +5,12 @@ import { findAppByClientId } from "./apps.ts";
 import { takeFlowByCode } from "./flows.ts";
 import { requestedScopes } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
+import { deleteToken, findTokenByHash, insertToken } from "./token_queries.ts";
 import type { AppsTable } from "./tables.ts";
 
 /** A token this server gave out, found by its hash, since that's all that is kept. */
 const findToken = async (ctx: Context, token: string) =>
-    await ctx.db.selectFrom("access_tokens")
-        .selectAll()
-        .where("token_hash", "=", await hashToken(token))
-        .executeTakeFirst();
+    await findTokenByHash(ctx, await hashToken(token));
 
 /** The viewer an access token stands for, if it's a token this server gave out. */
 export const authenticateToken = async (
@@ -88,16 +86,13 @@ export const issueToken = async (
     const token = randomToken();
     const createdAt = ctx.clock.now();
 
-    await ctx.db.insertInto("access_tokens")
-        .values({
-            id: ctx.ids(),
-            token_hash: await hashToken(token),
-            app_id: app.id,
-            account_id: accountId,
-            scopes,
-            created_at: createdAt,
-        })
-        .execute();
+    await insertToken(ctx, {
+        hash: await hashToken(token),
+        appId: app.id,
+        accountId,
+        scopes,
+        createdAt,
+    });
 
     return { token, scopes, createdAt };
 };
@@ -219,6 +214,6 @@ export const revokeToken = async (
     if (!row) return true;
     if (row.app_id !== app.id) return false;
 
-    await ctx.db.deleteFrom("access_tokens").where("id", "=", row.id).execute();
+    await deleteToken(ctx, row.id);
     return true;
 };
