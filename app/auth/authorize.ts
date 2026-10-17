@@ -3,9 +3,9 @@ import type { Context } from "../kernel/context.ts";
 import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import { findAppByClientId } from "./apps.ts";
 import { createFlow, findFormFlow, recordLogin } from "./flows.ts";
-import { requestedScopes } from "../kernel/scopes.ts";
+import { requestedScopes, type Scope } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
-import type { OAuthFlowsTable } from "./tables.ts";
+import type { AppsTable, OAuthFlowsTable } from "./tables.ts";
 
 const logger = getLogger(["verso", "auth"]);
 
@@ -80,29 +80,42 @@ export const withParams = (
     return url.href;
 };
 
+/** An app's request to log a user in, once checked, or what to answer it with. */
+type Checked =
+    | {
+        readonly ok: true;
+        readonly app: AppsTable;
+        readonly redirectUri: string;
+        readonly scopes: Scope[];
+        readonly challenge: string | undefined;
+    }
+    | { readonly ok: false; readonly answer: Authorization };
+
 /**
- * Checks an app's request to log a user in, and starts the flow. The flow is tied to the browser
- * by `browserSecret`, which goes in a cookie, so another browser can't finish it.
+ * Checks an app's request to log a user in. Errors before the redirect URI is known can't go back
+ * to the app, so they are shown to the user instead.
  */
-export const authorize = async (
-    ctx: Context,
-    request: AuthorizeRequest,
-): Promise<Authorization> => {
+const checkRequest = async (ctx: Context, request: AuthorizeRequest): Promise<Checked> => {
+    const refused = (description: string): Checked => ({
+        ok: false,
+        answer: { result: "refused", description },
+    });
+
     const app = await findAppByClientId(ctx, request.client_id);
-    if (!app) return { result: "refused", description: "The app isn't registered here." };
+    if (!app) return refused("The app isn't registered here.");
 
     const redirectUri = request.redirect_uri;
     if (redirectUri === undefined || !app.redirect_uris.includes(redirectUri)) {
-        return {
-            result: "refused",
-            description: "The app sent a redirect URI it didn't register.",
-        };
+        return refused("The app sent a redirect URI it didn't register.");
     }
 
-    const error = (error: string, description: string): Authorization => ({
-        result: "error",
-        redirectUri,
-        params: { error, error_description: description, state: request.state },
+    const error = (error: string, description: string): Checked => ({
+        ok: false,
+        answer: {
+            result: "error",
+            redirectUri,
+            params: { error, error_description: description, state: request.state },
+        },
     });
 
     if (request.response_type === undefined) {
@@ -126,6 +139,21 @@ export const authorize = async (
         return error("invalid_request", "PKCE must use S256.");
     }
 
+    return { ok: true, app, redirectUri, scopes, challenge };
+};
+
+/**
+ * Checks an app's request to log a user in, and starts the flow. The flow is tied to the browser
+ * by `browserSecret`, which goes in a cookie, so another browser can't finish it.
+ */
+export const authorize = async (
+    ctx: Context,
+    request: AuthorizeRequest,
+): Promise<Authorization> => {
+    const checked = await checkRequest(ctx, request);
+    if (!checked.ok) return checked.answer;
+
+    const { app, redirectUri, scopes, challenge } = checked;
     const providers = Object.values(ctx.identityProviders);
     if (providers.length === 0) {
         return { result: "refused", description: "Logging in isn't set up on this server." };
