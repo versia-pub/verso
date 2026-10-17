@@ -1,4 +1,5 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertThrows } from "@std/assert";
+import { Account, CredentialAccount } from "@versia/client-api";
 import { z } from "zod";
 import { openApiDocument } from "./openapi.ts";
 import { Binary, defineRoute, Page, Redirect } from "./route.ts";
@@ -13,7 +14,11 @@ Deno.test("a route's inputs are its path, query, header and cookie parameters, a
         summary: "Change a part",
         tags: ["things"],
         params: z.object({ id: z.string(), part_id: z.string() }),
-        query: z.object({ limit: z.coerce.number().int().optional(), sort: z.enum(["new"]) }),
+        query: z.object({
+            limit: z.coerce.number().int().optional(),
+            // Only the client API's entities are named, not schemas named elsewhere.
+            sort: z.enum(["new"]).meta({ id: "Sort" }),
+        }),
         headers: z.object({ "x-trace": z.string().optional() }),
         cookies: z.object({ session: z.string() }),
         body: z.object({ name: z.string().transform((name) => name.trim()) }),
@@ -26,7 +31,8 @@ Deno.test("a route's inputs are its path, query, header and cookie parameters, a
         properties: { name: { type: "string" as const } },
         required: ["name"],
     };
-    assertEquals(openApiDocument([route], info), {
+    const { components: _, ...document } = openApiDocument([route], info);
+    assertEquals(document, {
         openapi: "3.1.1",
         info,
         paths: {
@@ -170,4 +176,59 @@ Deno.test("a route without inputs or tags lists only its summary and responses",
             },
         },
     });
+});
+
+Deno.test("the client API's entities are described once, in components, and referred to", () => {
+    const routes = [
+        defineRoute({
+            method: "GET",
+            path: "/accounts",
+            summary: "Accounts",
+            responses: { 200: z.array(Account), 201: CredentialAccount },
+            handler: unused,
+        }),
+    ];
+
+    const document = openApiDocument(routes, info);
+    const ref = (id: string) => ({ $ref: `#/components/schemas/${id}` });
+    const json = (status: number) =>
+        document.paths["/accounts"].get.responses[status].content?.["application/json"].schema;
+    assertEquals(json(200), { type: "array", items: ref("Account") });
+    assertEquals(json(201), ref("CredentialAccount"));
+
+    // Zod gives the account that moved a name of its own in CredentialAccount, which is put back.
+    const { schemas } = document.components;
+    const moved = { anyOf: [ref("Account"), { type: "null" as const }] };
+    assertEquals(schemas.Account.properties?.moved, moved);
+    assertEquals(schemas.CredentialAccount.properties?.moved, moved);
+
+    // Exported twice, as ExtendedDescription and as PrivacyPolicy, it is described once.
+    assert("ExtendedDescription" in schemas);
+    assertFalse("PrivacyPolicy" in schemas);
+    assertFalse(/\$defs|__schema/.test(JSON.stringify(document)));
+});
+
+Deno.test("a schema that contains itself must be named", () => {
+    type Node = { next?: Node };
+    const Node: z.ZodType<Node> = z.object({
+        get next() {
+            return Node.optional();
+        },
+    });
+    const route = (schema: z.ZodType) =>
+        defineRoute({
+            method: "GET",
+            path: "/nodes",
+            summary: "Nodes",
+            responses: { 200: schema },
+            handler: unused,
+        });
+
+    for (const schema of [Node, z.object({ node: Node })]) {
+        assertThrows(
+            () => openApiDocument([route(schema)], info),
+            Error,
+            "A schema that contains itself must be named",
+        );
+    }
 });
