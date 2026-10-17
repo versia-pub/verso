@@ -5,7 +5,10 @@ export type JobsTable = {
     payload: JobPayload;
     /** Higher runs first among jobs that are due. */
     priority: number;
-    /** When the job may next run: when enqueued, or after a retry's backoff. */
+    /**
+     * When the job may next run: when enqueued, or after a retry's backoff. For a dead letter, when
+     * it died.
+     */
     run_at: Date;
     attempts: number;
     /** A job that has used all its attempts is a dead letter, kept for inspection and retry. */

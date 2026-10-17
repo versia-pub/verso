@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { createTestContext } from "../kernel/testing.ts";
-import { backoffMs, claim, complete, enqueue, fail } from "./queue.ts";
+import { backoffMs, claim, complete, deleteExpiredJobs, enqueue, fail } from "./queue.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";
 
@@ -152,6 +152,35 @@ Deno.test("a failed job is retried after a backoff, then kept as a dead letter",
             .select(["attempts", "lease_owner", "lease_expires_at", "last_error"]).execute(),
         [{ attempts: 2, lease_owner: null, lease_expires_at: null, last_error: "refused" }],
     );
+});
+
+Deno.test("a dead letter is deleted 30 days after it died, and a job being retried isn't", async () => {
+    await using test = await open();
+    const day = 24 * 60 * minute;
+    const queues = async () =>
+        (await test.ctx.db.selectFrom("jobs").select("queue").orderBy("queue").execute())
+            .map((row) => row.queue);
+
+    await enqueue(test.ctx, { queue: "dead", payload: {}, maxAttempts: 1 });
+    await enqueue(test.ctx, { queue: "retried", payload: {} });
+    test.clock.advance(day);
+    for (const queue of ["dead", "retried"]) {
+        const [job] = await claim(test.ctx, { ...options, queue });
+        await fail(test.ctx, job, "refused");
+    }
+
+    test.clock.advance(30 * day - 1);
+    await deleteExpiredJobs(test.ctx);
+    assertEquals(await queues(), ["dead", "retried"]);
+
+    test.clock.advance(1);
+    await deleteExpiredJobs(test.ctx);
+    assertEquals(await queues(), ["retried"]);
+
+    // Long after its next run was due, a job being retried is still not dead.
+    test.clock.advance(day);
+    await deleteExpiredJobs(test.ctx);
+    assertEquals(await queues(), ["retried"]);
 });
 
 Deno.test("backoff doubles from 30 seconds up to six hours, with jitter", () => {

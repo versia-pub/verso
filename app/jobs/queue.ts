@@ -117,11 +117,22 @@ export const complete = async (ctx: Context, job: JobsTable): Promise<void> => {
     }
 };
 
-/** Deletes finished jobs that no longer need to be kept. */
+/** How long a dead letter is kept, for someone to look at or retry. */
+const deadLetterMs = 30 * 24 * 60 * 60 * 1000;
+
+/** Deletes finished jobs that no longer need to be kept, and dead letters kept long enough. */
 export const deleteExpiredJobs = async (ctx: Context): Promise<void> => {
+    const now = ctx.clock.now();
+
     await ctx.db.deleteFrom("jobs")
         .where("finished_at", "is not", null)
-        .where("keep_until", "<=", ctx.clock.now())
+        .where("keep_until", "<=", now)
+        .execute();
+
+    await ctx.db.deleteFrom("jobs")
+        .where("finished_at", "is", null)
+        .where((eb) => eb("attempts", ">=", eb.ref("max_attempts")))
+        .where("run_at", "<=", new Date(now.getTime() - deadLetterMs))
         .execute();
 };
 
@@ -135,7 +146,7 @@ export const backoffMs = (attempts: number, random: () => number = Math.random):
 
 /**
  * Records a failed run. The job is retried after a backoff, or, once its attempts are used up,
- * stays in the table as a dead letter.
+ * stays in the table as a dead letter for a while.
  */
 export const fail = async (
     ctx: Context,
@@ -144,15 +155,14 @@ export const fail = async (
     random?: () => number,
 ): Promise<void> => {
     const dead = job.attempts >= job.max_attempts;
+    const now = ctx.clock.now().getTime();
 
     await ctx.db.updateTable("jobs")
         .set({
             lease_owner: null,
             lease_expires_at: null,
             last_error: error,
-            ...(dead ? {} : {
-                run_at: new Date(ctx.clock.now().getTime() + backoffMs(job.attempts, random)),
-            }),
+            run_at: new Date(dead ? now : now + backoffMs(job.attempts, random)),
         })
         .where("id", "=", job.id)
         .where("lease_owner", "=", job.lease_owner)
