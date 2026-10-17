@@ -173,6 +173,13 @@ export const Config = z.strictObject({
         /** A form that logs in as any username, with no password. Development only. */
         dev_login: z.boolean().default(false),
     }).prefault({}),
+    federation: z.strictObject({
+        /**
+         * Lets Verso send requests to other instances at internal addresses, such as ones on a
+         * local network or this machine. Development only, since anyone can name an instance.
+         */
+        allow_internal_addresses: z.boolean().default(false),
+    }).prefault({}),
     instance: Instance,
     limits: Limits,
     permissions: Permissions,
@@ -187,6 +194,14 @@ export const Config = z.strictObject({
 
     if (config.mode === "production" && config.auth.dev_login) {
         ctx.addIssue({ code: "custom", path: ["auth", "dev_login"], message: developmentOnly });
+    }
+
+    if (config.mode === "production" && config.federation.allow_internal_addresses) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["federation", "allow_internal_addresses"],
+            message: developmentOnly,
+        });
     }
 
     if (

@@ -21,6 +21,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 rate_limit: { limit: 300, window_seconds: 300, store: "memory" },
             },
             auth: { issuers: [], dev_login: false },
+            federation: { allow_internal_addresses: false },
             instance: { description: "", contact: {}, rules: [] },
             limits: {
                 display_name: 60,
@@ -133,6 +134,7 @@ level = "debug"
                 ],
                 dev_login: false,
             },
+            federation: { allow_internal_addresses: false },
             instance: {
                 name: "Example Social",
                 description: "A place to talk.",
@@ -240,19 +242,25 @@ Deno.test("trusted proxies are addresses or CIDR ranges", async () => {
 });
 
 Deno.test("development settings need development mode", async () => {
-    const local = '[http]\norigin = "http://localhost:8080"\n[auth]\ndev_login = true\n';
+    const local = '[http]\norigin = "http://localhost:8080"\n[auth]\ndev_login = true\n' +
+        "[federation]\nallow_internal_addresses = true\n";
     const development = minimal.replace("social.example", "localhost");
 
     const production = await errors(development + local);
     assertStringIncludes(production, "http.origin");
     assertStringIncludes(production, "auth.dev_login");
+    assertStringIncludes(production, "federation.allow_internal_addresses");
     assertStringIncludes(production, 'Only allowed with mode = "development"');
 
     const result = await parseConfig('mode = "development"\n' + development + local);
-    assertEquals(result.ok && [result.config.http.origin, result.config.auth.dev_login], [
-        "http://localhost:8080",
-        true,
-    ]);
+    assertEquals(
+        result.ok && [
+            result.config.http.origin,
+            result.config.auth.dev_login,
+            result.config.federation.allow_internal_addresses,
+        ],
+        ["http://localhost:8080", true, true],
+    );
 });
 
 Deno.test("a development origin is a bare origin on the domain", async () => {

@@ -87,7 +87,9 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
         clock: systemClock,
         ids: idGenerator(systemClock),
         urls,
-        transport: federationTransport(),
+        transport: federationTransport({
+            allowInternal: config.federation.allow_internal_addresses,
+        }),
         identityProviders,
         db,
     });
