@@ -54,6 +54,15 @@ const welcome = defineRoute({
         ),
 });
 
+const scripted = defineRoute({
+    method: "GET",
+    path: "/scripted",
+    summary: "A page that runs a script from elsewhere",
+    pagePolicy: "default-src 'none'; script-src https://cdn.example/",
+    responses: { 200: Page },
+    handler: () => Promise.resolve({ status: 200, page: layout("Scripted", html``) }),
+});
+
 /** Remembers a visit in a cookie, and forgets it on the next one. */
 const visit = defineRoute({
     method: "GET",
@@ -141,6 +150,7 @@ const open = async () => {
         echo,
         sloppy,
         welcome,
+        scripted,
         visit,
         agent,
         notAPage,
@@ -336,11 +346,23 @@ Deno.test("a page is escaped HTML that other sites can't frame", async () => {
 
     assertEquals(response.headers.get("content-type"), "text/html; charset=UTF-8");
     assertEquals(response.headers.get("x-frame-options"), "DENY");
-    assertStringIncludes(
-        response.headers.get("content-security-policy") ?? "",
-        "frame-ancestors 'none'",
+    assertEquals(
+        response.headers.get("content-security-policy"),
+        "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
     );
     assertStringIncludes(await response.text(), "<p>Hello, &lt;script&gt;</p>");
+});
+
+Deno.test("a page may load what its route allows, but still can't be framed", async () => {
+    await using test = await open();
+
+    const response = await test.app.request("/scripted");
+
+    assertEquals(response.headers.get("x-frame-options"), "DENY");
+    assertEquals(
+        response.headers.get("content-security-policy"),
+        "default-src 'none'; script-src https://cdn.example/; frame-ancestors 'none'",
+    );
 });
 
 Deno.test("a redirect sends its location", async () => {

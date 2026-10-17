@@ -298,13 +298,17 @@ const checkReply = (route: Route, reply: Reply<Responses>) => {
     );
 };
 
-/** For pages: no scripts or framing, so a page like the consent form can't be clickjacked. */
-const pageHeaders = {
-    "content-security-policy":
-        "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+/**
+ * For pages: no scripts unless the route allows them, and never framing, so a page like the consent
+ * form can't be clickjacked.
+ */
+const pageHeaders = (route: Route) => ({
+    "content-security-policy": `${
+        route.pagePolicy ?? "default-src 'none'; style-src 'unsafe-inline'"
+    }; frame-ancestors 'none'`,
     "referrer-policy": "no-referrer",
     "x-frame-options": "DENY",
-};
+});
 
 const send = (c: HonoContext, route: Route, reply: Reply<Responses>) => {
     setCookies(c, reply.cookies);
@@ -314,7 +318,7 @@ const send = (c: HonoContext, route: Route, reply: Reply<Responses>) => {
     }
 
     if ("location" in reply) return c.redirect(reply.location, reply.status);
-    if ("page" in reply) return c.html(reply.page, reply.status, pageHeaders);
+    if ("page" in reply) return c.html(reply.page, reply.status, pageHeaders(route));
 
     if ("file" in reply) {
         const declared = route.responses[reply.status];

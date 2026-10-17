@@ -126,6 +126,12 @@ export type RouteDefinition<
      * for everyone, such as pictures. Without it, nothing may cache them.
      */
     readonly maxAge?: number;
+    /**
+     * What the route's pages may load and run, as a Content-Security-Policy, for a page that needs
+     * more than styles of its own, such as a script. Pages can never be framed, whatever it says.
+     * @see https://developer.mozilla.org/docs/Web/HTTP/Guides/CSP
+     */
+    readonly pagePolicy?: string;
     /** `false` exempts the route from rate limits, for files a page loads many of at once. */
     readonly rateLimit?: false;
     /** Without it, anyone may call the route, and tokens are ignored. */
