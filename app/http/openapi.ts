@@ -49,6 +49,7 @@ type Operation = {
 type Document = {
     readonly openapi: "3.1.1";
     readonly info: { readonly title: string; readonly version: string };
+    readonly servers: readonly { readonly url: string }[];
     readonly paths: Readonly<Record<string, Readonly<Record<string, Operation>>>>;
     readonly components: {
         readonly schemas: Readonly<Record<string, JsonSchema>>;
@@ -249,12 +250,13 @@ const operation = (route: Route): Operation => {
 };
 
 /**
- * The OpenAPI document describing `routes`.
+ * The OpenAPI document describing `routes`, served at `origin`, which example requests are sent to.
  * @see https://spec.openapis.org/oas/v3.1.1.html
  */
 export const openApiDocument = (
     routes: readonly Route[],
     info: Document["info"],
+    origin: string,
 ): Document => {
     const paths: Record<string, Record<string, Operation>> = {};
 
@@ -267,6 +269,7 @@ export const openApiDocument = (
     return {
         openapi: "3.1.1",
         info,
+        servers: [{ url: origin }],
         paths,
         components: { schemas: components(), securitySchemes },
     };
@@ -289,7 +292,7 @@ export const openApiRoute = (documented: readonly Route[], name: string | undefi
             document ??= openApiDocument([...documented, route], {
                 title: name ?? new URL(ctx.urls.origin).hostname,
                 version: denoConfig.version,
-            });
+            }, ctx.urls.origin);
             return Promise.resolve({ status: 200, body: document });
         },
     });

@@ -4,6 +4,11 @@
         "title": "social.example",
         "version": "0.0.0"
     },
+    "servers": [
+        {
+            "url": "https://social.example"
+        }
+    ],
     "paths": {
         "/api/v1/apps": {
             "post": {

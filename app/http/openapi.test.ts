@@ -6,6 +6,7 @@ import { openApiDocument } from "./openapi.ts";
 import { Binary, defineRoute, Page, Redirect, type Route } from "./route.ts";
 
 const info = { title: "social.example", version: "0.0.0" };
+const origin = "https://social.example";
 const unused = () => Promise.reject(new Error("Not called"));
 
 Deno.test("a route's inputs are its path, query, header and cookie parameters, and its body", () => {
@@ -32,10 +33,11 @@ Deno.test("a route's inputs are its path, query, header and cookie parameters, a
         properties: { name: { type: "string" as const } },
         required: ["name"],
     };
-    const { components: _, ...document } = openApiDocument([route], info);
+    const { components: _, ...document } = openApiDocument([route], info, origin);
     assertEquals(document, {
         openapi: "3.1.1",
         info,
+        servers: [{ url: origin }],
         paths: {
             "/api/v1/things/{id}/parts/{part_id}": {
                 patch: {
@@ -144,7 +146,7 @@ Deno.test("a route without inputs or tags lists only its summary and responses",
         description: "A redirect",
         headers: { location: { required: true as const, schema: { type: "string" as const } } },
     };
-    assertEquals(openApiDocument(routes, info).paths, {
+    assertEquals(openApiDocument(routes, info, origin).paths, {
         "/login": {
             get: { summary: "Log in", responses: { 200: page, 302: redirect, 400: page } },
             post: { summary: "Logged in", responses: { 303: redirect } },
@@ -190,7 +192,7 @@ Deno.test("the client API's entities are described once, in components, and refe
         }),
     ];
 
-    const document = openApiDocument(routes, info);
+    const document = openApiDocument(routes, info, origin);
     const ref = (id: string) => ({ $ref: `#/components/schemas/${id}` });
     const json = (status: number) =>
         document.paths["/accounts"].get.responses[status].content?.["application/json"].schema;
@@ -227,7 +229,7 @@ Deno.test("a schema that contains itself must be named", () => {
 
     for (const schema of [Node, z.object({ node: Node })]) {
         assertThrows(
-            () => openApiDocument([route(schema)], info),
+            () => openApiDocument([route(schema)], info, origin),
             Error,
             "A schema that contains itself must be named",
         );
@@ -253,7 +255,7 @@ Deno.test("who may call a route is its security, and what OpenAPI can't say is d
         route("/federated", { signed: true }),
     ];
 
-    const document = openApiDocument(routes, info);
+    const document = openApiDocument(routes, info, origin);
     const access = (path: string) => {
         const { security, description } = document.paths[path].get;
         return { security, description };
