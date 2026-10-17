@@ -140,7 +140,7 @@ Deno.test("an out-of-band app's user is shown the code to copy", async () => {
     assertEquals(flow.code_hash, await hashToken(code));
 });
 
-Deno.test("a failed login, or a closed registration, is denied to the app", async () => {
+Deno.test("a failed login, or a closed registration, is denied to the app, and ends the flow", async () => {
     await using failed = await open();
     await using closed = await open(stubProvider({ registration: "closed" }));
 
@@ -150,6 +150,13 @@ Deno.test("a failed login, or a closed registration, is denied to the app", asyn
     assertEquals(backTo(notLoggedIn).searchParams.get("error"), "access_denied");
     assertEquals(backTo(notRegistered).searchParams.get("error"), "access_denied");
     assertEquals(await closed.ctx.db.selectFrom("accounts").selectAll().execute(), []);
+    for (const [test, response] of [[failed, notLoggedIn], [closed, notRegistered]] as const) {
+        assertEquals(await test.flows(), []);
+        assertStringIncludes(
+            response.headers.get("set-cookie") ?? "",
+            "__Host-oauth_flow=; Max-Age=0",
+        );
+    }
 });
 
 Deno.test("each step needs the browser that started, in the right order", async () => {

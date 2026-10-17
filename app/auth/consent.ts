@@ -32,6 +32,12 @@ const sendBack = (
 const denied = (flow: OAuthFlowsTable, description: string) =>
     sendBack(flow, { error: "access_denied", error_description: description });
 
+/** Tells the app the login was denied, and forgets its flow, which can't be finished now. */
+const loginDenied = async (ctx: Context, flow: OAuthFlowsTable, description: string) => {
+    await deleteFlow(ctx, flow.id);
+    return denied(flow, description);
+};
+
 /**
  * Finishes the login when the issuer sends the browser back. On success the user is asked to
  * allow the app. If the login failed, or the issuer's policy won't let the user register, the app
@@ -51,11 +57,13 @@ export const finishLogin = async (
         claims = await provider.completeLogin(callback, flow.login);
     } catch (error) {
         logger.warn("A login at {issuer} failed: {error}", { issuer: flow.issuer, error });
-        return denied(flow, "The login didn't complete.");
+        return await loginDenied(ctx, flow, "The login didn't complete.");
     }
 
     const account = await provision(ctx, provider.issuer, claims);
-    if (!account.ok) return denied(flow, "This server doesn't take new users from that login.");
+    if (!account.ok) {
+        return await loginDenied(ctx, flow, "This server doesn't take new users from that login.");
+    }
 
     await markLoggedIn(ctx, flow.id, account.accountId);
 

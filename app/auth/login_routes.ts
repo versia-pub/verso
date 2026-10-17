@@ -119,7 +119,10 @@ const getCallback = defineRoute({
             return { status: 303, location: ctx.urls.url`/oauth/consent` };
         }
 
-        return login.result === "expired" ? expired : replyToApp(login);
+        // The flow is over, so its cookie goes too.
+        return login.result === "expired"
+            ? expired
+            : { ...replyToApp(login), cookies: { oauth_flow: null } };
     },
 });
 
