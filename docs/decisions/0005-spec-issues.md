@@ -18,3 +18,4 @@ upstream.
 | Domains can't have a port, but references don't say                                                                                                             | References may have a port, for local testing       |
 | Reference hostnames have no canonical form                                                                                                                      | Lowercase, no port 443, compressed IPv6, ASCII only |
 | Extension keys that break the naming rules                                                                                                                      | Rejected with 422                                   |
+| [JSON](https://versia.pub/json) keys can't have `$` or `+`, but entities have `$schema`, and content formats such as `image/svg+xml`                            | Also allows `+`, and `$` at the start               |

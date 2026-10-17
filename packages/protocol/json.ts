@@ -3,7 +3,9 @@ export type JsonResult =
     | { readonly ok: true; readonly value: unknown }
     | { readonly ok: false; readonly reason: string };
 
-const keyPattern = /^[A-Za-z0-9\-_.#/:]+$/;
+// The spec's characters, plus `+` for content formats such as `image/svg+xml`, and a leading `$` for
+// `$schema`, both of which the spec's own entities use (see docs/decisions/0005-spec-issues.md).
+const keyPattern = /^\$?[A-Za-z0-9\-_.#/:+]+$/;
 // Plain decimals only: no exponent, no leading zeros, and no trailing zeros after the point.
 const numberPattern = /^-?(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$/;
 

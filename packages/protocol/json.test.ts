@@ -21,12 +21,14 @@ Deno.test("keys may only use the allowed characters", () => {
             "valid/key",
             "valid:key",
             "A9",
+            "$schema",
+            "image/svg+xml",
         ]
     ) {
         assertEquals(accepts(`{"${key}": 1}`), true, key);
     }
 
-    for (const key of ["invalid key", "invalid@key", "", "\\u0020", "é"]) {
+    for (const key of ["invalid key", "invalid@key", "", "\\u0020", "é", "a$b", "$", "$$schema"]) {
         assertEquals(accepts(`{"${key}": 1}`), false, key);
     }
 });
