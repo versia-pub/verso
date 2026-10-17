@@ -1,4 +1,5 @@
-import { type App, type AppOptions, type AppServices, createApp } from "../http/app.ts";
+import { type App, type AppOptions, createApp } from "../http/app.ts";
+import type { AppServices } from "../http/env.ts";
 import type { Route } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import { appServices } from "../services.ts";

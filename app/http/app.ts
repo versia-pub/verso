@@ -1,32 +1,18 @@
 import { type Context as HonoContext, Hono } from "@hono/hono";
 import { bodyLimit } from "@hono/hono/body-limit";
-import { deleteCookie, getCookie, setCookie } from "@hono/hono/cookie";
+import { deleteCookie, setCookie } from "@hono/hono/cookie";
 import { getLogger } from "@logtape/logtape";
 import { sign, verify } from "@versia/protocol";
-import qs from "qs";
 import { z } from "zod";
-import type { Permission } from "../kernel/permissions.ts";
-import { grants } from "../kernel/scopes.ts";
 import { Permissions } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-import { type Cidr, parseAddress } from "../kernel/ip.ts";
-import { clientIp } from "./client_ip.ts";
-import {
-    BadRequest,
-    BadSignature,
-    ContentTooLarge,
-    Forbidden,
-    HttpError,
-    NotFound,
-    NotPermitted,
-    StaleSignature,
-    Unauthorized,
-    UnsupportedMediaType,
-    UserRequired,
-    ValidationFailed,
-} from "./errors.ts";
+import type { Cidr } from "../kernel/ip.ts";
+import { BadSignature, ContentTooLarge, HttpError, NotFound, StaleSignature } from "./errors.ts";
+import type { AppEnv, AppServices } from "./env.ts";
 import { useHeaders } from "./headers.ts";
+import { asOAuthError, inputOf } from "./input.ts";
 import { rateLimit, type RateLimits } from "./rate_limits.ts";
+import { checkPermission, rateLimitKey, viewerOf, withPermissions } from "./viewer.ts";
 import {
     type CookieChanges,
     Page,
@@ -34,76 +20,12 @@ import {
     type Reply,
     type Responses,
     type Route,
-    type RouteViewer,
-    type Viewer,
 } from "./route.ts";
 
 const logger = getLogger(["verso", "http"]);
 
-/** What Hono carries for each request. */
-type AppEnv = {
-    /** From `Deno.serve`. Tests that call the app directly may leave it out. */
-    Bindings: { readonly remoteAddr?: { readonly hostname: string } } | undefined;
-    Variables: { bearer?: Promise<Viewer | undefined> };
-};
-
 /** The largest body a route takes, enough for any form or JSON. Uploads will need their own. */
 const maxBodyBytes = 64 * 1024;
-
-/** Parses each part of the input, reporting every problem in all parts at once. */
-const validate = <K extends string>(
-    parts: Record<K, { schema: z.ZodType | undefined; value: unknown }>,
-): Record<K, unknown> => {
-    const valid: Partial<Record<K, unknown>> = {};
-    const details: Record<string, string[]> = {};
-
-    for (const [part, { schema, value }] of Object.entries(parts) as [K, typeof parts[K]][]) {
-        const result = (schema ?? z.object({})).safeParse(value);
-        if (result.success) valid[part] = result.data;
-
-        for (const issue of result.error?.issues ?? []) {
-            const path = [part, ...issue.path.map(String)].join(".");
-            (details[path] ??= []).push(issue.message);
-        }
-    }
-
-    if (Object.keys(details).length > 0) throw new ValidationFailed(details);
-    return valid as Record<K, unknown>;
-};
-
-/**
- * The query's values. A key given more than once is an array, and so is a Rails-style `key[]`,
- * read as `key`, even when given once.
- */
-const queryOf = (c: HonoContext) => {
-    const values = new Map<string, string[]>();
-    const arrays = new Set<string>();
-
-    for (const [key, given] of Object.entries(c.req.queries())) {
-        const name = key.replace(/\[\]$/, "");
-        if (name !== key) arrays.add(name);
-
-        values.set(name, [...values.get(name) ?? [], ...given]);
-    }
-
-    return Object.fromEntries(
-        [...values].map(([name, given]) => [
-            name,
-            given.length === 1 && !arrays.has(name) ? given[0] : given,
-        ]),
-    );
-};
-
-/**
- * Verso's cookies, without their `__Host-` prefix. Browsers only accept such cookies from this
- * host over HTTPS, so a subdomain or an insecure page can't plant one.
- */
-const cookiesOf = (c: HonoContext) =>
-    Object.fromEntries(
-        Object.entries(getCookie(c))
-            .filter(([name]) => name.startsWith("__Host-"))
-            .map(([name, value]) => [name.slice("__Host-".length), value]),
-    );
 
 const setCookies = (c: HonoContext, cookies: CookieChanges = {}) => {
     for (const [name, value] of Object.entries(cookies)) {
@@ -115,167 +37,8 @@ const setCookies = (c: HonoContext, cookies: CookieChanges = {}) => {
     }
 };
 
-/**
- * A form's fields, with Rails-style names read as JSON would have them: `key[]` as an array, and
- * `a[b]` as `b` in the object `a`. Files need plain names, such as `avatar`, as Mastodon's have.
- * @see https://github.com/ljharb/qs#parsing-objects
- */
-const formOf = async (c: HonoContext) => {
-    const text = new URLSearchParams();
-    const files = new Map<string, File>();
-
-    for (const [name, value] of await c.req.formData()) {
-        if (typeof value === "string") {
-            text.append(name, value);
-        } else if (/^\w+$/.test(name) && !files.has(name)) {
-            files.set(name, value);
-        } else {
-            throw new BadRequest(`A file must have a plain name, used once, unlike "${name}"`);
-        }
-    }
-
-    // Names nested deeper than five are refused, rather than read as one long key.
-    return { ...qs.parse(text.toString(), { strictDepth: true }), ...Object.fromEntries(files) };
-};
-
-/** Mastodon clients send JSON or forms, so every route accepts both. */
-const bodyOf = async (c: HonoContext, route: Route) => {
-    if (!route.body) return {};
-
-    const type = c.req.header("content-type")?.split(";")[0].trim().toLowerCase();
-    const forms = ["application/x-www-form-urlencoded", "multipart/form-data"];
-
-    if (type !== "application/json" && !forms.includes(type ?? "")) {
-        throw new UnsupportedMediaType("The body must be JSON or a form");
-    }
-
-    try {
-        return type === "application/json" ? await c.req.json() : await formOf(c);
-    } catch (error) {
-        if (error instanceof HttpError) throw error;
-        throw new BadRequest("The body isn't valid JSON or form data");
-    }
-};
-
-/** The route's validated input, or the reason it isn't valid. */
-const inputOf = async (c: HonoContext, route: Route) =>
-    validate({
-        params: { schema: route.params, value: c.req.param() },
-        query: { schema: route.query, value: queryOf(c) },
-        body: { schema: route.body, value: await bodyOf(c, route) },
-        cookies: { schema: route.cookies, value: cookiesOf(c) },
-        headers: { schema: route.headers, value: c.req.header() },
-    });
-
-/** An input error as OAuth's `invalid_request`, naming what was wrong. */
-const asOAuthError = (error: unknown) => {
-    if (error instanceof ValidationFailed) {
-        const fields = Object.keys(error.details).join(", ");
-        return new HttpError(400, "invalid_request", `These are invalid: ${fields}.`);
-    }
-
-    return error instanceof HttpError
-        ? new HttpError(400, "invalid_request", error.description ?? error.message)
-        : error;
-};
-
 const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
     declared instanceof z.ZodType;
-
-/**
- * Who is calling, checked against the route's `auth` as Mastodon checks it. A token sent where none
- * is needed is ignored; on other routes, a token sent must be valid.
- */
-const viewerOf = async (
-    ctx: Context,
-    c: HonoContext<AppEnv>,
-    route: Route,
-    services: AppServices,
-) => {
-    if (!route.auth) return undefined;
-
-    if (c.req.header("authorization") === undefined && route.auth.require === "optional") {
-        return undefined;
-    }
-
-    const viewer = await bearerOf(ctx, c, services);
-
-    if (!viewer) throw new Unauthorized();
-    if (route.auth.require === "user" && viewer.accountId === null) throw new UserRequired();
-    if (route.auth.scope && !grants(viewer.scopes, route.auth.scope)) throw new Forbidden();
-
-    return viewer;
-};
-
-/**
- * The viewer, able to say what it may do: a user, what every user may and their roles allow, and
- * anyone else, such as an app acting for itself, what anonymous visitors may. That is looked up
- * once, the first time something asks.
- */
-const withPermissions = (
-    ctx: Context,
-    viewer: Viewer,
-    permissions: Permissions,
-    services: AppServices,
-): RouteViewer => {
-    let granted: Promise<ReadonlySet<Permission>> | undefined;
-
-    return {
-        ...viewer,
-        permissions: () =>
-            granted ??= viewer.accountId === null
-                ? Promise.resolve(new Set(permissions.anonymous))
-                : services.permissionsOf(ctx, viewer.accountId, permissions.default),
-    };
-};
-
-/** Throws unless the viewer, or an anonymous visitor if there is none, may do what `route` needs. */
-const checkPermission = async (
-    route: Route,
-    viewer: RouteViewer | undefined,
-    permissions: Permissions,
-) => {
-    const needed = route.auth?.permission;
-    if (needed === undefined) return;
-
-    const granted = viewer ? await viewer.permissions() : new Set(permissions.anonymous);
-    if (!granted.has(needed)) throw new NotPermitted();
-};
-
-/**
- * The viewer the request's bearer token stands for, if it is valid. It is looked up once, though
- * both the rate limit and the route ask.
- */
-const bearerOf = (ctx: Context, c: HonoContext<AppEnv>, services: AppServices) => {
-    const token = /^Bearer\s+(\S+)$/i.exec(c.req.header("authorization") ?? "")?.[1];
-    if (token === undefined) return Promise.resolve(undefined);
-
-    const bearer = c.get("bearer") ?? services.authenticate(ctx, token);
-    c.set("bearer", bearer);
-
-    return bearer;
-};
-
-/**
- * Who a request counts against: its access token, if valid, or else the client's IP address. A
- * token that isn't valid doesn't count, or a client could send a new made-up one each time.
- */
-const rateLimitKey = async (
-    ctx: Context,
-    c: HonoContext<AppEnv>,
-    trustedProxies: readonly Cidr[],
-    services: AppServices,
-) => {
-    const viewer = await bearerOf(ctx, c, services);
-    if (viewer) return `token:${viewer.tokenId}`;
-
-    const peer = c.env?.remoteAddr?.hostname ?? "unknown";
-    const ip = clientIp(peer, c.req.header("x-forwarded-for"), trustedProxies);
-    const address = parseAddress(ip);
-
-    // A machine is usually given a whole /64 of IPv6 addresses, so it counts as one client.
-    return address?.bits === 128 ? `ip:${(address.value >> 64n).toString(16)}/64` : `ip:${ip}`;
-};
 
 /** Why a reply doesn't match what its route declares for its status, if it doesn't. */
 const replyProblem = (route: Route, reply: Reply<Responses>) => {
@@ -394,28 +157,6 @@ const signReply = async (
 
     for (const [name, value] of Object.entries(headers)) response.headers.set(name, value);
     return response;
-};
-
-/**
- * What the app needs from the rest of Verso, which `main.ts` wires up, so the HTTP layer doesn't
- * depend on the modules that serve it.
- */
-export type AppServices = {
-    /** The viewer an access token stands for, if this server gave it out and it is still valid. */
-    readonly authenticate: (ctx: Context, token: string) => Promise<Viewer | undefined>;
-    /** What an account may do: what config lets every user, and what its roles allow. */
-    readonly permissionsOf: (
-        ctx: Context,
-        accountId: string,
-        everyUser: readonly Permission[],
-    ) => Promise<ReadonlySet<Permission>>;
-    /** The private key replies to other instances are signed with. */
-    readonly signingKey: (ctx: Context) => Promise<CryptoKey>;
-    /** Other instances' keys, to check their signatures with. */
-    readonly remoteKeys: {
-        readonly get: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
-        readonly refresh: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
-    };
 };
 
 /** The server's HTTP app. */

@@ -1,6 +1,6 @@
 import { accountPermissions } from "./accounts/roles.ts";
 import { authenticateToken } from "./auth/tokens.ts";
-import type { AppServices } from "./http/app.ts";
+import type { AppServices } from "./http/env.ts";
 import { instanceKey } from "./instances/keys.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
 
