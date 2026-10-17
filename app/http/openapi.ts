@@ -4,8 +4,9 @@
  */
 import * as clientApi from "@versia/client-api";
 import { z } from "zod";
+import denoConfig from "../../deno.json" with { type: "json" };
 import { scopes } from "../auth/scopes.ts";
-import type { Responses, Route } from "./route.ts";
+import { defineRoute, type Responses, type Route } from "./route.ts";
 
 type JsonSchema = z.core.JSONSchema.JSONSchema;
 
@@ -269,4 +270,29 @@ export const openApiDocument = (
         paths,
         components: { schemas: components(), securitySchemes },
     };
+};
+
+/**
+ * Serves the document describing `documented`, and this route, titled with the instance's name or
+ * else its domain. It is built once, when first asked for.
+ */
+export const openApiRoute = (documented: readonly Route[], name: string | undefined): Route => {
+    let document: Document | undefined;
+
+    const route = defineRoute({
+        method: "GET",
+        path: "/openapi.json",
+        summary: "This API, described with OpenAPI",
+        tags: ["docs"],
+        responses: { 200: z.looseObject({ openapi: z.literal("3.1.1") }) },
+        handler: (ctx) => {
+            document ??= openApiDocument([...documented, route], {
+                title: name ?? new URL(ctx.urls.origin).hostname,
+                version: denoConfig.version,
+            });
+            return Promise.resolve({ status: 200, body: document });
+        },
+    });
+
+    return route;
 };

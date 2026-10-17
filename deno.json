@@ -12,6 +12,7 @@
         "check": "deno check",
         "test": "deno test --allow-read=node_modules --allow-env",
         "import-cycles": "deno run --allow-read=. --allow-run=deno scripts/import_cycles.ts",
+        "update-openapi": "UPDATE_OPENAPI=1 deno test --allow-read=node_modules --allow-env --allow-write=app/http/openapi.json app/http/routes.test.ts && deno fmt app/http/openapi.json",
         "unused-dependencies": "deno run --allow-read=. --allow-run=deno scripts/unused_dependencies.ts"
     },
     "fmt": {
