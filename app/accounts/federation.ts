@@ -1,12 +1,16 @@
 /**
- * Local accounts as Versia shows them to other instances.
+ * Accounts as Versia shows them: local ones to other instances, and other instances' users to
+ * Verso.
  * @module
  */
 import { v0_6 } from "@versia/protocol";
 import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
+import type { RemoteMedia } from "../media/media.ts";
 import { type AccountRow, findAccount } from "./accounts.ts";
-import type { TextFormat } from "./tables.ts";
+import type { RemoteAccount } from "./remote.ts";
+import type { ProfileField, TextFormat } from "./tables.ts";
+import { escapeHtml, textToHtml } from "./text.ts";
 
 /** Text as its owner wrote it, and as HTML, so each instance can show whichever it can. */
 const text = (format: TextFormat, written: string, html: string): v0_6.ContentFormat => ({
@@ -70,4 +74,89 @@ export const userType: EntityType<v0_6.User> = {
         followers: emptyCollection,
         following: emptyCollection,
     },
+};
+
+/** Text as written, in the first format Verso knows that holds it, or none. */
+const writtenText = (formats: v0_6.ContentFormat): { format: TextFormat; text: string } => {
+    for (const format of ["text/plain", "text/markdown"] as const) {
+        const entry = formats[format];
+        if (entry && !entry.remote) return { format, text: entry.content };
+    }
+
+    return { format: "text/plain", text: "" };
+};
+
+/**
+ * Text as Verso keeps it: as written, and as HTML, which is the instance's own if it gave one, kept
+ * as it is and sanitised when shown. Markdown without HTML is shown as plain text, until Verso
+ * renders Markdown.
+ */
+const remoteText = (
+    formats: v0_6.ContentFormat | null | undefined,
+    html: (text: string) => string,
+) => {
+    const written = writtenText(formats ?? {});
+    const given = formats?.["text/html"];
+
+    return { ...written, html: given && !given.remote ? given.content : html(written.text) };
+};
+
+/** Pictures clients can be counted on to show. */
+const pictureTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
+
+/** The first version of a picture that clients can show, at a web address. */
+const remotePicture = (formats: v0_6.ContentFormat | null | undefined): RemoteMedia | null => {
+    for (const [mediaType, entry] of Object.entries(formats ?? {})) {
+        if (!entry.remote || !pictureTypes.has(mediaType)) continue;
+        if (!v0_6.WebUrl.safeParse(entry.content).success) continue;
+
+        return {
+            url: entry.content,
+            mediaType,
+            size: entry.size ?? undefined,
+            sha256: entry.hash?.toLowerCase(),
+            width: entry.width ?? undefined,
+            height: entry.height ?? undefined,
+            thumbhash: entry.thumbhash ?? undefined,
+            description: entry.description ?? undefined,
+        };
+    }
+
+    return null;
+};
+
+/** A user on the instance `instanceId`, as Verso keeps it. */
+export const remoteAccountOf = (instanceId: string, user: v0_6.User): RemoteAccount => {
+    const bio = remoteText(user.bio, textToHtml);
+    const fields = user.fields.map((field): ProfileField => {
+        const name = remoteText(field.key, escapeHtml);
+        const value = remoteText(field.value, escapeHtml);
+
+        return {
+            name: name.text,
+            value: value.text,
+            // Each is in the format of its name, which is nearly always the same as its value's.
+            format: name.format,
+            name_html: name.html,
+            value_html: value.html,
+        };
+    });
+
+    return {
+        instanceId,
+        remoteId: user.id,
+        createdAt: new Date(user.created_at),
+        profile: {
+            username: user.username,
+            display_name: user.display_name ?? "",
+            note: bio.text,
+            note_format: bio.format,
+            note_html: bio.html,
+            fields,
+            locked: user.manually_approves_followers,
+            indexable: user.indexable,
+        },
+        avatar: remotePicture(user.avatar),
+        header: remotePicture(user.header),
+    };
 };

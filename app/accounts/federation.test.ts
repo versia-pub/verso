@@ -1,9 +1,10 @@
 import { assertEquals } from "@std/assert";
-import { importPublicKey, sign, verify } from "@versia/protocol";
+import { importPublicKey, sign, v0_6, verify } from "@versia/protocol";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { createNetwork } from "../testing/network.ts";
+import { remoteAccountOf } from "./federation.ts";
 import { updateProfile } from "./profile.ts";
 import { createLocalAccount } from "./testing.ts";
 
@@ -189,4 +190,126 @@ Deno.test("a local user's collections are given, empty until there is something 
         new Request("https://a.test/.versia/v0.6/entities/User/alice/collections/outbox"),
     );
     assertEquals(unsigned.status, 401);
+});
+
+const user = (changes: Partial<v0_6.User> = {}): v0_6.User => ({
+    type: "User",
+    id: "abc",
+    created_at: "2026-01-01T00:00:00Z",
+    username: "bob",
+    fields: [],
+    manually_approves_followers: false,
+    indexable: true,
+    ...changes,
+});
+
+Deno.test("a remote user becomes an account, with its text as written and as HTML", () => {
+    const account = remoteAccountOf(
+        "b.test",
+        user({
+            display_name: "Bob",
+            bio: {
+                "text/plain": { content: "Hi there", remote: false },
+                "text/html": { content: "<p>Hi <b>there</b></p>", remote: false },
+            },
+            fields: [{
+                key: { "text/plain": { content: "Site", remote: false } },
+                value: {
+                    "text/plain": { content: "b.test", remote: false },
+                    "text/html": { content: '<a href="https://b.test">b.test</a>', remote: false },
+                },
+            }],
+            manually_approves_followers: true,
+        }),
+    );
+
+    assertEquals(account, {
+        instanceId: "b.test",
+        remoteId: "abc",
+        createdAt: new Date("2026-01-01T00:00:00Z"),
+        profile: {
+            username: "bob",
+            display_name: "Bob",
+            note: "Hi there",
+            note_format: "text/plain",
+            note_html: "<p>Hi <b>there</b></p>",
+            fields: [{
+                name: "Site",
+                value: "b.test",
+                format: "text/plain",
+                name_html: "Site",
+                value_html: '<a href="https://b.test">b.test</a>',
+            }],
+            locked: true,
+            indexable: true,
+        },
+        avatar: null,
+        header: null,
+    });
+});
+
+Deno.test("remote text without HTML is escaped, and HTML alone is kept", () => {
+    const markdown = remoteAccountOf(
+        "b.test",
+        user({
+            bio: { "text/markdown": { content: "**Hi** <there>", remote: false } },
+        }),
+    );
+    assertEquals(
+        [markdown.profile.note, markdown.profile.note_format, markdown.profile.note_html],
+        ["**Hi** <there>", "text/markdown", "<p>**Hi** &lt;there&gt;</p>"],
+    );
+
+    const html = remoteAccountOf(
+        "b.test",
+        user({
+            bio: {
+                "text/html": { content: "<p>Hi</p>", remote: false },
+                "text/plain": { content: "https://b.test/bio.txt", remote: true },
+            },
+        }),
+    );
+    assertEquals(
+        [html.profile.note, html.profile.note_format, html.profile.note_html],
+        ["", "text/plain", "<p>Hi</p>"],
+    );
+
+    const none = remoteAccountOf("b.test", user());
+    assertEquals([none.profile.display_name, none.profile.note_html], ["", ""]);
+});
+
+Deno.test("a remote picture is the first version clients can show, at a web address", () => {
+    const account = remoteAccountOf(
+        "b.test",
+        user({
+            avatar: {
+                "image/x-icon": { content: "https://b.test/bob.ico", remote: true },
+                "image/png": { content: "javascript:alert(1)", remote: true },
+                "image/jpeg": { content: "data", remote: false },
+                "image/webp": {
+                    content: "https://b.test/bob.webp",
+                    remote: true,
+                    size: 1234,
+                    hash: "AB".repeat(32),
+                    width: 64,
+                    height: 48,
+                    thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+                    description: "Bob",
+                },
+            },
+            header: { "image/svg+xml": { content: "https://b.test/sea.svg", remote: true } },
+        }),
+    );
+
+    assertEquals(account.avatar, {
+        url: "https://b.test/bob.webp",
+        mediaType: "image/webp",
+        size: 1234,
+        sha256: "ab".repeat(32),
+        width: 64,
+        height: 48,
+        thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+        description: "Bob",
+    });
+    assertEquals(account.header, null);
 });
