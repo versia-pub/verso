@@ -169,3 +169,22 @@ export const fail = async (
         .where("attempts", "=", job.attempts)
         .execute();
 };
+
+/**
+ * Records a failed run that retrying can't fix, such as an entity that is invalid. The job becomes
+ * a dead letter at once, kept for a while like any other.
+ */
+export const giveUp = async (ctx: Context, job: JobsTable, error: string): Promise<void> => {
+    await ctx.db.updateTable("jobs")
+        .set((eb) => ({
+            lease_owner: null,
+            lease_expires_at: null,
+            last_error: error,
+            attempts: eb.ref("max_attempts"),
+            run_at: ctx.clock.now(),
+        }))
+        .where("id", "=", job.id)
+        .where("lease_owner", "=", job.lease_owner)
+        .where("attempts", "=", job.attempts)
+        .execute();
+};

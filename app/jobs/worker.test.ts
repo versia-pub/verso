@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
 import { enqueue } from "./queue.ts";
-import { drain, pause, type Queue, work } from "./worker.ts";
+import { drain, pause, PermanentFailure, type Queue, work } from "./worker.ts";
 
 const open = () => createTestContext();
 
@@ -166,6 +166,29 @@ Deno.test("drain runs a failed job again only once the clock passes its backoff"
     test.clock.advance(30_000);
     assertEquals(await drain(test.ctx, queues), 1);
     assertEquals(runs, 2);
+});
+
+Deno.test("a job that fails permanently isn't run again", async () => {
+    await using test = await open();
+
+    let runs = 0;
+
+    const queues: Record<string, Queue> = {
+        inbox: {
+            handler: () => Promise.reject(new PermanentFailure(`failure ${++runs}`)),
+            concurrency: 1,
+        },
+    };
+
+    await enqueue(test.ctx, { queue: "inbox", payload: {} });
+    assertEquals(await drain(test.ctx, queues), 1);
+
+    test.clock.advance(7 * 24 * 60 * 60_000);
+    assertEquals(await drain(test.ctx, queues), 0);
+    assertEquals(runs, 1);
+
+    const [job] = await test.ctx.db.selectFrom("jobs").select("last_error").execute();
+    assertEquals(job.last_error?.startsWith("PermanentFailure: failure 1"), true);
 });
 
 Deno.test("a pause removes every listener it added, however it ends", async () => {

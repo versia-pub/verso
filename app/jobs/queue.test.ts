@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
-import { backoffMs, claim, complete, deleteExpiredJobs, enqueue, fail } from "./queue.ts";
+import { backoffMs, claim, complete, deleteExpiredJobs, enqueue, fail, giveUp } from "./queue.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";
 
@@ -151,6 +151,23 @@ Deno.test("a failed job is retried after a backoff, then kept as a dead letter",
         await test.ctx.db.selectFrom("jobs")
             .select(["attempts", "lease_owner", "lease_expires_at", "last_error"]).execute(),
         [{ attempts: 2, lease_owner: null, lease_expires_at: null, last_error: "refused" }],
+    );
+});
+
+Deno.test("a job given up on is a dead letter at once, with its error", async () => {
+    await using test = await open();
+
+    await enqueue(test.ctx, { queue: "deliver", payload: {}, maxAttempts: 5 });
+    const [job] = await claim(test.ctx, options);
+    await giveUp(test.ctx, job, "invalid");
+
+    test.clock.advance(24 * 60 * minute);
+    assertEquals(await claim(test.ctx, options), []);
+
+    assertEquals(
+        await test.ctx.db.selectFrom("jobs")
+            .select(["attempts", "lease_owner", "lease_expires_at", "last_error"]).execute(),
+        [{ attempts: 5, lease_owner: null, lease_expires_at: null, last_error: "invalid" }],
     );
 });
 

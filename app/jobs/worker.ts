@@ -1,9 +1,12 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
-import { claim, complete, fail } from "./queue.ts";
+import { claim, complete, fail, giveUp } from "./queue.ts";
 import type { JobsTable } from "./tables.ts";
 
-/** Runs one job. It may run more than once for the same job, so it must be idempotent. */
+/**
+ * Runs one job. It may run more than once for the same job, so it must be idempotent. When it
+ * throws, the job is retried later, unless it throws a `PermanentFailure`.
+ */
 export type Handler = (ctx: Context, job: JobsTable) => Promise<void>;
 
 export type Queue = {
@@ -25,6 +28,11 @@ export type WorkOptions = {
     readonly wakeups?: EventTarget;
 };
 
+/** Thrown by a handler when retrying can't help, so the job isn't run again. */
+export class PermanentFailure extends Error {
+    override readonly name = "PermanentFailure";
+}
+
 const logger = getLogger(["verso", "jobs"]);
 
 const defaultLeaseMs = 5 * 60_000;
@@ -37,15 +45,17 @@ const runJob = async (ctx: Context, name: string, queue: Queue, job: JobsTable) 
         await queue.handler(ctx, job);
         await complete(ctx, job);
     } catch (error) {
+        const permanent = error instanceof PermanentFailure;
         logger.warn("Job {id} in {queue} failed, {outcome}: {error}", {
             id: job.id,
             queue: name,
-            outcome: job.attempts >= job.max_attempts ? "giving up" : "will retry",
+            outcome: permanent || job.attempts >= job.max_attempts ? "giving up" : "will retry",
             error,
         });
 
         try {
-            await fail(ctx, job, errorText(error));
+            if (permanent) await giveUp(ctx, job, errorText(error));
+            else await fail(ctx, job, errorText(error));
         } catch (error) {
             // The lease runs out and the job is claimed again, so nothing is lost.
             logger.error("Couldn't record the failure of job {id}: {error}", { id: job.id, error });
