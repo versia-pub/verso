@@ -7,6 +7,7 @@ import { deleteCookie, setCookie } from "@hono/hono/cookie";
 import { z } from "zod";
 import {
     type CookieChanges,
+    NoBody,
     Page,
     Redirect,
     type Reply,
@@ -34,6 +35,10 @@ const replyProblem = (route: Route, reply: Reply<Responses>) => {
     if (declared === undefined) return "the status isn't declared";
     if (declared === Page) return "page" in reply ? undefined : "it isn't a page";
     if (declared === Redirect) return "location" in reply ? undefined : "it isn't a redirect";
+    if (declared === NoBody) {
+        const empty = Object.keys(reply).every((key) => key === "status" || key === "cookies");
+        return empty ? undefined : "it has a body";
+    }
     if (!isSchema(declared)) return "file" in reply ? undefined : "it isn't a file";
     if (!("body" in reply)) return "it has no body";
 
@@ -84,6 +89,8 @@ export const send = (
 
         return c.body(new Uint8Array(reply.file), reply.status, { "content-type": type });
     }
+
+    if (!("body" in reply)) return c.body(null, reply.status);
 
     return route.contentType === undefined
         ? c.json(reply.body, reply.status)

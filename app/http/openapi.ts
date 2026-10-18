@@ -207,6 +207,8 @@ const response = (
             };
         case "binary":
             return { description: "A file", content: { [declared.type]: {} } };
+        case "none":
+            return { description: "No body" };
     }
 };
 

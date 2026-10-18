@@ -3,7 +3,7 @@ import { Account, CredentialAccount } from "@versia/client-api";
 import { z } from "zod";
 import { scopes } from "../kernel/scopes.ts";
 import { openApiDocument } from "./openapi.ts";
-import { Binary, defineRoute, Page, Redirect, type Route } from "./route.ts";
+import { Binary, defineRoute, NoBody, Page, Redirect, type Route } from "./route.ts";
 
 const info = { title: "social.example", version: "0.0.0" };
 const origin = "https://social.example";
@@ -117,7 +117,7 @@ Deno.test("a route without inputs or tags lists only its summary and responses",
             method: "POST",
             path: "/login",
             summary: "Logged in",
-            responses: { 303: Redirect },
+            responses: { 202: NoBody, 303: Redirect },
             handler: unused,
         }),
         defineRoute({
@@ -149,7 +149,10 @@ Deno.test("a route without inputs or tags lists only its summary and responses",
     assertEquals(openApiDocument(routes, info, origin).paths, {
         "/login": {
             get: { summary: "Log in", responses: { 200: page, 302: redirect, 400: page } },
-            post: { summary: "Logged in", responses: { 303: redirect } },
+            post: {
+                summary: "Logged in",
+                responses: { 202: { description: "No body" }, 303: redirect },
+            },
         },
         "/accounts/{id}/avatar.png": {
             get: {

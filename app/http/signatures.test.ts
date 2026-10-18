@@ -38,6 +38,15 @@ const routes = [
         handler: (_, { body }) => Promise.resolve({ status: 200, body }),
     }),
     defineRoute({
+        method: "POST",
+        path: "/raw",
+        summary: "The bytes that were signed",
+        signed: true,
+        responses: { 200: z.object({ text: z.string() }) },
+        handler: (_, { signedBody }) =>
+            Promise.resolve({ status: 200, body: { text: new TextDecoder().decode(signedBody) } }),
+    }),
+    defineRoute({
         method: "GET",
         path: "/missing",
         summary: "Nothing",
@@ -106,6 +115,16 @@ Deno.test("a request signed by another instance says who signed it", async () =>
         { status: 200, body: { text: "Hi" } },
     );
     assertEquals(test.transport.sent.length, 1);
+});
+
+Deno.test("a signed route can read the body exactly as it was signed", async () => {
+    await using test = await open();
+    const body = '{ "text" : "Hi",\n  "text": 1e3 }';
+
+    assertEquals(await test.send({ method: "POST", path: "/raw", body }), {
+        status: 200,
+        body: { text: body },
+    });
 });
 
 Deno.test("a request without a valid signature is refused", async () => {

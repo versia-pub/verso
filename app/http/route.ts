@@ -20,6 +20,9 @@ export const versiaJson = "application/vnd.versia+json; charset=utf-8";
 /** Declares a response that redirects, to the URL in its `Location` header. */
 export const Redirect = { kind: "redirect" } as const;
 
+/** Declares a response with no body, such as a 202 for work that is done later. */
+export const NoBody = { kind: "none" } as const;
+
 /** Declares a response that is a file, such as a picture, of this media type. */
 export const Binary = <T extends string>(
     type: T,
@@ -29,9 +32,9 @@ export const Binary = <T extends string>(
 });
 type Binary = ReturnType<typeof Binary>;
 
-/** A JSON body's schema, or a page, a redirect or a file, for each status. */
+/** A JSON body's schema, or a page, a redirect, a file or nothing, for each status. */
 export type Responses = Partial<
-    Record<ContentfulStatusCode, Schema | typeof Page | typeof Redirect | Binary>
+    Record<ContentfulStatusCode, Schema | typeof Page | typeof Redirect | Binary | typeof NoBody>
 >;
 
 /** HTML from Hono's `html` template, which escapes every value put into it. */
@@ -40,6 +43,7 @@ export type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
     : R extends typeof Redirect ? { status: S & RedirectStatusCode; location: string }
     : R extends Binary ? { status: S; file: Uint8Array }
+    : R extends typeof NoBody ? { status: S }
     : R extends Schema ? { status: S; body: z.input<R> }
     : never;
 
@@ -184,6 +188,11 @@ export type RouteDefinition<
             viewer: ViewerFor<A>;
             /** The domain of the instance that signed the request, on `signed` routes. */
             signedBy: string | undefined;
+            /**
+             * The body exactly as it was signed, on `signed` routes, for ones that read it by
+             * the protocol's rules rather than through `body`.
+             */
+            signedBody: Uint8Array<ArrayBuffer> | undefined;
         },
     ) => Promise<Reply<R>>;
 };

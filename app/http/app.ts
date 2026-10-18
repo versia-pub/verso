@@ -11,7 +11,7 @@ import { asOAuthError, inputOf } from "./input.ts";
 import { rateLimit, type RateLimits } from "./rate_limits.ts";
 import { checkReply, send } from "./reply.ts";
 import type { Route } from "./route.ts";
-import { signerOf, signReply } from "./signatures.ts";
+import { signReply, verifyRequest } from "./signatures.ts";
 import { checkPermission, rateLimitKey, viewerOf, withPermissions } from "./viewer.ts";
 
 const logger = getLogger(["verso", "http"]);
@@ -83,7 +83,7 @@ export const createApp = (
 
     /** The route's reply to the request, or the error it threw. */
     const answer = async (route: Route, c: HonoContext<AppEnv>) => {
-        const signedBy = route.signed ? await signerOf(ctx, c, options.services) : undefined;
+        const signed = route.signed ? await verifyRequest(ctx, c, options.services) : undefined;
         const bearer = await viewerOf(ctx, c, route, options.services);
         const viewer = bearer && withPermissions(ctx, bearer, permissions, options.services);
         await checkPermission(route, viewer, permissions);
@@ -91,7 +91,12 @@ export const createApp = (
             throw route.oauthErrors ? asOAuthError(error) : error;
         });
 
-        const reply = await route.handler(ctx, { ...input, viewer, signedBy });
+        const reply = await route.handler(ctx, {
+            ...input,
+            viewer,
+            signedBy: signed?.signedBy,
+            signedBody: signed?.body,
+        });
         if (options.checkResponses) checkReply(route, reply);
 
         return await send(c, route, reply);

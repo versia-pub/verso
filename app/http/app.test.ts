@@ -5,7 +5,7 @@ import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
 import { layout } from "./page.ts";
-import { Binary, defineRoute, Page, Redirect } from "./route.ts";
+import { Binary, defineRoute, NoBody, Page, Redirect } from "./route.ts";
 
 const rename = defineRoute({
     method: "POST",
@@ -134,6 +134,24 @@ const notAFile = defineRoute({
     handler: () => Promise.resolve({ status: 200, body: {} } as never),
 });
 
+/** Takes the request, to act on later. */
+const later = defineRoute({
+    method: "POST",
+    path: "/later",
+    summary: "Answers with no body",
+    responses: { 202: NoBody },
+    handler: () => Promise.resolve({ status: 202 }),
+});
+
+/** Declares no body, and sends JSON. */
+const notEmpty = defineRoute({
+    method: "GET",
+    path: "/not-empty",
+    summary: "Replies with JSON instead of nothing",
+    responses: { 202: NoBody },
+    handler: () => Promise.resolve({ status: 202, body: {} } as never),
+});
+
 const echo = defineRoute({
     method: "POST",
     path: "/echo",
@@ -157,6 +175,8 @@ const open = async () => {
         entity,
         picture,
         notAFile,
+        later,
+        notEmpty,
     ], {
         checkResponses: true,
     });
@@ -417,11 +437,21 @@ Deno.test("nothing may cache a reply, an error or a check", async () => {
     }
 });
 
-Deno.test("with checks on, JSON where a page or a file is declared is a 500", async () => {
+Deno.test("with checks on, JSON where a page, a file or nothing is declared is a 500", async () => {
     await using test = await open();
 
     assertEquals((await test.app.request("/not-a-page")).status, 500);
     assertEquals((await test.app.request("/not-a-file")).status, 500);
+    assertEquals((await test.app.request("/not-empty")).status, 500);
+});
+
+Deno.test("a reply with no body is sent empty, with no type", async () => {
+    await using test = await open();
+    const response = await test.app.request("/later", { method: "POST" });
+
+    assertEquals(response.status, 202);
+    assertEquals(response.headers.get("content-type"), null);
+    assertEquals(await response.text(), "");
 });
 
 Deno.test("a file is sent as its declared type, and cached only when it is sent", async () => {

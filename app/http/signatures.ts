@@ -10,17 +10,23 @@ import { checkSignature, type KeyStore } from "../kernel/signatures.ts";
 import type { AppServices } from "./env.ts";
 import { BadSignature, Defederated, StaleSignature } from "./errors.ts";
 
+/** A request with a valid signature: who signed it, and the body they signed. */
+export type SignedRequest = {
+    readonly signedBy: string;
+    readonly body: Uint8Array<ArrayBuffer>;
+};
+
 /**
- * The domain of the instance that signed the request. When the key Verso has for it doesn't
+ * Checks the request's signature, and gives who signed it. When the key Verso has for it doesn't
  * verify, the key is fetched again, at most so often, in case the instance rotated it. A blocked
  * instance is refused once the headers are checked, before its key is looked up, so Verso never
  * sends it a request.
  */
-export const signerOf = async (
+export const verifyRequest = async (
     ctx: Context,
     c: HonoContext,
     services: AppServices,
-): Promise<string> => {
+): Promise<SignedRequest> => {
     const message = {
         method: c.req.method,
         pathname: new URL(c.req.url).pathname,
@@ -37,7 +43,7 @@ export const signerOf = async (
     };
 
     const verification = await checkSignature(ctx, keys, message, c.req.raw.headers);
-    if (verification.ok) return verification.signedBy;
+    if (verification.ok) return { signedBy: verification.signedBy, body: message.body };
     if (blocked) throw new Defederated();
 
     throw verification.reason === "expired" ? new StaleSignature() : new BadSignature();
