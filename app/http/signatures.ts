@@ -4,8 +4,9 @@
  * @module
  */
 import type { Context as HonoContext } from "@hono/hono";
-import { sign, verify } from "@versia/protocol";
+import { sign } from "@versia/protocol";
 import type { Context } from "../kernel/context.ts";
+import { checkSignature, type KeyStore } from "../kernel/signatures.ts";
 import type { AppServices } from "./env.ts";
 import { BadSignature, StaleSignature } from "./errors.ts";
 
@@ -16,35 +17,18 @@ import { BadSignature, StaleSignature } from "./errors.ts";
 export const signerOf = async (
     ctx: Context,
     c: HonoContext,
-    keys: AppServices["remoteKeys"],
+    keys: KeyStore,
 ): Promise<string> => {
     const message = {
         method: c.req.method,
         pathname: new URL(c.req.url).pathname,
         body: new Uint8Array(await c.req.arrayBuffer()),
     };
-    const now = ctx.clock.now();
 
-    let known = false;
-    const first = await verify(message, c.req.raw.headers, async (domain) => {
-        const key = await keys.get(ctx, domain);
-        known = key !== undefined;
-        return key;
-    }, now);
+    const verification = await checkSignature(ctx, keys, message, c.req.raw.headers);
+    if (verification.ok) return verification.signedBy;
 
-    if (first.ok) return first.signedBy;
-    if (first.reason === "expired") throw new StaleSignature();
-    if (!known) throw new BadSignature();
-
-    const again = await verify(
-        message,
-        c.req.raw.headers,
-        (domain) => keys.refresh(ctx, domain),
-        now,
-    );
-    if (!again.ok) throw new BadSignature();
-
-    return again.signedBy;
+    throw verification.reason === "expired" ? new StaleSignature() : new BadSignature();
 };
 
 /**

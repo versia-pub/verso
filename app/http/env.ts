@@ -4,6 +4,7 @@
  */
 import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
+import type { KeyStore } from "../kernel/signatures.ts";
 import type { Viewer } from "./route.ts";
 
 /** What Hono carries for each request. */
@@ -29,8 +30,5 @@ export type AppServices = {
     /** The private key replies to other instances are signed with. */
     readonly signingKey: (ctx: Context) => Promise<CryptoKey>;
     /** Other instances' keys, to check their signatures with. */
-    readonly remoteKeys: {
-        readonly get: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
-        readonly refresh: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
-    };
+    readonly remoteKeys: KeyStore;
 };
