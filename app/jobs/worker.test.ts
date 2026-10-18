@@ -50,6 +50,43 @@ Deno.test("each queue's jobs run, at most `concurrency` at a time, then are dele
     assertEquals(mostAtOnce, { deliver: 2, notify: 1 });
 });
 
+Deno.test("at most `perGroup` jobs of each group run at a time, each claimed once", async () => {
+    await using test = await open();
+
+    const running = new Map<string, number>();
+    const mostAtOnce = new Map<string, number>();
+    const attempts: number[] = [];
+    const handler: Queue["handler"] = async (_ctx, job) => {
+        const group = job.group_key ?? "none";
+        running.set(group, (running.get(group) ?? 0) + 1);
+        mostAtOnce.set(group, Math.max(mostAtOnce.get(group) ?? 0, running.get(group) ?? 0));
+        attempts.push(job.attempts);
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        running.set(group, (running.get(group) ?? 0) - 1);
+    };
+
+    // In this order, the second claim is two of b.example's, with one already running.
+    const groups = ["b", "c", "b", "b", "b", "b", "c", undefined, "c", undefined, undefined, "b"];
+    for (const [n, group] of groups.entries()) {
+        await enqueue(test.ctx, {
+            queue: "deliver",
+            payload: { n },
+            group: group && `${group}.example`,
+        });
+    }
+
+    const stop = start(test.ctx, { deliver: { handler, concurrency: 5, perGroup: 2 } });
+    await until(async () =>
+        (await test.ctx.db.selectFrom("jobs").select("id").execute()).length === 0
+    );
+    await stop();
+
+    assertEquals(attempts, Array(12).fill(1));
+    assertEquals(mostAtOnce.get("b.example"), 2);
+    assertEquals(mostAtOnce.get("c.example"), 2);
+});
+
 Deno.test("a job that throws is kept with its error, to be retried", async () => {
     await using test = await open();
 

@@ -16,6 +16,8 @@ export type JobsTable = {
     lease_owner: string | null;
     lease_expires_at: Date | null;
     dedupe_key: string | null;
+    /** Jobs that share one, such as deliveries to one instance, can be limited together. */
+    group_key: string | null;
     last_error: string | null;
     created_at: Date;
     /** A finished job is kept until then instead of deleted, so its dedupe key stays taken. */

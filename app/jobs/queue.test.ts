@@ -9,6 +9,7 @@ import {
     fail,
     giveUp,
     postpone,
+    release,
 } from "./queue.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";
@@ -33,6 +34,7 @@ Deno.test("an enqueued job is due now with its attempts unused", async () => {
         lease_owner: null,
         lease_expires_at: null,
         dedupe_key: null,
+        group_key: null,
         last_error: null,
         created_at: now,
         keep_until: null,
@@ -176,6 +178,30 @@ Deno.test("a postponed job runs at the given time, with its attempt given back",
     test.clock.advance(1);
     const [again] = await claim(test.ctx, options);
     assertEquals([again.attempts, again.last_error], [1, "busy"]);
+});
+
+Deno.test("claiming can skip groups, but never jobs without one", async () => {
+    await using test = await open();
+
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 1 }, group: "b.example" });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 2 }, group: "c.example" });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 3 } });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 4 }, group: "d.example" });
+
+    const skipGroups = ["b.example", "d.example"];
+    assertEquals(ids(await claim(test.ctx, { ...options, skipGroups })).toSorted(), [2, 3]);
+    assertEquals(ids(await claim(test.ctx, { ...options, skipGroups: [] })).toSorted(), [1, 4]);
+});
+
+Deno.test("a job given back is as it was before it was claimed", async () => {
+    await using test = await open();
+
+    await enqueue(test.ctx, { queue: "deliver", payload: {}, maxAttempts: 1 });
+    const [job] = await claim(test.ctx, options);
+    await release(test.ctx, job);
+
+    const [again] = await claim(test.ctx, { ...options, worker: "w2" });
+    assertEquals([again.attempts, again.lease_owner, again.run_at], [1, "w2", job.run_at]);
 });
 
 Deno.test("a job given up on is a dead letter at once, with its error", async () => {

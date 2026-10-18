@@ -1,6 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
-import { claim, complete, fail, giveUp, postpone } from "./queue.ts";
+import { claim, complete, fail, giveUp, postpone, release } from "./queue.ts";
 import type { JobsTable } from "./tables.ts";
 
 /**
@@ -14,6 +14,11 @@ export type Queue = {
     readonly handler: Handler;
     /** How many of this queue's jobs one worker runs at a time. */
     readonly concurrency: number;
+    /**
+     * How many jobs of one group one worker runs at a time, such as deliveries to one instance, so
+     * one group can't take every slot. Defaults to no limit.
+     */
+    readonly perGroup?: number;
     /** How long a job may run before another worker may claim it. Defaults to five minutes. */
     readonly leaseMs?: number;
 };
@@ -119,18 +124,26 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
     const wakeups: Wakeup[] = [{ events: finished, name: "finished" }];
     if (options.wakeups) wakeups.push({ events: options.wakeups, name });
 
+    // How many of each group's jobs are running.
+    const groups = new Map<string, number>();
+    const perGroup = queue.perGroup ?? Infinity;
+    const isFull = (group: string) => (groups.get(group) ?? 0) >= perGroup;
+
     while (!options.signal.aborted) {
         const free = queue.concurrency - running.size;
         const finishedBefore = finishedCount;
 
+        // Claiming no more than one group may run means giving few back when they share one.
+        const limit = Math.min(free, perGroup);
         let jobs: JobsTable[] = [];
-        if (free > 0) {
+        if (limit > 0) {
             try {
                 jobs = await claim(ctx, {
                     queue: name,
                     worker: options.worker,
-                    limit: free,
+                    limit,
                     leaseMs: queue.leaseMs ?? defaultLeaseMs,
+                    skipGroups: [...groups.keys()].filter(isFull),
                 });
             } catch (error) {
                 logger.error("Couldn't claim jobs from {queue}: {error}", { queue: name, error });
@@ -138,7 +151,23 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
         }
 
         for (const job of jobs) {
+            const group = job.group_key;
+            if (group !== null && isFull(group)) {
+                await release(ctx, job).catch((error) =>
+                    // Its lease runs out, and it is claimed again then.
+                    logger.error("Couldn't give back job {id}: {error}", { id: job.id, error })
+                );
+                continue;
+            }
+            if (group !== null) groups.set(group, (groups.get(group) ?? 0) + 1);
+
             const run = runJob(ctx, name, queue, job).finally(() => {
+                if (group !== null) {
+                    const left = (groups.get(group) ?? 1) - 1;
+                    if (left === 0) groups.delete(group);
+                    else groups.set(group, left);
+                }
+
                 running.delete(run);
                 finishedCount++;
                 finished.dispatchEvent(new Event("finished"));
@@ -148,7 +177,7 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
 
         // A full batch means more may be due, and so may a slot freed meanwhile. Otherwise wait for
         // a free slot, a new job or the next poll.
-        const waiting = free === 0 || jobs.length < free;
+        const waiting = limit <= 0 || jobs.length < limit;
         if (waiting && finishedCount === finishedBefore) {
             await pause(options.pollMs, options.signal, wakeups);
         }

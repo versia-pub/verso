@@ -13,6 +13,8 @@ export type NewJob = {
     readonly maxAttempts?: number;
     /** While a job with this key is queued, enqueueing another with the same key does nothing. */
     readonly dedupeKey?: string;
+    /** Puts it in a group, such as the instance it is for, which its queue may limit. */
+    readonly group?: string;
     /** Keeps the job once finished, and with it its dedupe key, until then. */
     readonly keepUntil?: Date;
 };
@@ -40,6 +42,7 @@ export const enqueue = async (
             lease_owner: null,
             lease_expires_at: null,
             dedupe_key: job.dedupeKey ?? null,
+            group_key: job.group ?? null,
             last_error: null,
             created_at: now,
             keep_until: job.keepUntil ?? null,
@@ -60,6 +63,8 @@ export type ClaimOptions = {
     readonly limit: number;
     /** How long the worker has to finish before the job can be claimed again. */
     readonly leaseMs: number;
+    /** Groups whose jobs aren't claimed, such as ones already running all they may. */
+    readonly skipGroups?: readonly string[];
 };
 
 /**
@@ -85,6 +90,13 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
                 .where((eb) =>
                     eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
                 )
+                .$if((options.skipGroups ?? []).length > 0, (query) =>
+                    query.where((eb) =>
+                        eb.or([
+                            eb("group_key", "is", null),
+                            eb("group_key", "not in", options.skipGroups ?? []),
+                        ])
+                    ))
                 .orderBy("priority", "desc").orderBy("run_at").orderBy("id")
                 .limit(options.limit)
                 .$call((query) => skippingLocked(ctx.db, query)))
@@ -95,6 +107,23 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
         b.priority - a.priority || a.run_at.getTime() - b.run_at.getTime() ||
         a.id.localeCompare(b.id)
     );
+};
+
+/**
+ * Gives a claimed job back without running it, as it was before the claim, so another worker, or
+ * this one later, can claim it.
+ */
+export const release = async (ctx: Context, job: JobsTable): Promise<void> => {
+    await ctx.db.updateTable("jobs")
+        .set((eb) => ({
+            lease_owner: null,
+            lease_expires_at: null,
+            attempts: eb("attempts", "-", 1),
+        }))
+        .where("id", "=", job.id)
+        .where("lease_owner", "=", job.lease_owner)
+        .where("attempts", "=", job.attempts)
+        .execute();
 };
 
 /**
