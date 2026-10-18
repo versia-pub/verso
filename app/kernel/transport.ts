@@ -65,7 +65,9 @@ export type FederationTransportOptions = {
  * endpoints don't redirect: the redirect itself is the response.
  *
  * `fetch` resolves the name again, so a name whose answer changes in between could still get
- * through. Closing that needs an HTTP client that connects to the address checked.
+ * through. Closing that needs an HTTP client that connects to the address checked: `node:https`
+ * with a `lookup` does, still checking the certificate against the name, but gives up HTTP/2 and
+ * `fetch`'s pool, so it waits for the outbound proxy work.
  */
 export const federationTransport = (options: FederationTransportOptions = {}): Transport => {
     const send = options.fetch ?? fetch;
