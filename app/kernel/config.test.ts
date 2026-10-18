@@ -21,7 +21,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 rate_limit: { limit: 300, window_seconds: 300, store: "memory" },
             },
             auth: { issuers: [], dev_login: false },
-            federation: { allow_internal_addresses: false },
+            federation: { allow_internal_addresses: false, blocked_domains: [] },
             instance: { description: "", contact: {}, rules: [] },
             limits: {
                 display_name: 60,
@@ -134,7 +134,7 @@ level = "debug"
                 ],
                 dev_login: false,
             },
-            federation: { allow_internal_addresses: false },
+            federation: { allow_internal_addresses: false, blocked_domains: [] },
             instance: {
                 name: "Example Social",
                 description: "A place to talk.",
@@ -261,6 +261,21 @@ Deno.test("development settings need development mode", async () => {
         ],
         ["http://localhost:8080", true, true],
     );
+});
+
+Deno.test("blocked domains are given as signatures name them", async () => {
+    const result = await parseConfig(
+        minimal + '[federation]\nblocked_domains = ["Evil.Example", "xn--bcher-kva.example"]\n',
+    );
+    assertEquals(
+        result.ok && result.config.federation.blocked_domains,
+        ["evil.example", "xn--bcher-kva.example"],
+    );
+
+    for (const bad of ["192.0.2.1", "evil.example:8443", "not a domain"]) {
+        const error = await errors(minimal + `[federation]\nblocked_domains = ["${bad}"]\n`);
+        assertStringIncludes(error, "Must be a domain name", bad);
+    }
 });
 
 Deno.test("a development origin is a bare origin on the domain", async () => {

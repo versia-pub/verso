@@ -56,6 +56,9 @@ roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
 # Lets Verso reach other instances at internal addresses, such as on a local network.
 # Development only.
 # allow_internal_addresses = false
+# Instances not to federate with, with their subdomains, besides the ones blocked with
+# `verso admin domains block`.
+# blocked_domains = []
 
 [instance]
 # Without a name, the instance goes by its domain.

@@ -1,4 +1,5 @@
 import { parse } from "@std/toml";
+import { canonicalizeDomain } from "@versia/protocol";
 import { z } from "zod";
 import { Permission } from "./permissions.ts";
 import { CidrText } from "./ip.ts";
@@ -107,6 +108,13 @@ export const Permissions = z.strictObject({
 }).prefault({});
 export type Permissions = z.infer<typeof Permissions>;
 
+/** Another instance's domain, in the form signatures name it. */
+const DomainName = z.string().transform((domain, ctx) => {
+    const canonical = canonicalizeDomain(domain);
+    if (canonical === undefined) ctx.addIssue({ code: "custom", message: "Must be a domain name" });
+    return canonical ?? domain;
+});
+
 const developmentOnly = 'Only allowed with mode = "development"';
 
 /**
@@ -179,6 +187,11 @@ export const Config = z.strictObject({
          * local network or this machine. Development only, since anyone can name an instance.
          */
         allow_internal_addresses: z.boolean().default(false),
+        /**
+         * Instances Verso doesn't federate with, with their subdomains, besides the ones blocked
+         * with `verso admin domains block`.
+         */
+        blocked_domains: z.array(DomainName).default([]),
     }).prefault({}),
     instance: Instance,
     limits: Limits,
