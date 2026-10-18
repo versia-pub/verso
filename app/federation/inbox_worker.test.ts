@@ -64,7 +64,7 @@ const open = async () => {
             .executeTakeFirstOrThrow();
     };
 
-    return { ...test, received, instanceId, send };
+    return { ...test, received, registry, instanceId, send };
 };
 
 Deno.test("an entity is applied with who sent it, and its job is done", async () => {
@@ -116,6 +116,21 @@ Deno.test("a job whose entity no longer checks out is given up on", async () => 
 
     const jobs = await test.ctx.db.selectFrom("jobs").selectAll().execute();
     assertEquals(jobs.map((job) => job.attempts === job.max_attempts), [true, true, true]);
+});
+
+Deno.test("an entity from an instance blocked since it was queued is dropped", async () => {
+    await using test = await open();
+    const body = new TextEncoder().encode('{"type": "Thing", "id": "1", "author": "b.example"}');
+
+    await queueEntity(test.ctx, test.registry, "b.example", body);
+    await blockDomain(test.ctx, "b.example");
+    await drain(test.ctx, {
+        [inboxQueue]: { handler: inboxHandler(test.registry), concurrency: 1 },
+    });
+
+    const job = await test.ctx.db.selectFrom("jobs").selectAll().executeTakeFirstOrThrow();
+    assertEquals(test.received, []);
+    assertEquals([job.finished_at, job.attempts], [test.clock.now(), 1]);
 });
 
 Deno.test("an entity from an instance Verso has no row for is retried", async () => {
