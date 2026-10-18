@@ -72,6 +72,10 @@ Deno.test("an entity is queued once for each instance its recipients are on", as
     assertEquals(jobs.map((job) => job.domain), ["b.example", "c.example"]);
     assertEquals(jobs[0].body, jobs[1].body);
     assertEquals(JSON.parse(jobs[0].body).username, "alice");
+
+    // Deliveries are given up on by age, not by how often they were tried.
+    const attempts = await test.ctx.db.selectFrom("jobs").select("max_attempts").execute();
+    assertEquals(attempts, [{ max_attempts: 100 }, { max_attempts: 100 }]);
 });
 
 Deno.test("nothing is queued without remote recipients", async () => {

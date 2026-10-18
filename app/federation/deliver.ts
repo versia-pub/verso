@@ -20,6 +20,9 @@ export const DeliverJob = z.object({
 });
 export type DeliverJob = z.infer<typeof DeliverJob>;
 
+/** More than are ever made: deliveries are given up on by age, after 48 hours. */
+const maxAttempts = 100;
+
 /**
  * Queues `entity` for each Versia instance that hosts any of `recipients`, which are account ids,
  * except blocked ones. Local accounts need nothing delivered.
@@ -35,6 +38,6 @@ export const queueDeliveries = async (
         if (await ctx.federation.isBlocked(ctx, domain)) continue;
 
         const payload: DeliverJob = { domain, body };
-        await enqueue(ctx, { queue: deliverQueue, payload });
+        await enqueue(ctx, { queue: deliverQueue, payload, maxAttempts });
     }
 };
