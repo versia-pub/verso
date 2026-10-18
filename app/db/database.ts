@@ -11,6 +11,7 @@ import type { AccessTokensTable, AppsTable, OAuthFlowsTable } from "../auth/tabl
 import type { RateLimitsTable } from "../http/tables.ts";
 import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
 import type { JobsTable } from "../jobs/tables.ts";
+import type { MediaTable } from "../media/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
 import { sqliteDialect } from "./sqlite.ts";
@@ -25,6 +26,7 @@ export type Database = {
     instance_keys: InstanceKeysTable;
     instances: InstancesTable;
     jobs: JobsTable;
+    media: MediaTable;
     oauth_flows: OAuthFlowsTable;
     rate_limits: RateLimitsTable;
     roles: RolesTable;
