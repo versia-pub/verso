@@ -103,6 +103,8 @@ in
     '';
   };
 
+  federation-vms = import ./federation-vms.nix { inherit pkgs module; };
+
   # The module refuses settings that would put a secret in the Nix store.
   nixos-module-secrets =
     let

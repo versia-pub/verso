@@ -38,8 +38,8 @@ jobs:
                   restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
                   gc-max-store-size-linux: 5G
 
-            # The arm runners have no KVM, so the NixOS VM test runs emulated there, and takes about as
-            # long to boot as the test driver waits for it. It runs on x86_64 only, and the arm job
+            # The arm runners have no KVM, so the NixOS VM tests run emulated there, and take about as
+            # long to boot as the test driver waits for them. They run on x86_64 only, and the arm job
             # builds every other check; see docs/decisions/0004-ci-runners-and-cache.md.
             - if: runner.arch != 'ARM64'
               run: nix flake check -L
@@ -50,7 +50,7 @@ jobs:
                   set -o pipefail
                   names=$(
                       nix eval --json .#checks.aarch64-linux \
-                          --apply 'checks: builtins.attrNames (removeAttrs checks [ "nixos-module" ])' |
+                          --apply 'checks: builtins.attrNames (removeAttrs checks [ "nixos-module" "federation-vms" ])' |
                           jq -r '.[] | ".#checks.aarch64-linux." + .'
                   )
                   mapfile -t checks <<< "$names"
