@@ -13,7 +13,7 @@ import { checkSignature } from "../kernel/signatures.ts";
 const maxReplyBytes = 1024 * 1024;
 
 /** How long another instance has to answer, so a slow one can't hold a worker. */
-const timeoutMs = 30_000;
+export const timeoutMs = 30_000;
 
 /** A reply from another instance, with its body read. */
 export type FederationReply = {
@@ -28,7 +28,7 @@ export class BadReply extends Error {
 }
 
 /** Reads a body, stopping as soon as it passes `maxReplyBytes`. */
-const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> => {
+export const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> => {
     const chunks: Uint8Array[] = [];
     let size = 0;
 
