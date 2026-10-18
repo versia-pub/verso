@@ -1,4 +1,4 @@
-import { type Selectable, sql, type Updateable } from "kysely";
+import { type Insertable, type Selectable, sql, type Updateable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
 import type { AccountsTable } from "./tables.ts";
@@ -111,6 +111,60 @@ export const insertLocalAccount = async (
         .executeTakeFirst();
 
     return inserted !== undefined;
+};
+
+/** What a remote account says about itself, as columns. */
+export type RemoteProfile = Required<
+    Pick<
+        Insertable<AccountsTable>,
+        | "username"
+        | "display_name"
+        | "note"
+        | "note_format"
+        | "note_html"
+        | "fields"
+        | "locked"
+        | "indexable"
+    >
+>;
+
+/**
+ * Adds a remote account, or, if it is known by its id on its instance, replaces what it says about
+ * itself. Either way, it is marked as fetched now. Returns its id here and its pictures.
+ */
+export const upsertRemoteAccount = async (
+    ctx: Context,
+    account: {
+        readonly instanceId: string;
+        readonly remoteId: string;
+        readonly createdAt: Date;
+        readonly profile: RemoteProfile;
+    },
+): Promise<{ id: string; avatar_id: string | null; header_id: string | null }> => {
+    const changes = { ...account.profile, fetched_at: ctx.clock.now() };
+
+    return await ctx.db.insertInto("accounts")
+        .values({
+            id: ctx.ids(),
+            instance_id: account.instanceId,
+            remote_id: account.remoteId,
+            created_at: account.createdAt,
+            ...changes,
+        })
+        .onConflict((conflict) =>
+            conflict.columns(["instance_id", "remote_id"]).doUpdateSet(changes)
+        )
+        .returning(["id", "avatar_id", "header_id"])
+        .executeTakeFirstOrThrow();
+};
+
+/** Points an account at its pictures in `media`. */
+export const setAccountPictures = async (
+    ctx: Context,
+    id: string,
+    pictures: { readonly avatar_id: string | null; readonly header_id: string | null },
+): Promise<void> => {
+    await ctx.db.updateTable("accounts").set(pictures).where("id", "=", id).execute();
 };
 
 /** Deletes an account. */

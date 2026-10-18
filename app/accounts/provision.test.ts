@@ -100,6 +100,9 @@ Deno.test("a new account starts with the name claim and default settings", async
         followers_count: 0,
         following_count: 0,
         last_status_at: null,
+        avatar_id: null,
+        header_id: null,
+        fetched_at: null,
     });
 });
 

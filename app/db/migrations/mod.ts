@@ -13,6 +13,7 @@ import { accountProfiles } from "./0011_account_profiles.ts";
 import { accountRichText } from "./0012_account_rich_text.ts";
 import { roles } from "./0013_roles.ts";
 import { media } from "./0014_media.ts";
+import { remoteAccounts } from "./0015_remote_accounts.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -33,4 +34,5 @@ export const migrations: Record<string, Migration> = {
     "0012_account_rich_text": accountRichText,
     "0013_roles": roles,
     "0014_media": media,
+    "0015_remote_accounts": remoteAccounts,
 };

@@ -64,6 +64,12 @@ export type AccountsTable = {
     followers_count: Generated<number>;
     following_count: Generated<number>;
     last_status_at: Date | null;
+
+    /** Its pictures, in `media`. */
+    avatar_id: string | null;
+    header_id: string | null;
+    /** When a remote account was last fetched or received, or `null` for local accounts. */
+    fetched_at: Date | null;
 };
 
 /** A login at an OpenID issuer, linked to a local account. */
