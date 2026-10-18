@@ -7,14 +7,7 @@ import { sign } from "@versia/protocol";
 import denoConfig from "../../deno.json" with { type: "json" };
 import { versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
-import { checkSignature, type KeyStore } from "../kernel/signatures.ts";
-
-/** The keys requests are signed with, and replies checked with. */
-export type FederationKeys = {
-    /** This instance's private key. */
-    readonly signingKey: (ctx: Context) => Promise<CryptoKey>;
-    readonly remoteKeys: KeyStore;
-};
+import { checkSignature } from "../kernel/signatures.ts";
 
 /** The largest reply read from another instance. Entities and pages of 40 fit with room to spare. */
 const maxReplyBytes = 1024 * 1024;
@@ -66,14 +59,13 @@ const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> 
  */
 export const sendSigned = async (
     ctx: Context,
-    keys: FederationKeys,
     method: "GET" | "POST",
     url: URL,
     body: Uint8Array<ArrayBuffer> = new Uint8Array(),
 ): Promise<FederationReply> => {
     const signature = await sign(
         { method, pathname: url.pathname, body },
-        await keys.signingKey(ctx),
+        await ctx.federation.signingKey(ctx),
         ctx.urls.domain,
         ctx.clock.now(),
     );
@@ -101,16 +93,15 @@ export const sendSigned = async (
  */
 export const fetchSigned = async (
     ctx: Context,
-    keys: FederationKeys,
     url: URL,
 ): Promise<FederationReply> => {
-    const reply = await sendSigned(ctx, keys, "GET", url);
+    const reply = await sendSigned(ctx, "GET", url);
     if (reply.status < 200 || reply.status > 299) return reply;
 
     const message = { method: "GET", pathname: url.pathname, body: reply.body };
     const verification = await checkSignature(
         ctx,
-        keys.remoteKeys,
+        ctx.federation.remoteKeys,
         message,
         reply.headers,
         url.hostname,

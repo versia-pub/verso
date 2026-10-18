@@ -6,6 +6,24 @@ import type { IdGenerator } from "./ids.ts";
 import type { Transport } from "./transport.ts";
 import type { UrlBuilder } from "./urls.ts";
 
+/** Other instances' public keys, by domain. */
+export type KeyStore = {
+    /** The key Verso has for the instance, or else fetches from it. */
+    readonly get: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
+    /** Fetches the key again, in case the instance rotated it, but only so often. */
+    readonly refresh: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
+};
+
+/** What talking to other instances needs: whose keys to sign and check with, and whom to ignore. */
+export type Federation = {
+    /** This instance's private key. */
+    readonly signingKey: (ctx: Context) => Promise<CryptoKey>;
+    /** One store for the whole process, so each key is fetched once. */
+    readonly remoteKeys: KeyStore;
+    /** Whether Verso doesn't federate with an instance, by its domain. */
+    readonly isBlocked: (ctx: Context, domain: string) => Promise<boolean>;
+};
+
 /** What every service gets as its first argument. Ports join it as they are added. */
 export type Context<DB = Database> = {
     readonly clock: Clock;
@@ -14,6 +32,7 @@ export type Context<DB = Database> = {
     readonly transport: Transport;
     /** One for each configured issuer, by issuer URL. */
     readonly identityProviders: Readonly<Record<string, IdentityProvider>>;
+    readonly federation: Federation;
     /** The database, or the current transaction inside `transaction`. */
     readonly db: Kysely<DB>;
     /**

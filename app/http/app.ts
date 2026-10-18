@@ -83,7 +83,7 @@ export const createApp = (
 
     /** The route's reply to the request, or the error it threw. */
     const answer = async (route: Route, c: HonoContext<AppEnv>) => {
-        const signed = route.signed ? await verifyRequest(ctx, c, options.services) : undefined;
+        const signed = route.signed ? await verifyRequest(ctx, c) : undefined;
         const bearer = await viewerOf(ctx, c, route, options.services);
         const viewer = bearer && withPermissions(ctx, bearer, permissions, options.services);
         await checkPermission(route, viewer, permissions);
@@ -112,7 +112,7 @@ export const createApp = (
                     ? silentReply(c)
                     : errorReply(error, c)
             );
-            return await signReply(ctx, c, response, options.services);
+            return await signReply(ctx, c, response);
         });
     };
 

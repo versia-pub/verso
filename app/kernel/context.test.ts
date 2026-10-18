@@ -22,6 +22,15 @@ const open = async () => {
         urls: urlBuilder("social.example"),
         transport: fakeTransport(),
         identityProviders: {},
+        // These tests don't federate.
+        federation: {
+            signingKey: () => Promise.reject(new Error("Unused")),
+            remoteKeys: {
+                get: () => Promise.resolve(undefined),
+                refresh: () => Promise.resolve(undefined),
+            },
+            isBlocked: () => Promise.resolve(false),
+        },
         db,
     });
 

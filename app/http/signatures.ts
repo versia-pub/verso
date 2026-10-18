@@ -5,9 +5,8 @@
  */
 import type { Context as HonoContext } from "@hono/hono";
 import { sign } from "@versia/protocol";
-import type { Context } from "../kernel/context.ts";
-import { checkSignature, type KeyStore } from "../kernel/signatures.ts";
-import type { AppServices } from "./env.ts";
+import type { Context, KeyStore } from "../kernel/context.ts";
+import { checkSignature } from "../kernel/signatures.ts";
 import { BadSignature, Defederated, StaleSignature } from "./errors.ts";
 
 /** A request with a valid signature: who signed it, and the body they signed. */
@@ -22,24 +21,21 @@ export type SignedRequest = {
  * instance is refused once the headers are checked, before its key is looked up, so Verso never
  * sends it a request.
  */
-export const verifyRequest = async (
-    ctx: Context,
-    c: HonoContext,
-    services: AppServices,
-): Promise<SignedRequest> => {
+export const verifyRequest = async (ctx: Context, c: HonoContext): Promise<SignedRequest> => {
     const message = {
         method: c.req.method,
         pathname: new URL(c.req.url).pathname,
         body: new Uint8Array(await c.req.arrayBuffer()),
     };
 
+    const { isBlocked, remoteKeys } = ctx.federation;
     let blocked = false;
     const keys: KeyStore = {
         get: async (ctx, domain) => {
-            blocked = await services.isBlocked(ctx, domain);
-            return blocked ? undefined : await services.remoteKeys.get(ctx, domain);
+            blocked = await isBlocked(ctx, domain);
+            return blocked ? undefined : await remoteKeys.get(ctx, domain);
         },
-        refresh: services.remoteKeys.refresh,
+        refresh: remoteKeys.refresh,
     };
 
     const verification = await checkSignature(ctx, keys, message, c.req.raw.headers);
@@ -58,7 +54,6 @@ export const signReply = async (
     ctx: Context,
     c: HonoContext,
     response: Response,
-    services: AppServices,
 ): Promise<Response> => {
     const headers = await sign(
         {
@@ -66,7 +61,7 @@ export const signReply = async (
             pathname: new URL(c.req.url).pathname,
             body: new Uint8Array(await response.clone().arrayBuffer()),
         },
-        await services.signingKey(ctx),
+        await ctx.federation.signingKey(ctx),
         ctx.urls.domain,
         ctx.clock.now(),
     );

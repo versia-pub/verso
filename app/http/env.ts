@@ -4,7 +4,6 @@
  */
 import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
-import type { KeyStore } from "../kernel/signatures.ts";
 import type { Viewer } from "./route.ts";
 
 /** What Hono carries for each request. */
@@ -27,10 +26,4 @@ export type AppServices = {
         accountId: string,
         everyUser: readonly Permission[],
     ) => Promise<ReadonlySet<Permission>>;
-    /** The private key replies to other instances are signed with. */
-    readonly signingKey: (ctx: Context) => Promise<CryptoKey>;
-    /** Other instances' keys, to check their signatures with. */
-    readonly remoteKeys: KeyStore;
-    /** Whether Verso doesn't federate with an instance, by its domain. */
-    readonly isBlocked: (ctx: Context, domain: string) => Promise<boolean>;
 };

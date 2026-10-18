@@ -1,6 +1,5 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
-import { appServices } from "../services.ts";
 import { createNetwork } from "../testing/network.ts";
 import { BadReply, fetchSigned } from "./request.ts";
 
@@ -12,7 +11,7 @@ Deno.test("a signed GET reaches another instance, whose signed reply is given", 
     const a = network.instances["a.test"];
     await createLocalAccount(network.instances["b.test"].ctx, "bob");
 
-    const reply = await fetchSigned(a.ctx, appServices(), userUrl("b.test", "bob"));
+    const reply = await fetchSigned(a.ctx, userUrl("b.test", "bob"));
 
     assertEquals(reply.status, 200);
     assertEquals(JSON.parse(new TextDecoder().decode(reply.body)).username, "bob");
@@ -37,7 +36,7 @@ Deno.test("a reply that isn't an error is refused unless the instance asked sign
 
     for (const domain of ["evil.test", "unsigned.test"]) {
         await assertRejects(
-            () => fetchSigned(a.ctx, appServices(), userUrl(domain, "bob")),
+            () => fetchSigned(a.ctx, userUrl(domain, "bob")),
             BadReply,
             `isn't signed by ${domain}`,
         );
@@ -48,7 +47,7 @@ Deno.test("an error reply is given as it is, signed or not", async () => {
     await using network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"];
 
-    const reply = await fetchSigned(a.ctx, appServices(), userUrl("b.test", "nobody"));
+    const reply = await fetchSigned(a.ctx, userUrl("b.test", "nobody"));
 
     assertEquals(reply.status, 404);
 });
@@ -60,12 +59,12 @@ Deno.test("a reply larger than a mebibyte is refused", async () => {
     network.transport.servers.set("fits.test", () => new Response(new Uint8Array(1024 * 1024)));
 
     await assertRejects(
-        () => fetchSigned(a.ctx, appServices(), userUrl("big.test", "bob")),
+        () => fetchSigned(a.ctx, userUrl("big.test", "bob")),
         BadReply,
         "larger than",
     );
     await assertRejects(
-        () => fetchSigned(a.ctx, appServices(), userUrl("fits.test", "bob")),
+        () => fetchSigned(a.ctx, userUrl("fits.test", "bob")),
         BadReply,
         "isn't signed",
     );

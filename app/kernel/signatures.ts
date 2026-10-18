@@ -4,15 +4,7 @@
  * @module
  */
 import { type SignedMessage, type Verification, verify } from "@versia/protocol";
-import type { Context } from "./context.ts";
-
-/** Other instances' public keys, by domain. */
-export type KeyStore = {
-    /** The key Verso has for the instance, or else fetches from it. */
-    readonly get: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
-    /** Fetches the key again, in case the instance rotated it, but only so often. */
-    readonly refresh: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
-};
+import type { Context, KeyStore } from "./context.ts";
 
 /**
  * Checks the signature on `message`. When the key Verso has for the signer doesn't verify it, the

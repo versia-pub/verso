@@ -1,7 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { sign } from "@versia/protocol";
 import { z } from "zod";
-import { remoteKeys } from "../instances/remote_keys.ts";
 import { keyPair, metadataServer } from "../instances/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -44,7 +43,6 @@ const open = async () => {
     test.transport.servers.set("b.example", metadataServer("b.example", pair));
     const app = createTestApp(test.ctx, entityRoutes(createRegistry([thing, transient])), {
         checkResponses: true,
-        services: { remoteKeys: remoteKeys() },
     });
 
     /** GETs `path` as b.example. */

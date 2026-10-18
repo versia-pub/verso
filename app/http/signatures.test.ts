@@ -58,16 +58,18 @@ const routes = [
 
 const open = async (options: { silentBlocks?: boolean } = {}) => {
     const transport = fakeTransport();
-    const test = await createTestContext({ transport });
+    const test = await createTestContext({
+        transport,
+        federation: {
+            remoteKeys: remoteKeys({ refetchAfterMs: 1000 }),
+            isBlocked: domainBlocks(["blocked.example"]),
+        },
+    });
     const pair = await keyPair();
     transport.servers.set("b.example", metadataServer("b.example", pair));
     const app = createTestApp(test.ctx, routes, {
         checkResponses: true,
         silentBlocks: options.silentBlocks,
-        services: {
-            remoteKeys: remoteKeys({ refetchAfterMs: 1000 }),
-            isBlocked: domainBlocks(["blocked.example"]),
-        },
     });
 
     /** Sends a request signed as `signedBy` with `key`, over `signed` unless the request differs. */

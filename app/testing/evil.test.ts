@@ -1,7 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { BadReply, fetchSigned } from "../federation/request.ts";
-import { appServices } from "../services.ts";
 import { addEvilInstance } from "./evil.ts";
 import { createNetwork } from "./network.ts";
 
@@ -43,15 +42,15 @@ Deno.test("an evil instance answers what it serves, signed unless told not to", 
     evil.serve("/signed", { type: "User" });
     evil.serve("/unsigned", { type: "User" }, { signed: false });
 
-    const reply = await fetchSigned(a, appServices(), new URL("https://evil.test/signed"));
+    const reply = await fetchSigned(a, new URL("https://evil.test/signed"));
     assertEquals(JSON.parse(new TextDecoder().decode(reply.body)), { type: "User" });
 
     await assertRejects(
-        () => fetchSigned(a, appServices(), new URL("https://evil.test/unsigned")),
+        () => fetchSigned(a, new URL("https://evil.test/unsigned")),
         BadReply,
     );
     assertEquals(
-        (await fetchSigned(a, appServices(), new URL("https://evil.test/other"))).status,
+        (await fetchSigned(a, new URL("https://evil.test/other"))).status,
         404,
     );
 });
