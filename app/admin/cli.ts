@@ -76,7 +76,9 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
                 )
                 .action(missingCommand)
                 .command("block <domain:string>", "Block an instance.")
-                .option("-r, --reason <reason:string>", "Why the instance is blocked.", { default: "" })
+                .option("-r, --reason <reason:string>", "Why the instance is blocked.", {
+                    default: "",
+                })
                 .action(async ({ config, reason }, domain) => {
                     const name = domainArgument(domain);
                     const result = await io.withContext(config, async (ctx, settings) => ({
