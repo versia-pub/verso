@@ -170,6 +170,19 @@ export const findRemoteAccount = (
         .where("remote_id", "=", remoteId)
         .executeTakeFirst();
 
+/** A remote account, by its instance's domain and its id there, with when it was fetched. */
+export const findRemoteAccountAt = (
+    ctx: Context,
+    domain: string,
+    remoteId: string,
+): Promise<{ id: string; fetched_at: Date | null } | undefined> =>
+    ctx.db.selectFrom("accounts")
+        .innerJoin("instances", "instances.id", "accounts.instance_id")
+        .select(["accounts.id", "accounts.fetched_at"])
+        .where("instances.domain", "=", domain)
+        .where("accounts.remote_id", "=", remoteId)
+        .executeTakeFirst();
+
 /** Points an account at its pictures in `media`. */
 export const setAccountPictures = async (
     ctx: Context,

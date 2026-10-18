@@ -7,7 +7,7 @@ import { v0_6 } from "@versia/protocol";
 import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
 import type { RemoteMedia } from "../media/media.ts";
-import { type AccountRow, findAccount } from "./accounts.ts";
+import { type AccountRow, findAccount, findRemoteAccountAt } from "./accounts.ts";
 import { deleteRemoteAccount, type RemoteAccount, saveRemoteAccount } from "./remote.ts";
 import type { ProfileField, TextFormat } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
@@ -70,6 +70,16 @@ export const userType: EntityType<v0_6.User> = {
         await saveRemoteAccount(ctx, remoteAccountOf(sender.instanceId, user));
     },
     deleteRemote: (ctx, id, sender) => deleteRemoteAccount(ctx, sender.instanceId, id),
+    known: async (ctx, reference) => {
+        if (reference.host === ctx.urls.domain) {
+            const row = await localUser(ctx, reference.id);
+            return row && { id: row.id, fetchedAt: null };
+        }
+
+        const row = await findRemoteAccountAt(ctx, reference.host, reference.id);
+        // A remote account is always saved with when it was fetched.
+        return row && { id: row.id, fetchedAt: row.fetched_at ?? new Date(0) };
+    },
     find: async (ctx, id) => {
         const row = await localUser(ctx, id);
         return row && renderVersiaUser(ctx, row);

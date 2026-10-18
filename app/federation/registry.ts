@@ -3,7 +3,7 @@
  * each one's descriptor, so adding an entity type means adding a descriptor, and nothing else here.
  * @module
  */
-import { v0_6 } from "@versia/protocol";
+import { type Reference, v0_6 } from "@versia/protocol";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, versiaJson } from "../http/route.ts";
@@ -29,6 +29,9 @@ export type CollectionProvider = (
     page: Page,
     requester: string,
 ) => Promise<v0_6.Collection | v0_6.URICollection | undefined>;
+
+/** An entity Verso has: its id here, and when it was last fetched, or `null` if it is local. */
+export type Known = { readonly id: string; readonly fetchedAt: Date | null };
 
 /** The instance an entity came from. */
 export type Sender = {
@@ -62,6 +65,11 @@ export type EntityType<T = unknown> = {
      * Types without it can't be deleted.
      */
     deleteRemote?(ctx: Context, id: string, sender: Sender): Promise<void>;
+    /**
+     * The entity `reference` points at, local or remote, if Verso has it. Types without it can't
+     * be resolved.
+     */
+    known?(ctx: Context, reference: Reference): Promise<Known | undefined>;
     /**
      * The local entity with this id as `requester`, another instance, may see it, or `undefined`
      * if there is none or it may not. Types without it can't be fetched.
