@@ -5,18 +5,14 @@ import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-import { type AccountRow, findAccount, findLocalAccount, localAccountIds } from "./accounts.ts";
+import { type AccountRow, existingAccountIds, findAccount, findLocalAccount } from "./accounts.ts";
 import { pictureRoutes } from "./picture_routes.ts";
 import { updateProfile } from "./profile.ts";
 import { renderAccount, renderCredentialAccount, renderRelationship } from "./render.ts";
 import { rolesOf } from "./role_queries.ts";
 
-/**
- * Only local accounts are shown for now: remote ones arrive with federation, along with the
- * sanitising of their HTML.
- */
-const shown = (row: AccountRow | undefined) => {
-    if (row === undefined || row.domain !== null) throw new NotFound();
+const found = (row: AccountRow | undefined) => {
+    if (row === undefined) throw new NotFound();
     return row;
 };
 
@@ -26,7 +22,7 @@ const publicAccount = async (ctx: Context, row: AccountRow) =>
 
 /** The viewer's own account, with its roles and what it may do. */
 const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly accountId: string }) => {
-    const row = shown(await findAccount(ctx, viewer.accountId));
+    const row = found(await findAccount(ctx, viewer.accountId));
     return renderCredentialAccount(
         ctx,
         row,
@@ -134,11 +130,11 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
         responses: { 200: z.array(Relationship) },
         handler: async (ctx, { query }) => {
             const asked = [...new Set(query.id)];
-            const found = new Set(await localAccountIds(ctx, asked));
+            const known = new Set(await existingAccountIds(ctx, asked));
 
             return {
                 status: 200,
-                body: asked.filter((id) => found.has(id)).map(renderRelationship),
+                body: asked.filter((id) => known.has(id)).map(renderRelationship),
             };
         },
     }),
@@ -156,7 +152,7 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
 
             return {
                 status: 200,
-                body: await publicAccount(ctx, shown(await findLocalAccount(ctx, username))),
+                body: await publicAccount(ctx, found(await findLocalAccount(ctx, username))),
             };
         },
     }),
@@ -170,7 +166,7 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
         responses: { 200: Account },
         handler: async (ctx, { params }) => ({
             status: 200,
-            body: await publicAccount(ctx, shown(await findAccount(ctx, params.id))),
+            body: await publicAccount(ctx, found(await findAccount(ctx, params.id))),
         }),
     }),
     ...pictureRoutes(),

@@ -4,6 +4,7 @@
  */
 import type { Account, CredentialAccount, Field, Relationship, Role } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
+import { sanitizeHtml } from "../kernel/html.ts";
 import type { AccountRow } from "./accounts.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { mastodonPermissions } from "./permissions.ts";
@@ -26,12 +27,15 @@ const renderRole = (roles: readonly RoleRow[], permissions: Iterable<Permission>
     return { ...role, permissions: mastodonPermissions(permissions), collection_limit: 0 };
 };
 
-/** Fields as HTML, or as their owner wrote them, for them to edit. */
-const renderFields = (fields: readonly ProfileField[], html: boolean): Field[] =>
+/** Fields, with each value as `value` shows it. */
+const renderFields = (
+    fields: readonly ProfileField[],
+    value: (field: ProfileField) => string,
+): Field[] =>
     fields.map((field) => ({
         // Mastodon's names are plain text, so the HTML is only for federation.
         name: field.name,
-        value: html ? field.value_html : field.value,
+        value: value(field),
         verified_at: null,
     }));
 
@@ -53,9 +57,12 @@ export const renderAccount = (
     row: AccountRow,
     roles: readonly RoleRow[],
 ): Account => {
-    const avatar = ctx.urls.url`/accounts/${row.id}/avatar.png`;
-    const header = ctx.urls.url`/accounts/${row.id}/header.png`;
+    const avatar = row.avatar_url ?? ctx.urls.url`/accounts/${row.id}/avatar.png`;
+    const header = row.header_url ?? ctx.urls.url`/accounts/${row.id}/header.png`;
     const local = row.domain === null;
+
+    // Verso's own HTML is made safe when it is written; other instances' is kept as they sent it.
+    const html = local ? (html: string) => html : sanitizeHtml;
 
     return {
         id: row.id,
@@ -65,15 +72,15 @@ export const renderAccount = (
         url: null,
         uri: userUri(ctx, row),
         display_name: row.display_name,
-        note: row.note_html,
+        note: html(row.note_html),
         avatar,
         avatar_static: avatar,
-        avatar_description: "",
+        avatar_description: row.avatar_description ?? "",
         header,
         header_static: header,
-        header_description: "",
+        header_description: row.header_description ?? "",
         locked: row.locked,
-        fields: renderFields(row.fields, true),
+        fields: renderFields(row.fields, (field) => html(field.value_html)),
         emojis: [],
         bot: row.bot,
         group: false,
@@ -111,7 +118,7 @@ export const renderCredentialAccount = (
     ...renderAccount(ctx, row, roles),
     source: {
         note: row.note,
-        fields: renderFields(row.fields, false),
+        fields: renderFields(row.fields, (field) => field.value),
         privacy: row.default_visibility,
         sensitive: row.default_sensitive,
         language: row.default_language,

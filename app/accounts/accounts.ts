@@ -3,14 +3,31 @@ import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
 import type { AccountsTable } from "./tables.ts";
 
-/** An account, with the domain of its instance, or `null` for this one. */
-export type AccountRow = Selectable<AccountsTable> & { readonly domain: string | null };
+/**
+ * An account, with the domain of its instance, or `null` for this one, and the addresses and
+ * descriptions of its pictures, if it has its own.
+ */
+export type AccountRow = Selectable<AccountsTable> & {
+    readonly domain: string | null;
+    readonly avatar_url: string | null;
+    readonly avatar_description: string | null;
+    readonly header_url: string | null;
+    readonly header_description: string | null;
+};
 
 const accountRows = (ctx: Context) =>
     ctx.db.selectFrom("accounts")
         .leftJoin("instances", "instances.id", "accounts.instance_id")
+        .leftJoin("media as avatar", "avatar.id", "accounts.avatar_id")
+        .leftJoin("media as header", "header.id", "accounts.header_id")
         .selectAll("accounts")
-        .select("instances.domain");
+        .select([
+            "instances.domain",
+            "avatar.url as avatar_url",
+            "avatar.description as avatar_description",
+            "header.url as header_url",
+            "header.description as header_description",
+        ]);
 
 /** The account `id`, with its instance's domain, or `undefined` if there is none. */
 export const findAccount = (ctx: Context, id: string): Promise<AccountRow | undefined> =>
@@ -26,15 +43,14 @@ export const findLocalAccount = (
         .where((eb) => eb(eb.fn("lower", ["accounts.username"]), "=", username.toLowerCase()))
         .executeTakeFirst();
 
-/** Which of `ids` are local accounts, in no particular order. */
-export const localAccountIds = async (ctx: Context, ids: readonly string[]): Promise<string[]> => {
+/** Which of `ids` are accounts, in no particular order. */
+export const existingAccountIds = async (
+    ctx: Context,
+    ids: readonly string[],
+): Promise<string[]> => {
     if (ids.length === 0) return [];
 
-    const rows = await ctx.db.selectFrom("accounts")
-        .select("id")
-        .where("id", "in", ids)
-        .where("instance_id", "is", null)
-        .execute();
+    const rows = await ctx.db.selectFrom("accounts").select("id").where("id", "in", ids).execute();
 
     return rows.map((row) => row.id);
 };

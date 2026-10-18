@@ -129,7 +129,7 @@ Deno.test("a user sees their own account, with their settings", async () => {
     );
 });
 
-Deno.test("anyone sees a local account by its id, without its settings", async () => {
+Deno.test("anyone sees an account by its id, without its settings", async () => {
     await using test = await openApi();
 
     const alice = await test.get("/api/v1/accounts/alice");
@@ -137,7 +137,10 @@ Deno.test("anyone sees a local account by its id, without its settings", async (
     assertEquals(alice.body.acct, "alice");
     assertEquals(alice.body.source, undefined);
 
-    for (const id of ["missing", "bob", "a.b"]) {
+    const bob = await test.get("/api/v1/accounts/bob");
+    assertEquals([bob.status, bob.body.acct], [200, "bob@b.example"]);
+
+    for (const id of ["missing", "a.b"]) {
         assertEquals(
             await test.get(`/api/v1/accounts/${id}`),
             { status: 404, body: { error: "Record not found" } },
@@ -274,7 +277,7 @@ Deno.test("only a token that may write accounts changes a profile", async () => 
     );
 });
 
-Deno.test("relationships are none yet, for each local account asked about, in order", async () => {
+Deno.test("relationships are none yet, for each account asked about, in order", async () => {
     await using test = await openApi();
     await createLocalAccount(test.ctx, "carol");
     const token = await tokenFor(test.ctx, "alice");
@@ -284,7 +287,7 @@ Deno.test("relationships are none yet, for each local account asked about, in or
         "/api/v1/accounts/relationships?id[]=carol&id[]=bob&id[]=missing&id[]=alice&id[]=carol",
         token,
     );
-    assertEquals([many.status, ids(many.body)], [200, ["carol", "alice"]]);
+    assertEquals([many.status, ids(many.body)], [200, ["carol", "bob", "alice"]]);
     assertEquals(many.body[0], {
         id: "carol",
         following: false,

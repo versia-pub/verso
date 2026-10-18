@@ -4,6 +4,7 @@ import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findAccount } from "./accounts.ts";
+import { saveRemoteAccount } from "./remote.ts";
 import { renderAccount, renderCredentialAccount } from "./render.ts";
 import type { RoleRow } from "./role_queries.ts";
 import type { ProfileField } from "./tables.ts";
@@ -56,6 +57,52 @@ Deno.test("a remote account links to its own instance", async () => {
     assertEquals(account.avatar, "https://social.example/accounts/r/avatar.png");
     assertEquals(account.last_status_at, "2026-02-01");
     assertEquals(account.roles, null);
+});
+
+Deno.test("a remote account shows its own pictures, and its HTML made safe", async () => {
+    await using test = await createTestContext();
+    const instanceId = await createInstance(test.ctx, "b.example");
+    const unsafe = '<p class="mention x">Hi<script>alert(1)</script></p>';
+    const safe = '<p class="mention">Hi</p>';
+    const id = await saveRemoteAccount(test.ctx, {
+        instanceId,
+        remoteId: "bob",
+        createdAt: test.clock.now(),
+        profile: {
+            username: "bob",
+            display_name: "",
+            note: "Hi",
+            note_format: "text/plain",
+            note_html: unsafe,
+            fields: [{
+                name: "Site",
+                value: "Hi",
+                format: "text/plain",
+                name_html: "Site",
+                value_html: unsafe,
+            }],
+            locked: false,
+            indexable: true,
+        },
+        avatar: {
+            url: "https://pictures.example/bob.png",
+            mediaType: "image/png",
+            description: "Bob",
+        },
+        header: null,
+    });
+
+    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), []));
+
+    assertEquals(account.note, safe);
+    assertEquals(account.fields, [{ name: "Site", value: safe, verified_at: null }]);
+    assertEquals([account.avatar, account.avatar_static], [
+        "https://pictures.example/bob.png",
+        "https://pictures.example/bob.png",
+    ]);
+    assertEquals(account.avatar_description, "Bob");
+    assertEquals(account.header, `https://social.example/accounts/${id}/header.png`);
+    assertEquals(account.header_description, "");
 });
 
 Deno.test("others see the bio and fields as HTML, and their owner as written", async () => {
