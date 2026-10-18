@@ -68,8 +68,8 @@ export const sign = async (
  * Checks the Versia-* headers on `message`. `publicKeyOf` looks up the public key of the
  * instance named in Versia-Signed-By, in canonical form (see `canonicalizeDomain`), which is also
  * what `signedBy` holds on success. It is only called once the headers and timestamp have been
- * checked, and only with a domain name, never an IP address or a port, so a request can.t point it
- * at an address inside Verso.s own network.
+ * checked, and only with a domain name, never an IP address or a port, so a request can't point it
+ * at an address inside Verso's own network.
  */
 export const verify = async (
     message: SignedMessage,
