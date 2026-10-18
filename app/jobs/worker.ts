@@ -1,11 +1,12 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
-import { claim, complete, fail, giveUp } from "./queue.ts";
+import { claim, complete, fail, giveUp, postpone } from "./queue.ts";
 import type { JobsTable } from "./tables.ts";
 
 /**
  * Runs one job. It may run more than once for the same job, so it must be idempotent. When it
- * throws, the job is retried later, unless it throws a `PermanentFailure`.
+ * throws, the job is retried later, unless it throws a `PermanentFailure`, or a `RetryAt` to say
+ * when.
  */
 export type Handler = (ctx: Context, job: JobsTable) => Promise<void>;
 
@@ -33,6 +34,18 @@ export class PermanentFailure extends Error {
     override readonly name = "PermanentFailure";
 }
 
+/**
+ * Thrown by a handler to run the job again at `runAt`, such as when a server asked to be left alone
+ * until then. It doesn't count as a failed attempt.
+ */
+export class RetryAt extends Error {
+    override readonly name = "RetryAt";
+
+    constructor(readonly runAt: Date, reason: string) {
+        super(reason);
+    }
+}
+
 const logger = getLogger(["verso", "jobs"]);
 
 const defaultLeaseMs = 5 * 60_000;
@@ -40,22 +53,29 @@ const defaultLeaseMs = 5 * 60_000;
 const errorText = (error: unknown) =>
     error instanceof Error ? (error.stack ?? error.message) : String(error);
 
+/** Records how a run of `job` ended when its handler threw `error`. */
+const recordFailure = async (ctx: Context, name: string, job: JobsTable, error: unknown) => {
+    if (error instanceof RetryAt) return await postpone(ctx, job, error.runAt, error.message);
+
+    const permanent = error instanceof PermanentFailure;
+    logger.warn("Job {id} in {queue} failed, {outcome}: {error}", {
+        id: job.id,
+        queue: name,
+        outcome: permanent || job.attempts >= job.max_attempts ? "giving up" : "will retry",
+        error,
+    });
+
+    if (permanent) await giveUp(ctx, job, errorText(error));
+    else await fail(ctx, job, errorText(error));
+};
+
 const runJob = async (ctx: Context, name: string, queue: Queue, job: JobsTable) => {
     try {
         await queue.handler(ctx, job);
         await complete(ctx, job);
     } catch (error) {
-        const permanent = error instanceof PermanentFailure;
-        logger.warn("Job {id} in {queue} failed, {outcome}: {error}", {
-            id: job.id,
-            queue: name,
-            outcome: permanent || job.attempts >= job.max_attempts ? "giving up" : "will retry",
-            error,
-        });
-
         try {
-            if (permanent) await giveUp(ctx, job, errorText(error));
-            else await fail(ctx, job, errorText(error));
+            await recordFailure(ctx, name, job, error);
         } catch (error) {
             // The lease runs out and the job is claimed again, so nothing is lost.
             logger.error("Couldn't record the failure of job {id}: {error}", { id: job.id, error });

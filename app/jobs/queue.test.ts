@@ -1,6 +1,15 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
-import { backoffMs, claim, complete, deleteExpiredJobs, enqueue, fail, giveUp } from "./queue.ts";
+import {
+    backoffMs,
+    claim,
+    complete,
+    deleteExpiredJobs,
+    enqueue,
+    fail,
+    giveUp,
+    postpone,
+} from "./queue.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";
 
@@ -152,6 +161,21 @@ Deno.test("a failed job is retried after a backoff, then kept as a dead letter",
             .select(["attempts", "lease_owner", "lease_expires_at", "last_error"]).execute(),
         [{ attempts: 2, lease_owner: null, lease_expires_at: null, last_error: "refused" }],
     );
+});
+
+Deno.test("a postponed job runs at the given time, with its attempt given back", async () => {
+    await using test = await open();
+
+    await enqueue(test.ctx, { queue: "deliver", payload: {}, maxAttempts: 1 });
+    const [job] = await claim(test.ctx, options);
+    await postpone(test.ctx, job, new Date(test.clock.now().getTime() + 10 * minute), "busy");
+
+    test.clock.advance(10 * minute - 1);
+    assertEquals(await claim(test.ctx, options), []);
+
+    test.clock.advance(1);
+    const [again] = await claim(test.ctx, options);
+    assertEquals([again.attempts, again.last_error], [1, "busy"]);
 });
 
 Deno.test("a job given up on is a dead letter at once, with its error", async () => {
