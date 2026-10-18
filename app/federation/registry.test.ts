@@ -7,6 +7,9 @@ import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createRegistry, entityRoutes, type EntityType } from "./registry.ts";
 
+/** What a type does with entities it is sent, for tests that only fetch them. */
+const ignored = { authority: () => undefined, receive: () => Promise.resolve() };
+
 const Thing = z.object({ type: z.literal("Thing"), id: z.string(), seen_by: z.string() });
 
 /** A type whose entities are only found by b.example, and say who asked for them. */
@@ -14,6 +17,7 @@ const thing: EntityType<z.infer<typeof Thing>> = {
     type: "Thing",
     extension: "test.example:things",
     schema: Thing,
+    ...ignored,
     find: (_ctx, id, requester) =>
         Promise.resolve(
             requester === "b.example" ? { type: "Thing", id, seen_by: requester } : undefined,
@@ -31,6 +35,7 @@ const transient: EntityType = {
     type: "Ping",
     extension: "test.example:things",
     schema: z.unknown(),
+    ...ignored,
 };
 
 const open = async () => {
@@ -86,11 +91,12 @@ Deno.test("a type's collections are paged, and unknown ones aren't found", async
 });
 
 Deno.test("a registry lists the extensions its types come from, once each", () => {
-    const user: EntityType = { type: "User", schema: z.unknown() };
+    const user: EntityType = { type: "User", schema: z.unknown(), ...ignored };
     const like: EntityType = {
         type: "pub.versia:likes/Like",
         extension: "pub.versia:likes",
         schema: z.unknown(),
+        ...ignored,
     };
 
     assertEquals(createRegistry([user, thing, like, transient]).extensions, [

@@ -8,7 +8,7 @@ import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
 import type { RemoteMedia } from "../media/media.ts";
 import { type AccountRow, findAccount } from "./accounts.ts";
-import type { RemoteAccount } from "./remote.ts";
+import { type RemoteAccount, saveRemoteAccount } from "./remote.ts";
 import type { ProfileField, TextFormat } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
 
@@ -57,13 +57,18 @@ const emptyCollection: CollectionProvider = async (ctx, id) => {
 };
 
 /**
- * Users: local ones, fetched by other instances, with their collections, the notes they wrote and
+ * Users: other instances' ones, kept as remote accounts, and local ones, fetched by other instances, with their collections, the notes they wrote and
  * pinned as entities, and who follows them and who they follow as references.
  * @see https://versia.pub/entities/user
  */
 export const userType: EntityType<v0_6.User> = {
     type: "User",
     schema: v0_6.User,
+    // A user has no author, and lives where it came from.
+    authority: (_, origin) => origin,
+    receive: async (ctx, user, sender) => {
+        await saveRemoteAccount(ctx, remoteAccountOf(sender.instanceId, user));
+    },
     find: async (ctx, id) => {
         const row = await localUser(ctx, id);
         return row && renderVersiaUser(ctx, row);

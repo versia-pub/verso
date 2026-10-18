@@ -10,7 +10,7 @@ import { BadRequest, ValidationFailed } from "../http/errors.ts";
 import { defineRoute, NoBody, type Route } from "../http/route.ts";
 import { enqueue } from "../jobs/queue.ts";
 import type { Context } from "../kernel/context.ts";
-import type { Registry } from "./registry.ts";
+import type { EntityType, Registry } from "./registry.ts";
 
 export const inboxQueue = "inbox";
 
@@ -21,13 +21,14 @@ export const inboxQueue = "inbox";
 const dedupeMs = 10 * 60_000;
 
 /** An inbox job's payload: an entity as it arrived, for the inbox worker. */
-export type InboxJob = {
+export const InboxJob = z.object({
     /** The domain of the instance that sent it. */
-    readonly signer: string;
+    signer: z.string(),
     /** The body exactly as signed, already checked against its type's schema. */
-    readonly body: string;
-    readonly received_at: string;
-};
+    body: z.string(),
+    received_at: z.iso.datetime(),
+});
+export type InboxJob = z.output<typeof InboxJob>;
 
 const Typed = z.object({ type: z.string() });
 
@@ -44,17 +45,16 @@ const detailsOf = (error: z.ZodError) => {
     return details;
 };
 
+/** An entity and its type, as checked. */
+export type Checked = { readonly type: EntityType; readonly entity: unknown };
+
 /**
- * Checks an entity another instance sent and queues it for the inbox worker, unless it was
- * received already. One of an extension Verso doesn't know is dropped, as the spec says.
+ * Checks an entity's body: Versia JSON, of a type in `registry`, matching its schema. It throws
+ * when it isn't, and gives `undefined` for one of an extension Verso doesn't know, which is
+ * dropped, as the spec says.
  * @see https://versia.pub/extensions
  */
-export const receive = async (
-    ctx: Context,
-    registry: Registry,
-    signer: string,
-    body: Uint8Array<ArrayBuffer>,
-): Promise<void> => {
+export const checkEntity = (registry: Registry, body: Uint8Array): Checked | undefined => {
     const parsed = parseJson(body);
     if (!parsed.ok) throw new BadRequest(`The body isn't valid Versia JSON: ${parsed.reason}`);
 
@@ -63,12 +63,27 @@ export const receive = async (
 
     const type = registry.types.get(typed.data.type);
     if (!type) {
-        if (isExtensionType(typed.data.type)) return;
+        if (isExtensionType(typed.data.type)) return undefined;
         throw new ValidationFailed({ "body.type": [`Unknown type ${typed.data.type}`] });
     }
 
     const checked = type.schema.safeParse(parsed.value);
     if (!checked.success) throw new ValidationFailed(detailsOf(checked.error));
+
+    return { type, entity: checked.data };
+};
+
+/**
+ * Checks an entity another instance sent and queues it for the inbox worker, unless it was
+ * received already or is dropped.
+ */
+export const queueEntity = async (
+    ctx: Context,
+    registry: Registry,
+    signer: string,
+    body: Uint8Array<ArrayBuffer>,
+): Promise<void> => {
+    if (!checkEntity(registry, body)) return;
 
     const now = ctx.clock.now();
     const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", body));
@@ -96,7 +111,7 @@ export const inboxRoute = (registry: Registry): Route =>
         signed: true,
         responses: { 202: NoBody },
         handler: async (ctx, { signedBy, signedBody }) => {
-            await receive(ctx, registry, signedBy ?? "", signedBody ?? new Uint8Array());
+            await queueEntity(ctx, registry, signedBy ?? "", signedBody ?? new Uint8Array());
             return { status: 202 };
         },
     });

@@ -30,13 +30,33 @@ export type CollectionProvider = (
     requester: string,
 ) => Promise<v0_6.Collection | v0_6.URICollection | undefined>;
 
-/** What the federation engine knows of one entity type. */
+/** The instance an entity came from. */
+export type Sender = {
+    readonly domain: string;
+    /** In `instances`. */
+    readonly instanceId: string;
+};
+
+/**
+ * What the federation engine knows of one entity type. Its functions are methods, so a type for
+ * one kind of entity fits where any kind is expected.
+ */
 export type EntityType<T = unknown> = {
     /** Such as `User`, or `pub.versia:likes/Like` for an extension's. */
     readonly type: string;
     /** The extension that defines it, such as `pub.versia:likes`, or none for core types. */
     readonly extension?: string;
     readonly schema: z.ZodType<T>;
+    /**
+     * The domain of the only instance that may send the entity: its author's, or for one with no
+     * author, the one it came from, `origin`. `undefined` if it names none.
+     */
+    authority(entity: T, origin: string): string | undefined;
+    /**
+     * Applies an entity `sender` sent, in a transaction. It may run more than once for the same
+     * entity, so it must be idempotent. It throws `PermanentFailure` for one it can't apply.
+     */
+    receive(ctx: Context, entity: T, sender: Sender): Promise<void>;
     /**
      * The local entity with this id as `requester`, another instance, may see it, or `undefined`
      * if there is none or it may not. Types without it can't be fetched.
