@@ -158,6 +158,18 @@ export const upsertRemoteAccount = async (
         .executeTakeFirstOrThrow();
 };
 
+/** A remote account, by its id on its instance, with its pictures. */
+export const findRemoteAccount = (
+    ctx: Context,
+    instanceId: string,
+    remoteId: string,
+): Promise<{ id: string; avatar_id: string | null; header_id: string | null } | undefined> =>
+    ctx.db.selectFrom("accounts")
+        .select(["id", "avatar_id", "header_id"])
+        .where("instance_id", "=", instanceId)
+        .where("remote_id", "=", remoteId)
+        .executeTakeFirst();
+
 /** Points an account at its pictures in `media`. */
 export const setAccountPictures = async (
     ctx: Context,

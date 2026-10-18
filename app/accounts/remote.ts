@@ -4,7 +4,13 @@
  */
 import type { Context } from "../kernel/context.ts";
 import { deleteMedia, type RemoteMedia, saveRemoteMedia } from "../media/media.ts";
-import { type RemoteProfile, setAccountPictures, upsertRemoteAccount } from "./accounts.ts";
+import {
+    deleteAccount,
+    findRemoteAccount,
+    type RemoteProfile,
+    setAccountPictures,
+    upsertRemoteAccount,
+} from "./accounts.ts";
 
 /** A remote account as its instance last described it, whatever protocol it used. */
 export type RemoteAccount = {
@@ -42,4 +48,20 @@ export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise
         }
 
         return saved.id;
+    });
+
+/** Deletes a remote account, by its id on its instance, with its pictures, if Verso has it. */
+export const deleteRemoteAccount = (
+    ctx: Context,
+    instanceId: string,
+    remoteId: string,
+): Promise<void> =>
+    ctx.transaction(async (tx) => {
+        const account = await findRemoteAccount(tx, instanceId, remoteId);
+        if (!account) return;
+
+        await deleteAccount(tx, account.id);
+        for (const picture of [account.avatar_id, account.header_id]) {
+            if (picture !== null) await deleteMedia(tx, picture);
+        }
     });

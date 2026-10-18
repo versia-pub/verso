@@ -8,7 +8,7 @@ import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
 import type { RemoteMedia } from "../media/media.ts";
 import { type AccountRow, findAccount } from "./accounts.ts";
-import { type RemoteAccount, saveRemoteAccount } from "./remote.ts";
+import { deleteRemoteAccount, type RemoteAccount, saveRemoteAccount } from "./remote.ts";
 import type { ProfileField, TextFormat } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
 
@@ -69,6 +69,7 @@ export const userType: EntityType<v0_6.User> = {
     receive: async (ctx, user, sender) => {
         await saveRemoteAccount(ctx, remoteAccountOf(sender.instanceId, user));
     },
+    deleteRemote: (ctx, id, sender) => deleteRemoteAccount(ctx, sender.instanceId, id),
     find: async (ctx, id) => {
         const row = await localUser(ctx, id);
         return row && renderVersiaUser(ctx, row);

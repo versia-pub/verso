@@ -58,6 +58,11 @@ export type EntityType<T = unknown> = {
      */
     receive(ctx: Context, entity: T, sender: Sender): Promise<void>;
     /**
+     * Deletes the entity with this id on `sender`, which a Delete said is gone, if Verso has it.
+     * Types without it can't be deleted.
+     */
+    deleteRemote?(ctx: Context, id: string, sender: Sender): Promise<void>;
+    /**
      * The local entity with this id as `requester`, another instance, may see it, or `undefined`
      * if there is none or it may not. Types without it can't be fetched.
      */
