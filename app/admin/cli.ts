@@ -4,6 +4,7 @@
  * @module
  */
 import { Command, EnumType, ValidationError } from "@cliffy/command";
+import { canonicalizeDomain } from "@versia/protocol";
 import { permissions } from "../kernel/permissions.ts";
 import { findLocalAccount } from "../accounts/accounts.ts";
 import {
@@ -15,12 +16,22 @@ import {
 } from "../accounts/role_queries.ts";
 import { RoleName } from "../accounts/roles.ts";
 import { rotateInstanceKey } from "../instances/keys.ts";
+import type { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
+import {
+    blockDomain,
+    blockedByConfig,
+    listBlockedDomains,
+    unblockDomain,
+} from "../moderation/domain_blocks.ts";
 
 /** What admin commands need from whoever runs them. */
 export type AdminIo = {
     /** Runs `work` with the context of the instance the config file at `path` describes. */
-    readonly withContext: <T>(path: string, work: (ctx: Context) => Promise<T>) => Promise<T>;
+    readonly withContext: <T>(
+        path: string,
+        work: (ctx: Context, config: Config) => Promise<T>,
+    ) => Promise<T>;
     /** Prints one line of output. */
     readonly print: (line: string) => void;
 };
@@ -39,6 +50,13 @@ const accountAndRole = async (ctx: Context, username: string, roleName: string) 
     return { account, role };
 };
 
+/** A domain as signatures name it, or a usage error. */
+const domainArgument = (domain: string) => {
+    const canonical = canonicalizeDomain(domain);
+    if (canonical === undefined) throw new ValidationError(`${domain} isn't a domain name`);
+    return canonical;
+};
+
 /** Refuses a command run without one of its subcommands, as a usage error. */
 export const missingCommand = (): never => {
     throw new ValidationError("Missing command");
@@ -49,6 +67,51 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
     new Command<{ config: string }>()
         .description("Manage the instance.")
         .action(missingCommand)
+        .command(
+            "domains",
+            new Command<{ config: string }>()
+                .description(
+                    "Manage the instances Verso doesn't federate with, with their subdomains. " +
+                        "Instances blocked in the config file can only be changed there.",
+                )
+                .action(missingCommand)
+                .command("block <domain:string>", "Block an instance.")
+                .option("-r, --reason <reason:string>", "Why the instance is blocked.", { default: "" })
+                .action(async ({ config, reason }, domain) => {
+                    const name = domainArgument(domain);
+                    const result = await io.withContext(config, async (ctx, settings) => ({
+                        domain: name,
+                        changed: await blockDomain(ctx, name, reason),
+                        by_config: blockedByConfig(settings.federation.blocked_domains, name),
+                    }));
+                    io.print(JSON.stringify(result));
+                })
+                .command("unblock <domain:string>", "Unblock an instance.")
+                .action(async ({ config }, domain) => {
+                    const name = domainArgument(domain);
+                    const result = await io.withContext(config, async (ctx, settings) => ({
+                        domain: name,
+                        changed: await unblockDomain(ctx, name),
+                        // Still blocked, until it is taken out of the config file.
+                        by_config: blockedByConfig(settings.federation.blocked_domains, name),
+                    }));
+                    io.print(JSON.stringify(result));
+                })
+                .command("list", "Print every blocked domain: the config file's, then the rest.")
+                .action(async ({ config }) => {
+                    const blocks = await io.withContext(config, async (ctx, settings) => [
+                        ...settings.federation.blocked_domains.map((domain) => ({
+                            domain,
+                            source: "config",
+                        })),
+                        ...(await listBlockedDomains(ctx)).map((block) => ({
+                            ...block,
+                            source: "admin",
+                        })),
+                    ]);
+                    io.print(JSON.stringify(blocks));
+                }),
+        )
         .command(
             "keys",
             new Command<{ config: string }>()

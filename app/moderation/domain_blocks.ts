@@ -45,22 +45,21 @@ export const unblockDomain = async (ctx: Context, domain: string): Promise<boole
 export const listBlockedDomains = (ctx: Context): Promise<DomainBlock[]> =>
     ctx.db.selectFrom("domain_blocks").selectAll().orderBy("domain").execute();
 
+/** Whether config blocks an instance, by its domain or one it is under. */
+export const blockedByConfig = (configured: readonly string[], domain: string): boolean =>
+    domainAndParents(domain.toLowerCase()).some((candidate) => configured.includes(candidate));
+
 /** Whether an instance is blocked, by config or by an admin. */
 export type IsBlocked = (ctx: Context, domain: string) => Promise<boolean>;
 
 /** Checks domains against the ones config blocks, and the ones admins blocked. */
-export const domainBlocks = (configured: readonly string[]): IsBlocked => {
-    const fromConfig = new Set(configured);
+export const domainBlocks = (configured: readonly string[]): IsBlocked => async (ctx, domain) => {
+    if (blockedByConfig(configured, domain)) return true;
 
-    return async (ctx, domain) => {
-        const domains = domainAndParents(domain.toLowerCase());
-        if (domains.some((candidate) => fromConfig.has(candidate))) return true;
+    const blocked = await ctx.db.selectFrom("domain_blocks")
+        .select("domain")
+        .where("domain", "in", domainAndParents(domain.toLowerCase()))
+        .executeTakeFirst();
 
-        const blocked = await ctx.db.selectFrom("domain_blocks")
-            .select("domain")
-            .where("domain", "in", domains)
-            .executeTakeFirst();
-
-        return blocked !== undefined;
-    };
+    return blocked !== undefined;
 };

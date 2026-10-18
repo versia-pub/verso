@@ -3,9 +3,17 @@ import { ValidationError } from "@cliffy/command";
 import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
+import { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
 import { adminCommand, AdminError } from "./cli.ts";
+
+/** The config the commands are given, which blocks config.example. */
+const config = Config.parse({
+    domain: "social.example",
+    database: { sqlite: ":memory:" },
+    federation: { blocked_domains: ["config.example"] },
+});
 
 /** Runs `verso admin` with `args` on `ctx`, and returns what it printed. */
 const admin = async (ctx: Context, ...args: string[]) => {
@@ -15,7 +23,7 @@ const admin = async (ctx: Context, ...args: string[]) => {
     await adminCommand({
         withContext: (path, work) => {
             paths.push(path);
-            return work(ctx);
+            return work(ctx, config);
         },
         print: (line) => printed.push(line),
     })
@@ -197,4 +205,59 @@ Deno.test("roles are only given to local accounts and roles that exist", async (
     }
 
     assertEquals(await assignments(test.ctx), []);
+});
+
+Deno.test("an admin blocks and unblocks a domain once, with a reason", async () => {
+    await using test = await createTestContext();
+    const run = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "domains", ...args)).printed.join(""));
+
+    assertEquals(await run("block", "Evil.Example", "--reason", "Spam"), {
+        domain: "evil.example",
+        changed: true,
+        by_config: false,
+    });
+    assertEquals((await run("block", "evil.example")).changed, false);
+    assertEquals(await run("list"), [
+        { domain: "config.example", source: "config" },
+        {
+            domain: "evil.example",
+            reason: "Spam",
+            created_at: test.clock.now().toISOString(),
+            source: "admin",
+        },
+    ]);
+
+    assertEquals(await run("unblock", "evil.example"), {
+        domain: "evil.example",
+        changed: true,
+        by_config: false,
+    });
+    assertEquals((await run("unblock", "evil.example")).changed, false);
+    assertEquals(await run("list"), [{ domain: "config.example", source: "config" }]);
+});
+
+Deno.test("a domain the config blocks says so, since only the config file unblocks it", async () => {
+    await using test = await createTestContext();
+    const run = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "domains", ...args)).printed.join(""));
+
+    assertEquals(await run("unblock", "a.config.example"), {
+        domain: "a.config.example",
+        changed: false,
+        by_config: true,
+    });
+    assertEquals((await run("block", "config.example")).by_config, true);
+});
+
+Deno.test("a domain to block must be a domain name", async () => {
+    await using test = await createTestContext();
+
+    for (const bad of ["192.0.2.1", "evil.example:8443", "not a domain"]) {
+        const error = await assertRejects(
+            () => admin(test.ctx, "domains", "block", bad),
+            ValidationError,
+        );
+        assertStringIncludes(error.message, "isn't a domain name", bad);
+    }
 });

@@ -190,11 +190,14 @@ const setUp = async (path: string): Promise<Config> => {
     return config;
 };
 
-/** Runs `work` with the context for the config at `path`, for admin commands. */
-const withContext = async <T>(path: string, work: (ctx: Context) => Promise<T>): Promise<T> => {
+/** Runs `work` with the config at `path` and its context, for admin commands. */
+const withContext = async <T>(
+    path: string,
+    work: (ctx: Context, config: Config) => Promise<T>,
+): Promise<T> => {
     const config = await setUp(path);
     await using db = openDatabase(config.database);
-    return await work(contextFor(config, db).ctx);
+    return await work(contextFor(config, db).ctx, config);
 };
 
 const version = `verso ${denoConfig.version}`;
