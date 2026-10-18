@@ -5,7 +5,8 @@ import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-import { type AccountRow, existingAccountIds, findAccount, findLocalAccount } from "./accounts.ts";
+import { type AccountRow, existingAccountIds, findAccount } from "./accounts.ts";
+import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { pictureRoutes } from "./picture_routes.ts";
 import { updateProfile } from "./profile.ts";
 import { renderAccount, renderCredentialAccount, renderRelationship } from "./render.ts";
@@ -29,17 +30,6 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
         await rolesOf(ctx, row.id),
         await viewer.permissions(),
     );
-};
-
-/**
- * The username in `user`, `@user` or `user@domain`, if the domain is this instance's. Accounts on
- * other instances aren't looked up yet.
- */
-const localUsername = (ctx: Context, acct: string) => {
-    const [username, domain, ...rest] = acct.replace(/^@/, "").split("@");
-    const ours = domain === undefined || domain.toLowerCase() === ctx.urls.domain;
-
-    return rest.length === 0 && ours ? username : undefined;
 };
 
 /**
@@ -146,14 +136,15 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
         auth: { require: "optional", permission: "read:account" },
         query: z.object({ acct: z.string() }),
         responses: { 200: Account },
-        handler: async (ctx, { query }) => {
-            const username = localUsername(ctx, query.acct);
-            if (username === undefined) throw new NotFound();
+        handler: async (ctx, { query, viewer }) => {
+            const address = parseAddress(ctx, query.acct);
+            if (address === undefined) throw new NotFound();
 
-            return {
-                status: 200,
-                body: await publicAccount(ctx, found(await findLocalAccount(ctx, username))),
-            };
+            // Anyone else could make Verso fetch from wherever they liked.
+            const fetch = typeof viewer?.accountId === "string";
+            const row = await findAccountByAddress(ctx, address, { fetch });
+
+            return { status: 200, body: await publicAccount(ctx, found(row)) };
         },
     }),
     defineRoute({

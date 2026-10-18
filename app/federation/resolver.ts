@@ -9,19 +9,13 @@ import type { Reference } from "@versia/protocol";
 import { z } from "zod";
 import { HttpError } from "../http/errors.ts";
 import { findInstanceId } from "../instances/instances.ts";
-import type { Context } from "../kernel/context.ts";
+import type { Budget, Context, Resolver } from "../kernel/context.ts";
 import { lru } from "../kernel/lru.ts";
 import { checkEntity } from "./inbox.ts";
 import type { EntityType, Registry } from "./registry.ts";
-import { fetchSigned } from "./request.ts";
+import { BadReply, fetchSigned } from "./request.ts";
 
 const logger = getLogger(["verso", "federation"]);
-
-/**
- * How many fetches one request or job may make, shared by every resolve it does, so a chain of
- * references can't make it fetch without end.
- */
-export type Budget = { fetches: number };
 
 export const fetchBudget = (fetches = 20): Budget => ({ fetches });
 
@@ -29,6 +23,17 @@ export const fetchBudget = (fetches = 20): Budget => ({ fetches });
 export class ResolveFailed extends Error {
     override readonly name = "ResolveFailed";
 }
+
+/**
+ * Whether `error` is another instance failing Verso: unreachable, too slow, or answering with
+ * something Verso can't use.
+ */
+export const isRemoteFailure = (error: unknown): boolean =>
+    error instanceof ResolveFailed ||
+    error instanceof BadReply ||
+    // How fetch says a host can't be reached.
+    error instanceof TypeError ||
+    (error instanceof DOMException && error.name === "TimeoutError");
 
 export type ResolverOptions = {
     /** How long a fetched entity is used before it is fetched again. Defaults to a day. */
@@ -38,19 +43,6 @@ export type ResolverOptions = {
     /** How many missing entities to remember. */
     readonly capacity?: number;
 };
-
-/**
- * Verso's id for the entity of type `type` that `reference` points at, or `undefined` if there is
- * none. A local entity is looked up; a remote one is fetched if Verso doesn't have it, or had it
- * too long ago, unless its instance is blocked or `budget` is spent. If fetching fails, the copy
- * Verso has is used; without one, it throws.
- */
-export type Resolver = (
-    ctx: Context,
-    reference: Reference,
-    type: string,
-    budget?: Budget,
-) => Promise<string | undefined>;
 
 const Identified = z.object({ id: z.string() });
 

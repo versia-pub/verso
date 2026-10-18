@@ -1,3 +1,4 @@
+import type { Reference } from "@versia/protocol";
 import type { Kysely } from "kysely";
 import type { Database } from "../db/database.ts";
 import type { Clock } from "./clock.ts";
@@ -14,7 +15,29 @@ export type KeyStore = {
     readonly refresh: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
 };
 
-/** What talking to other instances needs: whose keys to sign and check with, and whom to ignore. */
+/**
+ * How many fetches one request or job may make, shared by every resolve it does, so a chain of
+ * references can't make it fetch without end.
+ */
+export type Budget = { fetches: number };
+
+/**
+ * Verso's id for the entity of type `type` that `reference` points at, or `undefined` if there is
+ * none. A local entity is looked up; a remote one is fetched if Verso doesn't have it, or had it
+ * too long ago, unless its instance is blocked or `budget` is spent. If fetching fails, the copy
+ * Verso has is used; without one, it throws.
+ */
+export type Resolver = (
+    ctx: Context,
+    reference: Reference,
+    type: string,
+    budget?: Budget,
+) => Promise<string | undefined>;
+
+/**
+ * What talking to other instances needs: whose keys to sign and check with, whom to ignore, and
+ * how to find what they have.
+ */
 export type Federation = {
     /** This instance's private key. */
     readonly signingKey: (ctx: Context) => Promise<CryptoKey>;
@@ -22,6 +45,8 @@ export type Federation = {
     readonly remoteKeys: KeyStore;
     /** Whether Verso doesn't federate with an instance, by its domain. */
     readonly isBlocked: (ctx: Context, domain: string) => Promise<boolean>;
+    /** One for the whole process, so fetches under way are shared. */
+    readonly resolve: Resolver;
 };
 
 /** What every service gets as its first argument. Ports join it as they are added. */

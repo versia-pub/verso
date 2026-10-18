@@ -30,6 +30,7 @@ const open = async () => {
                 refresh: () => Promise.resolve(undefined),
             },
             isBlocked: () => Promise.resolve(false),
+            resolve: () => Promise.resolve(undefined),
         },
         db,
     });

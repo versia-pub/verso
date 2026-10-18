@@ -149,7 +149,7 @@ Deno.test("anyone sees an account by its id, without its settings", async () => 
     }
 });
 
-Deno.test("a local account is looked up by its username or address", async () => {
+Deno.test("an account is looked up by its username or address", async () => {
     await using test = await openApi();
     const lookup = (acct: string) =>
         test.get(`/api/v1/accounts/lookup?acct=${encodeURIComponent(acct)}`);
@@ -166,7 +166,6 @@ Deno.test("a local account is looked up by its username or address", async () =>
             "",
             "carol",
             "bob",
-            "bob@b.example",
             "alice@b.example",
             "alice@social.example@x",
         ]
@@ -174,7 +173,23 @@ Deno.test("a local account is looked up by its username or address", async () =>
         assertEquals((await lookup(acct)).status, 404, acct);
     }
 
+    const bob = await lookup("@bob@B.Example");
+    assertEquals([bob.status, bob.body.acct], [200, "bob@b.example"]);
     assertEquals((await test.get("/api/v1/accounts/lookup")).status, 422);
+    assertEquals(test.transport.sent, []);
+});
+
+Deno.test("only users make Verso look for accounts it doesn't know", async () => {
+    await using test = await openApi();
+    const path = "/api/v1/accounts/lookup?acct=carol@c.example";
+
+    assertEquals((await test.get(path)).status, 404);
+    assertEquals((await test.get(path, await tokenFor(test.ctx, null))).status, 404);
+    assertEquals(test.transport.sent, []);
+
+    // c.example can't be reached, which is the same as carol not being there.
+    assertEquals((await test.get(path, await tokenFor(test.ctx, "alice"))).status, 404);
+    assertEquals(test.transport.sent.map((request) => new URL(request.url).host), ["c.example"]);
 });
 
 Deno.test("a user changes their profile with JSON, and gets it back as HTML", async () => {

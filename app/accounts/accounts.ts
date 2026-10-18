@@ -43,6 +43,20 @@ export const findLocalAccount = (
         .where((eb) => eb(eb.fn("lower", ["accounts.username"]), "=", username.toLowerCase()))
         .executeTakeFirst();
 
+/**
+ * The account named `username`, ignoring case, on the instance at `domain`, or `undefined` if
+ * Verso doesn't know it.
+ */
+export const findRemoteAccountByName = (
+    ctx: Context,
+    username: string,
+    domain: string,
+): Promise<AccountRow | undefined> =>
+    accountRows(ctx)
+        .where("instances.domain", "=", domain)
+        .where((eb) => eb(eb.fn("lower", ["accounts.username"]), "=", username.toLowerCase()))
+        .executeTakeFirst();
+
 /** Which of `ids` are accounts, in no particular order. */
 export const existingAccountIds = async (
     ctx: Context,
