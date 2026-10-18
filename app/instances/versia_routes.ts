@@ -12,7 +12,10 @@ import { instanceKey } from "./keys.ts";
  * signatures with.
  * @see https://versia.pub/federation/discovery
  */
-export const versiaInstanceRoutes = (instance: Config["instance"]): readonly Route[] => [
+export const versiaInstanceRoutes = (
+    instance: Config["instance"],
+    extensions: readonly string[],
+): readonly Route[] => [
     defineRoute({
         method: "GET",
         path: "/.well-known/versia",
@@ -37,8 +40,7 @@ export const versiaInstanceRoutes = (instance: Config["instance"]): readonly Rou
                 created_at: (await firstMigratedAt(ctx.db)).toISOString(),
                 name: instance.name ?? domain,
                 software: { name: "Verso", version: denoConfig.version },
-                // Extensions are listed as they are added.
-                compatibility: { versions: ["0.6.0"], extensions: [] },
+                compatibility: { versions: ["0.6.0"], extensions: [...extensions] },
                 description: instance.description === "" ? undefined : instance.description,
                 domain,
                 public_key: { algorithm: "ed25519", key: (await instanceKey(ctx)).publicKey },

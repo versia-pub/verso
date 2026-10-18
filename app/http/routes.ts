@@ -1,11 +1,12 @@
 import { roleRoutes } from "../accounts/role_routes.ts";
 import { accountRoutes } from "../accounts/routes.ts";
-import { userEntityRoutes } from "../accounts/versia.ts";
 import { webfingerRoutes } from "../accounts/webfinger.ts";
 import { authRoutes } from "../auth/routes.ts";
+import { entityRoutes } from "../federation/registry.ts";
 import type { AboutSettings } from "../instances/render.ts";
 import { instanceRoutes } from "../instances/routes.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
+import { registry } from "../registry.ts";
 import { docsRoute } from "./docs.ts";
 import { openApiRoute } from "./openapi.ts";
 import type { Route } from "./route.ts";
@@ -21,9 +22,9 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...accountRoutes(settings.limits),
         ...roleRoutes,
         ...webfingerRoutes,
-        ...userEntityRoutes,
+        ...entityRoutes(registry),
         ...instanceRoutes(settings),
-        ...versiaInstanceRoutes(settings.instance),
+        ...versiaInstanceRoutes(settings.instance, registry.extensions),
         docsRoute,
     ];
 

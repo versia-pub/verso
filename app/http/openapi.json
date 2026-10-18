@@ -2222,7 +2222,7 @@
         },
         "/.versia/v0.6/entities/User/{id}": {
             "get": {
-                "summary": "A local user, for another instance",
+                "summary": "A local User, for another instance",
                 "tags": [
                     "versia"
                 ],
@@ -2877,7 +2877,7 @@
         },
         "/.versia/v0.6/entities/User/{id}/collections/{name}": {
             "get": {
-                "summary": "A page of one of a local user's collections, for another instance",
+                "summary": "A page of one of a local User's collections, for another instance",
                 "tags": [
                     "versia"
                 ],

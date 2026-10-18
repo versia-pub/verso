@@ -6,9 +6,11 @@ import { createTestContext } from "../testing/context.ts";
 import { instanceKey, rotateInstanceKey } from "./keys.ts";
 import { versiaInstanceRoutes } from "./versia_routes.ts";
 
-const open = async (instance = Instance.parse({})) => {
+const open = async (instance = Instance.parse({}), extensions: string[] = []) => {
     const test = await createTestContext();
-    const app = createTestApp(test.ctx, versiaInstanceRoutes(instance), { checkResponses: true });
+    const app = createTestApp(test.ctx, versiaInstanceRoutes(instance, extensions), {
+        checkResponses: true,
+    });
 
     const get = async (path: string) => {
         const response = await app.request(path);
@@ -68,4 +70,12 @@ Deno.test("an instance gives its configured name and description", async () => {
     const { body } = await test.get("/.versia/v0.6/instance");
 
     assertEquals([body.name, body.description], ["Example Social", "A place to talk."]);
+});
+
+Deno.test("an instance lists the extensions it supports", async () => {
+    await using test = await open(Instance.parse({}), ["pub.versia:likes", "pub.versia:polls"]);
+
+    const { body } = await test.get("/.versia/v0.6/instance");
+
+    assertEquals(body.compatibility.extensions, ["pub.versia:likes", "pub.versia:polls"]);
 });
