@@ -3038,6 +3038,24 @@
                 }
             }
         },
+        "/.versia/v0.6/inbox": {
+            "post": {
+                "summary": "Entities another instance sends to this one",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "No body"
+                    }
+                }
+            }
+        },
         "/api/v2/instance": {
             "get": {
                 "summary": "The instance, its limits, and how to join and contact it",
