@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
+import { createInstance } from "../instances/testing.ts";
 import { enqueue } from "../jobs/queue.ts";
 import { drain } from "../jobs/worker.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
@@ -9,12 +10,14 @@ import { createNetwork } from "../testing/network.ts";
 import { type DeliverJob, deliverQueue } from "./deliver.ts";
 import { deliverHandler, rateLimitReset, retryAfter } from "./deliver_worker.ts";
 
-const hour = 60 * 60_000;
+const minute = 60_000;
+const hour = 60 * minute;
 const queues = { [deliverQueue]: { handler: deliverHandler, concurrency: 1 } };
 
 /** b.example answering deliveries as `answer` says, and what it was sent. */
 const open = async () => {
     const test = await createTestContext();
+    await createInstance(test.ctx, "b.example");
     let answer = () => new Response(null, { status: 202 });
     const received: Request[] = [];
     test.transport.servers.set("b.example", (request) => {
@@ -50,7 +53,11 @@ const open = async () => {
     const outcome = (row: Awaited<ReturnType<typeof job>>) =>
         !row ? "done" : row.attempts === row.max_attempts ? "given up" : "retried";
 
-    return { ...test, received, queue, job, deliver, outcome };
+    const failures = async () =>
+        (await test.ctx.db.selectFrom("instances").select("failures").executeTakeFirstOrThrow())
+            .failures;
+
+    return { ...test, received, queue, job, deliver, outcome, failures };
 };
 
 Deno.test("an entity is delivered, signed, and its instance takes it in", async () => {
@@ -142,6 +149,61 @@ Deno.test("an instance that asks to wait gets no deliveries until then", async (
     await test.deliver(202, { "ratelimit-remaining": "1", "ratelimit-reset": "60" });
     // The three put off, and this one.
     assertEquals(test.received.length, 6);
+});
+
+Deno.test("an instance that can't be reached is left alone, but for a probe", async () => {
+    await using test = await open();
+    test.transport.down.add("b.example");
+    const ids = [];
+    for (let n = 0; n < 6; n++) ids.push(await test.queue());
+    const sent = () => test.transport.sent.length;
+
+    // Five failures park it, and the sixth delivery waits, without being tried.
+    await drain(test.ctx, queues);
+    assertEquals(sent(), 5);
+    assertEquals((await test.job(ids[5]))?.last_error, null);
+
+    // One queued meanwhile finds it parked, and so the next one waits without being tried.
+    ids.push(await test.queue(), await test.queue());
+    await drain(test.ctx, queues);
+    assertEquals(sent(), 5);
+    assertEquals((await test.job(ids[6]))?.last_error?.includes("left alone"), true);
+    assertEquals((await test.job(ids[7]))?.last_error, null);
+
+    // After a minute, one probe, which fails, so it waits two.
+    test.clock.advance(minute);
+    await drain(test.ctx, queues);
+    assertEquals(sent(), 6);
+    test.clock.advance(minute);
+    await drain(test.ctx, queues);
+    assertEquals(sent(), 6);
+
+    // Once a probe gets through, every delivery goes, even one waiting out a long backoff.
+    const payload: DeliverJob = { domain: "b.example", body: "{}" };
+    const runAt = new Date(test.clock.now().getTime() + hour);
+    ids.push(
+        await enqueue(test.ctx, { queue: deliverQueue, payload, group: "b.example", runAt }) ??
+            "",
+    );
+    test.transport.down.delete("b.example");
+    test.clock.advance(minute);
+    await drain(test.ctx, queues);
+    assertEquals(sent(), 15);
+    assertEquals(await Promise.all(ids.map((id) => test.job(id))), Array(9).fill(undefined));
+    assertEquals(await test.failures(), 0);
+});
+
+Deno.test("only a server's failures count against an instance", async () => {
+    await using test = await open();
+
+    for (const status of [500, 502, 503, 408]) await test.deliver(status);
+    assertEquals(await test.failures(), 4);
+
+    await test.deliver(404);
+    assertEquals(await test.failures(), 0);
+
+    for (const status of [400, 429, 301, 202]) await test.deliver(status);
+    assertEquals(await test.failures(), 0);
 });
 
 Deno.test("a delivery is given up on after 48 hours", async () => {

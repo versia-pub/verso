@@ -11,6 +11,7 @@ import {
     postpone,
     postponeGroup,
     release,
+    resumeGroup,
 } from "./queue.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";
@@ -216,6 +217,28 @@ Deno.test("a group's waiting jobs are put off together", async () => {
     assertEquals(running.payload.n, 1);
     assertEquals(runAt, { 1: at(0), 2: at(10), 3: at(20), 4: at(0), 5: at(0), 6: at(0) });
     assertEquals(rows.map((row) => row.attempts).toSorted(), [0, 0, 0, 0, 0, 1]);
+});
+
+Deno.test("a group's waiting jobs are made due together", async () => {
+    await using test = await open();
+    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
+    const add = (n: number, job: { queue?: string; group?: string; runAt?: Date }) =>
+        enqueue(test.ctx, { queue: "deliver", payload: { n }, ...job });
+
+    await add(1, { group: "b.example", runAt: at(-1) });
+    await add(2, { group: "b.example", runAt: at(10) });
+    await add(3, { group: "c.example", runAt: at(10) });
+    await add(4, { runAt: at(10) });
+    await add(5, { queue: "notify", group: "b.example", runAt: at(10) });
+    const [running] = await claim(test.ctx, { ...options, limit: 1 });
+    await postponeGroup(test.ctx, "deliver", "b.example", at(20));
+
+    await resumeGroup(test.ctx, "deliver", "b.example");
+
+    const rows = await test.ctx.db.selectFrom("jobs").select(["payload", "run_at"]).execute();
+    const runAt = Object.fromEntries(rows.map((row) => [row.payload.n, row.run_at]));
+    assertEquals(running.payload.n, 1);
+    assertEquals(runAt, { 1: at(-1), 2: at(0), 3: at(10), 4: at(10), 5: at(10) });
 });
 
 Deno.test("a job given back is as it was before it was claimed", async () => {

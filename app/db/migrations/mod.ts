@@ -16,6 +16,7 @@ import { media } from "./0014_media.ts";
 import { remoteAccounts } from "./0015_remote_accounts.ts";
 import { domainBlocks } from "./0016_domain_blocks.ts";
 import { jobGroups } from "./0017_job_groups.ts";
+import { instanceReachability } from "./0018_instance_reachability.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -39,4 +40,5 @@ export const migrations: Record<string, Migration> = {
     "0015_remote_accounts": remoteAccounts,
     "0016_domain_blocks": domainBlocks,
     "0017_job_groups": jobGroups,
+    "0018_instance_reachability": instanceReachability,
 };

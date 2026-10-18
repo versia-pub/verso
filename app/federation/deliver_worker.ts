@@ -4,12 +4,13 @@
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import { postponeGroup } from "../jobs/queue.ts";
+import { parkedUntil, recordReached, recordUnreachable } from "../instances/reachability.ts";
+import { postponeGroup, resumeGroup } from "../jobs/queue.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure, RetryAt } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { DeliverJob, deliverQueue } from "./deliver.ts";
-import { sendSigned } from "./request.ts";
+import { type FederationReply, isUnreachable, sendSigned } from "./request.ts";
 
 const logger = getLogger(["verso", "federation"]);
 
@@ -44,7 +45,8 @@ export const rateLimitReset = (headers: Headers, now: Date): Date | undefined =>
  * Runs delivery jobs: signs each entity and posts it to its instance's inbox. An instance that
  * refuses it, with a 4xx other than 408 and 429, is given up on; any other failure is retried, when
  * the instance asks if it does, for up to 48 hours. One to an instance blocked since is dropped.
- * An instance that asks to wait, or has no requests left, isn't sent any delivery until then.
+ * An instance that asks to wait, or has no requests left, isn't sent any delivery until then, and
+ * nor is one that couldn't be reached too often in a row, but for a probe now and then.
  */
 export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = DeliverJob.safeParse(job.payload);
@@ -60,9 +62,31 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
     const giveUpAt = new Date(job.created_at.getTime() + deliveryMaxAgeMs);
     if (now >= giveUpAt) throw new PermanentFailure(`${domain} couldn't be reached in 48 hours`);
 
+    const parked = await parkedUntil(ctx, domain);
+    if (parked) {
+        await postponeGroup(ctx, deliverQueue, domain, parked);
+        throw new RetryAt(parked, `${domain} can't be reached, so it is left alone for now`);
+    }
+
+    /** Notes the failure, and parks every delivery to the instance if it is now parked. */
+    const unreachable = async () => {
+        const until = await recordUnreachable(ctx, domain);
+        if (until) await postponeGroup(ctx, deliverQueue, domain, until);
+    };
+
     const url = new URL(`https://${domain}/.versia/v0.6/inbox`);
-    const reply = await sendSigned(ctx, "POST", url, new TextEncoder().encode(body));
+    let reply: FederationReply;
+    try {
+        reply = await sendSigned(ctx, "POST", url, new TextEncoder().encode(body));
+    } catch (error) {
+        if (isUnreachable(error)) await unreachable();
+        throw error;
+    }
     const { status } = reply;
+
+    // Any answer but a server's failure shows the instance is up, and its deliveries can go.
+    if (status >= 500 || status === 408) await unreachable();
+    else if (await recordReached(ctx, domain)) await resumeGroup(ctx, deliverQueue, domain);
 
     const quotaBack = rateLimitReset(reply.headers, now);
     if (quotaBack && quotaBack > now) await postponeGroup(ctx, deliverQueue, domain, quotaBack);

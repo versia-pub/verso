@@ -136,6 +136,26 @@ export const postponeGroup = async (
 };
 
 /**
+ * Makes every waiting job of `group` in `queue` due now, such as deliveries to an instance that
+ * is back. Running jobs are left as they are.
+ */
+export const resumeGroup = async (ctx: Context, queue: string, group: string): Promise<void> => {
+    const now = ctx.clock.now();
+
+    await ctx.db.updateTable("jobs")
+        .set({ run_at: now })
+        .where("queue", "=", queue)
+        .where("group_key", "=", group)
+        .where("run_at", ">", now)
+        .where("finished_at", "is", null)
+        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
+        .where((eb) =>
+            eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
+        )
+        .execute();
+};
+
+/**
  * Gives a claimed job back without running it, as it was before the claim, so another worker, or
  * this one later, can claim it.
  */

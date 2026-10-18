@@ -27,6 +27,10 @@ export class BadReply extends Error {
     override readonly name = "BadReply";
 }
 
+/** Whether `error` is how fetch says a host can't be reached, or didn't answer in time. */
+export const isUnreachable = (error: unknown): boolean =>
+    error instanceof TypeError || (error instanceof DOMException && error.name === "TimeoutError");
+
 /** Reads a body, stopping as soon as it passes `maxReplyBytes`. */
 export const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> => {
     const chunks: Uint8Array[] = [];

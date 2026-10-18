@@ -1,3 +1,5 @@
+import type { Generated } from "kysely";
+
 /** Another server this one knows of. This instance itself has no row. */
 export type InstancesTable = {
     id: string;
@@ -15,6 +17,10 @@ export type InstancesTable = {
     public_key: string | null;
     /** When the key was last fetched, so that a stale one can be fetched again. */
     key_fetched_at: Date | null;
+    /** How many times in a row it couldn't be reached. */
+    failures: Generated<number>;
+    /** While set, deliveries wait for it to pass, when one of them probes whether it is back. */
+    parked_until: Date | null;
     created_at: Date;
 };
 
