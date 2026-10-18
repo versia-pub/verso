@@ -7,7 +7,7 @@ import { registry } from "../registry.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { type DeliverJob, deliverQueue } from "./deliver.ts";
-import { deliverHandler, retryAfter } from "./deliver_worker.ts";
+import { deliverHandler, rateLimitReset, retryAfter } from "./deliver_worker.ts";
 
 const hour = 60 * 60_000;
 const queues = { [deliverQueue]: { handler: deliverHandler, concurrency: 1 } };
@@ -25,7 +25,12 @@ const open = async () => {
     /** Queues a delivery to b.example and returns its id. */
     const queue = async () => {
         const payload: DeliverJob = { domain: "b.example", body: '{"type": "Thing"}' };
-        const id = await enqueue(test.ctx, { queue: deliverQueue, payload, maxAttempts: 100 });
+        const id = await enqueue(test.ctx, {
+            queue: deliverQueue,
+            payload,
+            maxAttempts: 100,
+            group: "b.example",
+        });
         if (id === undefined) throw new Error("Not queued");
         return id;
     };
@@ -110,6 +115,35 @@ Deno.test("an instance that asks to wait is tried again when it says", async () 
     assertEquals(failed?.attempts, 1);
 });
 
+Deno.test("an instance that asks to wait gets no deliveries until then", async () => {
+    await using test = await open();
+    const now = test.clock.now().getTime();
+    const runAt = async (ids: string[]) =>
+        await Promise.all(ids.map(async (id) => (await test.job(id))?.run_at.getTime()));
+
+    const waiting = [await test.queue(), await test.queue()];
+    const job = await test.deliver(429, { "retry-after": "120" });
+    assertEquals(test.received.length, 1);
+    assertEquals(await runAt([...waiting, job?.id ?? ""]), Array(3).fill(now + 120_000));
+
+    // Its rate limit says the same, even when it takes the delivery, which is the oldest.
+    test.clock.advance(120_000);
+    const later = now + 180_000;
+    const queued = await test.deliver(202, { "ratelimit-remaining": "0", "ratelimit-reset": "60" });
+    assertEquals(test.received.length, 2);
+    assertEquals(await runAt([...waiting, job?.id ?? "", queued?.id ?? ""]), [
+        undefined,
+        later,
+        later,
+        later,
+    ]);
+
+    test.clock.advance(60_000);
+    await test.deliver(202, { "ratelimit-remaining": "1", "ratelimit-reset": "60" });
+    // The three put off, and this one.
+    assertEquals(test.received.length, 6);
+});
+
 Deno.test("a delivery is given up on after 48 hours", async () => {
     await using test = await open();
     test.transport.down.add("b.example");
@@ -141,6 +175,20 @@ Deno.test("a delivery to an instance blocked since it was queued is dropped", as
 
     assertEquals(test.outcome(await test.job(id)), "done");
     assertEquals(test.received, []);
+});
+
+Deno.test("a rate limit says when it resets only once none are left", () => {
+    const now = new Date("2026-10-18T12:00:00Z");
+    const reset = (headers: Record<string, string>) => rateLimitReset(new Headers(headers), now);
+
+    assertEquals(
+        reset({ "ratelimit-remaining": "0", "ratelimit-reset": "30" }),
+        new Date("2026-10-18T12:00:30Z"),
+    );
+    assertEquals(reset({ "ratelimit-remaining": "1", "ratelimit-reset": "30" }), undefined);
+    assertEquals(reset({ "ratelimit-remaining": "0", "ratelimit-reset": "soon" }), undefined);
+    assertEquals(reset({ "ratelimit-remaining": "0" }), undefined);
+    assertEquals(reset({ "ratelimit-reset": "30" }), undefined);
 });
 
 Deno.test("Retry-After is read as seconds or a date", () => {

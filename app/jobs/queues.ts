@@ -12,7 +12,7 @@ import type { Queue } from "./worker.ts";
 /** Every queue the worker runs, by name. Modules add theirs as they need them. */
 export const queues: Record<string, Queue> = {
     [inboxQueue]: { handler: inboxHandler(registry), concurrency: 4 },
-    [deliverQueue]: { handler: deliverHandler, concurrency: 8 },
+    [deliverQueue]: { handler: deliverHandler, concurrency: 8, perGroup: 2 },
     "jobs-cleanup": { handler: (ctx) => deleteExpiredJobs(ctx), concurrency: 1 },
     "oauth-cleanup": { handler: (ctx) => deleteExpiredFlows(ctx), concurrency: 1 },
     "rate-limits-cleanup": { handler: (ctx) => deleteEndedRateLimits(ctx), concurrency: 1 },

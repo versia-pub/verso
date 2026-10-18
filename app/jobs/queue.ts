@@ -110,6 +110,32 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
 };
 
 /**
+ * Puts off every waiting job of `group` in `queue` until `runAt`, such as deliveries to an
+ * instance that asked to be left alone until then. Jobs due later, or running, are left as they
+ * are. Like `postpone`, it uses up no attempts.
+ */
+export const postponeGroup = async (
+    ctx: Context,
+    queue: string,
+    group: string,
+    runAt: Date,
+): Promise<void> => {
+    const now = ctx.clock.now();
+
+    await ctx.db.updateTable("jobs")
+        .set({ run_at: runAt })
+        .where("queue", "=", queue)
+        .where("group_key", "=", group)
+        .where("run_at", "<", runAt)
+        .where("finished_at", "is", null)
+        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
+        .where((eb) =>
+            eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
+        )
+        .execute();
+};
+
+/**
  * Gives a claimed job back without running it, as it was before the claim, so another worker, or
  * this one later, can claim it.
  */

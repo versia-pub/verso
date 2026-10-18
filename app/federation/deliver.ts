@@ -25,7 +25,8 @@ const maxAttempts = 100;
 
 /**
  * Queues `entity` for each Versia instance that hosts any of `recipients`, which are account ids,
- * except blocked ones. Local accounts need nothing delivered.
+ * except blocked ones, grouped by instance so each can be limited. Local accounts need nothing
+ * delivered.
  */
 export const queueDeliveries = async (
     ctx: Context,
@@ -38,6 +39,6 @@ export const queueDeliveries = async (
         if (await ctx.federation.isBlocked(ctx, domain)) continue;
 
         const payload: DeliverJob = { domain, body };
-        await enqueue(ctx, { queue: deliverQueue, payload, maxAttempts });
+        await enqueue(ctx, { queue: deliverQueue, payload, maxAttempts, group: domain });
     }
 };

@@ -9,6 +9,7 @@ import {
     fail,
     giveUp,
     postpone,
+    postponeGroup,
     release,
 } from "./queue.ts";
 
@@ -191,6 +192,30 @@ Deno.test("claiming can skip groups, but never jobs without one", async () => {
     const skipGroups = ["b.example", "d.example"];
     assertEquals(ids(await claim(test.ctx, { ...options, skipGroups })).toSorted(), [2, 3]);
     assertEquals(ids(await claim(test.ctx, { ...options, skipGroups: [] })).toSorted(), [1, 4]);
+});
+
+Deno.test("a group's waiting jobs are put off together", async () => {
+    await using test = await open();
+    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
+    const add = (n: number, job: { queue?: string; group?: string; runAt?: Date }) =>
+        enqueue(test.ctx, { queue: "deliver", payload: { n }, ...job });
+
+    await add(1, { group: "b.example" });
+    await add(2, { group: "b.example", runAt: at(1) });
+    await add(3, { group: "b.example", runAt: at(20) });
+    await add(4, { group: "c.example" });
+    await add(5, {});
+    await add(6, { queue: "notify", group: "b.example" });
+    const [running] = await claim(test.ctx, { ...options, limit: 1 });
+
+    await postponeGroup(test.ctx, "deliver", "b.example", at(10));
+
+    const rows = await test.ctx.db.selectFrom("jobs").select(["payload", "run_at", "attempts"])
+        .execute();
+    const runAt = Object.fromEntries(rows.map((row) => [row.payload.n, row.run_at]));
+    assertEquals(running.payload.n, 1);
+    assertEquals(runAt, { 1: at(0), 2: at(10), 3: at(20), 4: at(0), 5: at(0), 6: at(0) });
+    assertEquals(rows.map((row) => row.attempts).toSorted(), [0, 0, 0, 0, 0, 1]);
 });
 
 Deno.test("a job given back is as it was before it was claimed", async () => {
