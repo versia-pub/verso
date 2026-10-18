@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { type Context as HonoContext, Hono } from "@hono/hono";
 import { bodyLimit } from "@hono/hono/body-limit";
 import { getLogger } from "@logtape/logtape";
 import { Permissions } from "../kernel/config.ts";
@@ -18,6 +18,19 @@ const logger = getLogger(["verso", "http"]);
 
 /** The largest body a route takes, enough for any form or JSON. Uploads will need their own. */
 const maxBodyBytes = 64 * 1024;
+
+/** The reply to a request that failed with `error`. */
+const errorReply = (error: unknown, c: HonoContext<AppEnv>): Response => {
+    c.header("cache-control", "no-store");
+    if (error instanceof HttpError) return c.json(error, error.status);
+
+    logger.error("{method} {path} failed: {error}", {
+        method: c.req.method,
+        path: c.req.path,
+        error,
+    });
+    return c.json({ error: "Internal server error" }, 500);
+};
 
 /** The server's HTTP app. */
 export type App = Hono<AppEnv>;
@@ -59,23 +72,31 @@ export const createApp = (
         },
     }));
 
+    /** The route's reply to the request, or the error it threw. */
+    const answer = async (route: Route, c: HonoContext<AppEnv>) => {
+        const signedBy = route.signed
+            ? await signerOf(ctx, c, options.services.remoteKeys)
+            : undefined;
+        const bearer = await viewerOf(ctx, c, route, options.services);
+        const viewer = bearer && withPermissions(ctx, bearer, permissions, options.services);
+        await checkPermission(route, viewer, permissions);
+        const input = await inputOf(c, route).catch((error) => {
+            throw route.oauthErrors ? asOAuthError(error) : error;
+        });
+
+        const reply = await route.handler(ctx, { ...input, viewer, signedBy });
+        if (options.checkResponses) checkReply(route, reply);
+
+        return await send(c, route, reply);
+    };
+
     const handle = (route: Route) => {
         app.on(route.method, route.path, async (c) => {
-            const signedBy = route.signed
-                ? await signerOf(ctx, c, options.services.remoteKeys)
-                : undefined;
-            const bearer = await viewerOf(ctx, c, route, options.services);
-            const viewer = bearer && withPermissions(ctx, bearer, permissions, options.services);
-            await checkPermission(route, viewer, permissions);
-            const input = await inputOf(c, route).catch((error) => {
-                throw route.oauthErrors ? asOAuthError(error) : error;
-            });
+            if (!route.signed) return await answer(route, c);
 
-            const reply = await route.handler(ctx, { ...input, viewer, signedBy });
-            if (options.checkResponses) checkReply(route, reply);
-
-            const response = await send(c, route, reply);
-            return route.signed ? await signReply(ctx, c, response, options.services) : response;
+            // Errors are signed too, so the instance that asked can trust a 404 as much as a 200.
+            const response = await answer(route, c).catch((error) => errorReply(error, c));
+            return await signReply(ctx, c, response, options.services);
         });
     };
 
@@ -101,17 +122,7 @@ export const createApp = (
         throw new NotFound();
     });
 
-    app.onError((error, c) => {
-        c.header("cache-control", "no-store");
-        if (error instanceof HttpError) return c.json(error, error.status);
-
-        logger.error("{method} {path} failed: {error}", {
-            method: c.req.method,
-            path: c.req.path,
-            error,
-        });
-        return c.json({ error: "Internal server error" }, 500);
-    });
+    app.onError(errorReply);
 
     return app;
 };

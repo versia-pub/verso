@@ -7,6 +7,7 @@ import { type KeyPair, keyPair, metadataServer } from "../instances/testing.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
+import { NotFound } from "./errors.ts";
 import { defineRoute } from "./route.ts";
 
 const routes = [
@@ -34,6 +35,14 @@ const routes = [
         body: z.object({ text: z.string() }),
         responses: { 200: z.object({ text: z.string() }) },
         handler: (_, { body }) => Promise.resolve({ status: 200, body }),
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/missing",
+        summary: "Nothing",
+        signed: true,
+        responses: { 200: z.object({}) },
+        handler: () => Promise.reject(new NotFound()),
     }),
 ];
 
@@ -174,4 +183,33 @@ Deno.test("replies to signed requests are signed by this instance, over what was
         ok: true,
         signedBy: "social.example",
     });
+});
+
+Deno.test("error replies to signed routes are signed too, even when the request isn't", async () => {
+    await using test = await open();
+    const ours = await importPublicKey((await instanceKey(test.ctx)).publicKey);
+    const checked = async (path: string, headers: Record<string, string> = {}) => {
+        const response = await test.app.request(path, { headers });
+        const bytes = new Uint8Array(await response.arrayBuffer());
+
+        return {
+            status: response.status,
+            verification: await verify(
+                { method: "GET", pathname: path, body: bytes },
+                response.headers,
+                (domain) => Promise.resolve(domain === "social.example" ? ours : undefined),
+                test.clock.now(),
+            ),
+        };
+    };
+    const signed = { ok: true, signedBy: "social.example" } as const;
+
+    const headers = await sign(
+        { method: "GET", pathname: "/missing", body: new Uint8Array() },
+        test.pair.privateKey,
+        "b.example",
+        test.clock.now(),
+    );
+    assertEquals(await checked("/missing", headers), { status: 404, verification: signed });
+    assertEquals(await checked("/federated"), { status: 401, verification: signed });
 });
