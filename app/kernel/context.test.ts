@@ -32,6 +32,7 @@ const open = async () => {
             isBlocked: () => Promise.resolve(false),
             resolve: () => Promise.resolve(undefined),
         },
+        subscribers: [],
         db,
     });
 

@@ -49,6 +49,19 @@ export type Federation = {
     readonly resolve: Resolver;
 };
 
+/**
+ * Something that happened, as a service tells the rest of Verso. Plain data, with ids rather than
+ * rows, so that any module can read it. Modules' events join this as they arrive.
+ */
+export type DomainEvent = { readonly type: string };
+
+/**
+ * Reacts to events, inside the transaction that emitted them, so what it does commits with the
+ * change or not at all. It only writes and enqueues jobs: anything slow, such as fetching from
+ * other instances, belongs in a job.
+ */
+export type Subscriber = (ctx: Context, event: DomainEvent) => Promise<void>;
+
 /** What every service gets as its first argument. Ports join it as they are added. */
 export type Context<DB = Database> = {
     readonly clock: Clock;
@@ -58,6 +71,8 @@ export type Context<DB = Database> = {
     /** One for each configured issuer, by issuer URL. */
     readonly identityProviders: Readonly<Record<string, IdentityProvider>>;
     readonly federation: Federation;
+    /** Every subscriber, each told of every event, such as one for each protocol. */
+    readonly subscribers: readonly Subscriber[];
     /** The database, or the current transaction inside `transaction`. */
     readonly db: Kysely<DB>;
     /**

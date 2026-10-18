@@ -4,12 +4,17 @@ import { migrate } from "../db/migrate.ts";
 import { ensureInstanceKey } from "../instances/keys.ts";
 import { testDatabase } from "../db/testing.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
-import { type Context, createContext, type Federation } from "../kernel/context.ts";
+import {
+    type Context,
+    createContext,
+    type Federation,
+    type Subscriber,
+} from "../kernel/context.ts";
 import type { IdentityProvider } from "../kernel/identity.ts";
 import { type FakeTransport, fakeTransport } from "../kernel/fake_transport.ts";
 import { countingRandom, idGenerator } from "../kernel/ids.ts";
 import { urlBuilder } from "../kernel/urls.ts";
-import { federation } from "../services.ts";
+import { federation, subscribers } from "../services.ts";
 
 export type TestContextOptions = {
     /** Defaults to `social.example`. */
@@ -24,6 +29,8 @@ export type TestContextOptions = {
     readonly identityProviders?: Readonly<Record<string, IdentityProvider>>;
     /** Defaults to Verso's own, with a key store of its own and no domains blocked by config. */
     readonly federation?: Partial<Federation>;
+    /** Defaults to Verso's own. */
+    readonly subscribers?: readonly Subscriber[];
 };
 
 export type TestContext = AsyncDisposable & {
@@ -61,6 +68,7 @@ export const createTestContext = async (
         transport,
         identityProviders: options.identityProviders ?? {},
         federation: { ...federation(), ...options.federation },
+        subscribers: options.subscribers ?? subscribers,
         db,
     });
 
