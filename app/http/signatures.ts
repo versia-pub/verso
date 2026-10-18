@@ -8,16 +8,18 @@ import { sign } from "@versia/protocol";
 import type { Context } from "../kernel/context.ts";
 import { checkSignature, type KeyStore } from "../kernel/signatures.ts";
 import type { AppServices } from "./env.ts";
-import { BadSignature, StaleSignature } from "./errors.ts";
+import { BadSignature, Defederated, StaleSignature } from "./errors.ts";
 
 /**
  * The domain of the instance that signed the request. When the key Verso has for it doesn't
- * verify, the key is fetched again, at most so often, in case the instance rotated it.
+ * verify, the key is fetched again, at most so often, in case the instance rotated it. A blocked
+ * instance is refused once the headers are checked, before its key is looked up, so Verso never
+ * sends it a request.
  */
 export const signerOf = async (
     ctx: Context,
     c: HonoContext,
-    keys: KeyStore,
+    services: AppServices,
 ): Promise<string> => {
     const message = {
         method: c.req.method,
@@ -25,8 +27,18 @@ export const signerOf = async (
         body: new Uint8Array(await c.req.arrayBuffer()),
     };
 
+    let blocked = false;
+    const keys: KeyStore = {
+        get: async (ctx, domain) => {
+            blocked = await services.isBlocked(ctx, domain);
+            return blocked ? undefined : await services.remoteKeys.get(ctx, domain);
+        },
+        refresh: services.remoteKeys.refresh,
+    };
+
     const verification = await checkSignature(ctx, keys, message, c.req.raw.headers);
     if (verification.ok) return verification.signedBy;
+    if (blocked) throw new Defederated();
 
     throw verification.reason === "expired" ? new StaleSignature() : new BadSignature();
 };

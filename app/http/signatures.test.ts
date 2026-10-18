@@ -5,6 +5,7 @@ import { instanceKey } from "../instances/keys.ts";
 import { remoteKeys } from "../instances/remote_keys.ts";
 import { type KeyPair, keyPair, metadataServer } from "../instances/testing.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
+import { blockDomain, domainBlocks } from "../moderation/domain_blocks.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
@@ -46,14 +47,18 @@ const routes = [
     }),
 ];
 
-const open = async () => {
+const open = async (options: { silentBlocks?: boolean } = {}) => {
     const transport = fakeTransport();
     const test = await createTestContext({ transport });
     const pair = await keyPair();
     transport.servers.set("b.example", metadataServer("b.example", pair));
     const app = createTestApp(test.ctx, routes, {
         checkResponses: true,
-        services: { remoteKeys: remoteKeys({ refetchAfterMs: 1000 }) },
+        silentBlocks: options.silentBlocks,
+        services: {
+            remoteKeys: remoteKeys({ refetchAfterMs: 1000 }),
+            isBlocked: domainBlocks(["blocked.example"]),
+        },
     });
 
     /** Sends a request signed as `signedBy` with `key`, over `signed` unless the request differs. */
@@ -79,7 +84,8 @@ const open = async () => {
             body: request.body,
             headers: { ...headers, "content-type": "application/json" },
         });
-        return { status: response.status, body: await response.json() };
+        const text = await response.text();
+        return { status: response.status, body: text === "" ? undefined : JSON.parse(text) };
     };
 
     return { ...test, transport, pair, app, send };
@@ -137,6 +143,52 @@ Deno.test("a signature more than five minutes off is refused as stale", async ()
             body: { error: "The signature is too old, or from the future" },
         });
     }
+});
+
+Deno.test("a blocked instance is refused before Verso asks it for its key", async () => {
+    await using test = await open();
+    const defederated = {
+        status: 403,
+        body: { error: "This instance doesn't federate with yours" },
+    };
+    const asked = (domain: string) =>
+        test.transport.sent.filter((request) => new URL(request.url).host === domain).length;
+
+    assertEquals(await test.send({ signedBy: "blocked.example" }), defederated);
+    assertEquals(await test.send({ signedBy: "a.blocked.example" }), defederated);
+    assertEquals(asked("blocked.example") + asked("a.blocked.example"), 0);
+
+    // The headers and the time are checked first.
+    const old = new Date(test.clock.now().getTime() - 600_000);
+    assertEquals((await test.send({ signedBy: "blocked.example" }, { at: old })).status, 422);
+
+    // A block applies to an instance whose key Verso already has, too.
+    assertEquals((await test.send({})).status, 200);
+    await blockDomain(test.ctx, "b.example");
+    assertEquals(await test.send({}), defederated);
+    assertEquals(asked("b.example"), 1);
+});
+
+Deno.test("with silent blocks, a blocked instance finds nothing, and what it sends is taken", async () => {
+    await using test = await open({ silentBlocks: true });
+    const notFound = { status: 404, body: { error: "Record not found" } };
+
+    assertEquals(await test.send({ signedBy: "blocked.example" }), notFound);
+    assertEquals(await test.send({ path: "/missing" }), notFound);
+    assertEquals(
+        await test.send({
+            method: "POST",
+            path: "/inbox",
+            body: '{"text":"Hi"}',
+            signedBy: "blocked.example",
+        }),
+        { status: 202, body: undefined },
+    );
+    assertEquals(
+        test.transport.sent.filter((request) => new URL(request.url).host === "blocked.example")
+            .length,
+        0,
+    );
 });
 
 Deno.test("a rotated key is fetched again, at most once in a while", async () => {

@@ -21,7 +21,11 @@ Deno.test("a minimal config gets the defaults", async () => {
                 rate_limit: { limit: 300, window_seconds: 300, store: "memory" },
             },
             auth: { issuers: [], dev_login: false },
-            federation: { allow_internal_addresses: false, blocked_domains: [] },
+            federation: {
+                allow_internal_addresses: false,
+                blocked_domains: [],
+                silent_blocks: false,
+            },
             instance: { description: "", contact: {}, rules: [] },
             limits: {
                 display_name: 60,
@@ -134,7 +138,11 @@ level = "debug"
                 ],
                 dev_login: false,
             },
-            federation: { allow_internal_addresses: false, blocked_domains: [] },
+            federation: {
+                allow_internal_addresses: false,
+                blocked_domains: [],
+                silent_blocks: false,
+            },
             instance: {
                 name: "Example Social",
                 description: "A place to talk.",

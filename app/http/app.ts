@@ -5,7 +5,7 @@ import { Permissions } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Cidr } from "../kernel/ip.ts";
 import type { AppEnv, AppServices } from "./env.ts";
-import { ContentTooLarge, HttpError, NotFound } from "./errors.ts";
+import { ContentTooLarge, Defederated, HttpError, NotFound } from "./errors.ts";
 import { useHeaders } from "./headers.ts";
 import { asOAuthError, inputOf } from "./input.ts";
 import { rateLimit, type RateLimits } from "./rate_limits.ts";
@@ -32,6 +32,13 @@ const errorReply = (error: unknown, c: HonoContext<AppEnv>): Response => {
     return c.json({ error: "Internal server error" }, 500);
 };
 
+/**
+ * What a blocked instance is told when blocks are silent, so it can't tell: a GET finds nothing,
+ * and anything else is accepted, so it isn't sent again.
+ */
+const silentReply = (c: HonoContext<AppEnv>): Response =>
+    c.req.method === "GET" ? errorReply(new NotFound(), c) : c.body(null, 202);
+
 /** The server's HTTP app. */
 export type App = Hono<AppEnv>;
 
@@ -45,6 +52,8 @@ export type AppOptions = {
     readonly trustedProxies?: readonly Cidr[];
     /** What everyone may do, before roles add more. Without it, what config allows by default. */
     readonly permissions?: Permissions;
+    /** Answers blocked instances as if nothing were wrong, rather than with 403. */
+    readonly silentBlocks?: boolean;
 };
 
 /** Every route the server answers. Tests call its `fetch` directly, with no network in between. */
@@ -74,9 +83,7 @@ export const createApp = (
 
     /** The route's reply to the request, or the error it threw. */
     const answer = async (route: Route, c: HonoContext<AppEnv>) => {
-        const signedBy = route.signed
-            ? await signerOf(ctx, c, options.services.remoteKeys)
-            : undefined;
+        const signedBy = route.signed ? await signerOf(ctx, c, options.services) : undefined;
         const bearer = await viewerOf(ctx, c, route, options.services);
         const viewer = bearer && withPermissions(ctx, bearer, permissions, options.services);
         await checkPermission(route, viewer, permissions);
@@ -95,7 +102,11 @@ export const createApp = (
             if (!route.signed) return await answer(route, c);
 
             // Errors are signed too, so the instance that asked can trust a 404 as much as a 200.
-            const response = await answer(route, c).catch((error) => errorReply(error, c));
+            const response = await answer(route, c).catch((error) =>
+                error instanceof Defederated && options.silentBlocks
+                    ? silentReply(c)
+                    : errorReply(error, c)
+            );
             return await signReply(ctx, c, response, options.services);
         });
     };

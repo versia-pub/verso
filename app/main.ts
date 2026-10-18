@@ -59,7 +59,7 @@ const serve = (
     const server = Deno.serve(
         { port: config.http.port, onListen, signal },
         createApp(ctx, served, {
-            services: appServices(),
+            services: appServices(config.federation.blocked_domains),
             rateLimits: {
                 store: config.http.rate_limit.store === "database"
                     ? databaseRateLimitStore(ctx)
@@ -71,6 +71,7 @@ const serve = (
             },
             trustedProxies: config.http.trusted_proxies,
             permissions: config.permissions,
+            silentBlocks: config.federation.silent_blocks,
         }).fetch,
     );
     return server.finished;

@@ -31,4 +31,6 @@ export type AppServices = {
     readonly signingKey: (ctx: Context) => Promise<CryptoKey>;
     /** Other instances' keys, to check their signatures with. */
     readonly remoteKeys: KeyStore;
+    /** Whether Verso doesn't federate with an instance, by its domain. */
+    readonly isBlocked: (ctx: Context, domain: string) => Promise<boolean>;
 };

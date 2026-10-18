@@ -192,6 +192,12 @@ export const Config = z.strictObject({
          * with `verso admin domains block`.
          */
         blocked_domains: z.array(DomainName).default([]),
+        /**
+         * Answers blocked instances as if nothing were wrong, so they can't tell they're blocked,
+         * rather than with a 403 that says why: what they fetch isn't found, and what they send is
+         * accepted, so they don't send it again.
+         */
+        silent_blocks: z.boolean().default(false),
     }).prefault({}),
     instance: Instance,
     limits: Limits,

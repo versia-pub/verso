@@ -39,6 +39,13 @@ export class BadSignature extends HttpError {
     }
 }
 
+/** A signed request from an instance Verso doesn't federate with. */
+export class Defederated extends HttpError {
+    constructor() {
+        super(403, "This instance doesn't federate with yours");
+    }
+}
+
 /** The access token lacks the scope a route needs. */
 export class Forbidden extends HttpError {
     constructor() {
