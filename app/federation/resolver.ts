@@ -11,6 +11,7 @@ import { HttpError } from "../http/errors.ts";
 import { findInstanceId } from "../instances/instances.ts";
 import type { Budget, Context, Resolver } from "../kernel/context.ts";
 import { lru } from "../kernel/lru.ts";
+import { entityUrl } from "../kernel/urls.ts";
 import { checkEntity } from "./inbox.ts";
 import type { EntityType, Registry } from "./registry.ts";
 import { BadReply, fetchSigned, Unreachable } from "./request.ts";
@@ -62,8 +63,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         key: string,
     ) => {
         const { host, id } = reference;
-        const url = new URL(`https://${host}/.versia/v0.6/entities/${type.type}/${id}`);
-        const reply = await fetchSigned(ctx, url);
+        const reply = await fetchSigned(ctx, entityUrl(host, type.type, id));
 
         if (reply.status === 404 || reply.status === 410) {
             missing.set(key, ctx.clock.now().getTime() + missingMs);

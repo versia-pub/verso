@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import fc from "fast-check";
-import { urlBuilder } from "./urls.ts";
+import { entityUrl, urlBuilder, versiaUrl } from "./urls.ts";
 
 const urls = urlBuilder("social.example");
 
@@ -68,4 +68,12 @@ Deno.test("in development, URLs can use another origin", () => {
     // The domain has no port, unlike the origin.
     assertEquals([local.domain, local.origin], ["localhost", "http://localhost:8080"]);
     assertEquals(local.url`/oauth/callback`, "http://localhost:8080/oauth/callback");
+});
+
+Deno.test("another instance's Versia URLs are under its /.versia/v0.6", () => {
+    assertEquals(versiaUrl("b.example", "/inbox").href, "https://b.example/.versia/v0.6/inbox");
+    assertEquals(
+        entityUrl("b.example", "pub.versia:likes/Like", "a/b").href,
+        "https://b.example/.versia/v0.6/entities/pub.versia:likes/Like/a%2Fb",
+    );
 });

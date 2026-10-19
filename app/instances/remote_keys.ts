@@ -8,6 +8,7 @@ import { fetchUnsigned } from "../federation/request.ts";
 import { versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import { lru } from "../kernel/lru.ts";
+import { versiaUrl } from "../kernel/urls.ts";
 
 const logger = getLogger(["verso", "instances"]);
 
@@ -39,8 +40,7 @@ export type RemoteKeysOptions = {
  */
 const fetchKey = async (ctx: Context, domain: string): Promise<string | undefined> => {
     try {
-        const url = new URL(`https://${domain}/.versia/v0.6/instance`);
-        const reply = await fetchUnsigned(ctx, url, versiaJson);
+        const reply = await fetchUnsigned(ctx, versiaUrl(domain, "/instance"), versiaJson);
         if (reply.status < 200 || reply.status > 299) throw new Error(`HTTP ${reply.status}`);
 
         const metadata = v0_6.InstanceMetadata.parse(

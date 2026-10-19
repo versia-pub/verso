@@ -9,6 +9,7 @@ import { postponeGroup, resumeGroup } from "../jobs/queue.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure, RetryAt } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
+import { versiaUrl } from "../kernel/urls.ts";
 import { DeliverJob, deliverQueue } from "./deliver.ts";
 import { type FederationReply, sendSigned, Unreachable } from "./request.ts";
 
@@ -74,7 +75,7 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
         if (until) await postponeGroup(ctx, deliverQueue, domain, until);
     };
 
-    const url = new URL(`https://${domain}/.versia/v0.6/inbox`);
+    const url = versiaUrl(domain, "/inbox");
     let reply: FederationReply;
     try {
         reply = await sendSigned(ctx, "POST", url, new TextEncoder().encode(body));

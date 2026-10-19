@@ -42,3 +42,18 @@ export const urlBuilder = (domain: string, origin = `https://${domain}`): UrlBui
         },
     };
 };
+
+/**
+ * A URL on another Versia instance, at `domain`: `path` under its `/.versia/v0.6`, such as
+ * `/inbox`. The path is Verso's own, so it is used as it is.
+ * @see https://versia.pub/api/endpoints
+ */
+export const versiaUrl = (domain: string, path: string): URL =>
+    new URL(`/.versia/v0.6${path}`, `https://${domain}`);
+
+/**
+ * Where an entity of `type` on another Versia instance, at `domain`, is fetched. Its id is
+ * encoded, so it stays one segment; the type, which an extension's has a `/` in, isn't.
+ */
+export const entityUrl = (domain: string, type: string, id: string): URL =>
+    versiaUrl(domain, `/entities/${type}/${encodeURIComponent(id)}`);

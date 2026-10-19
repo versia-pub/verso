@@ -4,6 +4,7 @@
  */
 import type { Account, CredentialAccount, Field, Relationship, Role } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
+import { entityUrl } from "../kernel/urls.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
 import type { AccountRow } from "./accounts.ts";
 import type { Permission } from "../kernel/permissions.ts";
@@ -44,7 +45,7 @@ const userUri = (ctx: Context, row: AccountRow) => {
     if (row.domain === null) return ctx.urls.url`/.versia/v0.6/entities/User/${row.id}`;
 
     if (row.remote_id === null) throw new Error(`Remote account ${row.id} has no remote id`);
-    return `https://${row.domain}/.versia/v0.6/entities/User/${encodeURIComponent(row.remote_id)}`;
+    return entityUrl(row.domain, "User", row.remote_id).href;
 };
 
 /** Midnight UTC on the day of `date`, which is all Mastodon shows of when accounts were made. */
