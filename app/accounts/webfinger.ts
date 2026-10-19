@@ -18,7 +18,8 @@ const acctUri = /^acct:([^@\s]+)@([^@\s]+)$/i;
 
 /**
  * Finds a local account by its address, giving the URL of its Versia User entity, as Versia's
- * discovery does.
+ * discovery does. Anyone may ask, whatever config lets clients view, since this is how other
+ * instances find users.
  * @see https://versia.pub/federation/discovery
  */
 export const webfingerRoutes: readonly Route[] = [
@@ -28,7 +29,6 @@ export const webfingerRoutes: readonly Route[] = [
         summary: "A local account, by its acct: address",
         tags: ["versia"],
         contentType: "application/jrd+json",
-        auth: { require: "optional", permission: "read:account" },
         // The resource is checked by hand, so a bad one gets WebFinger's 400 rather than 422.
         query: z.object({ resource: z.string().optional() }),
         responses: { 200: Jrd },

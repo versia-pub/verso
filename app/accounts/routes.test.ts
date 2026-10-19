@@ -394,12 +394,14 @@ Deno.test("viewing accounts and changing one's own follow what config permits", 
     const views = [
         `/api/v1/accounts/${alice}`,
         "/api/v1/accounts/lookup?acct=alice",
-        "/.well-known/webfinger?resource=acct:alice@social.example",
     ];
     for (const path of views) {
         assertEquals(await status(path), 403, path);
         assertEquals(await status(path, asAlice), 200, path);
     }
+
+    // Other instances find users with WebFinger, whatever clients may view.
+    assertEquals(await status("/.well-known/webfinger?resource=acct:alice@social.example"), 200);
 
     const update = {
         method: "PATCH",

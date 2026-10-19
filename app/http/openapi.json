@@ -2146,15 +2146,8 @@
         "/.well-known/webfinger": {
             "get": {
                 "summary": "A local account, by its acct: address",
-                "description": "Needs the `read:account` permission.",
                 "tags": [
                     "versia"
-                ],
-                "security": [
-                    {},
-                    {
-                        "OAuth2": []
-                    }
                 ],
                 "parameters": [
                     {
