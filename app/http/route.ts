@@ -150,7 +150,10 @@ export type RouteDefinition<
      * @see https://developer.mozilla.org/docs/Web/HTTP/Guides/CSP
      */
     readonly pagePolicy?: string;
-    /** `false` exempts the route from rate limits, for files a page loads many of at once. */
+    /**
+     * `false` exempts the route from rate limits, for files a page loads many of at once. Signed
+     * routes are limited by the instance that signed, not by client.
+     */
     readonly rateLimit?: false;
     /** Without it, anyone may call the route, and tokens are ignored. */
     readonly auth?: A;

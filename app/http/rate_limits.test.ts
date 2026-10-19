@@ -122,7 +122,7 @@ const ping = defineRoute({
 const open = async () => {
     const test = await createTestContext();
     const app = createTestApp(test.ctx, [ping], {
-        rateLimits: { store: memoryRateLimitStore(test.clock), policy },
+        rateLimits: { store: memoryRateLimitStore(test.clock), policy, instancePolicy: policy },
         trustedProxies: [CidrText.parse("10.0.0.1")],
     });
 

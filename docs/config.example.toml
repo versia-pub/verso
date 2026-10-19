@@ -62,6 +62,12 @@ roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
 # Answers blocked instances as if nothing were wrong, rather than telling them they're blocked.
 # silent_blocks = false
 
+[federation.rate_limit]
+# How many requests each instance may send in a window, apart from clients' limit. Requests
+# that aren't validly signed count against their client instead.
+# limit = 3000
+# window_seconds = 300
+
 [instance]
 # Without a name, the instance goes by its domain.
 name = "Example Social"

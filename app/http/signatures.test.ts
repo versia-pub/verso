@@ -4,11 +4,13 @@ import { z } from "zod";
 import { instanceKey } from "../instances/keys.ts";
 import { remoteKeys } from "../instances/remote_keys.ts";
 import { type KeyPair, keyPair, metadataServer } from "../instances/testing.ts";
+import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
 import { blockDomain, domainBlocks } from "../moderation/domain_blocks.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
+import { memoryRateLimitStore, type RateLimits } from "./rate_limits.ts";
 import { defineRoute } from "./route.ts";
 
 const routes = [
@@ -56,7 +58,7 @@ const routes = [
     }),
 ];
 
-const open = async (options: { silentBlocks?: boolean } = {}) => {
+const open = async (options: { silentBlocks?: boolean; rateLimits?: RateLimits } = {}) => {
     const transport = fakeTransport();
     const test = await createTestContext({
         transport,
@@ -70,6 +72,7 @@ const open = async (options: { silentBlocks?: boolean } = {}) => {
     const app = createTestApp(test.ctx, routes, {
         checkResponses: true,
         silentBlocks: options.silentBlocks,
+        rateLimits: options.rateLimits,
     });
 
     /** Sends a request signed as `signedBy` with `key`, over `signed` unless the request differs. */
@@ -150,6 +153,32 @@ Deno.test("a request without a valid signature is refused", async () => {
         }),
         badSignature,
     );
+});
+
+Deno.test("instances are limited by who signed, and bad signatures as clients", async () => {
+    const window = { windowSeconds: 30 };
+    await using test = await open({
+        rateLimits: {
+            store: memoryRateLimitStore(fakeClock()),
+            policy: { limit: 2, ...window },
+            instancePolicy: { limit: 3, ...window },
+        },
+    });
+    const statuses = async (count: number, send: () => Promise<{ status: number }>) => {
+        const sent = [];
+        for (let n = 0; n < count; n++) sent.push((await send()).status);
+        return sent;
+    };
+    const anyone = async () => ({ status: (await test.app.request("/public")).status });
+
+    // Instances aren't held to the clients' limit, but to their own.
+    assertEquals(await statuses(4, () => test.send({})), [200, 200, 200, 429]);
+    assertEquals(await statuses(1, anyone), [200]);
+
+    // A bad signature counts against the client, so it can't use up an instance's quota.
+    const forged = await keyPair();
+    assertEquals(await statuses(2, () => test.send({}, { key: forged })), [401, 429]);
+    assertEquals(await statuses(1, anyone), [429]);
 });
 
 Deno.test("a signature more than five minutes off is refused as stale", async () => {

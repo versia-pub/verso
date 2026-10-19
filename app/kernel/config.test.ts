@@ -25,6 +25,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 allow_internal_addresses: false,
                 blocked_domains: [],
                 silent_blocks: false,
+                rate_limit: { limit: 3000, window_seconds: 300 },
             },
             instance: { description: "", contact: {}, rules: [] },
             limits: {
@@ -142,6 +143,7 @@ level = "debug"
                 allow_internal_addresses: false,
                 blocked_domains: [],
                 silent_blocks: false,
+                rate_limit: { limit: 3000, window_seconds: 300 },
             },
             instance: {
                 name: "Example Social",

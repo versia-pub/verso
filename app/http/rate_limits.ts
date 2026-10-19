@@ -139,23 +139,27 @@ export const consume = async (
     };
 };
 
-/** The limit every client is held to, and where their counts are kept. */
+/** The limits clients and other instances are held to, and where their counts are kept. */
 export type RateLimits = {
     readonly store: RateLimitStore;
+    /** For each client. */
     readonly policy: Policy;
+    /** For each instance, on the routes it signs requests to. */
+    readonly instancePolicy: Policy;
 };
 
 /**
- * Counts each request against the client `keyOf` names, and refuses it once they are over the
- * limit. Every reply says how much of the quota is left.
+ * Counts a request against `key` under `policy`, and refuses it once the key is over the limit.
+ * Every reply says how much of the quota is left.
  */
-export const rateLimit = <E extends Env>(
+export const checkRateLimit = async (
+    c: HonoContext,
     clock: Clock,
-    limits: RateLimits,
-    keyOf: (c: HonoContext<E>) => Promise<string>,
-): MiddlewareHandler<E> =>
-async (c, next) => {
-    const quota = await consume(limits.store, clock, limits.policy, await keyOf(c));
+    store: RateLimitStore,
+    policy: Policy,
+    key: string,
+): Promise<void> => {
+    const quota = await consume(store, clock, policy, key);
 
     c.header("ratelimit-limit", `${quota.limit}, ${quota.limit};w=${quota.windowSeconds}`);
     c.header("ratelimit-remaining", String(quota.remaining));
@@ -166,6 +170,15 @@ async (c, next) => {
         c.header("retry-after", String(quota.resetSeconds));
         throw new TooManyRequests();
     }
+};
 
+/** Counts each request against the client `keyOf` names, as `checkRateLimit` does. */
+export const rateLimit = <E extends Env>(
+    clock: Clock,
+    limits: RateLimits,
+    keyOf: (c: HonoContext<E>) => Promise<string>,
+): MiddlewareHandler<E> =>
+async (c, next) => {
+    await checkRateLimit(c, clock, limits.store, limits.policy, await keyOf(c));
     await next();
 };

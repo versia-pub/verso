@@ -68,6 +68,10 @@ const serve = (
                     limit: config.http.rate_limit.limit,
                     windowSeconds: config.http.rate_limit.window_seconds,
                 },
+                instancePolicy: {
+                    limit: config.federation.rate_limit.limit,
+                    windowSeconds: config.federation.rate_limit.window_seconds,
+                },
             },
             trustedProxies: config.http.trusted_proxies,
             permissions: config.permissions,

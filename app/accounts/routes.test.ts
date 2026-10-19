@@ -27,6 +27,7 @@ const open = async () => {
         rateLimits: {
             store: memoryRateLimitStore(test.clock),
             policy: { limit: 2, windowSeconds: 60 },
+            instancePolicy: { limit: 2, windowSeconds: 60 },
         },
     });
     await createLocalAccount(test.ctx, "019a");

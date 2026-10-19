@@ -8,7 +8,7 @@ import type { AppEnv, AppServices } from "./env.ts";
 import { ContentTooLarge, Defederated, HttpError, NotFound } from "./errors.ts";
 import { useHeaders } from "./headers.ts";
 import { asOAuthError, inputOf } from "./input.ts";
-import { rateLimit, type RateLimits } from "./rate_limits.ts";
+import { checkRateLimit, rateLimit, type RateLimits } from "./rate_limits.ts";
 import { checkReply, send } from "./reply.ts";
 import type { Route } from "./route.ts";
 import { signReply, verifyRequest } from "./signatures.ts";
@@ -81,9 +81,33 @@ export const createApp = (
         },
     }));
 
+    const limits = options.rateLimits;
+    const clientKey = (c: HonoContext<AppEnv>) =>
+        rateLimitKey(ctx, c, options.trustedProxies ?? [], options.services);
+
+    /**
+     * Checks a signed request's signature, counting the request against the instance that signed
+     * it, or, if it isn't validly signed, against its client, like any other request.
+     */
+    const verify = async (c: HonoContext<AppEnv>) => {
+        if (!limits) return await verifyRequest(ctx, c);
+
+        let signed;
+        try {
+            signed = await verifyRequest(ctx, c);
+        } catch (error) {
+            await checkRateLimit(c, ctx.clock, limits.store, limits.policy, await clientKey(c));
+            throw error;
+        }
+
+        const key = `instance:${signed.signedBy}`;
+        await checkRateLimit(c, ctx.clock, limits.store, limits.instancePolicy, key);
+        return signed;
+    };
+
     /** The route's reply to the request, or the error it threw. */
     const answer = async (route: Route, c: HonoContext<AppEnv>) => {
-        const signed = route.signed ? await verifyRequest(ctx, c) : undefined;
+        const signed = route.signed ? await verify(c) : undefined;
         const bearer = await viewerOf(ctx, c, route, options.services);
         const viewer = bearer && withPermissions(ctx, bearer, permissions, options.services);
         await checkPermission(route, viewer, permissions);
@@ -119,20 +143,15 @@ export const createApp = (
     // For load balancers and orchestrators, not clients, so it stays plain text.
     app.get("/health/live", (c) => c.text("ok"));
 
-    // Before the rate limit, which runs only for what is added after it.
-    for (const route of routes) if (route.rateLimit === false) handle(route);
+    // Before the clients' rate limit, which runs only for what is added after it. Signed routes
+    // are limited by who signed, once the signature is checked.
+    const unlimited = (route: Route) => route.rateLimit === false || route.signed === true;
+    for (const route of routes) if (unlimited(route)) handle(route);
 
     // Preflights were answered before this, by the CORS headers.
-    const limits = options.rateLimits;
-    if (limits) {
-        app.use(rateLimit<AppEnv>(
-            ctx.clock,
-            limits,
-            (c) => rateLimitKey(ctx, c, options.trustedProxies ?? [], options.services),
-        ));
-    }
+    if (limits) app.use(rateLimit<AppEnv>(ctx.clock, limits, clientKey));
 
-    for (const route of routes) if (route.rateLimit !== false) handle(route);
+    for (const route of routes) if (!unlimited(route)) handle(route);
 
     app.notFound(() => {
         throw new NotFound();

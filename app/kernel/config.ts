@@ -198,6 +198,15 @@ export const Config = z.strictObject({
          * accepted, so they don't send it again.
          */
         silent_blocks: z.boolean().default(false),
+        /**
+         * How many requests each instance may send in a window of time, counted by who signed
+         * them, apart from clients' limit. Requests that aren't validly signed count against their
+         * client instead.
+         */
+        rate_limit: z.strictObject({
+            limit: z.int().min(1).default(3000),
+            window_seconds: z.int().min(1).default(300),
+        }).prefault({}),
     }).prefault({}),
     instance: Instance,
     limits: Limits,
