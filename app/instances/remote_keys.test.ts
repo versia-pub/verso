@@ -59,6 +59,14 @@ Deno.test("a key is fetched from the instance's metadata once, then stored", asy
     });
 });
 
+Deno.test("metadata may write the instance's domain in any case", async () => {
+    await using test = await open();
+    const pair = await keyPair();
+    test.transport.servers.set("b.example", metadataServer("B.Example", pair));
+
+    assert(await isKeyOf(await remoteKeys().get(test.ctx, "b.example"), pair));
+});
+
 Deno.test("a key isn't taken from metadata that is wrong, or from an unreachable instance", async () => {
     await using test = await open();
     const pair = await keyPair();

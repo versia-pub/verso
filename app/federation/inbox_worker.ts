@@ -13,8 +13,9 @@ const logger = getLogger(["verso", "federation"]);
 
 /**
  * Runs inbox jobs: checks each entity again, in case Verso changed since it was queued, checks
- * that the instance that sent it may, and applies it. One from an instance blocked since is dropped. An entity that is invalid or sent by the
- * wrong instance is given up on; anything else that fails, such as the database, is retried.
+ * that the instance that sent it may, and applies it. One from an instance blocked since is
+ * dropped. An entity that is invalid or sent by the wrong instance is given up on; anything else
+ * that fails, such as the database, is retried.
  */
 export const inboxHandler = (registry: Registry): Handler => async (ctx, job) => {
     const payload = InboxJob.safeParse(job.payload);

@@ -13,11 +13,11 @@ import type { Context } from "../kernel/context.ts";
  * Which page of a collection to give. Limits from 1 to 40 must work; a provider may clamp others.
  * @see https://versia.pub/api/endpoints
  */
-const Page = z.object({
+const CollectionPage = z.object({
     offset: z.coerce.number().int().min(0).optional(),
     limit: z.coerce.number().int().optional(),
 });
-export type Page = z.output<typeof Page>;
+export type CollectionPage = z.output<typeof CollectionPage>;
 
 /**
  * A page of one of a local entity's collections, as `requester` may see it, or `undefined` if
@@ -26,7 +26,7 @@ export type Page = z.output<typeof Page>;
 export type CollectionProvider = (
     ctx: Context,
     id: string,
-    page: Page,
+    page: CollectionPage,
     requester: string,
 ) => Promise<v0_6.Collection | v0_6.URICollection | undefined>;
 
@@ -135,7 +135,7 @@ const routesOf = (type: EntityType): Route[] => {
             signed: true,
             contentType: versiaJson,
             params: z.object({ id: v0_6.Id, name: z.string() }),
-            query: Page,
+            query: CollectionPage,
             responses: { 200: z.union([v0_6.Collection, v0_6.URICollection]) },
             handler: async (ctx, { params, query, signedBy }) => {
                 const provider = Object.hasOwn(collections, params.name)

@@ -62,8 +62,9 @@ const emptyCollection: CollectionProvider = async (ctx, id) => {
 };
 
 /**
- * Users: other instances' ones, kept as remote accounts, and local ones, fetched by other instances, with their collections, the notes they wrote and
- * pinned as entities, and who follows them and who they follow as references.
+ * Users: other instances' ones, kept as remote accounts, and local ones, fetched by other
+ * instances, with their collections, the notes they wrote and pinned as entities, and who follows
+ * them and who they follow as references.
  * @see https://versia.pub/entities/user
  */
 export const userType: EntityType<v0_6.User> = {

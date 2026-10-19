@@ -106,8 +106,8 @@ Deno.test("a job whose entity no longer checks out is given up on", async () => 
     await using test = await open();
     const registry = things().registry;
     const payloads = [
-        { signer: "b.example", body: '{"type": "Thing"}', received_at: "2026-10-18T12:00:00Z" },
-        { signer: "b.example", body: "{", received_at: "2026-10-18T12:00:00Z" },
+        { signer: "b.example", body: '{"type": "Thing"}' },
+        { signer: "b.example", body: "{" },
         { body: "{}" },
     ];
 

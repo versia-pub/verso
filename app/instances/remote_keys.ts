@@ -3,7 +3,7 @@
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import { importPublicKey, v0_6 } from "@versia/protocol";
+import { canonicalizeDomain, importPublicKey, v0_6 } from "@versia/protocol";
 import { fetchUnsigned } from "../federation/request.ts";
 import { versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
@@ -46,7 +46,7 @@ const fetchKey = async (ctx: Context, domain: string): Promise<string | undefine
         const metadata = v0_6.InstanceMetadata.parse(
             JSON.parse(new TextDecoder().decode(reply.body)),
         );
-        if (metadata.domain !== domain) {
+        if (canonicalizeDomain(metadata.domain) !== domain) {
             throw new Error(`The metadata is for ${metadata.domain}`);
         }
 

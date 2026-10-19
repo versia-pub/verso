@@ -52,7 +52,6 @@ Deno.test("an entity is queued as it was sent, and answered with an empty 202", 
     assertEquals(job.payload, {
         signer: "evil.test",
         body,
-        received_at: test.network.clock.now().toISOString(),
     });
     assertEquals(job.keep_until, new Date(test.network.clock.now().getTime() + 10 * 60_000));
 });

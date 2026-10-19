@@ -26,7 +26,6 @@ export const InboxJob = z.object({
     signer: z.string(),
     /** The body exactly as signed, already checked against its type's schema. */
     body: z.string(),
-    received_at: z.iso.datetime(),
 });
 export type InboxJob = z.output<typeof InboxJob>;
 
@@ -90,7 +89,6 @@ export const queueEntity = async (
     const job: InboxJob = {
         signer,
         body: new TextDecoder().decode(body),
-        received_at: now.toISOString(),
     };
 
     await enqueue(ctx, {
