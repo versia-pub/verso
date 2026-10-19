@@ -5,7 +5,7 @@
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import type { Reference } from "@versia/protocol";
+import { canonicalizeDomain, type Reference } from "@versia/protocol";
 import { z } from "zod";
 import { HttpError } from "../http/errors.ts";
 import { findInstanceId } from "../instances/instances.ts";
@@ -109,6 +109,9 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
 
         const now = ctx.clock.now().getTime();
         if (known?.fetchedAt && now - known.fetchedAt.getTime() < maxAgeMs) return known.id;
+
+        // Blocks go by domain, so a host with a port, or an address, could get around them.
+        if (canonicalizeDomain(reference.host) !== reference.host) return undefined;
         if (await ctx.federation.isBlocked(ctx, reference.host)) return undefined;
 
         const key = `${type.type} ${reference.host} ${reference.id}`;

@@ -109,6 +109,18 @@ Deno.test("a blocked instance isn't asked, nor one once the budget is spent", as
     assertEquals(fetched("b.test"), 1);
 });
 
+Deno.test("an instance at an address that isn't a domain isn't asked", async () => {
+    const { network, bob, user } = await open();
+    await using _ = network;
+    const before = network.transport.sent.length;
+
+    // A port or an address could reach a host that blocks, which go by domain, don't cover.
+    for (const host of ["b.test:8443", "192.0.2.1", "[2001:db8::1]"]) {
+        assertEquals(await user(host, bob), undefined, host);
+    }
+    assertEquals(network.transport.sent.length, before);
+});
+
 Deno.test("when fetching fails, the copy Verso has is used, or else it throws", async () => {
     const { network, bob, user } = await open();
     await using _ = network;
