@@ -1,4 +1,6 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
+import { CompiledQuery, sql } from "kysely";
+import { testDatabaseKind } from "../db/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import {
     backoffMs,
@@ -99,6 +101,28 @@ Deno.test("claiming takes due jobs of one queue, by priority and then age", asyn
     assertEquals(job.lease_owner, "w1");
     assertEquals(job.lease_expires_at, new Date(test.clock.now().getTime() + minute));
     assertEquals(await claim(test.ctx, options), []);
+});
+
+Deno.test("claiming finds due jobs by an index of only the jobs that can run", async () => {
+    await using test = await open();
+    const { db } = test.ctx;
+    // As `claim` selects them.
+    const due = db.selectFrom("jobs").select("id")
+        .where("queue", "=", "deliver")
+        .where("run_at", "<=", test.ctx.clock.now())
+        .where("finished_at", "is", null)
+        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
+        .orderBy("priority", "desc").orderBy("run_at").orderBy("id")
+        .compile();
+
+    const sqlite = testDatabaseKind === "sqlite";
+    // With so few rows, Postgres would rather scan the table, unless told not to.
+    if (!sqlite) await sql`set enable_seqscan = off`.execute(db);
+    const plan = await db.executeQuery(
+        CompiledQuery.raw(`explain ${sqlite ? "query plan " : ""}${due.sql}`, [...due.parameters]),
+    );
+
+    assertStringIncludes(JSON.stringify(plan.rows), "jobs_claimable");
 });
 
 Deno.test("a job is claimed again only after its lease expires", async () => {
