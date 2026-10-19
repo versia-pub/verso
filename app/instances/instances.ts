@@ -11,21 +11,18 @@ export const findInstanceId = async (ctx: Context, domain: string): Promise<stri
 export const countInstances = async (ctx: Context): Promise<number> =>
     readCount(await ctx.db.selectFrom("instances").select(countAll).executeTakeFirstOrThrow());
 
-/** The domains of the instances on `protocol` that host any of the accounts `accountIds`. */
-export const domainsHosting = async (
+/** The domains of the instances `ids` that are on `protocol`, sorted. */
+export const domainsOf = async (
     ctx: Context,
-    accountIds: readonly string[],
+    ids: readonly string[],
     protocol: InstancesTable["protocol"],
 ): Promise<string[]> => {
-    if (accountIds.length === 0) return [];
+    if (ids.length === 0) return [];
 
-    const rows = await ctx.db.selectFrom("accounts")
-        .innerJoin("instances", "instances.id", "accounts.instance_id")
-        .select("instances.domain")
-        .distinct()
-        .where("accounts.id", "in", accountIds)
-        .where("instances.protocol", "=", protocol)
-        .orderBy("instances.domain")
+    const rows = await ctx.db.selectFrom("instances").select("domain")
+        .where("id", "in", ids)
+        .where("protocol", "=", protocol)
+        .orderBy("domain")
         .execute();
 
     return rows.map((row) => row.domain);

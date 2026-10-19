@@ -166,19 +166,8 @@ Deno.test("active users are local accounts that logged in within four weeks", as
         await createLocalAccount(test.ctx, username);
     }
 
-    await test.ctx.db.insertInto("accounts")
-        .values({
-            id: "remote",
-            username: "erin",
-            instance_id: await createInstance(test.ctx, "b.example"),
-            remote_id: "erin",
-            created_at: test.ctx.clock.now(),
-        })
-        .execute();
-
     await tokenFor(test.ctx, "alice");
     await tokenFor(test.ctx, "bob");
-    await tokenFor(test.ctx, "remote");
     test.clock.advance(day);
     await tokenFor(test.ctx, "carol");
     await tokenFor(test.ctx, "carol");

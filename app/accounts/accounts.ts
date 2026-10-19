@@ -79,22 +79,17 @@ export const getUsername = async (ctx: Context, accountId: string): Promise<stri
     return username;
 };
 
-/** How many local accounts got an access token since `since`, as a measure of who is active. */
-export const countActiveAccounts = async (ctx: Context, since: Date): Promise<number> =>
-    readCount(
-        await ctx.db.selectFrom("accounts")
-            .select(countAll)
-            .where("instance_id", "is", null)
-            .where((eb) =>
-                eb.exists(
-                    eb.selectFrom("access_tokens")
-                        .select("id")
-                        .whereRef("access_tokens.account_id", "=", "accounts.id")
-                        .where("access_tokens.created_at", ">=", since),
-                )
-            )
-            .executeTakeFirstOrThrow(),
-    );
+/** The instances that host any of the accounts `ids`, in `instances`, in no particular order. */
+export const instancesHosting = async (ctx: Context, ids: readonly string[]): Promise<string[]> => {
+    if (ids.length === 0) return [];
+
+    const rows = await ctx.db.selectFrom("accounts").select("instance_id").distinct()
+        .where("id", "in", ids)
+        .execute();
+
+    // Local accounts have none.
+    return rows.flatMap((row) => row.instance_id ?? []);
+};
 
 /** How many accounts this instance has. */
 export const countLocalAccounts = async (ctx: Context): Promise<number> =>

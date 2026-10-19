@@ -10,10 +10,11 @@ import type {
     V1Instance,
 } from "@versia/client-api";
 import denoConfig from "../../deno.json" with { type: "json" };
-import { countActiveAccounts, countLocalAccounts, findLocalAccount } from "../accounts/accounts.ts";
+import { countLocalAccounts, findLocalAccount } from "../accounts/accounts.ts";
 import { renderAccount } from "../accounts/render.ts";
 import { rolesOf } from "../accounts/role_queries.ts";
 import { escapeHtml, textToHtml } from "../accounts/text.ts";
+import { countAccountsWithTokensSince } from "../auth/token_queries.ts";
 import { NotFound } from "../http/errors.ts";
 import type { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
@@ -118,7 +119,7 @@ export const renderInstance = async (ctx: Context, settings: AboutSettings): Pro
         version: `${mastodonVersion} (compatible; Verso ${denoConfig.version})`,
         source_url: sourceUrl,
         description: instance.description,
-        usage: { users: { active_month: await countActiveAccounts(ctx, since) } },
+        usage: { users: { active_month: await countAccountsWithTokensSince(ctx, since) } },
         thumbnail: { url: ctx.urls.url`/instance/thumbnail.png` },
         icon: [],
         languages: [],

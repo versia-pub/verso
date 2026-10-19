@@ -4,7 +4,8 @@
  * @module
  */
 import { z } from "zod";
-import { domainsHosting } from "../instances/instances.ts";
+import { instancesHosting } from "../accounts/accounts.ts";
+import { domainsOf } from "../instances/instances.ts";
 import { enqueue } from "../jobs/queue.ts";
 import type { Context } from "../kernel/context.ts";
 
@@ -35,7 +36,8 @@ export const queueDeliveries = async (
 ): Promise<void> => {
     const body = JSON.stringify(entity);
 
-    for (const domain of await domainsHosting(ctx, recipients, "versia")) {
+    const instances = await instancesHosting(ctx, recipients);
+    for (const domain of await domainsOf(ctx, instances, "versia")) {
         if (await ctx.federation.isBlocked(ctx, domain)) continue;
 
         const payload: DeliverJob = { domain, body };
