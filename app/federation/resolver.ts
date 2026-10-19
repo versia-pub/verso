@@ -13,7 +13,7 @@ import type { Budget, Context, Resolver } from "../kernel/context.ts";
 import { lru } from "../kernel/lru.ts";
 import { checkEntity } from "./inbox.ts";
 import type { EntityType, Registry } from "./registry.ts";
-import { BadReply, fetchSigned, isUnreachable } from "./request.ts";
+import { BadReply, fetchSigned, Unreachable } from "./request.ts";
 
 const logger = getLogger(["verso", "federation"]);
 
@@ -31,7 +31,7 @@ export class ResolveFailed extends Error {
 export const isRemoteFailure = (error: unknown): boolean =>
     error instanceof ResolveFailed ||
     error instanceof BadReply ||
-    isUnreachable(error);
+    error instanceof Unreachable;
 
 export type ResolverOptions = {
     /** How long a fetched entity is used before it is fetched again. Defaults to a day. */

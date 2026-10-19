@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { createNetwork } from "../testing/network.ts";
-import { BadReply, fetchSigned } from "./request.ts";
+import { BadReply, fetchSigned, Unreachable } from "./request.ts";
 
 const userUrl = (domain: string, id: string) =>
     new URL(`https://${domain}/.versia/v0.6/entities/User/${id}`);
@@ -68,4 +68,22 @@ Deno.test("a reply larger than a mebibyte is refused", async () => {
         BadReply,
         "isn't signed",
     );
+});
+
+Deno.test("only a request that fails to get there counts as unreachable", async () => {
+    await using network = await createNetwork(["a.test"]);
+    const a = network.instances["a.test"].ctx;
+
+    await assertRejects(
+        () => fetchSigned(a, userUrl("down.test", "bob")),
+        Unreachable,
+        "down.test couldn't be reached",
+    );
+
+    // A bug in Verso, before anything is sent, is not the instance's doing.
+    const broken = {
+        ...a,
+        federation: { ...a.federation, signingKey: () => Promise.reject(new TypeError("A bug")) },
+    };
+    await assertRejects(() => fetchSigned(broken, userUrl("down.test", "bob")), TypeError, "A bug");
 });

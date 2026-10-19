@@ -10,7 +10,7 @@ import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure, RetryAt } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { DeliverJob, deliverQueue } from "./deliver.ts";
-import { type FederationReply, isUnreachable, sendSigned } from "./request.ts";
+import { type FederationReply, sendSigned, Unreachable } from "./request.ts";
 
 const logger = getLogger(["verso", "federation"]);
 
@@ -79,7 +79,7 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
     try {
         reply = await sendSigned(ctx, "POST", url, new TextEncoder().encode(body));
     } catch (error) {
-        if (isUnreachable(error)) await unreachable();
+        if (error instanceof Unreachable) await unreachable();
         throw error;
     }
     const { status } = reply;

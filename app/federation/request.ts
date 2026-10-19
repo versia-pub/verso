@@ -27,9 +27,13 @@ export class BadReply extends Error {
     override readonly name = "BadReply";
 }
 
-/** Whether `error` is how fetch says a host can't be reached, or didn't answer in time. */
-export const isUnreachable = (error: unknown): boolean =>
-    error instanceof TypeError || (error instanceof DOMException && error.name === "TimeoutError");
+/**
+ * Another instance couldn't be reached, or didn't answer in time. Only failures of the request
+ * itself become this, so a bug in Verso can't pass for an instance being down.
+ */
+export class Unreachable extends Error {
+    override readonly name = "Unreachable";
+}
 
 /** Reads a body, stopping as soon as it passes `maxReplyBytes`. */
 const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> => {
@@ -59,26 +63,34 @@ const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> 
 
 /**
  * Sends a request to another instance and reads the reply, giving it `timeoutMs` in all. It
- * rejects when the instance can't be reached or takes too long, like `fetch`, or when the reply is
- * too large.
+ * rejects with `Unreachable` when the instance can't be reached or takes too long, and with
+ * `BadReply` when the reply is too large.
  */
 const send = async (
     ctx: Context,
     url: URL,
     init: { method: string; headers: Record<string, string>; body?: Uint8Array<ArrayBuffer> },
 ): Promise<FederationReply> => {
-    const response = await ctx.transport(
-        new Request(url, {
-            ...init,
-            headers: {
-                ...init.headers,
-                "user-agent": `Verso/${denoConfig.version} (+${ctx.urls.origin})`,
-            },
-            signal: AbortSignal.timeout(timeoutMs),
-        }),
-    );
+    const request = new Request(url, {
+        ...init,
+        headers: {
+            ...init.headers,
+            "user-agent": `Verso/${denoConfig.version} (+${ctx.urls.origin})`,
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+    });
 
-    return { status: response.status, headers: response.headers, body: await readCapped(response) };
+    try {
+        const response = await ctx.transport(request);
+        return {
+            status: response.status,
+            headers: response.headers,
+            body: await readCapped(response),
+        };
+    } catch (error) {
+        if (error instanceof BadReply) throw error;
+        throw new Unreachable(`${url.host} couldn't be reached: ${error}`, { cause: error });
+    }
 };
 
 /** Sends a request to another instance, signed as this one, and reads the reply, as `send` does. */
