@@ -24,7 +24,9 @@ const systemResolver: Resolver = async (hostname) => {
 
 /**
  * Addresses that aren't on the public internet: this machine, private and shared networks,
- * link-local ones such as cloud metadata at 169.254.169.254, and reserved and multicast ranges.
+ * link-local ones such as cloud metadata at 169.254.169.254, reserved, documentation and multicast
+ * ranges, and IPv6 ranges that carry an IPv4 address (NAT64, 6to4 and Teredo), which could carry
+ * an internal one.
  * @see https://www.iana.org/assignments/iana-ipv4-special-registry
  * @see https://www.iana.org/assignments/iana-ipv6-special-registry
  */
@@ -36,11 +38,19 @@ const internalRanges = [
     "169.254.0.0/16",
     "172.16.0.0/12",
     "192.0.0.0/24",
+    "192.0.2.0/24",
     "192.168.0.0/16",
     "198.18.0.0/15",
+    "198.51.100.0/24",
+    "203.0.113.0/24",
     "224.0.0.0/3",
     "::/127",
     "64:ff9b::/96",
+    "64:ff9b:1::/48",
+    "100::/64",
+    "2001::/32",
+    "2001:db8::/32",
+    "2002::/16",
     "fc00::/7",
     "fe80::/10",
     "ff00::/8",

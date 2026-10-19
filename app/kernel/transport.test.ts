@@ -29,6 +29,14 @@ const internal = [
     "fd00::1",
     "fe80::1",
     "::ffff:10.0.0.1",
+    "192.0.2.1",
+    "198.51.100.1",
+    "203.0.113.1",
+    "64:ff9b:1::a00:1",
+    "100::1",
+    "2001:0:4136:e378::1",
+    "2001:db8::1",
+    "2002:a00:1::1",
 ];
 
 Deno.test("another instance is reached at its public address, and its redirects aren't followed", async () => {
