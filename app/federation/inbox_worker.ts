@@ -47,5 +47,7 @@ export const inboxHandler = (registry: Registry): Handler => async (ctx, job) =>
     const instanceId = await findInstanceId(ctx, signer);
     if (instanceId === undefined) throw new Error(`${signer} isn't a known instance`);
 
-    await ctx.transaction((tx) => type.receive(tx, entity, { domain: signer, instanceId }));
+    await ctx.transaction((tx) =>
+        type.receive(tx, entity, { domain: signer, instanceId, fetched: false })
+    );
 };

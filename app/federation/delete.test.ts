@@ -30,9 +30,17 @@ const open = async () => {
     const evil = await addEvilInstance(network, "evil.test");
     const other = await addEvilInstance(network, "other.test");
 
-    await evil.send(inbox, { body: user("alice") });
-    await other.send(inbox, { body: user("bob") });
-    await network.drain();
+    // a.test fetches them, since it doesn't take users sent unasked.
+    for (
+        const [instance, host, id] of [[evil, "evil.test", "alice"], [
+            other,
+            "other.test",
+            "bob",
+        ]] as const
+    ) {
+        instance.serve(`/.versia/v0.6/entities/User/${id}`, user(id));
+        await a.federation.resolve(a, { host, id }, "User");
+    }
 
     /** Sends a Delete from evil.test, runs it, and returns why it was given up on, if it was. */
     const send = async (body: unknown) => {

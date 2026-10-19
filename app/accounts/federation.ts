@@ -7,7 +7,12 @@ import { v0_6 } from "@versia/protocol";
 import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
 import type { RemoteMedia } from "../media/media.ts";
-import { type AccountRow, findAccount, findRemoteAccountAt } from "./accounts.ts";
+import {
+    type AccountRow,
+    findAccount,
+    findRemoteAccount,
+    findRemoteAccountAt,
+} from "./accounts.ts";
 import { deleteRemoteAccount, type RemoteAccount, saveRemoteAccount } from "./remote.ts";
 import type { ProfileField, TextFormat } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
@@ -67,6 +72,10 @@ export const userType: EntityType<v0_6.User> = {
     // A user has no author, and lives where it came from.
     authority: (_, origin) => origin,
     receive: async (ctx, user, sender) => {
+        // Verso chooses which users it keeps, so an instance can't fill it with ones nobody asked
+        // for: one sent unasked only updates a user Verso has.
+        if (!sender.fetched && !await findRemoteAccount(ctx, sender.instanceId, user.id)) return;
+
         await saveRemoteAccount(ctx, remoteAccountOf(sender.instanceId, user));
     },
     deleteRemote: (ctx, id, sender) => deleteRemoteAccount(ctx, sender.instanceId, id),

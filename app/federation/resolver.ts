@@ -96,7 +96,9 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         const instanceId = await findInstanceId(ctx, host);
         if (instanceId === undefined) throw new ResolveFailed(`${host} isn't a known instance`);
 
-        await ctx.transaction((tx) => type.receive(tx, entity, { domain: host, instanceId }));
+        await ctx.transaction((tx) =>
+            type.receive(tx, entity, { domain: host, instanceId, fetched: true })
+        );
         return (await type.known?.(ctx, reference))?.id;
     };
 

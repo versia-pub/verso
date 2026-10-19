@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import { enqueue } from "../jobs/queue.ts";
@@ -65,15 +66,17 @@ Deno.test("an entity is delivered, signed, and its instance takes it in", async 
     const a = network.instances["a.test"].ctx;
     const b = network.instances["b.test"].ctx;
     const alice = await createLocalAccount(a, "alice");
-    const user = await registry.types.get("User")?.find?.(a, alice, "");
+    await b.federation.resolve(b, { host: "a.test", id: alice }, "User");
 
+    await updateProfile(a, alice, { displayName: "Alice" });
+    const user = await registry.types.get("User")?.find?.(a, alice, "");
     const payload: DeliverJob = { domain: "b.test", body: JSON.stringify(user) };
     await enqueue(a, { queue: deliverQueue, payload });
     await network.drain();
 
-    const saved = await b.db.selectFrom("accounts").select(["username", "remote_id"])
+    const saved = await b.db.selectFrom("accounts").select(["display_name", "remote_id"])
         .where("instance_id", "is not", null).execute();
-    assertEquals(saved, [{ username: "alice", remote_id: alice }]);
+    assertEquals(saved, [{ display_name: "Alice", remote_id: alice }]);
 });
 
 Deno.test("the body is posted as it was queued, to the instance's inbox", async () => {

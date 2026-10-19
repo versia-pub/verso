@@ -38,6 +38,8 @@ export type Sender = {
     readonly domain: string;
     /** In `instances`. */
     readonly instanceId: string;
+    /** Whether Verso fetched the entity, rather than the instance sending it unasked. */
+    readonly fetched: boolean;
 };
 
 /**

@@ -74,7 +74,7 @@ Deno.test("an entity is applied with who sent it, and its job is done", async ()
 
     assertEquals(test.received, [{
         thing: { type: "Thing", id: "1", author: "b.example" },
-        sender: { domain: "b.example", instanceId: test.instanceId },
+        sender: { domain: "b.example", instanceId: test.instanceId, fetched: false },
     }]);
     assertEquals(job.finished_at, test.clock.now());
 });
@@ -143,7 +143,7 @@ Deno.test("an entity from an instance Verso has no row for is retried", async ()
     assertStringIncludes(job.last_error ?? "", "c.example isn't a known instance");
 });
 
-Deno.test("a User another instance sends is kept, and updated when sent again", async () => {
+Deno.test("a User sent unasked updates one Verso has, and is dropped otherwise", async () => {
     await using network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const evil = await addEvilInstance(network, "evil.test");
@@ -162,6 +162,10 @@ Deno.test("a User another instance sends is kept, and updated when sent again", 
 
     await evil.send("https://a.test/.versia/v0.6/inbox", { body: user });
     await network.drain();
+    assertEquals(await account(), []);
+
+    evil.serve("/.versia/v0.6/entities/User/alice", user);
+    await a.federation.resolve(a, { host: "evil.test", id: "alice" }, "User");
     assertEquals(await account(), [{
         username: "alice",
         display_name: "",

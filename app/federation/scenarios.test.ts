@@ -47,6 +47,8 @@ Deno.test("a user found by address is delivered to, and sees profile changes", a
     const b = network.instances["b.test"].ctx;
     const alice = await createLocalAccount(a.ctx, "alice");
     await createLocalAccount(b, "bob");
+    // b.test takes only users it knows, so it has found alice already.
+    await b.federation.resolve(b, { host: "a.test", id: alice }, "User");
 
     // alice looks bob up, and a.test fetches him.
     const lookup = await a.app.request("/api/v1/accounts/lookup?acct=bob@b.test", {
@@ -85,6 +87,7 @@ Deno.test("deliveries to a peer that is down wait for it, and all arrive once", 
         "User",
     );
     assertExists(bob);
+    await b.federation.resolve(b, { host: "a.test", id: alice }, "User");
 
     network.transport.down.add("b.test");
     for (let n = 1; n <= 6; n++) {
