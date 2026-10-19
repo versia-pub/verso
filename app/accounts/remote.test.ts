@@ -51,6 +51,33 @@ Deno.test("a remote account is saved once, and replaced when it is saved again",
     assertEquals((await test.ctx.db.selectFrom("accounts").select("id").execute()).length, 1);
 });
 
+Deno.test("a remote account takes its username from one Verso had with it", async () => {
+    await using test = await open();
+    const old = await saveRemoteAccount(test.ctx, bob);
+    test.clock.advance(60_000);
+
+    // Bob renamed himself, and someone else took his old name.
+    const newcomer = await saveRemoteAccount(test.ctx, {
+        ...bob,
+        remoteId: "def",
+        profile: { ...profile, username: "BOB" },
+    });
+
+    const names = async () =>
+        Object.fromEntries(
+            (await test.ctx.db.selectFrom("accounts").select(["id", "username", "fetched_at"])
+                .execute()).map((row) => [row.id, [row.username, row.fetched_at]]),
+        );
+    assertEquals(await names(), {
+        [old]: ["~abc", new Date(0)],
+        [newcomer]: ["BOB", test.clock.now()],
+    });
+
+    // Fetched again, Bob gets his new name.
+    await saveRemoteAccount(test.ctx, { ...bob, profile: { ...profile, username: "robert" } });
+    assertEquals((await names())[old], ["robert", test.clock.now()]);
+});
+
 Deno.test("a remote account's pictures are saved over the old ones, or deleted when gone", async () => {
     await using test = await open();
     const pictures = async (id: string) => {

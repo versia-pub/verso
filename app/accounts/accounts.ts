@@ -159,6 +159,27 @@ export type RemoteProfile = Required<
 >;
 
 /**
+ * Takes `username` from the account on the instance `instanceId` that has it, renaming it to `~`
+ * and its id there, which no username can be, and marking it to be fetched again, which gives it
+ * its new name. Usernames are unique on an instance, so an account saved with one has taken it
+ * from any account Verso last saw before it changed, or else is that account.
+ */
+export const releaseRemoteUsername = async (
+    ctx: Context,
+    instanceId: string,
+    username: string,
+): Promise<void> => {
+    await ctx.db.updateTable("accounts")
+        .set((eb) => ({
+            username: eb(eb.val("~"), "||", eb.ref("remote_id")),
+            fetched_at: new Date(0),
+        }))
+        .where("instance_id", "=", instanceId)
+        .where((eb) => eb(eb.fn("lower", ["username"]), "=", username.toLowerCase()))
+        .execute();
+};
+
+/**
  * Adds a remote account, or, if it is known by its id on its instance, replaces what it says about
  * itself. Either way, it is marked as fetched now. Returns its id here and its pictures.
  */

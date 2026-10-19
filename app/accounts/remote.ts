@@ -7,6 +7,7 @@ import { deleteMedia, type RemoteMedia, saveRemoteMedia } from "../media/media.t
 import {
     deleteAccount,
     findRemoteAccount,
+    releaseRemoteUsername,
     type RemoteProfile,
     setAccountPictures,
     upsertRemoteAccount,
@@ -25,12 +26,14 @@ export type RemoteAccount = {
 };
 
 /**
- * Saves a remote account, replacing what was known of it, and returns its id here. Its pictures
- * are saved over the ones it had, and one it no longer has is deleted. Saving the same account
- * again changes nothing but when it was fetched, so receiving it twice is harmless.
+ * Saves a remote account, replacing what was known of it, and returns its id here. Its username
+ * is taken from any account Verso had with it, which is fetched again later. Its pictures are
+ * saved over the ones it had, and one it no longer has is deleted. Saving the same account again
+ * changes nothing but when it was fetched, so receiving it twice is harmless.
  */
 export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise<string> =>
     ctx.transaction(async (tx) => {
+        await releaseRemoteUsername(tx, account.instanceId, account.profile.username);
         const saved = await upsertRemoteAccount(tx, account);
 
         const picture = async (current: string | null, media: RemoteMedia | null) => {
