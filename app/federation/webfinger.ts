@@ -6,7 +6,7 @@
 import { canonicalizeDomain, type Reference } from "@versia/protocol";
 import { z } from "zod";
 import type { Context } from "../kernel/context.ts";
-import { readCapped, timeoutMs } from "./request.ts";
+import { fetchUnsigned } from "./request.ts";
 import { ResolveFailed } from "./resolver.ts";
 
 /** The parts of a JSON Resource Descriptor read here. Other instances may send more. */
@@ -43,20 +43,16 @@ export const webfinger = async (
     const url = new URL(`https://${host}/.well-known/webfinger`);
     url.searchParams.set("resource", `acct:${username}@${host}`);
 
-    const response = await ctx.transport(
-        new Request(url, {
-            headers: { accept: "application/jrd+json, application/json" },
-            signal: AbortSignal.timeout(timeoutMs),
-        }),
-    );
-    const body = await readCapped(response);
+    const reply = await fetchUnsigned(ctx, url, "application/jrd+json, application/json");
 
-    if (response.status === 404 || response.status === 410) return undefined;
-    if (!response.ok) throw new ResolveFailed(`${host} answered ${response.status} to WebFinger`);
+    if (reply.status === 404 || reply.status === 410) return undefined;
+    if (reply.status < 200 || reply.status > 299) {
+        throw new ResolveFailed(`${host} answered ${reply.status} to WebFinger`);
+    }
 
     let jrd;
     try {
-        jrd = Jrd.parse(JSON.parse(new TextDecoder().decode(body)));
+        jrd = Jrd.parse(JSON.parse(new TextDecoder().decode(reply.body)));
     } catch {
         throw new ResolveFailed(`${host} didn't answer with WebFinger`);
     }

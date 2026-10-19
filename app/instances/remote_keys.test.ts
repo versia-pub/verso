@@ -40,10 +40,16 @@ Deno.test("a key is fetched from the instance's metadata once, then stored", asy
 
     for (const key of [first, together, again, fromDatabase]) assert(await isKeyOf(key, pair));
     assertEquals(
-        test.transport.sent.map((request) => [request.url, request.headers.get("accept")]),
-        [
-            ["https://b.example/.versia/v0.6/instance", "application/vnd.versia+json"],
-        ],
+        test.transport.sent.map((request) => [
+            request.url,
+            request.headers.get("accept"),
+            request.headers.get("user-agent"),
+        ]),
+        [[
+            "https://b.example/.versia/v0.6/instance",
+            "application/vnd.versia+json; charset=utf-8",
+            "Verso/0.0.0 (+https://social.example)",
+        ]],
     );
     assertEquals(await test.row("b.example"), {
         domain: "b.example",
@@ -63,6 +69,11 @@ Deno.test("a key isn't taken from metadata that is wrong, or from an unreachable
         "broken.example": () => new Response("{"),
         "rsa.example": () => Response.json(metadata("rsa.example", pair.spki, "rsa")),
         "badkey.example": metadataServer("badkey.example", { spki: "AAAA" }),
+        // Valid metadata, but padded past what Verso reads.
+        "big.example": () =>
+            new Response(
+                JSON.stringify(metadata("big.example", pair.spki)) + " ".repeat(1024 * 1024),
+            ),
     };
     for (const [domain, server] of Object.entries(servers)) {
         test.transport.servers.set(domain, server);

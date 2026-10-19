@@ -4,6 +4,8 @@
  */
 import { getLogger } from "@logtape/logtape";
 import { importPublicKey, v0_6 } from "@versia/protocol";
+import { fetchUnsigned } from "../federation/request.ts";
+import { versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 
 const logger = getLogger(["verso", "instances"]);
@@ -33,14 +35,13 @@ export type RemoteKeysOptions = {
  */
 const fetchKey = async (ctx: Context, domain: string): Promise<string | undefined> => {
     try {
-        const response = await ctx.transport(
-            new Request(`https://${domain}/.versia/v0.6/instance`, {
-                headers: { accept: "application/vnd.versia+json" },
-            }),
-        );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const url = new URL(`https://${domain}/.versia/v0.6/instance`);
+        const reply = await fetchUnsigned(ctx, url, versiaJson);
+        if (reply.status < 200 || reply.status > 299) throw new Error(`HTTP ${reply.status}`);
 
-        const metadata = v0_6.InstanceMetadata.parse(await response.json());
+        const metadata = v0_6.InstanceMetadata.parse(
+            JSON.parse(new TextDecoder().decode(reply.body)),
+        );
         if (metadata.domain !== domain) {
             throw new Error(`The metadata is for ${metadata.domain}`);
         }

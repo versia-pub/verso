@@ -13,7 +13,7 @@ import { checkSignature } from "../kernel/signatures.ts";
 const maxReplyBytes = 1024 * 1024;
 
 /** How long another instance has to answer, so a slow one can't hold a worker. */
-export const timeoutMs = 30_000;
+const timeoutMs = 30_000;
 
 /** A reply from another instance, with its body read. */
 export type FederationReply = {
@@ -32,7 +32,7 @@ export const isUnreachable = (error: unknown): boolean =>
     error instanceof TypeError || (error instanceof DOMException && error.name === "TimeoutError");
 
 /** Reads a body, stopping as soon as it passes `maxReplyBytes`. */
-export const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> => {
+const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> => {
     const chunks: Uint8Array[] = [];
     let size = 0;
 
@@ -58,9 +58,30 @@ export const readCapped = async (response: Response): Promise<Uint8Array<ArrayBu
 };
 
 /**
- * Sends a request to another instance, signed as this one, and reads the reply. It rejects when
- * the instance can't be reached or takes too long, like `fetch`, or when the reply is too large.
+ * Sends a request to another instance and reads the reply, giving it `timeoutMs` in all. It
+ * rejects when the instance can't be reached or takes too long, like `fetch`, or when the reply is
+ * too large.
  */
+const send = async (
+    ctx: Context,
+    url: URL,
+    init: { method: string; headers: Record<string, string>; body?: Uint8Array<ArrayBuffer> },
+): Promise<FederationReply> => {
+    const response = await ctx.transport(
+        new Request(url, {
+            ...init,
+            headers: {
+                ...init.headers,
+                "user-agent": `Verso/${denoConfig.version} (+${ctx.urls.origin})`,
+            },
+            signal: AbortSignal.timeout(timeoutMs),
+        }),
+    );
+
+    return { status: response.status, headers: response.headers, body: await readCapped(response) };
+};
+
+/** Sends a request to another instance, signed as this one, and reads the reply, as `send` does. */
 export const sendSigned = async (
     ctx: Context,
     method: "GET" | "POST",
@@ -74,22 +95,23 @@ export const sendSigned = async (
         ctx.clock.now(),
     );
 
-    const response = await ctx.transport(
-        new Request(url, {
-            method,
-            body: method === "GET" ? undefined : body,
-            headers: {
-                ...signature,
-                accept: versiaJson,
-                ...(method === "GET" ? {} : { "content-type": versiaJson }),
-                "user-agent": `Verso/${denoConfig.version} (+${ctx.urls.origin})`,
-            },
-            signal: AbortSignal.timeout(timeoutMs),
-        }),
-    );
-
-    return { status: response.status, headers: response.headers, body: await readCapped(response) };
+    return await send(ctx, url, {
+        method,
+        body: method === "GET" ? undefined : body,
+        headers: {
+            ...signature,
+            accept: versiaJson,
+            ...(method === "GET" ? {} : { "content-type": versiaJson }),
+        },
+    });
 };
+
+/**
+ * Fetches from another instance without signing, for what any server may ask, such as its
+ * metadata or WebFinger, and reads the reply, as `send` does.
+ */
+export const fetchUnsigned = (ctx: Context, url: URL, accept: string): Promise<FederationReply> =>
+    send(ctx, url, { method: "GET", headers: { accept } });
 
 /**
  * Fetches from another instance with a signed GET. A successful reply is only given if the
