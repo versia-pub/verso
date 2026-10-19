@@ -3,7 +3,14 @@ import { getUsername } from "../accounts/accounts.ts";
 import { provision } from "../accounts/provision.ts";
 import type { Context } from "../kernel/context.ts";
 import { getApp } from "./apps.ts";
-import { deleteFlow, findFlow, findFormFlow, markLoggedIn, setCode } from "./flows.ts";
+import {
+    deleteFlow,
+    deleteUnfinishedFlow,
+    findFlow,
+    findFormFlow,
+    markLoggedIn,
+    setCode,
+} from "./flows.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
@@ -32,11 +39,14 @@ const sendBack = (
 const denied = (flow: OAuthFlowsTable, description: string) =>
     sendBack(flow, { error: "access_denied", error_description: description });
 
-/** Tells the app the login was denied, and forgets its flow, which can't be finished now. */
-const loginDenied = async (ctx: Context, flow: OAuthFlowsTable, description: string) => {
-    await deleteFlow(ctx, flow.id);
-    return denied(flow, description);
-};
+/**
+ * Tells the app the login was denied, and forgets its flow, which can't be finished now. If the
+ * login finished meanwhile, the flow is left to it, and this answer only says it is over.
+ */
+const loginDenied = async (ctx: Context, flow: OAuthFlowsTable, description: string) =>
+    await deleteUnfinishedFlow(ctx, flow.id)
+        ? denied(flow, description)
+        : { result: "expired" as const };
 
 /**
  * Finishes the login when the issuer sends the browser back. On success the user is asked to

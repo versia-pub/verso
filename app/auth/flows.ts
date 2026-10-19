@@ -93,6 +93,20 @@ export const takeFlowByCode = async (
         .returningAll()
         .executeTakeFirst();
 
+/**
+ * Deletes a flow whose login hasn't finished. Returns false if it has, as when the browser came
+ * back twice at once and the other time logged in, so the flow stays for it.
+ */
+export const deleteUnfinishedFlow = async (ctx: Context, flowId: string): Promise<boolean> => {
+    const deleted = await ctx.db.deleteFrom("oauth_flows")
+        .where("id", "=", flowId)
+        .where("account_id", "is", null)
+        .returning("id")
+        .executeTakeFirst();
+
+    return deleted !== undefined;
+};
+
 export const deleteFlow = async (ctx: Context, flowId: string): Promise<void> => {
     await ctx.db.deleteFrom("oauth_flows").where("id", "=", flowId).execute();
 };

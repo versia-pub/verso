@@ -1,4 +1,5 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
+import type { IdentityProvider } from "../kernel/identity.ts";
 import { createTestApp } from "../testing/app.ts";
 import type { AppRegistration } from "./apps.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -157,6 +158,28 @@ Deno.test("a failed login, or a closed registration, is denied to the app, and e
             "__Host-oauth_flow=; Max-Age=0",
         );
     }
+});
+
+Deno.test("a callback failing while another logs in leaves that login be", async () => {
+    // The issuer answers "slow" only once told to, refusing it, as a code used twice would be.
+    const { promise: answered, resolve: answer } = Promise.withResolvers<void>();
+    const stub = stubProvider();
+    const provider: IdentityProvider = {
+        ...stub,
+        completeLogin: async (callback, flow) => {
+            if (callback.searchParams.get("code") === "slow") await answered;
+            return await stub.completeLogin(callback, flow);
+        },
+    };
+    await using test = await open(provider);
+    const cookie = await test.start();
+
+    const slow = test.callback(cookie, "slow");
+    assertEquals((await test.callback(cookie)).status, 303);
+    answer();
+
+    assertStringIncludes(await (await slow).text(), "This login has expired");
+    assertEquals((await test.consent(cookie)).status, 200);
 });
 
 Deno.test("each step needs the browser that started, in the right order", async () => {
