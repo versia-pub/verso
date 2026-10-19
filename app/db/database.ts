@@ -1,3 +1,4 @@
+import { getLogger } from "@logtape/logtape";
 import { type Dialect, Kysely, PostgresDialect } from "kysely";
 import { DatabaseSync } from "node:sqlite";
 import pg from "pg";
@@ -49,12 +50,23 @@ const openSqlite = (path: string) => {
     return database;
 };
 
+/**
+ * A pool of connections to Postgres. A connection that drops while idle, such as when Postgres
+ * restarts, is logged and replaced on the next query: unheard, its error would end the process.
+ */
+export const postgresPool = (url: string): pg.Pool => {
+    const pool = new pg.Pool({ connectionString: url });
+    pool.on("error", (error) => {
+        getLogger(["verso", "db"]).warn("A database connection failed: {error}", { error });
+    });
+
+    return pool;
+};
+
 /** Opens the configured database. Postgres connects lazily, on the first query. */
 export const openDatabase = (config: Config["database"]): Kysely<Database> =>
     connect(
         "postgres" in config
-            ? new PostgresDialect({
-                pool: new pg.Pool({ connectionString: config.postgres }),
-            })
+            ? new PostgresDialect({ pool: postgresPool(config.postgres) })
             : sqliteDialect(openSqlite(config.sqlite)),
     );

@@ -1,8 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { type Kysely, PGliteDialect, PostgresDialect, sql } from "kysely";
 import { DatabaseSync } from "node:sqlite";
-import pg from "pg";
-import { connect } from "./database.ts";
+import { connect, postgresPool } from "./database.ts";
 import { sqliteDialect } from "./sqlite.ts";
 
 /**
@@ -12,8 +11,7 @@ import { sqliteDialect } from "./sqlite.ts";
 export const testDatabaseKind: string = Deno.env.get("VERSO_TEST_DATABASE") ??
     "pglite";
 
-const postgresPool = (url: string) =>
-    new PostgresDialect({ pool: new pg.Pool({ connectionString: url }) });
+const postgresDialect = (url: string) => new PostgresDialect({ pool: postgresPool(url) });
 
 /** The URL of a new, empty PostgreSQL database, or `undefined` when tests run in-process. */
 export const testPostgresUrl = async (): Promise<string | undefined> => {
@@ -22,7 +20,7 @@ export const testPostgresUrl = async (): Promise<string | undefined> => {
     const url = new URL(testDatabaseKind);
     const name = `test_${crypto.randomUUID().replaceAll("-", "")}`;
 
-    await using server = connect(postgresPool(url.href));
+    await using server = connect(postgresDialect(url.href));
     await sql`create database ${sql.id(name)}`.execute(server);
 
     url.pathname = `/${name}`;
@@ -33,7 +31,7 @@ export const testPostgresUrl = async (): Promise<string | undefined> => {
 export const testDatabase = async <DB>(): Promise<Kysely<DB>> => {
     const postgres = await testPostgresUrl();
 
-    if (postgres) return connect(postgresPool(postgres));
+    if (postgres) return connect(postgresDialect(postgres));
 
     if (testDatabaseKind === "sqlite") return connect(sqliteDialect(new DatabaseSync(":memory:")));
 
