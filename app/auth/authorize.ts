@@ -178,6 +178,8 @@ export const authorize = async (
         account_id: null,
         form_token: formToken,
         code_hash: null,
+        code_used_at: null,
+        token_id: null,
         expires_at: new Date(ctx.clock.now().getTime() + flowLifetimeMs),
         created_at: ctx.clock.now(),
     };

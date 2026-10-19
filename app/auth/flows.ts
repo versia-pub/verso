@@ -80,18 +80,42 @@ export const setCode = async (
 };
 
 /**
- * Removes the unexpired flow with this code and returns it. Removing it first means a code can
- * only be tried once, even by two requests at once.
+ * Uses up the unexpired flow with this code, and returns it, or the flow it was already used for,
+ * saying so. Marking it used first means a code can only be tried once, even by two requests at
+ * once.
  */
-export const takeFlowByCode = async (
+export const useCode = async (
     ctx: Context,
     code: string,
-): Promise<OAuthFlowsTable | undefined> =>
-    await ctx.db.deleteFrom("oauth_flows")
-        .where("code_hash", "=", await hashToken(code))
-        .where("expires_at", ">", ctx.clock.now())
+): Promise<{ readonly flow: OAuthFlowsTable; readonly reused: boolean } | undefined> => {
+    const hash = await hashToken(code);
+    const now = ctx.clock.now();
+
+    const unused = await ctx.db.updateTable("oauth_flows")
+        .set({ code_used_at: now })
+        .where("code_hash", "=", hash)
+        .where("expires_at", ">", now)
+        .where("code_used_at", "is", null)
         .returningAll()
         .executeTakeFirst();
+    if (unused) return { flow: unused, reused: false };
+
+    // Expired or not, as long as it is kept.
+    const used = await ctx.db.selectFrom("oauth_flows").selectAll()
+        .where("code_hash", "=", hash)
+        .executeTakeFirst();
+    return used && { flow: used, reused: true };
+};
+
+/** Notes the token a flow's code was traded for. */
+export const setCodeToken = async (
+    ctx: Context,
+    flowId: string,
+    tokenId: string,
+): Promise<void> => {
+    await ctx.db.updateTable("oauth_flows").set({ token_id: tokenId }).where("id", "=", flowId)
+        .execute();
+};
 
 /**
  * Deletes a flow whose login hasn't finished. Returns false if it has, as when the browser came
@@ -111,7 +135,7 @@ export const deleteFlow = async (ctx: Context, flowId: string): Promise<void> =>
     await ctx.db.deleteFrom("oauth_flows").where("id", "=", flowId).execute();
 };
 
-/** Deletes flows past their expiry: logins never finished, and codes never traded for tokens. */
+/** Deletes flows past their expiry: logins never finished, and codes traded or never traded. */
 export const deleteExpiredFlows = async (ctx: Context): Promise<void> => {
     await ctx.db.deleteFrom("oauth_flows").where("expires_at", "<=", ctx.clock.now()).execute();
 };

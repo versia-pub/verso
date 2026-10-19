@@ -155,8 +155,8 @@ Deno.test("a code becomes a token for the user who allowed it, once", async () =
     const code = await test.allowedCode();
 
     const first = await test.exchange(code, { scope: "read" });
-    const again = await test.exchange(code);
-    const [stored] = await test.ctx.db.selectFrom("access_tokens").selectAll().execute();
+    const tokens = () => test.ctx.db.selectFrom("access_tokens").selectAll().execute();
+    const [stored] = await tokens();
 
     assertEquals(first.status, 200);
     assertEquals(first.body.scope, "read write");
@@ -164,7 +164,11 @@ Deno.test("a code becomes a token for the user who allowed it, once", async () =
         "alice",
         await hashToken(first.body.access_token),
     ]);
+
+    // Someone else may have the code, so trying it again revokes the token it gave.
+    const again = await test.exchange(code);
     assertEquals([again.status, again.body.error], [400, "invalid_grant"]);
+    assertEquals(await tokens(), []);
     assertEquals(await test.ctx.db.selectFrom("oauth_flows").selectAll().execute(), []);
 });
 

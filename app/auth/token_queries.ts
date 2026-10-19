@@ -22,10 +22,11 @@ export const insertToken = async (
         readonly scopes: Scope[];
         readonly createdAt: Date;
     },
-): Promise<void> => {
+): Promise<string> => {
+    const id = ctx.ids();
     await ctx.db.insertInto("access_tokens")
         .values({
-            id: ctx.ids(),
+            id,
             token_hash: token.hash,
             app_id: token.appId,
             account_id: token.accountId,
@@ -33,6 +34,8 @@ export const insertToken = async (
             created_at: token.createdAt,
         })
         .execute();
+
+    return id;
 };
 
 /** Deletes a token, which revokes it. */

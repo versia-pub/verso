@@ -2,7 +2,7 @@ import type { Viewer } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { findAppByClientId } from "./apps.ts";
-import { takeFlowByCode } from "./flows.ts";
+import { deleteFlow, setCodeToken, useCode } from "./flows.ts";
 import { requestedScopes } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import { deleteToken, findTokenByHash, insertToken } from "./token_queries.ts";
@@ -71,6 +71,8 @@ export const authenticateClient = async (
 };
 
 export type IssuedToken = {
+    /** In `access_tokens`. */
+    readonly id: string;
     readonly token: string;
     readonly scopes: Scope[];
     readonly createdAt: Date;
@@ -86,7 +88,7 @@ export const issueToken = async (
     const token = randomToken();
     const createdAt = ctx.clock.now();
 
-    await insertToken(ctx, {
+    const id = await insertToken(ctx, {
         hash: await hashToken(token),
         appId: app.id,
         accountId,
@@ -94,7 +96,7 @@ export const issueToken = async (
         createdAt,
     });
 
-    return { token, scopes, createdAt };
+    return { id, token, scopes, createdAt };
 };
 
 /** A PKCE code verifier: 43 to 128 of these characters. */
@@ -122,7 +124,9 @@ const pkceMatches = async (challenge: string | null, verifier: string | undefine
 /**
  * Trades a code for a token to act for the user who allowed it, with the scopes they allowed. The
  * code must be for this app and redirect URI, unexpired, and pass PKCE. It can only be tried once,
- * so a failed try uses it up too.
+ * so a failed try uses it up too. Trying it again revokes the token it gave, since someone else
+ * may have it.
+ * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
  */
 export const exchangeCode = (
     ctx: Context,
@@ -130,13 +134,24 @@ export const exchangeCode = (
     exchange: CodeExchange,
 ): Promise<IssuedToken | undefined> =>
     ctx.transaction(async (tx) => {
-        const flow = await takeFlowByCode(tx, exchange.code);
+        const used = await useCode(tx, exchange.code);
+        if (!used) return undefined;
 
-        const valid = flow?.account_id && flow.app_id === app.id &&
+        const { flow } = used;
+        if (used.reused) {
+            if (flow.token_id !== null) await deleteToken(tx, flow.token_id);
+            await deleteFlow(tx, flow.id);
+            return undefined;
+        }
+
+        const valid = flow.account_id && flow.app_id === app.id &&
             flow.redirect_uri === exchange.redirectUri &&
             await pkceMatches(flow.code_challenge, exchange.codeVerifier);
+        if (!valid) return undefined;
 
-        return valid ? await issueToken(tx, app, flow.account_id, flow.scopes) : undefined;
+        const issued = await issueToken(tx, app, flow.account_id, flow.scopes);
+        await setCodeToken(tx, flow.id, issued.id);
+        return issued;
     });
 
 /** What an app sends to `/oauth/token`, besides its credentials. */

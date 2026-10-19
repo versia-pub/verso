@@ -43,6 +43,10 @@ export type OAuthFlowsTable = {
     form_token: string | null;
     /** The hash of the code the app trades for a token, once the user allows it. */
     code_hash: string | null;
+    /** When the app tried to trade the code, which it may do once. */
+    code_used_at: Date | null;
+    /** The token the code was traded for, in `access_tokens`. */
+    token_id: string | null;
     expires_at: Date;
     created_at: Date;
 };
