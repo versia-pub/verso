@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
 import { rolesOf } from "./role_queries.ts";
-import { accountPermissions, refusal, roleManager } from "./roles.ts";
+import { accountPermissions, refusal, roleManager, updateManagedRole } from "./roles.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 
 Deno.test("an account may do what every user may, and what each of its roles allows", async () => {
@@ -33,6 +33,23 @@ Deno.test("an account's roles are each listed once, highest priority first", asy
     await giveRole(test.ctx, "bob", "Other");
 
     assertEquals((await rolesOf(test.ctx, "alice")).map((role) => role.name), ["Mod", "Admin"]);
+});
+
+Deno.test("two roles renamed to one name at once get it once", async () => {
+    await using test = await createTestContext();
+    await createLocalAccount(test.ctx, "alice");
+    for (const name of ["Admin", "Red", "Blue"]) await createRole(test.ctx, name, []);
+    await test.ctx.db.updateTable("roles").set({ priority: 10 }).where("id", "=", "Admin")
+        .execute();
+    await giveRole(test.ctx, "alice", "Admin");
+    const alice = await roleManager(test.ctx, "alice", new Set());
+
+    // Both check the name is free before either takes it.
+    const renamed = await Promise.all(
+        ["Red", "Blue"].map((id) => updateManagedRole(test.ctx, alice, id, { name: "Purple" })),
+    );
+
+    assertEquals(renamed.map((result) => result.ok).toSorted(), [false, true]);
 });
 
 Deno.test("an account manages only roles below its highest, giving permissions it has", async () => {

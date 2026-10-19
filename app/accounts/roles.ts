@@ -162,10 +162,20 @@ export const updateManagedRole = async (
     const refused = refusal(manager, { priority: changes.priority, permissions: added });
     if (refused !== undefined) return notPermitted(refused);
 
-    const named = changes.name === undefined ? undefined : await findRole(ctx, changes.name);
-    if (named && named.id !== role.id) return nameTaken;
+    const takenBy = async (name: string | undefined) => {
+        const named = name === undefined ? undefined : await findRole(ctx, name);
+        return named !== undefined && named.id !== role.id;
+    };
+    if (await takenBy(changes.name)) return nameTaken;
 
-    const updated = await updateRole(ctx, role.id, changes);
+    let updated;
+    try {
+        updated = await updateRole(ctx, role.id, changes);
+    } catch (error) {
+        // Another role may have taken the name since it was checked.
+        if (await takenBy(changes.name)) return nameTaken;
+        throw error;
+    }
     return updated ? { ok: true, value: updated } : notFound;
 };
 
