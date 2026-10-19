@@ -1,5 +1,14 @@
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
-import { type Dialect, SqliteAdapter, SqliteDialect } from "kysely";
+import {
+    CompiledQuery,
+    type DatabaseConnection,
+    type Dialect,
+    type Driver,
+    SqliteAdapter,
+    SqliteDialect,
+    type SqliteDialectConfig,
+    SqliteDriver,
+} from "kysely";
 import { sqliteTypes } from "./columns.ts";
 
 const write = (value: unknown) =>
@@ -26,9 +35,31 @@ class TransactionalSqliteAdapter extends SqliteAdapter {
     }
 }
 
+/**
+ * Transactions take the write lock when they begin. Begun as Kysely does, one that reads and then
+ * writes fails at once with `SQLITE_BUSY` if another process wrote in between, without waiting
+ * out `busy_timeout`; begun this way, it waits for the other writer from the start instead.
+ */
+class ImmediateSqliteDriver extends SqliteDriver {
+    override async beginTransaction(connection: DatabaseConnection): Promise<void> {
+        await connection.executeQuery(CompiledQuery.raw("begin immediate"));
+    }
+}
+
 class NodeSqliteDialect extends SqliteDialect {
+    readonly #config: SqliteDialectConfig;
+
+    constructor(config: SqliteDialectConfig) {
+        super(config);
+        this.#config = config;
+    }
+
     override createAdapter(): SqliteAdapter {
         return new TransactionalSqliteAdapter();
+    }
+
+    override createDriver(): Driver {
+        return new ImmediateSqliteDriver(this.#config);
     }
 }
 
