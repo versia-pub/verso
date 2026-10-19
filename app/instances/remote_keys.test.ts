@@ -104,6 +104,25 @@ Deno.test("a key is fetched again to refresh it only once it is old enough", asy
     assertEquals(test.transport.sent.length, 2);
 });
 
+Deno.test("an instance whose key couldn't be had isn't asked again for a while", async () => {
+    await using test = await open();
+    const pair = await keyPair();
+    const keys = remoteKeys({ refetchAfterMs: 1000 });
+
+    for (let n = 0; n < 3; n++) {
+        assertEquals(await keys.get(test.ctx, "b.example"), undefined);
+        assertEquals(await keys.refresh(test.ctx, "b.example"), undefined);
+    }
+    assertEquals(test.transport.sent.length, 1);
+
+    test.transport.servers.set("b.example", metadataServer("b.example", pair));
+    test.clock.advance(999);
+    assertEquals(await keys.get(test.ctx, "b.example"), undefined);
+    test.clock.advance(1);
+    assert(await isKeyOf(await keys.get(test.ctx, "b.example"), pair));
+    assertEquals(test.transport.sent.length, 2);
+});
+
 Deno.test("a refresh takes a key another node stored, and fetches one never stored", async () => {
     await using test = await open();
     const [before, after] = [await keyPair(), await keyPair()];

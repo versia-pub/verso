@@ -7,6 +7,7 @@ import { importPublicKey, v0_6 } from "@versia/protocol";
 import { fetchUnsigned } from "../federation/request.ts";
 import { versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
+import { lru } from "../kernel/lru.ts";
 
 const logger = getLogger(["verso", "instances"]);
 
@@ -18,6 +19,9 @@ export type RemoteKeys = {
      * Fetches the key again, as after a signature fails to verify, in case the instance rotated
      * it. At most once per `refetchAfterMs` for each instance, so bad signatures can't make Verso
      * fetch over and over; within that, the key it has is given.
+     *
+     * Either way, an instance whose key couldn't be had isn't asked again for `refetchAfterMs`, so
+     * requests naming it can't make Verso send a request each.
      */
     readonly refresh: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
 };
@@ -81,6 +85,8 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
     const remembered = new Map<string, CryptoKey>();
     /** Fetches under way, so requests arriving together fetch once. */
     const fetching = new Map<string, Promise<CryptoKey | undefined>>();
+    /** When each instance whose key couldn't be had may be asked again. */
+    const failed = lru<string, number>(capacity);
 
     const remember = (domain: string, key: CryptoKey) => {
         remembered.delete(domain);
@@ -94,10 +100,16 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
         let pending = fetching.get(domain);
         if (pending) return pending;
 
+        const now = ctx.clock.now().getTime();
+        if ((failed.get(domain) ?? 0) > now) return Promise.resolve(undefined);
+
         pending = (async () => {
             const spki = await fetchKey(ctx, domain);
             const key = spki === undefined ? undefined : await importPublicKey(spki);
-            if (spki === undefined || key === undefined) return undefined;
+            if (spki === undefined || key === undefined) {
+                failed.set(domain, now + refetchAfterMs);
+                return undefined;
+            }
 
             await storeKey(ctx, domain, spki);
             remember(domain, key);
