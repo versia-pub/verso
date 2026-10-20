@@ -3,8 +3,8 @@
  * Verso.
  * @module
  */
-import { formatReference, v0_6 } from "@versia/protocol";
-import type { CollectionProvider, EntityType } from "../federation/registry.ts";
+import { formatReference, type Reference, v0_6 } from "@versia/protocol";
+import type { CollectionProvider, EntityType, Known } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
 import type { RemoteMedia } from "../media/media.ts";
 import {
@@ -53,6 +53,18 @@ const localUser = async (ctx: Context, id: string) => {
     return row?.domain === null ? row : undefined;
 };
 
+/** The user `reference` points at, local or remote, if Verso has it, without fetching it. */
+export const knownUser = async (ctx: Context, reference: Reference): Promise<Known | undefined> => {
+    if (reference.host === ctx.urls.domain) {
+        const row = await localUser(ctx, reference.id);
+        return row && { id: row.id, fetchedAt: null };
+    }
+
+    const row = await findRemoteAccountAt(ctx, reference.host, reference.id);
+    // A remote account is always saved with when it was fetched.
+    return row && { id: row.id, fetchedAt: row.fetched_at ?? new Date(0) };
+};
+
 /** A local user's collection of notes, empty until there are notes. */
 const emptyCollection: CollectionProvider = async (ctx, id) => {
     const row = await localUser(ctx, id);
@@ -77,16 +89,7 @@ export const userType: EntityType<v0_6.User> = {
         await saveRemoteAccount(ctx, remoteAccountOf(sender.instanceId, user));
     },
     deleteRemote: (ctx, id, sender) => deleteRemoteAccount(ctx, sender.instanceId, id),
-    known: async (ctx, reference) => {
-        if (reference.host === ctx.urls.domain) {
-            const row = await localUser(ctx, reference.id);
-            return row && { id: row.id, fetchedAt: null };
-        }
-
-        const row = await findRemoteAccountAt(ctx, reference.host, reference.id);
-        // A remote account is always saved with when it was fetched.
-        return row && { id: row.id, fetchedAt: row.fetched_at ?? new Date(0) };
-    },
+    known: knownUser,
     find: async (ctx, id) => {
         const row = await localUser(ctx, id);
         return row && renderVersiaUser(ctx, row);

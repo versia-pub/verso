@@ -3,12 +3,12 @@ import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts"
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
-import { createTestContext } from "../testing/context.ts";
+import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { followsFrom, followsOf } from "./follow_queries.ts";
-import { follow, unfollow } from "./follows.ts";
+import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
 
-const open = async () => {
-    const test = await createTestContext();
+const open = async (options: TestContextOptions = {}) => {
+    const test = await createTestContext(options);
     await createLocalAccount(test.ctx, "alice");
     await createLocalAccount(test.ctx, "bob");
     await createInstance(test.ctx, "b.example");
@@ -124,4 +124,59 @@ Deno.test("follows are found from or of one account, among only the others asked
     assertEquals(await followers(["carol"]), ["carol"]);
     assertEquals(await followers(["alice", "carol"]), ["alice", "carol"]);
     assertEquals(await followers([]), []);
+});
+
+Deno.test("accepting a request follows and counts, once, and only a request", async () => {
+    await using test = await open();
+    await lock(test.ctx, "bob");
+    await follow(test.ctx, "alice", "bob");
+    await follow(test.ctx, "carol", "alice");
+
+    assertEquals(await acceptFollow(test.ctx, "alice", "bob"), true);
+    assertEquals(await acceptFollow(test.ctx, "alice", "bob"), false);
+    assertEquals(await acceptFollow(test.ctx, "carol", "alice"), false);
+    assertEquals(await acceptFollow(test.ctx, "bob", "alice"), false);
+    assertEquals(await counts(test.ctx), { alice: [1, 1], bob: [0, 1], carol: [1, 0] });
+    assertEquals(await followsFrom(test.ctx, "bob", ["alice"]), []);
+});
+
+Deno.test("rejecting removes a request, or a follower, who is then uncounted", async () => {
+    await using test = await open();
+    await follow(test.ctx, "alice", "bob");
+    await follow(test.ctx, "alice", "carol");
+
+    assertEquals(await rejectFollow(test.ctx, "alice", "bob"), true);
+    assertEquals(await rejectFollow(test.ctx, "alice", "carol"), true);
+    assertEquals(await rejectFollow(test.ctx, "alice", "carol"), false);
+    assertEquals(await counts(test.ctx), { alice: [0, 0], bob: [0, 0], carol: [0, 0] });
+    assertEquals(await followsFrom(test.ctx, "alice", ["bob", "carol"]), []);
+});
+
+Deno.test("each change to a follow is told, and nothing else is", async () => {
+    const events: unknown[] = [];
+    await using test = await open({
+        subscribers: [(_, event) => Promise.resolve(void events.push(event))],
+    });
+    await lock(test.ctx, "bob");
+
+    await follow(test.ctx, "alice", "carol");
+    await follow(test.ctx, "alice", "carol", { notify: true });
+    await follow(test.ctx, "carol", "alice");
+    await follow(test.ctx, "alice", "bob");
+    await acceptFollow(test.ctx, "alice", "bob");
+    await acceptFollow(test.ctx, "alice", "bob");
+    await rejectFollow(test.ctx, "alice", "bob");
+    await unfollow(test.ctx, "alice", "carol");
+    await unfollow(test.ctx, "alice", "carol");
+    await rejectFollow(test.ctx, "alice", "carol");
+    await follow(test.ctx, "alice", "alice");
+
+    assertEquals(events, [
+        { type: "graph.follow_requested", followerId: "alice", followeeId: "carol" },
+        { type: "graph.follow_accepted", followerId: "carol", followeeId: "alice" },
+        { type: "graph.follow_requested", followerId: "alice", followeeId: "bob" },
+        { type: "graph.follow_accepted", followerId: "alice", followeeId: "bob" },
+        { type: "graph.follow_rejected", followerId: "alice", followeeId: "bob" },
+        { type: "graph.unfollowed", followerId: "alice", followeeId: "carol" },
+    ]);
 });

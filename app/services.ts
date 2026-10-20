@@ -1,6 +1,7 @@
 import { accountPermissions } from "./accounts/roles.ts";
 import { authenticateToken } from "./auth/tokens.ts";
 import { createResolver } from "./federation/resolver.ts";
+import { followDeliveries } from "./graph/federation.ts";
 import type { AppServices } from "./http/env.ts";
 import { instanceKey } from "./instances/keys.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
@@ -14,8 +15,8 @@ export const appServices = (): AppServices => ({
     permissionsOf: accountPermissions,
 });
 
-/** Who is told of each event. Versia's subscriber joins once there are events to deliver. */
-export const subscribers: readonly Subscriber[] = [];
+/** Who is told of each event. */
+export const subscribers: readonly Subscriber[] = [followDeliveries];
 
 /**
  * Federation as Verso's modules provide it, with `blockedDomains` as config blocks them. Make one

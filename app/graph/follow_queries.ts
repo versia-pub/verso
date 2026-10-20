@@ -64,6 +64,22 @@ export const updateFollowOptions = async (
         .execute();
 };
 
+/** Accepts a request to follow. Returns whether there was one, rather than a follow or nothing. */
+export const acceptPendingFollow = async (
+    ctx: Context,
+    followerId: string,
+    followeeId: string,
+): Promise<boolean> => {
+    const { numUpdatedRows } = await ctx.db.updateTable("follows")
+        .set({ accepted: true })
+        .where("follower_id", "=", followerId)
+        .where("followee_id", "=", followeeId)
+        .where("accepted", "=", false)
+        .executeTakeFirst();
+
+    return numUpdatedRows > 0n;
+};
+
 /** Removes a follow or a request to follow, and returns it, if there was one. */
 export const deleteFollow = async (
     ctx: Context,
