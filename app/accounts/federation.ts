@@ -65,6 +65,15 @@ export const knownUser = async (ctx: Context, reference: Reference): Promise<Kno
     return row && { id: row.id, fetchedAt: row.fetched_at ?? new Date(0) };
 };
 
+/** The local user with this id as a Versia User, or `undefined` if there is none. */
+export const localVersiaUser = async (
+    ctx: Context,
+    id: string,
+): Promise<v0_6.User | undefined> => {
+    const row = await localUser(ctx, id);
+    return row && renderVersiaUser(ctx, row);
+};
+
 /** A local user's collection of notes, empty until there are notes. */
 const emptyCollection: CollectionProvider = async (ctx, id) => {
     const row = await localUser(ctx, id);
@@ -90,10 +99,7 @@ export const userType: EntityType<v0_6.User> = {
     },
     deleteRemote: (ctx, id, sender) => deleteRemoteAccount(ctx, sender.instanceId, id),
     known: knownUser,
-    find: async (ctx, id) => {
-        const row = await localUser(ctx, id);
-        return row && renderVersiaUser(ctx, row);
-    },
+    find: (ctx, id) => localVersiaUser(ctx, id),
     // Who follows whom is the graph's, which adds the followers and following collections.
     collections: {
         outbox: emptyCollection,

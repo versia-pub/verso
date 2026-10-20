@@ -1,4 +1,5 @@
 import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
+import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -384,4 +385,26 @@ Deno.test("a user stops following a local one, or asking to", async () => {
     await test.send({ type: "Unfollow", author: "bob", followee });
     await test.send({ type: "Unfollow", author: "nobody", followee });
     assertEquals(await followsFrom(test.a, test.bob, [test.alice]), []);
+});
+
+Deno.test("a changed profile is sent to the instances of its followers", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "c.example");
+    await createRemoteAccount(test.ctx, "erin", "c.example");
+    await createInstance(test.ctx, "d.example");
+    await createRemoteAccount(test.ctx, "frank", "d.example");
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
+        .execute();
+    await follow(test.ctx, "erin", "alice");
+    await follow(test.ctx, "alice", "frank");
+    const before = (await queued(test.ctx)).length;
+
+    await updateProfile(test.ctx, "alice", { displayName: "Alice" });
+    await updateProfile(test.ctx, "bob", { displayName: "Bob" });
+
+    // Only carol follows alice from another instance; erin only asked, and alice follows frank.
+    const sent = (await queued(test.ctx)).slice(before);
+    assertEquals(sent.map(([domain, entity]) => [domain, entity.type, entity.display_name]), [
+        ["b.example", "User", "Alice"],
+    ]);
 });

@@ -175,6 +175,15 @@ export const followIdsFrom = async (
         .execute())
         .map((row) => row.account_id);
 
+/** The ids of every account on one of an account's lists. */
+export const everyListed = async (
+    ctx: Context,
+    list: FollowList,
+    accountId: string,
+): Promise<string[]> =>
+    (await listed(ctx, list, accountId).select(`${lists[list].listed} as account_id`).execute())
+        .map((row) => row.account_id);
+
 /** How many accounts are on one of an account's lists. */
 export const countFollows = async (
     ctx: Context,

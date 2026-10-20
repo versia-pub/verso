@@ -1,7 +1,8 @@
 import { accountPermissions } from "./accounts/roles.ts";
 import { authenticateToken } from "./auth/tokens.ts";
 import { createResolver } from "./federation/resolver.ts";
-import { followDeliveries } from "./graph/federation.ts";
+import { followDeliveries, profileDeliveries } from "./graph/federation.ts";
+import { acceptWhenUnlocked } from "./graph/follows.ts";
 import type { AppServices } from "./http/env.ts";
 import { instanceKey } from "./instances/keys.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
@@ -16,7 +17,12 @@ export const appServices = (): AppServices => ({
 });
 
 /** Who is told of each event. */
-export const subscribers: readonly Subscriber[] = [followDeliveries];
+export const subscribers: readonly Subscriber[] = [
+    // Before the profile is sent, so the followers it accepts are sent it too.
+    acceptWhenUnlocked,
+    profileDeliveries,
+    followDeliveries,
+];
 
 /**
  * Federation as Verso's modules provide it, with `blockedDomains` as config blocks them. Make one

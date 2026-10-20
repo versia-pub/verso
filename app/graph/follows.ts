@@ -3,13 +3,15 @@
  * @module
  */
 import { countFollow, findAccount } from "../accounts/accounts.ts";
-import type { Context } from "../kernel/context.ts";
+import { isProfileUpdated } from "../accounts/events.ts";
+import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import type { FollowEvent } from "./events.ts";
 import {
     acceptPendingFollow,
     countFollows,
     deleteFollow,
+    everyListed,
     type FollowOptions,
     followsFrom,
     insertFollow,
@@ -130,3 +132,12 @@ export const unfollow = (ctx: Context, followerId: string, followeeId: string): 
 /** How many accounts are asking to follow `accountId`. */
 export const countFollowRequests = (ctx: Context, accountId: string): Promise<number> =>
     countFollows(ctx, "requests", accountId);
+
+/** Accepts everyone asking to follow an account once it is unlocked, as Mastodon does. */
+export const acceptWhenUnlocked = async (ctx: Context, event: DomainEvent): Promise<void> => {
+    if (!isProfileUpdated(event) || !event.unlocked) return;
+
+    for (const followerId of await everyListed(ctx, "requests", event.accountId)) {
+        await acceptFollow(ctx, followerId, event.accountId);
+    }
+};

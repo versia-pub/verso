@@ -41,39 +41,56 @@ const sentTo = (network: Network, host: string, path?: string) =>
 
 const inbox = "/.versia/v0.6/inbox";
 
-Deno.test("a user found by address is delivered to, and sees profile changes", async () => {
+Deno.test("a user found by address is followed, and their followers see profile changes", async () => {
     await using network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"];
-    const b = network.instances["b.test"].ctx;
+    const b = network.instances["b.test"];
     const alice = await createLocalAccount(a.ctx, "alice");
-    await createLocalAccount(b, "bob");
-    // b.test takes only users it knows, so it has found alice already.
-    await b.federation.resolve(b, { host: "a.test", id: alice }, "User");
+    const bob = await createLocalAccount(b.ctx, "bob");
+    const asBob = { authorization: `Bearer ${await tokenFor(b.ctx, bob)}` };
 
-    // alice looks bob up, and a.test fetches him.
-    const lookup = await a.app.request("/api/v1/accounts/lookup?acct=bob@b.test", {
-        headers: { authorization: `Bearer ${await tokenFor(a.ctx, alice)}` },
+    // bob looks alice up, so b.test fetches her, and follows her.
+    const lookup = await b.app.request("/api/v1/accounts/lookup?acct=alice@a.test", {
+        headers: asBob,
     });
     assertEquals(lookup.status, 200);
-    const bob: string = (await lookup.json()).id;
-
-    await queueDeliveries(a.ctx, await userOf(a.ctx, alice), [bob]);
+    const aliceOnB: string = (await lookup.json()).id;
+    const asked = await b.app.request(`/api/v1/accounts/${aliceOnB}/follow`, {
+        method: "POST",
+        headers: asBob,
+    });
+    assertEquals((await asked.json()).requested, true);
     await network.drain();
-    assertEquals(await remoteNames(b), { alice: "" });
 
-    await updateProfile(a.ctx, alice, { displayName: "Alice" });
-    await queueDeliveries(a.ctx, await userOf(a.ctx, alice), [bob]);
-    await network.drain();
-    assertEquals(await remoteNames(b), { alice: "Alice" });
+    const relationship = await b.app.request(`/api/v1/accounts/relationships?id=${aliceOnB}`, {
+        headers: asBob,
+    });
+    assertEquals((await relationship.json())[0].following, true);
+    assertEquals(await remoteNames(b.ctx), { alice: "" });
 
-    // Sending the first delivery again is taken, and changes nothing.
-    const first = network.transport.sent.find((request) =>
-        new URL(request.url).host === "b.test" && request.method === "POST"
-    );
-    assertExists(first);
-    assertEquals((await network.transport(first)).status, 202);
+    // alice changes her name, and her follower's instance is sent it.
+    const updated = await a.app.request("/api/v1/accounts/update_credentials", {
+        method: "PATCH",
+        headers: {
+            authorization: `Bearer ${await tokenFor(a.ctx, alice)}`,
+            "content-type": "application/json",
+        },
+        body: '{"display_name": "Alice"}',
+    });
+    assertEquals(updated.status, 200);
     await network.drain();
-    assertEquals(await remoteNames(b), { alice: "Alice" });
+    assertEquals(await remoteNames(b.ctx), { alice: "Alice" });
+
+    // Sending that delivery again is taken, and changes nothing.
+    const sent = [];
+    for (const request of network.transport.sent) {
+        if (new URL(request.url).host !== "b.test" || request.method !== "POST") continue;
+        if ((await request.clone().json()).type === "User") sent.push(request);
+    }
+    assertEquals(sent.length, 1);
+    assertEquals((await network.transport(sent[0])).status, 202);
+    await network.drain();
+    assertEquals(await remoteNames(b.ctx), { alice: "Alice" });
 });
 
 Deno.test("deliveries to a peer that is down wait for it, and all arrive once", async () => {

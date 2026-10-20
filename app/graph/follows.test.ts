@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
@@ -179,4 +180,28 @@ Deno.test("each change to a follow is told, and nothing else is", async () => {
         { type: "graph.follow_rejected", followerId: "alice", followeeId: "bob" },
         { type: "graph.unfollowed", followerId: "alice", followeeId: "carol" },
     ]);
+});
+
+Deno.test("unlocking an account accepts everyone asking to follow it", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "dave");
+    await lock(test.ctx, "alice");
+    await lock(test.ctx, "bob");
+    await follow(test.ctx, "bob", "alice");
+    await follow(test.ctx, "carol", "alice");
+    await follow(test.ctx, "dave", "bob");
+
+    await updateProfile(test.ctx, "alice", { locked: false });
+
+    assertEquals(
+        (await followsOf(test.ctx, "alice", ["bob", "carol"])).map((row) => row.accepted),
+        [true, true],
+    );
+    assertEquals((await followsOf(test.ctx, "bob", ["dave"]))[0]?.accepted, false);
+    assertEquals(await counts(test.ctx), {
+        alice: [0, 2],
+        bob: [1, 0],
+        carol: [1, 0],
+        dave: [0, 0],
+    });
 });

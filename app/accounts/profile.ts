@@ -1,5 +1,7 @@
 import type { Context } from "../kernel/context.ts";
-import { type AccountChanges, updateLocalAccount } from "./accounts.ts";
+import { emit } from "../kernel/events.ts";
+import { type AccountChanges, findAccount, updateLocalAccount } from "./accounts.ts";
+import type { ProfileUpdated } from "./events.ts";
 import type { ProfileField, Visibility } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
 
@@ -29,7 +31,10 @@ const plainField = (name: string, value: string): ProfileField => ({
     value_html: escapeHtml(value),
 });
 
-/** Changes a local account's profile, making the HTML of what was written. */
+/**
+ * Changes a local account's profile, making the HTML of what was written, and tells the rest of
+ * Verso, even if nothing changed, as Mastodon does.
+ */
 export const updateProfile = async (
     ctx: Context,
     accountId: string,
@@ -60,5 +65,14 @@ export const updateProfile = async (
             .map(({ name, value }) => plainField(name, value));
     }
 
-    await updateLocalAccount(ctx, accountId, set);
+    await ctx.transaction(async (tx) => {
+        const before = await findAccount(tx, accountId);
+        if (before?.domain !== null) return;
+
+        await updateLocalAccount(tx, accountId, set);
+
+        const unlocked = before.locked && changes.locked === false;
+        const event: ProfileUpdated = { type: "accounts.profile_updated", accountId, unlocked };
+        await emit(tx, event);
+    });
 };

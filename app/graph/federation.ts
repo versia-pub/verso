@@ -6,13 +6,20 @@
  */
 import { parseReference, v0_6 } from "@versia/protocol";
 import { findAccount } from "../accounts/accounts.ts";
-import { knownUser, userReferences } from "../accounts/federation.ts";
+import { isProfileUpdated } from "../accounts/events.ts";
+import { knownUser, localVersiaUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveries } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { isFollowEvent } from "./events.ts";
-import { countFollows, followIdsFrom, followsFrom, type FollowSide } from "./follow_queries.ts";
+import {
+    countFollows,
+    everyListed,
+    followIdsFrom,
+    followsFrom,
+    type FollowSide,
+} from "./follow_queries.ts";
 import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
 
 /**
@@ -93,6 +100,16 @@ export const followDeliveries = async (ctx: Context, event: DomainEvent): Promis
         case "graph.follow_rejected":
             return await sendToFollower(ctx, "FollowReject", followerId, followeeId);
     }
+};
+
+/** Sends a local user's changed profile to their followers' instances. */
+export const profileDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
+    if (!isProfileUpdated(event)) return;
+
+    const user = await localVersiaUser(ctx, event.accountId);
+    if (user === undefined) return;
+
+    await queueDeliveries(ctx, user, await everyListed(ctx, "followers", event.accountId));
 };
 
 /** The author of an entity sent by their instance, which only they may send. */
