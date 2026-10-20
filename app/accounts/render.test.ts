@@ -129,7 +129,7 @@ Deno.test("others see the bio and fields as HTML, and their owner as written", a
     assertEquals(account.note, "<p><strong>Hi</strong></p>");
     assertEquals(account.fields, [{ name: "Site", value: "<em>me</em>", verified_at: null }]);
 
-    const own = renderCredentialAccount(test.ctx, row, [], []);
+    const own = renderCredentialAccount(test.ctx, row, [], [], 0);
     assertEquals(own.source.note, "**Hi**");
     assertEquals(own.source.fields, [{ name: "Site", value: "*me*", verified_at: null }]);
 });
@@ -142,7 +142,7 @@ Deno.test("an owner sees their settings, and the role everyone has", async () =>
         .execute();
 
     const own = CredentialAccount.parse(
-        renderCredentialAccount(test.ctx, await find(test.ctx, id), [], ["owner:account"]),
+        renderCredentialAccount(test.ctx, await find(test.ctx, id), [], ["owner:account"], 0),
     );
 
     assertEquals(own.source.privacy, "unlisted");
@@ -190,7 +190,7 @@ Deno.test("an owner sees their highest role, with everything they may do", async
     const roles = [role("hidden", 100, false), role("mod", 10, true)];
 
     const own = CredentialAccount.parse(
-        renderCredentialAccount(test.ctx, await find(test.ctx, id), roles, ["roles"]),
+        renderCredentialAccount(test.ctx, await find(test.ctx, id), roles, ["roles"], 0),
     );
 
     assertEquals(own.role, {
@@ -202,7 +202,7 @@ Deno.test("an owner sees their highest role, with everything they may do", async
         collection_limit: 0,
     });
     assertEquals(
-        renderCredentialAccount(test.ctx, await find(test.ctx, id), [roles[1]], []).role
+        renderCredentialAccount(test.ctx, await find(test.ctx, id), [roles[1]], [], 0).role
             .highlighted,
         true,
     );

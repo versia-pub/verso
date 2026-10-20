@@ -8,7 +8,7 @@ import type { Scope } from "../kernel/scopes.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
-import { follow } from "./follows.ts";
+import { acceptFollow, follow } from "./follows.ts";
 import { graphRoutes } from "./routes.ts";
 
 const open = async () => {
@@ -305,4 +305,133 @@ Deno.test("follows are listed to whoever may see them", async () => {
         (await list(test.app, path, await tokenFor(test.ctx, "bob", ["read:accounts"]))).status,
         200,
     );
+});
+
+Deno.test("the accounts asking to follow the viewer are listed newest first, a page at a time", async () => {
+    await using test = await openLists();
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
+        .execute();
+    await test.follows([["bob", "alice"], ["carol", "alice"], ["dave", "alice"], [
+        "alice",
+        "erin",
+    ]]);
+    await acceptFollow(test.ctx, "bob", "alice");
+    const token = await tokenFor(test.ctx, "alice");
+    const cursor = async (follower: string) =>
+        (await test.ctx.db.selectFrom("follows").select("id")
+            .where("follower_id", "=", follower).where("followee_id", "=", "alice")
+            .executeTakeFirstOrThrow()).id;
+    const url = "https://social.example/api/v1/follow_requests";
+
+    // Bob was accepted, and alice follows erin.
+    const first = await list(test.app, "/api/v1/follow_requests?limit=1", token);
+    assertEquals(first.ids, ["dave"]);
+    assertEquals(
+        first.link,
+        `<${url}?limit=1&max_id=${await cursor("dave")}>; rel="next", ` +
+            `<${url}?limit=1&min_id=${await cursor("dave")}>; rel="prev"`,
+    );
+    assertEquals((await list(test.app, "/api/v1/follow_requests", token)).ids, ["dave", "carol"]);
+    assertEquals(
+        (await list(test.app, "/api/v1/follow_requests", await tokenFor(test.ctx, "erin"))).ids,
+        [],
+    );
+});
+
+Deno.test("a request is accepted or rejected, and only a request", async () => {
+    await using test = await open();
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
+        .execute();
+    await follow(test.ctx, "bob", "alice");
+    await follow(test.ctx, "carol", "alice");
+    const answer = (id: string, verb: string) =>
+        test.request("POST", `/api/v1/follow_requests/${id}/${verb}`);
+
+    assertEquals(await answer("bob", "authorize"), {
+        status: 200,
+        body: { ...none, id: "bob", followed_by: true },
+    });
+    assertEquals(await answer("carol", "reject"), { status: 200, body: { ...none, id: "carol" } });
+
+    for (const [id, verb] of [["bob", "authorize"], ["bob", "reject"], ["carol", "authorize"]]) {
+        assertEquals((await answer(id, verb)).status, 404, `${verb} ${id}`);
+    }
+    assertEquals((await answer("dave", "reject")).status, 404);
+    assertEquals((await test.request("GET", "/api/v1/accounts/relationships?id=bob")).body, [
+        { ...none, id: "bob", followed_by: true },
+    ]);
+});
+
+Deno.test("removing a follower leaves a request alone", async () => {
+    await using test = await open();
+    await follow(test.ctx, "bob", "alice");
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
+        .execute();
+    await follow(test.ctx, "carol", "alice");
+    const remove = (id: string) =>
+        test.request("POST", `/api/v1/accounts/${id}/remove_from_followers`);
+
+    assertEquals(await remove("bob"), { status: 200, body: { ...none, id: "bob" } });
+    assertEquals(await remove("carol"), {
+        status: 200,
+        body: { ...none, id: "carol", requested_by: true },
+    });
+    assertEquals((await remove("dave")).status, 404);
+});
+
+Deno.test("answering follows needs a token that may, and a role that may follow", async () => {
+    await using test = await open();
+    const paths = [
+        "/api/v1/follow_requests/bob/authorize",
+        "/api/v1/follow_requests/bob/reject",
+        "/api/v1/accounts/bob/remove_from_followers",
+    ];
+
+    assertEquals(
+        (await test.request("GET", "/api/v1/follow_requests", { scopes: ["read:accounts"] }))
+            .status,
+        403,
+    );
+    assertEquals(
+        (await test.request("GET", "/api/v1/follow_requests", { scopes: ["read:follows"] }))
+            .status,
+        200,
+    );
+    for (const path of paths) {
+        assertEquals((await test.request("POST", path, { scopes: ["read"] })).status, 403, path);
+    }
+
+    const app = createTestApp(test.ctx, graphRoutes, {
+        permissions: { anonymous: [], default: ["read:account"] },
+    });
+    for (const path of paths) {
+        const response = await app.request(path, {
+            method: "POST",
+            headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` },
+        });
+        await response.body?.cancel();
+        assertEquals(response.status, 403, path);
+    }
+});
+
+Deno.test("an account's owner sees how many ask to follow it", async () => {
+    await using test = await createTestContext();
+    const app = createTestApp(test.ctx, routes(defaultSettings()));
+    for (const id of ["alice", "bob", "dave", "erin"]) await createLocalAccount(test.ctx, id);
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
+        .execute();
+    for (const id of ["bob", "dave", "erin"]) await follow(test.ctx, id, "alice");
+    await follow(test.ctx, "alice", "bob");
+    await acceptFollow(test.ctx, "dave", "alice");
+    await acceptFollow(test.ctx, "erin", "alice");
+
+    const count = async (id: string) => {
+        const response = await app.request("/api/v1/accounts/verify_credentials", {
+            headers: { authorization: `Bearer ${await tokenFor(test.ctx, id)}` },
+        });
+        return (await response.json()).source.follow_requests_count;
+    };
+
+    // Alice has two followers, and bob follows nobody who hasn't accepted.
+    assertEquals([await count("alice"), await count("bob")], [1, 0]);
 });

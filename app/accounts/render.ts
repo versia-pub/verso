@@ -108,13 +108,14 @@ export const renderAccount = (
 
 /**
  * An account as its owner sees it, with the settings they can change, its roles, highest first,
- * and everything it may do.
+ * everything it may do, and how many accounts are asking to follow it.
  */
 export const renderCredentialAccount = (
     ctx: Context,
     row: AccountRow,
     roles: readonly RoleRow[],
     permissions: Iterable<Permission>,
+    followRequests: number,
 ): CredentialAccount => ({
     ...renderAccount(ctx, row, roles),
     source: {
@@ -123,7 +124,7 @@ export const renderCredentialAccount = (
         privacy: row.default_visibility,
         sensitive: row.default_sensitive,
         language: row.default_language,
-        follow_requests_count: 0,
+        follow_requests_count: followRequests,
         hide_collections: row.hide_collections,
         discoverable: row.discoverable,
         indexable: row.indexable,

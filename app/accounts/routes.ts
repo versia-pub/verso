@@ -4,6 +4,7 @@ import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
+import { countFollowRequests } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { type AccountRow, findAccount } from "./accounts.ts";
 import { findAccountByAddress, parseAddress } from "./addresses.ts";
@@ -18,7 +19,7 @@ const found = (row: AccountRow | undefined) => {
     return row;
 };
 
-/** The viewer's own account, with its roles and what it may do. */
+/** The viewer's own account, with its roles, what it may do, and who asks to follow it. */
 const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly accountId: string }) => {
     const row = found(await findAccount(ctx, viewer.accountId));
     return renderCredentialAccount(
@@ -26,6 +27,7 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
         row,
         await rolesOf(ctx, row.id),
         await viewer.permissions(),
+        await countFollowRequests(ctx, row.id),
     );
 };
 

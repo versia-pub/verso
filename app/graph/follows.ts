@@ -8,6 +8,7 @@ import { emit } from "../kernel/events.ts";
 import type { FollowEvent } from "./events.ts";
 import {
     acceptPendingFollow,
+    countFollows,
     deleteFollow,
     type FollowOptions,
     followsFrom,
@@ -87,14 +88,18 @@ export const acceptFollow = (
         return true;
     });
 
-/** Removes a follow, or a request for one, and says why. */
+/**
+ * Removes a follow, or a request for one, and says why. With `accepted`, it only removes a follow,
+ * or only a request.
+ */
 const endFollow = (
     ctx: Context,
     type: "graph.follow_rejected" | "graph.unfollowed",
     followerId: string,
     followeeId: string,
+    accepted?: boolean,
 ) => ctx.transaction(async (tx) => {
-    const removed = await deleteFollow(tx, followerId, followeeId);
+    const removed = await deleteFollow(tx, followerId, followeeId, accepted);
     if (removed === undefined) return false;
 
     if (removed.accepted) await countFollow(tx, followerId, followeeId, -1);
@@ -105,13 +110,15 @@ const endFollow = (
 
 /**
  * Has `followeeId` reject `followerId`: their request to follow, or their follow, which removes
- * them as a follower. Returns whether there was anything to reject.
+ * them as a follower. With `accepted`, it only rejects a follower, or only a request. Returns
+ * whether there was anything to reject.
  */
 export const rejectFollow = (
     ctx: Context,
     followerId: string,
     followeeId: string,
-): Promise<boolean> => endFollow(ctx, "graph.follow_rejected", followerId, followeeId);
+    accepted?: boolean,
+): Promise<boolean> => endFollow(ctx, "graph.follow_rejected", followerId, followeeId, accepted);
 
 /**
  * Has `followerId` stop following `followeeId`, or withdraw asking to. Returns whether there was
@@ -119,3 +126,7 @@ export const rejectFollow = (
  */
 export const unfollow = (ctx: Context, followerId: string, followeeId: string): Promise<boolean> =>
     endFollow(ctx, "graph.unfollowed", followerId, followeeId);
+
+/** How many accounts are asking to follow `accountId`. */
+export const countFollowRequests = (ctx: Context, accountId: string): Promise<number> =>
+    countFollows(ctx, "requests", accountId);

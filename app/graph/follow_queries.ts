@@ -80,17 +80,23 @@ export const acceptPendingFollow = async (
     return numUpdatedRows > 0n;
 };
 
-/** Removes a follow or a request to follow, and returns it, if there was one. */
+/**
+ * Removes a follow or a request to follow, and returns it, if there was one. With `accepted`, it
+ * only removes a follow, or only a request.
+ */
 export const deleteFollow = async (
     ctx: Context,
     followerId: string,
     followeeId: string,
-): Promise<FollowRow | undefined> =>
-    await ctx.db.deleteFrom("follows")
+    accepted?: boolean,
+): Promise<FollowRow | undefined> => {
+    let query = ctx.db.deleteFrom("follows")
         .where("follower_id", "=", followerId)
-        .where("followee_id", "=", followeeId)
-        .returningAll()
-        .executeTakeFirst();
+        .where("followee_id", "=", followeeId);
+    if (accepted !== undefined) query = query.where("accepted", "=", accepted);
+
+    return await query.returningAll().executeTakeFirst();
+};
 
 /** The follows and requests from `followerId` of any of `followeeIds`. */
 export const followsFrom = async (
@@ -119,53 +125,60 @@ export const followsOf = async (
 /** An account's followers, or the accounts it follows. */
 export type FollowSide = "followers" | "following";
 
-/** For each side, the column naming the account it is of, and the one naming who is listed. */
-const sides = {
-    followers: { of: "followee_id", listed: "follower_id" },
-    following: { of: "follower_id", listed: "followee_id" },
-} as const;
-
-const accepted = (ctx: Context, side: FollowSide, accountId: string) =>
-    ctx.db.selectFrom("follows")
-        .where(sides[side].of, "=", accountId)
-        .where("accepted", "=", true);
+/** An account's followers, the accounts it follows, or the accounts asking to follow it. */
+export type FollowList = FollowSide | "requests";
 
 /**
- * A page of an account's accepted followers or follows, newest first, each as the follow's id,
- * which pages are counted by, and the listed account's.
+ * For each list, the column naming the account it is of, the one naming who is listed, and
+ * whether its follows are accepted.
+ */
+const lists = {
+    followers: { of: "followee_id", listed: "follower_id", accepted: true },
+    following: { of: "follower_id", listed: "followee_id", accepted: true },
+    requests: { of: "followee_id", listed: "follower_id", accepted: false },
+} as const;
+
+const listed = (ctx: Context, list: FollowList, accountId: string) =>
+    ctx.db.selectFrom("follows")
+        .where(lists[list].of, "=", accountId)
+        .where("accepted", "=", lists[list].accepted);
+
+/**
+ * A page of one of an account's lists, newest first, each as the follow's id, which pages are
+ * counted by, and the listed account's.
  */
 export const followPage = async (
     ctx: Context,
-    side: FollowSide,
+    list: FollowList,
     accountId: string,
     page: PageBounds,
 ): Promise<{ id: string; account_id: string }[]> =>
     await readPage(
-        accepted(ctx, side, accountId).select(["id", `${sides[side].listed} as account_id`]),
+        listed(ctx, list, accountId).select(["id", `${lists[list].listed} as account_id`]),
         "follows.id",
         page,
     );
 
-/** The ids of an account's accepted followers or follows, from `offset`, oldest first. */
+/** The ids of the accounts on one of an account's lists, from `offset`, oldest first. */
 export const followIdsFrom = async (
     ctx: Context,
-    side: FollowSide,
+    list: FollowList,
     accountId: string,
     offset: number,
     limit: number,
 ): Promise<string[]> =>
-    (await accepted(ctx, side, accountId)
-        .select(`${sides[side].listed} as account_id`)
+    (await listed(ctx, list, accountId)
+        .select(`${lists[list].listed} as account_id`)
         .orderBy("id")
         .offset(offset)
         .limit(limit)
         .execute())
         .map((row) => row.account_id);
 
-/** How many accepted followers or follows an account has. */
+/** How many accounts are on one of an account's lists. */
 export const countFollows = async (
     ctx: Context,
-    side: FollowSide,
+    list: FollowList,
     accountId: string,
 ): Promise<number> =>
-    readCount(await accepted(ctx, side, accountId).select(countAll).executeTakeFirstOrThrow());
+    readCount(await listed(ctx, list, accountId).select(countAll).executeTakeFirstOrThrow());

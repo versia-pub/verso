@@ -8,7 +8,7 @@ import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { Flag } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
 import { followPage, followsFrom, type FollowSide, followsOf } from "./follow_queries.ts";
-import { follow, unfollow } from "./follows.ts";
+import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
 import { renderRelationship } from "./render.ts";
 
 /** How `viewerId` is connected to each of `ids` that is an account, in the order asked. */
@@ -73,10 +73,51 @@ const followList = (side: FollowSide) =>
         },
     });
 
+/** Accepts or rejects an account's request to follow the viewer. */
+const answerRequest = (answer: "authorize" | "reject") =>
+    defineRoute({
+        method: "POST",
+        path: `/api/v1/follow_requests/:id/${answer}`,
+        summary: answer === "authorize"
+            ? "Accepts an account's request to follow the viewer"
+            : "Rejects an account's request to follow the viewer",
+        tags: ["follow_requests"],
+        auth: { require: "user", scope: "write:follows", permission: "owner:follow" },
+        params: z.object({ id: z.string() }),
+        responses: { 200: Relationship },
+        handler: async (ctx, { params, viewer }) => {
+            const answered = answer === "authorize"
+                ? await acceptFollow(ctx, params.id, viewer.accountId)
+                : await rejectFollow(ctx, params.id, viewer.accountId, false);
+            if (!answered) throw new NotFound();
+
+            return { status: 200, body: await relationship(ctx, viewer.accountId, params.id) };
+        },
+    });
+
 /** Who follows whom. Before the account routes, whose `/api/v1/accounts/:id` would take these. */
 export const graphRoutes: readonly Route[] = [
     followList("followers"),
     followList("following"),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/follow_requests",
+        summary: "The accounts asking to follow the viewer, newest first",
+        tags: ["follow_requests"],
+        auth: { require: "user", scope: "read:follows" },
+        query: PageQuery({ default: 40, max: 80 }),
+        responses: { 200: Paged(Account) },
+        handler: async (ctx, { query, viewer }) => {
+            const requests = await followPage(ctx, "requests", viewer.accountId, query);
+            return {
+                status: 200,
+                body: await publicAccounts(ctx, requests.map((request) => request.account_id)),
+                cursors: cursorsOf(requests, query, (request) => request.id),
+            };
+        },
+    }),
+    answerRequest("authorize"),
+    answerRequest("reject"),
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/relationships",
@@ -125,6 +166,19 @@ export const graphRoutes: readonly Route[] = [
         responses: { 200: Relationship },
         handler: async (ctx, { params, viewer }) => {
             await unfollow(ctx, viewer.accountId, params.id);
+            return { status: 200, body: await relationship(ctx, viewer.accountId, params.id) };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v1/accounts/:id/remove_from_followers",
+        summary: "Removes an account from the viewer's followers",
+        tags: ["accounts"],
+        auth: { require: "user", scope: "write:follows", permission: "owner:follow" },
+        params: z.object({ id: z.string() }),
+        responses: { 200: Relationship },
+        handler: async (ctx, { params, viewer }) => {
+            await rejectFollow(ctx, params.id, viewer.accountId, true);
             return { status: 200, body: await relationship(ctx, viewer.accountId, params.id) };
         },
     }),
