@@ -4,6 +4,7 @@ import { webfingerRoutes } from "../accounts/webfinger.ts";
 import { authRoutes } from "../auth/routes.ts";
 import { inboxRoute } from "../federation/inbox.ts";
 import { entityRoutes } from "../federation/registry.ts";
+import { graphRoutes } from "../graph/routes.ts";
 import type { AboutSettings } from "../instances/render.ts";
 import { instanceRoutes } from "../instances/routes.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
@@ -20,6 +21,8 @@ import type { Route } from "./route.ts";
 export const routes = (settings: AboutSettings): readonly Route[] => {
     const documented = [
         ...authRoutes,
+        // Before the account routes, whose `/api/v1/accounts/:id` would take their paths.
+        ...graphRoutes,
         ...accountRoutes(settings.limits),
         ...roleRoutes,
         ...webfingerRoutes,

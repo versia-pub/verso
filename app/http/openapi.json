@@ -641,7 +641,7 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
+                    "required": false,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -757,7 +757,7 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
+                    "required": false,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -842,6 +842,216 @@
                 }
             }
         },
+        "/api/v1/accounts/relationships": {
+            "get": {
+                "summary": "How the viewer is connected to each of some accounts",
+                "description": "Needs a token for a user, not one an app got for itself.",
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:follows"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Relationship"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}/follow": {
+            "post": {
+                "summary": "Follows an account, or asks to, or changes how the viewer sees one they follow",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:follows"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reblogs": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "notify": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "languages": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^[a-z]{2}$"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reblogs": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "notify": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "languages": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^[a-z]{2}$"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "reblogs": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "notify": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "languages": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^[a-z]{2}$"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Relationship"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}/unfollow": {
+            "post": {
+                "summary": "Stops following an account, or withdraws asking to",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:follows"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Relationship"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/verify_credentials": {
             "get": {
                 "summary": "The viewer's own account, with their settings",
@@ -885,7 +1095,7 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
+                    "required": false,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -1238,57 +1448,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/CredentialAccount"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/accounts/relationships": {
-            "get": {
-                "summary": "How the viewer is connected to each of some accounts",
-                "description": "Needs a token for a user, not one an app got for itself.",
-                "tags": [
-                    "accounts"
-                ],
-                "security": [
-                    {
-                        "OAuth2": [
-                            "read:follows"
-                        ]
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A JSON body",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Relationship"
-                                    }
                                 }
                             }
                         }
@@ -1484,6 +1643,7 @@
                                             "enum": [
                                                 "read:account",
                                                 "owner:account",
+                                                "owner:follow",
                                                 "roles"
                                             ]
                                         }
@@ -1553,6 +1713,7 @@
                                             "enum": [
                                                 "read:account",
                                                 "owner:account",
+                                                "owner:follow",
                                                 "roles"
                                             ]
                                         }
@@ -1622,6 +1783,7 @@
                                             "enum": [
                                                 "read:account",
                                                 "owner:account",
+                                                "owner:follow",
                                                 "roles"
                                             ]
                                         }
@@ -1754,7 +1916,7 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
+                    "required": false,
                     "content": {
                         "application/json": {
                             "schema": {
@@ -1770,6 +1932,7 @@
                                             "enum": [
                                                 "read:account",
                                                 "owner:account",
+                                                "owner:follow",
                                                 "roles"
                                             ]
                                         }
@@ -1836,6 +1999,7 @@
                                             "enum": [
                                                 "read:account",
                                                 "owner:account",
+                                                "owner:follow",
                                                 "roles"
                                             ]
                                         }
@@ -1902,6 +2066,7 @@
                                             "enum": [
                                                 "read:account",
                                                 "owner:account",
+                                                "owner:follow",
                                                 "roles"
                                             ]
                                         }

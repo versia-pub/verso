@@ -40,3 +40,23 @@ export const giveRole = async (
         .values({ account_id: accountId, role_id: roleId, issuer, created_at: ctx.clock.now() })
         .execute();
 };
+
+/** An account on the instance `instanceId`, for tests. Its id is its username. */
+export const createRemoteAccount = async (
+    ctx: Context,
+    username: string,
+    instanceId: string,
+): Promise<string> => {
+    await ctx.db.insertInto("accounts")
+        .values({
+            id: username,
+            username,
+            instance_id: instanceId,
+            remote_id: username,
+            created_at: ctx.clock.now(),
+            fetched_at: ctx.clock.now(),
+        })
+        .execute();
+
+    return username;
+};

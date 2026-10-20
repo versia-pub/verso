@@ -10,6 +10,8 @@ export const permissions = [
     "read:account",
     /** Change one's own profile and settings. */
     "owner:account",
+    /** Follow and unfollow accounts. */
+    "owner:follow",
     /** Create, change and assign roles below one's own. */
     "roles",
 ] as const;

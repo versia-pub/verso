@@ -104,7 +104,7 @@ export const Permissions = z.strictObject({
     /** For requests without a user, such as a logged-out visitor's. */
     anonymous: z.array(Permission).default(["read:account"]),
     /** For every user. */
-    default: z.array(Permission).default(["read:account", "owner:account"]),
+    default: z.array(Permission).default(["read:account", "owner:account", "owner:follow"]),
 }).prefault({});
 export type Permissions = z.infer<typeof Permissions>;
 

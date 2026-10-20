@@ -1,15 +1,15 @@
-import { Account, CredentialAccount, Relationship } from "@versia/client-api";
+import { Account, CredentialAccount } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-import { type AccountRow, existingAccountIds, findAccount } from "./accounts.ts";
+import { type AccountRow, findAccount } from "./accounts.ts";
 import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { pictureRoutes } from "./picture_routes.ts";
 import { updateProfile } from "./profile.ts";
-import { renderAccount, renderCredentialAccount, renderRelationship } from "./render.ts";
+import { renderAccount, renderCredentialAccount } from "./render.ts";
 import { rolesOf } from "./role_queries.ts";
 
 const found = (row: AccountRow | undefined) => {
@@ -105,27 +105,6 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
             });
 
             return { status: 200, body: await ownAccount(ctx, viewer) };
-        },
-    }),
-    defineRoute({
-        method: "GET",
-        path: "/api/v1/accounts/relationships",
-        summary: "How the viewer is connected to each of some accounts",
-        tags: ["accounts"],
-        auth: { require: "user", scope: "read:follows" },
-        // `id[]=1&id[]=2`, or a single `id=1`.
-        query: z.object({
-            id: z.union([z.string().transform((id) => [id]), z.array(z.string())]).default([]),
-        }),
-        responses: { 200: z.array(Relationship) },
-        handler: async (ctx, { query }) => {
-            const asked = [...new Set(query.id)];
-            const known = new Set(await existingAccountIds(ctx, asked));
-
-            return {
-                status: 200,
-                body: asked.filter((id) => known.has(id)).map(renderRelationship),
-            };
         },
     }),
     defineRoute({

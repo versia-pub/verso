@@ -88,9 +88,12 @@ const formOf = async (c: HonoContext) => {
     return { ...qs.parse(text.toString(), { strictDepth: true }), ...Object.fromEntries(files) };
 };
 
-/** Mastodon clients send JSON or forms, so every route accepts both. */
+/**
+ * Mastodon clients send JSON or forms, so every route accepts both. They send actions such as
+ * follows with no body at all, which Mastodon reads as an empty one.
+ */
 const bodyOf = async (c: HonoContext, route: Route) => {
-    if (!route.body) return {};
+    if (!route.body || c.req.raw.body === null) return {};
 
     const type = c.req.header("content-type")?.split(";")[0].trim().toLowerCase();
     const forms = ["application/x-www-form-urlencoded", "multipart/form-data"];
@@ -100,7 +103,10 @@ const bodyOf = async (c: HonoContext, route: Route) => {
     }
 
     try {
-        return type === "application/json" ? await c.req.json() : await formOf(c);
+        if (type !== "application/json") return await formOf(c);
+
+        const text = await c.req.text();
+        return text === "" ? {} : JSON.parse(text);
     } catch (error) {
         if (error instanceof HttpError) throw error;
         throw new BadRequest("The body isn't valid JSON or form data");

@@ -37,7 +37,7 @@ Deno.test("a minimal config gets the defaults", async () => {
             },
             permissions: {
                 anonymous: ["read:account"],
-                default: ["read:account", "owner:account"],
+                default: ["read:account", "owner:account", "owner:follow"],
             },
             logging: { level: "info" },
         },

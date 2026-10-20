@@ -104,6 +104,24 @@ Deno.test("a route's inputs are its path, query, header and cookie parameters, a
     });
 });
 
+Deno.test("a body is optional when an empty one is valid, since a missing one reads as empty", () => {
+    const route = (body: z.ZodType) =>
+        defineRoute({
+            method: "POST",
+            path: "/api/v1/things",
+            summary: "Make a thing",
+            body,
+            responses: { 200: z.object({}) },
+            handler: unused,
+        });
+    const required = (body: z.ZodType) =>
+        openApiDocument([route(body)], info, origin).paths["/api/v1/things"]?.post?.requestBody
+            ?.required;
+
+    assertEquals(required(z.object({ name: z.string().optional() })), false);
+    assertEquals(required(z.object({ name: z.string() })), true);
+});
+
 Deno.test("a route without inputs or tags lists only its summary and responses", () => {
     const routes = [
         defineRoute({

@@ -238,6 +238,27 @@ export const setAccountPictures = async (
     await ctx.db.updateTable("accounts").set(pictures).where("id", "=", id).execute();
 };
 
+/**
+ * Counts a follow from `followerId` of `followeeId` that began, with `by` 1, or ended, with -1, in
+ * both accounts' counts.
+ */
+export const countFollow = async (
+    ctx: Context,
+    followerId: string,
+    followeeId: string,
+    by: 1 | -1,
+): Promise<void> => {
+    await ctx.db.updateTable("accounts")
+        .set((eb) => ({ following_count: eb("following_count", "+", by) }))
+        .where("id", "=", followerId)
+        .execute();
+
+    await ctx.db.updateTable("accounts")
+        .set((eb) => ({ followers_count: eb("followers_count", "+", by) }))
+        .where("id", "=", followeeId)
+        .execute();
+};
+
 /** Deletes an account. */
 export const deleteAccount = async (ctx: Context, id: string): Promise<void> => {
     await ctx.db.deleteFrom("accounts").where("id", "=", id).execute();

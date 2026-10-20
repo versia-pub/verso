@@ -41,7 +41,7 @@ type Operation = {
     readonly tags?: readonly string[];
     readonly security?: Security;
     readonly parameters?: readonly Parameter[];
-    readonly requestBody?: { readonly required: true; readonly content: Content };
+    readonly requestBody?: { readonly required: boolean; readonly content: Content };
     readonly responses: Readonly<Record<string, Response>>;
 };
 
@@ -250,7 +250,8 @@ const operation = (route: Route, names: Naming): Operation => {
         ...all.length > 0 && { parameters: all },
         ...body && {
             requestBody: {
-                required: true,
+                // A missing body is read as an empty one, which some routes take.
+                required: !route.body?.safeParse({}).success,
                 content: Object.fromEntries(bodyTypes.map((type) => [type, { schema: body }])),
             },
         },

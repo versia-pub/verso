@@ -317,6 +317,20 @@ Deno.test("a body must be well-formed JSON or form data", async () => {
     assertEquals((await test.send("/things/a?notify=1", "--x", "multipart/form-data")).status, 400);
 });
 
+Deno.test("a missing or empty body is read as an empty one, of any type", async () => {
+    await using test = await open();
+
+    const missing = await test.app.request("/echo", { method: "POST" });
+    assertEquals([missing.status, await missing.json()], [200, {}]);
+    assertEquals(await test.send("/echo", ""), { status: 200, body: {} });
+    assertEquals(await test.send("/echo", "", "application/x-www-form-urlencoded"), {
+        status: 200,
+        body: {},
+    });
+    assertEquals((await test.send("/echo", "", "text/plain")).status, 415);
+    assertEquals((await test.send("/echo", " ")).status, 400);
+});
+
 Deno.test("a body over 64 KiB is refused before it is read", async () => {
     await using test = await open();
     const atLimit = `"${"x".repeat(64 * 1024 - 2)}"`;
