@@ -14,15 +14,23 @@ const Thing = z.object({ type: z.literal("Thing"), id: z.string(), author: z.str
 type Thing = z.infer<typeof Thing>;
 
 /**
- * Things are sent by their author's instance. One with the id `fail` can't be applied, and
- * `partial` fails after a write, which must not be kept.
+ * Things are sent by their author's instance. One with the id `fail` can't be applied, `partial`
+ * fails after a write, which must not be kept, and `unready` can't be prepared.
  */
 const things = () => {
     const received: { thing: Thing; sender: Sender }[] = [];
+    const prepared: { id: string; inTransaction: boolean; sender: Sender; fetches: number }[] = [];
     const thing: EntityType<Thing> = {
         type: "Thing",
         schema: Thing,
         authority: (entity) => entity.author,
+        prepare: (ctx, entity, sender, budget) => {
+            if (entity.id === "unready") return Promise.reject(new Error("Not ready"));
+
+            const inTransaction = ctx.db.isTransaction;
+            prepared.push({ id: entity.id, inTransaction, sender, fetches: budget.fetches });
+            return Promise.resolve();
+        },
         receive: async (ctx, entity, sender) => {
             if (entity.id === "partial") await blockDomain(ctx, "written.example");
             if (entity.id === "fail" || entity.id === "partial") throw new Error("Can't");
@@ -31,12 +39,12 @@ const things = () => {
         },
     };
 
-    return { received, registry: createRegistry([thing]) };
+    return { received, prepared, registry: createRegistry([thing]) };
 };
 
 const open = async () => {
     const test = await createTestContext();
-    const { received, registry } = things();
+    const { received, prepared, registry } = things();
     const instanceId = test.ctx.ids();
     await test.ctx.db.insertInto("instances").values({
         id: instanceId,
@@ -64,7 +72,7 @@ const open = async () => {
             .executeTakeFirstOrThrow();
     };
 
-    return { ...test, received, registry, instanceId, send };
+    return { ...test, received, prepared, registry, instanceId, send };
 };
 
 Deno.test("an entity is applied with who sent it, and its job is done", async () => {
@@ -77,6 +85,20 @@ Deno.test("an entity is applied with who sent it, and its job is done", async ()
         sender: { domain: "b.example", instanceId: test.instanceId, fetched: false },
     }]);
     assertEquals(job.finished_at, test.clock.now());
+});
+
+Deno.test("an entity is prepared before its transaction, with a budget of its own", async () => {
+    await using test = await open();
+
+    await test.send({});
+    test.clock.advance(1);
+    const unready = await test.send({ id: "unready" });
+
+    const sender = { domain: "b.example", instanceId: test.instanceId, fetched: false };
+    assertEquals(test.prepared, [{ id: "1", inTransaction: false, sender, fetches: 20 }]);
+    assertEquals(test.received.map((received) => received.thing.id), ["1"]);
+    assertEquals([unready.attempts, unready.finished_at], [1, null]);
+    assertStringIncludes(unready.last_error ?? "", "Not ready");
 });
 
 Deno.test("an entity from an instance that may not send it is given up on", async () => {

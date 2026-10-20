@@ -8,6 +8,7 @@ import { findInstanceId } from "../instances/instances.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import { checkEntity, InboxJob } from "./inbox.ts";
 import type { Registry } from "./registry.ts";
+import { fetchBudget } from "./resolver.ts";
 
 const logger = getLogger(["verso", "federation"]);
 
@@ -48,7 +49,7 @@ export const inboxHandler = (registry: Registry): Handler => async (ctx, job) =>
     const instanceId = await findInstanceId(ctx, signer);
     if (instanceId === undefined) throw new Error(`${signer} isn't a known instance`);
 
-    await ctx.transaction((tx) =>
-        type.receive(tx, entity, { domain: signer, instanceId, fetched: false })
-    );
+    const sender = { domain: signer, instanceId, fetched: false };
+    await type.prepare?.(ctx, entity, sender, fetchBudget());
+    await ctx.transaction((tx) => type.receive(tx, entity, sender));
 };

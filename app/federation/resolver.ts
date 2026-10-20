@@ -61,6 +61,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         type: EntityType,
         reference: Reference,
         key: string,
+        budget: Budget,
     ) => {
         const { host, id } = reference;
         const reply = await fetchSigned(ctx, entityUrl(host, type.type, id));
@@ -96,9 +97,9 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         const instanceId = await findInstanceId(ctx, host);
         if (instanceId === undefined) throw new ResolveFailed(`${host} isn't a known instance`);
 
-        await ctx.transaction((tx) =>
-            type.receive(tx, entity, { domain: host, instanceId, fetched: true })
-        );
+        const sender = { domain: host, instanceId, fetched: true };
+        await type.prepare?.(ctx, entity, sender, budget);
+        await ctx.transaction((tx) => type.receive(tx, entity, sender));
         return (await type.known?.(ctx, reference))?.id;
     };
 
@@ -124,7 +125,9 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
             if (budget.fetches <= 0) return known?.id;
             budget.fetches--;
 
-            pending = fetchEntity(ctx, type, reference, key).finally(() => fetching.delete(key));
+            pending = fetchEntity(ctx, type, reference, key, budget).finally(() =>
+                fetching.delete(key)
+            );
             fetching.set(key, pending);
         }
 

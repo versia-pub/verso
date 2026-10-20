@@ -6,7 +6,8 @@ import { blockDomain } from "../moderation/domain_blocks.ts";
 import { registry } from "../registry.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
-import { createRegistry } from "./registry.ts";
+import type { Budget, Context } from "../kernel/context.ts";
+import { createRegistry, type Sender } from "./registry.ts";
 import { BadReply } from "./request.ts";
 import { createResolver, fetchBudget, ResolveFailed } from "./resolver.ts";
 
@@ -196,4 +197,30 @@ Deno.test("an instance can't send an entity only another instance may", async ()
         "evil.test may not send",
     );
     assertEquals(received, []);
+});
+
+Deno.test("a fetched entity is prepared before its transaction, from the same budget", async () => {
+    const { network, a } = await open();
+    await using _ = network;
+    const evil = await addEvilInstance(network, "evil.test");
+    const prepared: unknown[] = [];
+    const received: unknown[] = [];
+    const thing = {
+        type: "Thing",
+        schema: z.object({ type: z.literal("Thing"), id: z.string() }),
+        authority: (_: unknown, origin: string) => origin,
+        prepare: (ctx: Context, _: unknown, sender: Sender, budget: Budget) => {
+            prepared.push([ctx.db.isTransaction, sender.fetched, received.length, budget.fetches]);
+            return Promise.resolve();
+        },
+        receive: (_: unknown, entity: unknown) => Promise.resolve(void received.push(entity)),
+        known: () => Promise.resolve({ id: "1", fetchedAt: null }),
+    };
+    const resolve = createResolver(createRegistry([thing]));
+
+    evil.serve("/.versia/v0.6/entities/Thing/1", { type: "Thing", id: "1" });
+
+    assertEquals(await resolve(a, { host: "evil.test", id: "1" }, "Thing", fetchBudget(5)), "1");
+    assertEquals(prepared, [[false, true, 0, 4]]);
+    assertEquals(received.length, 1);
 });

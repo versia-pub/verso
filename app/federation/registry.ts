@@ -7,7 +7,7 @@ import { type Reference, v0_6 } from "@versia/protocol";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, versiaJson } from "../http/route.ts";
-import type { Context } from "../kernel/context.ts";
+import type { Budget, Context } from "../kernel/context.ts";
 
 /**
  * Which page of a collection to give: from `offset`, at most `limit` items. Limits from 1 to 40 must
@@ -59,6 +59,12 @@ export type EntityType<T = unknown> = {
      * author, the one it came from, `origin`. `undefined` if it names none.
      */
     authority(entity: T, origin: string): string | undefined;
+    /**
+     * Fetches what the entity refers to that Verso may not have, such as its author, before
+     * `receive` runs, outside its transaction, so the transaction isn't held open while other
+     * instances answer. Fetches count against `budget`. `receive` then only looks them up.
+     */
+    prepare?(ctx: Context, entity: T, sender: Sender, budget: Budget): Promise<void>;
     /**
      * Applies an entity `sender` sent, in a transaction. It may run more than once for the same
      * entity, so it must be idempotent. It throws `PermanentFailure` for one it can't apply.
