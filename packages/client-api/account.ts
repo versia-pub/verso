@@ -19,8 +19,10 @@ export type Field = z.infer<typeof Field>;
 export const Visibility = z.enum(["public", "unlisted", "private", "direct"]);
 export type Visibility = z.infer<typeof Visibility>;
 
-/** Who may feature an account in a collection, in general. */
-const Featurers = z.array(z.enum(["public", "followers", "following", "unsupported_policy"]));
+/** Who is approved for something in general, such as to feature an account or quote a status. */
+export const ApprovedAudiences = z.array(
+    z.enum(["public", "followers", "following", "unsupported_policy"]),
+);
 
 /**
  * Who may feature an account in a collection, and whether the viewer may.
@@ -28,9 +30,9 @@ const Featurers = z.array(z.enum(["public", "followers", "following", "unsupport
  */
 export const FeatureApproval = z.object({
     /** Who is accepted without the account's owner reviewing it. */
-    automatic: Featurers,
+    automatic: ApprovedAudiences,
     /** Who is accepted once the account's owner reviews it. */
-    manual: Featurers,
+    manual: ApprovedAudiences,
     /** `unknown` and `missing` mean the same as `denied`. */
     current_user: z.enum(["automatic", "manual", "denied", "unknown", "missing"]),
 });
