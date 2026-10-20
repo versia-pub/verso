@@ -1,10 +1,12 @@
 import { assertEquals } from "@std/assert";
 import { escapeHtml, textToHtml } from "./text.ts";
 
-Deno.test("plain text becomes escaped paragraphs and line breaks", () => {
+Deno.test("plain text becomes escaped paragraphs and line breaks, with links", () => {
     assertEquals(
-        textToHtml("Hi <b>all</b>\nsecond line\r\n\r\nnew 'paragraph'"),
-        "<p>Hi &lt;b&gt;all&lt;/b&gt;<br>second line</p><p>new &#39;paragraph&#39;</p>",
+        textToHtml("Hi <b>all</b>\nsecond line\r\n\r\nnew 'paragraph' at https://a.example"),
+        "<p>Hi &lt;b&gt;all&lt;/b&gt;<br>second line</p><p>new 'paragraph' at " +
+            '<a href="https://a.example" rel="nofollow noopener noreferrer" target="_blank">' +
+            "https://a.example</a></p>",
     );
 });
 

@@ -248,7 +248,7 @@ Deno.test("a remote user becomes an account, with its text as written and as HTM
     });
 });
 
-Deno.test("remote text without HTML is escaped, and HTML alone is kept", () => {
+Deno.test("remote text without HTML is made into HTML, and HTML alone is kept", () => {
     const markdown = remoteAccountOf(
         "b.test",
         user({
@@ -257,8 +257,14 @@ Deno.test("remote text without HTML is escaped, and HTML alone is kept", () => {
     );
     assertEquals(
         [markdown.profile.note, markdown.profile.note_format, markdown.profile.note_html],
-        ["**Hi** <there>", "text/markdown", "<p>**Hi** &lt;there&gt;</p>"],
+        ["**Hi** <there>", "text/markdown", "<p><strong>Hi</strong> &lt;there&gt;</p>"],
     );
+
+    const plain = remoteAccountOf(
+        "b.test",
+        user({ bio: { "text/plain": { content: "**Hi** <there>", remote: false } } }),
+    );
+    assertEquals(plain.profile.note_html, "<p>**Hi** &lt;there&gt;</p>");
 
     const html = remoteAccountOf(
         "b.test",

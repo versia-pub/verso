@@ -16,7 +16,8 @@ import {
 } from "./accounts.ts";
 import { deleteRemoteAccount, type RemoteAccount, saveRemoteAccount } from "./remote.ts";
 import type { ProfileField, TextFormat } from "./tables.ts";
-import { escapeHtml, textToHtml } from "./text.ts";
+import { escapeHtml } from "./text.ts";
+import { renderText } from "../kernel/markup.ts";
 
 /** Text as its owner wrote it, and as HTML, so each instance can show whichever it can. */
 const text = (format: TextFormat, written: string, html: string): v0_6.ContentFormat => ({
@@ -136,17 +137,19 @@ const writtenText = (formats: v0_6.ContentFormat): { format: TextFormat; text: s
 
 /**
  * Text as Verso keeps it: as written, and as HTML, which is the instance's own if it gave one, kept
- * as it is and sanitised when shown. Markdown without HTML is shown as plain text, until Verso
- * renders Markdown.
+ * as it is and sanitised when shown, or else made by `html` from what was written.
  */
 const remoteText = (
     formats: v0_6.ContentFormat | null | undefined,
-    html: (text: string) => string,
+    html: (text: string, format: TextFormat) => string,
 ) => {
     const written = writtenText(formats ?? {});
     const given = formats?.["text/html"];
 
-    return { ...written, html: given && !given.remote ? given.content : html(written.text) };
+    return {
+        ...written,
+        html: given && !given.remote ? given.content : html(written.text, written.format),
+    };
 };
 
 /** Pictures clients can be counted on to show. */
@@ -175,7 +178,7 @@ const remotePicture = (formats: v0_6.ContentFormat | null | undefined): RemoteMe
 
 /** A user on the instance `instanceId`, as Verso keeps it. */
 export const remoteAccountOf = (instanceId: string, user: v0_6.User): RemoteAccount => {
-    const bio = remoteText(user.bio, textToHtml);
+    const bio = remoteText(user.bio, renderText);
     const fields = user.fields.map((field): ProfileField => {
         const name = remoteText(field.key, escapeHtml);
         const value = remoteText(field.value, escapeHtml);
