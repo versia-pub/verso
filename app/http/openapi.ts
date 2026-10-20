@@ -24,7 +24,12 @@ type Content = Readonly<Record<string, { readonly schema?: JsonSchema }>>;
 /** @see https://spec.openapis.org/oas/v3.1.1.html#response-object */
 type Response = {
     readonly description: string;
-    readonly headers?: Readonly<Record<string, { readonly required: true; schema: JsonSchema }>>;
+    readonly headers?: Readonly<
+        Record<
+            string,
+            { readonly required: boolean; readonly description?: string; schema: JsonSchema }
+        >
+    >;
     readonly content?: Content;
 };
 
@@ -207,6 +212,22 @@ const response = (
             };
         case "binary":
             return { description: "A file", content: { [declared.type]: {} } };
+        case "paged":
+            return {
+                description: "A page of a list, newest first",
+                headers: {
+                    link: {
+                        required: false,
+                        description: "The older page, as `next`, and the newer one, as `prev`",
+                        schema: { type: "string" },
+                    },
+                },
+                content: {
+                    "application/json": {
+                        schema: { type: "array", items: jsonSchema(declared.item, names) },
+                    },
+                },
+            };
         case "none":
             return { description: "No body" };
     }

@@ -3,7 +3,7 @@ import { Account, CredentialAccount } from "@versia/client-api";
 import { z } from "zod";
 import { scopes } from "../kernel/scopes.ts";
 import { openApiDocument } from "./openapi.ts";
-import { Binary, defineRoute, NoBody, Page, Redirect, type Route } from "./route.ts";
+import { Binary, defineRoute, NoBody, Page, Paged, Redirect, type Route } from "./route.ts";
 
 const info = { title: "social.example", version: "0.0.0" };
 const origin = "https://social.example";
@@ -120,6 +120,33 @@ Deno.test("a body is optional when an empty one is valid, since a missing one re
 
     assertEquals(required(z.object({ name: z.string().optional() })), false);
     assertEquals(required(z.object({ name: z.string() })), true);
+});
+
+Deno.test("a page of a list is an array of its items, with a link to the pages around", () => {
+    const route = defineRoute({
+        method: "GET",
+        path: "/api/v1/accounts",
+        summary: "Some accounts",
+        responses: { 200: Paged(Account) },
+        handler: unused,
+    });
+    const document = openApiDocument([route], info, origin);
+
+    assertEquals(document.paths["/api/v1/accounts"]?.get?.responses[200], {
+        description: "A page of a list, newest first",
+        headers: {
+            link: {
+                required: false,
+                description: "The older page, as `next`, and the newer one, as `prev`",
+                schema: { type: "string" },
+            },
+        },
+        content: {
+            "application/json": {
+                schema: { type: "array", items: { $ref: "#/components/schemas/Account" } },
+            },
+        },
+    });
 });
 
 Deno.test("a route without inputs or tags lists only its summary and responses", () => {

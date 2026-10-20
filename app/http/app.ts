@@ -123,7 +123,7 @@ export const createApp = (
         });
         if (options.checkResponses) checkReply(route, reply);
 
-        return await send(c, route, reply);
+        return await send(c, route, reply, ctx.urls.origin);
     };
 
     const handle = (route: Route) => {

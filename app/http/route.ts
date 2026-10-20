@@ -32,9 +32,25 @@ export const Binary = <T extends string>(
 });
 type Binary = ReturnType<typeof Binary>;
 
-/** A JSON body's schema, or a page, a redirect, a file or nothing, for each status. */
+/**
+ * Declares a response that is a page of a list of `item`, newest first, with the cursors of the
+ * pages around it in its `Link` header.
+ */
+export const Paged = <T extends Schema>(item: T): { readonly kind: "paged"; readonly item: T } => ({
+    kind: "paged",
+    item,
+});
+type Paged = ReturnType<typeof Paged>;
+
+/** Where the pages around a page of a list start, if there are any. */
+export type Cursors = { readonly newer?: string; readonly older?: string };
+
+/** A JSON body's schema, or a page, a redirect, a file, a list or nothing, for each status. */
 export type Responses = Partial<
-    Record<ContentfulStatusCode, Schema | typeof Page | typeof Redirect | Binary | typeof NoBody>
+    Record<
+        ContentfulStatusCode,
+        Schema | typeof Page | typeof Redirect | Binary | Paged | typeof NoBody
+    >
 >;
 
 /** HTML from Hono's `html` template, which escapes every value put into it. */
@@ -43,6 +59,7 @@ export type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
     : R extends typeof Redirect ? { status: S & RedirectStatusCode; location: string }
     : R extends Binary ? { status: S; file: Uint8Array }
+    : R extends Paged ? { status: S; body: z.input<R["item"]>[]; cursors: Cursors }
     : R extends typeof NoBody ? { status: S }
     : R extends Schema ? { status: S; body: z.input<R> }
     : never;

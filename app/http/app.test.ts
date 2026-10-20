@@ -5,7 +5,8 @@ import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
 import { layout } from "./page.ts";
-import { Binary, defineRoute, NoBody, Page, Redirect } from "./route.ts";
+import { cursorsOf, PageQuery } from "./paging.ts";
+import { Binary, defineRoute, NoBody, Page, Paged, Redirect } from "./route.ts";
 
 const rename = defineRoute({
     method: "POST",
@@ -161,6 +162,44 @@ const echo = defineRoute({
     handler: (_, { body }) => Promise.resolve({ status: 200, body }),
 });
 
+const numbers = defineRoute({
+    method: "GET",
+    path: "/numbers",
+    summary: "Counts down from 5, a page at a time",
+    query: PageQuery({ default: 2, max: 3 }),
+    responses: { 200: Paged(z.object({ n: z.number() })) },
+    handler: (_, { query }) => {
+        const items = [5, 4, 3, 2, 1]
+            .filter((n) => query.max_id === undefined || n < Number(query.max_id))
+            .slice(0, query.limit)
+            .map((n) => ({ n }));
+
+        return Promise.resolve({
+            status: 200,
+            body: items,
+            cursors: cursorsOf(items, query, (item) => String(item.n)),
+        });
+    },
+});
+
+/** Declares pages of a list, and, typed loosely as data from elsewhere might be, sends no cursors. */
+const uncounted = defineRoute({
+    method: "GET",
+    path: "/uncounted",
+    summary: "Sends a list without its cursors",
+    responses: { 200: Paged(z.object({ n: z.number() })) },
+    handler: () => Promise.resolve(JSON.parse('{"status":200,"body":[{"n":1}]}')),
+});
+
+/** Declares an object, and, typed loosely, sends cursors with it, as if it were a list. */
+const overcounted = defineRoute({
+    method: "GET",
+    path: "/overcounted",
+    summary: "Sends cursors with an object",
+    responses: { 200: z.object({}) },
+    handler: () => Promise.resolve(JSON.parse('{"status":200,"body":{},"cursors":{}}')),
+});
+
 const open = async () => {
     const test = await createTestContext();
     const app = createTestApp(test.ctx, [
@@ -177,6 +216,9 @@ const open = async () => {
         notAFile,
         later,
         notEmpty,
+        numbers,
+        uncounted,
+        overcounted,
     ], {
         checkResponses: true,
     });
@@ -457,6 +499,32 @@ Deno.test("with checks on, JSON where a page, a file or nothing is declared is a
     assertEquals((await test.app.request("/not-a-page")).status, 500);
     assertEquals((await test.app.request("/not-a-file")).status, 500);
     assertEquals((await test.app.request("/not-empty")).status, 500);
+});
+
+Deno.test("a page of a list links to the pages around it, at the instance's own origin", async () => {
+    await using test = await open();
+
+    const first = await test.app.request("http://localhost/numbers?limit=2&extra=1");
+    assertEquals(await first.json(), [{ n: 5 }, { n: 4 }]);
+    assertEquals(
+        first.headers.get("link"),
+        '<https://social.example/numbers?limit=2&extra=1&max_id=4>; rel="next", ' +
+            '<https://social.example/numbers?limit=2&extra=1&min_id=5>; rel="prev"',
+    );
+
+    const last = await test.app.request("/numbers?max_id=2");
+    assertEquals(await last.json(), [{ n: 1 }]);
+    assertEquals(last.headers.get("link"), '<https://social.example/numbers?min_id=1>; rel="prev"');
+
+    const none = await test.app.request("/numbers?max_id=1");
+    assertEquals([await none.json(), none.headers.get("link")], [[], null]);
+});
+
+Deno.test("with checks on, a list without cursors, or cursors without a list, is a 500", async () => {
+    await using test = await open();
+
+    assertEquals((await test.app.request("/uncounted")).status, 500);
+    assertEquals((await test.app.request("/overcounted")).status, 500);
 });
 
 Deno.test("a reply with no body is sent empty, with no type", async () => {

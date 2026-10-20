@@ -1,19 +1,13 @@
 /**
- * A route's reply, as the response sent: JSON, a page, a redirect or a file, with its cookies.
+ * A route's reply, as the response sent: JSON, a list, a page, a redirect or a file, with its
+ * cookies.
  * @module
  */
 import type { Context as HonoContext } from "@hono/hono";
 import { deleteCookie, setCookie } from "@hono/hono/cookie";
 import { z } from "zod";
-import {
-    type CookieChanges,
-    NoBody,
-    Page,
-    Redirect,
-    type Reply,
-    type Responses,
-    type Route,
-} from "./route.ts";
+import { linkHeader } from "./paging.ts";
+import { type CookieChanges, type Reply, type Responses, type Route } from "./route.ts";
 
 const setCookies = (c: HonoContext, cookies: CookieChanges = {}) => {
     for (const [name, value] of Object.entries(cookies)) {
@@ -28,22 +22,36 @@ const setCookies = (c: HonoContext, cookies: CookieChanges = {}) => {
 const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
     declared instanceof z.ZodType;
 
+/** Why a reply's body doesn't match `schema`, or a page of a list of it, if it doesn't. */
+const bodyProblem = (reply: Reply<Responses>, schema: z.ZodType, paged: boolean) => {
+    if (!("body" in reply)) return "it has no body";
+    if (paged !== "cursors" in reply) return paged ? "it has no cursors" : "it has cursors";
+
+    const result = (paged ? z.array(schema) : schema).safeParse(reply.body);
+    return result.success ? undefined : z.prettifyError(result.error);
+};
+
 /** Why a reply doesn't match what its route declares for its status, if it doesn't. */
 const replyProblem = (route: Route, reply: Reply<Responses>) => {
     const declared = route.responses[reply.status];
 
     if (declared === undefined) return "the status isn't declared";
-    if (declared === Page) return "page" in reply ? undefined : "it isn't a page";
-    if (declared === Redirect) return "location" in reply ? undefined : "it isn't a redirect";
-    if (declared === NoBody) {
-        const empty = Object.keys(reply).every((key) => key === "status" || key === "cookies");
-        return empty ? undefined : "it has a body";
-    }
-    if (!isSchema(declared)) return "file" in reply ? undefined : "it isn't a file";
-    if (!("body" in reply)) return "it has no body";
+    if (isSchema(declared)) return bodyProblem(reply, declared, false);
 
-    const result = declared.safeParse(reply.body);
-    return result.success ? undefined : z.prettifyError(result.error);
+    switch (declared.kind) {
+        case "page":
+            return "page" in reply ? undefined : "it isn't a page";
+        case "redirect":
+            return "location" in reply ? undefined : "it isn't a redirect";
+        case "binary":
+            return "file" in reply ? undefined : "it isn't a file";
+        case "paged":
+            return bodyProblem(reply, declared.item, true);
+        case "none": {
+            const empty = Object.keys(reply).every((key) => key === "status" || key === "cookies");
+            return empty ? undefined : "it has a body";
+        }
+    }
 };
 
 /** Throws when a reply doesn't match what its route declares for its status. */
@@ -69,12 +77,23 @@ const pageHeaders = (route: Route) => ({
     "x-frame-options": "DENY",
 });
 
+/**
+ * Sends `reply` to the request in `c`, which came in at `origin`, as Verso's public URLs start,
+ * which links to other pages of a list do too.
+ */
 export const send = (
     c: HonoContext,
     route: Route,
     reply: Reply<Responses>,
+    origin: string,
 ): Response | Promise<Response> => {
     setCookies(c, reply.cookies);
+
+    if ("cursors" in reply) {
+        const asked = new URL(c.req.url);
+        const link = linkHeader(new URL(asked.pathname + asked.search, origin), reply.cursors);
+        if (link !== undefined) c.header("link", link);
+    }
 
     if (route.maxAge !== undefined && reply.status < 300) {
         c.header("cache-control", `public, max-age=${route.maxAge}`);
