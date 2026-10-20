@@ -22,9 +22,12 @@ const thing: EntityType<z.infer<typeof Thing>> = {
             requester === "b.example" ? { type: "Thing", id, seen_by: requester } : undefined,
         ),
     collections: {
+        // Tells the page it was asked for, as its total: offset in thousands, and limit.
         parts: (_ctx, id, page) =>
             Promise.resolve(
-                id === "missing" ? undefined : { author: id, total: page.offset ?? 0, items: [] },
+                id === "missing"
+                    ? undefined
+                    : { author: id, total: page.offset * 1000 + page.limit, items: [] },
             ),
     },
 };
@@ -79,13 +82,24 @@ Deno.test("a type's collections are paged, and unknown ones aren't found", async
 
     assertEquals(await test.get("/.versia/v0.6/entities/Thing/1/collections/parts?offset=3"), {
         status: 200,
-        body: { author: "1", total: 3, items: [] },
+        body: { author: "1", total: 3040, items: [] },
     });
     for (
         const path of ["1/collections/other", "1/collections/toString", "missing/collections/parts"]
     ) {
         assertEquals((await test.get(`/.versia/v0.6/entities/Thing/${path}`)).status, 404, path);
     }
+});
+
+Deno.test("a collection's pages start at the first item, and hold from 1 to 40", async () => {
+    await using test = await open();
+    const asked = async (query: string) =>
+        (await test.get(`/.versia/v0.6/entities/Thing/1/collections/parts?${query}`)).body.total;
+
+    assertEquals(await asked(""), 40);
+    assertEquals(await asked("limit=5"), 5);
+    assertEquals(await asked("limit=0"), 1);
+    assertEquals(await asked("limit=100"), 40);
 });
 
 Deno.test("a registry lists the extensions its types come from, once each", () => {

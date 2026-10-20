@@ -171,7 +171,7 @@ Deno.test("a local user's collections are given, empty until there is something 
     await createLocalAccount(a, "alice");
     const collection = (path: string) => fetchSigned(b, a, `/.versia/v0.6/entities/User/${path}`);
 
-    for (const name of ["outbox", "featured", "followers", "following"]) {
+    for (const name of ["outbox", "featured"]) {
         assertEquals(await collection(`alice/collections/${name}?offset=10&limit=20`), {
             status: 200,
             type: "application/vnd.versia+json; charset=utf-8",

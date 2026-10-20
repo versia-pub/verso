@@ -33,6 +33,13 @@ const accountRows = (ctx: Context) =>
 export const findAccount = (ctx: Context, id: string): Promise<AccountRow | undefined> =>
     accountRows(ctx).where("accounts.id", "=", id).executeTakeFirst();
 
+/** The accounts of `ids` that exist, in no particular order. */
+export const findAccounts = async (
+    ctx: Context,
+    ids: readonly string[],
+): Promise<AccountRow[]> =>
+    ids.length === 0 ? [] : await accountRows(ctx).where("accounts.id", "in", ids).execute();
+
 /** The local account named `username`, ignoring case, or `undefined` if there is none. */
 export const findLocalAccount = (
     ctx: Context,

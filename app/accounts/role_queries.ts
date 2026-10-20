@@ -121,6 +121,33 @@ export const rolesOf = async (ctx: Context, accountId: string): Promise<RoleRow[
         .execute();
 };
 
+/** The roles of each of `accountIds`, by account, highest priority first. */
+export const rolesOfAccounts = async (
+    ctx: Context,
+    accountIds: readonly string[],
+): Promise<Map<string, RoleRow[]>> => {
+    const roles = new Map<string, RoleRow[]>();
+    if (accountIds.length === 0) return roles;
+
+    const rows = await ctx.db.selectFrom("account_roles")
+        .innerJoin("roles", "roles.id", "account_roles.role_id")
+        .selectAll("roles")
+        .select("account_roles.account_id")
+        .where("account_roles.account_id", "in", accountIds)
+        .orderBy("roles.priority", "desc")
+        .orderBy("roles.name")
+        .execute();
+
+    for (const { account_id, ...role } of rows) {
+        const held = roles.get(account_id) ?? [];
+        // An account may hold a role from several sources, but has it once.
+        if (!held.some((other) => other.id === role.id)) held.push(role);
+        roles.set(account_id, held);
+    }
+
+    return roles;
+};
+
 /** Every role, highest priority first. */
 export const listRoles = async (ctx: Context): Promise<RoleRow[]> =>
     await ctx.db.selectFrom("roles").selectAll().orderBy("priority", "desc").orderBy("name")

@@ -8,6 +8,8 @@ import { z } from "zod";
 export const permissions = [
     /** View accounts and their profiles. */
     "read:account",
+    /** View who accounts follow, and who follows them. */
+    "read:account_follows",
     /** Change one's own profile and settings. */
     "owner:account",
     /** Follow and unfollow accounts. */

@@ -9,17 +9,14 @@ import { type AccountRow, findAccount } from "./accounts.ts";
 import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { pictureRoutes } from "./picture_routes.ts";
 import { updateProfile } from "./profile.ts";
-import { renderAccount, renderCredentialAccount } from "./render.ts";
+import { publicAccount } from "./public.ts";
+import { renderCredentialAccount } from "./render.ts";
 import { rolesOf } from "./role_queries.ts";
 
 const found = (row: AccountRow | undefined) => {
     if (row === undefined) throw new NotFound();
     return row;
 };
-
-/** An account as anyone sees it, with its roles. */
-const publicAccount = async (ctx: Context, row: AccountRow) =>
-    renderAccount(ctx, row, await rolesOf(ctx, row.id));
 
 /** The viewer's own account, with its roles and what it may do. */
 const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly accountId: string }) => {

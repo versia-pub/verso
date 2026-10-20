@@ -1,4 +1,6 @@
 import type { Selectable } from "kysely";
+import { countAll, readCount } from "../db/count.ts";
+import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
 import type { FollowsTable } from "./tables.ts";
 
@@ -97,3 +99,57 @@ export const followsOf = async (
         .where("followee_id", "=", followeeId)
         .where("follower_id", "in", followerIds)
         .execute();
+
+/** An account's followers, or the accounts it follows. */
+export type FollowSide = "followers" | "following";
+
+/** For each side, the column naming the account it is of, and the one naming who is listed. */
+const sides = {
+    followers: { of: "followee_id", listed: "follower_id" },
+    following: { of: "follower_id", listed: "followee_id" },
+} as const;
+
+const accepted = (ctx: Context, side: FollowSide, accountId: string) =>
+    ctx.db.selectFrom("follows")
+        .where(sides[side].of, "=", accountId)
+        .where("accepted", "=", true);
+
+/**
+ * A page of an account's accepted followers or follows, newest first, each as the follow's id,
+ * which pages are counted by, and the listed account's.
+ */
+export const followPage = async (
+    ctx: Context,
+    side: FollowSide,
+    accountId: string,
+    page: PageBounds,
+): Promise<{ id: string; account_id: string }[]> =>
+    await readPage(
+        accepted(ctx, side, accountId).select(["id", `${sides[side].listed} as account_id`]),
+        "follows.id",
+        page,
+    );
+
+/** The ids of an account's accepted followers or follows, from `offset`, oldest first. */
+export const followIdsFrom = async (
+    ctx: Context,
+    side: FollowSide,
+    accountId: string,
+    offset: number,
+    limit: number,
+): Promise<string[]> =>
+    (await accepted(ctx, side, accountId)
+        .select(`${sides[side].listed} as account_id`)
+        .orderBy("id")
+        .offset(offset)
+        .limit(limit)
+        .execute())
+        .map((row) => row.account_id);
+
+/** How many accepted followers or follows an account has. */
+export const countFollows = async (
+    ctx: Context,
+    side: FollowSide,
+    accountId: string,
+): Promise<number> =>
+    readCount(await accepted(ctx, side, accountId).select(countAll).executeTakeFirstOrThrow());

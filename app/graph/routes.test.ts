@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
+import type { App } from "../http/app.ts";
 import { routes } from "../http/routes.ts";
 import { createInstance, defaultSettings } from "../instances/testing.ts";
 import type { Scope } from "../kernel/scopes.ts";
@@ -197,4 +198,111 @@ Deno.test("relationships and follows aren't taken for accounts among every route
 
     const relationships = await app.request("/api/v1/accounts/relationships?id=bob", { headers });
     assertEquals([relationships.status, (await relationships.json())[0]?.following], [200, true]);
+});
+
+/** The accounts on a page of `path`, by id, and its links, asked with `token` or by anyone. */
+const list = async (app: App, path: string, token?: string) => {
+    const headers: HeadersInit = token ? { authorization: `Bearer ${token}` } : {};
+    const response = await app.request(path, { headers });
+    const body = await response.json();
+
+    return {
+        status: response.status,
+        ids: Array.isArray(body) ? body.map((account: { id: string }) => account.id) : body,
+        link: response.headers.get("link"),
+    };
+};
+
+const openLists = async () => {
+    const test = await createTestContext();
+    const app = createTestApp(test.ctx, graphRoutes, { checkResponses: true });
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "carol", "b.example");
+    for (const id of ["alice", "bob", "dave", "erin"]) await createLocalAccount(test.ctx, id);
+
+    // Each a millisecond after the last, so they are listed in this order.
+    const follows = async (pairs: [string, string][]) => {
+        for (const [follower, followee] of pairs) {
+            test.clock.advance(1);
+            await follow(test.ctx, follower, followee);
+        }
+    };
+
+    return { ...test, app, follows };
+};
+
+Deno.test("an account's followers and follows are listed newest first, a page at a time", async () => {
+    await using test = await openLists();
+    await test.follows([["bob", "alice"], ["carol", "alice"], ["dave", "alice"], ["alice", "bob"]]);
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
+        .execute();
+    await test.follows([["erin", "alice"], ["alice", "carol"]]);
+    const cursor = async (follower: string) =>
+        (await test.ctx.db.selectFrom("follows").select("id")
+            .where("follower_id", "=", follower).where("followee_id", "=", "alice")
+            .executeTakeFirstOrThrow()).id;
+    const url = "https://social.example/api/v1/accounts/alice/followers";
+
+    // Erin only asked, and carol hasn't accepted alice yet.
+    const first = await list(test.app, "/api/v1/accounts/alice/followers?limit=2");
+    assertEquals(first.ids, ["dave", "carol"]);
+    assertEquals(
+        first.link,
+        `<${url}?limit=2&max_id=${await cursor("carol")}>; rel="next", ` +
+            `<${url}?limit=2&min_id=${await cursor("dave")}>; rel="prev"`,
+    );
+
+    const rest = await list(
+        test.app,
+        `/api/v1/accounts/alice/followers?max_id=${await cursor("carol")}`,
+    );
+    assertEquals([rest.status, rest.ids], [200, ["bob"]]);
+
+    const all = await list(test.app, "/api/v1/accounts/alice/followers");
+    assertEquals(all.ids, ["dave", "carol", "bob"]);
+    assertEquals(all.link, `<${url}?min_id=${await cursor("dave")}>; rel="prev"`);
+    assertEquals((await list(test.app, "/api/v1/accounts/alice/following")).ids, ["bob"]);
+    assertEquals((await list(test.app, "/api/v1/accounts/carol/followers")).ids, []);
+    assertEquals((await list(test.app, "/api/v1/accounts/missing/followers")).status, 404);
+});
+
+Deno.test("an account that hides its follows shows them only to itself", async () => {
+    await using test = await openLists();
+    await test.follows([["bob", "alice"], ["alice", "dave"]]);
+    await test.ctx.db.updateTable("accounts").set({ hide_collections: true })
+        .where("id", "=", "alice").execute();
+
+    for (const side of ["followers", "following"]) {
+        const path = `/api/v1/accounts/alice/${side}`;
+        assertEquals(await list(test.app, path), { status: 200, ids: [], link: null }, side);
+        assertEquals(
+            (await list(test.app, path, await tokenFor(test.ctx, "bob"))).ids,
+            [],
+            side,
+        );
+        assertEquals(
+            (await list(test.app, path, await tokenFor(test.ctx, "alice"))).ids,
+            [side === "followers" ? "bob" : "dave"],
+            side,
+        );
+    }
+});
+
+Deno.test("follows are listed to whoever may see them", async () => {
+    await using test = await openLists();
+    const app = createTestApp(test.ctx, graphRoutes, {
+        permissions: { anonymous: ["read:account"], default: ["read:account"] },
+    });
+    const path = "/api/v1/accounts/alice/followers";
+
+    assertEquals((await list(app, path)).status, 403);
+    assertEquals((await list(app, path, await tokenFor(test.ctx, "bob"))).status, 403);
+    assertEquals(
+        (await list(test.app, path, await tokenFor(test.ctx, "bob", ["write"]))).status,
+        403,
+    );
+    assertEquals(
+        (await list(test.app, path, await tokenFor(test.ctx, "bob", ["read:accounts"]))).status,
+        200,
+    );
 });

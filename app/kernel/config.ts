@@ -102,9 +102,14 @@ export const Instance = z.strictObject({
 /** What everyone may do, before any role adds more. */
 export const Permissions = z.strictObject({
     /** For requests without a user, such as a logged-out visitor's. */
-    anonymous: z.array(Permission).default(["read:account"]),
+    anonymous: z.array(Permission).default(["read:account", "read:account_follows"]),
     /** For every user. */
-    default: z.array(Permission).default(["read:account", "owner:account", "owner:follow"]),
+    default: z.array(Permission).default([
+        "read:account",
+        "read:account_follows",
+        "owner:account",
+        "owner:follow",
+    ]),
 }).prefault({});
 export type Permissions = z.infer<typeof Permissions>;
 

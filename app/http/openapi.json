@@ -842,6 +842,192 @@
                 }
             }
         },
+        "/api/v1/accounts/{id}/followers": {
+            "get": {
+                "summary": "The accounts following an account, newest first",
+                "description": "Needs the `read:account_follows` permission.",
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}/following": {
+            "get": {
+                "summary": "The accounts an account follows, newest first",
+                "description": "Needs the `read:account_follows` permission.",
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/relationships": {
             "get": {
                 "summary": "How the viewer is connected to each of some accounts",
@@ -1642,6 +1828,7 @@
                                             "type": "string",
                                             "enum": [
                                                 "read:account",
+                                                "read:account_follows",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "roles"
@@ -1712,6 +1899,7 @@
                                             "type": "string",
                                             "enum": [
                                                 "read:account",
+                                                "read:account_follows",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "roles"
@@ -1782,6 +1970,7 @@
                                             "type": "string",
                                             "enum": [
                                                 "read:account",
+                                                "read:account_follows",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "roles"
@@ -1931,6 +2120,7 @@
                                             "type": "string",
                                             "enum": [
                                                 "read:account",
+                                                "read:account_follows",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "roles"
@@ -1998,6 +2188,7 @@
                                             "type": "string",
                                             "enum": [
                                                 "read:account",
+                                                "read:account_follows",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "roles"
@@ -2065,6 +2256,7 @@
                                             "type": "string",
                                             "enum": [
                                                 "read:account",
+                                                "read:account_follows",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "roles"
@@ -3067,6 +3259,7 @@
                         "in": "query",
                         "required": false,
                         "schema": {
+                            "default": 0,
                             "type": "integer",
                             "minimum": 0,
                             "maximum": 9007199254740991

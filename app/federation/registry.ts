@@ -10,12 +10,14 @@ import { defineRoute, type Route, versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 
 /**
- * Which page of a collection to give. Limits from 1 to 40 must work; a provider may clamp others.
+ * Which page of a collection to give: from `offset`, at most `limit` items. Limits from 1 to 40 must
+ * work, so others are brought within them, and a missing one is the most.
  * @see https://versia.pub/api/endpoints
  */
 const CollectionPage = z.object({
-    offset: z.coerce.number().int().min(0).optional(),
-    limit: z.coerce.number().int().optional(),
+    offset: z.coerce.number().int().min(0).default(0),
+    limit: z.coerce.number().int().optional()
+        .transform((limit) => Math.max(1, Math.min(limit ?? 40, 40))),
 });
 export type CollectionPage = z.output<typeof CollectionPage>;
 

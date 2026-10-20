@@ -1,11 +1,13 @@
-import { Relationship } from "@versia/client-api";
+import { Account, Relationship } from "@versia/client-api";
 import { z } from "zod";
-import { existingAccountIds } from "../accounts/accounts.ts";
+import { existingAccountIds, findAccount } from "../accounts/accounts.ts";
+import { publicAccounts } from "../accounts/public.ts";
 import { NotFound, NotPermitted } from "../http/errors.ts";
-import { defineRoute, type Route } from "../http/route.ts";
+import { cursorsOf, PageQuery } from "../http/paging.ts";
+import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { Flag } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
-import { followsFrom, followsOf } from "./follow_queries.ts";
+import { followPage, followsFrom, type FollowSide, followsOf } from "./follow_queries.ts";
 import { follow, unfollow } from "./follows.ts";
 import { renderRelationship } from "./render.ts";
 
@@ -42,8 +44,39 @@ const FollowOptions = z.object({
     languages: z.array(z.string().regex(/^[a-z]{2}$/)).optional(),
 });
 
+/** An account's followers or follows, which an account that hides them shows only to itself. */
+const followList = (side: FollowSide) =>
+    defineRoute({
+        method: "GET",
+        path: `/api/v1/accounts/:id/${side}`,
+        summary: side === "followers"
+            ? "The accounts following an account, newest first"
+            : "The accounts an account follows, newest first",
+        tags: ["accounts"],
+        auth: { require: "optional", scope: "read:accounts", permission: "read:account_follows" },
+        params: z.object({ id: z.string() }),
+        query: PageQuery({ default: 40, max: 80 }),
+        responses: { 200: Paged(Account) },
+        handler: async (ctx, { params, query, viewer }) => {
+            const account = await findAccount(ctx, params.id);
+            if (account === undefined) throw new NotFound();
+            if (account.hide_collections && viewer?.accountId !== account.id) {
+                return { status: 200, body: [], cursors: {} };
+            }
+
+            const follows = await followPage(ctx, side, account.id, query);
+            return {
+                status: 200,
+                body: await publicAccounts(ctx, follows.map((follow) => follow.account_id)),
+                cursors: cursorsOf(follows, query, (follow) => follow.id),
+            };
+        },
+    });
+
 /** Who follows whom. Before the account routes, whose `/api/v1/accounts/:id` would take these. */
 export const graphRoutes: readonly Route[] = [
+    followList("followers"),
+    followList("following"),
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/relationships",

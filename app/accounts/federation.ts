@@ -3,13 +3,14 @@
  * Verso.
  * @module
  */
-import { v0_6 } from "@versia/protocol";
+import { formatReference, v0_6 } from "@versia/protocol";
 import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
 import type { RemoteMedia } from "../media/media.ts";
 import {
     type AccountRow,
     findAccount,
+    findAccounts,
     findRemoteAccount,
     findRemoteAccountAt,
 } from "./accounts.ts";
@@ -52,10 +53,7 @@ const localUser = async (ctx: Context, id: string) => {
     return row?.domain === null ? row : undefined;
 };
 
-/**
- * A local user's collection, empty until the notes and follows that fill it arrive in step 8.
- * Limits from 1 to 40 must work; step 8 decides what to do with others.
- */
+/** A local user's collection of notes, empty until there are notes. */
 const emptyCollection: CollectionProvider = async (ctx, id) => {
     const row = await localUser(ctx, id);
     return row && { author: row.id, total: 0, items: [] };
@@ -63,8 +61,7 @@ const emptyCollection: CollectionProvider = async (ctx, id) => {
 
 /**
  * Users: other instances' ones, kept as remote accounts, and local ones, fetched by other
- * instances, with their collections, the notes they wrote and pinned as entities, and who follows
- * them and who they follow as references.
+ * instances, with the notes they wrote and pinned as collections of entities.
  * @see https://versia.pub/entities/user
  */
 export const userType: EntityType<v0_6.User> = {
@@ -94,12 +91,28 @@ export const userType: EntityType<v0_6.User> = {
         const row = await localUser(ctx, id);
         return row && renderVersiaUser(ctx, row);
     },
+    // Who follows whom is the graph's, which adds the followers and following collections.
     collections: {
         outbox: emptyCollection,
         featured: emptyCollection,
-        followers: emptyCollection,
-        following: emptyCollection,
     },
+};
+
+/**
+ * References to the users of `ids` that exist, in the order of `ids`, as Verso puts them in what
+ * it sends: a bare id for local users, and the host and id for other instances' ones.
+ */
+export const userReferences = async (ctx: Context, ids: readonly string[]): Promise<string[]> => {
+    const rows = new Map((await findAccounts(ctx, ids)).map((row) => [row.id, row]));
+
+    return ids.flatMap((id) => {
+        const row = rows.get(id);
+        if (row === undefined) return [];
+        if (row.domain === null) return [row.id];
+        if (row.remote_id === null) throw new Error(`Remote account ${row.id} has no remote id`);
+
+        return [formatReference({ host: row.domain, id: row.remote_id }, ctx.urls.domain)];
+    });
 };
 
 /** Text as written, in the first format Verso knows that holds it, or none. */
