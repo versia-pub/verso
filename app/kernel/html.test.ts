@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { sanitizeHtml } from "./html.ts";
+import { sanitizeHtml, textOfHtml } from "./html.ts";
 
 const link = 'rel="nofollow noopener noreferrer" target="_blank"';
 
@@ -65,4 +65,11 @@ Deno.test("links keep only full web addresses, and open apart", () => {
     ) {
         assertEquals(sanitizeHtml(`<a href="${href}">x</a>`), `<a ${link}>x</a>`, href);
     }
+});
+
+Deno.test("HTML as text keeps only the text, with tags as spaces", () => {
+    assertEquals(
+        textOfHtml("<p>Hi</p><p>#Verso &amp; <b>friends</b> &lt;3</p><script>x</script>"),
+        " Hi  #Verso &  friends  <3  ",
+    );
 });

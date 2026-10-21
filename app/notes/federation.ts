@@ -16,6 +16,7 @@ import { followerInstances, hasFollowers, hasFollowersOn } from "../graph/follow
 import { findInstanceId } from "../instances/instances.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Budget, Context, DomainEvent } from "../kernel/context.ts";
+import { textOfHtml } from "../kernel/html.ts";
 import { renderText, scanText } from "../kernel/markup.ts";
 import { isNoteDeleted, isNoteEdited, isNotePosted } from "./events.ts";
 import {
@@ -351,12 +352,16 @@ const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
         fetched_at: ctx.clock.now(),
     };
     const mentionIds = mentions.map((mention) => mention.id);
-    const hashtags = scanText(content.text, content.format).hashtags;
+    // A note only in HTML has its hashtags in that.
+    const hashtags = content.text === ""
+        ? scanText(textOfHtml(content.html), "text/plain").hashtags
+        : scanText(content.text, content.format).hashtags;
     const tags = [...new Set(hashtags.map((tag) => tag.toLowerCase()))].slice(0, remoteLinks);
 
     if (existing) {
         const edited = changes.content !== existing.content ||
             changes.content_format !== existing.content_format ||
+            changes.content_html !== existing.content_html ||
             changes.spoiler_text !== existing.spoiler_text ||
             changes.sensitive !== existing.sensitive;
         if (edited) await keepVersion(ctx, existing);

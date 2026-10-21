@@ -107,3 +107,23 @@ const options: sanitize.IOptions = {
  * allow. The text of anything else is kept, except of scripts, styles and the like.
  */
 export const sanitizeHtml = (html: string): string => sanitize(html, options);
+
+/** What `sanitize` writes as entities in text, and the characters they stand for. */
+const entities: readonly [string, string][] = [
+    ["&lt;", "<"],
+    ["&gt;", ">"],
+    ["&quot;", '"'],
+    ["&#39;", "'"],
+    // Last, so `&amp;lt;` stays `&lt;`.
+    ["&amp;", "&"],
+];
+
+/**
+ * The text of `html`, as plain text, with a space where each tag was, so the text of two
+ * paragraphs doesn't run together. Scripts, styles and the like are dropped.
+ */
+export const textOfHtml = (html: string): string =>
+    entities.reduce(
+        (text, [entity, character]) => text.replaceAll(entity, character),
+        sanitize(html.replaceAll("<", " <"), { allowedTags: [], allowedAttributes: {} }),
+    );

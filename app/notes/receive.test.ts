@@ -218,7 +218,7 @@ Deno.test("a note in Markdown, or only in HTML, keeps what it was written in", a
     }));
     await test.send(note("n2", {
         mentions,
-        content: { "text/html": { content: "<p>Hi</p>", remote: false } },
+        content: { "text/html": { content: "<p>Hi</p><p>#Verso</p>", remote: false } },
     }));
 
     const markdown = await test.kept("n1");
@@ -229,7 +229,8 @@ Deno.test("a note in Markdown, or only in HTML, keeps what it was written in", a
     assertEquals((await tagsOf(test.a, [markdown?.id ?? ""])).get(markdown?.id ?? ""), ["verso"]);
 
     const html = await test.kept("n2");
-    assertEquals([html?.content, html?.content_html], ["", "<p>Hi</p>"]);
+    assertEquals([html?.content, html?.content_html], ["", "<p>Hi</p><p>#Verso</p>"]);
+    assertEquals((await tagsOf(test.a, [html?.id ?? ""])).get(html?.id ?? ""), ["verso"]);
 });
 
 Deno.test("a note sent again replaces the one Verso has, without counting it again", async () => {
@@ -269,6 +270,12 @@ Deno.test("a note sent again is marked edited when it says something else", asyn
 
     // Each changes one more thing than the last.
     const changes = [
+        {
+            content: {
+                "text/plain": { content: "Hi #Verso", remote: false },
+                "text/html": { content: "<p>Hi <b>#Verso</b></p>", remote: false },
+            },
+        },
         { content: { "text/plain": { content: "Bye", remote: false } } },
         { content: { "text/markdown": { content: "Bye", remote: false } } },
         { subject: "Spoilers" },
@@ -293,6 +300,7 @@ Deno.test("a note sent again is marked edited when it says something else", asyn
     const versions = await versionsOf(test.a, (await test.kept("n1"))?.id ?? "");
     assertEquals(versions.map((version) => [version.content_html, version.spoiler_text]), [
         ["<p>Hi #Verso</p>", ""],
+        ["<p>Hi <b>#Verso</b></p>", ""],
         ["<p>Bye</p>", ""],
         ["<p>Bye</p>", ""],
         ["<p>Bye</p>", "Spoilers"],
