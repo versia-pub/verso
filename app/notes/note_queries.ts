@@ -292,7 +292,7 @@ export const countReply = async (ctx: Context, noteId: string, by: 1 | -1): Prom
         .execute();
 };
 
-/** Uncounts the replies an account wrote from the notes they reply to. */
+/** Uncounts the public and unlisted replies an account wrote from the notes they reply to. */
 export const uncountRepliesBy = async (ctx: Context, accountId: string): Promise<void> => {
     await ctx.db.updateTable("notes")
         .set((eb) => ({
@@ -302,7 +302,8 @@ export const uncountRepliesBy = async (ctx: Context, accountId: string): Promise
                 eb.selectFrom("notes as reply")
                     .select((count) => count.fn.countAll<number>().as("count"))
                     .whereRef("reply.in_reply_to_id", "=", "notes.id")
-                    .where("reply.account_id", "=", accountId),
+                    .where("reply.account_id", "=", accountId)
+                    .where("reply.visibility", "in", ["public", "unlisted"]),
             ),
         }))
         // Only the notes it replied to, rather than every note, less nothing.

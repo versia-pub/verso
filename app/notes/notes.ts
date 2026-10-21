@@ -71,6 +71,21 @@ export const visibleNote = async (
     return note && await canSee(ctx, note, viewerId) ? note : undefined;
 };
 
+/**
+ * Counts a note its author posted, or deleted, as Mastodon does: a direct note isn't counted, and
+ * only a public or unlisted one as a reply, so the counts don't tell of notes others can't see.
+ */
+export const countPosted = async (
+    ctx: Context,
+    note: Pick<NoteRow, "account_id" | "visibility" | "created_at" | "in_reply_to_id">,
+    by: 1 | -1,
+): Promise<void> => {
+    if (note.visibility !== "direct") await countNote(ctx, note.account_id, by, note.created_at);
+
+    const listed = note.visibility === "public" || note.visibility === "unlisted";
+    if (listed && note.in_reply_to_id !== null) await countReply(ctx, note.in_reply_to_id, by);
+};
+
 /** Deletes a note, uncounting it. Returns whether there was one. */
 export const removeNote = (ctx: Context, id: string): Promise<boolean> =>
     ctx.transaction(async (tx) => {
@@ -79,8 +94,7 @@ export const removeNote = (ctx: Context, id: string): Promise<boolean> =>
         const note = await deleteNote(tx, id);
         if (note === undefined) return false;
 
-        await countNote(tx, note.account_id, -1, note.created_at);
-        if (note.in_reply_to_id !== null) await countReply(tx, note.in_reply_to_id, -1);
+        await countPosted(tx, note, -1);
 
         const event: NoteDeleted = {
             type: "notes.deleted",
@@ -197,8 +211,7 @@ export const postNote = async (
             found.hashtags,
         );
 
-        await countNote(tx, accountId, 1, note.created_at);
-        if (parent !== undefined) await countReply(tx, parent.id, 1);
+        await countPosted(tx, note, 1);
 
         const event: NotePosted = { type: "notes.posted", noteId: note.id };
         await emit(tx, event);

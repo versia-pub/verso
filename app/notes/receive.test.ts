@@ -299,6 +299,33 @@ Deno.test("a note sent again is marked edited when it says something else", asyn
     ]);
 });
 
+Deno.test("a note sent again for others is counted anew", async () => {
+    await using test = await open();
+    const local = await createNote(test.a, test.alice);
+    const reply = (group: string | null, subject?: string) =>
+        note("n1", {
+            group,
+            subject,
+            mentions: [`a.test:${test.alice}`],
+            replies_to: `a.test:${local.id}`,
+        });
+    const counted = async () => [
+        (await test.a.db.selectFrom("notes").select("replies_count").where("id", "=", local.id)
+            .executeTakeFirstOrThrow()).replies_count,
+        (await test.counts(test.bob))[0],
+    ];
+
+    await test.send(reply("public"));
+    assertEquals(await counted(), [1, 1]);
+    await test.send(reply("followers"));
+    assertEquals(await counted(), [0, 1]);
+    await test.send(reply(null));
+    assertEquals(await counted(), [0, 0]);
+    // Changed, as the same note again would be taken for a replay.
+    await test.send(reply("public", "Again"));
+    assertEquals(await counted(), [1, 1]);
+});
+
 Deno.test("a note by a user who can't be had is given up on", async () => {
     await using test = await open();
 

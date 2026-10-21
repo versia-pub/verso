@@ -312,6 +312,26 @@ Deno.test("a note is found only by those who may see it", async () => {
     assertEquals(await visibleNote(test.ctx, "missing", "alice"), undefined);
 });
 
+Deno.test("direct notes aren't counted, and only public and unlisted replies are", async () => {
+    await using test = await open();
+    const parent = await post(test.ctx, "bob", "Hi");
+    if (parent === undefined) throw new Error("Not posted");
+
+    const replies = [];
+    for (const visibility of ["public", "unlisted", "private", "direct"] as const) {
+        replies.push(
+            await post(test.ctx, "alice", "@bob Hi", { visibility, inReplyToId: parent.id }),
+        );
+    }
+
+    assertEquals((await findNote(test.ctx, parent.id))?.replies_count, 2);
+    assertEquals(await statusesCount(test.ctx, "alice"), 3);
+
+    for (const reply of replies) await removeNote(test.ctx, reply?.id ?? "");
+    assertEquals((await findNote(test.ctx, parent.id))?.replies_count, 0);
+    assertEquals(await statusesCount(test.ctx, "alice"), 0);
+});
+
 Deno.test("deleting a note uncounts it and its reply, and tells who could see it", async () => {
     const events: unknown[] = [];
     await using test = await open({
@@ -319,7 +339,7 @@ Deno.test("deleting a note uncounts it and its reply, and tells who could see it
     });
     const parent = await createNote(test.ctx, "bob");
     const reply = await createNote(test.ctx, "alice", {
-        visibility: "direct",
+        visibility: "unlisted",
         in_reply_to_id: parent.id,
         in_reply_to_account_id: "bob",
     }, ["carol", "bob"]);
@@ -337,7 +357,7 @@ Deno.test("deleting a note uncounts it and its reply, and tells who could see it
         type: "notes.deleted",
         noteId: reply.id,
         accountId: "alice",
-        visibility: "direct",
+        visibility: "unlisted",
         mentionIds: ["bob", "carol"],
         inReplyToAccountId: "bob",
     }]);
@@ -395,6 +415,15 @@ Deno.test("a remote account deleted is uncounted from the notes it replied to", 
             .set((eb) => ({ replies_count: eb("replies_count", "+", 1) }))
             .where("id", "=", parent.id).execute();
     }
+
+    // Not counted, so not uncounted.
+    await createNote(test.ctx, "carol", {
+        instance_id: "b.example",
+        remote_id: "c9",
+        visibility: "private",
+        in_reply_to_id: first.id,
+        in_reply_to_account_id: "alice",
+    });
 
     await deleteRemoteAccount(test.ctx, "b.example", "carol");
 

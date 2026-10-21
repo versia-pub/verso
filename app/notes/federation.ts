@@ -6,7 +6,7 @@
  */
 import { getLogger } from "@logtape/logtape";
 import { formatReference, parseReference, type Reference, v0_6 } from "@versia/protocol";
-import { countNote, findAccount, instancesHosting } from "../accounts/accounts.ts";
+import { findAccount, instancesHosting } from "../accounts/accounts.ts";
 import { knownUser, remoteText, userReferenceMap } from "../accounts/federation.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
@@ -21,7 +21,6 @@ import { isNoteDeleted, isNoteEdited, isNotePosted } from "./events.ts";
 import {
     countLinkedNotes,
     countNotesBy,
-    countReply,
     findNote,
     findRemoteNote,
     findRemoteNoteAt,
@@ -35,7 +34,7 @@ import {
     notesBy,
     updateNote,
 } from "./note_queries.ts";
-import { removeNote } from "./notes.ts";
+import { countPosted, removeNote } from "./notes.ts";
 
 const logger = getLogger(["verso", "notes"]);
 
@@ -360,6 +359,12 @@ const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
             changes.sensitive !== existing.sensitive;
         if (edited) await keepVersion(ctx, existing);
 
+        // Who it is for may change, and with it whether it is counted.
+        if (changes.visibility !== existing.visibility) {
+            await countPosted(ctx, existing, -1);
+            await countPosted(ctx, { ...existing, visibility: changes.visibility }, 1);
+        }
+
         return await updateNote(
             ctx,
             existing.id,
@@ -388,8 +393,7 @@ const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
         mentionIds,
         tags,
     );
-    await countNote(ctx, author.id, 1, row.created_at);
-    if (parent !== undefined) await countReply(ctx, parent.id, 1);
+    await countPosted(ctx, row, 1);
 };
 
 /**
