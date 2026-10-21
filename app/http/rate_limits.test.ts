@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { z } from "zod";
+import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
 import { CidrText } from "../kernel/ip.ts";
@@ -184,19 +185,20 @@ Deno.test("an IPv6 /64 counts as one client", async () => {
     assertEquals(await test.status("2001:db8:0:2::1"), 200);
 });
 
-Deno.test("a valid token has its own quota, and a made-up one doesn't", async () => {
+Deno.test("a user's tokens share their quota, and other tokens count as their client", async () => {
     await using test = await open();
     const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
 
     await test.status("203.0.113.9", bearer("made-up-1"));
     await test.status("203.0.113.9", bearer("made-up-2"));
     assertEquals(await test.status("203.0.113.9", bearer("made-up-3")), 429);
+    assertEquals(await test.status("203.0.113.9", bearer(await tokenFor(test.ctx, null))), 429);
 
-    const token = await tokenFor(test.ctx, null);
-    for (let i = 0; i < 2; i++) {
-        assertEquals(await test.status("203.0.113.9", bearer(token)), 200);
-    }
-    assertEquals(await test.status("198.51.100.1", bearer(token)), 429);
+    const alice = await createLocalAccount(test.ctx, "alice");
+    assertEquals(await test.status("203.0.113.9", bearer(await tokenFor(test.ctx, alice))), 200);
+    assertEquals(await test.status("198.51.100.1", bearer(await tokenFor(test.ctx, alice))), 200);
+    assertEquals(await test.status("198.51.100.2", bearer(await tokenFor(test.ctx, alice))), 429);
+    assertEquals(await test.status("198.51.100.2"), 200);
 });
 
 Deno.test("health checks are never limited", async () => {

@@ -88,8 +88,10 @@ const bearerOf = (ctx: Context, c: HonoContext<AppEnv>, services: AppServices) =
 };
 
 /**
- * Who a request counts against: its access token, if valid, or else the client's IP address. A
- * token that isn't valid doesn't count, or a client could send a new made-up one each time.
+ * Who a request counts against: the user its access token is for, or else the client's IP address.
+ * Every token of a user counts as theirs, and an app's own tokens, which any app can make, as their
+ * client, so making more tokens doesn't give more requests. A token that isn't valid doesn't count
+ * either, or a client could send a new made-up one each time.
  */
 export const rateLimitKey = async (
     ctx: Context,
@@ -98,7 +100,7 @@ export const rateLimitKey = async (
     services: AppServices,
 ): Promise<string> => {
     const viewer = await bearerOf(ctx, c, services);
-    if (viewer) return `token:${viewer.tokenId}`;
+    if (viewer?.accountId) return `account:${viewer.accountId}`;
 
     const peer = c.env?.remoteAddr?.hostname ?? "unknown";
     const ip = clientIp(peer, c.req.header("x-forwarded-for"), trustedProxies);
