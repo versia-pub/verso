@@ -62,7 +62,9 @@ const isInternal = (text: string) => {
 };
 
 export type FederationTransportOptions = {
-    /** Lets requests reach internal addresses, for instances on a local network. Development only. */
+    /**
+     * Lets requests reach internal addresses, for instances on a local network. Development only.
+     */
     readonly allowInternal?: boolean;
     readonly fetch?: (request: Request, init: RequestInit) => Promise<Response>;
     readonly resolve?: DnsResolver;

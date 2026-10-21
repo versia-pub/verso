@@ -6,7 +6,7 @@
  */
 import { parseJson } from "@versia/protocol";
 import { z } from "zod";
-import { BadRequest, ValidationFailed } from "../http/errors.ts";
+import { BadRequest, BadSignature, ValidationFailed } from "../http/errors.ts";
 import { defineRoute, NoBody, type Route } from "../http/route.ts";
 import { enqueue } from "../jobs/queue.ts";
 import type { Context } from "../kernel/context.ts";
@@ -15,8 +15,8 @@ import type { EntityType, Registry } from "./registry.ts";
 export const inboxQueue = "inbox";
 
 /**
- * How long an entity counts as already received. Longer than a signature stays valid either way,
- * so a replayed request is always caught.
+ * How long an entity counts as already received: as long as a signature is taken, from five
+ * minutes before its time to five after, so a replayed request is always caught.
  */
 const dedupeMs = 10 * 60_000;
 
@@ -109,7 +109,9 @@ export const inboxRoute = (registry: Registry): Route =>
         signed: true,
         responses: { 202: NoBody },
         handler: async (ctx, { signedBy, signedBody }) => {
-            await queueEntity(ctx, registry, signedBy ?? "", signedBody ?? new Uint8Array());
+            // A signed route has refused an unsigned request already.
+            if (signedBy === undefined || signedBody === undefined) throw new BadSignature();
+            await queueEntity(ctx, registry, signedBy, signedBody);
             return { status: 202 };
         },
     });

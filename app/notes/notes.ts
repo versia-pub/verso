@@ -1,5 +1,6 @@
 /**
- * Notes, on this instance or another: posting and editing them, who may see them, and deleting them.
+ * Notes, on this instance or another: posting and editing them, who may see them, and deleting
+ * them.
  * @module
  */
 import { type AccountRow, findAccount } from "../accounts/account_queries.ts";
@@ -110,7 +111,9 @@ export const removeNote = (ctx: Context, id: string): Promise<boolean> =>
         return true;
     });
 
-/** What a local user posts. Without a visibility, sensitivity or language, it has their defaults. */
+/**
+ * What a local user posts. Without a visibility, sensitivity or language, it has their defaults.
+ */
 export type Draft = {
     readonly text: string;
     readonly format: TextFormat;
@@ -167,7 +170,7 @@ const renderDraft = (
 /**
  * Posts a note by `accountId`, a local user, and counts it. Who it mentions is found first, outside
  * the transaction, as that can mean asking other instances. Returns `undefined` if the note it
- * replies to isn't there, or its author may not see it.
+ * replies to isn't there, or `accountId` may not see it.
  */
 export const postNote = async (
     ctx: Context,

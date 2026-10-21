@@ -64,7 +64,7 @@ export const renderStatuses = async (
                     ? [{
                         id,
                         username: mentioned.username,
-                        // Verso has no profile pages, so it links to the account as Versia gives it.
+                        // Verso has no profile pages, so it links to the account's Versia URI.
                         url: mentioned.uri,
                         acct: mentioned.acct,
                     }]

@@ -48,8 +48,8 @@ const mayRegister = (registration: Issuer["registration"], claims: Claims): bool
 
 /**
  * The `n`th username to try for `base`: `base`, `base2`, `base3` and so on, or without a base,
- * `user1`, `user2` and so on. The base is shortened to leave room for the number, so every name fits
- * Mastodon's limit.
+ * `user1`, `user2` and so on. The base is shortened to leave room for the number, so every name
+ * fits Mastodon's limit.
  */
 const candidate = (base: string | undefined, n: number) => {
     const suffix = base === undefined || n > 1 ? String(n) : "";

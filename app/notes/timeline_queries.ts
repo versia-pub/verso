@@ -28,6 +28,7 @@ export const homePage = async (
                                 .where("note_mentions.account_id", "=", viewerId),
                         ),
                     ]),
+                    // Not a reply, or one to them or to someone they follow too.
                     eb.or([
                         eb("in_reply_to_account_id", "is", null),
                         eb("in_reply_to_account_id", "=", viewerId),

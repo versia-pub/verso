@@ -95,7 +95,10 @@ export const findRemoteNote = async (
         .where("remote_id", "=", remoteId)
         .executeTakeFirst();
 
-/** The note with the id `remoteId` on the instance at `domain`, if Verso has it. */
+/**
+ * The note with the id `remoteId` on the instance at `domain`, if Verso has it. It joins the
+ * instances' table, as references name instances by domain.
+ */
 export const findRemoteNoteAt = async (
     ctx: Context,
     domain: string,
@@ -107,7 +110,10 @@ export const findRemoteNoteAt = async (
         .where("notes.remote_id", "=", remoteId)
         .executeTakeFirst();
 
-/** The notes of `ids` that exist, with the domain of the instance each is from, or `null`. */
+/**
+ * The notes of `ids` that exist, with the domain of the instance each is from, or `null`, joining
+ * the instances' table so a page of notes is one query.
+ */
 export const noteOrigins = async (
     ctx: Context,
     ids: readonly string[],

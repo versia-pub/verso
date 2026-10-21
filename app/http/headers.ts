@@ -28,8 +28,8 @@ const corsRules = [
 ];
 
 /**
- * Stops browsers from guessing a reply's type, framing it, or sending the page's URL on. Pages set a
- * stricter policy of their own. HSTS is only sent over HTTPS, where browsers heed it.
+ * Stops browsers from guessing a reply's type, framing it, or sending the page's URL on. Pages set
+ * a stricter policy of their own. HSTS is only sent over HTTPS, where browsers heed it.
  */
 const securityHeaders = (https: boolean): MiddlewareHandler => async (c, next) => {
     c.header("x-content-type-options", "nosniff");

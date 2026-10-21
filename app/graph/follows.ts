@@ -54,8 +54,8 @@ const emitFollow = (
 };
 
 /**
- * Has `followerId` follow `followeeId`, or ask to, if the followee is locked or on another instance,
- * which accepts for it. Following again only changes the options given.
+ * Has `followerId` follow `followeeId`, or ask to, if the followee is locked or on another
+ * instance, which accepts for it. Following again only changes the options given.
  */
 export const follow = (
     ctx: Context,

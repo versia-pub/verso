@@ -15,7 +15,9 @@ export type NotesTable = {
     /** As its author wrote it. */
     content: string;
     content_format: TextFormat;
-    /** As HTML: Verso's for local notes, and the instance's own, sanitised when shown, for others. */
+    /**
+     * As HTML: Verso's for local notes, and the instance's own, sanitised when shown, for others.
+     */
     content_html: string;
     /** A warning shown in place of the content until it is opened, or empty for none. */
     spoiler_text: Generated<string>;

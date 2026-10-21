@@ -47,8 +47,8 @@ export const queueDeliveriesTo = async (
 
 /**
  * Queues `entity` for each instance that hosts any of `recipients`, which are account ids, as
- * {@link queueDeliveriesTo} does. Local accounts need nothing delivered. For a few accounts, such as
- * those a note mentions; an account's followers are found by their instances instead.
+ * {@link queueDeliveriesTo} does. Local accounts need nothing delivered. For a few accounts, such
+ * as those a note mentions; an account's followers are found by their instances instead.
  */
 export const queueDeliveries = async (
     ctx: Context,

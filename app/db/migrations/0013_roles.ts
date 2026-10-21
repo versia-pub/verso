@@ -38,7 +38,8 @@ export const roles: Migration = {
             .addColumn("created_at", types.timestamp, (column) => column.notNull())
             .execute();
 
-        // Postgres treats nulls as distinct, so an admin's assignments are keyed on an empty issuer.
+        // Postgres treats nulls as distinct, so an admin's assignments are keyed on an empty
+        // issuer.
         await db.schema.createIndex("account_roles_by_source").on("account_roles")
             .unique()
             .column("account_id")

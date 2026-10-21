@@ -279,7 +279,7 @@ export const parseConfig = async (
     } catch (error) {
         return {
             ok: false,
-            error: `Invalid TOML: ${(error as Error).message}`,
+            error: `Invalid TOML: ${error instanceof Error ? error.message : String(error)}`,
         };
     }
 
@@ -301,7 +301,7 @@ export const readConfig = async (
     try {
         text = await Deno.readTextFile(path);
     } catch (error) {
-        return { ok: false, error: (error as Error).message };
+        return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
 
     return await parseConfig(text, sources);

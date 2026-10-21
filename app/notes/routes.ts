@@ -12,7 +12,10 @@ import { editNote, postNote, removeNote, visibilitiesFor, visibleNote } from "./
 import { threadOf } from "./threads.ts";
 import { renderHistory, renderStatuses } from "./render.ts";
 
-/** What Verso can't post yet, refused rather than left out: empty, or not given at all. */
+/**
+ * What Verso can't post yet. Given empty, or not at all, it is taken; given with anything in it, it
+ * is refused, rather than left out without the client knowing.
+ */
 const NotYet = (what: string) =>
     z.unknown().refine(
         (value) =>

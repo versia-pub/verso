@@ -60,7 +60,9 @@ export const withPermissions = (
     };
 };
 
-/** Throws unless the viewer, or an anonymous visitor if there is none, may do what `route` needs. */
+/**
+ * Throws unless the viewer, or an anonymous visitor if there is none, may do what `route` needs.
+ */
 export const checkPermission = async (
     route: Route,
     viewer: RouteViewer | undefined,

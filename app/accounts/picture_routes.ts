@@ -18,7 +18,8 @@ type Draw = (seed: string) => Promise<Uint8Array>;
 
 /**
  * The default pictures of accounts without their own. Timelines load many at once, so they have no
- * rate limit; instead, they are only drawn for accounts that exist, and each is drawn once and kept.
+ * rate limit; instead, they are only drawn for accounts that exist, and each is drawn once and
+ * kept.
  */
 export const pictureRoutes = (
     draw: { readonly avatar: Draw; readonly header: Draw } = {

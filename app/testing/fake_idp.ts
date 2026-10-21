@@ -39,7 +39,8 @@ const sha256 = async (text: string) =>
 /**
  * An OpenID provider for tests: discovery, JWKS, an authorise endpoint that approves at once as
  * `login`, a token endpoint that checks the code, PKCE and client secret before signing an ID
- * token, and a userinfo endpoint. It only does what Verso's login needs: the code flow with S256 PKCE.
+ * token, and a userinfo endpoint. It only does what Verso's login needs: the code flow with S256
+ * PKCE.
  */
 export const createFakeIdentityProvider = async (
     options: FakeIdentityProviderOptions,

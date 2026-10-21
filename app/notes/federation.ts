@@ -66,7 +66,9 @@ export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
     await queueDeliveriesTo(ctx, entity, await audienceOf(ctx, note, event.mentionIds));
 };
 
-/** A local user's public and unlisted notes, oldest first, so pages stay put as more are written. */
+/**
+ * A local user's public and unlisted notes, oldest first, so pages stay put as more are written.
+ */
 const outbox: CollectionProvider = async (ctx, id, page) => {
     const owner = await findAccount(ctx, id);
     if (owner?.domain !== null) return undefined;

@@ -170,8 +170,8 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "POST",
         path: "/api/v1/accounts/:id/roles/:role_id",
-        summary:
-            "Gives an account below the viewer a role below their highest, with permissions they have",
+        summary: "Gives an account below the viewer a role below their highest, " +
+            "with permissions they have",
         tags: ["roles"],
         auth: { require: "user", scope: "write:accounts", permission: "roles" },
         params: AccountAndRole,

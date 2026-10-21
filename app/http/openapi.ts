@@ -15,7 +15,9 @@ type Parameter = {
     readonly name: string;
     readonly in: "path" | "query" | "header" | "cookie";
     readonly required: boolean;
-    /** A property's schema, which JSON Schema lets be `true` for anything or `false` for nothing. */
+    /**
+     * A property's schema, which JSON Schema lets be `true` for anything or `false` for nothing.
+     */
     readonly schema: JsonSchema | boolean;
 };
 
@@ -91,9 +93,9 @@ const securitySchemes = {
 } as const;
 
 /**
- * The client API's entities, named as the package exports them, so the document describes each once,
- * in its components, and refers to it there. A schema that contains itself, as an account contains
- * the one it moved to, can only be described this way.
+ * The client API's entities, named as the package exports them, so the document describes each
+ * once, in its components, and refers to it there. A schema that contains itself, as an account
+ * contains the one it moved to, can only be described this way.
  */
 const naming = () => {
     const entities = new Map<z.ZodType, string>();
@@ -112,7 +114,8 @@ type Naming = ReturnType<typeof naming>;
 
 /**
  * A schema as JSON Schema, in the shape it is sent: requests before they are parsed, and replies as
- * handlers give them, which are sent without being parsed either. Named schemas are left in `$defs`.
+ * handlers give them, which are sent without being parsed either. Named schemas are left in
+ * `$defs`.
  */
 const toJson = (schema: z.ZodType, names: Naming) =>
     z.toJSONSchema(schema, {

@@ -47,7 +47,8 @@ const resolve = async (
             // Files written by editors and `echo` end with a newline that isn't part of the value.
             return { value: (await sources.readFile(name)).replace(/\r?\n$/, "") };
         } catch (error) {
-            return { problem: `Can't read ${name}: ${(error as Error).message}` };
+            const message = error instanceof Error ? error.message : String(error);
+            return { problem: `Can't read ${name}: ${message}` };
         }
     }
 

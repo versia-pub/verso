@@ -5,13 +5,13 @@
  */
 import { type Reference, v0_6 } from "@versia/protocol";
 import { z } from "zod";
-import { NotFound } from "../http/errors.ts";
+import { BadSignature, NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, versiaJson } from "../http/route.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 
 /**
- * Which page of a collection to give: from `offset`, at most `limit` items. Limits from 1 to 40 must
- * work, so others are brought within them, and a missing one is the most.
+ * Which page of a collection to give: from `offset`, at most `limit` items. Limits from 1 to 40
+ * must work, so others are brought within them, and a missing one is the most.
  * @see https://versia.pub/api/endpoints
  */
 const CollectionPage = z.object({
@@ -126,7 +126,9 @@ const routesOf = (type: EntityType): Route[] => {
             params: z.object({ id: v0_6.Id }),
             responses: { 200: type.schema },
             handler: async (ctx, { params, signedBy }) => {
-                const entity = await find(ctx, params.id, signedBy ?? "");
+                // A signed route has refused an unsigned request already.
+                if (signedBy === undefined) throw new BadSignature();
+                const entity = await find(ctx, params.id, signedBy);
                 if (entity === undefined) throw new NotFound();
 
                 return { status: 200, body: entity };
@@ -149,7 +151,8 @@ const routesOf = (type: EntityType): Route[] => {
                 const provider = Object.hasOwn(collections, params.name)
                     ? collections[params.name]
                     : undefined;
-                const page = await provider?.(ctx, params.id, query, signedBy ?? "");
+                if (signedBy === undefined) throw new BadSignature();
+                const page = await provider?.(ctx, params.id, query, signedBy);
                 if (page === undefined) throw new NotFound();
 
                 return { status: 200, body: page };
