@@ -3,7 +3,7 @@
  * @module
  */
 import { countFollow, findAccount } from "../accounts/accounts.ts";
-import { isProfileUpdated } from "../accounts/events.ts";
+import { isAccountDeleting, isProfileUpdated } from "../accounts/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import type { FollowEvent } from "./events.ts";
@@ -155,3 +155,19 @@ export const isFollowing = async (
 /** The accounts that follow `accountId`, and were accepted, in no particular order. */
 export const followerIds = (ctx: Context, accountId: string): Promise<string[]> =>
     everyListed(ctx, "followers", accountId);
+
+/**
+ * Uncounts the follows of an account about to be deleted, from the accounts on their other side,
+ * before the follows go with it. Requests were never counted.
+ */
+export const uncountFollowsOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
+    if (!isAccountDeleting(event)) return;
+    const { accountId } = event;
+
+    for (const followeeId of await everyListed(ctx, "following", accountId)) {
+        await countFollow(ctx, accountId, followeeId, -1);
+    }
+    for (const followerId of await everyListed(ctx, "followers", accountId)) {
+        await countFollow(ctx, followerId, accountId, -1);
+    }
+};

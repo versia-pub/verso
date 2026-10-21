@@ -3,7 +3,9 @@
  * @module
  */
 import type { Context } from "../kernel/context.ts";
+import { emit } from "../kernel/events.ts";
 import { deleteMedia, type RemoteMedia, saveRemoteMedia } from "../media/media.ts";
+import type { AccountDeleting } from "./events.ts";
 import {
     deleteAccount,
     findRemoteAccount,
@@ -53,7 +55,10 @@ export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise
         return saved.id;
     });
 
-/** Deletes a remote account, by its id on its instance, with its pictures, if Verso has it. */
+/**
+ * Deletes a remote account, by its id on its instance, with its pictures, if Verso has it. Other
+ * modules are told first, to uncount what goes with it.
+ */
 export const deleteRemoteAccount = (
     ctx: Context,
     instanceId: string,
@@ -63,6 +68,8 @@ export const deleteRemoteAccount = (
         const account = await findRemoteAccount(tx, instanceId, remoteId);
         if (!account) return;
 
+        const event: AccountDeleting = { type: "accounts.deleting", accountId: account.id };
+        await emit(tx, event);
         await deleteAccount(tx, account.id);
         for (const picture of [account.avatar_id, account.header_id]) {
             if (picture !== null) await deleteMedia(tx, picture);

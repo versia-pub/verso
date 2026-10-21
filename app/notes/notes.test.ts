@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { findAccount } from "../accounts/accounts.ts";
+import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -221,4 +222,37 @@ Deno.test("a reply outlives the note it replied to", async () => {
     const kept = await findNote(test.ctx, reply.id);
     assertEquals([kept?.in_reply_to_id, kept?.in_reply_to_account_id], [null, "bob"]);
     assertEquals(await statusesCount(test.ctx, "bob"), 0);
+});
+
+Deno.test("a remote account deleted is uncounted from the notes it replied to", async () => {
+    await using test = await open();
+    const first = await createNote(test.ctx, "alice");
+    const second = await createNote(test.ctx, "bob");
+    const own = await createNote(test.ctx, "carol", { instance_id: "b.example", remote_id: "c0" });
+    const reply = (parent: { id: string; account_id: string }, by: string, n: number) =>
+        createNote(test.ctx, by, {
+            instance_id: by === "carol" ? "b.example" : null,
+            remote_id: by === "carol" ? `c${n}` : null,
+            in_reply_to_id: parent.id,
+            in_reply_to_account_id: parent.account_id,
+        });
+    let n = 1;
+    for (
+        const [parent, by] of [[first, "carol"], [first, "carol"], [first, "bob"], [
+            second,
+            "carol",
+        ], [own, "carol"]] as const
+    ) {
+        await reply(parent, by, n++);
+        await test.ctx.db.updateTable("notes")
+            .set((eb) => ({ replies_count: eb("replies_count", "+", 1) }))
+            .where("id", "=", parent.id).execute();
+    }
+
+    await deleteRemoteAccount(test.ctx, "b.example", "carol");
+
+    const counts = await test.ctx.db.selectFrom("notes").select(["id", "replies_count"])
+        .where("id", "in", [first.id, second.id]).orderBy("id").execute();
+    assertEquals(counts.map((row) => row.replies_count), [1, 0]);
+    assertEquals(await findNote(test.ctx, own.id), undefined);
 });

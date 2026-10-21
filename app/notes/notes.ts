@@ -5,9 +5,10 @@
 import { type AccountRow, countNote, findAccount } from "../accounts/accounts.ts";
 import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import { userUri } from "../accounts/render.ts";
+import { isAccountDeleting } from "../accounts/events.ts";
 import type { TextFormat, Visibility } from "../accounts/tables.ts";
 import { isFollowing } from "../graph/follows.ts";
-import type { Context } from "../kernel/context.ts";
+import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type Mention, renderText, scanText } from "../kernel/markup.ts";
 import type { NoteDeleted, NotePosted } from "./events.ts";
@@ -19,6 +20,7 @@ import {
     mentions,
     mentionsOf,
     type NoteRow,
+    uncountRepliesBy,
 } from "./note_queries.ts";
 
 /**
@@ -166,4 +168,12 @@ export const postNote = async (
 
         return note;
     });
+};
+
+/**
+ * Uncounts the replies of an account about to be deleted from the notes they reply to, before its
+ * notes go with it.
+ */
+export const uncountRepliesOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
+    if (isAccountDeleting(event)) await uncountRepliesBy(ctx, event.accountId);
 };

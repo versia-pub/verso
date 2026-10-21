@@ -1,5 +1,6 @@
 import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { updateProfile } from "../accounts/profile.ts";
+import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -407,4 +408,23 @@ Deno.test("a changed profile is sent to the instances of its followers", async (
     assertEquals(sent.map(([domain, entity]) => [domain, entity.type, entity.display_name]), [
         ["b.example", "User", "Alice"],
     ]);
+});
+
+Deno.test("a remote account deleted is uncounted from those it followed and was followed by", async () => {
+    await using test = await open();
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "bob")
+        .execute();
+    await follow(test.ctx, "carol", "bob");
+    await acceptFollow(test.ctx, "alice", "carol");
+    const counts = async () =>
+        (await test.ctx.db.selectFrom("accounts")
+            .select(["id", "followers_count", "following_count"])
+            .where("id", "in", ["alice", "bob"]).orderBy("id").execute())
+            .map((row) => [row.id, row.followers_count, row.following_count]);
+    assertEquals(await counts(), [["alice", 3, 1], ["bob", 0, 1]]);
+
+    await deleteRemoteAccount(test.ctx, "b.example", "carol");
+
+    // Carol followed alice, and alice carol; carol only asked to follow bob.
+    assertEquals(await counts(), [["alice", 2, 0], ["bob", 0, 1]]);
 });

@@ -2,13 +2,14 @@ import { accountPermissions } from "./accounts/roles.ts";
 import { authenticateToken } from "./auth/tokens.ts";
 import { createResolver } from "./federation/resolver.ts";
 import { followDeliveries, profileDeliveries } from "./graph/federation.ts";
-import { acceptWhenUnlocked } from "./graph/follows.ts";
+import { acceptWhenUnlocked, uncountFollowsOf } from "./graph/follows.ts";
 import type { AppServices } from "./http/env.ts";
 import { instanceKey } from "./instances/keys.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
 import type { Federation, Subscriber } from "./kernel/context.ts";
 import { domainBlocks } from "./moderation/domain_blocks.ts";
 import { noteDeliveries } from "./notes/federation.ts";
+import { uncountRepliesOf } from "./notes/notes.ts";
 import { registry } from "./registry.ts";
 
 /** The services the HTTP app asks for, as Verso's modules provide them. */
@@ -24,6 +25,8 @@ export const subscribers: readonly Subscriber[] = [
     profileDeliveries,
     followDeliveries,
     noteDeliveries,
+    uncountFollowsOf,
+    uncountRepliesOf,
 ];
 
 /**

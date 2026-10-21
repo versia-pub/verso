@@ -176,3 +176,23 @@ export const countReply = async (ctx: Context, noteId: string, by: 1 | -1): Prom
         .where("id", "=", noteId)
         .execute();
 };
+
+/** Uncounts the replies an account wrote from the notes they reply to. */
+export const uncountRepliesBy = async (ctx: Context, accountId: string): Promise<void> => {
+    await ctx.db.updateTable("notes")
+        .set((eb) => ({
+            replies_count: eb(
+                "replies_count",
+                "-",
+                eb.selectFrom("notes as reply")
+                    .select((count) => count.fn.countAll<number>().as("count"))
+                    .whereRef("reply.in_reply_to_id", "=", "notes.id")
+                    .where("reply.account_id", "=", accountId),
+            ),
+        }))
+        // Only the notes it replied to, rather than every note, less nothing.
+        .where("id", "in", (eb) =>
+            eb.selectFrom("notes as reply").select("reply.in_reply_to_id")
+                .where("reply.account_id", "=", accountId))
+        .execute();
+};
