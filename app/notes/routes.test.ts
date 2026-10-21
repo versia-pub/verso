@@ -245,6 +245,93 @@ Deno.test("an edited status is held to the limit, with the warning it gives", as
     assertEquals(await status({ status: "a".repeat(40), spoiler_text: "a".repeat(11) }), 422);
 });
 
+Deno.test("a status's thread is given to whoever may see it, without what they may not", async () => {
+    await using test = await open();
+    const root = await createNote(test.ctx, "alice");
+    const note = await createNote(test.ctx, "bob", {
+        in_reply_to_id: root.id,
+        in_reply_to_account_id: "alice",
+    });
+    const secret = await createNote(test.ctx, "alice", {
+        visibility: "private",
+        in_reply_to_id: note.id,
+        in_reply_to_account_id: "bob",
+    });
+    const context = async (id: string, as: string | null) => {
+        const reply = await test.request("GET", `/api/v1/statuses/${id}/context`, as);
+        return reply.status === 200
+            ? [
+                reply.body.ancestors.map((status: { id: string }) => status.id),
+                reply.body.descendants.map((status: { id: string }) => status.id),
+            ]
+            : reply.status;
+    };
+
+    assertEquals(await context(note.id, "bob"), [[root.id], [secret.id]]);
+    assertEquals(await context(note.id, null), [[root.id], []]);
+    assertEquals(await context(secret.id, "dave"), 404);
+    assertEquals(await context("missing", "alice"), 404);
+});
+
+Deno.test("an account's statuses are those the viewer may see, newest first", async () => {
+    await using test = await open();
+    const ids = [];
+    for (const visibility of ["public", "unlisted", "private", "direct"] as const) {
+        test.clock.advance(1);
+        ids.push((await createNote(test.ctx, "alice", { visibility })).id);
+    }
+    const statuses = async (as: string | null, query = "") => {
+        const reply = await test.request("GET", `/api/v1/accounts/alice/statuses${query}`, as);
+        return reply.status === 200
+            ? reply.body.map((status: { id: string }) => status.id)
+            : reply.status;
+    };
+
+    assertEquals(await statuses(null), [ids[1], ids[0]]);
+    assertEquals(await statuses("dave"), [ids[1], ids[0]]);
+    assertEquals(await statuses("bob"), [ids[2], ids[1], ids[0]]);
+    assertEquals(await statuses("alice"), ids.toReversed());
+    assertEquals(await statuses("alice", `?max_id=${ids[2]}&limit=1`), [ids[1]]);
+    assertEquals(await statuses("alice", "?only_media=true"), []);
+    assertEquals(await statuses("alice", "?pinned=1"), []);
+    assertEquals(
+        (await test.request("GET", "/api/v1/accounts/nobody/statuses")).status,
+        404,
+    );
+
+    const response = await test.app.request("/api/v1/accounts/alice/statuses?limit=2");
+    assertStringIncludes(response.headers.get("link") ?? "", `max_id=${ids[0]}>; rel="next"`);
+});
+
+Deno.test("an account's statuses may leave out replies to others, or be only those with a hashtag", async () => {
+    await using test = await open();
+    const other = await createNote(test.ctx, "bob");
+    const own = await createNote(test.ctx, "alice", {}, [], ["verso"]);
+    const toSelf = await createNote(test.ctx, "alice", {
+        in_reply_to_id: own.id,
+        in_reply_to_account_id: "alice",
+    });
+    const toBob = await createNote(
+        test.ctx,
+        "alice",
+        {
+            in_reply_to_id: other.id,
+            in_reply_to_account_id: "bob",
+        },
+        [],
+        ["verso", "deno"],
+    );
+    const statuses = async (query: string) =>
+        (await test.request("GET", `/api/v1/accounts/alice/statuses${query}`)).body
+            .map((status: { id: string }) => status.id);
+
+    assertEquals(await statuses(""), [toBob.id, toSelf.id, own.id]);
+    assertEquals(await statuses("?exclude_replies=true"), [toSelf.id, own.id]);
+    assertEquals(await statuses("?tagged=Verso"), [toBob.id, own.id]);
+    assertEquals(await statuses("?tagged=deno&exclude_replies=1"), []);
+    assertEquals(await statuses("?exclude_reblogs=true"), [toBob.id, toSelf.id, own.id]);
+});
+
 Deno.test("a status's history is given to whoever may see it", async () => {
     await using test = await open();
     const everyone = await createNote(test.ctx, "alice");
@@ -315,6 +402,20 @@ Deno.test("statuses are posted, read and deleted with tokens and roles that may"
     assertEquals((await test.request("GET", `${path}/history`, "alice", ["write"])).status, 403);
     assertEquals(
         (await test.request("GET", `${path}/history`, null, undefined, limited)).status,
+        403,
+    );
+    assertEquals(
+        (await test.request("GET", `${path}/context`, null, undefined, limited)).status,
+        403,
+    );
+    assertEquals((await test.request("GET", `${path}/context`, "alice", ["write"])).status, 403);
+    assertEquals(
+        (await test.request("GET", "/api/v1/accounts/alice/statuses", null, undefined, limited))
+            .status,
+        403,
+    );
+    assertEquals(
+        (await test.request("GET", "/api/v1/accounts/alice/statuses", "alice", ["write"])).status,
         403,
     );
 

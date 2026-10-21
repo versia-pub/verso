@@ -1,5 +1,6 @@
 import type { Insertable, Selectable, Updateable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
+import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import type { NotesTable, NoteVersionsTable } from "./tables.ts";
@@ -128,6 +129,58 @@ export const notesBy = async (
         .where("visibility", "in", visibilities)
         .orderBy("id")
         .offset(offset)
+        .limit(limit)
+        .execute();
+
+/** Which of an account's notes to page through, besides their visibility. */
+export type NoteFilter = {
+    /** Leaves out replies, other than to the account itself. */
+    readonly excludeReplies?: boolean;
+    /** Only those with this hashtag. */
+    readonly tag?: string;
+};
+
+/** A page of an account's notes with one of `visibilities`, newest first. */
+export const notePageBy = async (
+    ctx: Context,
+    accountId: string,
+    visibilities: readonly Visibility[],
+    filter: NoteFilter,
+    page: PageBounds,
+): Promise<NoteRow[]> => {
+    let query = ctx.db.selectFrom("notes").selectAll()
+        .where("account_id", "=", accountId)
+        .where("visibility", "in", visibilities);
+
+    if (filter.excludeReplies) {
+        query = query.where((eb) =>
+            eb.or([eb("in_reply_to_id", "is", null), eb("in_reply_to_account_id", "=", accountId)])
+        );
+    }
+
+    const tag = filter.tag?.toLowerCase();
+    if (tag !== undefined) {
+        query = query.where((eb) =>
+            eb.exists(
+                eb.selectFrom("note_tags").select("note_tags.note_id")
+                    .whereRef("note_tags.note_id", "=", "notes.id")
+                    .where("note_tags.name", "=", tag),
+            )
+        );
+    }
+
+    return await readPage(query, "notes.id", page);
+};
+
+/** The replies to any of `noteIds`, oldest first, at most `limit` of them. */
+export const repliesTo = async (
+    ctx: Context,
+    noteIds: readonly string[],
+    limit: number,
+): Promise<NoteRow[]> =>
+    noteIds.length === 0 ? [] : await ctx.db.selectFrom("notes").selectAll()
+        .where("in_reply_to_id", "in", noteIds)
+        .orderBy("id")
         .limit(limit)
         .execute();
 

@@ -1,11 +1,15 @@
-import { Status, StatusEdit, StatusSource } from "@versia/client-api";
+import { Context, Status, StatusEdit, StatusSource } from "@versia/client-api";
 import { z } from "zod";
+import { findAccount } from "../accounts/accounts.ts";
 import { NotFound } from "../http/errors.ts";
-import { defineRoute, type Route } from "../http/route.ts";
+import { cursorsOf, PageQuery } from "../http/paging.ts";
+import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { Flag } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import { countText } from "../kernel/markup.ts";
-import { editNote, postNote, removeNote, visibleNote } from "./notes.ts";
+import { notePageBy } from "./note_queries.ts";
+import { editNote, postNote, removeNote, visibilitiesFor, visibleNote } from "./notes.ts";
+import { threadOf } from "./threads.ts";
 import { renderHistory, renderStatuses } from "./render.ts";
 
 /** What Verso can't post yet, refused rather than left out: empty, or not given at all. */
@@ -61,7 +65,23 @@ const edit = (limits: Limits) =>
         spoiler_text: z.string().optional(),
     }).refine(limited(limits).check, limited(limits).error);
 
-/** Statuses: posting, viewing, editing and deleting them, with what is posted held to `limits`. */
+/**
+ * Which of an account's statuses to give. Verso has no media, shares or pins yet, so asking only
+ * for statuses with media, or pinned ones, gives none.
+ * @see https://docs.joinmastodon.org/methods/accounts/#statuses
+ */
+const AccountStatusesQuery = PageQuery({ default: 20, max: 40 }).extend({
+    exclude_replies: Flag.default(false),
+    exclude_reblogs: Flag.optional(),
+    only_media: Flag.default(false),
+    pinned: Flag.default(false),
+    tagged: z.string().optional(),
+});
+
+/**
+ * Statuses: posting, viewing, editing and deleting them, with what is posted held to `limits`, and
+ * the threads and accounts they are in.
+ */
 export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
         method: "POST",
@@ -126,6 +146,59 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
 
             const [status] = await renderStatuses(ctx, [note], viewer.accountId);
             return { status: 200, body: status };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/statuses/:id/context",
+        summary:
+            "The statuses a status replies to, and the replies under it, that the viewer may see",
+        tags: ["statuses"],
+        auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
+        params: z.object({ id: z.string() }),
+        responses: { 200: Context },
+        handler: async (ctx, { params, viewer }) => {
+            const viewerId = viewer?.accountId ?? null;
+            const note = await visibleNote(ctx, params.id, viewerId);
+            if (note === undefined) throw new NotFound();
+
+            const thread = await threadOf(ctx, note, viewerId);
+            return {
+                status: 200,
+                body: {
+                    ancestors: await renderStatuses(ctx, thread.ancestors, viewerId),
+                    descendants: await renderStatuses(ctx, thread.descendants, viewerId),
+                },
+            };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/accounts/:id/statuses",
+        summary: "An account's statuses that the viewer may see, newest first",
+        tags: ["accounts"],
+        auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
+        params: z.object({ id: z.string() }),
+        query: AccountStatusesQuery,
+        responses: { 200: Paged(Status) },
+        handler: async (ctx, { params, query, viewer }) => {
+            const viewerId = viewer?.accountId ?? null;
+            const account = await findAccount(ctx, params.id);
+            if (account === undefined) throw new NotFound();
+            if (query.only_media || query.pinned) return { status: 200, body: [], cursors: {} };
+
+            const notes = await notePageBy(
+                ctx,
+                account.id,
+                await visibilitiesFor(ctx, account.id, viewerId),
+                { excludeReplies: query.exclude_replies, tag: query.tagged },
+                query,
+            );
+            return {
+                status: 200,
+                body: await renderStatuses(ctx, notes, viewerId),
+                cursors: cursorsOf(notes, query, (note) => note.id),
+            };
         },
     }),
     defineRoute({

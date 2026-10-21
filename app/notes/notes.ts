@@ -42,6 +42,24 @@ export const canSee = async (
     return note.visibility === "private" && await isFollowing(ctx, viewerId, note.account_id);
 };
 
+/**
+ * The visibilities of an account's notes that `viewerId`, or anyone if it is `null`, sees among
+ * them: all of them for the account itself, private ones too for its followers, and otherwise
+ * public and unlisted ones. Direct notes that mention the viewer aren't among them, as on Mastodon.
+ */
+export const visibilitiesFor = async (
+    ctx: Context,
+    accountId: string,
+    viewerId: string | null,
+): Promise<Visibility[]> => {
+    if (viewerId === accountId) return ["public", "unlisted", "private", "direct"];
+    if (viewerId !== null && await isFollowing(ctx, viewerId, accountId)) {
+        return ["public", "unlisted", "private"];
+    }
+
+    return ["public", "unlisted"];
+};
+
 /** The note with this id, if there is one and `viewerId` may see it. */
 export const visibleNote = async (
     ctx: Context,
