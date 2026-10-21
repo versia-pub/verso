@@ -25,9 +25,13 @@ export type NotesTable = {
     /** The note it replies to, or `null` if none, or it is gone. */
     in_reply_to_id: string | null;
     in_reply_to_account_id: string | null;
+    /** The note it quotes, or `null` if none, or it is gone. Only other instances' quote yet. */
+    quote_id: string | null;
     replies_count: Generated<number>;
     created_at: Date;
     edited_at: Date | null;
+    /** When it was last fetched or sent, or `null` if it was written here. */
+    fetched_at: Date | null;
 };
 
 /** An account a note mentions, who may see it whatever its visibility. */

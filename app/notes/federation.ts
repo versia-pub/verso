@@ -1,28 +1,39 @@
 /**
- * Notes as Versia shows them: local ones, as other instances fetch them and are sent them, and the
- * users they are shown to.
+ * Notes as Versia shows them: local ones, as other instances fetch them and are sent them, the
+ * users they are shown to, and other instances' notes, as Verso keeps them.
  * @see https://versia.pub/entities/note
  * @module
  */
-import { formatReference, parseReference, v0_6 } from "@versia/protocol";
-import { findAccount, instancesHosting } from "../accounts/accounts.ts";
-import { userReferenceMap } from "../accounts/federation.ts";
+import { getLogger } from "@logtape/logtape";
+import { formatReference, parseReference, type Reference, v0_6 } from "@versia/protocol";
+import { countNote, findAccount, instancesHosting } from "../accounts/accounts.ts";
+import { knownUser, remoteText, userReferenceMap } from "../accounts/federation.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import { queueDeliveries } from "../federation/deliver.ts";
-import type { CollectionProvider, EntityType } from "../federation/registry.ts";
+import type { CollectionProvider, EntityType, Known, Sender } from "../federation/registry.ts";
+import { isRemoteFailure } from "../federation/resolver.ts";
 import { followerIds } from "../graph/follows.ts";
 import { findInstanceId } from "../instances/instances.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
-import type { Context, DomainEvent } from "../kernel/context.ts";
+import type { Budget, Context, DomainEvent } from "../kernel/context.ts";
+import { renderText, scanText } from "../kernel/markup.ts";
 import { isNoteDeleted, isNotePosted } from "./events.ts";
 import {
     countNotesBy,
+    countReply,
     findNote,
+    findRemoteNote,
+    findRemoteNoteAt,
+    insertNote,
     mentionsOf,
     noteOrigins,
     type NoteRow,
     notesBy,
+    updateNote,
 } from "./note_queries.ts";
+import { removeNote } from "./notes.ts";
+
+const logger = getLogger(["verso", "notes"]);
 
 /** Who a note is for, as Versia says it. Unlisted notes are public, as Versia has no unlisted. */
 const groups: Record<Visibility, string | undefined> = {
@@ -83,9 +94,9 @@ const renderVersiaNotes = async (ctx: Context, notes: readonly NoteRow[]): Promi
     const users = await userReferenceMap(ctx, [
         ...new Set([...notes.map((note) => note.account_id), ...[...mentions.values()].flat()]),
     ]);
-    const parents = await noteReferenceMap(
+    const linked = await noteReferenceMap(
         ctx,
-        notes.flatMap((note) => note.in_reply_to_id ?? []),
+        notes.flatMap((note) => [note.in_reply_to_id ?? [], note.quote_id ?? []].flat()),
     );
 
     return notes.map((note): v0_6.Note => {
@@ -106,7 +117,8 @@ const renderVersiaNotes = async (ctx: Context, notes: readonly NoteRow[]): Promi
             is_sensitive: note.sensitive,
             subject: note.spoiler_text === "" ? undefined : note.spoiler_text,
             mentions: (mentions.get(note.id) ?? []).flatMap((id) => users.get(id) ?? []),
-            replies_to: note.in_reply_to_id === null ? undefined : parents.get(note.in_reply_to_id),
+            replies_to: note.in_reply_to_id === null ? undefined : linked.get(note.in_reply_to_id),
+            quotes: note.quote_id === null ? undefined : linked.get(note.quote_id),
             attachments: [],
             previews: [],
         };
@@ -183,16 +195,164 @@ const outbox: CollectionProvider = async (ctx, id, page) => {
 export const noteCollections: Readonly<Record<string, CollectionProvider>> = { outbox };
 
 /**
- * Notes: local ones, fetched by other instances that may see them. Other instances' notes aren't
- * taken yet.
+ * A note's visibility, from who Versia says it is for. Verso has no groups, so a group's note is
+ * only for those it mentions.
+ */
+const visibilityOf = (group: string | null | undefined): Visibility =>
+    group === "public" ? "public" : group === "followers" ? "private" : "direct";
+
+/** The note `reference` points at, local or remote, if Verso has it, without fetching it. */
+const knownNote = async (ctx: Context, reference: Reference): Promise<Known | undefined> => {
+    if (reference.host === ctx.urls.domain) {
+        const note = await findNote(ctx, reference.id);
+        return note?.instance_id === null ? { id: note.id, fetchedAt: null } : undefined;
+    }
+
+    const note = await findRemoteNoteAt(ctx, reference.host, reference.id);
+    // A remote note is always saved with when it was fetched.
+    return note && { id: note.id, fetchedAt: note.fetched_at ?? new Date(0) };
+};
+
+/**
+ * Who a note sent by `sender` names: its author, who it mentions, and what it replies to and
+ * quotes.
+ */
+const referencesIn = (note: v0_6.Note, sender: Sender) => ({
+    author: parseReference(note.author, sender.domain),
+    mentions: note.mentions.flatMap((text) => parseReference(text, sender.domain) ?? []),
+    parent: note.replies_to ? parseReference(note.replies_to, sender.domain) : undefined,
+    quote: note.quotes ? parseReference(note.quotes, sender.domain) : undefined,
+});
+
+/** Fetches what a note names, if Verso doesn't have it; a note does without what can't be had. */
+const resolveIfAble = async (
+    ctx: Context,
+    reference: Reference,
+    type: "User" | "Note",
+    budget: Budget,
+) => {
+    try {
+        await ctx.federation.resolve(ctx, reference, type, budget);
+    } catch (error) {
+        if (!isRemoteFailure(error)) throw error;
+        logger.warn("Couldn't fetch the {type} {id} on {host}: {error}", {
+            type,
+            ...reference,
+            error,
+        });
+    }
+};
+
+/**
+ * Whether a note sent unasked is one Verso wants: by someone a local user follows, or mentioning,
+ * replying to or quoting something local. Others could fill Verso with notes nobody here would
+ * see.
+ */
+const wanted = async (
+    ctx: Context,
+    authorId: string,
+    mentions: readonly { readonly id: string; readonly local: boolean }[],
+    linked: readonly (NoteRow | undefined)[],
+) => mentions.some((mention) => mention.local) ||
+    linked.some((note) => note?.instance_id === null) ||
+    // Verso keeps only follows with a local side, so any follower of another instance's user is a
+    // local one.
+    (await followerIds(ctx, authorId)).length > 0;
+
+/** The note `reference` points at, if there is one and Verso has it. */
+const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
+    const known = reference && await knownNote(ctx, reference);
+    return known && await findNote(ctx, known.id);
+};
+
+/**
+ * Saves a note `sender` sent, or a newer version of one Verso has, without who it mentions or the
+ * notes it replies to or quotes that Verso doesn't have. A new one is counted, and what it replies
+ * to and quotes stay for good, even if a newer version says otherwise.
+ */
+const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
+    const references = referencesIn(note, sender);
+    const author = references.author && await knownUser(ctx, references.author);
+    if (author === undefined) throw new PermanentFailure(`Verso doesn't have ${note.author}`);
+
+    const mentions = [];
+    for (const reference of references.mentions) {
+        const user = await knownUser(ctx, reference);
+        if (user) mentions.push({ id: user.id, local: reference.host === ctx.urls.domain });
+    }
+    const parent = await knownNoteRow(ctx, references.parent);
+    const quote = await knownNoteRow(ctx, references.quote);
+
+    const existing = await findRemoteNote(ctx, sender.instanceId, note.id);
+    if (existing && existing.account_id !== author.id) {
+        throw new PermanentFailure(`${sender.domain} may not give ${note.id} another author`);
+    }
+    if (!existing && !sender.fetched && !await wanted(ctx, author.id, mentions, [parent, quote])) {
+        return;
+    }
+
+    const content = remoteText(note.content, (text, format) => renderText(text, format));
+    const changes = {
+        visibility: visibilityOf(note.group),
+        content: content.text,
+        content_format: content.format,
+        content_html: content.html,
+        spoiler_text: note.subject ?? "",
+        sensitive: note.is_sensitive,
+        fetched_at: ctx.clock.now(),
+    };
+    const mentionIds = mentions.map((mention) => mention.id);
+    const tags = scanText(content.text, content.format).hashtags;
+
+    if (existing) return await updateNote(ctx, existing.id, changes, mentionIds, tags);
+
+    const row = await insertNote(
+        ctx,
+        {
+            id: ctx.ids(),
+            account_id: author.id,
+            instance_id: sender.instanceId,
+            remote_id: note.id,
+            ...changes,
+            // Versia doesn't say.
+            language: null,
+            in_reply_to_id: parent?.id ?? null,
+            in_reply_to_account_id: parent?.account_id ?? null,
+            quote_id: quote?.id ?? null,
+            created_at: new Date(note.created_at),
+            edited_at: null,
+        },
+        mentionIds,
+        tags,
+    );
+    await countNote(ctx, author.id, 1, row.created_at);
+    if (parent !== undefined) await countReply(ctx, parent.id, 1);
+};
+
+/**
+ * Notes: local ones, fetched by other instances that may see them, and other instances' ones,
+ * sent or fetched, with their authors, who they mention and what they reply to fetched first.
  */
 export const noteType: EntityType<v0_6.Note> = {
     type: "Note",
     schema: v0_6.Note,
     // Only its author's instance may send it.
     authority: (note, origin) => parseReference(note.author, origin)?.host,
-    receive: () =>
-        Promise.reject(new PermanentFailure("Verso doesn't take notes from other instances yet")),
+    prepare: async (ctx, note, sender, budget) => {
+        const { author, mentions, parent, quote } = referencesIn(note, sender);
+        // Without its author, the note can't be kept, so it is tried again later.
+        if (author) await ctx.federation.resolve(ctx, author, "User", budget);
+
+        for (const mention of mentions) await resolveIfAble(ctx, mention, "User", budget);
+        if (parent) await resolveIfAble(ctx, parent, "Note", budget);
+        if (quote) await resolveIfAble(ctx, quote, "Note", budget);
+    },
+    receive: receiveNote,
+    deleteRemote: async (ctx, id, sender) => {
+        const note = await findRemoteNote(ctx, sender.instanceId, id);
+        if (note) await removeNote(ctx, note.id);
+    },
+    known: knownNote,
     find: async (ctx, id, requester) => {
         const note = await findNote(ctx, id);
         if (note === undefined || note.instance_id !== null) return undefined;

@@ -1,10 +1,31 @@
-import type { Insertable, Selectable } from "kysely";
+import type { Insertable, Selectable, Updateable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import type { NotesTable } from "./tables.ts";
 
 export type NoteRow = Selectable<NotesTable>;
+
+/** Adds who a note mentions, and its hashtags, in lower case. */
+const insertMentionsAndTags = async (
+    ctx: Context,
+    noteId: string,
+    mentionIds: readonly string[],
+    tags: readonly string[],
+) => {
+    if (mentionIds.length > 0) {
+        await ctx.db.insertInto("note_mentions")
+            .values([...new Set(mentionIds)].map((account_id) => ({ note_id: noteId, account_id })))
+            .execute();
+    }
+
+    if (tags.length > 0) {
+        const names = new Set(tags.map((tag) => tag.toLowerCase()));
+        await ctx.db.insertInto("note_tags")
+            .values([...names].map((name) => ({ note_id: noteId, name })))
+            .execute();
+    }
+};
 
 /** Adds a note, with the accounts it mentions and its hashtags, in lower case. */
 export const insertNote = async (
@@ -15,25 +36,51 @@ export const insertNote = async (
 ): Promise<NoteRow> => {
     const row = await ctx.db.insertInto("notes").values(note).returningAll()
         .executeTakeFirstOrThrow();
-
-    if (mentionIds.length > 0) {
-        await ctx.db.insertInto("note_mentions")
-            .values([...new Set(mentionIds)].map((account_id) => ({ note_id: row.id, account_id })))
-            .execute();
-    }
-
-    if (tags.length > 0) {
-        const names = new Set(tags.map((tag) => tag.toLowerCase()));
-        await ctx.db.insertInto("note_tags")
-            .values([...names].map((name) => ({ note_id: row.id, name })))
-            .execute();
-    }
+    await insertMentionsAndTags(ctx, row.id, mentionIds, tags);
 
     return row;
 };
 
+/** Changes a note, and replaces who it mentions and its hashtags. */
+export const updateNote = async (
+    ctx: Context,
+    id: string,
+    changes: Updateable<NotesTable>,
+    mentionIds: readonly string[],
+    tags: readonly string[],
+): Promise<void> => {
+    await ctx.db.updateTable("notes").set(changes).where("id", "=", id).execute();
+
+    await ctx.db.deleteFrom("note_mentions").where("note_id", "=", id).execute();
+    await ctx.db.deleteFrom("note_tags").where("note_id", "=", id).execute();
+    await insertMentionsAndTags(ctx, id, mentionIds, tags);
+};
+
 export const findNote = async (ctx: Context, id: string): Promise<NoteRow | undefined> =>
     await ctx.db.selectFrom("notes").selectAll().where("id", "=", id).executeTakeFirst();
+
+/** The note with the id `remoteId` on the instance `instanceId`, if Verso has it. */
+export const findRemoteNote = async (
+    ctx: Context,
+    instanceId: string,
+    remoteId: string,
+): Promise<NoteRow | undefined> =>
+    await ctx.db.selectFrom("notes").selectAll()
+        .where("instance_id", "=", instanceId)
+        .where("remote_id", "=", remoteId)
+        .executeTakeFirst();
+
+/** The note with the id `remoteId` on the instance at `domain`, if Verso has it. */
+export const findRemoteNoteAt = async (
+    ctx: Context,
+    domain: string,
+    remoteId: string,
+): Promise<NoteRow | undefined> =>
+    await ctx.db.selectFrom("notes").selectAll("notes")
+        .innerJoin("instances", "instances.id", "notes.instance_id")
+        .where("instances.domain", "=", domain)
+        .where("notes.remote_id", "=", remoteId)
+        .executeTakeFirst();
 
 /** The notes of `ids` that exist, with the domain of the instance each is from, or `null`. */
 export const noteOrigins = async (

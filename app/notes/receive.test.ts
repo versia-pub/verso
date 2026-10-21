@@ -1,0 +1,372 @@
+import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
+import { findAccount } from "../accounts/accounts.ts";
+import { createLocalAccount } from "../accounts/testing.ts";
+import { follow } from "../graph/follows.ts";
+import { addEvilInstance, type EvilInstance } from "../testing/evil.ts";
+import { createNetwork } from "../testing/network.ts";
+import { findRemoteNoteAt, mentionsOf, tagsOf } from "./note_queries.ts";
+import { postNote, removeNote } from "./notes.ts";
+import { createNote } from "./testing.ts";
+
+/** A user b.test serves. */
+const user = (id: string) => ({
+    type: "User",
+    id,
+    created_at: "2026-01-01T00:00:00Z",
+    username: id,
+    fields: [],
+    manually_approves_followers: false,
+    indexable: true,
+});
+
+/** A public note by bob saying "Hi #Verso", unless `fields` says otherwise. */
+const note = (id: string, fields: Record<string, unknown> = {}) => ({
+    type: "Note",
+    id,
+    created_at: "2026-01-01T00:00:00Z",
+    author: "bob",
+    content: {
+        "text/plain": { content: "Hi #Verso", remote: false },
+        "text/html": { content: "<p>Hi #Verso</p>", remote: false },
+    },
+    group: "public",
+    is_sensitive: false,
+    mentions: [],
+    attachments: [],
+    previews: [],
+    ...fields,
+});
+
+/** a.test, with alice, and b.test, an instance that sends what it is told, with bob and carol. */
+const open = async () => {
+    const network = await createNetwork(["a.test"]);
+    const a = network.instances["a.test"].ctx;
+    const b = await addEvilInstance(network, "b.test");
+    for (const id of ["bob", "carol"]) b.serve(`/.versia/v0.6/entities/User/${id}`, user(id));
+
+    const alice = await createLocalAccount(a, "alice");
+    const bob = await a.federation.resolve(a, { host: "b.test", id: "bob" }, "User");
+    assertExists(bob);
+
+    /** Has `from` send `entity` to a.test, a second after the last, and a.test take it in. */
+    const send = async (entity: object, from: EvilInstance = b) => {
+        network.clock.advance(1000);
+        assertEquals(
+            (await from.send("https://a.test/.versia/v0.6/inbox", { body: entity })).status,
+            202,
+        );
+        await network.drain();
+    };
+
+    /** The note b.test has as `remoteId`, as a.test keeps it, if it does. */
+    const kept = (remoteId: string) => findRemoteNoteAt(a, "b.test", remoteId);
+
+    /** Why a.test gave up on what it was sent, oldest first. */
+    const errors = async () =>
+        (await a.db.selectFrom("jobs").select("last_error").where("queue", "=", "inbox")
+            .where("last_error", "is not", null).orderBy("created_at").execute())
+            .map((job) => job.last_error ?? "");
+
+    const counts = async (id: string) => {
+        const row = await findAccount(a, id);
+        return [row?.statuses_count, row?.last_status_at?.toISOString()];
+    };
+
+    return {
+        network,
+        a,
+        b,
+        alice,
+        bob,
+        send,
+        kept,
+        errors,
+        counts,
+        [Symbol.asyncDispose]: network[Symbol.asyncDispose],
+    };
+};
+
+Deno.test("a note by someone a local user follows is kept, and counted", async () => {
+    await using test = await open();
+    await follow(test.a, test.alice, test.bob);
+    await test.send({
+        type: "FollowAccept",
+        author: "bob",
+        follower: `a.test:${test.alice}`,
+        created_at: "2026-01-01T00:00:00Z",
+    });
+
+    await test.send(note("n1"));
+
+    const kept = await test.kept("n1");
+    assertEquals(
+        [
+            kept?.account_id,
+            kept?.visibility,
+            kept?.content,
+            kept?.content_format,
+            kept?.content_html,
+        ],
+        [test.bob, "public", "Hi #Verso", "text/plain", "<p>Hi #Verso</p>"],
+    );
+    assertEquals(
+        [kept?.created_at.toISOString(), kept?.fetched_at, kept?.language, kept?.spoiler_text],
+        ["2026-01-01T00:00:00.000Z", test.network.clock.now(), null, ""],
+    );
+    assertEquals((await tagsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? ""), ["verso"]);
+    assertEquals(await test.counts(test.bob), [1, "2026-01-01T00:00:00.000Z"]);
+    assertEquals(await test.errors(), []);
+});
+
+Deno.test("a note sent unasked is kept only if it mentions or replies to something here", async () => {
+    await using test = await open();
+    const local = await createNote(test.a, test.alice);
+
+    await test.send(note("n1"));
+    await test.send(note("n2", { mentions: ["b.test:carol"] }));
+    await test.send(note("n3", { mentions: [`a.test:${test.alice}`, "b.test:carol"] }));
+    await test.send(note("n4", { replies_to: `a.test:${local.id}` }));
+
+    assertEquals([await test.kept("n1"), await test.kept("n2")], [undefined, undefined]);
+    const mention = await test.kept("n3");
+    const carol = await test.a.federation.resolve(test.a, { host: "b.test", id: "carol" }, "User");
+    assertEquals(
+        (await mentionsOf(test.a, [mention?.id ?? ""])).get(mention?.id ?? ""),
+        [test.alice, carol].toSorted(),
+    );
+
+    const reply = await test.kept("n4");
+    assertEquals([reply?.in_reply_to_id, reply?.in_reply_to_account_id], [local.id, test.alice]);
+    const parent = await test.a.db.selectFrom("notes").select("replies_count")
+        .where("id", "=", local.id).executeTakeFirstOrThrow();
+    assertEquals(parent.replies_count, 1);
+    assertEquals(await test.counts(test.bob), [2, "2026-01-01T00:00:00.000Z"]);
+});
+
+Deno.test("a note does without those it names that can't be had", async () => {
+    await using test = await open();
+
+    await test.send(note("n1", {
+        mentions: [`a.test:${test.alice}`, "b.test:nobody", "c.test:dave"],
+        replies_to: "b.test:gone",
+    }));
+
+    const kept = await test.kept("n1");
+    assertEquals((await mentionsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? ""), [test.alice]);
+    assertEquals(kept?.in_reply_to_id, null);
+});
+
+Deno.test("who a note is for, and its warning, are kept as Mastodon has them", async () => {
+    await using test = await open();
+    const mentioning = { mentions: [`a.test:${test.alice}`] };
+
+    await test.send(note("n1", { ...mentioning, group: "followers", subject: "Food" }));
+    await test.send(note("n2", { ...mentioning, group: null, is_sensitive: true }));
+    await test.send(note("n3", { ...mentioning, group: "b.test:group" }));
+
+    const kept = [await test.kept("n1"), await test.kept("n2"), await test.kept("n3")];
+    assertEquals(kept.map((row) => [row?.visibility, row?.spoiler_text, row?.sensitive]), [
+        ["private", "Food", false],
+        ["direct", "", true],
+        ["direct", "", false],
+    ]);
+});
+
+Deno.test("a note in Markdown, or only in HTML, keeps what it was written in", async () => {
+    await using test = await open();
+    const mentions = [`a.test:${test.alice}`];
+
+    await test.send(note("n1", {
+        mentions,
+        content: { "text/markdown": { content: "Hi *#Verso*", remote: false } },
+    }));
+    await test.send(note("n2", {
+        mentions,
+        content: { "text/html": { content: "<p>Hi</p>", remote: false } },
+    }));
+
+    const markdown = await test.kept("n1");
+    assertEquals(
+        [markdown?.content_format, markdown?.content, markdown?.content_html],
+        ["text/markdown", "Hi *#Verso*", "<p>Hi <em>#Verso</em></p>"],
+    );
+    assertEquals((await tagsOf(test.a, [markdown?.id ?? ""])).get(markdown?.id ?? ""), ["verso"]);
+
+    const html = await test.kept("n2");
+    assertEquals([html?.content, html?.content_html], ["", "<p>Hi</p>"]);
+});
+
+Deno.test("a note sent again replaces the one Verso has, without counting it again", async () => {
+    await using test = await open();
+    const mentions = [`a.test:${test.alice}`];
+    await test.send(note("n1", { mentions }));
+    const first = await test.kept("n1");
+
+    // No longer mentioning anyone here, which only a new note needs to.
+    await test.send(note("n1", {
+        content: { "text/plain": { content: "Bye #Gone", remote: false } },
+        group: "followers",
+    }));
+
+    const second = await test.kept("n1");
+    assertEquals(
+        [second?.id, second?.content, second?.content_html, second?.visibility],
+        [first?.id, "Bye #Gone", "<p>Bye #Gone</p>", "private"],
+    );
+    assertEquals((await mentionsOf(test.a, [first?.id ?? ""])).get(first?.id ?? ""), undefined);
+    assertEquals((await tagsOf(test.a, [first?.id ?? ""])).get(first?.id ?? ""), ["gone"]);
+    assertEquals(await test.counts(test.bob), [1, "2026-01-01T00:00:00.000Z"]);
+
+    await test.send(note("n1", { author: "carol", mentions }));
+    assertEquals((await test.kept("n1"))?.account_id, test.bob);
+    assertStringIncludes((await test.errors())[0], "b.test may not give n1 another author");
+});
+
+Deno.test("a note by a user who can't be had is given up on", async () => {
+    await using test = await open();
+
+    await test.send(note("n1", { author: "nobody", mentions: [`a.test:${test.alice}`] }));
+
+    assertEquals(await test.kept("n1"), undefined);
+    assertStringIncludes((await test.errors())[0], "Verso doesn't have nobody");
+});
+
+Deno.test("what a reply replies to is fetched, and kept with it", async () => {
+    await using test = await open();
+    test.b.serve("/.versia/v0.6/entities/Note/n0", note("n0"));
+
+    await test.send(note("n1", { mentions: [`a.test:${test.alice}`], replies_to: "n0" }));
+
+    const parent = await test.kept("n0");
+    assertEquals((await test.kept("n1"))?.in_reply_to_id, parent?.id);
+    assertEquals(parent?.replies_count, 1);
+    assertEquals(
+        await test.a.federation.resolve(test.a, { host: "b.test", id: "n0" }, "Note"),
+        parent?.id,
+    );
+});
+
+Deno.test("what a note quotes is fetched, and kept with it, and quoting a local note is enough", async () => {
+    await using test = await open();
+    const local = await createNote(test.a, test.alice);
+    test.b.serve("/.versia/v0.6/entities/Note/n0", note("n0"));
+
+    await test.send(note("n1", { mentions: [`a.test:${test.alice}`], quotes: "n0" }));
+    await test.send(note("n2", { quotes: `a.test:${local.id}` }));
+    await test.send(note("n3", { quotes: "b.test:n0" }));
+
+    const quoted = await test.kept("n0");
+    assertEquals((await test.kept("n1"))?.quote_id, quoted?.id);
+    assertEquals((await test.kept("n2"))?.quote_id, local.id);
+    assertEquals(await test.kept("n3"), undefined);
+});
+
+Deno.test("an older note fetched late leaves when its author last posted", async () => {
+    await using test = await open();
+    const mentions = [`a.test:${test.alice}`];
+
+    await test.send(note("n2", { mentions, created_at: "2026-01-02T00:00:00Z" }));
+    await test.send(note("n1", { mentions }));
+
+    assertEquals(await test.counts(test.bob), [2, "2026-01-02T00:00:00.000Z"]);
+});
+
+Deno.test("notes with the same id on two instances are two notes", async () => {
+    await using test = await open();
+    const c = await addEvilInstance(test.network, "c.test");
+    c.serve("/.versia/v0.6/entities/User/bob", user("bob"));
+    const mentions = [`a.test:${test.alice}`];
+
+    await test.send(note("n1", { mentions }));
+    await test.send(
+        note("n1", {
+            mentions,
+            content: { "text/plain": { content: "Elsewhere", remote: false } },
+        }),
+        c,
+    );
+
+    assertEquals((await test.kept("n1"))?.content, "Hi #Verso");
+    assertEquals((await findRemoteNoteAt(test.a, "c.test", "n1"))?.content, "Elsewhere");
+    assertEquals(
+        await test.a.federation.resolve(test.a, { host: "c.test", id: "n1" }, "Note"),
+        (await findRemoteNoteAt(test.a, "c.test", "n1"))?.id,
+    );
+});
+
+Deno.test("a note is found by its reference, here or on its instance", async () => {
+    await using test = await open();
+    const local = await createNote(test.a, test.alice);
+    await test.send(note("n1", { mentions: [`a.test:${test.alice}`] }));
+    const remote = await test.kept("n1");
+    const resolve = (host: string, id: string) =>
+        test.a.federation.resolve(test.a, { host, id }, "Note");
+
+    assertEquals(await resolve("a.test", local.id), local.id);
+    assertEquals(await resolve("a.test", remote?.id ?? ""), undefined);
+    assertEquals(await resolve("b.test", "n1"), remote?.id);
+    assertEquals(await resolve("b.test", "missing"), undefined);
+});
+
+Deno.test("a Delete removes a remote note, and uncounts it", async () => {
+    await using test = await open();
+    const local = await createNote(test.a, test.alice);
+    await test.send(note("n1", { replies_to: `a.test:${local.id}` }));
+    const kept = await test.kept("n1");
+    assertExists(kept);
+
+    await test.send({
+        type: "Delete",
+        author: "bob",
+        deleted_type: "Note",
+        deleted: "n1",
+        created_at: "2026-01-01T00:00:00Z",
+    });
+    await test.send({
+        type: "Delete",
+        author: "bob",
+        deleted_type: "Note",
+        deleted: "n9",
+        created_at: "2026-01-01T00:00:00Z",
+    });
+
+    assertEquals(await test.kept("n1"), undefined);
+    assertEquals((await test.counts(test.bob))[0], 0);
+    const parent = await test.a.db.selectFrom("notes").select("replies_count")
+        .where("id", "=", local.id).executeTakeFirstOrThrow();
+    assertEquals(parent.replies_count, 0);
+    assertEquals(await test.errors(), []);
+});
+
+Deno.test("a note posted on one Verso reaches the followers on another, until it is deleted", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"].ctx;
+    const b = network.instances["b.test"].ctx;
+    const alice = await createLocalAccount(a, "alice");
+    const bob = await createLocalAccount(b, "bob");
+    const bobOnA = await a.federation.resolve(a, { host: "b.test", id: bob }, "User");
+    assertExists(bobOnA);
+    await follow(a, alice, bobOnA);
+    await network.drain();
+
+    const posted = await postNote(b, bob, {
+        text: "Hi @alice@a.test",
+        format: "text/plain",
+        spoilerText: "",
+        visibility: "private",
+    });
+    assertExists(posted);
+    await network.drain();
+
+    const kept = await findRemoteNoteAt(a, "b.test", posted.id);
+    assertEquals([kept?.account_id, kept?.visibility, kept?.content], [
+        bobOnA,
+        "private",
+        "Hi @alice@a.test",
+    ]);
+    assertEquals((await mentionsOf(a, [kept?.id ?? ""])).get(kept?.id ?? ""), [alice]);
+
+    await removeNote(b, posted.id);
+    await network.drain();
+    assertEquals(await findRemoteNoteAt(a, "b.test", posted.id), undefined);
+});

@@ -267,8 +267,9 @@ export const countFollow = async (
 };
 
 /**
- * Counts a note an account posted, or deleted, and when it last posted. Deleting a note leaves
- * when it last posted as it was, as Mastodon does.
+ * Counts a note an account posted, or deleted, and when it last posted, which an older note, such
+ * as one fetched late from another instance, doesn't move back. Deleting a note leaves when it
+ * last posted as it was, as Mastodon does.
  */
 export const countNote = async (
     ctx: Context,
@@ -277,11 +278,15 @@ export const countNote = async (
     at: Date,
 ): Promise<void> => {
     await ctx.db.updateTable("accounts")
-        .set((eb) => ({
-            statuses_count: eb("statuses_count", "+", by),
-            ...(by === 1 ? { last_status_at: at } : {}),
-        }))
+        .set((eb) => ({ statuses_count: eb("statuses_count", "+", by) }))
         .where("id", "=", accountId)
+        .execute();
+    if (by === -1) return;
+
+    await ctx.db.updateTable("accounts")
+        .set({ last_status_at: at })
+        .where("id", "=", accountId)
+        .where((eb) => eb.or([eb("last_status_at", "is", null), eb("last_status_at", "<", at)]))
         .execute();
 };
 

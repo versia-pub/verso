@@ -98,8 +98,8 @@ Deno.test("a Delete of a type that can't be deleted is given up on", async () =>
     await using test = await open();
 
     assertStringIncludes(
-        await test.send({ ...deletion("alice"), deleted_type: "Note" }) ?? "",
-        "A Note can't be deleted",
+        await test.send({ ...deletion("alice"), deleted_type: "Follow" }) ?? "",
+        "A Follow can't be deleted",
     );
     assertEquals(await test.usernames(), ["alice", "bob"]);
 });

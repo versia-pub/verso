@@ -5,7 +5,6 @@ import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
 import type { CollectionProvider } from "../federation/registry.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
-import { PermanentFailure } from "../jobs/worker.ts";
 import { registry } from "../registry.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -56,6 +55,10 @@ Deno.test("a local note is a Versia Note, with who it mentions and what it repli
         instance_id: "b.example",
         remote_id: "c1",
     });
+    const quoted = await createNote(test.ctx, "carol", {
+        instance_id: "b.example",
+        remote_id: "c2",
+    });
     const note = await createNote(
         test.ctx,
         "alice",
@@ -68,6 +71,7 @@ Deno.test("a local note is a Versia Note, with who it mentions and what it repli
             sensitive: true,
             in_reply_to_id: parent.id,
             in_reply_to_account_id: "carol",
+            quote_id: quoted.id,
         },
         ["bob", "carol"],
     );
@@ -88,6 +92,7 @@ Deno.test("a local note is a Versia Note, with who it mentions and what it repli
         subject: "Greeting",
         mentions: ["bob", "b.example:carol"],
         replies_to: "b.example:c1",
+        quotes: "b.example:c2",
         attachments: [],
         previews: [],
     });
@@ -212,13 +217,11 @@ Deno.test("a user's outbox is their public and unlisted notes, oldest first", as
     );
 });
 
-Deno.test("notes from other instances aren't taken yet, and are their authors' instances' own", async () => {
+Deno.test("a note is its author's instance's own", async () => {
     await using test = await open();
     const entity = await test.find((await createNote(test.ctx, "alice")).id, "");
     if (entity === undefined) throw new Error("No note");
-    const sender = { domain: "b.example", instanceId: "b.example", fetched: true };
 
-    await assertRejects(() => noteType.receive(test.ctx, entity, sender), PermanentFailure);
     assertEquals(noteType.authority({ ...entity, author: "carol" }, "b.example"), "b.example");
     assertEquals(
         noteType.authority({ ...entity, author: "c.example:erin" }, "b.example"),

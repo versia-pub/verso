@@ -152,10 +152,10 @@ const writtenText = (formats: v0_6.ContentFormat): { format: TextFormat; text: s
  * Text as Verso keeps it: as written, and as HTML, which is the instance's own if it gave one, kept
  * as it is and sanitised when shown, or else made by `html` from what was written.
  */
-const remoteText = (
+export const remoteText = (
     formats: v0_6.ContentFormat | null | undefined,
     html: (text: string, format: TextFormat) => string,
-) => {
+): { format: TextFormat; text: string; html: string } => {
     const written = writtenText(formats ?? {});
     const given = formats?.["text/html"];
 
