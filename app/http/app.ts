@@ -87,16 +87,24 @@ export const createApp = (
 
     /**
      * Checks a signed request's signature, counting the request against the instance that signed
-     * it, or, if it isn't validly signed, against its client, like any other request.
+     * it, or, if it isn't validly signed, against its client, like any other request. A signer
+     * whose key Verso must fetch is counted against the client first, so a client over its limit
+     * can't make Verso fetch keys.
      */
     const verify = async (c: HonoContext<AppEnv>) => {
         if (!limits) return await verifyRequest(ctx, c);
 
+        let counted = false;
+        const countClient = async () => {
+            counted = true;
+            await checkRateLimit(c, ctx.clock, limits.store, limits.policy, await clientKey(c));
+        };
+
         let signed;
         try {
-            signed = await verifyRequest(ctx, c);
+            signed = await verifyRequest(ctx, c, countClient);
         } catch (error) {
-            await checkRateLimit(c, ctx.clock, limits.store, limits.policy, await clientKey(c));
+            if (!counted) await countClient();
             throw error;
         }
 

@@ -14,8 +14,15 @@ const logger = getLogger(["verso", "instances"]);
 
 /** Where an instance's keys come from, with the ones already found kept in memory. */
 export type RemoteKeys = {
-    /** The key of the instance at `domain`: remembered, stored, or else fetched from it. */
-    readonly get: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
+    /**
+     * The key of the instance at `domain`: remembered, stored, or else fetched from it, once
+     * `beforeFetch` has run, as a rate limit that may refuse the fetch.
+     */
+    readonly get: (
+        ctx: Context,
+        domain: string,
+        beforeFetch?: () => Promise<void>,
+    ) => Promise<CryptoKey | undefined>;
     /**
      * Fetches the key again, as after a signature fails to verify, in case the instance rotated
      * it. At most once per `refetchAfterMs` for each instance, so bad signatures can't make Verso
@@ -31,6 +38,8 @@ export type RemoteKeysOptions = {
     /** How many keys to keep in memory. The least recently used are dropped first. */
     readonly capacity?: number;
     readonly refetchAfterMs?: number;
+    /** How many keys may be fetched at once, so unknown signers can't tie up Verso's requests. */
+    readonly concurrency?: number;
 };
 
 /**
@@ -80,6 +89,7 @@ const storeKey = async (ctx: Context, domain: string, key: string) => {
 export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
     const capacity = options.capacity ?? 1000;
     const refetchAfterMs = options.refetchAfterMs ?? 5 * 60 * 1000;
+    const concurrency = options.concurrency ?? 16;
 
     /** Keys by domain, least recently used first. */
     const remembered = new Map<string, CryptoKey>();
@@ -102,6 +112,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
 
         const now = ctx.clock.now().getTime();
         if ((failed.get(domain) ?? 0) > now) return Promise.resolve(undefined);
+        if (fetching.size >= concurrency) return Promise.resolve(undefined);
 
         pending = (async () => {
             const spki = await fetchKey(ctx, domain);
@@ -127,7 +138,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
             .executeTakeFirst();
 
     return {
-        get: async (ctx, domain) => {
+        get: async (ctx, domain, beforeFetch) => {
             const known = remembered.get(domain);
             if (known) {
                 remember(domain, known);
@@ -136,7 +147,10 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
 
             const row = await stored(ctx, domain);
             const key = row?.public_key ? await importPublicKey(row.public_key) : undefined;
-            if (!key) return await fetchAndStore(ctx, domain);
+            if (!key) {
+                await beforeFetch?.();
+                return await fetchAndStore(ctx, domain);
+            }
 
             remember(domain, key);
             return key;

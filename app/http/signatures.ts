@@ -19,9 +19,13 @@ export type SignedRequest = {
  * Checks the request's signature, and gives who signed it. When the key Verso has for it doesn't
  * verify, the key is fetched again, at most so often, in case the instance rotated it. A blocked
  * instance is refused once the headers are checked, before its key is looked up, so Verso never
- * sends it a request.
+ * sends it a request. `beforeFetch` runs before a key Verso doesn't have is fetched.
  */
-export const verifyRequest = async (ctx: Context, c: HonoContext): Promise<SignedRequest> => {
+export const verifyRequest = async (
+    ctx: Context,
+    c: HonoContext,
+    beforeFetch?: () => Promise<void>,
+): Promise<SignedRequest> => {
     const message = {
         method: c.req.method,
         pathname: new URL(c.req.url).pathname,
@@ -33,7 +37,7 @@ export const verifyRequest = async (ctx: Context, c: HonoContext): Promise<Signe
     const keys: KeyStore = {
         get: async (ctx, domain) => {
             blocked = await isBlocked(ctx, domain);
-            return blocked ? undefined : await remoteKeys.get(ctx, domain);
+            return blocked ? undefined : await remoteKeys.get(ctx, domain, beforeFetch);
         },
         refresh: remoteKeys.refresh,
     };

@@ -160,7 +160,7 @@ Deno.test("instances are limited by who signed, and bad signatures as clients", 
     await using test = await open({
         rateLimits: {
             store: memoryRateLimitStore(fakeClock()),
-            policy: { limit: 2, ...window },
+            policy: { limit: 3, ...window },
             instancePolicy: { limit: 3, ...window },
         },
     });
@@ -171,7 +171,8 @@ Deno.test("instances are limited by who signed, and bad signatures as clients", 
     };
     const anyone = async () => ({ status: (await test.app.request("/public")).status });
 
-    // Instances aren't held to the clients' limit, but to their own.
+    // Instances aren't held to the clients' limit, but to their own. Only the first request,
+    // which made Verso fetch the key, counts against the client too.
     assertEquals(await statuses(4, () => test.send({})), [200, 200, 200, 429]);
     assertEquals(await statuses(1, anyone), [200]);
 
@@ -179,6 +180,22 @@ Deno.test("instances are limited by who signed, and bad signatures as clients", 
     const forged = await keyPair();
     assertEquals(await statuses(2, () => test.send({}, { key: forged })), [401, 429]);
     assertEquals(await statuses(1, anyone), [429]);
+});
+
+Deno.test("a client over its limit can't make Verso fetch the keys of instances it names", async () => {
+    await using test = await open({
+        rateLimits: {
+            store: memoryRateLimitStore(fakeClock()),
+            policy: { limit: 1, windowSeconds: 30 },
+            instancePolicy: { limit: 10, windowSeconds: 30 },
+        },
+    });
+    const asked = (domain: string) =>
+        test.transport.sent.filter((request) => new URL(request.url).host === domain).length;
+
+    assertEquals((await test.send({ signedBy: "c.example" })).status, 401);
+    assertEquals((await test.send({ signedBy: "d.example" })).status, 429);
+    assertEquals([asked("c.example"), asked("d.example")], [1, 0]);
 });
 
 Deno.test("a signature more than five minutes off is refused as stale", async () => {

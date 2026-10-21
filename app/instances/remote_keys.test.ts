@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertFalse } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertRejects } from "@std/assert";
 import { fakeTransport, type Server } from "../kernel/fake_transport.ts";
 import { createTestContext } from "../testing/context.ts";
 import { remoteKeys } from "./remote_keys.ts";
@@ -166,4 +166,44 @@ Deno.test("only the most recently used keys are kept in memory", async () => {
     assert(await isKeyOf(await keys.get(test.ctx, "a.example"), pair));
     assert(await isKeyOf(await keys.get(test.ctx, "c.example"), pair));
     assertFalse(await isKeyOf(await keys.get(test.ctx, "b.example"), pair));
+});
+
+Deno.test("a key is fetched only after what runs before fetching, which may refuse it", async () => {
+    await using test = await open();
+    test.transport.servers.set("b.example", metadataServer("b.example", await keyPair()));
+    const keys = remoteKeys();
+    let before = 0;
+    const count = () => Promise.resolve(void before++);
+
+    await assertRejects(
+        () => keys.get(test.ctx, "b.example", () => Promise.reject(new Error("Too many"))),
+        Error,
+        "Too many",
+    );
+    assertEquals(test.transport.sent.length, 0);
+
+    assert(await keys.get(test.ctx, "b.example", count));
+    assert(await keys.get(test.ctx, "b.example", count));
+    assertEquals([before, test.transport.sent.length], [1, 1]);
+});
+
+Deno.test("only so many keys are fetched at once, and the others are tried again later", async () => {
+    await using test = await open();
+    const b = metadataServer("b.example", await keyPair());
+    const answer = Promise.withResolvers<void>();
+    test.transport.servers.set("b.example", async (request) => {
+        await answer.promise;
+        return await b(request);
+    });
+    test.transport.servers.set("c.example", metadataServer("c.example", await keyPair()));
+    const keys = remoteKeys({ concurrency: 1 });
+
+    // While b.example's key is being fetched, c.example's isn't.
+    const first = keys.get(test.ctx, "b.example");
+    while (test.transport.sent.length === 0) await new Promise((wake) => setTimeout(wake, 1));
+    assertEquals(await keys.get(test.ctx, "c.example"), undefined);
+
+    answer.resolve();
+    assert(await first);
+    assert(await keys.get(test.ctx, "c.example"));
 });

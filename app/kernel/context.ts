@@ -9,8 +9,12 @@ import type { UrlBuilder } from "./urls.ts";
 
 /** Other instances' public keys, by domain. */
 export type KeyStore = {
-    /** The key Verso has for the instance, or else fetches from it. */
-    readonly get: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
+    /** The key Verso has for the instance, or else fetches from it, after `beforeFetch`. */
+    readonly get: (
+        ctx: Context,
+        domain: string,
+        beforeFetch?: () => Promise<void>,
+    ) => Promise<CryptoKey | undefined>;
     /** Fetches the key again, in case the instance rotated it, but only so often. */
     readonly refresh: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
 };
