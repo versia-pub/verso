@@ -2,7 +2,7 @@ import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route } from "../http/route.ts";
 import { lru } from "../kernel/lru.ts";
-import { findAccount } from "./accounts.ts";
+import { findAccount } from "./account_queries.ts";
 import { identicon, identiconBanner } from "./identicon.ts";
 
 const AccountId = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });

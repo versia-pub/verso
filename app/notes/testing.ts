@@ -1,5 +1,5 @@
 import type { Insertable } from "kysely";
-import { countNote } from "../accounts/accounts.ts";
+import { countNote } from "../accounts/count_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { insertNote, type NoteRow } from "./note_queries.ts";
 import type { NotesTable } from "./tables.ts";

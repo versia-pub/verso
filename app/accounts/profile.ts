@@ -1,6 +1,6 @@
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import { type AccountChanges, findAccount, updateLocalAccount } from "./accounts.ts";
+import { type AccountChanges, findAccount, updateLocalAccount } from "./account_queries.ts";
 import type { ProfileUpdated } from "./events.ts";
 import type { ProfileField, Visibility } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";

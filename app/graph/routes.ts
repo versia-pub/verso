@@ -1,6 +1,6 @@
 import { Account, Relationship } from "@versia/client-api";
 import { z } from "zod";
-import { existingAccountIds, findAccount } from "../accounts/accounts.ts";
+import { existingAccountIds, findAccount } from "../accounts/account_queries.ts";
 import { publicAccounts } from "../accounts/public.ts";
 import { NotFound, NotPermitted } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { BadRequest, NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { findLocalAccount } from "./accounts.ts";
+import { findLocalAccount } from "./account_queries.ts";
 
 /**
  * A JSON Resource Descriptor: what a WebFinger lookup answers.

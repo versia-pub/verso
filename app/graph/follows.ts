@@ -3,12 +3,8 @@
  * @module
  */
 import { z } from "zod";
-import {
-    countFollow,
-    findAccount,
-    uncountFollowers,
-    uncountFollowing,
-} from "../accounts/accounts.ts";
+import { findAccount } from "../accounts/account_queries.ts";
+import { countFollow, uncountFollowers, uncountFollowing } from "../accounts/count_queries.ts";
 import { isAccountDeleting, isProfileUpdated } from "../accounts/events.ts";
 import { batchSize } from "../db/batches.ts";
 import { enqueue } from "../jobs/queue.ts";

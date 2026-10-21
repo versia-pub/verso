@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { findAccount } from "../accounts/accounts.ts";
+import { findAccount } from "../accounts/account_queries.ts";
 import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";

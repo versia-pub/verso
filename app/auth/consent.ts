@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { getUsername } from "../accounts/accounts.ts";
+import { getUsername } from "../accounts/account_queries.ts";
 import { provision } from "../accounts/provision.ts";
 import type { Context } from "../kernel/context.ts";
 import { getApp } from "./apps.ts";

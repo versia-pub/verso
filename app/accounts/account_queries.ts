@@ -1,4 +1,7 @@
-import { batchesOf } from "../db/batches.ts";
+/**
+ * Accounts, local and remote: finding, adding and changing them.
+ * @module
+ */
 import {
     type ExpressionBuilder,
     type Insertable,
@@ -35,6 +38,11 @@ const named =
             eb(eb.fn("lower", ["accounts.username"]), "=", username.toLowerCase()),
         ]);
 
+/**
+ * Accounts with their instance's domain and their pictures' addresses, which everything that shows
+ * an account needs. It joins the instances' and media's tables rather than asking those modules,
+ * so that a page of accounts is one query.
+ */
 const accountRows = (ctx: Context) =>
     ctx.db.selectFrom("accounts")
         .leftJoin("instances", "instances.id", "accounts.instance_id")
@@ -258,77 +266,6 @@ export const setAccountPictures = async (
     await ctx.db.updateTable("accounts").set(pictures).where("id", "=", id).execute();
 };
 
-/**
- * Counts a follow from `followerId` of `followeeId` that began, with `by` 1, or ended, with -1, in
- * both accounts' counts.
- */
-export const countFollow = async (
-    ctx: Context,
-    followerId: string,
-    followeeId: string,
-    by: 1 | -1,
-): Promise<void> => {
-    await ctx.db.updateTable("accounts")
-        .set((eb) => ({ following_count: eb("following_count", "+", by) }))
-        .where("id", "=", followerId)
-        .execute();
-
-    await ctx.db.updateTable("accounts")
-        .set((eb) => ({ followers_count: eb("followers_count", "+", by) }))
-        .where("id", "=", followeeId)
-        .execute();
-};
-
-/** Takes one from the followers each of `accountIds` has, as when one of them is deleted. */
-export const uncountFollowers = async (
-    ctx: Context,
-    accountIds: readonly string[],
-): Promise<void> => {
-    for (const batch of batchesOf(accountIds)) {
-        await ctx.db.updateTable("accounts")
-            .set((eb) => ({ followers_count: eb("followers_count", "-", 1) }))
-            .where("id", "in", batch)
-            .execute();
-    }
-};
-
-/** Takes one from the accounts each of `accountIds` follows, as when one of them is deleted. */
-export const uncountFollowing = async (
-    ctx: Context,
-    accountIds: readonly string[],
-): Promise<void> => {
-    for (const batch of batchesOf(accountIds)) {
-        await ctx.db.updateTable("accounts")
-            .set((eb) => ({ following_count: eb("following_count", "-", 1) }))
-            .where("id", "in", batch)
-            .execute();
-    }
-};
-
-/**
- * Counts a note an account posted, or deleted, and when it last posted, which an older note, such
- * as one fetched late from another instance, doesn't move back. Deleting a note leaves when it
- * last posted as it was, as Mastodon does.
- */
-export const countNote = async (
-    ctx: Context,
-    accountId: string,
-    by: 1 | -1,
-    at: Date,
-): Promise<void> => {
-    await ctx.db.updateTable("accounts")
-        .set((eb) => ({ statuses_count: eb("statuses_count", "+", by) }))
-        .where("id", "=", accountId)
-        .execute();
-    if (by === -1) return;
-
-    await ctx.db.updateTable("accounts")
-        .set({ last_status_at: at })
-        .where("id", "=", accountId)
-        .where((eb) => eb.or([eb("last_status_at", "is", null), eb("last_status_at", "<", at)]))
-        .execute();
-};
-
 /** Deletes an account. */
 export const deleteAccount = async (ctx: Context, id: string): Promise<void> => {
     await ctx.db.deleteFrom("accounts").where("id", "=", id).execute();
@@ -351,38 +288,4 @@ export const updateLocalAccount = async (
         .where("id", "=", id)
         .where("instance_id", "is", null)
         .execute();
-};
-
-/** The account a login at `issuer` as `subject` is linked to, if any. */
-export const linkedAccount = async (
-    ctx: Context,
-    issuer: string,
-    subject: string,
-): Promise<string | undefined> => {
-    const row = await ctx.db.selectFrom("identities")
-        .select("account_id")
-        .where("issuer", "=", issuer)
-        .where("subject", "=", subject)
-        .executeTakeFirst();
-
-    return row?.account_id;
-};
-
-/** Links a login to an account. Returns whether it did, which it doesn't if it was linked already. */
-export const linkIdentity = async (
-    ctx: Context,
-    identity: { readonly issuer: string; readonly subject: string; readonly accountId: string },
-): Promise<boolean> => {
-    const linked = await ctx.db.insertInto("identities")
-        .values({
-            issuer: identity.issuer,
-            subject: identity.subject,
-            account_id: identity.accountId,
-            created_at: ctx.clock.now(),
-        })
-        .onConflict((conflict) => conflict.doNothing())
-        .returning("account_id")
-        .executeTakeFirst();
-
-    return linked !== undefined;
 };

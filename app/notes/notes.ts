@@ -2,7 +2,8 @@
  * Notes, on this instance or another: posting and editing them, who may see them, and deleting them.
  * @module
  */
-import { type AccountRow, countNote, findAccount } from "../accounts/accounts.ts";
+import { type AccountRow, findAccount } from "../accounts/account_queries.ts";
+import { countNote } from "../accounts/count_queries.ts";
 import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import { userUri } from "../accounts/render.ts";
 import { isAccountDeleting } from "../accounts/events.ts";

@@ -10,7 +10,7 @@ import type {
     V1Instance,
 } from "@versia/client-api";
 import denoConfig from "../../deno.json" with { type: "json" };
-import { countLocalAccounts, findLocalAccount } from "../accounts/accounts.ts";
+import { countLocalAccounts, findLocalAccount } from "../accounts/account_queries.ts";
 import { renderAccount } from "../accounts/render.ts";
 import { rolesOf } from "../accounts/role_queries.ts";
 import { escapeHtml, textToHtml } from "../accounts/text.ts";

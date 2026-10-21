@@ -4,7 +4,7 @@
  */
 import type { Account } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
-import { type AccountRow, findAccounts } from "./accounts.ts";
+import { type AccountRow, findAccounts } from "./account_queries.ts";
 import { renderAccount } from "./render.ts";
 import { rolesOf, rolesOfAccounts } from "./role_queries.ts";
 

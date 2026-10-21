@@ -6,7 +6,7 @@ import type { Account, CredentialAccount, Field, Role } from "@versia/client-api
 import type { Context } from "../kernel/context.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
-import type { AccountRow } from "./accounts.ts";
+import type { AccountRow } from "./account_queries.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { mastodonPermissions } from "./permissions.ts";
 import type { RoleRow } from "./role_queries.ts";

@@ -3,7 +3,7 @@
  * @module
  */
 import type { Status, StatusEdit } from "@versia/client-api";
-import { findAccounts } from "../accounts/accounts.ts";
+import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";

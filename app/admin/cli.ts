@@ -6,7 +6,7 @@
 import { Command, EnumType, ValidationError } from "@cliffy/command";
 import { canonicalizeDomain } from "@versia/protocol";
 import { permissions } from "../kernel/permissions.ts";
-import { findLocalAccount } from "../accounts/accounts.ts";
+import { findLocalAccount } from "../accounts/account_queries.ts";
 import {
     createRole,
     findRole,

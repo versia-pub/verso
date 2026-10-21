@@ -3,10 +3,9 @@ import type { Claims, Issuer } from "../kernel/identity.ts";
 import {
     deleteAccount,
     insertLocalAccount,
-    linkedAccount,
-    linkIdentity,
     localUsernamesStartingWith,
-} from "./accounts.ts";
+} from "./account_queries.ts";
+import { linkedAccount, linkIdentity } from "./identity_queries.ts";
 import { claimContains } from "./claims.ts";
 import { syncClaimedRoles } from "./roles.ts";
 

@@ -1,6 +1,6 @@
 import { Context, Status, StatusEdit, StatusSource } from "@versia/client-api";
 import { z } from "zod";
-import { findAccount } from "../accounts/accounts.ts";
+import { findAccount } from "../accounts/account_queries.ts";
 import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";

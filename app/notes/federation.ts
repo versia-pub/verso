@@ -6,7 +6,7 @@
  * @module
  */
 import { parseReference, v0_6 } from "@versia/protocol";
-import { findAccount } from "../accounts/accounts.ts";
+import { findAccount } from "../accounts/account_queries.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";

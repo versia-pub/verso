@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findLocalAccount } from "./accounts.ts";
+import { findLocalAccount } from "./account_queries.ts";
 import { createLocalAccount } from "./testing.ts";
 
 Deno.test("only local accounts are found by username", async () => {

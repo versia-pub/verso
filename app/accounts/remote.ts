@@ -13,7 +13,7 @@ import {
     type RemoteProfile,
     setAccountPictures,
     upsertRemoteAccount,
-} from "./accounts.ts";
+} from "./account_queries.ts";
 
 /** A remote account as its instance last described it, whatever protocol it used. */
 export type RemoteAccount = {

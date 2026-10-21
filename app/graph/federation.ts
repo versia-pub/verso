@@ -5,7 +5,7 @@
  * @module
  */
 import { parseReference, v0_6 } from "@versia/protocol";
-import { findAccount } from "../accounts/accounts.ts";
+import { findAccount } from "../accounts/account_queries.ts";
 import { isProfileUpdated } from "../accounts/events.ts";
 import { knownUser, localVersiaUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveries, queueDeliveriesTo } from "../federation/deliver.ts";

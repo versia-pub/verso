@@ -13,7 +13,7 @@ import {
     findAccounts,
     findRemoteAccount,
     findRemoteAccountAt,
-} from "./accounts.ts";
+} from "./account_queries.ts";
 import { deleteRemoteAccount, type RemoteAccount, saveRemoteAccount } from "./remote.ts";
 import type { ProfileField, TextFormat } from "./tables.ts";
 import { escapeHtml } from "./text.ts";

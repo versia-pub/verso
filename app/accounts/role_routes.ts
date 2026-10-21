@@ -4,7 +4,7 @@ import { NotFound, NotPermitted, ValidationFailed } from "../http/errors.ts";
 import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Integer, Text } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
-import { type AccountRow, findAccount } from "./accounts.ts";
+import { type AccountRow, findAccount } from "./account_queries.ts";
 import { Permission } from "../kernel/permissions.ts";
 import { findRoleById, listRoles, type RoleRow, rolesOf } from "./role_queries.ts";
 import {

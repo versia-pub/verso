@@ -4,7 +4,7 @@
  * @module
  */
 import { z } from "zod";
-import { instancesHosting } from "../accounts/accounts.ts";
+import { instancesHosting } from "../accounts/account_queries.ts";
 import { domainsOf } from "../instances/instances.ts";
 import { enqueueAll } from "../jobs/queue.ts";
 import type { Context } from "../kernel/context.ts";

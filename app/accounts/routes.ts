@@ -6,7 +6,7 @@ import { Flag, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import { countFollowRequests } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
-import { type AccountRow, findAccount } from "./accounts.ts";
+import { type AccountRow, findAccount } from "./account_queries.ts";
 import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { pictureRoutes } from "./picture_routes.ts";
 import { updateProfile } from "./profile.ts";

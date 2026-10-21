@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { createInstance } from "../instances/testing.ts";
 import { findMedia } from "../media/media.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findAccount, type RemoteProfile } from "./accounts.ts";
+import { findAccount, type RemoteProfile } from "./account_queries.ts";
 import { type RemoteAccount, saveRemoteAccount } from "./remote.ts";
 
 const profile: RemoteProfile = {

@@ -1,5 +1,5 @@
 import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
-import { findAccount } from "../accounts/accounts.ts";
+import { findAccount } from "../accounts/account_queries.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { addEvilInstance, type EvilInstance } from "../testing/evil.ts";

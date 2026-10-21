@@ -2,7 +2,7 @@
  * Who a local note is shown to: the other instances it is sent to, and those that may fetch it.
  * @module
  */
-import { instancesHosting } from "../accounts/accounts.ts";
+import { instancesHosting } from "../accounts/account_queries.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import { followerInstances, hasFollowersOn } from "../graph/follows.ts";
 import { findInstanceId } from "../instances/instances.ts";

@@ -3,7 +3,7 @@ import { Account, CredentialAccount } from "@versia/client-api";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findAccount } from "./accounts.ts";
+import { findAccount } from "./account_queries.ts";
 import { saveRemoteAccount } from "./remote.ts";
 import { renderAccount, renderCredentialAccount } from "./render.ts";
 import type { RoleRow } from "./role_queries.ts";

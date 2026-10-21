@@ -13,7 +13,7 @@ import {
     findAccount,
     findLocalAccount,
     findRemoteAccountByName,
-} from "./accounts.ts";
+} from "./account_queries.ts";
 
 const logger = getLogger(["verso", "accounts"]);
 
