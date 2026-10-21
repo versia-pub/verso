@@ -141,3 +141,13 @@ export const acceptWhenUnlocked = async (ctx: Context, event: DomainEvent): Prom
         await acceptFollow(ctx, followerId, event.accountId);
     }
 };
+
+/** Whether `followerId` follows `followeeId`, and was accepted. */
+export const isFollowing = async (
+    ctx: Context,
+    followerId: string,
+    followeeId: string,
+): Promise<boolean> => {
+    const [follow] = await followsFrom(ctx, followerId, [followeeId]);
+    return follow?.accepted === true;
+};

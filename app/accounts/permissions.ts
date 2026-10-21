@@ -7,8 +7,10 @@ import type { Permission } from "../kernel/permissions.ts";
 const mastodonFlags: Readonly<Record<Permission, number>> = {
     "read:account": 0,
     "read:account_follows": 0,
+    "read:note": 0,
     "owner:account": 0,
     "owner:follow": 0,
+    "owner:note": 0,
     "roles": 0x20000,
 };
 

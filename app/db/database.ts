@@ -14,6 +14,7 @@ import type { RateLimitsTable } from "../http/tables.ts";
 import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import type { MediaTable } from "../media/tables.ts";
+import type { NoteMentionsTable, NotesTable, NoteTagsTable } from "../notes/tables.ts";
 import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
@@ -32,6 +33,9 @@ export type Database = {
     instances: InstancesTable;
     jobs: JobsTable;
     media: MediaTable;
+    note_mentions: NoteMentionsTable;
+    note_tags: NoteTagsTable;
+    notes: NotesTable;
     oauth_flows: OAuthFlowsTable;
     rate_limits: RateLimitsTable;
     roles: RolesTable;

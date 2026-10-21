@@ -96,8 +96,15 @@ updated = 2026-10-01
 
 [permissions]
 # What everyone may do, before roles add more: logged-out visitors, and every user.
-# anonymous = ["read:account", "read:account_follows"]
-# default = ["read:account", "read:account_follows", "owner:account", "owner:follow"]
+# anonymous = ["read:account", "read:account_follows", "read:note"]
+# default = [
+#     "read:account",
+#     "read:account_follows",
+#     "read:note",
+#     "owner:account",
+#     "owner:follow",
+#     "owner:note",
+# ]
 
 [logging]
 # level = "info"

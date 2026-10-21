@@ -1967,6 +1967,81 @@
                 }
             }
         },
+        "/api/v1/statuses/{id}": {
+            "get": {
+                "summary": "A status, if the viewer may see it",
+                "description": "Needs the `read:note` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Deletes one of the viewer's statuses, and gives it back as written, to redraft",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/roles": {
             "get": {
                 "summary": "Every role, highest priority first",
@@ -2027,8 +2102,10 @@
                                             "enum": [
                                                 "read:account",
                                                 "read:account_follows",
+                                                "read:note",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:note",
                                                 "roles"
                                             ]
                                         }
@@ -2098,8 +2175,10 @@
                                             "enum": [
                                                 "read:account",
                                                 "read:account_follows",
+                                                "read:note",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:note",
                                                 "roles"
                                             ]
                                         }
@@ -2169,8 +2248,10 @@
                                             "enum": [
                                                 "read:account",
                                                 "read:account_follows",
+                                                "read:note",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:note",
                                                 "roles"
                                             ]
                                         }
@@ -2319,8 +2400,10 @@
                                             "enum": [
                                                 "read:account",
                                                 "read:account_follows",
+                                                "read:note",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:note",
                                                 "roles"
                                             ]
                                         }
@@ -2387,8 +2470,10 @@
                                             "enum": [
                                                 "read:account",
                                                 "read:account_follows",
+                                                "read:note",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:note",
                                                 "roles"
                                             ]
                                         }
@@ -2455,8 +2540,10 @@
                                             "enum": [
                                                 "read:account",
                                                 "read:account_follows",
+                                                "read:note",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:note",
                                                 "roles"
                                             ]
                                         }

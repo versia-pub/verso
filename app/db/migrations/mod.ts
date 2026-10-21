@@ -20,6 +20,7 @@ import { instanceReachability } from "./0018_instance_reachability.ts";
 import { jobClaims } from "./0019_job_claims.ts";
 import { usedCodes } from "./0020_used_codes.ts";
 import { follows } from "./0021_follows.ts";
+import { notes } from "./0022_notes.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -47,4 +48,5 @@ export const migrations: Record<string, Migration> = {
     "0019_job_claims": jobClaims,
     "0020_used_codes": usedCodes,
     "0021_follows": follows,
+    "0022_notes": notes,
 };

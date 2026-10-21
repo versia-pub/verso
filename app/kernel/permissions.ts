@@ -10,10 +10,14 @@ export const permissions = [
     "read:account",
     /** View who accounts follow, and who follows them. */
     "read:account_follows",
+    /** View notes, as their visibility allows. */
+    "read:note",
     /** Change one's own profile and settings. */
     "owner:account",
     /** Follow and unfollow accounts. */
     "owner:follow",
+    /** Post and delete one's own notes. */
+    "owner:note",
     /** Create, change and assign roles below one's own. */
     "roles",
 ] as const;
