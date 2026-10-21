@@ -18,7 +18,12 @@ export type NoteDeleted = {
     readonly accountId: string;
     readonly visibility: Visibility;
     readonly mentionIds: readonly string[];
+    /** The author of the note it replied to, if any. */
+    readonly inReplyToAccountId: string | null;
 };
+
+export const isNotePosted = (event: DomainEvent): event is NotePosted =>
+    event.type === "notes.posted";
 
 export const isNoteDeleted = (event: DomainEvent): event is NoteDeleted =>
     event.type === "notes.deleted";

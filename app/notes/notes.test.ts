@@ -191,6 +191,7 @@ Deno.test("deleting a note uncounts it and its reply, and tells who could see it
         accountId: "alice",
         visibility: "direct",
         mentionIds: ["bob", "carol"],
+        inReplyToAccountId: "bob",
     }]);
 });
 

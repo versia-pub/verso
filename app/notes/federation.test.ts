@@ -1,13 +1,16 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { v0_6 } from "@versia/protocol";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
+import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
 import type { CollectionProvider } from "../federation/registry.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import { registry } from "../registry.ts";
+import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
 import { audienceOf, noteType } from "./federation.ts";
+import { postNote, removeNote } from "./notes.ts";
 import { createNote } from "./testing.ts";
 
 /** Alice and bob here; carol on b.example, who follows alice, and erin on c.example. */
@@ -27,6 +30,25 @@ const open = async () => {
 
     return { ...test, find };
 };
+
+/** The notes and Deletes queued to be sent, with the instance each is for. */
+const queued = async (ctx: Context) =>
+    (await ctx.db.selectFrom("jobs").select("payload").where("queue", "=", deliverQueue)
+        .orderBy("id").execute())
+        .map((job) => DeliverJob.parse(job.payload))
+        .map((job): [string, Record<string, unknown>] => [job.domain, JSON.parse(job.body)])
+        .filter(([, entity]) => entity.type === "Note" || entity.type === "Delete");
+
+/** The instance each of `queued` is for, and the type and id of what it is sent. */
+const sent = async (ctx: Context) =>
+    (await queued(ctx)).map(([domain, entity]) => [
+        domain,
+        entity.type,
+        entity.id ?? entity.deleted,
+    ]);
+
+const post = (ctx: Context, accountId: string, text: string, visibility = "public" as const) =>
+    postNote(ctx, accountId, { text, format: "text/plain", spoilerText: "", visibility });
 
 Deno.test("a local note is a Versia Note, with who it mentions and what it replies to", async () => {
     await using test = await open();
@@ -202,4 +224,70 @@ Deno.test("notes from other instances aren't taken yet, and are their authors' i
         noteType.authority({ ...entity, author: "c.example:erin" }, "b.example"),
         "c.example",
     );
+});
+
+Deno.test("a posted note is sent to the instances of those it is shown to", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "d.example");
+    await createRemoteAccount(test.ctx, "frank", "d.example");
+
+    const note = await post(test.ctx, "alice", "Hi @erin@c.example");
+    const reply = await postNote(test.ctx, "bob", {
+        text: "Hi",
+        format: "text/plain",
+        spoilerText: "",
+        inReplyToId: (await createNote(test.ctx, "frank", {
+            instance_id: "d.example",
+            remote_id: "f1",
+        })).id,
+    });
+    await post(test.ctx, "bob", "Just here");
+
+    assertEquals(await sent(test.ctx), [
+        ["b.example", "Note", note?.id],
+        ["c.example", "Note", note?.id],
+        ["d.example", "Note", reply?.id],
+    ]);
+    const [[, entity]] = await queued(test.ctx);
+    // As sent, without the fields it leaves out.
+    assertEquals(entity, JSON.parse(JSON.stringify(await test.find(note?.id ?? "", ""))));
+});
+
+Deno.test("a deleted local note is deleted where it was sent, and a remote one nowhere", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "d.example");
+    await createRemoteAccount(test.ctx, "frank", "d.example");
+    const parent = await createNote(test.ctx, "frank", {
+        instance_id: "d.example",
+        remote_id: "f1",
+    });
+    const note = await createNote(test.ctx, "alice", {
+        visibility: "unlisted",
+        in_reply_to_id: parent.id,
+        in_reply_to_account_id: "frank",
+    }, ["erin"]);
+    const direct = await createNote(test.ctx, "alice", { visibility: "direct" });
+    // Its own instance tells the others it is gone, so Verso doesn't, even to erin.
+    const remote = await createNote(
+        test.ctx,
+        "carol",
+        { instance_id: "b.example", remote_id: "c1" },
+        ["erin"],
+    );
+
+    for (const id of [note.id, direct.id, remote.id]) await removeNote(test.ctx, id);
+
+    assertEquals(await sent(test.ctx), [
+        ["b.example", "Delete", note.id],
+        ["c.example", "Delete", note.id],
+        ["d.example", "Delete", note.id],
+    ]);
+    const [[, entity]] = await queued(test.ctx);
+    assertEquals(entity, {
+        type: "Delete",
+        created_at: test.clock.now().toISOString(),
+        author: "alice",
+        deleted_type: "Note",
+        deleted: note.id,
+    });
 });

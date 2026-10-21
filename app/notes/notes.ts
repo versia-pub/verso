@@ -65,6 +65,7 @@ export const removeNote = (ctx: Context, id: string): Promise<boolean> =>
             accountId: note.account_id,
             visibility: note.visibility,
             mentionIds,
+            inReplyToAccountId: note.in_reply_to_account_id,
         };
         await emit(tx, event);
 

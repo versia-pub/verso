@@ -8,6 +8,7 @@ import { instanceKey } from "./instances/keys.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
 import type { Federation, Subscriber } from "./kernel/context.ts";
 import { domainBlocks } from "./moderation/domain_blocks.ts";
+import { noteDeliveries } from "./notes/federation.ts";
 import { registry } from "./registry.ts";
 
 /** The services the HTTP app asks for, as Verso's modules provide them. */
@@ -22,6 +23,7 @@ export const subscribers: readonly Subscriber[] = [
     acceptWhenUnlocked,
     profileDeliveries,
     followDeliveries,
+    noteDeliveries,
 ];
 
 /**

@@ -1,6 +1,6 @@
 /**
- * Notes as Versia shows them: local ones, as other instances fetch them, and the users they are
- * shown to.
+ * Notes as Versia shows them: local ones, as other instances fetch them and are sent them, and the
+ * users they are shown to.
  * @see https://versia.pub/entities/note
  * @module
  */
@@ -8,11 +8,13 @@ import { formatReference, parseReference, v0_6 } from "@versia/protocol";
 import { findAccount, instancesHosting } from "../accounts/accounts.ts";
 import { userReferenceMap } from "../accounts/federation.ts";
 import type { Visibility } from "../accounts/tables.ts";
+import { queueDeliveries } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import { followerIds } from "../graph/follows.ts";
 import { findInstanceId } from "../instances/instances.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
-import type { Context } from "../kernel/context.ts";
+import type { Context, DomainEvent } from "../kernel/context.ts";
+import { isNoteDeleted, isNotePosted } from "./events.ts";
 import {
     countNotesBy,
     findNote,
@@ -126,6 +128,42 @@ const seenBy = async (ctx: Context, note: NoteRow, requester: string) => {
     const audience = await audienceOf(ctx, note, mentionIds);
 
     return (await instancesHosting(ctx, audience)).includes(instanceId);
+};
+
+/** Sends a local note just posted to the instances of those it is shown to. */
+const sendNote = async (ctx: Context, noteId: string) => {
+    const note = await findNote(ctx, noteId);
+    if (note === undefined) return;
+
+    const mentionIds = (await mentionsOf(ctx, [note.id])).get(note.id) ?? [];
+    const [entity] = await renderVersiaNotes(ctx, [note]);
+    await queueDeliveries(ctx, entity, await audienceOf(ctx, note, mentionIds));
+};
+
+/**
+ * Sends other instances the notes local users post, and Deletes for the ones they delete, to the
+ * instances of those each was shown to. A Delete goes to the author's followers as they are now.
+ */
+export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
+    if (isNotePosted(event)) return await sendNote(ctx, event.noteId);
+    if (!isNoteDeleted(event)) return;
+
+    const author = await findAccount(ctx, event.accountId);
+    if (author?.domain !== null) return;
+
+    const note = {
+        account_id: event.accountId,
+        visibility: event.visibility,
+        in_reply_to_account_id: event.inReplyToAccountId,
+    };
+    const entity: v0_6.Delete = {
+        type: "Delete",
+        created_at: ctx.clock.now().toISOString(),
+        author: author.id,
+        deleted_type: "Note",
+        deleted: event.noteId,
+    };
+    await queueDeliveries(ctx, entity, await audienceOf(ctx, note, event.mentionIds));
 };
 
 /** A local user's public and unlisted notes, oldest first, so pages stay put as more are written. */
