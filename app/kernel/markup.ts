@@ -195,3 +195,32 @@ export const renderText = (text: string, format: MarkupFormat, links: Links = {}
 
     return parsers[format].render(text, env).trim();
 };
+
+/** What a link counts as, however long it is. */
+export const charactersPerLink = 23;
+
+/**
+ * How long `text` is, as Mastodon counts statuses: by what readers see as one character, with each
+ * web address counting as {@link charactersPerLink}, and mentions of other instances' users as
+ * just `@username`.
+ * @see https://github.com/mastodon/mastodon/blob/main/app/validators/status_length_validator.rb
+ */
+export const countText = (text: string): number => {
+    let counted = "";
+    let from = 0;
+
+    for (const link of parsers["text/plain"].linkify.match(text) ?? []) {
+        if (!/^https?:$/i.test(link.schema)) continue;
+
+        counted += text.slice(from, link.index) + "x".repeat(charactersPerLink);
+        from = link.lastIndex;
+    }
+    counted += text.slice(from);
+
+    const short = counted.replace(
+        pattern,
+        (match, username?: string) => username ? `@${username}` : match,
+    );
+
+    return [...new Intl.Segmenter().segment(short)].length;
+};

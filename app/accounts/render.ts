@@ -41,7 +41,7 @@ const renderFields = (
     }));
 
 /** The account's id in Versia, the URL its User entity is fetched from. */
-const userUri = (ctx: Context, row: AccountRow) => {
+export const userUri = (ctx: Context, row: AccountRow): string => {
     if (row.domain === null) return ctx.urls.url`/.versia/v0.6/entities/User/${row.id}`;
 
     if (row.remote_id === null) throw new Error(`Remote account ${row.id} has no remote id`);

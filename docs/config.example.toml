@@ -93,6 +93,8 @@ updated = 2026-10-01
 # fields = 16
 # field_name = 255
 # field_value = 255
+# A status, with its content warning. Links count as 23, whatever their length.
+# status = 10000
 
 [permissions]
 # What everyone may do, before roles add more: logged-out visitors, and every user.

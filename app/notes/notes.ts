@@ -1,16 +1,21 @@
 /**
- * Notes, on this instance or another: who may see them, and deleting them.
+ * Notes, on this instance or another: posting them, who may see them, and deleting them.
  * @module
  */
-import { countNote } from "../accounts/accounts.ts";
+import { type AccountRow, countNote, findAccount } from "../accounts/accounts.ts";
+import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
+import { userUri } from "../accounts/render.ts";
+import type { TextFormat, Visibility } from "../accounts/tables.ts";
 import { isFollowing } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import type { NoteDeleted } from "./events.ts";
+import { type Mention, renderText, scanText } from "../kernel/markup.ts";
+import type { NoteDeleted, NotePosted } from "./events.ts";
 import {
     countReply,
     deleteNote,
     findNote,
+    insertNote,
     mentions,
     mentionsOf,
     type NoteRow,
@@ -65,3 +70,99 @@ export const removeNote = (ctx: Context, id: string): Promise<boolean> =>
 
         return true;
     });
+
+/** What a local user posts. Without a visibility, sensitivity or language, it has their defaults. */
+export type Draft = {
+    readonly text: string;
+    readonly format: TextFormat;
+    /** Empty for none. A note with one is sensitive. */
+    readonly spoilerText: string;
+    readonly visibility?: Visibility;
+    readonly sensitive?: boolean;
+    readonly language?: string;
+    /** The note it replies to, which its author must be able to see. */
+    readonly inReplyToId?: string;
+};
+
+const mentionKey = (mention: Mention) => `${mention.username}@${mention.domain}`.toLowerCase();
+
+/**
+ * The accounts `mentions` are of, by {@link mentionKey}, with other instances' users fetched if
+ * Verso doesn't have them. Mentions of no one are left out.
+ */
+const mentioned = async (ctx: Context, mentions: readonly Mention[]) => {
+    const accounts = new Map<string, AccountRow>();
+
+    for (const mention of mentions) {
+        const { username, domain } = mention;
+        const address = parseAddress(ctx, domain === null ? username : `${username}@${domain}`);
+        const row = address && await findAccountByAddress(ctx, address, { fetch: true });
+        if (row) accounts.set(mentionKey(mention), row);
+    }
+
+    return accounts;
+};
+
+/**
+ * Posts a note by `accountId`, a local user, and counts it. Who it mentions is found first, outside
+ * the transaction, as that can mean asking other instances. Returns `undefined` if the note it
+ * replies to isn't there, or its author may not see it.
+ */
+export const postNote = async (
+    ctx: Context,
+    accountId: string,
+    draft: Draft,
+): Promise<NoteRow | undefined> => {
+    const found = scanText(draft.text, draft.format);
+    const accounts = await mentioned(ctx, found.mentions);
+
+    return await ctx.transaction(async (tx) => {
+        const author = await findAccount(tx, accountId);
+        if (author === undefined) throw new Error(`Account ${accountId} doesn't exist`);
+
+        const replyTo = draft.inReplyToId;
+        const parent = replyTo === undefined
+            ? undefined
+            : await visibleNote(tx, replyTo, accountId);
+        if (replyTo !== undefined && parent === undefined) return undefined;
+
+        const html = renderText(draft.text, draft.format, {
+            mention: (mention) => {
+                const row = accounts.get(mentionKey(mention));
+                return row && userUri(tx, row);
+            },
+            hashtag: (tag) => tx.urls.url`/tags/${tag.toLowerCase()}`,
+        });
+        const note = await insertNote(
+            tx,
+            {
+                id: tx.ids(),
+                account_id: accountId,
+                instance_id: null,
+                remote_id: null,
+                visibility: draft.visibility ?? author.default_visibility,
+                content: draft.text,
+                content_format: draft.format,
+                content_html: html,
+                spoiler_text: draft.spoilerText,
+                sensitive: draft.spoilerText !== "" ||
+                    (draft.sensitive ?? author.default_sensitive),
+                language: draft.language ?? (author.default_language || null),
+                in_reply_to_id: parent?.id ?? null,
+                in_reply_to_account_id: parent?.account_id ?? null,
+                created_at: tx.clock.now(),
+                edited_at: null,
+            },
+            [...accounts.values()].map((row) => row.id),
+            found.hashtags,
+        );
+
+        await countNote(tx, accountId, 1, note.created_at);
+        if (parent !== undefined) await countReply(tx, parent.id, 1);
+
+        const event: NotePosted = { type: "notes.posted", noteId: note.id };
+        await emit(tx, event);
+
+        return note;
+    });
+};

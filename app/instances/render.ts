@@ -18,6 +18,7 @@ import { countAccountsWithTokensSince } from "../auth/token_queries.ts";
 import { NotFound } from "../http/errors.ts";
 import type { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
+import { charactersPerLink } from "../kernel/markup.ts";
 import { countInstances } from "./instances.ts";
 
 /** What the instance's description is made from. */
@@ -74,7 +75,7 @@ const configuration = (
     limits: AboutSettings["limits"],
 ): Instance["configuration"] => ({
     urls: { streaming: ctx.urls.origin.replace(/^http/, "ws") },
-    // Push, pins, featured tags, statuses, media and polls arrive in later steps.
+    // Push, pins, featured tags, media and polls arrive in later steps.
     vapid: { public_key: "" },
     accounts: {
         max_featured_tags: 0,
@@ -86,9 +87,9 @@ const configuration = (
         profile_field_value_limit: limits.field_value,
     },
     statuses: {
-        max_characters: 0,
+        max_characters: limits.status,
         max_media_attachments: 0,
-        characters_reserved_per_url: 23,
+        characters_reserved_per_url: charactersPerLink,
     },
     media_attachments: {
         supported_mime_types: [],

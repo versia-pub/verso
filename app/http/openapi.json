@@ -1967,6 +1967,243 @@
                 }
             }
         },
+        "/api/v1/statuses": {
+            "post": {
+                "summary": "Posts a status",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "content_type": {
+                                        "default": "text/plain",
+                                        "type": "string",
+                                        "enum": [
+                                            "text/plain",
+                                            "text/markdown"
+                                        ]
+                                    },
+                                    "spoiler_text": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
+                                    "sensitive": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "visibility": {
+                                        "type": "string",
+                                        "enum": [
+                                            "public",
+                                            "unlisted",
+                                            "private",
+                                            "direct"
+                                        ]
+                                    },
+                                    "language": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "const": ""
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^[a-z]{2}$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "in_reply_to_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "media_ids": {},
+                                    "poll": {},
+                                    "scheduled_at": {}
+                                },
+                                "required": [
+                                    "status"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "content_type": {
+                                        "default": "text/plain",
+                                        "type": "string",
+                                        "enum": [
+                                            "text/plain",
+                                            "text/markdown"
+                                        ]
+                                    },
+                                    "spoiler_text": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
+                                    "sensitive": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "visibility": {
+                                        "type": "string",
+                                        "enum": [
+                                            "public",
+                                            "unlisted",
+                                            "private",
+                                            "direct"
+                                        ]
+                                    },
+                                    "language": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "const": ""
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^[a-z]{2}$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "in_reply_to_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "media_ids": {},
+                                    "poll": {},
+                                    "scheduled_at": {}
+                                },
+                                "required": [
+                                    "status"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "content_type": {
+                                        "default": "text/plain",
+                                        "type": "string",
+                                        "enum": [
+                                            "text/plain",
+                                            "text/markdown"
+                                        ]
+                                    },
+                                    "spoiler_text": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
+                                    "sensitive": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "visibility": {
+                                        "type": "string",
+                                        "enum": [
+                                            "public",
+                                            "unlisted",
+                                            "private",
+                                            "direct"
+                                        ]
+                                    },
+                                    "language": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "const": ""
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^[a-z]{2}$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "in_reply_to_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "media_ids": {},
+                                    "poll": {},
+                                    "scheduled_at": {}
+                                },
+                                "required": [
+                                    "status"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses/{id}": {
             "get": {
                 "summary": "A status, if the viewer may see it",

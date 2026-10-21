@@ -58,7 +58,7 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
                 profile_field_value_limit: 255,
             },
             statuses: {
-                max_characters: 0,
+                max_characters: 10_000,
                 max_media_attachments: 0,
                 characters_reserved_per_url: 23,
             },
@@ -106,6 +106,7 @@ hint = "Ads included"
 
 [limits]
 fields = 4
+status = 1000
 
 [[auth.issuers]]
 name = "Closed ID"
@@ -138,6 +139,7 @@ registration = { claim = "groups", contains = "verso" }
     assertEquals(instance.title, "Example Social");
     assertEquals(instance.description, "A place to talk.");
     assertEquals(instance.configuration.accounts.max_profile_fields, 4);
+    assertEquals(instance.configuration.statuses.max_characters, 1000);
     assertEquals(
         instance.registrations.message,
         "<p>New accounts are made by logging in with Open &amp; Free ID or Partner ID.</p>",

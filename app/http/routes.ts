@@ -25,7 +25,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         // Before the account routes, whose `/api/v1/accounts/:id` would take their paths.
         ...graphRoutes,
         ...accountRoutes(settings.limits),
-        ...noteRoutes,
+        ...noteRoutes(settings.limits),
         ...roleRoutes,
         ...webfingerRoutes,
         ...entityRoutes(registry),

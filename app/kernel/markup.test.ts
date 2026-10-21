@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { type Links, renderText, scanText } from "./markup.ts";
+import { countText, type Links, renderText, scanText } from "./markup.ts";
 
 const links: Links = {
     mention: (mention) =>
@@ -102,4 +102,12 @@ Deno.test("only web addresses with a scheme are links", () => {
 
 Deno.test("HTML ends where its last block does", () => {
     assertEquals(renderText("- one", "text/markdown"), "<ul>\n<li>one</li>\n</ul>");
+});
+
+Deno.test("text is counted as readers see it, with links and remote mentions shortened", () => {
+    assertEquals(countText("Hi there"), 8);
+    assertEquals(countText("👍🏽 and 👨‍👩‍👧"), 7);
+    assertEquals(countText(`See https://example.com/${"a".repeat(100)}!`), 4 + 23 + 1);
+    assertEquals(countText("See mailto:a@b.example and example.com"), 38);
+    assertEquals(countText("Hi @bob@b.example and @carol"), 3 + 4 + 5 + 6);
 });

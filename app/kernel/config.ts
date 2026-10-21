@@ -59,6 +59,8 @@ export const Limits = z.strictObject({
     fields: z.int().min(0).default(16),
     field_name: z.int().min(1).default(255),
     field_value: z.int().min(1).default(255),
+    /** A status, with its content warning, counted as Mastodon counts them. */
+    status: z.int().min(1).default(10_000),
 }).prefault({});
 export type Limits = z.infer<typeof Limits>;
 

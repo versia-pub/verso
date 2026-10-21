@@ -34,6 +34,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 fields: 16,
                 field_name: 255,
                 field_value: 255,
+                status: 10_000,
             },
             permissions: {
                 anonymous: ["read:account", "read:account_follows", "read:note"],
@@ -163,7 +164,14 @@ level = "debug"
                     updated: new Date("2026-09-01T12:00:00Z"),
                 },
             },
-            limits: { display_name: 60, note: 500, fields: 4, field_name: 255, field_value: 255 },
+            limits: {
+                display_name: 60,
+                note: 500,
+                fields: 4,
+                field_name: 255,
+                field_value: 255,
+                status: 10_000,
+            },
             permissions: { anonymous: [], default: ["owner:account"] },
             logging: { level: "debug" },
         },
