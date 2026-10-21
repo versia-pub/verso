@@ -281,14 +281,28 @@ const resolveIfAble = async (
  */
 const wanted = async (
     ctx: Context,
-    authorId: string,
+    authorId: string | undefined,
     mentions: readonly { readonly id: string; readonly local: boolean }[],
     linked: readonly (NoteRow | undefined)[],
 ) => mentions.some((mention) => mention.local) ||
     linked.some((note) => note?.instance_id === null) ||
     // Verso keeps only follows with a local side, so any follower of another instance's user is a
     // local one.
-    await hasFollowers(ctx, authorId);
+    (authorId !== undefined && await hasFollowers(ctx, authorId));
+
+/**
+ * Whether a note sent unasked may be {@link wanted}, from what Verso has, before fetching what it
+ * names: those are kept, so an unwanted note mustn't make Verso fetch them.
+ */
+const mayBeWanted = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
+    const references = referencesIn(note, sender);
+    const named = [...references.mentions, references.parent, references.quote];
+    if (named.some((reference) => reference?.host === ctx.urls.domain)) return true;
+    if (await findRemoteNote(ctx, sender.instanceId, note.id)) return true;
+
+    const author = references.author && await knownUser(ctx, references.author);
+    return author !== undefined && await hasFollowers(ctx, author.id);
+};
 
 /** The note `reference` points at, if there is one and Verso has it. */
 const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
@@ -306,7 +320,6 @@ const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
 const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
     const references = referencesIn(note, sender);
     const author = references.author && await knownUser(ctx, references.author);
-    if (author === undefined) throw new PermanentFailure(`Verso doesn't have ${note.author}`);
 
     const mentions = [];
     for (const reference of references.mentions) {
@@ -317,11 +330,13 @@ const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
     const quote = await knownNoteRow(ctx, references.quote);
 
     const existing = await findRemoteNote(ctx, sender.instanceId, note.id);
+    if (!existing && !sender.fetched && !await wanted(ctx, author?.id, mentions, [parent, quote])) {
+        return;
+    }
+
+    if (author === undefined) throw new PermanentFailure(`Verso doesn't have ${note.author}`);
     if (existing && existing.account_id !== author.id) {
         throw new PermanentFailure(`${sender.domain} may not give ${note.id} another author`);
-    }
-    if (!existing && !sender.fetched && !await wanted(ctx, author.id, mentions, [parent, quote])) {
-        return;
     }
 
     const content = remoteText(note.content, (text, format) => renderText(text, format));
@@ -387,6 +402,8 @@ export const noteType: EntityType<v0_6.Note> = {
     // Only its author's instance may send it.
     authority: (note, origin) => parseReference(note.author, origin)?.host,
     prepare: async (ctx, note, sender, budget) => {
+        if (!sender.fetched && !await mayBeWanted(ctx, note, sender)) return;
+
         const { author, mentions, parent, quote } = referencesIn(note, sender);
         // Without its author, the note can't be kept, so it is tried again later.
         if (author) await ctx.federation.resolve(ctx, author, "User", budget);
