@@ -1,0 +1,82 @@
+/**
+ * Local notes as Versia Notes, as other instances fetch them and are sent them.
+ * @see https://versia.pub/entities/note
+ * @module
+ */
+import { formatReference, type v0_6 } from "@versia/protocol";
+import { userReferenceMap } from "../accounts/federation.ts";
+import type { Visibility } from "../accounts/tables.ts";
+import type { Context } from "../kernel/context.ts";
+import { mentionsOf, noteOrigins, type NoteRow } from "./note_queries.ts";
+
+/** Who a note is for, as Versia says it. Unlisted notes are public, as Versia has no unlisted. */
+const groups: Record<Visibility, string | undefined> = {
+    public: "public",
+    unlisted: "public",
+    private: "followers",
+    // Only the users it mentions.
+    direct: undefined,
+};
+
+/** References to the notes of `ids` that exist, by id, as Verso puts them in what it sends. */
+export const noteReferenceMap = async (
+    ctx: Context,
+    ids: readonly string[],
+): Promise<Map<string, string>> => {
+    const references = new Map<string, string>();
+
+    for (const note of await noteOrigins(ctx, ids)) {
+        if (note.domain === null) {
+            references.set(note.id, note.id);
+            continue;
+        }
+
+        if (note.remote_id === null) throw new Error(`Remote note ${note.id} has no remote id`);
+        references.set(
+            note.id,
+            formatReference({ host: note.domain, id: note.remote_id }, ctx.urls.domain),
+        );
+    }
+
+    return references;
+};
+
+/** Local notes as Versia Notes, in the order given. */
+export const renderVersiaNotes = async (
+    ctx: Context,
+    notes: readonly NoteRow[],
+): Promise<v0_6.Note[]> => {
+    const mentions = await mentionsOf(ctx, notes.map((note) => note.id));
+    const users = await userReferenceMap(ctx, [
+        ...new Set([...notes.map((note) => note.account_id), ...[...mentions.values()].flat()]),
+    ]);
+    const linked = await noteReferenceMap(
+        ctx,
+        notes.flatMap((note) => [note.in_reply_to_id ?? [], note.quote_id ?? []].flat()),
+    );
+
+    return notes.map((note): v0_6.Note => {
+        const author = users.get(note.account_id);
+        if (author === undefined) throw new Error(`Note ${note.id} has no author`);
+
+        return {
+            type: "Note",
+            id: note.id,
+            created_at: note.created_at.toISOString(),
+            author,
+            category: "microblog",
+            content: {
+                [note.content_format]: { content: note.content, remote: false },
+                "text/html": { content: note.content_html, remote: false },
+            },
+            group: groups[note.visibility],
+            is_sensitive: note.sensitive,
+            subject: note.spoiler_text === "" ? undefined : note.spoiler_text,
+            mentions: (mentions.get(note.id) ?? []).flatMap((id) => users.get(id) ?? []),
+            replies_to: note.in_reply_to_id === null ? undefined : linked.get(note.in_reply_to_id),
+            quotes: note.quote_id === null ? undefined : linked.get(note.quote_id),
+            attachments: [],
+            previews: [],
+        };
+    });
+};
