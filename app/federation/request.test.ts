@@ -52,11 +52,11 @@ Deno.test("an error reply is given as it is, signed or not", async () => {
     assertEquals(reply.status, 404);
 });
 
-Deno.test("a reply larger than a mebibyte is refused", async () => {
+Deno.test("a reply larger than 256 KiB is refused", async () => {
     await using network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"];
-    network.transport.servers.set("big.test", () => new Response(new Uint8Array(1024 * 1024 + 1)));
-    network.transport.servers.set("fits.test", () => new Response(new Uint8Array(1024 * 1024)));
+    network.transport.servers.set("big.test", () => new Response(new Uint8Array(256 * 1024 + 1)));
+    network.transport.servers.set("fits.test", () => new Response(new Uint8Array(256 * 1024)));
 
     await assertRejects(
         () => fetchSigned(a.ctx, userUrl("big.test", "bob")),

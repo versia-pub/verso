@@ -9,8 +9,11 @@ import { versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import { checkSignature } from "../kernel/signatures.ts";
 
-/** The largest reply read from another instance. Entities and pages of 40 fit with room to spare. */
-const maxReplyBytes = 1024 * 1024;
+/**
+ * The largest reply read from another instance: the largest body Verso takes in, so a fetched
+ * entity is no larger than one sent to it, and showing it costs no more.
+ */
+const maxReplyBytes = 256 * 1024;
 
 /** How long another instance has to answer, so a slow one can't hold a worker. */
 const timeoutMs = 30_000;
