@@ -21,7 +21,7 @@ export type Cidr = { readonly network: Address; readonly prefix: number };
  * Parses an IPv4 or IPv6 address, or returns `undefined` if it isn't one. An IPv4 address written
  * as IPv6, such as `::ffff:192.0.2.1`, is read as IPv4, so it matches IPv4 ranges.
  */
-export const parseAddress = (text: string): Address | undefined => {
+export const parseIp = (text: string): Address | undefined => {
     try {
         switch (distinctRemoteAddr(text)) {
             case "IPv4":
@@ -51,7 +51,7 @@ const notCidr = "Must be an IP address or a CIDR range";
 export const CidrText = z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()], { error: notCidr })
     .transform((text, ctx) => {
         const [address, prefix] = text.split("/");
-        const network = parseAddress(address);
+        const network = parseIp(address);
 
         // An IPv4 range written as IPv6, such as `::ffff:10.0.0.0/104`, counts the 96 bits before
         // the IPv4 part, which are always the same.

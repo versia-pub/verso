@@ -1,5 +1,5 @@
 import { Status } from "@versia/client-api";
-import { followedIds } from "../graph/follows.ts";
+import { followedSubquery } from "../graph/follows.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { Flag } from "../http/schemas.ts";
@@ -34,7 +34,7 @@ export const timelineRoutes: readonly Route[] = [
             const notes = await homePage(
                 ctx,
                 viewer.accountId,
-                followedIds(ctx, viewer.accountId),
+                followedSubquery(ctx, viewer.accountId),
                 query,
             );
             return {

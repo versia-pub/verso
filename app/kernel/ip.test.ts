@@ -1,25 +1,25 @@
 import { assert, assertEquals } from "@std/assert";
-import { type Cidr, CidrText, inCidr, parseAddress } from "./ip.ts";
+import { type Cidr, CidrText, inCidr, parseIp } from "./ip.ts";
 
 const cidr = (text: string): Cidr => CidrText.parse(text);
 
 const matches = (address: string, range: string) => {
-    const parsed = parseAddress(address);
+    const parsed = parseIp(address);
     assert(parsed, address);
     return inCidr(parsed, cidr(range));
 };
 
 Deno.test("addresses are IPv4 or IPv6, and anything else isn't one", () => {
-    assertEquals(parseAddress("192.0.2.1"), { bits: 32, value: 0xc0000201n });
-    assertEquals(parseAddress("2001:db8::1"), { bits: 128, value: (0x20010db8n << 96n) + 1n });
+    assertEquals(parseIp("192.0.2.1"), { bits: 32, value: 0xc0000201n });
+    assertEquals(parseIp("2001:db8::1"), { bits: 128, value: (0x20010db8n << 96n) + 1n });
 
     for (const bad of ["", "localhost", "192.0.2", "192.0.2.256", "01.2.3.4", "2001:db8:::1"]) {
-        assertEquals(parseAddress(bad), undefined, bad);
+        assertEquals(parseIp(bad), undefined, bad);
     }
 });
 
 Deno.test("an IPv4 address written as IPv6 is read as IPv4", () => {
-    assertEquals(parseAddress("::ffff:192.0.2.1"), parseAddress("192.0.2.1"));
+    assertEquals(parseIp("::ffff:192.0.2.1"), parseIp("192.0.2.1"));
     assert(matches("::ffff:10.1.2.3", "10.0.0.0/8"));
 });
 

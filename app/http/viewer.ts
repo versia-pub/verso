@@ -5,7 +5,7 @@
 import type { Context as HonoContext } from "@hono/hono";
 import type { Permissions } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-import { type Cidr, parseAddress } from "../kernel/ip.ts";
+import { type Cidr, parseIp } from "../kernel/ip.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { grants } from "../kernel/scopes.ts";
 import { clientIp } from "./client_ip.ts";
@@ -104,7 +104,7 @@ export const rateLimitKey = async (
 
     const peer = c.env?.remoteAddr?.hostname ?? "unknown";
     const ip = clientIp(peer, c.req.header("x-forwarded-for"), trustedProxies);
-    const address = parseAddress(ip);
+    const address = parseIp(ip);
 
     // A machine is usually given a whole /64 of IPv6 addresses, so it counts as one client.
     return address?.bits === 128 ? `ip:${(address.value >> 64n).toString(16)}/64` : `ip:${ip}`;

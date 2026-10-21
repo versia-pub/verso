@@ -328,7 +328,11 @@ export const tagsOf = async (
 };
 
 /** Whether a note mentions an account. */
-export const mentions = async (ctx: Context, noteId: string, accountId: string): Promise<boolean> =>
+export const isMentioned = async (
+    ctx: Context,
+    noteId: string,
+    accountId: string,
+): Promise<boolean> =>
     await ctx.db.selectFrom("note_mentions").select("note_id")
         .where("note_id", "=", noteId)
         .where("account_id", "=", accountId)

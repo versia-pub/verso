@@ -1,7 +1,7 @@
-import { type Cidr, inCidr, parseAddress } from "../kernel/ip.ts";
+import { type Cidr, inCidr, parseIp } from "../kernel/ip.ts";
 
 const trusted = (address: string, proxies: readonly Cidr[]) => {
-    const parsed = parseAddress(address);
+    const parsed = parseIp(address);
     return parsed !== undefined && proxies.some((cidr) => inCidr(parsed, cidr));
 };
 

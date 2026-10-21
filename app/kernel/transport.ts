@@ -1,4 +1,4 @@
-import { CidrText, inCidr, parseAddress } from "./ip.ts";
+import { CidrText, inCidr, parseIp } from "./ip.ts";
 
 /**
  * Sends an HTTP request to another server and resolves with its response, or rejects when the
@@ -11,9 +11,9 @@ export type Transport = (request: Request) => Promise<Response>;
 export const fetchTransport: Transport = (request: Request): Promise<Response> => fetch(request);
 
 /** The addresses a name resolves to, or none if it doesn't resolve. */
-export type Resolver = (hostname: string) => Promise<readonly string[]>;
+export type DnsResolver = (hostname: string) => Promise<readonly string[]>;
 
-const systemResolver: Resolver = async (hostname) => {
+const systemResolver: DnsResolver = async (hostname) => {
     const answers = await Promise.allSettled([
         Deno.resolveDns(hostname, "A"),
         Deno.resolveDns(hostname, "AAAA"),
@@ -57,7 +57,7 @@ const internalRanges = [
 ].map((range) => CidrText.parse(range));
 
 const isInternal = (text: string) => {
-    const address = parseAddress(text);
+    const address = parseIp(text);
     return address === undefined || internalRanges.some((range) => inCidr(address, range));
 };
 
@@ -65,7 +65,7 @@ export type FederationTransportOptions = {
     /** Lets requests reach internal addresses, for instances on a local network. Development only. */
     readonly allowInternal?: boolean;
     readonly fetch?: (request: Request, init: RequestInit) => Promise<Response>;
-    readonly resolve?: Resolver;
+    readonly resolve?: DnsResolver;
 };
 
 /**
@@ -86,7 +86,7 @@ export const federationTransport = (options: FederationTransportOptions = {}): T
     return async (request) => {
         if (!options.allowInternal) {
             const hostname = new URL(request.url).hostname.replace(/^\[(.*)\]$/, "$1");
-            const addresses = parseAddress(hostname) ? [hostname] : await resolve(hostname);
+            const addresses = parseIp(hostname) ? [hostname] : await resolve(hostname);
 
             if (addresses.length === 0 || addresses.some(isInternal)) {
                 throw new TypeError(`${hostname} isn't a public address`);

@@ -205,7 +205,7 @@ export const followerInstances = (ctx: Context, accountId: string): Promise<stri
 /**
  * The accounts `accountId` follows, and was accepted by, as a subquery, for timelines and threads.
  */
-export const followedIds = (
+export const followedSubquery = (
     ctx: Context,
     accountId: string,
 ): AccountIdQuery => followedIdsQuery(ctx, accountId);

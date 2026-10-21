@@ -33,10 +33,10 @@ export type AuthorizeRequest = {
 };
 
 /** The issuer, by name, couldn't be reached to start the login. */
-export type Unreachable = { readonly result: "unreachable"; readonly issuer: string };
+export type IssuerUnreachable = { readonly result: "unreachable"; readonly issuer: string };
 
 export type Authorization =
-    | Unreachable
+    | IssuerUnreachable
     /** The app or its redirect URI is wrong, so the user is told instead of redirected. */
     | { readonly result: "refused"; readonly description: string }
     /** An OAuth error, to send back to the app's redirect URI. */
@@ -204,7 +204,10 @@ export const chooseIssuer = async (
     formToken: string,
     issuerUrl: string,
 ): Promise<
-    { readonly result: "expired" } | Unreachable | { readonly result: "login"; readonly url: URL }
+    { readonly result: "expired" } | IssuerUnreachable | {
+        readonly result: "login";
+        readonly url: URL;
+    }
 > => {
     const provider = Object.hasOwn(ctx.identityProviders, issuerUrl)
         ? ctx.identityProviders[issuerUrl]

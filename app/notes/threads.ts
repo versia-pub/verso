@@ -2,7 +2,7 @@
  * Threads: the notes a note replies to, and the replies under it, as far as Verso has them.
  * @module
  */
-import { followedIds } from "../graph/follows.ts";
+import { followedSubquery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, type NoteRow, notesSeenBy, type Onlooker, repliesTo } from "./note_queries.ts";
 
@@ -81,7 +81,7 @@ export const threadOf = async (
 ): Promise<{ ancestors: NoteRow[]; descendants: NoteRow[] }> => {
     const onlooker = viewerId === null
         ? null
-        : { id: viewerId, followed: followedIds(ctx, viewerId) };
+        : { id: viewerId, followed: followedSubquery(ctx, viewerId) };
 
     const ancestors = await ancestorsOf(ctx, note);
     const seen = await notesSeenBy(ctx, ancestors.map((each) => each.id), onlooker);

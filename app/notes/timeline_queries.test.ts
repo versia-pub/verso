@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import type { Insertable } from "kysely";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
-import { follow, followedIds } from "../graph/follows.ts";
+import { follow, followedSubquery } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import type { NotesTable } from "./tables.ts";
@@ -44,7 +44,10 @@ const open = async () => {
 
     /** Alice's home timeline, by name. */
     const home = async (page: { max_id?: string; limit?: number } = {}) =>
-        (await homePage(test.ctx, "alice", followedIds(test.ctx, "alice"), { limit: 40, ...page }))
+        (await homePage(test.ctx, "alice", followedSubquery(test.ctx, "alice"), {
+            limit: 40,
+            ...page,
+        }))
             .map((note) => names.get(note.id) ?? note.id);
 
     /** The public timeline from `origin`, by name. */

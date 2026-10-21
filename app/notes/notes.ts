@@ -19,8 +19,8 @@ import {
     deleteNote,
     findNote,
     insertNote,
+    isMentioned,
     keepVersion,
-    mentions,
     mentionsOf,
     type NoteRow,
     uncountRepliesBy,
@@ -39,7 +39,7 @@ export const canSee = async (
 ): Promise<boolean> => {
     if (note.visibility === "public" || note.visibility === "unlisted") return true;
     if (viewerId === null) return false;
-    if (viewerId === note.account_id || await mentions(ctx, note.id, viewerId)) return true;
+    if (viewerId === note.account_id || await isMentioned(ctx, note.id, viewerId)) return true;
 
     return note.visibility === "private" && await isFollowing(ctx, viewerId, note.account_id);
 };
