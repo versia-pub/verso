@@ -17,7 +17,7 @@ import { findInstanceId } from "../instances/instances.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Budget, Context, DomainEvent } from "../kernel/context.ts";
 import { renderText, scanText } from "../kernel/markup.ts";
-import { isNoteDeleted, isNotePosted } from "./events.ts";
+import { isNoteDeleted, isNoteEdited, isNotePosted } from "./events.ts";
 import {
     countNotesBy,
     countReply,
@@ -142,7 +142,10 @@ const seenBy = async (ctx: Context, note: NoteRow, requester: string) => {
     return (await instancesHosting(ctx, audience)).includes(instanceId);
 };
 
-/** Sends a local note just posted to the instances of those it is shown to. */
+/**
+ * Sends a local note just posted or edited to the instances of those it is shown to. Versia has no
+ * edits, so an edited note is sent again whole, and replaces the one they have.
+ */
 const sendNote = async (ctx: Context, noteId: string) => {
     const note = await findNote(ctx, noteId);
     if (note === undefined) return;
@@ -153,11 +156,12 @@ const sendNote = async (ctx: Context, noteId: string) => {
 };
 
 /**
- * Sends other instances the notes local users post, and Deletes for the ones they delete, to the
- * instances of those each was shown to. A Delete goes to the author's followers as they are now.
+ * Sends other instances the notes local users post and edit, and Deletes for the ones they delete,
+ * to the instances of those each is shown to. An edit and a Delete go to the author's followers as
+ * they are now, and an edit to who it mentions now.
  */
 export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
-    if (isNotePosted(event)) return await sendNote(ctx, event.noteId);
+    if (isNotePosted(event) || isNoteEdited(event)) return await sendNote(ctx, event.noteId);
     if (!isNoteDeleted(event)) return;
 
     const author = await findAccount(ctx, event.accountId);
@@ -268,7 +272,8 @@ const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
 /**
  * Saves a note `sender` sent, or a newer version of one Verso has, without who it mentions or the
  * notes it replies to or quotes that Verso doesn't have. A new one is counted, and what it replies
- * to and quotes stay for good, even if a newer version says otherwise.
+ * to and quotes stay for good, even if a newer version says otherwise. A newer version that says
+ * something else is marked edited now, as Versia doesn't say when.
  */
 const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
     const references = referencesIn(note, sender);
@@ -304,7 +309,21 @@ const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
     const mentionIds = mentions.map((mention) => mention.id);
     const tags = scanText(content.text, content.format).hashtags;
 
-    if (existing) return await updateNote(ctx, existing.id, changes, mentionIds, tags);
+    if (existing) {
+        const edited = changes.content !== existing.content ||
+            changes.content_format !== existing.content_format ||
+            changes.spoiler_text !== existing.spoiler_text ||
+            changes.sensitive !== existing.sensitive;
+        const editedAt = edited ? ctx.clock.now() : existing.edited_at;
+
+        return await updateNote(
+            ctx,
+            existing.id,
+            { ...changes, edited_at: editedAt },
+            mentionIds,
+            tags,
+        );
+    }
 
     const row = await insertNote(
         ctx,

@@ -1,5 +1,5 @@
 /**
- * What notes tell the rest of Verso: notes posted and deleted.
+ * What notes tell the rest of Verso: notes posted, edited and deleted.
  * @module
  */
 import type { Visibility } from "../accounts/tables.ts";
@@ -8,6 +8,12 @@ import type { DomainEvent } from "../kernel/context.ts";
 /** A local user posted a note. */
 export type NotePosted = {
     readonly type: "notes.posted";
+    readonly noteId: string;
+};
+
+/** A local user edited a note. */
+export type NoteEdited = {
+    readonly type: "notes.edited";
     readonly noteId: string;
 };
 
@@ -24,6 +30,9 @@ export type NoteDeleted = {
 
 export const isNotePosted = (event: DomainEvent): event is NotePosted =>
     event.type === "notes.posted";
+
+export const isNoteEdited = (event: DomainEvent): event is NoteEdited =>
+    event.type === "notes.edited";
 
 export const isNoteDeleted = (event: DomainEvent): event is NoteDeleted =>
     event.type === "notes.deleted";

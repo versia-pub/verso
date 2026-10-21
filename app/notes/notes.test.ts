@@ -8,7 +8,15 @@ import type { Context } from "../kernel/context.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { findNote, mentionsOf, tagsOf } from "./note_queries.ts";
-import { canSee, type Draft, postNote, removeNote, visibleNote } from "./notes.ts";
+import {
+    canSee,
+    type Draft,
+    type Edit,
+    editNote,
+    postNote,
+    removeNote,
+    visibleNote,
+} from "./notes.ts";
 import { createNote } from "./testing.ts";
 
 const open = async (options: TestContextOptions = {}) => {
@@ -121,6 +129,101 @@ Deno.test("a reply is to a note its author may see, which counts it", async () =
     assertEquals(await post(test.ctx, "erin", "Hi", { inReplyToId: "missing" }), undefined);
     assertEquals(await statusesCount(test.ctx, "erin"), 0);
     assertEquals((await findNote(test.ctx, parent.id))?.replies_count, 1);
+});
+
+Deno.test("an edited note links who it mentions and its hashtags anew, and is marked edited", async () => {
+    const events: unknown[] = [];
+    await using test = await open({
+        subscribers: [(_, event) => Promise.resolve(void events.push(event))],
+    });
+    const note = await post(test.ctx, "alice", "Hi @bob #verso", { language: "en" });
+    if (note === undefined) throw new Error("Not posted");
+    test.clock.advance(1000);
+    events.length = 0;
+
+    const edited = await editNote(test.ctx, "alice", note.id, {
+        text: "Hi *@erin* #Deno",
+        format: "text/markdown",
+    });
+
+    assertEquals(
+        [edited?.content, edited?.content_format, edited?.content_html, edited?.language],
+        [
+            "Hi *@erin* #Deno",
+            "text/markdown",
+            `<p>Hi <em>${mention(`${user}/erin`, "erin")}</em> <a href="https://social.example/` +
+            `tags/deno" class="mention hashtag" rel="tag">#<span>Deno</span></a></p>`,
+            "en",
+        ],
+    );
+    assertEquals([edited?.created_at, edited?.edited_at], [note.created_at, test.clock.now()]);
+    assertEquals((await mentionsOf(test.ctx, [note.id])).get(note.id), ["erin"]);
+    assertEquals((await tagsOf(test.ctx, [note.id])).get(note.id), ["deno"]);
+    assertEquals(await statusesCount(test.ctx, "alice"), 1);
+    assertEquals(events, [{ type: "notes.edited", noteId: note.id }]);
+});
+
+Deno.test("a note edited to say what it did isn't marked edited", async () => {
+    const events: unknown[] = [];
+    await using test = await open({
+        subscribers: [(_, event) => Promise.resolve(void events.push(event))],
+    });
+    const note = await post(test.ctx, "alice", "Hi", { spoilerText: "Food", language: "en" });
+    if (note === undefined) throw new Error("Not posted");
+    events.length = 0;
+
+    const same = await editNote(test.ctx, "alice", note.id, {
+        text: "Hi",
+        format: "text/plain",
+        spoilerText: "Food",
+        sensitive: true,
+        language: "en",
+    });
+    assertEquals(same, note);
+    assertEquals(await editNote(test.ctx, "alice", note.id, { text: "Hi" }), note);
+    assertEquals(events, []);
+});
+
+Deno.test("an edit keeps what it leaves out, and a warning given decides sensitivity", async () => {
+    await using test = await open();
+    const note = await post(test.ctx, "alice", "Hi", {
+        format: "text/markdown",
+        spoilerText: "Food",
+        language: "en",
+    });
+    if (note === undefined) throw new Error("Not posted");
+    const edit = async (changes: Partial<Edit>) => {
+        const edited = await editNote(test.ctx, "alice", note.id, { text: "Hi", ...changes });
+        return [edited?.content_format, edited?.spoiler_text, edited?.sensitive, edited?.language];
+    };
+
+    assertEquals(await edit({ language: "de" }), ["text/markdown", "Food", true, "de"]);
+    assertEquals(await edit({ spoilerText: "" }), ["text/markdown", "", false, "de"]);
+    assertEquals(await edit({ language: "en" }), ["text/markdown", "", false, "en"]);
+    assertEquals(await edit({ sensitive: true }), ["text/markdown", "", true, "en"]);
+    assertEquals(await edit({ format: "text/plain" }), ["text/plain", "", true, "en"]);
+    assertEquals(await edit({ spoilerText: "" }), ["text/plain", "", false, "en"]);
+    assertEquals(await edit({ spoilerText: "", sensitive: true }), ["text/plain", "", true, "en"]);
+    assertEquals(await edit({ spoilerText: "Food", sensitive: false }), [
+        "text/plain",
+        "Food",
+        true,
+        "en",
+    ]);
+});
+
+Deno.test("only a note's author may edit it", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const remote = await createNote(test.ctx, "carol", {
+        instance_id: "b.example",
+        remote_id: "c1",
+    });
+
+    assertEquals(await editNote(test.ctx, "bob", note.id, { text: "Bye" }), undefined);
+    assertEquals(await editNote(test.ctx, "bob", remote.id, { text: "Bye" }), undefined);
+    assertEquals(await editNote(test.ctx, "bob", "missing", { text: "Bye" }), undefined);
+    assertEquals((await findNote(test.ctx, note.id))?.content, "Hi");
 });
 
 Deno.test("another instance's user is fetched to be mentioned", async () => {

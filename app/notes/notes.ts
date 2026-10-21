@@ -1,5 +1,5 @@
 /**
- * Notes, on this instance or another: posting them, who may see them, and deleting them.
+ * Notes, on this instance or another: posting and editing them, who may see them, and deleting them.
  * @module
  */
 import { type AccountRow, countNote, findAccount } from "../accounts/accounts.ts";
@@ -11,7 +11,7 @@ import { isFollowing } from "../graph/follows.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type Mention, renderText, scanText } from "../kernel/markup.ts";
-import type { NoteDeleted, NotePosted } from "./events.ts";
+import type { NoteDeleted, NoteEdited, NotePosted } from "./events.ts";
 import {
     countReply,
     deleteNote,
@@ -21,6 +21,7 @@ import {
     mentionsOf,
     type NoteRow,
     uncountRepliesBy,
+    updateNote,
 } from "./note_queries.ts";
 
 /**
@@ -106,6 +107,20 @@ const mentioned = async (ctx: Context, mentions: readonly Mention[]) => {
     return accounts;
 };
 
+/** A local user's text as HTML, linking the mentions of `accounts`, found by {@link mentioned}. */
+const renderDraft = (
+    ctx: Context,
+    text: string,
+    format: TextFormat,
+    accounts: ReadonlyMap<string, AccountRow>,
+) => renderText(text, format, {
+    mention: (mention) => {
+        const row = accounts.get(mentionKey(mention));
+        return row && userUri(ctx, row);
+    },
+    hashtag: (tag) => ctx.urls.url`/tags/${tag.toLowerCase()}`,
+});
+
 /**
  * Posts a note by `accountId`, a local user, and counts it. Who it mentions is found first, outside
  * the transaction, as that can mean asking other instances. Returns `undefined` if the note it
@@ -129,13 +144,7 @@ export const postNote = async (
             : await visibleNote(tx, replyTo, accountId);
         if (replyTo !== undefined && parent === undefined) return undefined;
 
-        const html = renderText(draft.text, draft.format, {
-            mention: (mention) => {
-                const row = accounts.get(mentionKey(mention));
-                return row && userUri(tx, row);
-            },
-            hashtag: (tag) => tx.urls.url`/tags/${tag.toLowerCase()}`,
-        });
+        const html = renderDraft(tx, draft.text, draft.format, accounts);
         const note = await insertNote(
             tx,
             {
@@ -167,6 +176,74 @@ export const postNote = async (
         await emit(tx, event);
 
         return note;
+    });
+};
+
+/** What a local user changes in a note. What is left out stays as it was. */
+export type Edit = {
+    readonly text: string;
+    readonly format?: TextFormat;
+    /** Empty for none. A note with one is sensitive. */
+    readonly spoilerText?: string;
+    readonly sensitive?: boolean;
+    readonly language?: string;
+};
+
+/**
+ * Edits a note `accountId`, a local user, wrote, finding who it mentions again, as posting does.
+ * Returns the note as it is now, or `undefined` if it isn't theirs. A note left as it was isn't
+ * marked edited, or sent again.
+ */
+export const editNote = async (
+    ctx: Context,
+    accountId: string,
+    noteId: string,
+    edit: Edit,
+): Promise<NoteRow | undefined> => {
+    const before = await findNote(ctx, noteId);
+    if (before?.account_id !== accountId) return undefined;
+
+    const format = edit.format ?? before.content_format;
+    const found = scanText(edit.text, format);
+    const accounts = await mentioned(ctx, found.mentions);
+
+    return await ctx.transaction(async (tx) => {
+        // Unless it was deleted meanwhile.
+        const note = await findNote(tx, noteId);
+        if (note === undefined) return undefined;
+
+        const spoilerText = edit.spoilerText ?? note.spoiler_text;
+        const changes = {
+            content: edit.text,
+            content_format: format,
+            spoiler_text: spoilerText,
+            // As on Mastodon, a warning given without a word on sensitivity decides it.
+            sensitive: spoilerText !== "" ||
+                (edit.sensitive ?? (edit.spoilerText === undefined && note.sensitive)),
+            language: edit.language ?? note.language,
+        };
+        const same = changes.content === note.content &&
+            changes.content_format === note.content_format &&
+            changes.spoiler_text === note.spoiler_text && changes.sensitive === note.sensitive &&
+            changes.language === note.language;
+        if (same) return note;
+
+        await updateNote(
+            tx,
+            note.id,
+            {
+                ...changes,
+                content_html: renderDraft(tx, edit.text, format, accounts),
+                edited_at: tx.clock.now(),
+            },
+            [...accounts.values()].map((row) => row.id),
+            found.hashtags,
+        );
+
+        const event: NoteEdited = { type: "notes.edited", noteId: note.id };
+        await emit(tx, event);
+
+        return await findNote(tx, note.id);
     });
 };
 

@@ -157,3 +157,16 @@ export const Context = z.object({
     descendants: z.array(Status),
 });
 export type Context = z.infer<typeof Context>;
+
+/**
+ * A status as its author wrote it, for editing it. `content_type` is Pleroma's, for clients that
+ * edit Markdown.
+ * @see https://docs.joinmastodon.org/entities/StatusSource/
+ */
+export const StatusSource = z.object({
+    id: z.string(),
+    text: z.string(),
+    spoiler_text: z.string(),
+    content_type: z.string().optional(),
+});
+export type StatusSource = z.infer<typeof StatusSource>;

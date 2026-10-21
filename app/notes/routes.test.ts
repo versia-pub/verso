@@ -37,9 +37,15 @@ const open = async () => {
     };
 
     /** Posts a status as `as`, in JSON, or as a form if `body` is a string. */
-    const post = async (body: Record<string, unknown> | string, as = "alice", on: App = app) => {
-        const response = await on.request("/api/v1/statuses", {
-            method: "POST",
+    const post = async (
+        body: Record<string, unknown> | string,
+        as = "alice",
+        on: App = app,
+        method = "POST",
+        path = "/api/v1/statuses",
+    ) => {
+        const response = await on.request(path, {
+            method,
             headers: {
                 authorization: `Bearer ${await tokenFor(test.ctx, as)}`,
                 "content-type": typeof body === "string"
@@ -52,7 +58,11 @@ const open = async () => {
         return { status: response.status, body: await response.json() };
     };
 
-    return { ...test, app, request, post };
+    /** Edits a status as `as`, as {@link post} posts one. */
+    const edit = (id: string, body: Record<string, unknown> | string, as = "alice", on = app) =>
+        post(body, as, on, "PUT", `/api/v1/statuses/${id}`);
+
+    return { ...test, app, request, post, edit };
 };
 
 Deno.test("a status is posted as the client asks, and can then be seen", async () => {
@@ -173,6 +183,92 @@ Deno.test("deleting a status gives it back as written, and only its author may",
     assertEquals((await test.request("GET", path)).status, 404);
 });
 
+Deno.test("a status is edited by its author, and keeps what the edit leaves out", async () => {
+    await using test = await open();
+    const posted = await test.post({
+        status: "Hi",
+        content_type: "text/markdown",
+        spoiler_text: "Greeting",
+        visibility: "private",
+        language: "en",
+    });
+    const id = posted.body.id;
+
+    const edited = await test.edit(id, { status: "Hi *@bob*", language: "" });
+    assertEquals(edited.status, 200);
+    assertEquals(
+        [
+            edited.body.id,
+            edited.body.spoiler_text,
+            edited.body.visibility,
+            edited.body.language,
+            edited.body.edited_at,
+        ],
+        [id, "Greeting", "private", "en", test.clock.now().toISOString()],
+    );
+    assertStringIncludes(edited.body.content, "<em>");
+    assertEquals(edited.body.mentions.map((mention: { id: string }) => mention.id), ["bob"]);
+
+    const form = await test.edit(
+        id,
+        "status=Bye *now*&spoiler_text=&sensitive=true&content_type=text/plain",
+    );
+    assertEquals([form.status, form.body.content, form.body.spoiler_text, form.body.sensitive], [
+        200,
+        "<p>Bye *now*</p>",
+        "",
+        true,
+    ]);
+
+    assertEquals((await test.edit(id, { status: "Hi" }, "bob")).status, 404);
+    assertEquals((await test.edit("missing", { status: "Hi" })).status, 404);
+    assertEquals((await test.edit(id, { status: "" })).body.details, {
+        "body.status": ["Can't be blank"],
+    });
+    assertEquals(Object.keys((await test.edit(id, { status: "Hi", poll: {} })).body.details), [
+        "body.poll",
+    ]);
+});
+
+Deno.test("an edited status is held to the limit, with the warning it gives", async () => {
+    await using test = await open();
+    const limited = createTestApp(
+        test.ctx,
+        noteRoutes({ ...defaultSettings().limits, status: 50 }),
+    );
+    const note = await createNote(test.ctx, "alice");
+    const status = async (body: Record<string, unknown>) =>
+        (await test.edit(note.id, body, "alice", limited)).status;
+
+    assertEquals(await status({ status: "a".repeat(50) }), 200);
+    assertEquals(await status({ status: "a".repeat(51) }), 422);
+    assertEquals(await status({ status: "a".repeat(40), spoiler_text: "a".repeat(11) }), 422);
+});
+
+Deno.test("a status's source is what its author wrote, for whoever may see it", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice", {
+        visibility: "private",
+        content: "Hi *there*",
+        content_format: "text/markdown",
+        spoiler_text: "Greeting",
+    });
+    const path = `/api/v1/statuses/${note.id}/source`;
+
+    assertEquals(await test.request("GET", path, "bob"), {
+        status: 200,
+        body: {
+            id: note.id,
+            text: "Hi *there*",
+            spoiler_text: "Greeting",
+            content_type: "text/markdown",
+        },
+    });
+    assertEquals((await test.request("GET", path, "dave")).status, 404);
+    assertEquals((await test.request("GET", path, null)).status, 401);
+    assertEquals((await test.request("GET", "/api/v1/statuses/missing/source")).status, 404);
+});
+
 Deno.test("statuses are posted, read and deleted with tokens and roles that may", async () => {
     await using test = await open();
     const note = await createNote(test.ctx, "alice");
@@ -190,6 +286,23 @@ Deno.test("statuses are posted, read and deleted with tokens and roles that may"
     assertEquals((await test.request("GET", path, "bob", undefined, limited)).status, 403);
     assertEquals((await test.request("DELETE", path, "alice", undefined, limited)).status, 403);
     assertEquals((await test.post({ status: "Hi" }, "alice", limited)).status, 403);
+    assertEquals((await test.edit(note.id, { status: "Hi" }, "alice", limited)).status, 403);
+    assertEquals(
+        (await test.request("GET", `${path}/source`, "bob", undefined, limited)).status,
+        403,
+    );
+    assertEquals((await test.request("PUT", path, "alice", ["read"])).status, 403);
+    assertEquals((await test.request("GET", `${path}/source`, "alice", ["write"])).status, 403);
+
+    // Reading notes isn't enough to change them.
+    const readers = createTestApp(test.ctx, noteRoutes(defaultSettings().limits), {
+        permissions: { anonymous: [], default: ["read:note"] },
+    });
+    assertEquals((await test.edit(note.id, { status: "Hi" }, "alice", readers)).status, 403);
+    assertEquals(
+        (await test.request("GET", `${path}/source`, "bob", undefined, readers)).status,
+        200,
+    );
     assertEquals((await test.request("DELETE", path, "alice", ["write:statuses"])).status, 200);
 });
 

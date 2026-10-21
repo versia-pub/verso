@@ -5,7 +5,7 @@ import { follow } from "../graph/follows.ts";
 import { addEvilInstance, type EvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
 import { findRemoteNoteAt, mentionsOf, tagsOf } from "./note_queries.ts";
-import { postNote, removeNote } from "./notes.ts";
+import { editNote, postNote, removeNote } from "./notes.ts";
 import { createNote } from "./testing.ts";
 
 /** A user b.test serves. */
@@ -222,6 +222,38 @@ Deno.test("a note sent again replaces the one Verso has, without counting it aga
     assertStringIncludes((await test.errors())[0], "b.test may not give n1 another author");
 });
 
+Deno.test("a note sent again is marked edited when it says something else", async () => {
+    await using test = await open();
+    const mentions = [`a.test:${test.alice}`];
+    await test.send(note("n1", { mentions }));
+    const editedAt = async () => (await test.kept("n1"))?.edited_at?.toISOString();
+
+    await test.send(note("n1", { mentions, group: "followers" }));
+    assertEquals(await editedAt(), undefined);
+
+    // Each changes one more thing than the last.
+    const changes = [
+        { content: { "text/plain": { content: "Bye", remote: false } } },
+        { content: { "text/markdown": { content: "Bye", remote: false } } },
+        { subject: "Spoilers" },
+        { is_sensitive: true },
+    ];
+    let fields = { mentions };
+    for (const change of changes) {
+        fields = { ...fields, ...change };
+        await test.send(note("n1", fields));
+        assertEquals(
+            await editedAt(),
+            test.network.clock.now().toISOString(),
+            Object.keys(change)[0],
+        );
+    }
+
+    const last = test.network.clock.now().toISOString();
+    await test.send(note("n1", { ...fields, group: "followers" }));
+    assertEquals(await editedAt(), last);
+});
+
 Deno.test("a note by a user who can't be had is given up on", async () => {
     await using test = await open();
 
@@ -338,7 +370,7 @@ Deno.test("a Delete removes a remote note, and uncounts it", async () => {
     assertEquals(await test.errors(), []);
 });
 
-Deno.test("a note posted on one Verso reaches the followers on another, until it is deleted", async () => {
+Deno.test("a note posted on one Verso reaches the followers on another, edited, until it is deleted", async () => {
     await using network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"].ctx;
     const b = network.instances["b.test"].ctx;
@@ -365,6 +397,15 @@ Deno.test("a note posted on one Verso reaches the followers on another, until it
         "Hi @alice@a.test",
     ]);
     assertEquals((await mentionsOf(a, [kept?.id ?? ""])).get(kept?.id ?? ""), [alice]);
+
+    await editNote(b, bob, posted.id, { text: "Bye @alice@a.test" });
+    await network.drain();
+    const edited = await findRemoteNoteAt(a, "b.test", posted.id);
+    assertEquals([edited?.id, edited?.content, edited?.edited_at], [
+        kept?.id,
+        "Bye @alice@a.test",
+        network.clock.now(),
+    ]);
 
     await removeNote(b, posted.id);
     await network.drain();

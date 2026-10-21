@@ -6,10 +6,11 @@ import type { CollectionProvider } from "../federation/registry.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { registry } from "../registry.ts";
+import type { Visibility } from "../accounts/tables.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
 import { audienceOf, noteType } from "./federation.ts";
-import { postNote, removeNote } from "./notes.ts";
+import { editNote, postNote, removeNote } from "./notes.ts";
 import { createNote } from "./testing.ts";
 
 /** Alice and bob here; carol on b.example, who follows alice, and erin on c.example. */
@@ -46,7 +47,7 @@ const sent = async (ctx: Context) =>
         entity.id ?? entity.deleted,
     ]);
 
-const post = (ctx: Context, accountId: string, text: string, visibility = "public" as const) =>
+const post = (ctx: Context, accountId: string, text: string, visibility: Visibility = "public") =>
     postNote(ctx, accountId, { text, format: "text/plain", spoilerText: "", visibility });
 
 Deno.test("a local note is a Versia Note, with who it mentions and what it replies to", async () => {
@@ -254,6 +255,19 @@ Deno.test("a posted note is sent to the instances of those it is shown to", asyn
     const [[, entity]] = await queued(test.ctx);
     // As sent, without the fields it leaves out.
     assertEquals(entity, JSON.parse(JSON.stringify(await test.find(note?.id ?? "", ""))));
+});
+
+Deno.test("an edited note is sent again, whole, to those it is shown to now", async () => {
+    await using test = await open();
+    const note = await post(test.ctx, "alice", "Hi", "direct");
+    if (note === undefined) throw new Error("Not posted");
+
+    await editNote(test.ctx, "alice", note.id, { text: "Hi @erin@c.example" });
+    await editNote(test.ctx, "alice", note.id, { text: "Hi @erin@c.example" });
+
+    assertEquals(await sent(test.ctx), [["c.example", "Note", note.id]]);
+    const [[, entity]] = await queued(test.ctx);
+    assertEquals(entity, JSON.parse(JSON.stringify(await test.find(note.id, "c.example"))));
 });
 
 Deno.test("a deleted local note is deleted where it was sent, and a remote one nowhere", async () => {

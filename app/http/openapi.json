@@ -1991,31 +1991,10 @@
                                     "status": {
                                         "type": "string"
                                     },
-                                    "content_type": {
-                                        "default": "text/plain",
-                                        "type": "string",
-                                        "enum": [
-                                            "text/plain",
-                                            "text/markdown"
-                                        ]
-                                    },
-                                    "spoiler_text": {
-                                        "default": "",
-                                        "type": "string"
-                                    },
                                     "sensitive": {
                                         "type": [
                                             "boolean",
                                             "string"
-                                        ]
-                                    },
-                                    "visibility": {
-                                        "type": "string",
-                                        "enum": [
-                                            "public",
-                                            "unlisted",
-                                            "private",
-                                            "direct"
                                         ]
                                     },
                                     "language": {
@@ -2037,14 +2016,35 @@
                                             }
                                         ]
                                     },
+                                    "media_ids": {},
+                                    "poll": {},
+                                    "content_type": {
+                                        "default": "text/plain",
+                                        "type": "string",
+                                        "enum": [
+                                            "text/plain",
+                                            "text/markdown"
+                                        ]
+                                    },
+                                    "spoiler_text": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
+                                    "visibility": {
+                                        "type": "string",
+                                        "enum": [
+                                            "public",
+                                            "unlisted",
+                                            "private",
+                                            "direct"
+                                        ]
+                                    },
                                     "in_reply_to_id": {
                                         "type": [
                                             "string",
                                             "null"
                                         ]
                                     },
-                                    "media_ids": {},
-                                    "poll": {},
                                     "scheduled_at": {}
                                 },
                                 "required": [
@@ -2059,31 +2059,10 @@
                                     "status": {
                                         "type": "string"
                                     },
-                                    "content_type": {
-                                        "default": "text/plain",
-                                        "type": "string",
-                                        "enum": [
-                                            "text/plain",
-                                            "text/markdown"
-                                        ]
-                                    },
-                                    "spoiler_text": {
-                                        "default": "",
-                                        "type": "string"
-                                    },
                                     "sensitive": {
                                         "type": [
                                             "boolean",
                                             "string"
-                                        ]
-                                    },
-                                    "visibility": {
-                                        "type": "string",
-                                        "enum": [
-                                            "public",
-                                            "unlisted",
-                                            "private",
-                                            "direct"
                                         ]
                                     },
                                     "language": {
@@ -2105,14 +2084,35 @@
                                             }
                                         ]
                                     },
+                                    "media_ids": {},
+                                    "poll": {},
+                                    "content_type": {
+                                        "default": "text/plain",
+                                        "type": "string",
+                                        "enum": [
+                                            "text/plain",
+                                            "text/markdown"
+                                        ]
+                                    },
+                                    "spoiler_text": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
+                                    "visibility": {
+                                        "type": "string",
+                                        "enum": [
+                                            "public",
+                                            "unlisted",
+                                            "private",
+                                            "direct"
+                                        ]
+                                    },
                                     "in_reply_to_id": {
                                         "type": [
                                             "string",
                                             "null"
                                         ]
                                     },
-                                    "media_ids": {},
-                                    "poll": {},
                                     "scheduled_at": {}
                                 },
                                 "required": [
@@ -2127,31 +2127,10 @@
                                     "status": {
                                         "type": "string"
                                     },
-                                    "content_type": {
-                                        "default": "text/plain",
-                                        "type": "string",
-                                        "enum": [
-                                            "text/plain",
-                                            "text/markdown"
-                                        ]
-                                    },
-                                    "spoiler_text": {
-                                        "default": "",
-                                        "type": "string"
-                                    },
                                     "sensitive": {
                                         "type": [
                                             "boolean",
                                             "string"
-                                        ]
-                                    },
-                                    "visibility": {
-                                        "type": "string",
-                                        "enum": [
-                                            "public",
-                                            "unlisted",
-                                            "private",
-                                            "direct"
                                         ]
                                     },
                                     "language": {
@@ -2173,14 +2152,35 @@
                                             }
                                         ]
                                     },
+                                    "media_ids": {},
+                                    "poll": {},
+                                    "content_type": {
+                                        "default": "text/plain",
+                                        "type": "string",
+                                        "enum": [
+                                            "text/plain",
+                                            "text/markdown"
+                                        ]
+                                    },
+                                    "spoiler_text": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
+                                    "visibility": {
+                                        "type": "string",
+                                        "enum": [
+                                            "public",
+                                            "unlisted",
+                                            "private",
+                                            "direct"
+                                        ]
+                                    },
                                     "in_reply_to_id": {
                                         "type": [
                                             "string",
                                             "null"
                                         ]
                                     },
-                                    "media_ids": {},
-                                    "poll": {},
                                     "scheduled_at": {}
                                 },
                                 "required": [
@@ -2242,6 +2242,197 @@
                     }
                 }
             },
+            "put": {
+                "summary": "Edits one of the viewer's statuses",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "sensitive": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "language": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "const": ""
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^[a-z]{2}$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "media_ids": {},
+                                    "poll": {},
+                                    "content_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "text/plain",
+                                            "text/markdown"
+                                        ]
+                                    },
+                                    "spoiler_text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "status"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "sensitive": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "language": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "const": ""
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^[a-z]{2}$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "media_ids": {},
+                                    "poll": {},
+                                    "content_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "text/plain",
+                                            "text/markdown"
+                                        ]
+                                    },
+                                    "spoiler_text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "status"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "sensitive": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "language": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string",
+                                                        "const": ""
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^[a-z]{2}$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "media_ids": {},
+                                    "poll": {},
+                                    "content_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "text/plain",
+                                            "text/markdown"
+                                        ]
+                                    },
+                                    "spoiler_text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "status"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "summary": "Deletes one of the viewer's statuses, and gives it back as written, to redraft",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
@@ -2272,6 +2463,44 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/source": {
+            "get": {
+                "summary": "A status as its author wrote it, if the viewer may see it, for editing it",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `read:note` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StatusSource"
                                 }
                             }
                         }
@@ -7143,6 +7372,28 @@
                     "username",
                     "url",
                     "acct"
+                ]
+            },
+            "StatusSource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "spoiler_text": {
+                        "type": "string"
+                    },
+                    "content_type": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "text",
+                    "spoiler_text"
                 ]
             },
             "StatusTag": {
