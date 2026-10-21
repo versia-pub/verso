@@ -1,4 +1,5 @@
 import type { Insertable, Selectable, Updateable } from "kysely";
+import { batchesOf } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
@@ -15,16 +16,15 @@ const insertMentionsAndTags = async (
     mentionIds: readonly string[],
     tags: readonly string[],
 ) => {
-    if (mentionIds.length > 0) {
+    for (const batch of batchesOf([...new Set(mentionIds)])) {
         await ctx.db.insertInto("note_mentions")
-            .values([...new Set(mentionIds)].map((account_id) => ({ note_id: noteId, account_id })))
+            .values(batch.map((account_id) => ({ note_id: noteId, account_id })))
             .execute();
     }
 
-    if (tags.length > 0) {
-        const names = new Set(tags.map((tag) => tag.toLowerCase()));
+    for (const batch of batchesOf([...new Set(tags.map((tag) => tag.toLowerCase()))])) {
         await ctx.db.insertInto("note_tags")
-            .values([...names].map((name) => ({ note_id: noteId, name })))
+            .values(batch.map((name) => ({ note_id: noteId, name })))
             .execute();
     }
 };

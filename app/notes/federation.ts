@@ -238,12 +238,19 @@ const knownNote = async (ctx: Context, reference: Reference): Promise<Known | un
 };
 
 /**
- * Who a note sent by `sender` names: its author, who it mentions, and what it replies to and
- * quotes.
+ * How many mentions and hashtags of another instance's note Verso keeps. Each costs queries, so a
+ * note can't make Verso do unbounded work.
+ */
+const remoteLinks = 100;
+
+/**
+ * Who a note sent by `sender` names: its author, the first {@link remoteLinks} it mentions, and
+ * what it replies to and quotes.
  */
 const referencesIn = (note: v0_6.Note, sender: Sender) => ({
     author: parseReference(note.author, sender.domain),
-    mentions: note.mentions.flatMap((text) => parseReference(text, sender.domain) ?? []),
+    mentions: [...new Set(note.mentions)].slice(0, remoteLinks)
+        .flatMap((text) => parseReference(text, sender.domain) ?? []),
     parent: note.replies_to ? parseReference(note.replies_to, sender.domain) : undefined,
     quote: note.quotes ? parseReference(note.quotes, sender.domain) : undefined,
 });
@@ -328,7 +335,8 @@ const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
         fetched_at: ctx.clock.now(),
     };
     const mentionIds = mentions.map((mention) => mention.id);
-    const tags = scanText(content.text, content.format).hashtags;
+    const hashtags = scanText(content.text, content.format).hashtags;
+    const tags = [...new Set(hashtags.map((tag) => tag.toLowerCase()))].slice(0, remoteLinks);
 
     if (existing) {
         const edited = changes.content !== existing.content ||

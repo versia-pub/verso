@@ -156,6 +156,23 @@ Deno.test("a note does without those it names that can't be had", async () => {
     assertEquals(kept?.in_reply_to_id, null);
 });
 
+Deno.test("only a note's first hundred mentions and hashtags are kept", async () => {
+    await using test = await open();
+    const bea = await createLocalAccount(test.a, "bea");
+    const nobody = Array.from({ length: 150 }, (_, i) => `a.test:nobody${i}`);
+    const tags = Array.from({ length: 150 }, (_, i) => `#t${i}`).join(" ");
+
+    await test.send(note("n1", {
+        content: { "text/plain": { content: tags, remote: false } },
+        mentions: [`a.test:${test.alice}`, `a.test:${test.alice}`, ...nobody, `a.test:${bea}`],
+    }));
+
+    const kept = await test.kept("n1");
+    assertEquals((await mentionsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? ""), [test.alice]);
+    const names = (await tagsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? "") ?? [];
+    assertEquals([names.length, names.includes("t99"), names.includes("t100")], [100, true, false]);
+});
+
 Deno.test("who a note is for, and its warning, are kept as Mastodon has them", async () => {
     await using test = await open();
     const mentioning = { mentions: [`a.test:${test.alice}`] };
