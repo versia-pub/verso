@@ -4,7 +4,7 @@ import pg from "pg";
 import { connect, type Database } from "../db/database.ts";
 import { testDatabaseKind, testPostgresUrl } from "../db/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { enqueue } from "./queue.ts";
+import { enqueue, enqueueAll } from "./queue.ts";
 import { listenForJobs } from "./wakeups.ts";
 import { work } from "./worker.ts";
 
@@ -79,6 +79,45 @@ Deno.test({
         await delay(100);
 
         assertEquals(heard, ["deliver"]);
+    },
+});
+
+Deno.test({
+    name: "on Postgres, enqueueing several jobs notifies each queue that got one, once",
+    ignore: testDatabaseKind === "pglite" || testDatabaseKind === "sqlite",
+    fn: async () => {
+        const url = await testPostgresUrl();
+        if (!url) return;
+
+        await using test = await createTestContext({
+            db: connect<Database>(
+                new PostgresDialect({ pool: new pg.Pool({ connectionString: url }) }),
+            ),
+        });
+
+        const ctx = test.ctx;
+        await enqueue(ctx, { queue: "other", payload: {}, dedupeKey: "queued" });
+
+        await using wakeups = await listenForJobs({ postgres: url });
+        const heard: string[] = [];
+        for (const queue of ["deliver", "fetch", "other"]) {
+            wakeups?.addEventListener(queue, () => heard.push(queue));
+        }
+
+        await ctx.transaction((tx) =>
+            enqueueAll(tx, [
+                { queue: "deliver", payload: { n: 1 } },
+                { queue: "fetch", payload: {} },
+                { queue: "deliver", payload: { n: 2 } },
+                { queue: "other", payload: {}, dedupeKey: "queued" },
+            ])
+        );
+
+        const started = Date.now();
+        while (heard.length < 2 && Date.now() - started < 5_000) await delay(5);
+        await delay(100);
+
+        assertEquals(heard.toSorted(), ["deliver", "fetch"]);
     },
 });
 

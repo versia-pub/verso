@@ -1,3 +1,4 @@
+import { batchesOf } from "../db/batches.ts";
 import { type Insertable, type Selectable, sql, type Updateable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
@@ -264,6 +265,32 @@ export const countFollow = async (
         .set((eb) => ({ followers_count: eb("followers_count", "+", by) }))
         .where("id", "=", followeeId)
         .execute();
+};
+
+/** Takes one from the followers each of `accountIds` has, as when one of them is deleted. */
+export const uncountFollowers = async (
+    ctx: Context,
+    accountIds: readonly string[],
+): Promise<void> => {
+    for (const batch of batchesOf(accountIds)) {
+        await ctx.db.updateTable("accounts")
+            .set((eb) => ({ followers_count: eb("followers_count", "-", 1) }))
+            .where("id", "in", batch)
+            .execute();
+    }
+};
+
+/** Takes one from the accounts each of `accountIds` follows, as when one of them is deleted. */
+export const uncountFollowing = async (
+    ctx: Context,
+    accountIds: readonly string[],
+): Promise<void> => {
+    for (const batch of batchesOf(accountIds)) {
+        await ctx.db.updateTable("accounts")
+            .set((eb) => ({ following_count: eb("following_count", "-", 1) }))
+            .where("id", "in", batch)
+            .execute();
+    }
 };
 
 /**

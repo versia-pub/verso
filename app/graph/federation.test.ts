@@ -12,6 +12,7 @@ import { createNetwork } from "../testing/network.ts";
 import { followCollections } from "./federation.ts";
 import { followsFrom } from "./follow_queries.ts";
 import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
+import { addFollowers } from "./testing.ts";
 
 const open = async () => {
     const test = await createTestContext();
@@ -427,4 +428,15 @@ Deno.test("a remote account deleted is uncounted from those it followed and was 
 
     // Carol followed alice, and alice carol; carol only asked to follow bob.
     assertEquals(await counts(), [["alice", 2, 0], ["bob", 0, 1]]);
+});
+
+Deno.test("a remote account deleted is uncounted from more followers than one query can name", async () => {
+    await using test = await open();
+    const followers = await addFollowers(test.ctx, "carol", 2500, [null]);
+
+    await deleteRemoteAccount(test.ctx, "b.example", "carol");
+
+    const counts = await test.ctx.db.selectFrom("accounts").select("following_count")
+        .where("id", "in", [followers[0], followers[1500], followers[2499]]).execute();
+    assertEquals(counts.map((row) => row.following_count), [0, 0, 0]);
 });

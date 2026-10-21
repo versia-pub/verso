@@ -4,6 +4,7 @@ import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts"
 import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
 import type { CollectionProvider } from "../federation/registry.ts";
 import { follow } from "../graph/follows.ts";
+import { addFollowers } from "../graph/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import { registry } from "../registry.ts";
 import type { Visibility } from "../accounts/tables.ts";
@@ -170,23 +171,29 @@ Deno.test("only local notes that exist are given", async () => {
     assertEquals(await test.find("missing", "b.example"), undefined);
 });
 
-Deno.test("a note is shown to who it mentions, the followers, and who a public reply is to", async () => {
+Deno.test("a note is shown on the instances of who it mentions, the followers, and who a public reply is to", async () => {
     await using test = await open();
+    await createInstance(test.ctx, "d.example");
+    await createRemoteAccount(test.ctx, "frank", "d.example");
+    // Bob is here, and frank only asked.
     await follow(test.ctx, "bob", "alice");
-    const note = (visibility: "public" | "unlisted" | "private" | "direct") => ({
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
+        .execute();
+    await follow(test.ctx, "frank", "alice");
+    const note = (visibility: Visibility, replyTo: string | null = "erin") => ({
         account_id: "alice",
         visibility,
-        in_reply_to_account_id: "erin",
+        in_reply_to_account_id: replyTo,
     });
-    const audience = async (visibility: "public" | "unlisted" | "private" | "direct") =>
-        (await audienceOf(test.ctx, note(visibility), ["alice", "carol"])).toSorted();
 
-    assertEquals(await audience("public"), ["bob", "carol", "erin"]);
-    assertEquals(await audience("unlisted"), ["bob", "carol", "erin"]);
-    assertEquals(await audience("private"), ["bob", "carol"]);
-    assertEquals(await audience("direct"), ["carol"]);
-    const unreplied = { ...note("public"), in_reply_to_account_id: null };
-    assertEquals((await audienceOf(test.ctx, unreplied, [])).toSorted(), ["bob", "carol"]);
+    assertEquals(await audienceOf(test.ctx, note("public"), []), ["b.example", "c.example"]);
+    assertEquals(await audienceOf(test.ctx, note("unlisted"), []), ["b.example", "c.example"]);
+    assertEquals(await audienceOf(test.ctx, note("private"), []), ["b.example"]);
+    assertEquals(await audienceOf(test.ctx, note("direct"), []), []);
+    assertEquals(await audienceOf(test.ctx, note("direct"), ["alice", "bob", "erin"]), [
+        "c.example",
+    ]);
+    assertEquals(await audienceOf(test.ctx, note("public", null), []), ["b.example"]);
 });
 
 Deno.test("a user's outbox is their public and unlisted notes, oldest first", async () => {
@@ -307,4 +314,17 @@ Deno.test("a deleted local note is deleted where it was sent, and a remote one n
         deleted_type: "Note",
         deleted: note.id,
     });
+});
+
+Deno.test("a note reaches the instances of more followers than one query can name", async () => {
+    await using test = await open();
+    const instances = ["e0.example", "e1.example", "e2.example"];
+    for (const domain of instances) await createInstance(test.ctx, domain);
+    // More than the 65,535 values Postgres lets one query bind.
+    await addFollowers(test.ctx, "alice", 70_000, [...instances, null]);
+
+    const note = await post(test.ctx, "alice", "Hi", "private");
+
+    assertEquals((await sent(test.ctx)).map(([domain]) => domain), ["b.example", ...instances]);
+    assertEquals(await test.find(note?.id ?? "", "e1.example") === undefined, false);
 });

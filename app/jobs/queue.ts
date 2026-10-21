@@ -1,3 +1,4 @@
+import { batchesOf } from "../db/batches.ts";
 import { skippingLocked } from "../db/locking.ts";
 import { notify } from "../db/notify.ts";
 import type { Context } from "../kernel/context.ts";
@@ -19,6 +20,29 @@ export type NewJob = {
     readonly keepUntil?: Date;
 };
 
+/** A new job as a row, due now unless it says otherwise. */
+const rowOf = (ctx: Context, job: NewJob) => {
+    const now = ctx.clock.now();
+
+    return {
+        id: ctx.ids(),
+        queue: job.queue,
+        payload: job.payload,
+        priority: job.priority ?? 0,
+        run_at: job.runAt ?? now,
+        attempts: 0,
+        max_attempts: job.maxAttempts ?? 10,
+        lease_owner: null,
+        lease_expires_at: null,
+        dedupe_key: job.dedupeKey ?? null,
+        group_key: job.group ?? null,
+        last_error: null,
+        created_at: now,
+        keep_until: job.keepUntil ?? null,
+        finished_at: null,
+    };
+};
+
 /**
  * Adds a job inside the caller's unit of work, so it exists exactly when the change that caused
  * it commits, and wakes idle workers on Postgres once it does. Returns its id, or `undefined`
@@ -28,32 +52,30 @@ export const enqueue = async (
     ctx: Context,
     job: NewJob,
 ): Promise<string | undefined> => {
-    const now = ctx.clock.now();
-
     const inserted = await ctx.db.insertInto("jobs")
-        .values({
-            id: ctx.ids(),
-            queue: job.queue,
-            payload: job.payload,
-            priority: job.priority ?? 0,
-            run_at: job.runAt ?? now,
-            attempts: 0,
-            max_attempts: job.maxAttempts ?? 10,
-            lease_owner: null,
-            lease_expires_at: null,
-            dedupe_key: job.dedupeKey ?? null,
-            group_key: job.group ?? null,
-            last_error: null,
-            created_at: now,
-            keep_until: job.keepUntil ?? null,
-            finished_at: null,
-        })
+        .values(rowOf(ctx, job))
         .onConflict((conflict) => conflict.column("dedupe_key").doNothing())
         .returning("id")
         .executeTakeFirst();
 
     if (inserted) await notify(ctx.db, jobsChannel, job.queue);
     return inserted?.id;
+};
+
+/** Adds several jobs as {@link enqueue} adds one, in as few queries as it can. */
+export const enqueueAll = async (ctx: Context, jobs: readonly NewJob[]): Promise<void> => {
+    const woken = new Set<string>();
+
+    for (const batch of batchesOf(jobs)) {
+        const inserted = await ctx.db.insertInto("jobs")
+            .values(batch.map((job) => rowOf(ctx, job)))
+            .onConflict((conflict) => conflict.column("dedupe_key").doNothing())
+            .returning("queue")
+            .execute();
+        for (const row of inserted) woken.add(row.queue);
+    }
+
+    for (const queue of woken) await notify(ctx.db, jobsChannel, queue);
 };
 
 export type ClaimOptions = {

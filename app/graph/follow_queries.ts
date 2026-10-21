@@ -184,6 +184,28 @@ export const everyListed = async (
     (await listed(ctx, list, accountId).select(`${lists[list].listed} as account_id`).execute())
         .map((row) => row.account_id);
 
+/** Whether an account has anyone on one of its lists. */
+export const anyListed = async (
+    ctx: Context,
+    list: FollowList,
+    accountId: string,
+): Promise<boolean> =>
+    await listed(ctx, list, accountId).select("id").limit(1).executeTakeFirst() !== undefined;
+
+/**
+ * The instances an account's followers are on, other than this one. The one query here that reads
+ * another module's table: an account can have more followers than a query can name, so their
+ * instances are found by joining their accounts, rather than by listing them.
+ */
+export const followerInstanceIds = async (ctx: Context, accountId: string): Promise<string[]> =>
+    (await listed(ctx, "followers", accountId)
+        .innerJoin("accounts", "accounts.id", "follows.follower_id")
+        .select("accounts.instance_id")
+        .distinct()
+        .execute())
+        // Local accounts have none.
+        .flatMap((row) => row.instance_id ?? []);
+
 /** How many accounts are on one of an account's lists. */
 export const countFollows = async (
     ctx: Context,

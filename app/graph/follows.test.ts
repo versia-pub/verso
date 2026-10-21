@@ -6,7 +6,14 @@ import type { Context } from "../kernel/context.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { followsFrom, followsOf } from "./follow_queries.ts";
-import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
+import {
+    acceptFollow,
+    follow,
+    followerInstances,
+    hasFollowers,
+    rejectFollow,
+    unfollow,
+} from "./follows.ts";
 
 const open = async (options: TestContextOptions = {}) => {
     const test = await createTestContext(options);
@@ -204,4 +211,36 @@ Deno.test("unlocking an account accepts everyone asking to follow it", async () 
         carol: [1, 0],
         dave: [0, 0],
     });
+});
+
+Deno.test("an account's followers are found by their other instances, once each", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "c.example");
+    for (const id of ["dan", "erin", "frank"]) await createRemoteAccount(test.ctx, id, "c.example");
+    await createInstance(test.ctx, "d.example");
+    await createRemoteAccount(test.ctx, "gus", "d.example");
+    for (const id of ["bob", "carol", "dan", "erin"]) await follow(test.ctx, id, "alice");
+    // Gus only asked, once alice was locked.
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
+        .execute();
+    await follow(test.ctx, "gus", "alice");
+
+    assertEquals((await followerInstances(test.ctx, "alice")).toSorted(), [
+        "b.example",
+        "c.example",
+    ]);
+    assertEquals(await followerInstances(test.ctx, "bob"), []);
+});
+
+Deno.test("an account has followers only once one is accepted", async () => {
+    await using test = await open();
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
+        .execute();
+
+    await follow(test.ctx, "carol", "alice");
+    assertEquals(await hasFollowers(test.ctx, "alice"), false);
+
+    await acceptFollow(test.ctx, "carol", "alice");
+    assertEquals(await hasFollowers(test.ctx, "alice"), true);
+    assertEquals(await hasFollowers(test.ctx, "carol"), false);
 });

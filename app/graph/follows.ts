@@ -2,16 +2,23 @@
  * Following accounts, on this instance or another.
  * @module
  */
-import { countFollow, findAccount } from "../accounts/accounts.ts";
+import {
+    countFollow,
+    findAccount,
+    uncountFollowers,
+    uncountFollowing,
+} from "../accounts/accounts.ts";
 import { isAccountDeleting, isProfileUpdated } from "../accounts/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import type { FollowEvent } from "./events.ts";
 import {
     acceptPendingFollow,
+    anyListed,
     countFollows,
     deleteFollow,
     everyListed,
+    followerInstanceIds,
     type FollowOptions,
     followsFrom,
     insertFollow,
@@ -152,9 +159,13 @@ export const isFollowing = async (
     return follow?.accepted === true;
 };
 
-/** The accounts that follow `accountId`, and were accepted, in no particular order. */
-export const followerIds = (ctx: Context, accountId: string): Promise<string[]> =>
-    everyListed(ctx, "followers", accountId);
+/** The other instances that accounts following `accountId`, and accepted, are on. */
+export const followerInstances = (ctx: Context, accountId: string): Promise<string[]> =>
+    followerInstanceIds(ctx, accountId);
+
+/** Whether anyone follows `accountId`, and was accepted. */
+export const hasFollowers = (ctx: Context, accountId: string): Promise<boolean> =>
+    anyListed(ctx, "followers", accountId);
 
 /**
  * Uncounts the follows of an account about to be deleted, from the accounts on their other side,
@@ -164,10 +175,6 @@ export const uncountFollowsOf = async (ctx: Context, event: DomainEvent): Promis
     if (!isAccountDeleting(event)) return;
     const { accountId } = event;
 
-    for (const followeeId of await everyListed(ctx, "following", accountId)) {
-        await countFollow(ctx, accountId, followeeId, -1);
-    }
-    for (const followerId of await everyListed(ctx, "followers", accountId)) {
-        await countFollow(ctx, followerId, accountId, -1);
-    }
+    await uncountFollowers(ctx, await everyListed(ctx, "following", accountId));
+    await uncountFollowing(ctx, await everyListed(ctx, "followers", accountId));
 };

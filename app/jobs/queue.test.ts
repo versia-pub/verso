@@ -8,6 +8,7 @@ import {
     complete,
     deleteExpiredJobs,
     enqueue,
+    enqueueAll,
     fail,
     giveUp,
     postpone,
@@ -81,6 +82,26 @@ const minute = 60_000;
 const options = { queue: "deliver", worker: "w1", limit: 10, leaseMs: minute };
 
 const ids = (jobs: { payload: Record<string, unknown> }[]) => jobs.map((job) => job.payload.n);
+
+Deno.test("jobs enqueued together are all added, but for dedupe keys already queued", async () => {
+    await using test = await open();
+    await enqueue(test.ctx, { queue: "deliver", payload: {}, dedupeKey: "queued" });
+
+    const jobs = Array.from({ length: 2500 }, (_, n) => ({ queue: "deliver", payload: { n } }));
+    await enqueueAll(test.ctx, [
+        ...jobs,
+        { queue: "deliver", payload: { n: "again" }, dedupeKey: "queued" },
+        { queue: "fetch", payload: { n: "first" }, dedupeKey: "new", group: "b.example" },
+        { queue: "fetch", payload: { n: "second" }, dedupeKey: "new" },
+    ]);
+
+    const rows = await test.ctx.db.selectFrom("jobs").select(["queue", "payload", "group_key"])
+        .orderBy("id").execute();
+    assertEquals(rows.length, 2502);
+    assertEquals(rows.at(1), { queue: "deliver", payload: { n: 0 }, group_key: null });
+    assertEquals(rows.at(-1), { queue: "fetch", payload: { n: "first" }, group_key: "b.example" });
+    await enqueueAll(test.ctx, []);
+});
 
 Deno.test("claiming takes due jobs of one queue, by priority and then age", async () => {
     await using test = await open();

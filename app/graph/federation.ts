@@ -8,19 +8,13 @@ import { parseReference, v0_6 } from "@versia/protocol";
 import { findAccount } from "../accounts/accounts.ts";
 import { isProfileUpdated } from "../accounts/events.ts";
 import { knownUser, localVersiaUser, userReferences } from "../accounts/federation.ts";
-import { queueDeliveries } from "../federation/deliver.ts";
+import { queueDeliveries, queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { isFollowEvent } from "./events.ts";
-import {
-    countFollows,
-    everyListed,
-    followIdsFrom,
-    followsFrom,
-    type FollowSide,
-} from "./follow_queries.ts";
-import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
+import { countFollows, followIdsFrom, followsFrom, type FollowSide } from "./follow_queries.ts";
+import { acceptFollow, follow, followerInstances, rejectFollow, unfollow } from "./follows.ts";
 
 /**
  * A local user's followers or follows, oldest first, so pages stay put as more arrive. A user who
@@ -109,7 +103,7 @@ export const profileDeliveries = async (ctx: Context, event: DomainEvent): Promi
     const user = await localVersiaUser(ctx, event.accountId);
     if (user === undefined) return;
 
-    await queueDeliveries(ctx, user, await everyListed(ctx, "followers", event.accountId));
+    await queueDeliveriesTo(ctx, user, await followerInstances(ctx, event.accountId));
 };
 
 /** The author of an entity sent by their instance, which only they may send. */

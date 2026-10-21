@@ -9,10 +9,10 @@ import { formatReference, parseReference, type Reference, v0_6 } from "@versia/p
 import { countNote, findAccount, instancesHosting } from "../accounts/accounts.ts";
 import { knownUser, remoteText, userReferenceMap } from "../accounts/federation.ts";
 import type { Visibility } from "../accounts/tables.ts";
-import { queueDeliveries } from "../federation/deliver.ts";
+import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Known, Sender } from "../federation/registry.ts";
 import { isRemoteFailure } from "../federation/resolver.ts";
-import { followerIds } from "../graph/follows.ts";
+import { followerInstances, hasFollowers } from "../graph/follows.ts";
 import { findInstanceId } from "../instances/instances.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Budget, Context, DomainEvent } from "../kernel/context.ts";
@@ -49,24 +49,24 @@ const groups: Record<Visibility, string | undefined> = {
 const everyone: readonly Visibility[] = ["public", "unlisted"];
 
 /**
- * The accounts a local note is shown to, other than its author: the users it mentions, the
- * author's followers unless it is direct, and the author of the note a public or unlisted one
- * replies to, whose instance can then show the thread.
+ * The other instances a local note is shown on: those of the users it mentions, of the author's
+ * followers unless it is direct, and of the author of the note a public or unlisted one replies
+ * to, which can then show the thread.
  */
 export const audienceOf = async (
     ctx: Context,
     note: Pick<NoteRow, "account_id" | "visibility" | "in_reply_to_account_id">,
     mentionIds: readonly string[],
 ): Promise<string[]> => {
-    const followers = note.visibility === "direct" ? [] : await followerIds(ctx, note.account_id);
     const replied = everyone.includes(note.visibility) && note.in_reply_to_account_id !== null
         ? [note.in_reply_to_account_id]
         : [];
+    const followers = note.visibility === "direct"
+        ? []
+        : await followerInstances(ctx, note.account_id);
 
-    const audience = new Set([...mentionIds, ...followers, ...replied]);
-    audience.delete(note.account_id);
-
-    return [...audience];
+    return [...new Set([...await instancesHosting(ctx, [...mentionIds, ...replied]), ...followers])]
+        .toSorted();
 };
 
 /** References to the notes of `ids` that exist, by id, as Verso puts them in what it sends. */
@@ -138,9 +138,7 @@ const seenBy = async (ctx: Context, note: NoteRow, requester: string) => {
     if (instanceId === undefined) return false;
 
     const mentionIds = (await mentionsOf(ctx, [note.id])).get(note.id) ?? [];
-    const audience = await audienceOf(ctx, note, mentionIds);
-
-    return (await instancesHosting(ctx, audience)).includes(instanceId);
+    return (await audienceOf(ctx, note, mentionIds)).includes(instanceId);
 };
 
 /**
@@ -153,7 +151,7 @@ const sendNote = async (ctx: Context, noteId: string) => {
 
     const mentionIds = (await mentionsOf(ctx, [note.id])).get(note.id) ?? [];
     const [entity] = await renderVersiaNotes(ctx, [note]);
-    await queueDeliveries(ctx, entity, await audienceOf(ctx, note, mentionIds));
+    await queueDeliveriesTo(ctx, entity, await audienceOf(ctx, note, mentionIds));
 };
 
 /**
@@ -180,7 +178,7 @@ export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
         deleted_type: "Note",
         deleted: event.noteId,
     };
-    await queueDeliveries(ctx, entity, await audienceOf(ctx, note, event.mentionIds));
+    await queueDeliveriesTo(ctx, entity, await audienceOf(ctx, note, event.mentionIds));
 };
 
 /** A local user's public and unlisted notes, oldest first, so pages stay put as more are written. */
@@ -262,7 +260,7 @@ const wanted = async (
     linked.some((note) => note?.instance_id === null) ||
     // Verso keeps only follows with a local side, so any follower of another instance's user is a
     // local one.
-    (await followerIds(ctx, authorId)).length > 0;
+    await hasFollowers(ctx, authorId);
 
 /** The note `reference` points at, if there is one and Verso has it. */
 const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
