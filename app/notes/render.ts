@@ -2,9 +2,9 @@
  * Notes as the client API shows them, as Mastodon statuses.
  * @module
  */
-import type { Account, Status, StatusEdit } from "@versia/client-api";
+import type { Status, StatusEdit } from "@versia/client-api";
 import { findAccounts } from "../accounts/accounts.ts";
-import { publicAccounts } from "../accounts/public.ts";
+import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
 import { entityUrl } from "../kernel/urls.ts";
@@ -36,14 +36,12 @@ export const renderStatuses = async (
     const mentions = await mentionsOf(ctx, noteIds);
     const tags = await tagsOf(ctx, noteIds);
 
-    const authorIds = [...new Set(notes.map((note) => note.account_id))];
-    const domains = new Map(
-        (await findAccounts(ctx, authorIds)).map((row) => [row.id, row.domain]),
-    );
-    const accountIds = [...new Set([...authorIds, ...[...mentions.values()].flat()])];
-    const accounts = new Map<string, Account>(
-        (await publicAccounts(ctx, accountIds)).map((account) => [account.id, account]),
-    );
+    const accountIds = [
+        ...new Set([...notes.map((note) => note.account_id), ...[...mentions.values()].flat()]),
+    ];
+    const rows = await findAccounts(ctx, accountIds);
+    const domains = new Map(rows.map((row) => [row.id, row.domain]));
+    const accounts = await publicAccountsOf(ctx, rows);
 
     return notes.map((note): Status => {
         const account = accounts.get(note.account_id);
@@ -101,10 +99,8 @@ export const renderStatuses = async (
  */
 export const renderHistory = async (ctx: Context, note: NoteRow): Promise<StatusEdit[]> => {
     const [author] = await findAccounts(ctx, [note.account_id]);
-    const [account] = await publicAccounts(ctx, [note.account_id]);
-    if (author === undefined || account === undefined) {
-        throw new Error(`Note ${note.id} has no author`);
-    }
+    if (author === undefined) throw new Error(`Note ${note.id} has no author`);
+    const account = await publicAccount(ctx, author);
 
     const current = { ...note, created_at: note.edited_at ?? note.created_at };
     return [...await versionsOf(ctx, note.id), current].map((version): StatusEdit => ({

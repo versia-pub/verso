@@ -12,13 +12,17 @@ import { rolesOf, rolesOfAccounts } from "./role_queries.ts";
 export const publicAccount = async (ctx: Context, row: AccountRow): Promise<Account> =>
     renderAccount(ctx, row, await rolesOf(ctx, row.id));
 
+/** Accounts already read, as anyone sees them, by id. */
+export const publicAccountsOf = async (
+    ctx: Context,
+    rows: readonly AccountRow[],
+): Promise<Map<string, Account>> => {
+    const roles = await rolesOfAccounts(ctx, rows.map((row) => row.id));
+    return new Map(rows.map((row) => [row.id, renderAccount(ctx, row, roles.get(row.id) ?? [])]));
+};
+
 /** The accounts of `ids` that exist, as anyone sees them, in the order of `ids`. */
 export const publicAccounts = async (ctx: Context, ids: readonly string[]): Promise<Account[]> => {
-    const rows = new Map((await findAccounts(ctx, ids)).map((row) => [row.id, row]));
-    const roles = await rolesOfAccounts(ctx, [...rows.keys()]);
-
-    return ids.flatMap((id) => {
-        const row = rows.get(id);
-        return row ? [renderAccount(ctx, row, roles.get(id) ?? [])] : [];
-    });
+    const accounts = await publicAccountsOf(ctx, await findAccounts(ctx, ids));
+    return ids.flatMap((id) => accounts.get(id) ?? []);
 };
