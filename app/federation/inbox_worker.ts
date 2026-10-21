@@ -13,6 +13,12 @@ import { fetchBudget } from "./resolver.ts";
 const logger = getLogger(["verso", "federation"]);
 
 /**
+ * How long a job may spend fetching what an entity refers to. Each fetch may take 30 seconds more,
+ * so the job still ends well within its lease.
+ */
+const prepareMs = 2 * 60_000;
+
+/**
  * Runs inbox jobs: checks each entity again, in case Verso changed since it was queued, checks
  * that the instance that sent it may, and applies it. One from an instance blocked since is
  * dropped. An entity that is invalid or sent by the wrong instance is given up on; anything else
@@ -50,6 +56,11 @@ export const inboxHandler = (registry: Registry): Handler => async (ctx, job) =>
     if (instanceId === undefined) throw new Error(`${signer} isn't a known instance`);
 
     const sender = { domain: signer, instanceId, fetched: false };
-    await type.prepare?.(ctx, entity, sender, fetchBudget());
+    await type.prepare?.(
+        ctx,
+        entity,
+        sender,
+        fetchBudget(20, ctx.clock.now().getTime() + prepareMs),
+    );
     await ctx.transaction((tx) => type.receive(tx, entity, sender));
 };

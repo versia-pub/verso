@@ -18,7 +18,11 @@ import { BadReply, fetchSigned, Unreachable } from "./request.ts";
 
 const logger = getLogger(["verso", "federation"]);
 
-export const fetchBudget = (fetches = 20): Budget => ({ fetches });
+export const fetchBudget = (fetches = 20, until?: number): Budget => ({
+    fetches,
+    until,
+    saving: 0,
+});
 
 /** An entity that couldn't be fetched, or wasn't what was asked for. */
 export class ResolveFailed extends Error {
@@ -98,7 +102,12 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         if (instanceId === undefined) throw new ResolveFailed(`${host} isn't a known instance`);
 
         const sender = { domain: host, instanceId, fetched: true };
-        await type.prepare?.(ctx, entity, sender, budget);
+        budget.saving++;
+        try {
+            await type.prepare?.(ctx, entity, sender, budget);
+        } finally {
+            budget.saving--;
+        }
         await ctx.transaction((tx) => type.receive(tx, entity, sender));
         return (await type.known?.(ctx, reference))?.id;
     };
@@ -121,8 +130,13 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         if ((missing.get(key) ?? 0) > now) return undefined;
 
         let pending = fetching.get(key);
+
+        // While a fetched entity resolves what it refers to, it can't wait for a fetch under way:
+        // that fetch may be waiting for it, as when two notes reply to each other.
+        if (pending && budget.saving > 0) return known?.id;
+
         if (!pending) {
-            if (budget.fetches <= 0) return known?.id;
+            if (budget.fetches <= 0 || now >= (budget.until ?? Infinity)) return known?.id;
             budget.fetches--;
 
             pending = fetchEntity(ctx, type, reference, key, budget).finally(() =>

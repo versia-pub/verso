@@ -6,7 +6,8 @@ import { blockDomain } from "../moderation/domain_blocks.ts";
 import { registry } from "../registry.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
-import type { Budget, Context } from "../kernel/context.ts";
+import type { Reference } from "@versia/protocol";
+import type { Budget, Context, Resolver } from "../kernel/context.ts";
 import { createRegistry, type Sender } from "./registry.ts";
 import { BadReply } from "./request.ts";
 import { createResolver, fetchBudget, ResolveFailed } from "./resolver.ts";
@@ -27,7 +28,7 @@ const open = async () => {
             return url.host === host && url.pathname.startsWith("/.versia/v0.6/entities/");
         }).length;
 
-    const user = (host: string, id: string, budget?: { fetches: number }) =>
+    const user = (host: string, id: string, budget?: Budget) =>
         resolve(a, { host, id }, "User", budget);
 
     return { network, a, bob, resolve, fetched, user };
@@ -223,4 +224,49 @@ Deno.test("a fetched entity is prepared before its transaction, from the same bu
     assertEquals(await resolve(a, { host: "evil.test", id: "1" }, "Thing", fetchBudget(5)), "1");
     assertEquals(prepared, [[false, true, 0, 4]]);
     assertEquals(received.length, 1);
+});
+
+Deno.test("entities that refer to each other are fetched once each, without waiting", async () => {
+    const { network, a } = await open();
+    await using _ = network;
+    const evil = await addEvilInstance(network, "evil.test");
+    const saved = new Set<string>();
+    const Linked = z.object({ type: z.literal("Linked"), id: z.string(), next: z.string() });
+    const linked = {
+        type: "Linked",
+        schema: Linked,
+        authority: (_: unknown, origin: string) => origin,
+        prepare: async (ctx: Context, entity: z.infer<typeof Linked>, _: Sender, budget: Budget) =>
+            void await resolve(ctx, { host: "evil.test", id: entity.next }, "Linked", budget),
+        receive: (_: unknown, entity: z.infer<typeof Linked>) =>
+            Promise.resolve(void saved.add(entity.id)),
+        known: (_: unknown, reference: Reference) =>
+            Promise.resolve(
+                saved.has(reference.id) ? { id: reference.id, fetchedAt: null } : undefined,
+            ),
+    };
+    // Read only once the type is made, when the first entity is prepared.
+    const resolve: Resolver = createResolver(createRegistry([linked]));
+
+    evil.serve("/.versia/v0.6/entities/Linked/1", { type: "Linked", id: "1", next: "2" });
+    evil.serve("/.versia/v0.6/entities/Linked/2", { type: "Linked", id: "2", next: "1" });
+    evil.serve("/.versia/v0.6/entities/Linked/3", { type: "Linked", id: "3", next: "3" });
+
+    assertEquals(await resolve(a, { host: "evil.test", id: "1" }, "Linked"), "1");
+    assertEquals(await resolve(a, { host: "evil.test", id: "3" }, "Linked"), "3");
+    assertEquals([...saved], ["2", "1", "3"]);
+});
+
+Deno.test("a budget past its deadline fetches nothing", async () => {
+    const { network, a, bob, fetched, user } = await open();
+    await using _ = network;
+
+    assertEquals(await user("b.test", bob, fetchBudget(5, a.clock.now().getTime())), undefined);
+    assertEquals(fetched("b.test"), 0);
+
+    assertNotEquals(
+        await user("b.test", bob, fetchBudget(5, a.clock.now().getTime() + 1)),
+        undefined,
+    );
+    assertEquals(fetched("b.test"), 1);
 });

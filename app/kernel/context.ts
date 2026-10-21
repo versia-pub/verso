@@ -19,7 +19,13 @@ export type KeyStore = {
  * How many fetches one request or job may make, shared by every resolve it does, so a chain of
  * references can't make it fetch without end.
  */
-export type Budget = { fetches: number };
+export type Budget = {
+    fetches: number;
+    /** When it stops fetching, in milliseconds since the epoch, if ever. */
+    readonly until?: number;
+    /** How many of its fetched entities are resolving what they refer to now. */
+    saving: number;
+};
 
 /**
  * Verso's id for the entity of type `type` that `reference` points at, or `undefined` if there is
