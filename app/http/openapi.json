@@ -2470,6 +2470,48 @@
                 }
             }
         },
+        "/api/v1/statuses/{id}/history": {
+            "get": {
+                "summary": "What a status said before each edit, and now, if the viewer may see it",
+                "description": "Needs the `read:note` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusEdit"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses/{id}/source": {
             "get": {
                 "summary": "A status as its author wrote it, if the viewer may see it, for editing it",
@@ -7348,6 +7390,49 @@
                     "language",
                     "text",
                     "edited_at"
+                ]
+            },
+            "StatusEdit": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string"
+                    },
+                    "spoiler_text": {
+                        "type": "string"
+                    },
+                    "sensitive": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "account": {
+                        "$ref": "#/components/schemas/Account"
+                    },
+                    "media_attachments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MediaAttachment"
+                        }
+                    },
+                    "emojis": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CustomEmoji"
+                        }
+                    }
+                },
+                "required": [
+                    "content",
+                    "spoiler_text",
+                    "sensitive",
+                    "created_at",
+                    "account",
+                    "media_attachments",
+                    "emojis"
                 ]
             },
             "StatusMention": {

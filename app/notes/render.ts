@@ -2,13 +2,13 @@
  * Notes as the client API shows them, as Mastodon statuses.
  * @module
  */
-import type { Account, Status } from "@versia/client-api";
+import type { Account, Status, StatusEdit } from "@versia/client-api";
 import { findAccounts } from "../accounts/accounts.ts";
 import { publicAccounts } from "../accounts/public.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
 import { entityUrl } from "../kernel/urls.ts";
-import { mentionsOf, type NoteRow, tagsOf } from "./note_queries.ts";
+import { mentionsOf, type NoteRow, tagsOf, versionsOf } from "./note_queries.ts";
 
 /** The note's id in Versia, the URL its Note entity is fetched from. */
 const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
@@ -93,4 +93,27 @@ export const renderStatuses = async (
             ...(viewerId === null ? {} : viewerFlags),
         };
     });
+};
+
+/**
+ * What a note said before each edit, oldest first, and what it says now, last. A note never edited
+ * has only the one.
+ */
+export const renderHistory = async (ctx: Context, note: NoteRow): Promise<StatusEdit[]> => {
+    const [author] = await findAccounts(ctx, [note.account_id]);
+    const [account] = await publicAccounts(ctx, [note.account_id]);
+    if (author === undefined || account === undefined) {
+        throw new Error(`Note ${note.id} has no author`);
+    }
+
+    const current = { ...note, created_at: note.edited_at ?? note.created_at };
+    return [...await versionsOf(ctx, note.id), current].map((version): StatusEdit => ({
+        content: author.domain === null ? version.content_html : sanitizeHtml(version.content_html),
+        spoiler_text: version.spoiler_text,
+        sensitive: version.sensitive,
+        created_at: version.created_at.toISOString(),
+        account,
+        media_attachments: [],
+        emojis: [],
+    }));
 };

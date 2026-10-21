@@ -170,3 +170,20 @@ export const StatusSource = z.object({
     content_type: z.string().optional(),
 });
 export type StatusSource = z.infer<typeof StatusSource>;
+
+/**
+ * A version of a status, in its edit history. Polls are left out, as Verso has none.
+ * @see https://docs.joinmastodon.org/entities/StatusEdit/
+ */
+export const StatusEdit = z.object({
+    /** HTML. */
+    content: z.string(),
+    spoiler_text: z.string(),
+    sensitive: z.boolean(),
+    /** When the status came to say this. */
+    created_at: z.iso.datetime(),
+    account: Account,
+    media_attachments: z.array(MediaAttachment),
+    emojis: z.array(CustomEmoji),
+});
+export type StatusEdit = z.infer<typeof StatusEdit>;

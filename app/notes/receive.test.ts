@@ -4,7 +4,7 @@ import { createLocalAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { addEvilInstance, type EvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
-import { findRemoteNoteAt, mentionsOf, tagsOf } from "./note_queries.ts";
+import { findRemoteNoteAt, mentionsOf, tagsOf, versionsOf } from "./note_queries.ts";
 import { editNote, postNote, removeNote } from "./notes.ts";
 import { createNote } from "./testing.ts";
 
@@ -252,6 +252,15 @@ Deno.test("a note sent again is marked edited when it says something else", asyn
     const last = test.network.clock.now().toISOString();
     await test.send(note("n1", { ...fields, group: "followers" }));
     assertEquals(await editedAt(), last);
+
+    // What it said before each edit.
+    const versions = await versionsOf(test.a, (await test.kept("n1"))?.id ?? "");
+    assertEquals(versions.map((version) => [version.content_html, version.spoiler_text]), [
+        ["<p>Hi #Verso</p>", ""],
+        ["<p>Bye</p>", ""],
+        ["<p>Bye</p>", ""],
+        ["<p>Bye</p>", "Spoilers"],
+    ]);
 });
 
 Deno.test("a note by a user who can't be had is given up on", async () => {

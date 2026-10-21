@@ -7,7 +7,7 @@ import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
-import { findNote, mentionsOf, tagsOf } from "./note_queries.ts";
+import { findNote, mentionsOf, tagsOf, versionsOf } from "./note_queries.ts";
 import {
     canSee,
     type Draft,
@@ -161,6 +161,32 @@ Deno.test("an edited note links who it mentions and its hashtags anew, and is ma
     assertEquals((await tagsOf(test.ctx, [note.id])).get(note.id), ["deno"]);
     assertEquals(await statusesCount(test.ctx, "alice"), 1);
     assertEquals(events, [{ type: "notes.edited", noteId: note.id }]);
+});
+
+Deno.test("an edit keeps what the note said before, and when, until the note is deleted", async () => {
+    await using test = await open();
+    const note = await post(test.ctx, "alice", "One", { spoilerText: "Numbers" });
+    if (note === undefined) throw new Error("Not posted");
+    test.clock.advance(1000);
+    const first = await editNote(test.ctx, "alice", note.id, { text: "Two", spoilerText: "" });
+    test.clock.advance(1000);
+    await editNote(test.ctx, "alice", note.id, { text: "Two" });
+    await editNote(test.ctx, "alice", note.id, { text: "Three" });
+
+    const versions = async () =>
+        (await versionsOf(test.ctx, note.id)).map((version) => [
+            version.content_html,
+            version.spoiler_text,
+            version.sensitive,
+            version.created_at,
+        ]);
+    assertEquals(await versions(), [
+        ["<p>One</p>", "Numbers", true, note.created_at],
+        ["<p>Two</p>", "", false, first?.edited_at],
+    ]);
+
+    await removeNote(test.ctx, note.id);
+    assertEquals(await versions(), []);
 });
 
 Deno.test("a note edited to say what it did isn't marked edited", async () => {

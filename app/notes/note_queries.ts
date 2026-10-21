@@ -2,9 +2,10 @@ import type { Insertable, Selectable, Updateable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Visibility } from "../accounts/tables.ts";
-import type { NotesTable } from "./tables.ts";
+import type { NotesTable, NoteVersionsTable } from "./tables.ts";
 
 export type NoteRow = Selectable<NotesTable>;
+export type NoteVersionRow = Selectable<NoteVersionsTable>;
 
 /** Adds who a note mentions, and its hashtags, in lower case. */
 const insertMentionsAndTags = async (
@@ -55,6 +56,27 @@ export const updateNote = async (
     await ctx.db.deleteFrom("note_tags").where("note_id", "=", id).execute();
     await insertMentionsAndTags(ctx, id, mentionIds, tags);
 };
+
+/** Keeps what `note` says now, before it is edited, for its edit history. */
+export const keepVersion = async (ctx: Context, note: NoteRow): Promise<void> => {
+    await ctx.db.insertInto("note_versions")
+        .values({
+            id: ctx.ids(),
+            note_id: note.id,
+            content_html: note.content_html,
+            spoiler_text: note.spoiler_text,
+            sensitive: note.sensitive,
+            created_at: note.edited_at ?? note.created_at,
+        })
+        .execute();
+};
+
+/** What a note said before each of its edits, oldest first. */
+export const versionsOf = async (ctx: Context, noteId: string): Promise<NoteVersionRow[]> =>
+    await ctx.db.selectFrom("note_versions").selectAll()
+        .where("note_id", "=", noteId)
+        .orderBy("id")
+        .execute();
 
 export const findNote = async (ctx: Context, id: string): Promise<NoteRow | undefined> =>
     await ctx.db.selectFrom("notes").selectAll().where("id", "=", id).executeTakeFirst();

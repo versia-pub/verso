@@ -45,3 +45,15 @@ export type NoteTagsTable = {
     note_id: string;
     name: string;
 };
+
+/** What a note said before an edit, as its edit history shows it. */
+export type NoteVersionsTable = {
+    /** Orders a note's versions, oldest first. */
+    id: string;
+    note_id: string;
+    content_html: string;
+    spoiler_text: string;
+    sensitive: boolean;
+    /** When the note came to say this: when it was made, or the edit before. */
+    created_at: Date;
+};

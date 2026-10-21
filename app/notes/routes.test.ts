@@ -245,6 +245,25 @@ Deno.test("an edited status is held to the limit, with the warning it gives", as
     assertEquals(await status({ status: "a".repeat(40), spoiler_text: "a".repeat(11) }), 422);
 });
 
+Deno.test("a status's history is given to whoever may see it", async () => {
+    await using test = await open();
+    const everyone = await createNote(test.ctx, "alice");
+    const followers = await createNote(test.ctx, "alice", { visibility: "private" });
+    await test.edit(everyone.id, { status: "Bye" });
+    const history = (id: string, as: string | null) =>
+        test.request("GET", `/api/v1/statuses/${id}/history`, as);
+
+    const edited = await history(everyone.id, null);
+    assertEquals(edited.status, 200);
+    assertEquals(edited.body.map((version: { content: string }) => version.content), [
+        "<p>Hi</p>",
+        "<p>Bye</p>",
+    ]);
+    assertEquals([(await history(followers.id, "bob")).body.length], [1]);
+    assertEquals((await history(followers.id, "dave")).status, 404);
+    assertEquals((await history("missing", "alice")).status, 404);
+});
+
 Deno.test("a status's source is what its author wrote, for whoever may see it", async () => {
     await using test = await open();
     const note = await createNote(test.ctx, "alice", {
@@ -293,6 +312,11 @@ Deno.test("statuses are posted, read and deleted with tokens and roles that may"
     );
     assertEquals((await test.request("PUT", path, "alice", ["read"])).status, 403);
     assertEquals((await test.request("GET", `${path}/source`, "alice", ["write"])).status, 403);
+    assertEquals((await test.request("GET", `${path}/history`, "alice", ["write"])).status, 403);
+    assertEquals(
+        (await test.request("GET", `${path}/history`, null, undefined, limited)).status,
+        403,
+    );
 
     // Reading notes isn't enough to change them.
     const readers = createTestApp(test.ctx, noteRoutes(defaultSettings().limits), {

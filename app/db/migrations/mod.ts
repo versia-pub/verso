@@ -22,6 +22,7 @@ import { usedCodes } from "./0020_used_codes.ts";
 import { follows } from "./0021_follows.ts";
 import { notes } from "./0022_notes.ts";
 import { remoteNotes } from "./0023_remote_notes.ts";
+import { noteVersions } from "./0024_note_versions.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -51,4 +52,5 @@ export const migrations: Record<string, Migration> = {
     "0021_follows": follows,
     "0022_notes": notes,
     "0023_remote_notes": remoteNotes,
+    "0024_note_versions": noteVersions,
 };

@@ -25,6 +25,7 @@ import {
     findRemoteNote,
     findRemoteNoteAt,
     insertNote,
+    keepVersion,
     mentionsOf,
     noteOrigins,
     type NoteRow,
@@ -273,7 +274,8 @@ const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
  * Saves a note `sender` sent, or a newer version of one Verso has, without who it mentions or the
  * notes it replies to or quotes that Verso doesn't have. A new one is counted, and what it replies
  * to and quotes stay for good, even if a newer version says otherwise. A newer version that says
- * something else is marked edited now, as Versia doesn't say when.
+ * something else is marked edited now, as Versia doesn't say when, and what it said is kept for its
+ * history.
  */
 const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
     const references = referencesIn(note, sender);
@@ -314,12 +316,12 @@ const receiveNote = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
             changes.content_format !== existing.content_format ||
             changes.spoiler_text !== existing.spoiler_text ||
             changes.sensitive !== existing.sensitive;
-        const editedAt = edited ? ctx.clock.now() : existing.edited_at;
+        if (edited) await keepVersion(ctx, existing);
 
         return await updateNote(
             ctx,
             existing.id,
-            { ...changes, edited_at: editedAt },
+            { ...changes, edited_at: edited ? ctx.clock.now() : existing.edited_at },
             mentionIds,
             tags,
         );

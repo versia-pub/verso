@@ -17,6 +17,7 @@ import {
     deleteNote,
     findNote,
     insertNote,
+    keepVersion,
     mentions,
     mentionsOf,
     type NoteRow,
@@ -191,8 +192,8 @@ export type Edit = {
 
 /**
  * Edits a note `accountId`, a local user, wrote, finding who it mentions again, as posting does.
- * Returns the note as it is now, or `undefined` if it isn't theirs. A note left as it was isn't
- * marked edited, or sent again.
+ * What it said before is kept for its history. Returns the note as it is now, or `undefined` if it
+ * isn't theirs. A note left as it was isn't marked edited, or sent again.
  */
 export const editNote = async (
     ctx: Context,
@@ -228,6 +229,7 @@ export const editNote = async (
             changes.language === note.language;
         if (same) return note;
 
+        await keepVersion(tx, note);
         await updateNote(
             tx,
             note.id,

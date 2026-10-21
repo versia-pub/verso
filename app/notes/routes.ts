@@ -1,4 +1,4 @@
-import { Status, StatusSource } from "@versia/client-api";
+import { Status, StatusEdit, StatusSource } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
@@ -6,7 +6,7 @@ import { Flag } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import { countText } from "../kernel/markup.ts";
 import { editNote, postNote, removeNote, visibleNote } from "./notes.ts";
-import { renderStatuses } from "./render.ts";
+import { renderHistory, renderStatuses } from "./render.ts";
 
 /** What Verso can't post yet, refused rather than left out: empty, or not given at all. */
 const NotYet = (what: string) =>
@@ -126,6 +126,21 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
 
             const [status] = await renderStatuses(ctx, [note], viewer.accountId);
             return { status: 200, body: status };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/statuses/:id/history",
+        summary: "What a status said before each edit, and now, if the viewer may see it",
+        tags: ["statuses"],
+        auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
+        params: z.object({ id: z.string() }),
+        responses: { 200: z.array(StatusEdit) },
+        handler: async (ctx, { params, viewer }) => {
+            const note = await visibleNote(ctx, params.id, viewer?.accountId ?? null);
+            if (note === undefined) throw new NotFound();
+
+            return { status: 200, body: await renderHistory(ctx, note) };
         },
     }),
     defineRoute({
