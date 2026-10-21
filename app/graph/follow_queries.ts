@@ -211,6 +211,22 @@ export const followerInstanceIds = async (ctx: Context, accountId: string): Prom
         .flatMap((row) => row.instance_id ?? []);
 
 /**
+ * Whether any of an account's followers is on the instance `instanceId`, joining their accounts as
+ * {@link followerInstanceIds} does, but stopping at the first.
+ */
+export const anyFollowerOn = async (
+    ctx: Context,
+    accountId: string,
+    instanceId: string,
+): Promise<boolean> =>
+    await listed(ctx, "followers", accountId)
+        .innerJoin("accounts", "accounts.id", "follows.follower_id")
+        .where("accounts.instance_id", "=", instanceId)
+        .select("follows.id")
+        .limit(1)
+        .executeTakeFirst() !== undefined;
+
+/**
  * The accounts `accountId` follows, as a subquery, for another module to page through what they
  * wrote. The other exception to keeping queries to a module's own tables: someone can follow more
  * accounts than a query can name, and a page sorted across them all can't be read in batches.

@@ -15,6 +15,7 @@ import type { FollowEvent } from "./events.ts";
 import {
     acceptPendingFollow,
     type AccountIdQuery,
+    anyFollowerOn,
     anyListed,
     countFollows,
     deleteFollow,
@@ -162,6 +163,13 @@ export const isFollowing = async (
     const [follow] = await followsFrom(ctx, followerId, [followeeId]);
     return follow?.accepted === true;
 };
+
+/** Whether an account following `accountId`, and accepted, is on the instance `instanceId`. */
+export const hasFollowersOn = (
+    ctx: Context,
+    accountId: string,
+    instanceId: string,
+): Promise<boolean> => anyFollowerOn(ctx, accountId, instanceId);
 
 /** The other instances that accounts following `accountId`, and accepted, are on. */
 export const followerInstances = (ctx: Context, accountId: string): Promise<string[]> =>

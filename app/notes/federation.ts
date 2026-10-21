@@ -12,7 +12,7 @@ import type { Visibility } from "../accounts/tables.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Known, Sender } from "../federation/registry.ts";
 import { isRemoteFailure } from "../federation/resolver.ts";
-import { followerInstances, hasFollowers } from "../graph/follows.ts";
+import { followerInstances, hasFollowers, hasFollowersOn } from "../graph/follows.ts";
 import { findInstanceId } from "../instances/instances.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Budget, Context, DomainEvent } from "../kernel/context.ts";
@@ -130,17 +130,19 @@ const renderVersiaNotes = async (ctx: Context, notes: readonly NoteRow[]): Promi
 
 /**
  * Whether `requester`, another instance, may see a local note: anyone may see a public or unlisted
- * one, and an instance may see another if any of its users is shown it.
+ * one, and an instance may see another if any of its users is shown it, as {@link audienceOf} has
+ * them, without finding every instance the author's followers are on.
  */
 const seenBy = async (ctx: Context, note: NoteRow, requester: string) => {
     if (everyone.includes(note.visibility)) return true;
 
-    // Saves finding the audience for an instance Verso doesn't know, which can't be in it.
     const instanceId = await findInstanceId(ctx, requester);
     if (instanceId === undefined) return false;
 
     const mentionIds = (await mentionsOf(ctx, [note.id])).get(note.id) ?? [];
-    return (await audienceOf(ctx, note, mentionIds)).includes(instanceId);
+    if ((await instancesHosting(ctx, mentionIds)).includes(instanceId)) return true;
+
+    return note.visibility === "private" && await hasFollowersOn(ctx, note.account_id, instanceId);
 };
 
 /**
