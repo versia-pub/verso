@@ -2,9 +2,9 @@
  * Threads: the notes a note replies to, and the replies under it, as far as Verso has them.
  * @module
  */
+import { followedIds } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
-import { findNote, type NoteRow, repliesTo } from "./note_queries.ts";
-import { canSee } from "./notes.ts";
+import { findNote, type NoteRow, notesSeenBy, type Onlooker, repliesTo } from "./note_queries.ts";
 
 /** How many notes up a thread are looked at, as Mastodon shows to anyone. */
 const ancestorsLimit = 40;
@@ -29,30 +29,39 @@ const ancestorsOf = async (ctx: Context, note: NoteRow) => {
 };
 
 /**
- * The replies to `note`, and to them, in thread order: each reply followed by the replies under it,
- * oldest first. Those nearest `note` are found first, so a long thread loses its deepest replies.
+ * How many replies under a note are looked through, seen or not, so replies nobody may see can't
+ * hide the rest, or make Verso look through a thread without end.
  */
-const descendantsOf = async (ctx: Context, note: NoteRow) => {
+const lookedThroughLimit = 4 * descendantsLimit;
+
+/**
+ * The replies to `note`, and to them, that `onlooker` may see, in thread order: each reply followed
+ * by the replies under it, oldest first. Those nearest `note` are found first, so a long thread
+ * loses its deepest replies. Replies under one they may not see are shown too, as on Mastodon.
+ */
+const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) => {
     const children = new Map<string, NoteRow[]>();
+    const shown = new Set<string>();
 
     let level = [note.id];
-    let found = 0;
+    let looked = 0;
     // Stops once there are enough, rather than asking for none.
-    while (level.length > 0 && found < descendantsLimit) {
-        const replies = await repliesTo(ctx, level, descendantsLimit - found);
-        for (const reply of replies) {
+    while (level.length > 0 && shown.size < descendantsLimit && looked < lookedThroughLimit) {
+        const replies = await repliesTo(ctx, level, onlooker, lookedThroughLimit - looked);
+        for (const { note: reply, seen } of replies) {
             const parentId = reply.in_reply_to_id ?? "";
             children.set(parentId, [...children.get(parentId) ?? [], reply]);
+            if (seen && shown.size < descendantsLimit) shown.add(reply.id);
         }
 
-        found += replies.length;
-        level = replies.map((reply) => reply.id);
+        looked += replies.length;
+        level = replies.map((reply) => reply.note.id);
     }
 
     const ordered: NoteRow[] = [];
     const visit = (id: string) => {
         for (const reply of children.get(id) ?? []) {
-            ordered.push(reply);
+            if (shown.has(reply.id)) ordered.push(reply);
             visit(reply.id);
         }
     };
@@ -70,14 +79,15 @@ export const threadOf = async (
     note: NoteRow,
     viewerId: string | null,
 ): Promise<{ ancestors: NoteRow[]; descendants: NoteRow[] }> => {
-    const visible = async (notes: readonly NoteRow[]) => {
-        const shown = [];
-        for (const each of notes) if (await canSee(ctx, each, viewerId)) shown.push(each);
-        return shown;
-    };
+    const onlooker = viewerId === null
+        ? null
+        : { id: viewerId, followed: followedIds(ctx, viewerId) };
+
+    const ancestors = await ancestorsOf(ctx, note);
+    const seen = await notesSeenBy(ctx, ancestors.map((each) => each.id), onlooker);
 
     return {
-        ancestors: await visible(await ancestorsOf(ctx, note)),
-        descendants: await visible(await descendantsOf(ctx, note)),
+        ancestors: ancestors.filter((each) => seen.has(each.id)),
+        descendants: await descendantsOf(ctx, note, onlooker),
     };
 };

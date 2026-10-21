@@ -93,3 +93,29 @@ Deno.test("a thread holds the 40 notes nearest above, and the 60 nearest below",
     assertEquals(descendants.length, 60);
     assertEquals(descendants.slice(0, 4), ["reply 0", "deep", "reply 1", "reply 2"]);
 });
+
+Deno.test("replies the viewer may not see don't count against the 60, up to 240 looked at", async () => {
+    await using test = await open();
+    const note = await test.add("note", "alice");
+    for (let i = 0; i < 100; i++) {
+        await test.add(`hidden ${i}`, "alice", "note", { visibility: "direct" });
+    }
+    for (let i = 0; i < 70; i++) await test.add(`shown ${i}`, "bob", "note");
+
+    const { descendants } = await test.thread(note);
+    assertEquals(descendants, Array.from({ length: 60 }, (_, i) => `shown ${i}`));
+
+    const third = await test.add("third", "alice");
+    for (let i = 0; i < 61; i++) {
+        await test.add(`kept ${i}`, "alice", "third", { visibility: "direct" });
+    }
+    await test.add("below", "bob", "kept 0");
+    assertEquals((await test.thread(third)).descendants, ["below"]);
+
+    const other = await test.add("other", "alice");
+    for (let i = 0; i < 240; i++) {
+        await test.add(`gone ${i}`, "alice", "other", { visibility: "direct" });
+    }
+    await test.add("late", "bob", "other");
+    assertEquals((await test.thread(other)).descendants, []);
+});

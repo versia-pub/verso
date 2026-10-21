@@ -167,7 +167,9 @@ export const isFollowing = async (
 export const followerInstances = (ctx: Context, accountId: string): Promise<string[]> =>
     followerInstanceIds(ctx, accountId);
 
-/** The accounts `accountId` follows, and was accepted by, as a subquery, for timelines. */
+/**
+ * The accounts `accountId` follows, and was accepted by, as a subquery, for timelines and threads.
+ */
 export const followedIds = (
     ctx: Context,
     accountId: string,
