@@ -383,9 +383,9 @@ Deno.test("a missing or empty body is read as an empty one, of any type", async 
     assertEquals((await test.send("/echo", " ")).status, 400);
 });
 
-Deno.test("a body over 64 KiB is refused before it is read", async () => {
+Deno.test("a body over 256 KiB is refused before it is read", async () => {
     await using test = await open();
-    const atLimit = `"${"x".repeat(64 * 1024 - 2)}"`;
+    const atLimit = `"${"x".repeat(256 * 1024 - 2)}"`;
 
     const stated = await test.app.request("/things/a?notify=1", {
         method: "POST",

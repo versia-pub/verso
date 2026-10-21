@@ -16,8 +16,11 @@ import { checkPermission, rateLimitKey, viewerOf, withPermissions } from "./view
 
 const logger = getLogger(["verso", "http"]);
 
-/** The largest body a route takes, enough for any form or JSON. Uploads will need their own. */
-const maxBodyBytes = 64 * 1024;
+/**
+ * The largest body a route takes, enough for any form or JSON, and for a note as long as a long
+ * blog post, of 100,000 characters. Uploads will need their own.
+ */
+const maxBodyBytes = 256 * 1024;
 
 /** The reply to a request that failed with `error`. */
 const errorReply = (error: unknown, c: HonoContext<AppEnv>): Response => {
