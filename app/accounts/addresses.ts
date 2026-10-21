@@ -6,6 +6,7 @@ import { getLogger } from "@logtape/logtape";
 import { canonicalizeDomain } from "@versia/protocol";
 import { fetchBudget, isRemoteFailure, spend } from "../federation/resolver.ts";
 import { webfinger } from "../federation/webfinger.ts";
+import { findInstanceId } from "../instances/instances.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import {
     type AccountRow,
@@ -44,7 +45,10 @@ export const findAccountByAddress = async (
     const { username, domain } = address;
     if (domain === null) return await findLocalAccount(ctx, username);
 
-    const known = await findRemoteAccountByName(ctx, username, domain);
+    const instanceId = await findInstanceId(ctx, domain);
+    const known = instanceId === undefined
+        ? undefined
+        : await findRemoteAccountByName(ctx, username, instanceId);
     if (!options.fetch) return known;
 
     const budget = options.budget ?? fetchBudget();

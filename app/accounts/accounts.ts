@@ -1,6 +1,13 @@
 import { batchesOf } from "../db/batches.ts";
-import { type Insertable, type Selectable, sql, type Updateable } from "kysely";
+import {
+    type ExpressionBuilder,
+    type Insertable,
+    type Selectable,
+    sql,
+    type Updateable,
+} from "kysely";
 import { countAll, readCount } from "../db/count.ts";
+import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 import type { AccountsTable } from "./tables.ts";
 
@@ -15,6 +22,18 @@ export type AccountRow = Selectable<AccountsTable> & {
     readonly header_url: string | null;
     readonly header_description: string | null;
 };
+
+/**
+ * Whether an account named `username`, ignoring case, is on the instance `instanceId`, or local if
+ * it is `null`, written as the unique index on them is, so lookups use it.
+ */
+const named =
+    (instanceId: string | null, username: string) =>
+    (eb: ExpressionBuilder<Database, "accounts">) =>
+        eb.and([
+            eb(eb.fn("coalesce", ["accounts.instance_id", eb.val("")]), "=", instanceId ?? ""),
+            eb(eb.fn("lower", ["accounts.username"]), "=", username.toLowerCase()),
+        ]);
 
 const accountRows = (ctx: Context) =>
     ctx.db.selectFrom("accounts")
@@ -46,24 +65,18 @@ export const findLocalAccount = (
     ctx: Context,
     username: string,
 ): Promise<AccountRow | undefined> =>
-    accountRows(ctx)
-        .where("accounts.instance_id", "is", null)
-        .where((eb) => eb(eb.fn("lower", ["accounts.username"]), "=", username.toLowerCase()))
-        .executeTakeFirst();
+    accountRows(ctx).where(named(null, username)).executeTakeFirst();
 
 /**
- * The account named `username`, ignoring case, on the instance at `domain`, or `undefined` if
+ * The account named `username`, ignoring case, on the instance `instanceId`, or `undefined` if
  * Verso doesn't know it.
  */
 export const findRemoteAccountByName = (
     ctx: Context,
     username: string,
-    domain: string,
+    instanceId: string,
 ): Promise<AccountRow | undefined> =>
-    accountRows(ctx)
-        .where("instances.domain", "=", domain)
-        .where((eb) => eb(eb.fn("lower", ["accounts.username"]), "=", username.toLowerCase()))
-        .executeTakeFirst();
+    accountRows(ctx).where(named(instanceId, username)).executeTakeFirst();
 
 /** Which of `ids` are accounts, in no particular order. */
 export const existingAccountIds = async (
@@ -177,8 +190,7 @@ export const releaseRemoteUsername = async (
             username: eb(eb.val("~"), "||", eb.ref("remote_id")),
             fetched_at: new Date(0),
         }))
-        .where("instance_id", "=", instanceId)
-        .where((eb) => eb(eb.fn("lower", ["username"]), "=", username.toLowerCase()))
+        .where(named(instanceId, username))
         .execute();
 };
 
