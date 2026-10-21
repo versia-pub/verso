@@ -14,16 +14,20 @@ import { emit } from "../kernel/events.ts";
 import type { FollowEvent } from "./events.ts";
 import {
     acceptPendingFollow,
+    type AccountIdQuery,
     anyListed,
     countFollows,
     deleteFollow,
     everyListed,
+    followedIdsQuery,
     followerInstanceIds,
     type FollowOptions,
     followsFrom,
     insertFollow,
     updateFollowOptions,
 } from "./follow_queries.ts";
+
+export type { AccountIdQuery };
 
 /** What became of asking to follow an account. */
 export type FollowResult =
@@ -162,6 +166,12 @@ export const isFollowing = async (
 /** The other instances that accounts following `accountId`, and accepted, are on. */
 export const followerInstances = (ctx: Context, accountId: string): Promise<string[]> =>
     followerInstanceIds(ctx, accountId);
+
+/** The accounts `accountId` follows, and was accepted by, as a subquery, for timelines. */
+export const followedIds = (
+    ctx: Context,
+    accountId: string,
+): AccountIdQuery => followedIdsQuery(ctx, accountId);
 
 /** Whether anyone follows `accountId`, and was accepted. */
 export const hasFollowers = (ctx: Context, accountId: string): Promise<boolean> =>

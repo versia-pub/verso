@@ -1,0 +1,41 @@
+import { type PageBounds, readPage } from "../db/paging.ts";
+import type { AccountIdQuery } from "../graph/follows.ts";
+import type { Context } from "../kernel/context.ts";
+import type { NoteRow } from "./note_queries.ts";
+
+/**
+ * A page of `viewerId`'s home timeline, newest first: all their own notes, and those of `followed`
+ * that they may see. Of those, a direct note must mention them, and a reply must be to them or to
+ * someone they follow, its author among them, as on Mastodon.
+ */
+export const homePage = async (
+    ctx: Context,
+    viewerId: string,
+    followed: AccountIdQuery,
+    page: PageBounds,
+): Promise<NoteRow[]> => {
+    const query = ctx.db.selectFrom("notes").selectAll()
+        .where((eb) =>
+            eb.or([
+                eb("account_id", "=", viewerId),
+                eb.and([
+                    eb("account_id", "in", followed),
+                    eb.or([
+                        eb("visibility", "!=", "direct"),
+                        eb.exists(
+                            eb.selectFrom("note_mentions").select("note_mentions.note_id")
+                                .whereRef("note_mentions.note_id", "=", "notes.id")
+                                .where("note_mentions.account_id", "=", viewerId),
+                        ),
+                    ]),
+                    eb.or([
+                        eb("in_reply_to_account_id", "is", null),
+                        eb("in_reply_to_account_id", "=", viewerId),
+                        eb("in_reply_to_account_id", "in", followed),
+                    ]),
+                ]),
+            ])
+        );
+
+    return await readPage(query, "notes.id", page);
+};

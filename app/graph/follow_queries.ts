@@ -1,10 +1,14 @@
-import type { Selectable } from "kysely";
+import type { Selectable, SelectQueryBuilder } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
+import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 import type { FollowsTable } from "./tables.ts";
 
 export type FollowRow = Selectable<FollowsTable>;
+
+/** Accounts given as a subquery, for another module's query to use. */
+export type AccountIdQuery = SelectQueryBuilder<Database, "follows", { account_id: string }>;
 
 /** How a follower wants to see the account they follow. Options left out stay as they are. */
 export type FollowOptions = {
@@ -205,6 +209,16 @@ export const followerInstanceIds = async (ctx: Context, accountId: string): Prom
         .execute())
         // Local accounts have none.
         .flatMap((row) => row.instance_id ?? []);
+
+/**
+ * The accounts `accountId` follows, as a subquery, for another module to page through what they
+ * wrote. The other exception to keeping queries to a module's own tables: someone can follow more
+ * accounts than a query can name, and a page sorted across them all can't be read in batches.
+ */
+export const followedIdsQuery = (
+    ctx: Context,
+    accountId: string,
+): AccountIdQuery => listed(ctx, "following", accountId).select("followee_id as account_id");
 
 /** How many accounts are on one of an account's lists. */
 export const countFollows = async (

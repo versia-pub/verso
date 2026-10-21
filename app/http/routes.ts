@@ -6,6 +6,7 @@ import { inboxRoute } from "../federation/inbox.ts";
 import { entityRoutes } from "../federation/registry.ts";
 import { graphRoutes } from "../graph/routes.ts";
 import { noteRoutes } from "../notes/routes.ts";
+import { timelineRoutes } from "../notes/timeline_routes.ts";
 import type { AboutSettings } from "../instances/render.ts";
 import { instanceRoutes } from "../instances/routes.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
@@ -26,6 +27,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...graphRoutes,
         ...accountRoutes(settings.limits),
         ...noteRoutes(settings.limits),
+        ...timelineRoutes,
         ...roleRoutes,
         ...webfingerRoutes,
         ...entityRoutes(registry),
