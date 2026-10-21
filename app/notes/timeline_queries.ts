@@ -39,3 +39,30 @@ export const homePage = async (
 
     return await readPage(query, "notes.id", page);
 };
+
+/** Where the notes on a public timeline are from: anywhere, this instance, or other instances. */
+export type Origin = "all" | "local" | "remote";
+
+/**
+ * A page of the public timeline, newest first: public notes from `origin`, without replies but to
+ * their own authors, as on Mastodon.
+ */
+export const publicPage = async (
+    ctx: Context,
+    origin: Origin,
+    page: PageBounds,
+): Promise<NoteRow[]> => {
+    let query = ctx.db.selectFrom("notes").selectAll()
+        .where("visibility", "=", "public")
+        .where((eb) =>
+            eb.or([
+                eb("in_reply_to_account_id", "is", null),
+                eb("in_reply_to_account_id", "=", eb.ref("account_id")),
+            ])
+        );
+
+    if (origin === "local") query = query.where("instance_id", "is", null);
+    if (origin === "remote") query = query.where("instance_id", "is not", null);
+
+    return await readPage(query, "notes.id", page);
+};

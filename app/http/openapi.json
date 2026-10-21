@@ -2818,6 +2818,124 @@
                 }
             }
         },
+        "/api/v1/timelines/public": {
+            "get": {
+                "summary": "Public statuses, here or from other instances, newest first",
+                "description": "Needs the `read:note` permission.",
+                "tags": [
+                    "timelines"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "local",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "remote",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "only_media",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Status"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/roles": {
             "get": {
                 "summary": "Every role, highest priority first",

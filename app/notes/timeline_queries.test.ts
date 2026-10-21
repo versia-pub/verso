@@ -6,7 +6,7 @@ import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import type { NotesTable } from "./tables.ts";
 import { createNote } from "./testing.ts";
-import { homePage } from "./timeline_queries.ts";
+import { homePage, type Origin, publicPage } from "./timeline_queries.ts";
 
 /**
  * Alice, who follows bob and carol, on b.example, and asked to follow erin; and dave, whom she
@@ -47,7 +47,12 @@ const open = async () => {
         (await homePage(test.ctx, "alice", followedIds(test.ctx, "alice"), { limit: 40, ...page }))
             .map((note) => names.get(note.id) ?? note.id);
 
-    return { ...test, add, home, names };
+    /** The public timeline from `origin`, by name. */
+    const everyone = async (origin: Origin = "all", page: { max_id?: string } = {}) =>
+        (await publicPage(test.ctx, origin, { limit: 40, ...page }))
+            .map((note) => names.get(note.id) ?? note.id);
+
+    return { ...test, add, home, everyone, names };
 };
 
 const replyTo = (accountId: string) => ({
@@ -98,4 +103,27 @@ Deno.test("home is paged by id", async () => {
 
     assertEquals(await test.home({ limit: 2 }), ["three", "two"]);
     assertEquals(await test.home({ max_id: three }), ["two", "one"]);
+});
+
+Deno.test("the public timeline is public notes, without replies but to their own authors", async () => {
+    await using test = await open();
+    await test.add("public", "dave");
+    await test.add("unlisted", "dave", { visibility: "unlisted" });
+    await test.add("private", "dave", { visibility: "private" });
+    await test.add("direct", "dave", { visibility: "direct" });
+    await test.add("to self", "dave", replyTo("dave"));
+    await test.add("to bob", "dave", replyTo("bob"));
+    await test.add("remote", "carol", { instance_id: "b.example", remote_id: "c1" });
+    await test.add("remote to self", "carol", {
+        ...replyTo("carol"),
+        instance_id: "b.example",
+        remote_id: "c2",
+    });
+
+    assertEquals(await test.everyone(), ["remote to self", "remote", "to self", "public"]);
+    assertEquals(await test.everyone("local"), ["to self", "public"]);
+    assertEquals(await test.everyone("remote"), ["remote to self", "remote"]);
+
+    const [remote] = [...test.names].find(([, name]) => name === "remote") ?? [];
+    assertEquals(await test.everyone("all", { max_id: remote }), ["to self", "public"]);
 });
