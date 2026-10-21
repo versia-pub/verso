@@ -364,6 +364,16 @@ Deno.test("a missing or empty body is read as an empty one, of any type", async 
 
     const missing = await test.app.request("/echo", { method: "POST" });
     assertEquals([missing.status, await missing.json()], [200, {}]);
+
+    // As Deno's server gives a request with no body.
+    const served = await test.app.request("/echo", { method: "POST", body: new Uint8Array() });
+    assertEquals([served.status, await served.json()], [200, {}]);
+    const untyped = await test.app.request("/echo", {
+        method: "POST",
+        body: new TextEncoder().encode("{}"),
+    });
+    assertEquals(untyped.status, 415);
+
     assertEquals(await test.send("/echo", ""), { status: 200, body: {} });
     assertEquals(await test.send("/echo", "", "application/x-www-form-urlencoded"), {
         status: 200,
