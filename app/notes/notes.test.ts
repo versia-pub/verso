@@ -266,6 +266,24 @@ Deno.test("another instance's user is fetched to be mentioned", async () => {
     assertEquals([row?.username, row?.domain], ["bob", "b.test"]);
 });
 
+Deno.test("a note's mentions make Verso fetch twenty times at most", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"].ctx;
+    await createLocalAccount(a, "alice");
+    const names = Array.from({ length: 30 }, (_, i) => `u${i}`);
+    for (const name of names) await createLocalAccount(network.instances["b.test"].ctx, name);
+
+    const note = await post(a, "alice", names.map((name) => `@${name}@b.test`).join(" "));
+    if (note === undefined) throw new Error("Not posted");
+
+    const fetches = network.transport.sent.filter((request) => {
+        const { host, pathname } = new URL(request.url);
+        return host === "b.test" && pathname !== "/.versia/v0.6/instance";
+    });
+    assertEquals(fetches.length, 20);
+    assertEquals((await mentionsOf(a, [note.id])).get(note.id)?.length, 10);
+});
+
 Deno.test("who may see a note goes by its visibility, its followers and its mentions", async () => {
     await using test = await open();
     const viewers = [null, "alice", "bob", "carol", "dave", "erin"] as const;

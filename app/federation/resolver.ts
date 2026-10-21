@@ -24,6 +24,16 @@ export const fetchBudget = (fetches = 20, until?: number): Budget => ({
     saving: 0,
 });
 
+/** Takes one fetch from `budget`, if it has one left and its deadline hasn't passed. */
+export const spend = (ctx: Context, budget: Budget): boolean => {
+    if (budget.fetches <= 0 || ctx.clock.now().getTime() >= (budget.until ?? Infinity)) {
+        return false;
+    }
+
+    budget.fetches--;
+    return true;
+};
+
 /** An entity that couldn't be fetched, or wasn't what was asked for. */
 export class ResolveFailed extends Error {
     override readonly name = "ResolveFailed";
@@ -136,8 +146,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         if (pending && budget.saving > 0) return known?.id;
 
         if (!pending) {
-            if (budget.fetches <= 0 || now >= (budget.until ?? Infinity)) return known?.id;
-            budget.fetches--;
+            if (!spend(ctx, budget)) return known?.id;
 
             pending = fetchEntity(ctx, type, reference, key, budget).finally(() =>
                 fetching.delete(key)

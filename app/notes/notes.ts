@@ -7,6 +7,7 @@ import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import { userUri } from "../accounts/render.ts";
 import { isAccountDeleting } from "../accounts/events.ts";
 import type { TextFormat, Visibility } from "../accounts/tables.ts";
+import { fetchBudget } from "../federation/resolver.ts";
 import { isFollowing } from "../graph/follows.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
@@ -109,18 +110,26 @@ export type Draft = {
 
 const mentionKey = (mention: Mention) => `${mention.username}@${mention.domain}`.toLowerCase();
 
+/** How long posting may spend finding the users it mentions. */
+const mentionsMs = 15_000;
+
 /**
  * The accounts `mentions` are of, by {@link mentionKey}, with other instances' users fetched if
- * Verso doesn't have them. Mentions of no one are left out.
+ * Verso doesn't have them, from one budget, so a post can't make Verso fetch without end. Mentions
+ * of no one are left out.
  */
 const mentioned = async (ctx: Context, mentions: readonly Mention[]) => {
+    const budget = fetchBudget(20, ctx.clock.now().getTime() + mentionsMs);
     const accounts = new Map<string, AccountRow>();
 
     for (const mention of mentions) {
+        const key = mentionKey(mention);
+        if (accounts.has(key)) continue;
+
         const { username, domain } = mention;
         const address = parseAddress(ctx, domain === null ? username : `${username}@${domain}`);
-        const row = address && await findAccountByAddress(ctx, address, { fetch: true });
-        if (row) accounts.set(mentionKey(mention), row);
+        const row = address && await findAccountByAddress(ctx, address, { fetch: true, budget });
+        if (row) accounts.set(key, row);
     }
 
     return accounts;

@@ -4,9 +4,9 @@
  */
 import { getLogger } from "@logtape/logtape";
 import { canonicalizeDomain } from "@versia/protocol";
-import { isRemoteFailure } from "../federation/resolver.ts";
+import { fetchBudget, isRemoteFailure, spend } from "../federation/resolver.ts";
 import { webfinger } from "../federation/webfinger.ts";
-import type { Context } from "../kernel/context.ts";
+import type { Budget, Context } from "../kernel/context.ts";
 import {
     type AccountRow,
     findAccount,
@@ -33,13 +33,13 @@ export const parseAddress = (ctx: Context, acct: string): Address | undefined =>
 
 /**
  * The account at `address`, or `undefined` if there is none. With `fetch`, a remote account is
- * found with WebFinger if Verso doesn't know it, and fetched again if Verso had it too long ago;
- * if its instance fails, the copy Verso has is used.
+ * found with WebFinger if Verso doesn't know it, and fetched again if Verso had it too long ago,
+ * each from `budget`; if its instance fails, the copy Verso has is used.
  */
 export const findAccountByAddress = async (
     ctx: Context,
     address: Address,
-    options: { readonly fetch: boolean },
+    options: { readonly fetch: boolean; readonly budget?: Budget },
 ): Promise<AccountRow | undefined> => {
     const { username, domain } = address;
     if (domain === null) return await findLocalAccount(ctx, username);
@@ -47,13 +47,16 @@ export const findAccountByAddress = async (
     const known = await findRemoteAccountByName(ctx, username, domain);
     if (!options.fetch) return known;
 
+    const budget = options.budget ?? fetchBudget();
     try {
-        const reference = known?.remote_id
-            ? { host: domain, id: known.remote_id }
-            : await webfinger(ctx, username, domain);
+        let reference = known?.remote_id ? { host: domain, id: known.remote_id } : undefined;
+        if (reference === undefined) {
+            if (!spend(ctx, budget)) return undefined;
+            reference = await webfinger(ctx, username, domain);
+        }
         if (reference === undefined) return undefined;
 
-        const id = await ctx.federation.resolve(ctx, reference, "User");
+        const id = await ctx.federation.resolve(ctx, reference, "User", budget);
         const found = id === undefined ? undefined : await findAccount(ctx, id);
 
         // The instance may have pointed at another of its users.
