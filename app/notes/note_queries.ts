@@ -184,6 +184,46 @@ export const repliesTo = async (
         .limit(limit)
         .execute();
 
+/** How a note links to another: by replying to it, or quoting it. */
+export type NoteLink = "in_reply_to_id" | "quote_id";
+
+/** The notes with one of `visibilities` that link to `noteId` by `link`. */
+const linkedTo = (
+    ctx: Context,
+    link: NoteLink,
+    noteId: string,
+    visibilities: readonly Visibility[],
+) => ctx.db.selectFrom("notes")
+    .where(link, "=", noteId)
+    .where("visibility", "in", visibilities);
+
+/** The ids of the notes linking to `noteId`, as {@link linkedTo} finds them, oldest first. */
+export const linkedNoteIds = async (
+    ctx: Context,
+    link: NoteLink,
+    noteId: string,
+    visibilities: readonly Visibility[],
+    offset: number,
+    limit: number,
+): Promise<string[]> =>
+    (await linkedTo(ctx, link, noteId, visibilities).select("id")
+        .orderBy("id")
+        .offset(offset)
+        .limit(limit)
+        .execute())
+        .map((row) => row.id);
+
+/** How many notes link to `noteId`, as {@link linkedTo} finds them. */
+export const countLinkedNotes = async (
+    ctx: Context,
+    link: NoteLink,
+    noteId: string,
+    visibilities: readonly Visibility[],
+): Promise<number> =>
+    readCount(
+        await linkedTo(ctx, link, noteId, visibilities).select(countAll).executeTakeFirstOrThrow(),
+    );
+
 /** How many notes an account has with one of `visibilities`. */
 export const countNotesBy = async (
     ctx: Context,

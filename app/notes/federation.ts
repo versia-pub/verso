@@ -19,6 +19,7 @@ import type { Budget, Context, DomainEvent } from "../kernel/context.ts";
 import { renderText, scanText } from "../kernel/markup.ts";
 import { isNoteDeleted, isNoteEdited, isNotePosted } from "./events.ts";
 import {
+    countLinkedNotes,
     countNotesBy,
     countReply,
     findNote,
@@ -26,7 +27,9 @@ import {
     findRemoteNoteAt,
     insertNote,
     keepVersion,
+    linkedNoteIds,
     mentionsOf,
+    type NoteLink,
     noteOrigins,
     type NoteRow,
     notesBy,
@@ -196,6 +199,24 @@ const outbox: CollectionProvider = async (ctx, id, page) => {
 
 /** The collections notes add to Users. */
 export const noteCollections: Readonly<Record<string, CollectionProvider>> = { outbox };
+
+/**
+ * The notes that link to a local note by `link`, oldest first, for an instance that may see it.
+ * Only public and unlisted ones are listed, so none is shown to an instance that may not see it.
+ */
+const linkCollection = (link: NoteLink): CollectionProvider => async (ctx, id, page, requester) => {
+    const note = await findNote(ctx, id);
+    if (note === undefined || note.instance_id !== null) return undefined;
+    if (!await seenBy(ctx, note, requester)) return undefined;
+
+    const ids = await linkedNoteIds(ctx, link, id, everyone, page.offset, page.limit);
+    const references = await noteReferenceMap(ctx, ids);
+    return {
+        author: note.account_id,
+        total: await countLinkedNotes(ctx, link, id, everyone),
+        items: ids.flatMap((each) => references.get(each) ?? []),
+    };
+};
 
 /**
  * A note's visibility, from who Versia says it is for. Verso has no groups, so a group's note is
@@ -372,6 +393,7 @@ export const noteType: EntityType<v0_6.Note> = {
         if (note) await removeNote(ctx, note.id);
     },
     known: knownNote,
+    collections: { replies: linkCollection("in_reply_to_id"), quotes: linkCollection("quote_id") },
     find: async (ctx, id, requester) => {
         const note = await findNote(ctx, id);
         if (note === undefined || note.instance_id !== null) return undefined;

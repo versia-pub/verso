@@ -2,11 +2,13 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { v0_6 } from "@versia/protocol";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
+import { fetchSigned } from "../federation/request.ts";
 import type { CollectionProvider } from "../federation/registry.ts";
 import { follow } from "../graph/follows.ts";
 import { addFollowers } from "../graph/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import { registry } from "../registry.ts";
+import { createNetwork } from "../testing/network.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -327,4 +329,78 @@ Deno.test("a note reaches the instances of more followers than one query can nam
 
     assertEquals((await sent(test.ctx)).map(([domain]) => domain), ["b.example", ...instances]);
     assertEquals(await test.find(note?.id ?? "", "e1.example") === undefined, false);
+});
+
+Deno.test("a note's replies and quotes are the public and unlisted ones, oldest first", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const links = (kind: "replies" | "quotes") =>
+        kind === "replies"
+            ? { in_reply_to_id: note.id, in_reply_to_account_id: "alice" }
+            : { quote_id: note.id };
+    const collection = async (
+        kind: "replies" | "quotes",
+        id = note.id,
+        requester = "b.example",
+        page = { offset: 0, limit: 40 },
+    ) => {
+        const provider: CollectionProvider | undefined = noteType.collections?.[kind];
+        if (provider === undefined) throw new Error(`Notes have no ${kind}`);
+        return await provider(test.ctx, id, page, requester);
+    };
+
+    for (const kind of ["replies", "quotes"] as const) {
+        const own = await createNote(test.ctx, "bob", { ...links(kind), visibility: "unlisted" });
+        const remote = await createNote(test.ctx, "carol", {
+            ...links(kind),
+            instance_id: "b.example",
+            remote_id: `c-${kind}`,
+        });
+        await createNote(test.ctx, "bob", { ...links(kind), visibility: "private" });
+        await createNote(test.ctx, "bob", { ...links(kind), visibility: "direct" });
+
+        assertEquals(await collection(kind), {
+            author: "alice",
+            total: 2,
+            items: [own.id, `b.example:c-${kind}`],
+        }, kind);
+        assertEquals(await collection(kind, note.id, "c.example", { offset: 1, limit: 1 }), {
+            author: "alice",
+            total: 2,
+            items: [`b.example:c-${kind}`],
+        });
+        assertEquals((await collection(kind, remote.id))?.items, undefined);
+    }
+});
+
+Deno.test("a note's replies are only for the instances that may see the note", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice", { visibility: "private" });
+    const reply = await createNote(test.ctx, "bob", {
+        in_reply_to_id: note.id,
+        in_reply_to_account_id: "alice",
+    });
+    const replies = (id: string, requester: string) => {
+        const provider: CollectionProvider | undefined = noteType.collections?.replies;
+        return provider?.(test.ctx, id, { offset: 0, limit: 40 }, requester);
+    };
+
+    // Carol, on b.example, follows alice.
+    assertEquals((await replies(note.id, "b.example"))?.items, [reply.id]);
+    assertEquals(await replies(note.id, "c.example"), undefined);
+    assertEquals(await replies("missing", "b.example"), undefined);
+});
+
+Deno.test("a note's collections are served to other instances", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"].ctx;
+    await createLocalAccount(a, "alice");
+    const note = await createNote(a, "alice");
+    const url = new URL(`https://a.test/.versia/v0.6/entities/Note/${note.id}/collections/quotes`);
+
+    const reply = await fetchSigned(network.instances["b.test"].ctx, url);
+    assertEquals([reply.status, JSON.parse(new TextDecoder().decode(reply.body))], [
+        200,
+        { author: "alice", total: 0, items: [] },
+    ]);
 });
