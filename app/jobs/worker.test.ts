@@ -20,6 +20,17 @@ const until = async (condition: () => boolean | Promise<boolean>) => {
     while (!(await condition())) await new Promise((resolve) => setTimeout(resolve, 5));
 };
 
+/**
+ * Waits until `running()` jobs run at once, or a second passes, so jobs that may run together do,
+ * however busy the machine is.
+ */
+const together = async (running: () => number, want: number) => {
+    const deadline = Date.now() + 1000;
+    while (running() < want && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+};
+
 Deno.test("each queue's jobs run, at most `concurrency` at a time, then are deleted", async () => {
     await using test = await open();
 
@@ -28,7 +39,7 @@ Deno.test("each queue's jobs run, at most `concurrency` at a time, then are dele
     const mostAtOnce: Record<string, number> = { deliver: 0, notify: 0 };
     const handler: Queue["handler"] = async (_ctx, job) => {
         mostAtOnce[job.queue] = Math.max(mostAtOnce[job.queue], ++running[job.queue]);
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await together(() => running[job.queue], job.queue === "deliver" ? 2 : 1);
         ran.push(job.payload.n);
         running[job.queue]--;
     };
@@ -62,7 +73,7 @@ Deno.test("at most `perGroup` jobs of each group run at a time, each claimed onc
         mostAtOnce.set(group, Math.max(mostAtOnce.get(group) ?? 0, running.get(group) ?? 0));
         attempts.push(job.attempts);
 
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await together(() => running.get(group) ?? 0, 2);
         running.set(group, (running.get(group) ?? 0) - 1);
     };
 
