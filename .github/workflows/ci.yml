@@ -14,11 +14,21 @@ concurrency:
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+    # Each runner's checks are split into jobs that run side by side: the tests on each database,
+    # the NixOS VM tests, and everything else, so CI takes as long as the slowest of them.
     check:
+        name: ${{ matrix.group }} (${{ matrix.runner }})
         strategy:
             fail-fast: false
             matrix:
                 runner: [ubuntu-24.04, ubuntu-24.04-arm]
+                group: [other, test-pglite, test-sqlite, test-postgres, vms]
+                # The arm runners have no KVM, so the NixOS VM tests run emulated there, and take
+                # about as long to boot as the test driver waits for them. They run on x86_64 only;
+                # see docs/decisions/0004-ci-runners-and-cache.md.
+                exclude:
+                    - runner: ubuntu-24.04-arm
+                      group: vms
         runs-on: ${{ matrix.runner }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,30 +38,38 @@ jobs:
                   extra_nix_config: system-features = nixos-test benchmark big-parallel kvm
 
             - name: Report KVM
+              if: matrix.group == 'vms'
               run: ls -l /dev/kvm || echo "No /dev/kvm, so NixOS VM tests will be slow or fail"
 
             # Restores the newest /nix snapshot, so checks whose inputs didn't change are skipped
-            # instead of rebuilt. A new snapshot is saved whenever the Nix-relevant files change.
+            # instead of rebuilt. A new snapshot is saved whenever the Nix-relevant files change,
+            # only by the job that builds everything but the tests and VMs, so the jobs don't crowd
+            # each other out of the repository's cache.
             - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
               with:
                   primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'deno.lock', 'deno.json', '**/*.nix', 'app/**', 'packages/**', 'docs/**') }}
                   restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
                   gc-max-store-size-linux: 5G
+                  save: ${{ matrix.group == 'other' }}
 
-            # The arm runners have no KVM, so the NixOS VM tests run emulated there, and take about as
-            # long to boot as the test driver waits for them. They run on x86_64 only, and the arm job
-            # builds every other check; see docs/decisions/0004-ci-runners-and-cache.md.
-            - if: runner.arch != 'ARM64'
-              run: nix flake check -L
-
-            - if: runner.arch == 'ARM64'
+            - name: Check ${{ matrix.group }}
+              env:
+                  GROUP: ${{ matrix.group }}
               run: |
-                  nix flake check --no-build
                   set -o pipefail
-                  names=$(
-                      nix eval --json .#checks.aarch64-linux \
-                          --apply 'checks: builtins.attrNames (removeAttrs checks [ "nixos-module" "federation-vms" ])' |
-                          jq -r '.[] | ".#checks.aarch64-linux." + .'
-                  )
-                  mapfile -t checks <<< "$names"
+                  system=$(nix eval --raw --impure --expr builtins.currentSystem)
+                  case "$GROUP" in
+                      other)
+                          # Evaluates every check, so a broken one fails here whichever job builds it.
+                          nix flake check --no-build
+                          names=$(
+                              nix eval --json ".#checks.$system" --apply 'checks: builtins.attrNames
+                                  (removeAttrs checks [ "test-pglite" "test-sqlite" "test-postgres" "nixos-module" "federation-vms" ])' |
+                                  jq -r '.[]'
+                          ) ;;
+                      vms) names=$'nixos-module\nfederation-vms' ;;
+                      *) names=$GROUP ;;
+                  esac
+                  checks=()
+                  while read -r name; do checks+=(".#checks.$system.$name"); done <<< "$names"
                   nix build -L --no-link --keep-going "${checks[@]}"
