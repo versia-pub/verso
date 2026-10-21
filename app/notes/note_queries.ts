@@ -1,5 +1,7 @@
 import type { Insertable, Selectable } from "kysely";
+import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
+import type { Visibility } from "../accounts/tables.ts";
 import type { NotesTable } from "./tables.ts";
 
 export type NoteRow = Selectable<NotesTable>;
@@ -32,6 +34,46 @@ export const insertNote = async (
 
 export const findNote = async (ctx: Context, id: string): Promise<NoteRow | undefined> =>
     await ctx.db.selectFrom("notes").selectAll().where("id", "=", id).executeTakeFirst();
+
+/** The notes of `ids` that exist, with the domain of the instance each is from, or `null`. */
+export const noteOrigins = async (
+    ctx: Context,
+    ids: readonly string[],
+): Promise<{ id: string; remote_id: string | null; domain: string | null }[]> =>
+    ids.length === 0 ? [] : await ctx.db.selectFrom("notes")
+        .leftJoin("instances", "instances.id", "notes.instance_id")
+        .select(["notes.id", "notes.remote_id", "instances.domain"])
+        .where("notes.id", "in", ids)
+        .execute();
+
+/** An account's notes with one of `visibilities`, oldest first, from `offset`. */
+export const notesBy = async (
+    ctx: Context,
+    accountId: string,
+    visibilities: readonly Visibility[],
+    offset: number,
+    limit: number,
+): Promise<NoteRow[]> =>
+    await ctx.db.selectFrom("notes").selectAll()
+        .where("account_id", "=", accountId)
+        .where("visibility", "in", visibilities)
+        .orderBy("id")
+        .offset(offset)
+        .limit(limit)
+        .execute();
+
+/** How many notes an account has with one of `visibilities`. */
+export const countNotesBy = async (
+    ctx: Context,
+    accountId: string,
+    visibilities: readonly Visibility[],
+): Promise<number> =>
+    readCount(
+        await ctx.db.selectFrom("notes").select(countAll)
+            .where("account_id", "=", accountId)
+            .where("visibility", "in", visibilities)
+            .executeTakeFirstOrThrow(),
+    );
 
 /** The ids of the accounts each of `noteIds` mentions, by note. */
 export const mentionsOf = async (

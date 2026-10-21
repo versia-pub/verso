@@ -151,3 +151,7 @@ export const isFollowing = async (
     const [follow] = await followsFrom(ctx, followerId, [followeeId]);
     return follow?.accepted === true;
 };
+
+/** The accounts that follow `accountId`, and were accepted, in no particular order. */
+export const followerIds = (ctx: Context, accountId: string): Promise<string[]> =>
+    everyListed(ctx, "followers", accountId);

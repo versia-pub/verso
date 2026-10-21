@@ -75,7 +75,7 @@ export const localVersiaUser = async (
     return row && renderVersiaUser(ctx, row);
 };
 
-/** A local user's collection of notes, empty until there are notes. */
+/** A local user's collection of pinned notes, empty until notes can be pinned. */
 const emptyCollection: CollectionProvider = async (ctx, id) => {
     const row = await localUser(ctx, id);
     return row && { author: row.id, total: 0, items: [] };
@@ -101,28 +101,41 @@ export const userType: EntityType<v0_6.User> = {
     deleteRemote: (ctx, id, sender) => deleteRemoteAccount(ctx, sender.instanceId, id),
     known: knownUser,
     find: (ctx, id) => localVersiaUser(ctx, id),
-    // Who follows whom is the graph's, which adds the followers and following collections.
-    collections: {
-        outbox: emptyCollection,
-        featured: emptyCollection,
-    },
+    // Who follows whom is the graph's, and what they wrote is the notes', which add those
+    // collections.
+    collections: { featured: emptyCollection },
 };
 
 /**
- * References to the users of `ids` that exist, in the order of `ids`, as Verso puts them in what
- * it sends: a bare id for local users, and the host and id for other instances' ones.
+ * References to the users of `ids` that exist, by id, as Verso puts them in what it sends: a bare
+ * id for local users, and the host and id for other instances' ones.
  */
-export const userReferences = async (ctx: Context, ids: readonly string[]): Promise<string[]> => {
-    const rows = new Map((await findAccounts(ctx, ids)).map((row) => [row.id, row]));
+export const userReferenceMap = async (
+    ctx: Context,
+    ids: readonly string[],
+): Promise<Map<string, string>> => {
+    const references = new Map<string, string>();
 
-    return ids.flatMap((id) => {
-        const row = rows.get(id);
-        if (row === undefined) return [];
-        if (row.domain === null) return [row.id];
+    for (const row of await findAccounts(ctx, ids)) {
+        if (row.domain === null) {
+            references.set(row.id, row.id);
+            continue;
+        }
+
         if (row.remote_id === null) throw new Error(`Remote account ${row.id} has no remote id`);
+        references.set(
+            row.id,
+            formatReference({ host: row.domain, id: row.remote_id }, ctx.urls.domain),
+        );
+    }
 
-        return [formatReference({ host: row.domain, id: row.remote_id }, ctx.urls.domain)];
-    });
+    return references;
+};
+
+/** References to the users of `ids` that exist, in the order of `ids`. */
+export const userReferences = async (ctx: Context, ids: readonly string[]): Promise<string[]> => {
+    const references = await userReferenceMap(ctx, ids);
+    return ids.flatMap((id) => references.get(id) ?? []);
 };
 
 /** Text as written, in the first format Verso knows that holds it, or none. */
