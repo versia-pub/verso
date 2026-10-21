@@ -2,12 +2,15 @@ import { assertEquals } from "@std/assert";
 import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { createInstance } from "../instances/testing.ts";
+import { drain } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { followsFrom, followsOf } from "./follow_queries.ts";
 import {
     acceptFollow,
+    acceptHandler,
+    acceptQueue,
     follow,
     followerInstances,
     hasFollowers,
@@ -199,11 +202,14 @@ Deno.test("unlocking an account accepts everyone asking to follow it", async () 
     await follow(test.ctx, "dave", "bob");
 
     await updateProfile(test.ctx, "alice", { locked: false });
+    const accepted = async () =>
+        (await followsOf(test.ctx, "alice", ["bob", "carol"])).map((row) => row.accepted);
 
-    assertEquals(
-        (await followsOf(test.ctx, "alice", ["bob", "carol"])).map((row) => row.accepted),
-        [true, true],
-    );
+    // A job accepts them, after the profile is saved.
+    assertEquals(await accepted(), [false, false]);
+    const queues = { [acceptQueue]: { handler: acceptHandler, concurrency: 1 } };
+    assertEquals(await drain(test.ctx, queues), 1);
+    assertEquals(await accepted(), [true, true]);
     assertEquals((await followsOf(test.ctx, "bob", ["dave"]))[0]?.accepted, false);
     assertEquals(await counts(test.ctx), {
         alice: [0, 2],

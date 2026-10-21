@@ -2,6 +2,7 @@
  * Following accounts, on this instance or another.
  * @module
  */
+import { z } from "zod";
 import {
     countFollow,
     findAccount,
@@ -9,6 +10,10 @@ import {
     uncountFollowing,
 } from "../accounts/accounts.ts";
 import { isAccountDeleting, isProfileUpdated } from "../accounts/events.ts";
+import { batchSize } from "../db/batches.ts";
+import { enqueue } from "../jobs/queue.ts";
+import type { JobsTable } from "../jobs/tables.ts";
+import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import type { FollowEvent } from "./events.ts";
@@ -22,6 +27,7 @@ import {
     everyListed,
     followedIdsQuery,
     followerInstanceIds,
+    followIdsFrom,
     type FollowOptions,
     followsFrom,
     insertFollow,
@@ -145,12 +151,37 @@ export const unfollow = (ctx: Context, followerId: string, followeeId: string): 
 export const countFollowRequests = (ctx: Context, accountId: string): Promise<number> =>
     countFollows(ctx, "requests", accountId);
 
-/** Accepts everyone asking to follow an account once it is unlocked, as Mastodon does. */
+/** The queue that accepts everyone asking to follow an account that was unlocked. */
+export const acceptQueue = "follow-requests";
+
+const AcceptJob = z.object({ accountId: z.string() });
+
+/**
+ * Accepts everyone asking to follow an account once it is unlocked, as Mastodon does. A job does
+ * it, so an account many are asking to follow can be saved at once.
+ */
 export const acceptWhenUnlocked = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isProfileUpdated(event) || !event.unlocked) return;
 
-    for (const followerId of await everyListed(ctx, "requests", event.accountId)) {
-        await acceptFollow(ctx, followerId, event.accountId);
+    const payload: z.infer<typeof AcceptJob> = { accountId: event.accountId };
+    await enqueue(ctx, { queue: acceptQueue, payload, dedupeKey: `accept:${event.accountId}` });
+};
+
+/**
+ * Accepts the requests to follow the account in the job, a batch at a time, until none are left.
+ */
+export const acceptHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
+    const payload = AcceptJob.safeParse(job.payload);
+    if (!payload.success) throw new PermanentFailure("The job isn't a follow request job");
+    const { accountId } = payload.data;
+
+    for (;;) {
+        const followerIds = await followIdsFrom(ctx, "requests", accountId, 0, batchSize);
+        if (followerIds.length === 0) return;
+
+        await ctx.transaction(async (tx) => {
+            for (const followerId of followerIds) await acceptFollow(tx, followerId, accountId);
+        });
     }
 };
 
