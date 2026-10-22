@@ -85,6 +85,8 @@ Deno.test("only local users' follows are given, as Users' collections", async ()
         "followers",
         "following",
         "outbox",
+        "pub.versia:likes/Dislikes",
+        "pub.versia:likes/Likes",
     ]);
 });
 

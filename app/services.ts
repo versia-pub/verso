@@ -5,6 +5,7 @@ import { followDeliveries, profileDeliveries } from "./graph/federation.ts";
 import { acceptWhenUnlocked, uncountFollowsOf } from "./graph/follows.ts";
 import type { AppServices } from "./http/env.ts";
 import { instanceKey } from "./instances/keys.ts";
+import { likeDeliveries } from "./interactions/federation.ts";
 import { uncountLikesOf } from "./interactions/likes.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
 import type { Federation, Subscriber } from "./kernel/context.ts";
@@ -26,6 +27,7 @@ export const subscribers: readonly Subscriber[] = [
     profileDeliveries,
     followDeliveries,
     noteDeliveries,
+    likeDeliveries,
     uncountFollowsOf,
     uncountRepliesOf,
     uncountLikesOf,

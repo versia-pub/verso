@@ -52,8 +52,10 @@ export const versiaUrl = (domain: string, path: string): URL =>
     new URL(`/.versia/v0.6${path}`, `https://${domain}`);
 
 /**
- * Where an entity of `type` on another Versia instance, at `domain`, is fetched. Its id is
- * encoded, so it stays one segment; the type, which an extension's has a `/` in, isn't.
+ * Where an entity of `type` on another Versia instance, at `domain`, is fetched. Its type and id
+ * are encoded, so each stays one segment, even an extension's type, such as
+ * `pub.versia:likes/Like`.
+ * @see https://versia.pub/api/endpoints
  */
 export const entityUrl = (domain: string, type: string, id: string): URL =>
-    versiaUrl(domain, `/entities/${type}/${encodeURIComponent(id)}`);
+    versiaUrl(domain, `/entities/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);

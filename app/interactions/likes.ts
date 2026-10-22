@@ -5,6 +5,7 @@
  */
 import { isAccountDeleting } from "../accounts/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
+import { emit } from "../kernel/events.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { visibleNote } from "../notes/notes.ts";
 import {
@@ -16,6 +17,7 @@ import {
     insertRemoteLike,
     uncountLikesBy,
 } from "./like_queries.ts";
+import type { LikeEvent } from "./events.ts";
 import type { LikeKind } from "./tables.ts";
 
 /**
@@ -31,7 +33,19 @@ export const like = (
         const note = await visibleNote(tx, noteId, accountId);
         if (note === undefined) return undefined;
 
-        if (await insertLike(tx, accountId, note.id)) await countLike(tx, note.id, 1);
+        const added = await insertLike(tx, accountId, note.id);
+        if (added) {
+            await countLike(tx, note.id, 1);
+
+            const event: LikeEvent = {
+                type: "interactions.liked",
+                likeId: added.id,
+                accountId,
+                noteId: note.id,
+            };
+            await emit(tx, event);
+        }
+
         return await findNote(tx, note.id);
     });
 
@@ -47,11 +61,19 @@ export const unlike = (
     noteId: string,
 ): Promise<NoteRow | undefined> =>
     ctx.transaction(async (tx) => {
-        if (await deleteLike(tx, accountId, noteId) === undefined) {
-            return await visibleNote(tx, noteId, accountId);
-        }
+        const removed = await deleteLike(tx, accountId, noteId);
+        if (removed === undefined) return await visibleNote(tx, noteId, accountId);
 
         await countLike(tx, noteId, -1);
+
+        const event: LikeEvent = {
+            type: "interactions.unliked",
+            likeId: removed.id,
+            accountId,
+            noteId,
+        };
+        await emit(tx, event);
+
         return await findNote(tx, noteId);
     });
 

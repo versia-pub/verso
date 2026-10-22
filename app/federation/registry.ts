@@ -112,7 +112,9 @@ export const createRegistry = (types: readonly EntityType[]): Registry => {
 /** The routes another instance fetches one type's entities and their collections at. */
 const routesOf = (type: EntityType): Route[] => {
     const { find, collections } = type;
-    const path = `/.versia/v0.6/entities/${type.type}/:id`;
+    // Encoded, as other instances ask for it, so an extension's type is one segment and its `:`
+    // isn't taken for a parameter. Collection names are encoded too, and come decoded.
+    const path = `/.versia/v0.6/entities/${encodeURIComponent(type.type)}/:id`;
     const routes: Route[] = [];
 
     if (find) {

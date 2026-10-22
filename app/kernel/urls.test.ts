@@ -74,6 +74,6 @@ Deno.test("another instance's Versia URLs are under its /.versia/v0.6", () => {
     assertEquals(versiaUrl("b.example", "/inbox").href, "https://b.example/.versia/v0.6/inbox");
     assertEquals(
         entityUrl("b.example", "pub.versia:likes/Like", "a/b").href,
-        "https://b.example/.versia/v0.6/entities/pub.versia:likes/Like/a%2Fb",
+        "https://b.example/.versia/v0.6/entities/pub.versia%3Alikes%2FLike/a%2Fb",
     );
 });

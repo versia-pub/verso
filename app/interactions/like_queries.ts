@@ -1,7 +1,9 @@
 import type { Insertable, Selectable } from "kysely";
+import type { Visibility } from "../accounts/tables.ts";
+import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
-import type { LikesTable } from "./tables.ts";
+import type { LikeKind, LikesTable } from "./tables.ts";
 
 export type LikeRow = Selectable<LikesTable>;
 
@@ -119,3 +121,87 @@ export const uncountLikesBy = async (ctx: Context, accountId: string): Promise<v
                 .where("likes.kind", "=", "like"))
         .execute();
 };
+
+/** A local like, not one from another instance, if there is one with this id. */
+export const findLocalLike = async (ctx: Context, id: string): Promise<LikeRow | undefined> =>
+    await ctx.db.selectFrom("likes").selectAll()
+        .where("id", "=", id)
+        .where("instance_id", "is", null)
+        .executeTakeFirst();
+
+/** The likes or dislikes of a note, `kind` as they are. */
+const ofNote = (ctx: Context, noteId: string, kind: LikeKind) =>
+    ctx.db.selectFrom("likes")
+        .leftJoin("instances", "instances.id", "likes.instance_id")
+        .where("likes.note_id", "=", noteId)
+        .where("likes.kind", "=", kind);
+
+/**
+ * A note's likes or dislikes, oldest first, from `offset`: their ids here, and for those from other
+ * instances, their ids there and the instances' domains.
+ */
+export const likesOfNote = async (
+    ctx: Context,
+    noteId: string,
+    kind: LikeKind,
+    offset: number,
+    limit: number,
+): Promise<{ id: string; remote_id: string | null; domain: string | null }[]> =>
+    await ofNote(ctx, noteId, kind)
+        .select(["likes.id", "likes.remote_id", "instances.domain"])
+        .orderBy("likes.id")
+        .offset(offset)
+        .limit(limit)
+        .execute();
+
+/** How many likes or dislikes a note has. */
+export const countLikesOfNote = async (
+    ctx: Context,
+    noteId: string,
+    kind: LikeKind,
+): Promise<number> =>
+    readCount(await ofNote(ctx, noteId, kind).select(countAll).executeTakeFirstOrThrow());
+
+/** The notes with one of `visibilities` an account likes or dislikes, `kind` as they are. */
+const byAccount = (
+    ctx: Context,
+    accountId: string,
+    kind: LikeKind,
+    visibilities: readonly Visibility[],
+) => ctx.db.selectFrom("likes")
+    .innerJoin("notes", "notes.id", "likes.note_id")
+    .where("likes.account_id", "=", accountId)
+    .where("likes.kind", "=", kind)
+    .where("notes.visibility", "in", visibilities);
+
+/**
+ * The ids of the notes with one of `visibilities` an account likes or dislikes, the earliest liked
+ * first, from `offset`.
+ */
+export const notesLikedBy = async (
+    ctx: Context,
+    accountId: string,
+    kind: LikeKind,
+    visibilities: readonly Visibility[],
+    offset: number,
+    limit: number,
+): Promise<string[]> =>
+    (await byAccount(ctx, accountId, kind, visibilities)
+        .select("likes.note_id")
+        .orderBy("likes.id")
+        .offset(offset)
+        .limit(limit)
+        .execute())
+        .map((row) => row.note_id);
+
+/** How many notes with one of `visibilities` an account likes or dislikes. */
+export const countNotesLikedBy = async (
+    ctx: Context,
+    accountId: string,
+    kind: LikeKind,
+    visibilities: readonly Visibility[],
+): Promise<number> =>
+    readCount(
+        await byAccount(ctx, accountId, kind, visibilities).select(countAll)
+            .executeTakeFirstOrThrow(),
+    );
