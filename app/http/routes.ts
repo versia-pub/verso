@@ -3,6 +3,7 @@ import { accountRoutes } from "../accounts/routes.ts";
 import { webfingerRoutes } from "../accounts/webfinger.ts";
 import { authRoutes } from "../auth/routes.ts";
 import { inboxRoute } from "../federation/inbox.ts";
+import { interactionRoutes } from "../interactions/routes.ts";
 import { entityRoutes } from "../federation/registry.ts";
 import { graphRoutes } from "../graph/routes.ts";
 import { noteRoutes } from "../notes/routes.ts";
@@ -27,6 +28,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...graphRoutes,
         ...accountRoutes(settings.limits),
         ...noteRoutes(settings.limits),
+        ...interactionRoutes,
         ...timelineRoutes,
         ...roleRoutes,
         ...webfingerRoutes,

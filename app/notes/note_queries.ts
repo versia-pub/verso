@@ -84,6 +84,12 @@ export const versionsOf = async (ctx: Context, noteId: string): Promise<NoteVers
 export const findNote = async (ctx: Context, id: string): Promise<NoteRow | undefined> =>
     await ctx.db.selectFrom("notes").selectAll().where("id", "=", id).executeTakeFirst();
 
+/** The notes of `ids` that exist, in no order. */
+export const findNotes = async (ctx: Context, ids: readonly string[]): Promise<NoteRow[]> =>
+    ids.length === 0
+        ? []
+        : await ctx.db.selectFrom("notes").selectAll().where("id", "in", ids).execute();
+
 /** The note with the id `remoteId` on the instance `instanceId`, if Verso has it. */
 export const findRemoteNote = async (
     ctx: Context,

@@ -2734,6 +2734,259 @@
                 }
             }
         },
+        "/api/v1/statuses/{id}/favourite": {
+            "post": {
+                "summary": "Likes a status the viewer may see",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:like` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:favourites"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/unfavourite": {
+            "post": {
+                "summary": "Undoes the viewer's like of a status",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:like` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:favourites"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/favourited_by": {
+            "get": {
+                "summary": "The accounts that like a status the viewer may see, newest first",
+                "description": "Needs the `read:note_likes` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/favourites": {
+            "get": {
+                "summary": "The statuses the viewer likes and may still see, the latest liked first",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `read:note` permission.",
+                "tags": [
+                    "favourites"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:favourites"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Status"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/timelines/home": {
             "get": {
                 "summary": "The viewer's statuses and those of the accounts they follow, newest first",
@@ -2997,8 +3250,10 @@
                                                 "read:account",
                                                 "read:account_follows",
                                                 "read:note",
+                                                "read:note_likes",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:like",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3070,8 +3325,10 @@
                                                 "read:account",
                                                 "read:account_follows",
                                                 "read:note",
+                                                "read:note_likes",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:like",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3143,8 +3400,10 @@
                                                 "read:account",
                                                 "read:account_follows",
                                                 "read:note",
+                                                "read:note_likes",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:like",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3295,8 +3554,10 @@
                                                 "read:account",
                                                 "read:account_follows",
                                                 "read:note",
+                                                "read:note_likes",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:like",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3365,8 +3626,10 @@
                                                 "read:account",
                                                 "read:account_follows",
                                                 "read:note",
+                                                "read:note_likes",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:like",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3435,8 +3698,10 @@
                                                 "read:account",
                                                 "read:account_follows",
                                                 "read:note",
+                                                "read:note_likes",
                                                 "owner:account",
                                                 "owner:follow",
+                                                "owner:like",
                                                 "owner:note",
                                                 "roles"
                                             ]

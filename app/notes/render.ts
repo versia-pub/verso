@@ -5,6 +5,7 @@
 import type { Status, StatusEdit } from "@versia/client-api";
 import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
+import { likedAmong } from "../interactions/like_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
 import { entityUrl } from "../kernel/urls.ts";
@@ -18,8 +19,13 @@ const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
     return entityUrl(domain, "Note", note.remote_id);
 };
 
-/** What only a logged-in viewer is told: none of it is possible yet. */
-const viewerFlags = { favourited: false, reblogged: false, muted: false, bookmarked: false };
+/** What only a logged-in viewer is told: whether they like a note. The rest isn't possible yet. */
+const viewerFlags = (liked: boolean) => ({
+    favourited: liked,
+    reblogged: false,
+    muted: false,
+    bookmarked: false,
+});
 
 /**
  * Notes as statuses, in the order given, as `viewerId` sees them, or anyone if it is `null`. Each
@@ -35,6 +41,7 @@ export const renderStatuses = async (
     const noteIds = notes.map((note) => note.id);
     const mentions = await mentionsOf(ctx, noteIds);
     const tags = await tagsOf(ctx, noteIds);
+    const liked = viewerId === null ? new Set() : await likedAmong(ctx, viewerId, noteIds);
 
     const accountIds = [
         ...new Set([...notes.map((note) => note.account_id), ...[...mentions.values()].flat()]),
@@ -76,7 +83,7 @@ export const renderStatuses = async (
             })),
             emojis: [],
             reblogs_count: 0,
-            favourites_count: 0,
+            favourites_count: note.likes_count,
             replies_count: note.replies_count,
             // Verso has no web pages for notes.
             url: null,
@@ -88,7 +95,7 @@ export const renderStatuses = async (
             language: note.language,
             text: options.source ? note.content : null,
             edited_at: note.edited_at?.toISOString() ?? null,
-            ...(viewerId === null ? {} : viewerFlags),
+            ...(viewerId === null ? {} : viewerFlags(liked.has(note.id))),
         };
     });
 };

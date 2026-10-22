@@ -30,6 +30,7 @@ export type NotesTable = {
     /** The note it quotes, or `null` if none, or it is gone. Only other instances' quote yet. */
     quote_id: string | null;
     replies_count: Generated<number>;
+    likes_count: Generated<number>;
     created_at: Date;
     edited_at: Date | null;
     /** When it was last fetched or sent, or `null` if it was written here. */

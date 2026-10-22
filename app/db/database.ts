@@ -10,6 +10,7 @@ import type {
 } from "../accounts/tables.ts";
 import type { AccessTokensTable, AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
 import type { FollowsTable } from "../graph/tables.ts";
+import type { LikesTable } from "../interactions/tables.ts";
 import type { RateLimitsTable } from "../http/tables.ts";
 import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
 import type { JobsTable } from "../jobs/tables.ts";
@@ -37,6 +38,7 @@ export type Database = {
     instance_keys: InstanceKeysTable;
     instances: InstancesTable;
     jobs: JobsTable;
+    likes: LikesTable;
     media: MediaTable;
     note_mentions: NoteMentionsTable;
     note_tags: NoteTagsTable;

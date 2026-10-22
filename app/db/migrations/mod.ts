@@ -25,6 +25,7 @@ import { remoteNotes } from "./0023_remote_notes.ts";
 import { noteVersions } from "./0024_note_versions.ts";
 import { notesByQuote } from "./0025_notes_by_quote.ts";
 import { moreIndexes } from "./0026_more_indexes.ts";
+import { likes } from "./0027_likes.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -57,4 +58,5 @@ export const migrations: Record<string, Migration> = {
     "0024_note_versions": noteVersions,
     "0025_notes_by_quote": notesByQuote,
     "0026_more_indexes": moreIndexes,
+    "0027_likes": likes,
 };
