@@ -7,6 +7,7 @@ import type { AppServices } from "./http/env.ts";
 import { instanceKey } from "./instances/keys.ts";
 import { likeDeliveries } from "./interactions/federation.ts";
 import { uncountLikesOf } from "./interactions/likes.ts";
+import { reactionDeliveries } from "./interactions/reaction_federation.ts";
 import { shareDeliveries } from "./interactions/share_federation.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
 import type { Federation, Subscriber } from "./kernel/context.ts";
@@ -30,6 +31,7 @@ export const subscribers: readonly Subscriber[] = [
     noteDeliveries,
     likeDeliveries,
     shareDeliveries,
+    reactionDeliveries,
     uncountFollowsOf,
     uncountNotesOf,
     uncountLikesOf,

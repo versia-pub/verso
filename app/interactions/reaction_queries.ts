@@ -146,3 +146,48 @@ export const reactorsOf = async (
 
     return reactors;
 };
+
+/** A local user's reaction, with its custom emoji's shortcode and picture, if it is one. */
+export type LocalReaction = ReactionRow & {
+    readonly shortcode: string | null;
+    readonly url: string | null;
+    readonly media_type: string | null;
+};
+
+/** A local user's reaction, not one from another instance, if there is one with this id. */
+export const findLocalReaction = async (
+    ctx: Context,
+    id: string,
+): Promise<LocalReaction | undefined> =>
+    await ctx.db.selectFrom("reactions")
+        .innerJoin("accounts", "accounts.id", "reactions.account_id")
+        .leftJoin("emojis", "emojis.id", "reactions.emoji_id")
+        .leftJoin("media", "media.id", "emojis.media_id")
+        .selectAll("reactions")
+        .select(["emojis.shortcode", "media.url", "media.media_type"])
+        .where("reactions.id", "=", id)
+        .where("accounts.instance_id", "is", null)
+        .executeTakeFirst();
+
+/** The ids of a note's reactions, oldest first, from `offset`. */
+export const reactionIdsOf = async (
+    ctx: Context,
+    noteId: string,
+    offset: number,
+    limit: number,
+): Promise<string[]> =>
+    (await ctx.db.selectFrom("reactions").select("id")
+        .where("note_id", "=", noteId)
+        .orderBy("id")
+        .offset(offset)
+        .limit(limit)
+        .execute())
+        .map((row) => row.id);
+
+/** How many reactions a note has, of any emoji. */
+export const countReactionsOf = async (ctx: Context, noteId: string): Promise<number> =>
+    readCount(
+        await ctx.db.selectFrom("reactions").select(countAll)
+            .where("note_id", "=", noteId)
+            .executeTakeFirstOrThrow(),
+    );
