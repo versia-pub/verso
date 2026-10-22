@@ -14,7 +14,7 @@ import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import { findNote, type NoteRow } from "./note_queries.ts";
-import { saveTotals } from "./total_queries.ts";
+import { saveTotals, totalsOf } from "./total_queries.ts";
 
 /** The queue that fetches other instances' notes' totals. */
 export const totalsQueue = "note-totals";
@@ -33,6 +33,26 @@ export const fetchTotalsLater = async (ctx: Context, note: NoteRow): Promise<voi
         maxAttempts: 3,
         dedupeKey: `totals:${note.id}`,
     });
+};
+
+/** How long totals are shown before a local user opening their note has them fetched again. */
+const totalsMaxAgeMs = 60 * 60_000;
+
+/**
+ * Has the totals of the note `noteId`, or of the note it shares, fetched again, if it is another
+ * instance's and they were fetched over an hour ago, or never, when a local user opens it.
+ */
+export const refreshTotals = async (ctx: Context, noteId: string): Promise<void> => {
+    const opened = await findNote(ctx, noteId);
+    if (opened === undefined) return;
+
+    const note = opened.reblog_of_id === null ? opened : await findNote(ctx, opened.reblog_of_id);
+    if (note === undefined || note.instance_id === null) return;
+
+    const fetchedAt = (await totalsOf(ctx, [note.id])).get(note.id)?.fetched_at;
+    if (fetchedAt && ctx.clock.now().getTime() - fetchedAt.getTime() < totalsMaxAgeMs) return;
+
+    await fetchTotalsLater(ctx, note);
 };
 
 /**

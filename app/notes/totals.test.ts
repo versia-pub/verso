@@ -1,7 +1,9 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
+import { tokenFor } from "../auth/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { like } from "../interactions/likes.ts";
+import { share } from "../interactions/shares.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
@@ -9,7 +11,7 @@ import { findRemoteNoteAt } from "./note_queries.ts";
 import { renderStatuses } from "./render.ts";
 import { createNote } from "./testing.ts";
 import { totalsOf } from "./total_queries.ts";
-import { fetchTotalsLater, totalsQueue } from "./totals.ts";
+import { fetchTotalsLater, refreshTotals, totalsQueue } from "./totals.ts";
 
 /** bob, on b.test. */
 const user = {
@@ -226,4 +228,54 @@ Deno.test("a Verso instance gives its notes' totals to another", async () => {
 
     const [totals] = (await totalsOf(b, [received])).values();
     assertEquals([totals.likes, totals.shares, totals.replies], [1, 0, 1]);
+});
+
+Deno.test("a note opened is fetched again once its totals are an hour old, as is one shared", async () => {
+    await using test = await open({ likes: 1, shares: 1, replies: 1 });
+    const row = await test.send();
+    const refreshed = async (noteId: string) => {
+        const from = test.asked();
+        await refreshTotals(test.a, noteId);
+        await test.network.drain();
+        return test.asked() - from;
+    };
+
+    assertEquals(await refreshed(row.id), 0);
+    test.network.clock.advance(60 * 60_000 - 1);
+    assertEquals(await refreshed(row.id), 0);
+    test.network.clock.advance(1);
+    assertEquals(await refreshed(row.id), 3);
+    assertEquals(await refreshed(row.id), 0);
+
+    const shared = await share(test.a, test.alice, row.id, "public");
+    if (typeof shared === "string") throw new Error(`Couldn't share: ${shared}`);
+    test.network.clock.advance(60 * 60_000);
+    assertEquals(await refreshed(shared.id), 3);
+
+    const local = await createNote(test.a, test.alice);
+    assertEquals(await refreshed(local.id), 0);
+    assertEquals(await refreshed("missing"), 0);
+});
+
+Deno.test("a user opening a note or its thread has its totals fetched again, but no one else", async () => {
+    await using test = await open({ likes: 1, shares: 1, replies: 1 });
+    const row = await test.send();
+    const app = test.network.instances["a.test"].app;
+    const token = await tokenFor(test.a, test.alice);
+    const opened = async (path: string, as: string | null) => {
+        test.network.clock.advance(60 * 60_000);
+        const from = test.asked();
+        const response = await app.request(path, {
+            headers: as === null ? {} : { authorization: `Bearer ${as}` },
+        });
+        assertEquals(response.status, 200, path);
+        await response.body?.cancel();
+        await test.network.drain();
+        return test.asked() - from;
+    };
+
+    assertEquals(await opened(`/api/v1/statuses/${row.id}`, token), 3);
+    assertEquals(await opened(`/api/v1/statuses/${row.id}/context`, token), 3);
+    assertEquals(await opened(`/api/v1/statuses/${row.id}`, null), 0);
+    assertEquals(await opened(`/api/v1/statuses/${row.id}/context`, null), 0);
 });

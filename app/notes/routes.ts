@@ -20,6 +20,7 @@ import {
     visibleOriginal,
 } from "./notes.ts";
 import { threadOf } from "./threads.ts";
+import { refreshTotals } from "./totals.ts";
 import { renderHistory, renderStatuses } from "./render.ts";
 
 /**
@@ -133,6 +134,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             const viewerId = viewer?.accountId ?? null;
             const note = await visibleNote(ctx, params.id, viewerId);
             if (note === undefined) throw new NotFound();
+            if (viewerId !== null) await refreshTotals(ctx, note.id);
 
             const [status] = await renderStatuses(ctx, [note], viewerId);
             return { status: 200, body: status };
@@ -174,6 +176,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             const viewerId = viewer?.accountId ?? null;
             const note = await visibleOriginal(ctx, params.id, viewerId);
             if (note === undefined) throw new NotFound();
+            if (viewerId !== null) await refreshTotals(ctx, note.id);
 
             const thread = await threadOf(ctx, note, viewerId);
             return {
