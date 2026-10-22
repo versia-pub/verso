@@ -1,5 +1,6 @@
 import { type Insertable, type Selectable, sql } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
+import type { BlockedIdQuery } from "../graph/blocks.ts";
 import type { Context } from "../kernel/context.ts";
 import type { ReactionsTable } from "./tables.ts";
 
@@ -102,16 +103,18 @@ export type ReactionGroup = {
 
 /**
  * The reactions to each of `noteIds`, by note, and by emoji in the order they were first used,
- * with whether `viewerId` made each, if there is a viewer.
+ * with whether `viewerId` made each, if there is a viewer, and without those of the accounts it
+ * blocks, `blocked`.
  */
 export const reactionsOf = async (
     ctx: Context,
     noteIds: readonly string[],
     viewerId: string | null,
+    blocked: BlockedIdQuery | null,
 ): Promise<Map<string, ReactionGroup[]>> => {
     if (noteIds.length === 0) return new Map();
 
-    const rows = await ctx.db.selectFrom("reactions")
+    let query = ctx.db.selectFrom("reactions")
         .leftJoin("emojis", "emojis.id", "reactions.emoji_id")
         .leftJoin("media", "media.id", "emojis.media_id")
         .leftJoin("instances", "instances.id", "emojis.instance_id")
@@ -132,7 +135,10 @@ export const reactionsOf = async (
                 } = ${viewerId} then 1 else 0 end`,
             ).as("me"),
         ])
-        .where("reactions.note_id", "in", noteIds)
+        .where("reactions.note_id", "in", noteIds);
+    if (blocked !== null) query = query.where("reactions.account_id", "not in", blocked);
+
+    const rows = await query
         .groupBy([
             "reactions.note_id",
             "reactions.text",
@@ -155,16 +161,21 @@ export const reactionsOf = async (
     return groups;
 };
 
-/** Who reacts to a note with each emoji, newest first, by {@link emojiKey}. */
+/**
+ * Who reacts to a note with each emoji, newest first, by {@link emojiKey}, but the accounts
+ * `blocked`.
+ */
 export const reactorsOf = async (
     ctx: Context,
     noteId: string,
+    blocked: BlockedIdQuery | null,
 ): Promise<Map<string, string[]>> => {
-    const rows = await ctx.db.selectFrom("reactions")
+    let query = ctx.db.selectFrom("reactions")
         .select(["account_id", "text", "emoji_id"])
-        .where("note_id", "=", noteId)
-        .orderBy("id", "desc")
-        .execute();
+        .where("note_id", "=", noteId);
+    if (blocked !== null) query = query.where("account_id", "not in", blocked);
+
+    const rows = await query.orderBy("id", "desc").execute();
 
     const reactors = new Map<string, string[]>();
     for (const row of rows) {

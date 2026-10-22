@@ -92,7 +92,7 @@ Deno.test("a like of a local note is kept and counted, and a Delete undoes it", 
 
     await test.send(liking("Like", "l1", `a.test:${test.note.id}`));
     assertEquals(await test.state(), ["like", "l1", 1]);
-    const [first] = await likePage(test.a, { noteId: test.note.id }, { limit: 40 });
+    const [first] = await likePage(test.a, { noteId: test.note.id, blocked: null }, { limit: 40 });
 
     // Sent again, it is the same like, where it was among the note's likes. It is sent with
     // another date, so it isn't taken for the same delivery.
@@ -101,7 +101,9 @@ Deno.test("a like of a local note is kept and counted, and a Delete undoes it", 
         created_at: "2026-01-02T00:00:00Z",
     });
     assertEquals(await test.state(), ["like", "l1", 1]);
-    assertEquals(await likePage(test.a, { noteId: test.note.id }, { limit: 40 }), [first]);
+    assertEquals(await likePage(test.a, { noteId: test.note.id, blocked: null }, { limit: 40 }), [
+        first,
+    ]);
 
     await test.send(undo("Like", "l1"));
     assertEquals(await test.state(), [undefined, undefined, 0]);
@@ -115,7 +117,10 @@ Deno.test("a dislike replaces a like, and a like a dislike, and only likes count
     await test.send(liking("Like", "l1", liked));
     await test.send(liking("Dislike", "d1", liked));
     assertEquals(await test.state(), ["dislike", "d1", 0]);
-    assertEquals(await likePage(test.a, { noteId: test.note.id }, { limit: 40 }), []);
+    assertEquals(
+        await likePage(test.a, { noteId: test.note.id, blocked: null }, { limit: 40 }),
+        [],
+    );
 
     // The like it replaced is gone already.
     await test.send(undo("Like", "l1"));

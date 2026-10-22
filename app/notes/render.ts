@@ -7,14 +7,16 @@ import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
+import { type BlockedIdQuery, viewerBlocks } from "../graph/blocks.ts";
 import { followedSubquery } from "../graph/follows.ts";
-import { likedAmong } from "../interactions/like_queries.ts";
+import { countLikesBy, likedAmong } from "../interactions/like_queries.ts";
 import { reactionsOf } from "../interactions/reaction_queries.ts";
 import { reactionEmojis, renderReactions } from "../interactions/render.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import {
+    countSharesBy,
     findNotes,
     mentionsOf,
     type NoteRow,
@@ -71,10 +73,28 @@ const sharedStatuses = async (
 };
 
 /**
+ * How many likes and shares of each of `noteIds` are by the accounts `blocked`, which the viewer
+ * blocks and isn't shown.
+ */
+const blockedCounts = async (
+    ctx: Context,
+    noteIds: readonly string[],
+    blocked: BlockedIdQuery | null,
+) => {
+    if (blocked === null) return { likes: new Map<string, number>(), shares: new Map() };
+
+    return {
+        likes: await countLikesBy(ctx, noteIds, blocked),
+        shares: await countSharesBy(ctx, noteIds, blocked),
+    };
+};
+
+/**
  * Notes as statuses, in the order given, as `viewerId` sees them, or anyone if it is `null`. Each
  * note's author must exist, which the database makes sure of. A share has the note it shares as its
- * `reblog`, and is left out if the viewer may not see that. With `source`, they carry what their
- * authors wrote, as Mastodon gives a deleted status back for redrafting.
+ * `reblog`, and is left out if the viewer may not see that. The likes, shares and reactions of the
+ * accounts the viewer blocks aren't counted. With `source`, they carry what their authors wrote, as
+ * Mastodon gives a deleted status back for redrafting.
  */
 export const renderStatuses = async (
     ctx: Context,
@@ -86,7 +106,9 @@ export const renderStatuses = async (
     const mentions = await mentionsOf(ctx, noteIds);
     const tags = await tagsOf(ctx, noteIds);
     const emojis = await emojisOfNotes(ctx, noteIds);
-    const reactions = await reactionsOf(ctx, noteIds, viewerId);
+    const blocked = viewerBlocks(ctx, viewerId);
+    const reactions = await reactionsOf(ctx, noteIds, viewerId, blocked);
+    const uncounted = await blockedCounts(ctx, noteIds, blocked);
     const liked = viewerId === null ? new Set() : await likedAmong(ctx, viewerId, noteIds);
     const shared = viewerId === null ? new Set() : await sharedAmong(ctx, viewerId, noteIds);
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
@@ -137,8 +159,8 @@ export const renderStatuses = async (
                 ...reactionEmojis(reactions.get(note.id) ?? []),
             ]),
             reactions: renderReactions(reactions.get(note.id) ?? [], viewerId !== null),
-            reblogs_count: note.shares_count,
-            favourites_count: note.likes_count,
+            reblogs_count: note.shares_count - (uncounted.shares.get(note.id) ?? 0),
+            favourites_count: note.likes_count - (uncounted.likes.get(note.id) ?? 0),
             replies_count: note.replies_count,
             // Verso has no web pages for notes.
             url: null,

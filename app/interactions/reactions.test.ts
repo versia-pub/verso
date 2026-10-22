@@ -24,7 +24,7 @@ const open = async () => {
 
     /** How many reactions a note has, of any emoji. */
     const total = async (noteId: string) =>
-        ((await reactionsOf(test.ctx, [noteId], null)).get(noteId) ?? [])
+        ((await reactionsOf(test.ctx, [noteId], null, null)).get(noteId) ?? [])
             .reduce((sum, group) => sum + group.count, 0);
 
     return { ...test, dog, total };
@@ -41,13 +41,13 @@ Deno.test("a note is reacted to with each emoji once, the first used first", asy
     await react(test.ctx, "bob", note.id, ":blob:");
 
     assertEquals(await test.total(note.id), 3);
-    const groups = (await reactionsOf(test.ctx, [note.id], "bob")).get(note.id) ?? [];
+    const groups = (await reactionsOf(test.ctx, [note.id], "bob", null)).get(note.id) ?? [];
     assertEquals(groups.map((group) => [group.text, group.shortcode, group.count, group.me]), [
         ["👍🏽", null, 1, true],
         [null, "blob", 2, true],
     ]);
     assertEquals(
-        ((await reactionsOf(test.ctx, [note.id], "dave")).get(note.id) ?? [])
+        ((await reactionsOf(test.ctx, [note.id], "dave", null)).get(note.id) ?? [])
             .map((group) => group.me),
         [false, true],
     );

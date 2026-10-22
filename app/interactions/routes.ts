@@ -1,6 +1,7 @@
 import { Account, Status, StatusReactionWithAccounts } from "@versia/client-api";
 import { z } from "zod";
 import { publicAccounts } from "../accounts/public.ts";
+import { viewerBlocks } from "../graph/blocks.ts";
 import { NotFound, NotPermitted, Unprocessable } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
@@ -95,9 +96,10 @@ export const interactionRoutes: readonly Route[] = [
             const note = await visibleOriginal(ctx, params.id, viewer?.accountId ?? null);
             if (note === undefined) throw new NotFound();
 
-            const groups = (await reactionsOf(ctx, [note.id], viewer?.accountId ?? null))
+            const blocked = viewerBlocks(ctx, viewer?.accountId ?? null);
+            const groups = (await reactionsOf(ctx, [note.id], viewer?.accountId ?? null, blocked))
                 .get(note.id) ?? [];
-            const reactors = await reactorsOf(ctx, note.id);
+            const reactors = await reactorsOf(ctx, note.id, blocked);
             return {
                 status: 200,
                 body: groups.map((group) => ({
@@ -122,7 +124,8 @@ export const interactionRoutes: readonly Route[] = [
             const note = await visibleOriginal(ctx, params.id, viewer?.accountId ?? null);
             if (note === undefined) throw new NotFound();
 
-            const likes = await likePage(ctx, { noteId: note.id }, query);
+            const blocked = viewerBlocks(ctx, viewer?.accountId ?? null);
+            const likes = await likePage(ctx, { noteId: note.id, blocked }, query);
             return {
                 status: 200,
                 body: await publicAccounts(ctx, likes.map((row) => row.account_id)),
@@ -211,7 +214,8 @@ export const interactionRoutes: readonly Route[] = [
             if (note === undefined) throw new NotFound();
 
             // Only the shares anyone may see, so a share for followers doesn't give its sharer away.
-            const shares = await sharePage(ctx, note.id, everyone, query);
+            const blocked = viewerBlocks(ctx, viewer?.accountId ?? null);
+            const shares = await sharePage(ctx, note.id, everyone, blocked, query);
             return {
                 status: 200,
                 body: await publicAccounts(ctx, shares.map((row) => row.account_id)),

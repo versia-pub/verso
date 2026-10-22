@@ -3,6 +3,7 @@ import { batchesOf } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Database } from "../db/database.ts";
+import type { BlockedIdQuery } from "../graph/blocks.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Visibility } from "../accounts/tables.ts";
@@ -515,17 +516,42 @@ export const countSharesOf = async (
         await sharesOf(ctx, noteId, visibilities).select(countAll).executeTakeFirstOrThrow(),
     );
 
-/** A page of the shares of a note with one of `visibilities`, newest first. */
+/**
+ * A page of the shares of a note with one of `visibilities`, but those of the accounts `blocked`,
+ * newest first.
+ */
 export const sharePage = async (
     ctx: Context,
     noteId: string,
     visibilities: readonly Visibility[],
+    blocked: BlockedIdQuery | null,
     page: PageBounds,
-): Promise<NoteRow[]> =>
-    await readPage(
-        ctx.db.selectFrom("notes").selectAll()
-            .where("reblog_of_id", "=", noteId)
-            .where("visibility", "in", visibilities),
-        "id",
-        page,
+): Promise<NoteRow[]> => {
+    let query = ctx.db.selectFrom("notes").selectAll()
+        .where("reblog_of_id", "=", noteId)
+        .where("visibility", "in", visibilities);
+    if (blocked !== null) query = query.where("account_id", "not in", blocked);
+
+    return await readPage(query, "id", page);
+};
+
+/** How many shares the accounts `by` make of each of `noteIds` they share. */
+export const countSharesBy = async (
+    ctx: Context,
+    noteIds: readonly string[],
+    by: BlockedIdQuery,
+): Promise<Map<string, number>> => {
+    if (noteIds.length === 0) return new Map();
+
+    const rows = await ctx.db.selectFrom("notes")
+        .select((eb) => ["reblog_of_id", countAll(eb)])
+        .where("reblog_of_id", "in", noteIds)
+        .where("account_id", "in", by)
+        .groupBy("reblog_of_id")
+        .execute();
+    return new Map(
+        rows.flatMap((row) =>
+            row.reblog_of_id === null ? [] : [[row.reblog_of_id, readCount(row)]]
+        ),
     );
+};

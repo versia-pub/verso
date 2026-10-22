@@ -50,3 +50,7 @@ export const blockedAmong = async (
  */
 export const blockedSubquery = (ctx: Context, accountId: string): BlockedIdQuery =>
     blockedIdsQuery(ctx, accountId);
+
+/** The accounts a viewer blocks, as {@link blockedSubquery} has them, or none without a viewer. */
+export const viewerBlocks = (ctx: Context, viewerId: string | null): BlockedIdQuery | null =>
+    viewerId === null ? null : blockedIdsQuery(ctx, viewerId);

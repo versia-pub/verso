@@ -1,12 +1,13 @@
 import { assertEquals } from "@std/assert";
 import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
+import { block, blockedSubquery } from "../graph/blocks.ts";
 import { follow, unfollow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findLike, likedAmong } from "./like_queries.ts";
+import { countLikesBy, findLike, likedAmong } from "./like_queries.ts";
 import { keepRemoteLike, like, unlike } from "./likes.ts";
 
 const open = async () => {
@@ -75,4 +76,31 @@ Deno.test("a remote account deleted is uncounted from the notes it liked", async
     await deleteRemoteAccount(test.ctx, "b.example", "carol");
 
     assertEquals([await test.likesOf(liked.id), await test.likesOf(other.id)], [1, 1]);
+});
+
+Deno.test("the likes the accounts someone blocks make are counted by note, without dislikes", async () => {
+    await using test = await open();
+    const [first, second, other] = [
+        await createNote(test.ctx, "alice"),
+        await createNote(test.ctx, "alice"),
+        await createNote(test.ctx, "alice"),
+    ];
+    for (const note of [first, other]) await like(test.ctx, "dave", note.id);
+    await like(test.ctx, "bob", first.id);
+    await test.ctx.db.insertInto("likes").values({
+        id: test.ctx.ids(),
+        account_id: "dave",
+        note_id: second.id,
+        kind: "dislike",
+        instance_id: null,
+        remote_id: null,
+        created_at: test.clock.now(),
+    }).execute();
+    await block(test.ctx, "alice", "dave");
+
+    assertEquals(
+        await countLikesBy(test.ctx, [first.id, second.id], blockedSubquery(test.ctx, "alice")),
+        new Map([[first.id, 1]]),
+    );
+    assertEquals(await countLikesBy(test.ctx, [], blockedSubquery(test.ctx, "alice")), new Map());
 });

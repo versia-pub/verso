@@ -2,11 +2,12 @@ import { assertEquals } from "@std/assert";
 import { findAccount } from "../accounts/account_queries.ts";
 import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
+import { block, blockedSubquery } from "../graph/blocks.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { registry } from "../registry.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findNote, notePageBy } from "./note_queries.ts";
+import { countSharesBy, findNote, notePageBy } from "./note_queries.ts";
 import { canSee, removeNote } from "./notes.ts";
 import { knownNote } from "./remote.ts";
 import { renderStatuses } from "./render.ts";
@@ -132,4 +133,21 @@ Deno.test("shares aren't sent as notes", async () => {
     const outbox = registry.types.get("User")?.collections?.outbox;
     const sent = await outbox?.(test.ctx, "alice", { offset: 0, limit: 40 }, "b.example");
     assertEquals([sent?.total, sent?.items.length], [1, 1]);
+});
+
+Deno.test("the shares the accounts someone blocks make are counted by note", async () => {
+    await using test = await open();
+    const [first, second, other] = [
+        await createNote(test.ctx, "alice"),
+        await createNote(test.ctx, "alice"),
+        await createNote(test.ctx, "alice"),
+    ];
+    for (const note of [first, other]) await createShare(test.ctx, "bob", note.id);
+    await createShare(test.ctx, "carol", first.id);
+    await block(test.ctx, "alice", "bob");
+
+    assertEquals(
+        await countSharesBy(test.ctx, [first.id, second.id], blockedSubquery(test.ctx, "alice")),
+        new Map([[first.id, 1]]),
+    );
 });

@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
+import { block } from "../graph/blocks.ts";
 import { follow, unfollow } from "../graph/follows.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestApp } from "../testing/app.ts";
@@ -199,4 +200,47 @@ Deno.test("a status's reactions are listed by emoji, with who made them, the lat
         { name: "🎉", count: 2, remote: false, account_ids: ["alice", "bob"] },
         { name: ":blob:", count: 1, remote: false, account_ids: ["dave"] },
     ]);
+});
+
+Deno.test("the blocker isn't shown, or counted, the likes, shares and reactions of those it blocks", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    for (const by of ["bob", "dave"]) {
+        await like(test.ctx, by, note.id);
+        await share(test.ctx, by, note.id, "public");
+        await react(test.ctx, by, note.id, "🎉");
+    }
+    await react(test.ctx, "dave", note.id, "👀");
+    await block(test.ctx, "alice", "dave");
+    const path = `/api/v1/statuses/${note.id}`;
+    const ids = async (list: string, as: string | null) =>
+        (await test.request("GET", `${path}/${list}`, as)).body.map((account: { id: string }) =>
+            account.id
+        );
+
+    assertEquals(await ids("favourited_by", "alice"), ["bob"]);
+    assertEquals(await ids("reblogged_by", "alice"), ["bob"]);
+    assertEquals((await test.request("GET", `${path}/reactions`, "alice")).body, [
+        { name: "🎉", count: 1, remote: false, me: false, account_ids: ["bob"] },
+    ]);
+    const status =
+        (await test.request("PUT", `${path}/reactions/${encodeURIComponent("🎉")}`, "alice"))
+            .body;
+    assertEquals([status.favourites_count, status.reblogs_count, status.reactions], [1, 1, [
+        { name: "🎉", count: 2, remote: false, me: true },
+    ]]);
+
+    // Anyone else, the blocked account too, sees them all.
+    for (const as of ["bob", "dave", null]) {
+        assertEquals(await ids("favourited_by", as), ["dave", "bob"]);
+        assertEquals(await ids("reblogged_by", as), ["dave", "bob"]);
+        assertEquals(
+            (await test.request("GET", `${path}/reactions`, as)).body.map((
+                group: { count: number },
+            ) => group.count),
+            [3, 1],
+        );
+    }
+    const seen = (await test.request("POST", `${path}/favourite`, "dave")).body;
+    assertEquals([seen.favourites_count, seen.reblogs_count], [2, 2]);
 });
