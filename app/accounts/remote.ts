@@ -2,6 +2,8 @@
  * Accounts on other instances, as Verso keeps them.
  * @module
  */
+import { setAccountEmojis } from "../emojis/emoji_queries.ts";
+import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { deleteMedia, type RemoteMedia, saveRemoteMedia } from "../media/media.ts";
@@ -25,13 +27,16 @@ export type RemoteAccount = {
     readonly profile: RemoteProfile;
     readonly avatar: RemoteMedia | null;
     readonly header: RemoteMedia | null;
+    /** The custom emojis its display name, bio and fields use. */
+    readonly emojis: readonly RemoteEmoji[];
 };
 
 /**
  * Saves a remote account, replacing what was known of it, and returns its id here. Its username
  * is taken from any account Verso had with it, which is fetched again later. Its pictures are
- * saved over the ones it had, and one it no longer has is deleted. Saving the same account again
- * changes nothing but when it was fetched, so receiving it twice is harmless.
+ * saved over the ones it had, and one it no longer has is deleted, and the emojis it uses replace
+ * the ones it used. Saving the same account again changes nothing but when it was fetched, so
+ * receiving it twice is harmless.
  */
 export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise<string> =>
     ctx.transaction(async (tx) => {
@@ -51,6 +56,11 @@ export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise
         if (pictures.avatar_id !== saved.avatar_id || pictures.header_id !== saved.header_id) {
             await setAccountPictures(tx, saved.id, pictures);
         }
+        await setAccountEmojis(
+            tx,
+            saved.id,
+            await keepRemoteEmojis(tx, account.instanceId, account.emojis),
+        );
 
         return saved.id;
     });

@@ -2,7 +2,7 @@
  * Turns accounts into the client API's entities.
  * @module
  */
-import type { Account, CredentialAccount, Field, Role } from "@versia/client-api";
+import type { Account, CredentialAccount, CustomEmoji, Field, Role } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
@@ -52,11 +52,12 @@ export const userUri = (ctx: Context, row: AccountRow): string => {
 const midnight = (date: Date) =>
     new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 
-/** An account as anyone sees it, with its roles, highest first. */
+/** An account as anyone sees it, with its roles, highest first, and the emojis it uses. */
 export const renderAccount = (
     ctx: Context,
     row: AccountRow,
     roles: readonly RoleRow[],
+    emojis: readonly CustomEmoji[],
 ): Account => {
     const avatar = row.avatar_url ?? ctx.urls.url`/accounts/${row.id}/avatar.png`;
     const header = row.header_url ?? ctx.urls.url`/accounts/${row.id}/header.png`;
@@ -82,7 +83,7 @@ export const renderAccount = (
         header_description: row.header_description ?? "",
         locked: row.locked,
         fields: renderFields(row.fields, (field) => html(field.value_html)),
-        emojis: [],
+        emojis: [...emojis],
         bot: row.bot,
         group: false,
         discoverable: row.discoverable,
@@ -117,7 +118,8 @@ export const renderCredentialAccount = (
     permissions: Iterable<Permission>,
     followRequests: number,
 ): CredentialAccount => ({
-    ...renderAccount(ctx, row, roles),
+    // Local accounts use no emojis yet.
+    ...renderAccount(ctx, row, roles, []),
     source: {
         note: row.note,
         fields: renderFields(row.fields, (field) => field.value),

@@ -7,6 +7,9 @@ import { getLogger } from "@logtape/logtape";
 import { parseReference, type Reference, type v0_6 } from "@versia/protocol";
 import { knownUser, remoteText } from "../accounts/federation.ts";
 import type { Visibility } from "../accounts/tables.ts";
+import { setNoteEmojis } from "../emojis/emoji_queries.ts";
+import { keepRemoteEmojis } from "../emojis/emojis.ts";
+import { remoteEmojisOf } from "../emojis/versia.ts";
 import type { Known, Sender } from "../federation/registry.ts";
 import { isRemoteFailure } from "../federation/resolver.ts";
 import { hasFollowers } from "../graph/follows.ts";
@@ -128,11 +131,11 @@ const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
 };
 
 /**
- * Saves a note `sender` sent, or a newer version of one Verso has, without who it mentions or the
- * notes it replies to or quotes that Verso doesn't have. A new one is counted, and what it replies
- * to and quotes stay for good, even if a newer version says otherwise. A newer version that says
- * something else is marked edited now, as Versia doesn't say when, and what it said is kept for its
- * history.
+ * Saves a note `sender` sent, or a newer version of one Verso has, with the emojis it uses, without
+ * who it mentions or the notes it replies to or quotes that Verso doesn't have. A new one is
+ * counted, and what it replies to and quotes stay for good, even if a newer version says
+ * otherwise. A newer version that says something else is marked edited now, as Versia doesn't say
+ * when, and what it said is kept for its history.
  */
 export const receiveNote = async (
     ctx: Context,
@@ -179,6 +182,11 @@ export const receiveNote = async (
         ? scanText(textOfHtml(content.html), "text/plain").hashtags
         : scanText(content.text, content.format).hashtags;
     const tags = [...new Set(hashtags.map((tag) => tag.toLowerCase()))].slice(0, remoteLinks);
+    const emojiIds = await keepRemoteEmojis(
+        ctx,
+        sender.instanceId,
+        remoteEmojisOf(note.extensions),
+    );
 
     if (existing) {
         const edited = changes.content !== existing.content ||
@@ -194,13 +202,14 @@ export const receiveNote = async (
             await countPosted(ctx, { ...existing, visibility: changes.visibility }, 1);
         }
 
-        return await updateNote(
+        await updateNote(
             ctx,
             existing.id,
             { ...changes, edited_at: edited ? ctx.clock.now() : existing.edited_at },
             mentionIds,
             tags,
         );
+        return await setNoteEmojis(ctx, existing.id, emojiIds);
     }
 
     const row = await insertNote(
@@ -222,6 +231,7 @@ export const receiveNote = async (
         mentionIds,
         tags,
     );
+    await setNoteEmojis(ctx, row.id, emojiIds);
     await countPosted(ctx, row, 1);
 };
 

@@ -58,7 +58,8 @@ const registrationMessage = (issuers: AboutSettings["auth"]["issuers"]) => {
 /** The contact account, if config names a local account that exists. */
 const contactAccount = async (ctx: Context, username: string | undefined) => {
     const row = username === undefined ? undefined : await findLocalAccount(ctx, username);
-    return row ? renderAccount(ctx, row, await rolesOf(ctx, row.id)) : null;
+    // A local account, which uses no emojis yet.
+    return row ? renderAccount(ctx, row, await rolesOf(ctx, row.id), []) : null;
 };
 
 /** The rules, numbered from 1 in the order config lists them. */

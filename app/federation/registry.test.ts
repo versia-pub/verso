@@ -102,7 +102,7 @@ Deno.test("a collection's pages start at the first item, and hold from 1 to 40",
     assertEquals(await asked("limit=100"), 40);
 });
 
-Deno.test("a registry lists the extensions its types come from, once each", () => {
+Deno.test("a registry lists the extensions its types come from, and those that add fields, once each", () => {
     const user: EntityType = { type: "User", schema: z.unknown(), ...ignored };
     const like: EntityType = {
         type: "pub.versia:likes/Like",
@@ -115,6 +115,10 @@ Deno.test("a registry lists the extensions its types come from, once each", () =
         "pub.versia:likes",
         "test.example:things",
     ]);
+    assertEquals(
+        createRegistry([like], ["pub.versia:custom_emojis", "pub.versia:likes"]).extensions,
+        ["pub.versia:custom_emojis", "pub.versia:likes"],
+    );
 });
 
 Deno.test("a type can only be registered once", () => {

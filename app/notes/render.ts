@@ -5,6 +5,8 @@
 import type { Status, StatusEdit } from "@versia/client-api";
 import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
+import { emojisOfNotes } from "../emojis/emoji_queries.ts";
+import { renderEmojis } from "../emojis/render.ts";
 import { followedSubquery } from "../graph/follows.ts";
 import { likedAmong } from "../interactions/like_queries.ts";
 import type { Context } from "../kernel/context.ts";
@@ -81,6 +83,7 @@ export const renderStatuses = async (
     const noteIds = notes.map((note) => note.id);
     const mentions = await mentionsOf(ctx, noteIds);
     const tags = await tagsOf(ctx, noteIds);
+    const emojis = await emojisOfNotes(ctx, noteIds);
     const liked = viewerId === null ? new Set() : await likedAmong(ctx, viewerId, noteIds);
     const shared = viewerId === null ? new Set() : await sharedAmong(ctx, viewerId, noteIds);
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
@@ -126,7 +129,7 @@ export const renderStatuses = async (
                 name,
                 url: ctx.urls.url`/tags/${name}`,
             })),
-            emojis: [],
+            emojis: renderEmojis(emojis.get(note.id) ?? []),
             reblogs_count: note.shares_count,
             favourites_count: note.likes_count,
             replies_count: note.replies_count,
@@ -155,6 +158,8 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
     const account = await publicAccount(ctx, author);
 
     const current = { ...note, created_at: note.edited_at ?? note.created_at };
+    // Versions aren't kept with the emojis they used, so each has the ones the note uses now.
+    const emojis = renderEmojis((await emojisOfNotes(ctx, [note.id])).get(note.id) ?? []);
     return [...await versionsOf(ctx, note.id), current].map((version): StatusEdit => ({
         content: author.domain === null ? version.content_html : sanitizeHtml(version.content_html),
         spoiler_text: version.spoiler_text,
@@ -162,6 +167,6 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
         created_at: version.created_at.toISOString(),
         account,
         media_attachments: [],
-        emojis: [],
+        emojis,
     }));
 };

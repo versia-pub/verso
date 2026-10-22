@@ -245,6 +245,7 @@ Deno.test("a remote user becomes an account, with its text as written and as HTM
         },
         avatar: null,
         header: null,
+        emojis: [],
     });
 });
 

@@ -28,6 +28,7 @@ import { moreIndexes } from "./0026_more_indexes.ts";
 import { likes } from "./0027_likes.ts";
 import { remoteLikes } from "./0028_remote_likes.ts";
 import { shares } from "./0029_shares.ts";
+import { emojis } from "./0030_emojis.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -63,4 +64,5 @@ export const migrations: Record<string, Migration> = {
     "0027_likes": likes,
     "0028_remote_likes": remoteLikes,
     "0029_shares": shares,
+    "0030_emojis": emojis,
 };

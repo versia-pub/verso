@@ -23,6 +23,7 @@ const bob: RemoteAccount = {
     profile,
     avatar: { url: "https://b.example/bob.png", mediaType: "image/png", width: 64 },
     header: null,
+    emojis: [],
 };
 
 const open = async () => {

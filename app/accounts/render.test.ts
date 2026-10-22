@@ -23,7 +23,7 @@ Deno.test("a local account links to itself on this instance", async () => {
         .set({ created_at: new Date("2026-01-31T15:04:05Z") })
         .execute();
 
-    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), []));
+    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], []));
 
     assertEquals(account.acct, "alice");
     assertEquals(account.url, null);
@@ -49,7 +49,7 @@ Deno.test("a remote account links to its own instance", async () => {
         })
         .execute();
 
-    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, "r"), []));
+    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, "r"), [], []));
 
     assertEquals(account.acct, "bob@b.example");
     assertEquals(account.url, null);
@@ -90,9 +90,10 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
             description: "Bob",
         },
         header: null,
+        emojis: [],
     });
 
-    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), []));
+    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], []));
 
     assertEquals(account.note, safe);
     assertEquals(account.fields, [{ name: "Site", value: safe, verified_at: null }]);
@@ -125,7 +126,7 @@ Deno.test("others see the bio and fields as HTML, and their owner as written", a
         .execute();
     const row = await find(test.ctx, id);
 
-    const account = renderAccount(test.ctx, row, []);
+    const account = renderAccount(test.ctx, row, [], []);
     assertEquals(account.note, "<p><strong>Hi</strong></p>");
     assertEquals(account.fields, [{ name: "Site", value: "<em>me</em>", verified_at: null }]);
 
@@ -176,7 +177,7 @@ Deno.test("others see an account's visible roles, highest first", async () => {
     const id = await createLocalAccount(test.ctx, "alice");
     const roles = [role("admin", 100, true), role("hidden", 50, false), role("mod", 10, true)];
 
-    const account = renderAccount(test.ctx, await find(test.ctx, id), roles);
+    const account = renderAccount(test.ctx, await find(test.ctx, id), roles, []);
 
     assertEquals(account.roles, [
         { id: "admin", name: "The admins", color: "#ff3838" },
