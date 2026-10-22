@@ -5,52 +5,10 @@
  */
 import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
-import { tokenFor } from "../auth/testing.ts";
 import { fetchSigned } from "../federation/request.ts";
-import { createNetwork, type Instance, type Network } from "../testing/network.ts";
+import { type Client, clientOf, deliveries, followAddress } from "../testing/clients.ts";
+import { createNetwork } from "../testing/network.ts";
 import { findRemoteNoteAt } from "./note_queries.ts";
-
-/** Calls `instance`'s client API as `accountId`, with a JSON body if there is one. */
-const clientOf = async (instance: Instance, accountId: string) => {
-    const authorization = `Bearer ${await tokenFor(instance.ctx, accountId)}`;
-
-    return async (method: string, path: string, body?: Record<string, unknown>) => {
-        const response = await instance.app.request(path, {
-            method,
-            headers: body === undefined
-                ? { authorization }
-                : { authorization, "content-type": "application/json" },
-            body: body === undefined ? undefined : JSON.stringify(body),
-        });
-
-        return { status: response.status, body: await response.json() };
-    };
-};
-
-type Client = Awaited<ReturnType<typeof clientOf>>;
-
-/** Has `client` look up `acct` and follow them. Returns the id their instance gives them. */
-const follow = async (client: Client, acct: string) => {
-    const found = await client("GET", `/api/v1/accounts/lookup?acct=${acct}`);
-    assertEquals(found.status, 200, acct);
-    assertEquals((await client("POST", `/api/v1/accounts/${found.body.id}/follow`)).status, 200);
-
-    return found.body.id as string;
-};
-
-/** How many times each host was sent an entity of `type`, from the `from`th request on. */
-const deliveries = async (network: Network, type: string, from: number) => {
-    const hosts: Record<string, number> = {};
-    for (const request of network.transport.sent.slice(from)) {
-        const url = new URL(request.url);
-        if (request.method !== "POST" || url.pathname !== "/.versia/v0.6/inbox") continue;
-        if ((await request.clone().json()).type !== type) continue;
-
-        hosts[url.host] = (hosts[url.host] ?? 0) + 1;
-    }
-
-    return hosts;
-};
 
 /**
  * Alice on a.test; bob and bea on b.test and carol on c.test, who follow her; dave on d.test, who
@@ -74,7 +32,7 @@ const open = async () => {
         const instance = instances[`${domain}.test`];
         users[id] = await clientOf(instance, await createLocalAccount(instance.ctx, id));
     }
-    for (const id of ["bob", "bea", "carol"]) await follow(users[id], "alice@a.test");
+    for (const id of ["bob", "bea", "carol"]) await followAddress(users[id], "alice@a.test");
     await network.drain();
 
     /** Has alice post `status`, delivers it, and returns it with who was sent it, and how often. */
@@ -125,8 +83,8 @@ Deno.test("a locked user is asked to be followed, and accepts or rejects each re
         200,
     );
 
-    const bobOnA = await follow(alice, "bob@b.test");
-    const bobOnC = await follow(carol, "bob@b.test");
+    const bobOnA = await followAddress(alice, "bob@b.test");
+    const bobOnC = await followAddress(carol, "bob@b.test");
     await network.drain();
 
     const requests = await bob("GET", "/api/v1/follow_requests");
