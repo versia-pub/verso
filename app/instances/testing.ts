@@ -38,21 +38,26 @@ export const keyPair = async (): Promise<KeyPair> => {
     return { privateKey: pair.privateKey, spki };
 };
 
-/** Metadata saying an instance is `domain`, with this public key. */
+/** Metadata saying an instance is `domain`, with this public key, supporting `extensions`. */
 export const metadata = (
     domain: string,
     spki: string,
     algorithm = "ed25519",
+    extensions: readonly string[] = [],
 ): Record<string, unknown> => ({
     type: "InstanceMetadata",
     created_at: "2026-01-01T00:00:00Z",
     name: domain,
     software: { name: "Test", version: "1.0.0" },
-    compatibility: { versions: ["0.6.0"], extensions: [] },
+    compatibility: { versions: ["0.6.0"], extensions },
     domain,
     public_key: { algorithm, key: spki },
 });
 
-/** An instance that answers with its metadata, which says it is `domain`. */
-export const metadataServer = (domain: string, pair: { spki: string }): Server => () =>
-    Response.json(metadata(domain, pair.spki));
+/** An instance that answers with its metadata, which says it is `domain`, supporting `extensions`. */
+export const metadataServer = (
+    domain: string,
+    pair: { spki: string },
+    extensions: readonly string[] = [],
+): Server =>
+() => Response.json(metadata(domain, pair.spki, "ed25519", extensions));

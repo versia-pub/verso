@@ -129,6 +129,17 @@ export const fetchUnsigned = (ctx: Context, url: URL, accept: string): Promise<F
     send(ctx, url, { method: "GET", headers: { accept } });
 
 /**
+ * Posts plain text to another instance without signing, for what Versia doesn't sign, such as
+ * instance messages, and reads the reply, as `send` does.
+ */
+export const postUnsigned = (ctx: Context, url: URL, text: string): Promise<FederationReply> =>
+    send(ctx, url, {
+        method: "POST",
+        headers: { "content-type": "text/plain; charset=utf-8" },
+        body: new TextEncoder().encode(text),
+    });
+
+/**
  * Fetches from another instance with a signed GET. A successful reply is only given if the
  * instance asked signed it, so nobody in between, nor another instance, can answer for it.
  */

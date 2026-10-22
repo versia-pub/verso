@@ -7,6 +7,11 @@ export const findInstanceId = async (ctx: Context, domain: string): Promise<stri
     (await ctx.db.selectFrom("instances").select("id").where("domain", "=", domain)
         .executeTakeFirst())?.id;
 
+/** Whether the instance at `domain` takes instance messages, as it last said. */
+export const takesMessages = async (ctx: Context, domain: string): Promise<boolean> =>
+    (await ctx.db.selectFrom("instances").select("takes_messages").where("domain", "=", domain)
+        .executeTakeFirst())?.takes_messages === true;
+
 /** How many other instances this one knows of. */
 export const countInstances = async (ctx: Context): Promise<number> =>
     readCount(await ctx.db.selectFrom("instances").select(countAll).executeTakeFirstOrThrow());

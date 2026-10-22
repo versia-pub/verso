@@ -21,7 +21,13 @@ const open = async () => {
             .where("domain", "=", domain)
             .executeTakeFirst();
 
-    return { ...test, transport, row };
+    /** Whether Verso has it that the instance at `domain` takes instance messages. */
+    const takesMessages = async (domain: string) =>
+        (await test.ctx.db.selectFrom("instances").select("takes_messages")
+            .where("domain", "=", domain)
+            .executeTakeFirst())?.takes_messages;
+
+    return { ...test, transport, row, takesMessages };
 };
 
 Deno.test("a key is fetched from the instance's metadata once, then stored", async () => {
@@ -99,8 +105,13 @@ Deno.test("a key is fetched again to refresh it only once it is old enough", asy
     test.transport.servers.set("b.example", metadataServer("b.example", before));
     const keys = remoteKeys({ refetchAfterMs: 1000 });
     await keys.get(test.ctx, "b.example");
+    assertEquals(await test.takesMessages("b.example"), false);
 
-    test.transport.servers.set("b.example", metadataServer("b.example", after));
+    // What else the metadata says is kept with the key.
+    test.transport.servers.set(
+        "b.example",
+        metadataServer("b.example", after, ["pub.versia:instance_messaging"]),
+    );
     test.clock.advance(999);
     assert(await isKeyOf(await keys.refresh(test.ctx, "b.example"), before));
     assert(await isKeyOf(await keys.get(test.ctx, "b.example"), before));
@@ -109,6 +120,7 @@ Deno.test("a key is fetched again to refresh it only once it is old enough", asy
     assert(await isKeyOf(await keys.refresh(test.ctx, "b.example"), after));
     assert(await isKeyOf(await keys.get(test.ctx, "b.example"), after));
     assertEquals((await test.row("b.example"))?.public_key, after.spki);
+    assertEquals(await test.takesMessages("b.example"), true);
     assertEquals(test.transport.sent.length, 2);
 });
 

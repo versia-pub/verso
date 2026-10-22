@@ -29,15 +29,19 @@ export type EvilInstance = {
 const bytesOf = (body: unknown) =>
     new TextEncoder().encode(typeof body === "string" ? body : JSON.stringify(body));
 
-/** Adds an evil instance at `domain` to the network. */
-export const addEvilInstance = async (network: Network, domain: string): Promise<EvilInstance> => {
+/** Adds an evil instance at `domain` to the network, which says it supports `extensions`. */
+export const addEvilInstance = async (
+    network: Network,
+    domain: string,
+    extensions: readonly string[] = [],
+): Promise<EvilInstance> => {
     let pair: KeyPair = await keyPair();
     const served = new Map<string, { body: unknown; signed: boolean }>();
 
     network.transport.servers.set(domain, async (request) => {
         const pathname = new URL(request.url).pathname;
         if (pathname === "/.versia/v0.6/instance") {
-            return Response.json(metadata(domain, pair.spki));
+            return Response.json(metadata(domain, pair.spki, "ed25519", extensions));
         }
 
         const entry = served.get(pathname);

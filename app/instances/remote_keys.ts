@@ -4,6 +4,7 @@
  */
 import { getLogger } from "@logtape/logtape";
 import { canonicalizeDomain, importPublicKey, v0_6 } from "@versia/protocol";
+import { messagingExtension } from "../federation/messaging.ts";
 import { fetchUnsigned } from "../federation/request.ts";
 import { versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
@@ -42,12 +43,19 @@ export type RemoteKeysOptions = {
     readonly concurrency?: number;
 };
 
+/** What Verso keeps of an instance's metadata. */
+type Metadata = {
+    /** SPKI, in base64. */
+    readonly key: string;
+    readonly takesMessages: boolean;
+};
+
 /**
- * Fetches the metadata of the instance at `domain`, and returns its public key if the metadata
- * says it is that instance.
+ * Fetches the metadata of the instance at `domain`, and returns its public key, and whether it
+ * takes instance messages, if the metadata says it is that instance.
  * @see https://versia.pub/api/endpoints
  */
-const fetchKey = async (ctx: Context, domain: string): Promise<string | undefined> => {
+const fetchMetadata = async (ctx: Context, domain: string): Promise<Metadata | undefined> => {
     try {
         const reply = await fetchUnsigned(ctx, versiaUrl(domain, "/instance"), versiaJson);
         if (reply.status < 200 || reply.status > 299) throw new Error(`HTTP ${reply.status}`);
@@ -59,29 +67,34 @@ const fetchKey = async (ctx: Context, domain: string): Promise<string | undefine
             throw new Error(`The metadata is for ${metadata.domain}`);
         }
 
-        return metadata.public_key.key;
+        return {
+            key: metadata.public_key.key,
+            takesMessages: metadata.compatibility.extensions.includes(messagingExtension),
+        };
     } catch (error) {
         logger.warn("Couldn't get the key of {domain}: {error}", { domain, error });
         return undefined;
     }
 };
 
-/** Keeps the fetched key, as the instance's row, which it creates if there is none yet. */
-const storeKey = async (ctx: Context, domain: string, key: string) => {
+/** Keeps the fetched metadata, in the instance's row, which it creates if there is none yet. */
+const storeMetadata = async (ctx: Context, domain: string, metadata: Metadata) => {
     const now = ctx.clock.now();
+    const kept = {
+        public_key: metadata.key,
+        key_fetched_at: now,
+        takes_messages: metadata.takesMessages,
+    };
 
     await ctx.db.insertInto("instances")
         .values({
             id: ctx.ids(),
             domain,
             protocol: "versia",
-            public_key: key,
-            key_fetched_at: now,
+            ...kept,
             created_at: now,
         })
-        .onConflict((conflict) =>
-            conflict.column("domain").doUpdateSet({ public_key: key, key_fetched_at: now })
-        )
+        .onConflict((conflict) => conflict.column("domain").doUpdateSet(kept))
         .execute();
 };
 
@@ -115,14 +128,14 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
         if (fetching.size >= concurrency) return Promise.resolve(undefined);
 
         pending = (async () => {
-            const spki = await fetchKey(ctx, domain);
-            const key = spki === undefined ? undefined : await importPublicKey(spki);
-            if (spki === undefined || key === undefined) {
+            const metadata = await fetchMetadata(ctx, domain);
+            const key = metadata === undefined ? undefined : await importPublicKey(metadata.key);
+            if (metadata === undefined || key === undefined) {
                 failed.set(domain, now + refetchAfterMs);
                 return undefined;
             }
 
-            await storeKey(ctx, domain, spki);
+            await storeMetadata(ctx, domain, metadata);
             remember(domain, key);
             return key;
         })().finally(() => fetching.delete(domain));
