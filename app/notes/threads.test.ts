@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import type { Insertable } from "kysely";
 import { createLocalAccount } from "../accounts/testing.ts";
+import { block } from "../graph/blocks.ts";
 import { follow } from "../graph/follows.ts";
 import { createTestContext } from "../testing/context.ts";
 import type { NoteRow } from "./note_queries.ts";
@@ -79,6 +80,30 @@ Deno.test("a thread leaves out the notes the viewer may not see, but not the rep
     });
 });
 
+Deno.test("a thread leaves out the notes of the accounts the viewer blocks, and the replies under them", async () => {
+    await using test = await open();
+    await test.add("root", "alice");
+    await test.add("parent", "dave", "root");
+    const note = await test.add("note", "alice", "parent");
+    await test.add("blocked", "dave", "note");
+    await test.add("under", "bob", "blocked");
+    await test.add("other", "bob", "note");
+    await test.add("deep", "dave", "other");
+    await block(test.ctx, "alice", "dave");
+
+    assertEquals(await test.thread(note, "alice"), {
+        ancestors: ["root"],
+        descendants: ["other"],
+    });
+    // Others see it all, the blocked account too.
+    for (const viewer of ["bob", "dave", null]) {
+        assertEquals(await test.thread(note, viewer), {
+            ancestors: ["root", "parent"],
+            descendants: ["blocked", "under", "other", "deep"],
+        });
+    }
+});
+
 Deno.test("a thread holds the 40 notes nearest above, and the 60 nearest below", async () => {
     await using test = await open();
     await test.add("0", "alice");
@@ -118,4 +143,23 @@ Deno.test("replies the viewer may not see don't count against the 60, up to 240 
     }
     await test.add("late", "bob", "other");
     assertEquals((await test.thread(other)).descendants, []);
+});
+
+Deno.test("replies under a blocked one don't count against the 60, but blocked ones count against the 240", async () => {
+    await using test = await open();
+    await block(test.ctx, "alice", "dave");
+    const note = await test.add("note", "alice");
+    await test.add("blocked", "dave", "note");
+    await test.add("other", "bob", "note");
+    for (let i = 0; i < 60; i++) await test.add(`under ${i}`, "bob", "blocked");
+    await test.add("deep", "bob", "other");
+
+    assertEquals((await test.thread(note, "alice")).descendants, ["other", "deep"]);
+
+    const busy = await test.add("busy", "alice");
+    for (let i = 0; i < 239; i++) await test.add(`blocked ${i}`, "dave", "busy");
+    await test.add("last", "bob", "busy");
+    await test.add("below", "bob", "last");
+
+    assertEquals((await test.thread(busy, "alice")).descendants, ["last"]);
 });

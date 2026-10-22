@@ -8,7 +8,15 @@
  */
 import { findAccount } from "../accounts/account_queries.ts";
 import type { Context } from "../kernel/context.ts";
-import { deleteBlock, insertBlock } from "./block_queries.ts";
+import {
+    type BlockedIdQuery,
+    blockedIdsQuery,
+    blocksBetween,
+    deleteBlock,
+    insertBlock,
+} from "./block_queries.ts";
+
+export type { BlockedIdQuery };
 
 /**
  * Has `accountId` block `targetId`. Returns whether there is such an account, other than the
@@ -28,3 +36,17 @@ export const block = async (
 /** Has `accountId` stop blocking `targetId`. Returns whether it blocked them. */
 export const unblock = (ctx: Context, accountId: string, targetId: string): Promise<boolean> =>
     deleteBlock(ctx, accountId, targetId);
+
+/** Which of `otherIds` `accountId` blocks. */
+export const blockedAmong = async (
+    ctx: Context,
+    accountId: string,
+    otherIds: readonly string[],
+): Promise<Set<string>> => (await blocksBetween(ctx, accountId, otherIds)).blocking;
+
+/**
+ * The accounts `accountId` blocks, as a subquery, for leaving what they wrote and shared out of
+ * what reaches it.
+ */
+export const blockedSubquery = (ctx: Context, accountId: string): BlockedIdQuery =>
+    blockedIdsQuery(ctx, accountId);

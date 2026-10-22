@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import type { Insertable } from "kysely";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
+import { block, blockedSubquery } from "../graph/blocks.ts";
 import { follow, followedSubquery, sharingSubquery } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -49,6 +50,7 @@ const open = async () => {
             "alice",
             followedSubquery(test.ctx, "alice"),
             sharingSubquery(test.ctx, "alice"),
+            blockedSubquery(test.ctx, "alice"),
             { limit: 40, ...page },
         ))
             .map((note) => names.get(note.id) ?? note.id);
@@ -60,10 +62,18 @@ const open = async () => {
         names.set((await createShare(test.ctx, accountId, noteId ?? "")).id, name);
     };
 
-    /** The public timeline from `origin`, by name. */
-    const everyone = async (origin: Origin = "all", page: { max_id?: string } = {}) =>
-        (await publicPage(test.ctx, origin, { limit: 40, ...page }))
-            .map((note) => names.get(note.id) ?? note.id);
+    /** The public timeline from `origin`, by name, as `viewerId` sees it, or anyone. */
+    const everyone = async (
+        origin: Origin = "all",
+        page: { max_id?: string } = {},
+        viewerId: string | null = null,
+    ) => (await publicPage(
+        test.ctx,
+        origin,
+        viewerId === null ? null : blockedSubquery(test.ctx, viewerId),
+        { limit: 40, ...page },
+    ))
+        .map((note) => names.get(note.id) ?? note.id);
 
     return { ...test, add, share, home, everyone, names };
 };
@@ -123,6 +133,22 @@ Deno.test("home has the viewer's shares, and those of the accounts they see the 
     assertEquals(await test.home(), ["bob's", "own"]);
 });
 
+Deno.test("home has nothing of the accounts the viewer blocks, nor others' shares of their notes", async () => {
+    await using test = await open();
+    await test.add("note", "bob");
+    await test.add("dave's", "dave");
+    await test.share("share", "bob", "dave's");
+    await test.share("carol's share", "carol", "note");
+    await test.share("carol's other share", "carol", "dave's");
+    await test.add("carol's", "carol");
+    await test.share("own share", "alice", "note");
+    await block(test.ctx, "alice", "bob");
+    // Blocked by someone else, carol is still seen.
+    await block(test.ctx, "bob", "carol");
+
+    assertEquals(await test.home(), ["carol's", "carol's other share"]);
+});
+
 Deno.test("home is paged by id", async () => {
     await using test = await open();
     for (const name of ["one", "two", "three"]) await test.add(name, "bob");
@@ -155,4 +181,15 @@ Deno.test("the public timeline is public notes, without replies but to their own
 
     const [remote] = [...test.names].find(([, name]) => name === "remote") ?? [];
     assertEquals(await test.everyone("all", { max_id: remote }), ["to self", "public"]);
+});
+
+Deno.test("the public timeline leaves out the notes of the accounts the viewer blocks", async () => {
+    await using test = await open();
+    await test.add("bob's", "bob");
+    await test.add("dave's", "dave");
+    await block(test.ctx, "alice", "bob");
+
+    assertEquals(await test.everyone("all", {}, "alice"), ["dave's"]);
+    assertEquals(await test.everyone("all", {}, "dave"), ["dave's", "bob's"]);
+    assertEquals(await test.everyone(), ["dave's", "bob's"]);
 });

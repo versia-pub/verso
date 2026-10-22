@@ -1,6 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
+import { block } from "../graph/blocks.ts";
 import { follow } from "../graph/follows.ts";
 import { routes } from "../http/routes.ts";
 import { createInstance, defaultSettings } from "../instances/testing.ts";
@@ -66,6 +67,17 @@ Deno.test("home gives the viewer's statuses and those they follow, a page at a t
 
     for (let i = 0; i < 20; i++) await createNote(test.ctx, "bob");
     assertEquals((await test.home()).body.length, 20);
+});
+
+Deno.test("timelines leave out the statuses of the accounts the viewer blocks", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "bob");
+    await block(test.ctx, "alice", "bob");
+    const ids = (page: { body: { id: string }[] }) => page.body.map((status) => status.id);
+
+    assertEquals(ids(await test.home()), []);
+    assertEquals(ids(await test.everyone("", "alice")), []);
+    assertEquals(ids(await test.everyone()), [note.id]);
 });
 
 Deno.test("home is only for a logged-in user, with a token and role that may read statuses", async () => {

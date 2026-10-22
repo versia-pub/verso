@@ -1,22 +1,43 @@
+import type { ExpressionBuilder } from "kysely";
+import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
+import type { BlockedIdQuery } from "../graph/blocks.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
+
+/** Leaves out the notes and shares of the accounts `blocked`, and any shares of their notes. */
+const unblocked = (blocked: BlockedIdQuery) => (eb: ExpressionBuilder<Database, "notes">) =>
+    eb.and([
+        eb("notes.account_id", "not in", blocked),
+        eb.or([
+            eb("notes.reblog_of_id", "is", null),
+            eb(
+                "notes.reblog_of_id",
+                "not in",
+                eb.selectFrom("notes as shared").select("shared.id")
+                    .where("shared.account_id", "in", blocked),
+            ),
+        ]),
+    ]);
 
 /**
  * A page of `viewerId`'s home timeline, newest first: all their own notes and shares, those notes
  * of `followed` that they may see, and the shares of `sharing`, the accounts of `followed` whose
  * shares they see. Of those notes, a direct one must mention them, and a reply must be to them or
- * to someone they follow, its author among them, as on Mastodon.
+ * to someone they follow, its author among them, as on Mastodon. Nothing of the accounts they
+ * block, `blocked`, is in it, nor anyone's shares of their notes.
  */
 export const homePage = async (
     ctx: Context,
     viewerId: string,
     followed: AccountIdQuery,
     sharing: AccountIdQuery,
+    blocked: BlockedIdQuery,
     page: PageBounds,
 ): Promise<NoteRow[]> => {
     const query = ctx.db.selectFrom("notes").selectAll()
+        .where(unblocked(blocked))
         .where((eb) =>
             eb.or([
                 eb("account_id", "=", viewerId),
@@ -51,11 +72,13 @@ export type Origin = "all" | "local" | "remote";
 
 /**
  * A page of the public timeline, newest first: public notes from `origin`, without replies but to
- * their own authors, or shares, as on Mastodon.
+ * their own authors, or shares, as on Mastodon. The notes of the accounts the viewer blocks,
+ * `blocked`, if there is a viewer, are left out.
  */
 export const publicPage = async (
     ctx: Context,
     origin: Origin,
+    blocked: BlockedIdQuery | null,
     page: PageBounds,
 ): Promise<NoteRow[]> => {
     let query = ctx.db.selectFrom("notes").selectAll()
@@ -68,6 +91,7 @@ export const publicPage = async (
             ])
         );
 
+    if (blocked !== null) query = query.where(unblocked(blocked));
     if (origin === "local") query = query.where("instance_id", "is", null);
     if (origin === "remote") query = query.where("instance_id", "is not", null);
 
