@@ -28,6 +28,7 @@ import type {
     NotesTable,
     NoteTagsTable,
     NoteVersionsTable,
+    RemoteNoteTotalsTable,
 } from "../notes/tables.ts";
 import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { Config } from "../kernel/config.ts";
@@ -63,6 +64,7 @@ export type Database = {
     oauth_flows: OAuthFlowsTable;
     rate_limits: RateLimitsTable;
     reactions: ReactionsTable;
+    remote_note_totals: RemoteNoteTotalsTable;
     roles: RolesTable;
 };
 

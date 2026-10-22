@@ -76,3 +76,15 @@ export type NotePinsTable = {
     note_id: string;
     created_at: Date;
 };
+
+/**
+ * How many likes, shares and replies another instance's note has, as its instance says, each
+ * `null` if it doesn't say. Verso shows the larger of these and what it counted itself.
+ */
+export type RemoteNoteTotalsTable = {
+    note_id: string;
+    likes: number | null;
+    shares: number | null;
+    replies: number | null;
+    fetched_at: Date;
+};

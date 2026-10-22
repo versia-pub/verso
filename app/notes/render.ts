@@ -28,6 +28,7 @@ import {
 } from "./note_queries.ts";
 import { pinnedAmong } from "./pin_queries.ts";
 import { isPinnable } from "./pins.ts";
+import { totalsOf } from "./total_queries.ts";
 
 /**
  * The note's id in Versia, the URL its Note entity is fetched from, or for a local share, its
@@ -96,9 +97,10 @@ const blockedCounts = async (
 /**
  * Notes as statuses, in the order given, as `viewerId` sees them, or anyone if it is `null`. Each
  * note's author must exist, which the database makes sure of. A share has the note it shares as its
- * `reblog`, and is left out if the viewer may not see that. The likes, shares and reactions of the
- * accounts the viewer blocks aren't counted. With `source`, they carry what their authors wrote, as
- * Mastodon gives a deleted status back for redrafting.
+ * `reblog`, and is left out if the viewer may not see that. Another instance's note counts the
+ * larger of what Verso counted and what its instance says, as Mastodon does. The likes, shares and
+ * reactions of the accounts the viewer blocks aren't counted. With `source`, they carry what their
+ * authors wrote, as Mastodon gives a deleted status back for redrafting.
  */
 export const renderStatuses = async (
     ctx: Context,
@@ -113,6 +115,7 @@ export const renderStatuses = async (
     const blocked = viewerBlocks(ctx, viewerId);
     const reactions = await reactionsOf(ctx, noteIds, viewerId, blocked);
     const uncounted = await blockedCounts(ctx, noteIds, blocked);
+    const totals = await totalsOf(ctx, noteIds);
     const liked = viewerId === null ? new Set() : await likedAmong(ctx, viewerId, noteIds);
     const shared = viewerId === null ? new Set() : await sharedAmong(ctx, viewerId, noteIds);
     const pinned = viewerId === null ? new Set() : await pinnedAmong(ctx, viewerId, noteIds);
@@ -164,9 +167,11 @@ export const renderStatuses = async (
                 ...reactionEmojis(reactions.get(note.id) ?? []),
             ]),
             reactions: renderReactions(reactions.get(note.id) ?? [], viewerId !== null),
-            reblogs_count: note.shares_count - (uncounted.shares.get(note.id) ?? 0),
-            favourites_count: note.likes_count - (uncounted.likes.get(note.id) ?? 0),
-            replies_count: note.replies_count,
+            reblogs_count: Math.max(note.shares_count, totals.get(note.id)?.shares ?? 0) -
+                (uncounted.shares.get(note.id) ?? 0),
+            favourites_count: Math.max(note.likes_count, totals.get(note.id)?.likes ?? 0) -
+                (uncounted.likes.get(note.id) ?? 0),
+            replies_count: Math.max(note.replies_count, totals.get(note.id)?.replies ?? 0),
             // Verso has no web pages for notes.
             url: null,
             in_reply_to_id: note.in_reply_to_id,

@@ -6,6 +6,7 @@ import { inboxQueue } from "../federation/inbox.ts";
 import { inboxHandler } from "../federation/inbox_worker.ts";
 import { messageHandler, messageQueue } from "../federation/messaging.ts";
 import { deleteEndedRateLimits } from "../http/rate_limits.ts";
+import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { registry } from "../registry.ts";
 import { deleteExpiredJobs } from "./queue.ts";
 import type { Task } from "./scheduler.ts";
@@ -17,6 +18,7 @@ export const queues: Record<string, Queue> = {
     [deliverQueue]: { handler: deliverHandler, concurrency: 8, perGroup: 2 },
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
+    [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
     "jobs-cleanup": { handler: (ctx) => deleteExpiredJobs(ctx), concurrency: 1 },
     "oauth-cleanup": { handler: (ctx) => deleteExpiredFlows(ctx), concurrency: 1 },
     "rate-limits-cleanup": { handler: (ctx) => deleteEndedRateLimits(ctx), concurrency: 1 },

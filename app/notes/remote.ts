@@ -27,6 +27,7 @@ import {
     updateNote,
 } from "./note_queries.ts";
 import { countPosted } from "./notes.ts";
+import { fetchTotalsLater } from "./totals.ts";
 
 const logger = getLogger(["verso", "notes"]);
 
@@ -133,7 +134,7 @@ const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
 /**
  * Saves a note `sender` sent, or a newer version of one Verso has, with the emojis it uses, without
  * who it mentions or the notes it replies to or quotes that Verso doesn't have. A new one is
- * counted, and what it replies to and quotes stay for good, even if a newer version says
+ * counted, its totals are fetched later, and what it replies to and quotes stay for good, even if a newer version says
  * otherwise. A newer version that says something else is marked edited now, as Versia doesn't say
  * when, and what it said is kept for its history.
  */
@@ -233,6 +234,7 @@ export const receiveNote = async (
     );
     await setNoteEmojis(ctx, row.id, emojiIds);
     await countPosted(ctx, row, 1);
+    await fetchTotalsLater(ctx, row);
 };
 
 /**
