@@ -701,3 +701,114 @@ Deno.test("noting an account needs a token that may write accounts, and a role t
     await response.body?.cancel();
     assertEquals(response.status, 403);
 });
+
+Deno.test("blocking a domain shows in the relationships with its accounts, and unblocking undoes it", async () => {
+    await using test = await open();
+    const path = "/api/v1/accounts/relationships?id=bob&id=carol";
+    const domain = (name: string) => ({ body: JSON.stringify({ domain: name }) });
+
+    assertEquals(await test.request("POST", "/api/v1/domain_blocks", domain("B.Example")), {
+        status: 200,
+        body: {},
+    });
+    assertEquals((await test.request("GET", path)).body, [
+        { id: "bob", ...none },
+        { id: "carol", ...none, domain_blocking: true },
+    ]);
+    assertEquals(
+        (await test.request("GET", path, { token: await tokenFor(test.ctx, "bob") })).body,
+        [
+            { id: "bob", ...none },
+            { id: "carol", ...none },
+        ],
+    );
+
+    assertEquals(await test.request("DELETE", "/api/v1/domain_blocks", domain("b.example")), {
+        status: 200,
+        body: {},
+    });
+    assertEquals((await test.request("GET", path)).body[1], { id: "carol", ...none });
+    assertEquals(
+        (await test.request("DELETE", "/api/v1/domain_blocks", domain("b.example"))).status,
+        200,
+    );
+});
+
+Deno.test("only a domain name can be blocked or unblocked", async () => {
+    await using test = await open();
+
+    for (const method of ["POST", "DELETE"]) {
+        for (const body of ["{}", '{"domain":"not a domain"}', '{"domain":"example"}']) {
+            assertEquals(
+                (await test.request(method, "/api/v1/domain_blocks", { body })).status,
+                422,
+                `${method} ${body}`,
+            );
+        }
+    }
+});
+
+Deno.test("the domains the viewer blocks are listed, the latest blocked first, a page at a time", async () => {
+    await using test = await open();
+    for (const domain of ["b.example", "c.example"]) {
+        test.clock.advance(1);
+        await test.request("POST", "/api/v1/domain_blocks", {
+            body: JSON.stringify({ domain }),
+        });
+    }
+
+    assertEquals(await test.request("GET", "/api/v1/domain_blocks"), {
+        status: 200,
+        body: ["c.example", "b.example"],
+    });
+    assertEquals((await test.request("GET", "/api/v1/domain_blocks?limit=1")).body, ["c.example"]);
+    assertEquals(
+        (await test.request("GET", "/api/v1/domain_blocks", {
+            token: await tokenFor(test.ctx, "bob"),
+        })).body,
+        [],
+    );
+});
+
+Deno.test("blocking domains needs a token that may write blocks, and a role that may block", async () => {
+    await using test = await open();
+    const body = JSON.stringify({ domain: "b.example" });
+
+    for (const method of ["POST", "DELETE"]) {
+        const path = "/api/v1/domain_blocks";
+        assertEquals(
+            (await test.request(method, path, { body, scopes: ["write:follows"] })).status,
+            403,
+        );
+        assertEquals(
+            (await test.request(method, path, { body, scopes: ["write:blocks"] })).status,
+            200,
+        );
+    }
+    assertEquals(
+        (await test.request("GET", "/api/v1/domain_blocks", { scopes: ["read:follows"] })).status,
+        403,
+    );
+    assertEquals(
+        (await test.request("GET", "/api/v1/domain_blocks", { scopes: ["read:blocks"] })).status,
+        200,
+    );
+
+    await using limited = await createTestContext();
+    await createLocalAccount(limited.ctx, "alice");
+    const app = createTestApp(limited.ctx, graphRoutes, {
+        permissions: { anonymous: [], default: ["read:account"] },
+    });
+    for (const method of ["POST", "DELETE", "GET"]) {
+        const response = await app.request("/api/v1/domain_blocks", {
+            method,
+            body: method === "GET" ? undefined : body,
+            headers: {
+                authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}`,
+                "content-type": "application/json",
+            },
+        });
+        await response.body?.cancel();
+        assertEquals(response.status, 403, method);
+    }
+});

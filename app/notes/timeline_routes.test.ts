@@ -2,9 +2,11 @@ import { assertEquals, assertStringIncludes } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { block } from "../graph/blocks.ts";
+import { blockDomainFor } from "../graph/domain_blocks.ts";
 import { follow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
 import { routes } from "../http/routes.ts";
+import { share } from "../interactions/shares.ts";
 import { createInstance, defaultSettings } from "../instances/testing.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
@@ -79,6 +81,21 @@ Deno.test("timelines leave out the statuses of the accounts the viewer blocks", 
     assertEquals(ids(await test.home()), []);
     assertEquals(ids(await test.everyone("", "alice")), []);
     assertEquals(ids(await test.everyone()), [note.id]);
+});
+
+Deno.test("timelines leave out the statuses of the accounts on the domains the viewer blocks", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "carol", "b.example");
+    const note = await createNote(test.ctx, "carol", { instance_id: "b.example", remote_id: "c1" });
+    await share(test.ctx, "bob", note.id, "public");
+    await blockDomainFor(test.ctx, "alice", "b.example");
+    const ids = (page: { body: { id: string }[] }) => page.body.map((status) => status.id);
+
+    assertEquals(ids(await test.home()), []);
+    assertEquals(ids(await test.everyone("", "alice")), []);
+    assertEquals(ids(await test.everyone()), [note.id]);
+    assertEquals((await test.home("", "bob")).body.length, 1);
 });
 
 Deno.test("timelines leave out the statuses of the accounts the viewer mutes", async () => {

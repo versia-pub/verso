@@ -1,4 +1,5 @@
 import { Account, MutedAccount, Relationship } from "@versia/client-api";
+import { canonicalizeDomain } from "@versia/protocol";
 import { z } from "zod";
 import { existingAccountIds, findAccount } from "../accounts/account_queries.ts";
 import { publicAccounts } from "../accounts/public.ts";
@@ -11,6 +12,8 @@ import { accountNotesOn } from "./account_note_queries.ts";
 import { accountNoteLimit, noteAccount } from "./account_notes.ts";
 import { blockPage, blocksBetween } from "./block_queries.ts";
 import { block, unblock } from "./blocks.ts";
+import { domainBlockedAmong, domainBlockPage } from "./domain_block_queries.ts";
+import { blockDomainFor, unblockDomainFor } from "./domain_blocks.ts";
 import { followPage, followsFrom, type FollowSide, followsOf } from "./follow_queries.ts";
 import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
 import { mutePage, mutesOf } from "./mute_queries.ts";
@@ -37,6 +40,7 @@ const relationships = async (ctx: Context, viewer: UserViewer, ids: readonly str
     );
     const { blocking, blockedBy } = await blocksBetween(ctx, viewerId, asked);
     const seesBlocks = (await viewer.permissions()).has("blocks");
+    const domainBlocked = await domainBlockedAmong(ctx, viewerId, asked);
     const mutes = await mutesOf(ctx, viewerId, asked);
     const notes = await accountNotesOn(ctx, viewerId, asked);
 
@@ -49,6 +53,7 @@ const relationships = async (ctx: Context, viewer: UserViewer, ids: readonly str
                 {
                     blocking: blocking.has(id),
                     blockedBy: seesBlocks && blockedBy.has(id),
+                    domainBlocking: domainBlocked.has(id),
                 },
                 mutes.get(id),
                 notes.get(id) ?? "",
@@ -224,6 +229,59 @@ const noteRoute = defineRoute({
     },
 });
 
+/**
+ * The domain the viewer blocks or unblocks, as Mastodon takes it, in any form a domain name can be
+ * written in, such as with capitals.
+ * @see https://docs.joinmastodon.org/methods/domain_blocks/
+ */
+const DomainBody = (description: string) =>
+    z.object({
+        domain: z.string().transform((domain, issues) => {
+            const canonical = canonicalizeDomain(domain);
+            if (canonical === undefined) {
+                issues.addIssue({ code: "custom", message: "Must be a domain name" });
+            }
+            return canonical ?? domain;
+        }).meta({ description }),
+    });
+
+/** Blocks a domain for the viewer. */
+const blockDomainRoute = defineRoute({
+    method: "POST",
+    path: "/api/v1/domain_blocks",
+    summary: "Block a domain",
+    description: "Block a domain to change interactions with that domain's server.\n\nUnlike " +
+        "Mastodon, Verso tells no one, keeps the viewer's followers there, and lets its users " +
+        "still follow them. Instead, it blocks each account on the domain, and on its " +
+        "subdomains, as blocking the account would. The domain must be a domain name.",
+    docs: "https://docs.joinmastodon.org/methods/domain_blocks/#block",
+    tags: ["domain_blocks"],
+    auth: { require: "user", scope: "write:blocks", permission: "owner:block" },
+    body: DomainBody("Domain to block."),
+    responses: { 200: z.object({}) },
+    handler: async (ctx, { body, viewer }) => {
+        await blockDomainFor(ctx, viewer.accountId, body.domain);
+        return { status: 200, body: {} };
+    },
+});
+
+/** Stops blocking a domain for the viewer. */
+const unblockDomainRoute = defineRoute({
+    method: "DELETE",
+    path: "/api/v1/domain_blocks",
+    summary: "Unblock a domain",
+    description: "Remove a domain block, if it exists in the user's array of blocked domains.",
+    docs: "https://docs.joinmastodon.org/methods/domain_blocks/#unblock",
+    tags: ["domain_blocks"],
+    auth: { require: "user", scope: "write:blocks", permission: "owner:block" },
+    body: DomainBody("Domain to unblock."),
+    responses: { 200: z.object({}) },
+    handler: async (ctx, { body, viewer }) => {
+        await unblockDomainFor(ctx, viewer.accountId, body.domain);
+        return { status: 200, body: {} };
+    },
+});
+
 /** Stops muting an account. */
 const unmuteRoute = defineRoute({
     method: "POST",
@@ -273,6 +331,27 @@ export const graphRoutes: readonly Route[] = [
     muteRoute,
     unmuteRoute,
     noteRoute,
+    blockDomainRoute,
+    unblockDomainRoute,
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/domain_blocks",
+        summary: "Get domain blocks",
+        description: "View domains the user has blocked.",
+        docs: "https://docs.joinmastodon.org/methods/domain_blocks/#get",
+        tags: ["domain_blocks"],
+        auth: { require: "user", scope: "read:blocks", permission: "owner:block" },
+        query: PageQuery({ default: 100, max: 200 }),
+        responses: { 200: Paged(z.string()) },
+        handler: async (ctx, { query, viewer }) => {
+            const blocks = await domainBlockPage(ctx, viewer.accountId, query);
+            return {
+                status: 200,
+                body: blocks.map((each) => each.domain),
+                cursors: cursorsOf(blocks, query, (each) => each.id),
+            };
+        },
+    }),
     defineRoute({
         method: "GET",
         path: "/api/v1/mutes",

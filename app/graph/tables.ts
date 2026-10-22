@@ -55,3 +55,17 @@ export type AccountNotesTable = {
     comment: string;
     updated_at: Date;
 };
+
+/**
+ * A domain an account blocks, which blocks every account there, and on its subdomains, as a block
+ * of each would.
+ */
+export type AccountDomainBlocksTable = {
+    /** Orders domain blocks by when they were made, for paging through them. */
+    id: string;
+    /** Who blocks. */
+    account_id: string;
+    /** The domain blocked, in lowercase. */
+    domain: string;
+    created_at: Date;
+};

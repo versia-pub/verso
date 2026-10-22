@@ -10,7 +10,13 @@ import type {
 } from "../accounts/tables.ts";
 import type { AccessTokensTable, AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
 import type { AccountEmojisTable, EmojisTable, NoteEmojisTable } from "../emojis/tables.ts";
-import type { AccountNotesTable, BlocksTable, FollowsTable, MutesTable } from "../graph/tables.ts";
+import type {
+    AccountDomainBlocksTable,
+    AccountNotesTable,
+    BlocksTable,
+    FollowsTable,
+    MutesTable,
+} from "../graph/tables.ts";
 import type { LikesTable, ReactionsTable } from "../interactions/tables.ts";
 import type { RateLimitsTable } from "../http/tables.ts";
 import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
@@ -31,6 +37,7 @@ import { sqliteDialect } from "./sqlite.ts";
 /** Every table, as migrations add them. */
 export type Database = {
     access_tokens: AccessTokensTable;
+    account_domain_blocks: AccountDomainBlocksTable;
     account_emojis: AccountEmojisTable;
     account_notes: AccountNotesTable;
     account_roles: AccountRolesTable;

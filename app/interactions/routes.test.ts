@@ -1,9 +1,11 @@
 import { assertEquals } from "@std/assert";
-import { createLocalAccount } from "../accounts/testing.ts";
+import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { block } from "../graph/blocks.ts";
+import { blockDomainFor } from "../graph/domain_blocks.ts";
 import { follow, unfollow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
+import { createInstance } from "../instances/testing.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -267,4 +269,26 @@ Deno.test("the likes, shares and reactions of those the viewer mutes are still s
     );
     const status = (await test.request("POST", `${path}/favourite`, "alice")).body;
     assertEquals([status.favourites_count, status.reblogs_count], [2, 1]);
+});
+
+Deno.test("the blocker isn't shown, or counted, the likes of the accounts on domains it blocks", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "erin", "b.example");
+    const note = await createNote(test.ctx, "alice");
+    for (const by of ["bob", "erin"]) await like(test.ctx, by, note.id);
+    await blockDomainFor(test.ctx, "alice", "b.example");
+    const path = `/api/v1/statuses/${note.id}`;
+    const ids = async (as: string) =>
+        (await test.request("GET", `${path}/favourited_by`, as)).body.map((
+            account: { id: string },
+        ) => account.id);
+
+    assertEquals(await ids("alice"), ["bob"]);
+    // Her own like, and bob's.
+    assertEquals(
+        (await test.request("POST", `${path}/favourite`, "alice")).body.favourites_count,
+        2,
+    );
+    assertEquals(await ids("bob"), ["alice", "erin", "bob"]);
 });
