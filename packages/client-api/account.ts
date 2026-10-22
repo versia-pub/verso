@@ -143,3 +143,13 @@ export const CredentialAccount = Account.extend({
     role: Role,
 });
 export type CredentialAccount = z.infer<typeof CredentialAccount>;
+
+/**
+ * An account the viewer mutes, with when the mute ends.
+ * @see https://docs.joinmastodon.org/entities/Account/#mute_expires_at
+ */
+export const MutedAccount = Account.extend({
+    /** When the viewer's mute of the account ends, or `null` if it doesn't. */
+    mute_expires_at: z.iso.datetime().nullable(),
+});
+export type MutedAccount = z.infer<typeof MutedAccount>;

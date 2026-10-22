@@ -1,4 +1,4 @@
-import { Account, Relationship } from "@versia/client-api";
+import { Account, MutedAccount, Relationship } from "@versia/client-api";
 import { z } from "zod";
 import { existingAccountIds, findAccount } from "../accounts/account_queries.ts";
 import { publicAccounts } from "../accounts/public.ts";
@@ -11,6 +11,8 @@ import { blockPage, blocksBetween } from "./block_queries.ts";
 import { block, unblock } from "./blocks.ts";
 import { followPage, followsFrom, type FollowSide, followsOf } from "./follow_queries.ts";
 import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
+import { mutePage, mutesOf } from "./mute_queries.ts";
+import { mute, unmute } from "./mutes.ts";
 import { renderRelationship } from "./render.ts";
 
 /** A viewer acting for a user. */
@@ -33,13 +35,14 @@ const relationships = async (ctx: Context, viewer: UserViewer, ids: readonly str
     );
     const { blocking, blockedBy } = await blocksBetween(ctx, viewerId, asked);
     const seesBlocks = (await viewer.permissions()).has("blocks");
+    const mutes = await mutesOf(ctx, viewerId, asked);
 
     return asked.filter((id) => known.has(id))
         .map((id) =>
             renderRelationship(id, outgoing.get(id), incoming.get(id), {
                 blocking: blocking.has(id),
                 blockedBy: seesBlocks && blockedBy.has(id),
-            })
+            }, mutes.get(id))
         );
 };
 
@@ -141,8 +144,63 @@ const blockRoute = (action: "block" | "unblock") =>
         },
     });
 
+/** The longest a mute may last, as on Versia Server: five years, in seconds. */
+const longestMute = 5 * 365 * 24 * 60 * 60;
+
 /**
- * Who follows and blocks whom. Before the account routes, whose `/api/v1/accounts/:id` would take
+ * How the viewer mutes an account, as Mastodon takes it.
+ * @see https://docs.joinmastodon.org/methods/accounts/#mute
+ */
+const MuteBody = z.object({
+    notifications: Flag.default(true).meta({
+        description: "Mute notifications in addition to statuses? Defaults to true.",
+    }),
+    duration: z.coerce.number().int().min(0).max(longestMute).default(0).meta({
+        description: "How long the mute should last, in seconds. Defaults to 0 (indefinite).",
+    }),
+});
+
+/** Mutes an account, or changes how the viewer mutes it. */
+const muteRoute = defineRoute({
+    method: "POST",
+    path: "/api/v1/accounts/:id/mute",
+    summary: "Mute account",
+    description: "Mute the given account. Clients should filter statuses and notifications from " +
+        "this account, if received (e.g. due to a boost in the Home timeline).\n\nMuting an " +
+        "account already muted changes how it is muted. Durations are at most five years.",
+    docs: "https://docs.joinmastodon.org/methods/accounts/#mute",
+    tags: ["accounts"],
+    auth: { require: "user", scope: "write:mutes", permission: "owner:mute" },
+    params: z.object({ id: z.string() }),
+    body: MuteBody,
+    responses: { 200: Relationship },
+    handler: async (ctx, { params, body, viewer }) => {
+        if (!await mute(ctx, viewer.accountId, params.id, body)) throw new NotFound();
+
+        return { status: 200, body: await relationship(ctx, viewer, params.id) };
+    },
+});
+
+/** Stops muting an account. */
+const unmuteRoute = defineRoute({
+    method: "POST",
+    path: "/api/v1/accounts/:id/unmute",
+    summary: "Unmute account",
+    description: "Unmute the given account.",
+    docs: "https://docs.joinmastodon.org/methods/accounts/#unmute",
+    tags: ["accounts"],
+    auth: { require: "user", scope: "write:mutes", permission: "owner:mute" },
+    params: z.object({ id: z.string() }),
+    responses: { 200: Relationship },
+    handler: async (ctx, { params, viewer }) => {
+        await unmute(ctx, viewer.accountId, params.id);
+
+        return { status: 200, body: await relationship(ctx, viewer, params.id) };
+    },
+});
+
+/**
+ * Who follows, blocks and mutes whom. Before the account routes, whose `/api/v1/accounts/:id` would take
  * these.
  */
 export const graphRoutes: readonly Route[] = [
@@ -169,6 +227,32 @@ export const graphRoutes: readonly Route[] = [
     answerRequest("reject"),
     blockRoute("block"),
     blockRoute("unblock"),
+    muteRoute,
+    unmuteRoute,
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/mutes",
+        summary: "View muted accounts",
+        description: "Accounts the user has muted.",
+        docs: "https://docs.joinmastodon.org/methods/mutes/#get",
+        tags: ["mutes"],
+        auth: { require: "user", scope: "read:mutes", permission: "owner:mute" },
+        query: PageQuery({ default: 40, max: 80 }),
+        responses: { 200: Paged(MutedAccount) },
+        handler: async (ctx, { query, viewer }) => {
+            const mutes = await mutePage(ctx, viewer.accountId, query);
+            const ends = new Map(mutes.map((each) => [each.account_id, each.expires_at]));
+            const accounts = await publicAccounts(ctx, [...ends.keys()]);
+            return {
+                status: 200,
+                body: accounts.map((account) => ({
+                    ...account,
+                    mute_expires_at: ends.get(account.id)?.toISOString() ?? null,
+                })),
+                cursors: cursorsOf(mutes, query, (each) => each.id),
+            };
+        },
+    }),
     defineRoute({
         method: "GET",
         path: "/api/v1/blocks",

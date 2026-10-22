@@ -30,3 +30,18 @@ export type BlocksTable = {
     target_id: string;
     created_at: Date;
 };
+
+/** An account muting another, as on Mastodon, which only the muter knows of. */
+export type MutesTable = {
+    /** Orders mutes by when they were made, for paging through them. */
+    id: string;
+    /** Who mutes. */
+    account_id: string;
+    /** Who is muted. */
+    target_id: string;
+    /** Whether the muted account's notifications are muted too. */
+    notifications: boolean;
+    /** When the mute ends, or `null` if it doesn't. */
+    expires_at: Date | null;
+    created_at: Date;
+};

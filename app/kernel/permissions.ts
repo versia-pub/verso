@@ -24,6 +24,8 @@ export const permissions = [
     "owner:follow",
     /** Block and unblock accounts, and see whom one blocks. */
     "owner:block",
+    /** Mute and unmute accounts, and see whom one mutes. */
+    "owner:mute",
     /** Like notes, and undo it. */
     "owner:like",
     /** Share notes, and undo it. */

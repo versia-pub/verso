@@ -125,6 +125,7 @@ export const Permissions = z.strictObject({
         "owner:boost",
         "owner:follow",
         "owner:like",
+        "owner:mute",
         "owner:note",
         "owner:reaction",
     ]),

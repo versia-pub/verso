@@ -10,6 +10,7 @@ import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { block } from "./blocks.ts";
 import { acceptFollow, follow } from "./follows.ts";
+import { mute } from "./mutes.ts";
 import { graphRoutes } from "./routes.ts";
 
 const open = async () => {
@@ -542,4 +543,110 @@ Deno.test("the accounts the viewer blocks are listed, the latest blocked first, 
     );
     assertEquals((await list(test.app, "/api/v1/blocks", token)).ids, ["dave", "carol", "bob"]);
     assertEquals((await list(test.app, "/api/v1/blocks", await tokenFor(test.ctx, "bob"))).ids, []);
+});
+
+Deno.test("muting gives the relationship with the mute, and unmuting undoes it", async () => {
+    await using test = await open();
+    const now = test.clock.now().getTime();
+
+    const muted = await test.request("POST", "/api/v1/accounts/bob/mute");
+    assertEquals([muted.status, muted.body], [200, {
+        ...none,
+        id: "bob",
+        muting: true,
+        muting_notifications: true,
+    }]);
+
+    const changed = await test.request("POST", "/api/v1/accounts/bob/mute", {
+        body: JSON.stringify({ notifications: false, duration: 60 }),
+    });
+    assertEquals(changed.body, {
+        ...none,
+        id: "bob",
+        muting: true,
+        muting_expires_at: new Date(now + 60_000).toISOString(),
+    });
+    // Only alice is shown it.
+    assertEquals(
+        (await test.request("GET", "/api/v1/accounts/relationships?id=alice", {
+            token: await tokenFor(test.ctx, "bob"),
+        })).body,
+        [{ ...none, id: "alice" }],
+    );
+
+    const unmuted = await test.request("POST", "/api/v1/accounts/bob/unmute");
+    assertEquals([unmuted.status, unmuted.body], [200, { ...none, id: "bob" }]);
+});
+
+Deno.test("an account that isn't there, or the viewer's own, can't be muted, nor for too long", async () => {
+    await using test = await open();
+    const fiveYears = 5 * 365 * 24 * 60 * 60;
+    const muting = (path: string, duration?: number) =>
+        test.request("POST", path, { body: JSON.stringify({ duration }) });
+
+    assertEquals((await muting("/api/v1/accounts/missing/mute")).status, 404);
+    assertEquals((await muting("/api/v1/accounts/alice/mute")).status, 404);
+    assertEquals((await test.request("POST", "/api/v1/accounts/missing/unmute")).status, 404);
+    assertEquals((await muting("/api/v1/accounts/bob/mute", fiveYears + 1)).status, 422);
+    assertEquals((await muting("/api/v1/accounts/bob/mute", -1)).status, 422);
+    assertEquals((await muting("/api/v1/accounts/bob/mute", fiveYears)).status, 200);
+});
+
+Deno.test("muting needs a token that may write mutes, and a role that may mute", async () => {
+    await using test = await open();
+
+    for (const path of ["/api/v1/accounts/bob/mute", "/api/v1/accounts/bob/unmute"]) {
+        assertEquals((await test.request("POST", path, { scopes: ["write:blocks"] })).status, 403);
+        assertEquals((await test.request("POST", path, { scopes: ["write:mutes"] })).status, 200);
+    }
+    assertEquals(
+        (await test.request("GET", "/api/v1/mutes", { scopes: ["read:blocks"] })).status,
+        403,
+    );
+    assertEquals(
+        (await test.request("GET", "/api/v1/mutes", { scopes: ["read:mutes"] })).status,
+        200,
+    );
+
+    await using limited = await createTestContext();
+    await createLocalAccount(limited.ctx, "alice");
+    await createLocalAccount(limited.ctx, "bob");
+    const app = createTestApp(limited.ctx, graphRoutes, {
+        permissions: { anonymous: [], default: ["read:account"] },
+    });
+    for (
+        const [method, path] of [
+            ["POST", "/api/v1/accounts/bob/mute"],
+            ["POST", "/api/v1/accounts/bob/unmute"],
+            ["GET", "/api/v1/mutes"],
+        ]
+    ) {
+        const response = await app.request(path, {
+            method,
+            headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
+        });
+        await response.body?.cancel();
+        assertEquals(response.status, 403, path);
+    }
+});
+
+Deno.test("the accounts the viewer mutes are listed, the latest muted first, with when each ends", async () => {
+    await using test = await open();
+    const now = test.clock.now().getTime();
+    await mute(test.ctx, "alice", "bob", { notifications: true, duration: 60 });
+    test.clock.advance(1);
+    await mute(test.ctx, "alice", "carol", { notifications: true, duration: 0 });
+    await mute(test.ctx, "bob", "alice", { notifications: true, duration: 0 });
+    const listed = async (as = "alice") =>
+        (await test.request("GET", "/api/v1/mutes", { token: await tokenFor(test.ctx, as) }))
+            .body.map((account: { id: string; mute_expires_at: string | null }) => [
+                account.id,
+                account.mute_expires_at,
+            ]);
+
+    assertEquals(await listed(), [["carol", null], ["bob", new Date(now + 60_000).toISOString()]]);
+    assertEquals(await listed("bob"), [["alice", null]]);
+
+    const page = await test.request("GET", "/api/v1/mutes?limit=1");
+    assertEquals(page.body.map((account: { id: string }) => account.id), ["carol"]);
 });
