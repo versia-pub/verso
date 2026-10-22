@@ -19,3 +19,14 @@ export type FollowsTable = {
     languages: string[] | null;
     created_at: Date;
 };
+
+/** An account blocking another, which only the blocker, and moderators, know of. */
+export type BlocksTable = {
+    /** Orders blocks by when they were made, for paging through them. */
+    id: string;
+    /** Who blocks. */
+    account_id: string;
+    /** Who is blocked. */
+    target_id: string;
+    created_at: Date;
+};

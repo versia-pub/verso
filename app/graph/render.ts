@@ -3,12 +3,14 @@ import type { FollowRow } from "./follow_queries.ts";
 
 /**
  * The viewer's relationship with the account `id`, from the viewer's follow of it and its follow
- * of the viewer, either of which may be a request. Blocks and mutes are none yet.
+ * of the viewer, either of which may be a request, and whether either blocks the other. Mutes are
+ * none yet.
  */
 export const renderRelationship = (
     id: string,
     outgoing: FollowRow | undefined,
     incoming: FollowRow | undefined,
+    blocks: { readonly blocking: boolean; readonly blockedBy: boolean },
 ): Relationship => ({
     id,
     following: outgoing?.accepted ?? false,
@@ -16,8 +18,8 @@ export const renderRelationship = (
     notifying: outgoing?.notify ?? false,
     languages: outgoing?.languages ?? null,
     followed_by: incoming?.accepted ?? false,
-    blocking: false,
-    blocked_by: false,
+    blocking: blocks.blocking,
+    blocked_by: blocks.blockedBy,
     muting: false,
     muting_notifications: false,
     muting_expires_at: null,

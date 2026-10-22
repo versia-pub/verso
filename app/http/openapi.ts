@@ -45,6 +45,7 @@ type Security = readonly Readonly<Record<string, readonly string[]>>[];
 type Operation = {
     readonly summary: string;
     readonly description?: string;
+    readonly externalDocs?: { readonly url: string };
     readonly tags?: readonly string[];
     readonly security?: Security;
     readonly parameters?: readonly Parameter[];
@@ -263,12 +264,14 @@ const operation = (route: Route, names: Naming): Operation => {
         ...parameters("cookie", route.cookies, names, (key) => `__Host-${key}`),
     ];
     const body = route.body && jsonSchema(route.body, names);
-    const description = restrictions(route);
+    const description = [route.description ?? "", restrictions(route)]
+        .filter((part) => part !== "").join("\n\n");
     const needed = security(route);
 
     return {
         summary: route.summary,
         ...description && { description },
+        ...route.docs && { externalDocs: { url: route.docs } },
         ...route.tags && { tags: route.tags },
         ...needed && { security: needed },
         ...all.length > 0 && { parameters: all },

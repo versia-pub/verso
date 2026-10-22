@@ -358,3 +358,39 @@ Deno.test("who may call a route is its security, and what OpenAPI can't say is d
     }
     assertEquals([VersiaSignature.in, VersiaSignature.name], ["header", "Versia-Signature"]);
 });
+
+Deno.test("a route's description comes before what OpenAPI can't say, and links its docs", () => {
+    const routes = [
+        defineRoute({
+            method: "POST",
+            path: "/api/v1/accounts/:id/block",
+            summary: "Block account",
+            description: "Block the given account.",
+            docs: "https://docs.joinmastodon.org/methods/accounts/#block",
+            auth: { require: "user", permission: "owner:block" },
+            params: z.object({ id: z.string() }),
+            responses: { 200: z.object({}) },
+            handler: unused,
+        }),
+        defineRoute({
+            method: "GET",
+            path: "/api/v1/blocks",
+            summary: "View blocked users",
+            description: "View your blocks.",
+            responses: { 200: z.object({}) },
+            handler: unused,
+        }),
+    ];
+
+    const { paths } = openApiDocument(routes, info, origin);
+    const { description, externalDocs } = paths["/api/v1/accounts/{id}/block"].post;
+    assertEquals(
+        description,
+        "Block the given account.\n\n" +
+            "Needs a token for a user, not one an app got for itself. " +
+            "Needs the `owner:block` permission.",
+    );
+    assertEquals(externalDocs, { url: "https://docs.joinmastodon.org/methods/accounts/#block" });
+    assertEquals(paths["/api/v1/blocks"].get.description, "View your blocks.");
+    assertEquals(paths["/api/v1/blocks"].get.externalDocs, undefined);
+});

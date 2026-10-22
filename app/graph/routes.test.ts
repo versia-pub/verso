@@ -8,6 +8,7 @@ import type { Scope } from "../kernel/scopes.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
+import { block } from "./blocks.ts";
 import { acceptFollow, follow } from "./follows.ts";
 import { graphRoutes } from "./routes.ts";
 
@@ -103,7 +104,7 @@ Deno.test("relationships show follows and requests both ways", async () => {
 
 Deno.test("relationships need a user's token that may read follows", async () => {
     await using test = await open();
-    const path = "/api/v1/accounts/relationships?id=alice";
+    const path = "/api/v1/accounts/relationships?id=alice&id=carol";
 
     assertEquals((await test.request("GET", path, { scopes: ["read:follows"] })).status, 200);
     assertEquals((await test.request("GET", path, { scopes: ["read:accounts"] })).status, 403);
@@ -434,4 +435,111 @@ Deno.test("an account's owner sees how many ask to follow it", async () => {
 
     // Alice has two followers, and bob follows nobody who hasn't accepted.
     assertEquals([await count("alice"), await count("bob")], [1, 0]);
+});
+
+Deno.test("blocking gives the relationship as it is now, and unblocking undoes it", async () => {
+    await using test = await open();
+    await follow(test.ctx, "alice", "bob");
+    await follow(test.ctx, "bob", "alice");
+    const following = { ...none, following: true, showing_reblogs: true, followed_by: true };
+
+    // The follows stay, and alice can still follow bob.
+    assertEquals(await test.request("POST", "/api/v1/accounts/bob/block"), {
+        status: 200,
+        body: { id: "bob", ...following, blocking: true },
+    });
+    assertEquals((await test.request("POST", "/api/v1/accounts/bob/follow")).status, 200);
+
+    assertEquals(await test.request("POST", "/api/v1/accounts/bob/unblock"), {
+        status: 200,
+        body: { id: "bob", ...following },
+    });
+});
+
+Deno.test("only those who may see everyone's blocks are shown who blocks them", async () => {
+    await using test = await open();
+    await test.request("POST", "/api/v1/accounts/bob/block");
+    const bob = { authorization: `Bearer ${await tokenFor(test.ctx, "bob")}` };
+    const path = "/api/v1/accounts/relationships?id=alice&id=carol";
+
+    assertEquals(await test.request("GET", path, { token: await tokenFor(test.ctx, "bob") }), {
+        status: 200,
+        body: [{ id: "alice", ...none }, { id: "carol", ...none }],
+    });
+
+    const moderated = createTestApp(test.ctx, graphRoutes, {
+        permissions: { anonymous: [], default: ["blocks"] },
+    });
+    const response = await moderated.request(path, { headers: bob });
+    assertEquals(await response.json(), [
+        { id: "alice", ...none, blocked_by: true },
+        { id: "carol", ...none },
+    ]);
+});
+
+Deno.test("an account that isn't there, or the viewer's own, can't be blocked", async () => {
+    await using test = await open();
+
+    assertEquals((await test.request("POST", "/api/v1/accounts/dave/block")).status, 404);
+    assertEquals((await test.request("POST", "/api/v1/accounts/alice/block")).status, 404);
+    assertEquals((await test.request("POST", "/api/v1/accounts/dave/unblock")).status, 404);
+});
+
+Deno.test("blocking needs a token that may write blocks, and a role that may block", async () => {
+    await using test = await open();
+
+    for (const path of ["/api/v1/accounts/bob/block", "/api/v1/accounts/bob/unblock"]) {
+        assertEquals((await test.request("POST", path, { scopes: ["write:follows"] })).status, 403);
+        assertEquals((await test.request("POST", path, { scopes: ["write:blocks"] })).status, 200);
+    }
+    assertEquals(
+        (await test.request("GET", "/api/v1/blocks", { scopes: ["read:follows"] })).status,
+        403,
+    );
+    assertEquals(
+        (await test.request("GET", "/api/v1/blocks", { scopes: ["read:blocks"] })).status,
+        200,
+    );
+
+    await using limited = await createTestContext();
+    await createLocalAccount(limited.ctx, "alice");
+    await createLocalAccount(limited.ctx, "bob");
+    const app = createTestApp(limited.ctx, graphRoutes, {
+        permissions: { anonymous: [], default: ["read:account"] },
+    });
+    for (
+        const [method, path] of [["POST", "/api/v1/accounts/bob/block"], ["GET", "/api/v1/blocks"]]
+    ) {
+        const response = await app.request(path, {
+            method,
+            headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
+        });
+        await response.body?.cancel();
+        assertEquals(response.status, 403, path);
+    }
+});
+
+Deno.test("the accounts the viewer blocks are listed, the latest blocked first, a page at a time", async () => {
+    await using test = await openLists();
+    for (const id of ["bob", "carol", "dave"]) {
+        test.clock.advance(1);
+        await block(test.ctx, "alice", id);
+    }
+    await block(test.ctx, "erin", "alice");
+    const token = await tokenFor(test.ctx, "alice");
+    const cursor = async (target: string) =>
+        (await test.ctx.db.selectFrom("blocks").select("id")
+            .where("account_id", "=", "alice").where("target_id", "=", target)
+            .executeTakeFirstOrThrow()).id;
+    const url = "https://social.example/api/v1/blocks";
+
+    const first = await list(test.app, "/api/v1/blocks?limit=1", token);
+    assertEquals(first.ids, ["dave"]);
+    assertEquals(
+        first.link,
+        `<${url}?limit=1&max_id=${await cursor("dave")}>; rel="next", ` +
+            `<${url}?limit=1&min_id=${await cursor("dave")}>; rel="prev"`,
+    );
+    assertEquals((await list(test.app, "/api/v1/blocks", token)).ids, ["dave", "carol", "bob"]);
+    assertEquals((await list(test.app, "/api/v1/blocks", await tokenFor(test.ctx, "bob"))).ids, []);
 });

@@ -142,6 +142,13 @@ export type RouteDefinition<
     readonly path: string;
     /** One line for the API documentation. */
     readonly summary: string;
+    /** More for the API documentation, such as how Verso differs from Mastodon. */
+    readonly description?: string;
+    /**
+     * Where the route is documented elsewhere, such as Mastodon's documentation for a client API
+     * route.
+     */
+    readonly docs?: string;
     /** The groups the route is listed under in the API documentation, such as `accounts`. */
     readonly tags?: readonly string[];
     /**

@@ -4,15 +4,25 @@ import { existingAccountIds, findAccount } from "../accounts/account_queries.ts"
 import { publicAccounts } from "../accounts/public.ts";
 import { NotFound, NotPermitted } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
-import { defineRoute, Paged, type Route } from "../http/route.ts";
+import { defineRoute, Paged, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
+import { blockPage, blocksBetween } from "./block_queries.ts";
+import { block, unblock } from "./blocks.ts";
 import { followPage, followsFrom, type FollowSide, followsOf } from "./follow_queries.ts";
 import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
 import { renderRelationship } from "./render.ts";
 
-/** How `viewerId` is connected to each of `ids` that is an account, in the order asked. */
-const relationships = async (ctx: Context, viewerId: string, ids: readonly string[]) => {
+/** A viewer acting for a user. */
+type UserViewer = RouteViewer & { readonly accountId: string };
+
+/**
+ * How the viewer is connected to each of `ids` that is an account, in the order asked. Only a
+ * viewer whose role lets them see everyone's blocks is shown who blocks them; to others, no one
+ * does, so a block can't be found out.
+ */
+const relationships = async (ctx: Context, viewer: UserViewer, ids: readonly string[]) => {
+    const viewerId = viewer.accountId;
     const asked = [...new Set(ids)];
     const known = new Set(await existingAccountIds(ctx, asked));
     const outgoing = new Map(
@@ -21,14 +31,21 @@ const relationships = async (ctx: Context, viewerId: string, ids: readonly strin
     const incoming = new Map(
         (await followsOf(ctx, viewerId, asked)).map((row) => [row.follower_id, row]),
     );
+    const { blocking, blockedBy } = await blocksBetween(ctx, viewerId, asked);
+    const seesBlocks = (await viewer.permissions()).has("blocks");
 
     return asked.filter((id) => known.has(id))
-        .map((id) => renderRelationship(id, outgoing.get(id), incoming.get(id)));
+        .map((id) =>
+            renderRelationship(id, outgoing.get(id), incoming.get(id), {
+                blocking: blocking.has(id),
+                blockedBy: seesBlocks && blockedBy.has(id),
+            })
+        );
 };
 
 /** The viewer's relationship with one account. */
-const relationship = async (ctx: Context, viewerId: string, id: string) => {
-    const [found] = await relationships(ctx, viewerId, [id]);
+const relationship = async (ctx: Context, viewer: UserViewer, id: string) => {
+    const [found] = await relationships(ctx, viewer, [id]);
     if (found === undefined) throw new NotFound();
     return found;
 };
@@ -91,11 +108,43 @@ const answerRequest = (answer: "authorize" | "reject") =>
                 : await rejectFollow(ctx, params.id, viewer.accountId, false);
             if (!answered) throw new NotFound();
 
-            return { status: 200, body: await relationship(ctx, viewer.accountId, params.id) };
+            return { status: 200, body: await relationship(ctx, viewer, params.id) };
         },
     });
 
-/** Who follows whom. Before the account routes, whose `/api/v1/accounts/:id` would take these. */
+/** Blocks or unblocks an account. */
+const blockRoute = (action: "block" | "unblock") =>
+    defineRoute({
+        method: "POST",
+        path: `/api/v1/accounts/:id/${action}`,
+        ...action === "block"
+            ? {
+                summary: "Block account",
+                description: "Block the given account. Clients should filter statuses from this " +
+                    "account if received (e.g. due to a boost in the Home timeline).\n\n" +
+                    "Unlike Mastodon, Verso tells neither the account nor its instance, and " +
+                    "blocking ends no follows.",
+            }
+            : { summary: "Unblock account", description: "Unblock the given account." },
+        docs: `https://docs.joinmastodon.org/methods/accounts/#${action}`,
+        tags: ["accounts"],
+        auth: { require: "user", scope: "write:blocks", permission: "owner:block" },
+        params: z.object({ id: z.string() }),
+        responses: { 200: Relationship },
+        handler: async (ctx, { params, viewer }) => {
+            if (action === "block" && !await block(ctx, viewer.accountId, params.id)) {
+                throw new NotFound();
+            }
+            if (action === "unblock") await unblock(ctx, viewer.accountId, params.id);
+
+            return { status: 200, body: await relationship(ctx, viewer, params.id) };
+        },
+    });
+
+/**
+ * Who follows and blocks whom. Before the account routes, whose `/api/v1/accounts/:id` would take
+ * these.
+ */
 export const graphRoutes: readonly Route[] = [
     followList("followers"),
     followList("following"),
@@ -118,6 +167,27 @@ export const graphRoutes: readonly Route[] = [
     }),
     answerRequest("authorize"),
     answerRequest("reject"),
+    blockRoute("block"),
+    blockRoute("unblock"),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/blocks",
+        summary: "View blocked users",
+        description: "View your blocks. See also accounts/:id/{block,unblock}",
+        docs: "https://docs.joinmastodon.org/methods/blocks/#get",
+        tags: ["blocks"],
+        auth: { require: "user", scope: "read:blocks", permission: "owner:block" },
+        query: PageQuery({ default: 40, max: 80 }),
+        responses: { 200: Paged(Account) },
+        handler: async (ctx, { query, viewer }) => {
+            const blocks = await blockPage(ctx, viewer.accountId, query);
+            return {
+                status: 200,
+                body: await publicAccounts(ctx, blocks.map((block) => block.account_id)),
+                cursors: cursorsOf(blocks, query, (block) => block.id),
+            };
+        },
+    }),
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/relationships",
@@ -131,7 +201,7 @@ export const graphRoutes: readonly Route[] = [
         responses: { 200: z.array(Relationship) },
         handler: async (ctx, { query, viewer }) => ({
             status: 200,
-            body: await relationships(ctx, viewer.accountId, query.id),
+            body: await relationships(ctx, viewer, query.id),
         }),
     }),
     defineRoute({
@@ -153,7 +223,7 @@ export const graphRoutes: readonly Route[] = [
             if (result === "missing") throw new NotFound();
             if (result === "blocked") throw new NotPermitted("Its instance is blocked");
 
-            return { status: 200, body: await relationship(ctx, viewer.accountId, params.id) };
+            return { status: 200, body: await relationship(ctx, viewer, params.id) };
         },
     }),
     defineRoute({
@@ -166,7 +236,7 @@ export const graphRoutes: readonly Route[] = [
         responses: { 200: Relationship },
         handler: async (ctx, { params, viewer }) => {
             await unfollow(ctx, viewer.accountId, params.id);
-            return { status: 200, body: await relationship(ctx, viewer.accountId, params.id) };
+            return { status: 200, body: await relationship(ctx, viewer, params.id) };
         },
     }),
     defineRoute({
@@ -179,7 +249,7 @@ export const graphRoutes: readonly Route[] = [
         responses: { 200: Relationship },
         handler: async (ctx, { params, viewer }) => {
             await rejectFollow(ctx, params.id, viewer.accountId, true);
-            return { status: 200, body: await relationship(ctx, viewer.accountId, params.id) };
+            return { status: 200, body: await relationship(ctx, viewer, params.id) };
         },
     }),
 ];

@@ -22,6 +22,8 @@ export const permissions = [
     "owner:account",
     /** Follow and unfollow accounts. */
     "owner:follow",
+    /** Block and unblock accounts, and see whom one blocks. */
+    "owner:block",
     /** Like notes, and undo it. */
     "owner:like",
     /** Share notes, and undo it. */
@@ -30,6 +32,11 @@ export const permissions = [
     "owner:reaction",
     /** Post and delete one's own notes. */
     "owner:note",
+    /**
+     * See who blocks each account, which is otherwise only the blocker's to know, as moderators
+     * may need to.
+     */
+    "blocks",
     /** Create, change and assign roles below one's own. */
     "roles",
 ] as const;
