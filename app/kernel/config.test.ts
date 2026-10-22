@@ -43,6 +43,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                     "read:note",
                     "read:note_likes",
                     "read:note_boosts",
+                    "read:reaction",
                 ],
                 default: [
                     "read:account",
@@ -50,11 +51,13 @@ Deno.test("a minimal config gets the defaults", async () => {
                     "read:note",
                     "read:note_likes",
                     "read:note_boosts",
+                    "read:reaction",
                     "owner:account",
                     "owner:boost",
                     "owner:follow",
                     "owner:like",
                     "owner:note",
+                    "owner:reaction",
                 ],
             },
             logging: { level: "info" },
@@ -207,7 +210,7 @@ Deno.test("bad configs explain what is wrong", async () => {
         "logging.level",
     );
     assertStringIncludes(
-        await errors(minimal + '[permissions]\ndefault = ["owner:reaction"]'),
+        await errors(minimal + '[permissions]\ndefault = ["owner:poll"]'),
         "Unknown permission\n  → at permissions.default[0]",
     );
 

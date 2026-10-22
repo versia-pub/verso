@@ -2734,6 +2734,140 @@
                 }
             }
         },
+        "/api/v1/statuses/{id}/reactions/{name}": {
+            "put": {
+                "summary": "Reacts to a status the viewer may see with an emoji",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:reaction` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Undoes the viewer's reaction to a status with an emoji",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:reaction` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/reactions": {
+            "get": {
+                "summary": "The reactions to a status the viewer may see, by emoji, with who made them",
+                "description": "Needs the `read:reaction` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusReactionWithAccounts"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses/{id}/favourite": {
             "post": {
                 "summary": "Likes a status the viewer may see",
@@ -3494,10 +3628,12 @@
                                                 "read:note",
                                                 "read:note_likes",
                                                 "read:note_boosts",
+                                                "read:reaction",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
                                                 "owner:boost",
+                                                "owner:reaction",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3571,10 +3707,12 @@
                                                 "read:note",
                                                 "read:note_likes",
                                                 "read:note_boosts",
+                                                "read:reaction",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
                                                 "owner:boost",
+                                                "owner:reaction",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3648,10 +3786,12 @@
                                                 "read:note",
                                                 "read:note_likes",
                                                 "read:note_boosts",
+                                                "read:reaction",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
                                                 "owner:boost",
+                                                "owner:reaction",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3804,10 +3944,12 @@
                                                 "read:note",
                                                 "read:note_likes",
                                                 "read:note_boosts",
+                                                "read:reaction",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
                                                 "owner:boost",
+                                                "owner:reaction",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3878,10 +4020,12 @@
                                                 "read:note",
                                                 "read:note_likes",
                                                 "read:note_boosts",
+                                                "read:reaction",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
                                                 "owner:boost",
+                                                "owner:reaction",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3952,10 +4096,12 @@
                                                 "read:note",
                                                 "read:note_likes",
                                                 "read:note_boosts",
+                                                "read:reaction",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
                                                 "owner:boost",
+                                                "owner:reaction",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -8465,6 +8611,12 @@
                             "$ref": "#/components/schemas/CustomEmoji"
                         }
                     },
+                    "reactions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StatusReaction"
+                        }
+                    },
                     "reblogs_count": {
                         "type": "integer",
                         "minimum": 0,
@@ -8683,6 +8835,61 @@
                     "username",
                     "url",
                     "acct"
+                ]
+            },
+            "StatusReaction": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "remote": {
+                        "type": "boolean"
+                    },
+                    "me": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "name",
+                    "count",
+                    "remote"
+                ]
+            },
+            "StatusReactionWithAccounts": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "remote": {
+                        "type": "boolean"
+                    },
+                    "me": {
+                        "type": "boolean"
+                    },
+                    "account_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "name",
+                    "count",
+                    "remote",
+                    "account_ids"
                 ]
             },
             "StatusSource": {

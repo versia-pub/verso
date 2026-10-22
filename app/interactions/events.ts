@@ -1,5 +1,6 @@
 /**
- * What interactions tell the rest of Verso: likes and shares made and undone by local users.
+ * What interactions tell the rest of Verso: likes, shares and reactions made and undone by local
+ * users.
  * @module
  */
 import type { DomainEvent } from "../kernel/context.ts";
@@ -25,3 +26,14 @@ export type ShareEvent = {
 
 export const isShareEvent = (event: DomainEvent): event is ShareEvent =>
     event.type === "interactions.shared" || event.type === "interactions.unshared";
+
+/** A local user reacted to a note, or undid it. */
+export type ReactionEvent = {
+    readonly type: "interactions.reacted" | "interactions.unreacted";
+    readonly reactionId: string;
+    readonly accountId: string;
+    readonly noteId: string;
+};
+
+export const isReactionEvent = (event: DomainEvent): event is ReactionEvent =>
+    event.type === "interactions.reacted" || event.type === "interactions.unreacted";

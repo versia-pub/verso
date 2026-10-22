@@ -9,6 +9,8 @@ import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
 import { followedSubquery } from "../graph/follows.ts";
 import { likedAmong } from "../interactions/like_queries.ts";
+import { reactionsOf } from "../interactions/reaction_queries.ts";
+import { reactionEmojis, renderReactions } from "../interactions/render.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
 import { entityUrl } from "../kernel/urls.ts";
@@ -84,6 +86,7 @@ export const renderStatuses = async (
     const mentions = await mentionsOf(ctx, noteIds);
     const tags = await tagsOf(ctx, noteIds);
     const emojis = await emojisOfNotes(ctx, noteIds);
+    const reactions = await reactionsOf(ctx, noteIds, viewerId);
     const liked = viewerId === null ? new Set() : await likedAmong(ctx, viewerId, noteIds);
     const shared = viewerId === null ? new Set() : await sharedAmong(ctx, viewerId, noteIds);
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
@@ -129,7 +132,11 @@ export const renderStatuses = async (
                 name,
                 url: ctx.urls.url`/tags/${name}`,
             })),
-            emojis: renderEmojis(emojis.get(note.id) ?? []),
+            emojis: renderEmojis([
+                ...emojis.get(note.id) ?? [],
+                ...reactionEmojis(reactions.get(note.id) ?? []),
+            ]),
+            reactions: renderReactions(reactions.get(note.id) ?? [], viewerId !== null),
             reblogs_count: note.shares_count,
             favourites_count: note.likes_count,
             replies_count: note.replies_count,

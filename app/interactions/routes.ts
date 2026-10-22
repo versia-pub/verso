@@ -1,7 +1,7 @@
-import { Account, Status } from "@versia/client-api";
+import { Account, Status, StatusReactionWithAccounts } from "@versia/client-api";
 import { z } from "zod";
 import { publicAccounts } from "../accounts/public.ts";
-import { NotFound, NotPermitted } from "../http/errors.ts";
+import { NotFound, NotPermitted, Unprocessable } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { everyone } from "../notes/audience.ts";
@@ -10,6 +10,9 @@ import { canSee, visibleOriginal } from "../notes/notes.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { likePage } from "./like_queries.ts";
 import { like, unlike } from "./likes.ts";
+import { emojiKey, reactionsOf, reactorsOf } from "./reaction_queries.ts";
+import { react, unreact } from "./reactions.ts";
+import { renderReaction } from "./render.ts";
 import { share, unshare } from "./shares.ts";
 
 /** Likes a status, or undoes it, as Mastodon's favourites. */
@@ -43,8 +46,67 @@ const ShareOptions = z.object({
     visibility: z.enum(["public", "unlisted", "private"]).optional(),
 });
 
-/** Likes of statuses, which Mastodon calls favourites, and shares, which it calls reblogs. */
+/**
+ * Reacts to a status with an emoji, or undoes it, as Versia Server does. The emoji is a Unicode
+ * one, or one of this instance's by its shortcode in colons.
+ * @see https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions
+ */
+const reactionRoute = (method: "PUT" | "DELETE") =>
+    defineRoute({
+        method,
+        path: "/api/v1/statuses/:id/reactions/:name",
+        summary: method === "PUT"
+            ? "Reacts to a status the viewer may see with an emoji"
+            : "Undoes the viewer's reaction to a status with an emoji",
+        tags: ["statuses"],
+        auth: { require: "user", scope: "write:statuses", permission: "owner:reaction" },
+        params: z.object({ id: z.string(), name: z.string().min(1) }),
+        responses: method === "PUT" ? { 201: Status } : { 200: Status },
+        handler: async (ctx, { params, viewer }) => {
+            const result = method === "PUT"
+                ? await react(ctx, viewer.accountId, params.id, params.name)
+                : await unreact(ctx, viewer.accountId, params.id, params.name);
+            if (result === "missing") throw new NotFound();
+            if (result === "unknown emoji") {
+                throw new Unprocessable("Not a Unicode emoji, or one of this instance's");
+            }
+
+            const [status] = await renderStatuses(ctx, [result], viewer.accountId);
+            return { status: method === "PUT" ? 201 : 200, body: status };
+        },
+    });
+
+/**
+ * Likes of statuses, which Mastodon calls favourites, shares, which it calls reblogs, and
+ * reactions, as Versia Server has them.
+ */
 export const interactionRoutes: readonly Route[] = [
+    reactionRoute("PUT"),
+    reactionRoute("DELETE"),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/statuses/:id/reactions",
+        summary: "The reactions to a status the viewer may see, by emoji, with who made them",
+        tags: ["statuses"],
+        auth: { require: "optional", scope: "read:statuses", permission: "read:reaction" },
+        params: z.object({ id: z.string() }),
+        responses: { 200: z.array(StatusReactionWithAccounts) },
+        handler: async (ctx, { params, viewer }) => {
+            const note = await visibleOriginal(ctx, params.id, viewer?.accountId ?? null);
+            if (note === undefined) throw new NotFound();
+
+            const groups = (await reactionsOf(ctx, [note.id], viewer?.accountId ?? null))
+                .get(note.id) ?? [];
+            const reactors = await reactorsOf(ctx, note.id);
+            return {
+                status: 200,
+                body: groups.map((group) => ({
+                    ...renderReaction(group, viewer !== undefined),
+                    account_ids: reactors.get(emojiKey(group)) ?? [],
+                })),
+            };
+        },
+    }),
     likeRoute("favourite"),
     likeRoute("unfavourite"),
     defineRoute({

@@ -19,6 +19,28 @@ export const StatusMention = z.object({
 export type StatusMention = z.infer<typeof StatusMention>;
 
 /**
+ * The reactions to a status with one emoji. Versia Server's, which Pleroma has as
+ * `pleroma.emoji_reactions`.
+ * @see https://github.com/versia-pub/server/blob/main/packages/client/schemas/versia.ts
+ */
+export const StatusReaction = z.object({
+    /** A Unicode emoji, or a custom one's shortcode in colons, with its domain if it is remote. */
+    name: z.string(),
+    count: z.int().min(1),
+    /** Whether the emoji is another instance's. */
+    remote: z.boolean(),
+    /** Whether the viewer reacted with it, for a viewer. */
+    me: z.boolean().optional(),
+});
+export type StatusReaction = z.infer<typeof StatusReaction>;
+
+/** The reactions to a status with one emoji, with who made them, newest first. */
+export const StatusReactionWithAccounts = StatusReaction.extend({
+    account_ids: z.array(z.string()),
+});
+export type StatusReactionWithAccounts = z.infer<typeof StatusReactionWithAccounts>;
+
+/**
  * A hashtag a status uses.
  * @see https://docs.joinmastodon.org/entities/Status/#Tag
  */
@@ -92,8 +114,10 @@ export const Status = z.object({
     application: z.object({ name: z.string(), website: z.url().nullable() }).optional(),
     mentions: z.array(StatusMention),
     tags: z.array(StatusTag),
-    /** The emojis used in the content and warning. */
+    /** The emojis used in the content and warning, and those it is reacted to with. */
     emojis: z.array(CustomEmoji),
+    /** Reactions to it, by emoji, the first reacted with first. Versia Server's. */
+    reactions: z.array(StatusReaction).optional(),
     reblogs_count: z.int().min(0),
     favourites_count: z.int().min(0),
     replies_count: z.int().min(0),

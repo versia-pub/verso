@@ -16,3 +16,17 @@ export type LikesTable = {
     remote_id: string | null;
     created_at: Date;
 };
+
+/**
+ * An account's reaction to a note, with an emoji: a Unicode one, as `text`, or a custom one, as
+ * `emoji_id`, but never both.
+ */
+export type ReactionsTable = {
+    /** Orders reactions by when they were made. */
+    id: string;
+    account_id: string;
+    note_id: string;
+    text: string | null;
+    emoji_id: string | null;
+    created_at: Date;
+};

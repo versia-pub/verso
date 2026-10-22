@@ -85,6 +85,13 @@ export class UnsupportedMediaType extends HttpError {
     }
 }
 
+/** Input of the right shape that names something Verso can't act on, such as an unknown emoji. */
+export class Unprocessable extends HttpError {
+    constructor(description: string) {
+        super(422, "Validation failed", description);
+    }
+}
+
 /** An app's own token, where a route acts for a user. Mastodon answers 422 here. */
 export class UserRequired extends HttpError {
     constructor() {

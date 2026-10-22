@@ -5,7 +5,9 @@ import { follow, unfollow } from "../graph/follows.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
+import { createLocalEmoji } from "../emojis/testing.ts";
 import { like } from "./likes.ts";
+import { react } from "./reactions.ts";
 import { share } from "./shares.ts";
 import { interactionRoutes } from "./routes.ts";
 
@@ -146,4 +148,55 @@ Deno.test("the accounts that share a status publicly are listed, the latest firs
 
     const listed = await test.request("GET", `/api/v1/statuses/${note.id}/reblogged_by`, null);
     assertEquals(listed.body.map((account: { id: string }) => account.id), ["alice", "bob"]);
+});
+
+Deno.test("reacting to a status gives it back with the reaction, and undoing it without", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const path = `/api/v1/statuses/${note.id}/reactions/${encodeURIComponent("🎉")}`;
+
+    const reacted = await test.request("PUT", path);
+    assertEquals([reacted.status, reacted.body.id, reacted.body.reactions], [201, note.id, [
+        { name: "🎉", count: 1, remote: false, me: true },
+    ]]);
+    assertEquals((await test.request("PUT", path)).body.reactions[0].count, 1);
+
+    const undone = await test.request("DELETE", path);
+    assertEquals([undone.status, undone.body.reactions], [200, []]);
+});
+
+Deno.test("a reaction with an unknown emoji, or to a status the viewer can't see, is refused", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const hidden = await createNote(test.ctx, "alice", { visibility: "private" });
+    const path = (id: string, name: string) =>
+        `/api/v1/statuses/${id}/reactions/${encodeURIComponent(name)}`;
+
+    assertEquals((await test.request("PUT", path(note.id, ":nope:"))).status, 422);
+    assertEquals((await test.request("DELETE", path(note.id, "nope"))).status, 422);
+    assertEquals((await test.request("PUT", path(hidden.id, "🎉"), "dave")).status, 404);
+    assertEquals((await test.request("PUT", path(note.id, "🎉"), null)).status, 401);
+    assertEquals(
+        (await test.request("GET", `/api/v1/statuses/${hidden.id}/reactions`, null)).status,
+        404,
+    );
+});
+
+Deno.test("a status's reactions are listed by emoji, with who made them, the latest first", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    await createLocalEmoji(test.ctx, "blob");
+    for (const [by, name] of [["bob", "🎉"], ["dave", ":blob:"], ["alice", "🎉"]]) {
+        await react(test.ctx, by, note.id, name);
+    }
+    const path = `/api/v1/statuses/${note.id}/reactions`;
+
+    assertEquals((await test.request("GET", path)).body, [
+        { name: "🎉", count: 2, remote: false, me: true, account_ids: ["alice", "bob"] },
+        { name: ":blob:", count: 1, remote: false, me: false, account_ids: ["dave"] },
+    ]);
+    assertEquals((await test.request("GET", path, null)).body, [
+        { name: "🎉", count: 2, remote: false, account_ids: ["alice", "bob"] },
+        { name: ":blob:", count: 1, remote: false, account_ids: ["dave"] },
+    ]);
 });
