@@ -12,6 +12,7 @@ import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findNote } from "./note_queries.ts";
 import { noteRoutes } from "./routes.ts";
+import { pin } from "./pins.ts";
 import { createNote } from "./testing.ts";
 
 const open = async () => {
@@ -479,4 +480,92 @@ Deno.test("a share is undone by deleting it, can't be edited, and stands for its
         .filter((entity) => entity.type === "Delete")
         .map((entity) => entity.deleted_type);
     assertEquals(deletes, ["pub.versia:share/Share"]);
+});
+
+Deno.test("pinning a status gives it back pinned, and unpinning without", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const path = `/api/v1/statuses/${note.id}`;
+
+    const pinned = await test.request("POST", `${path}/pin`);
+    assertEquals([pinned.status, pinned.body.id, pinned.body.pinned], [200, note.id, true]);
+    assertEquals((await test.request("GET", path)).body.pinned, true);
+    // Only its author is told.
+    assertEquals("pinned" in (await test.request("GET", path, "bob")).body, false);
+    assertEquals("pinned" in (await test.request("GET", path, null)).body, false);
+
+    const unpinned = await test.request("POST", `${path}/unpin`);
+    assertEquals([unpinned.status, unpinned.body.pinned], [200, false]);
+});
+
+Deno.test("only the author's own statuses that can be pinned are, up to 5", async () => {
+    await using test = await open();
+    const bobs = await createNote(test.ctx, "bob");
+    const direct = await createNote(test.ctx, "alice", { visibility: "direct" });
+    const hidden = await createNote(test.ctx, "bob", { visibility: "direct" });
+    const pinning = async (
+        id: string,
+    ) => (await test.request("POST", `/api/v1/statuses/${id}/pin`));
+
+    assertEquals((await pinning(bobs.id)).status, 422);
+    const refused = await pinning(direct.id);
+    assertEquals([
+        refused.status,
+        "pinned" in (await test.request("GET", `/api/v1/statuses/${direct.id}`)).body,
+    ], [422, false]);
+    assertEquals((await pinning(hidden.id)).status, 404);
+    assertEquals((await test.request("POST", `/api/v1/statuses/${hidden.id}/unpin`)).status, 404);
+
+    for (let i = 0; i < 5; i++) {
+        await pin(test.ctx, "alice", (await createNote(test.ctx, "alice")).id);
+    }
+    const full = await pinning((await createNote(test.ctx, "alice")).id);
+    assertEquals([full.status, full.body.error_description], [
+        422,
+        "At most 5 statuses can be pinned",
+    ]);
+});
+
+Deno.test("an account's pinned statuses are those the viewer may see, the latest pinned first", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const hidden = await createNote(test.ctx, "alice", { visibility: "private" });
+    await createNote(test.ctx, "alice");
+    for (const each of [note, hidden]) {
+        test.clock.advance(1);
+        await pin(test.ctx, "alice", each.id);
+    }
+    const pinned = async (as: string | null) =>
+        (await test.request("GET", "/api/v1/accounts/alice/statuses?pinned=true", as)).body
+            .map((status: { id: string }) => status.id);
+
+    assertEquals(await pinned("bob"), [hidden.id, note.id]);
+    assertEquals(await pinned("dave"), [note.id]);
+    assertEquals(await pinned(null), [note.id]);
+});
+
+Deno.test("pinning needs a token that may write accounts, and a role that may post", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const path = `/api/v1/statuses/${note.id}`;
+
+    for (const action of ["pin", "unpin"]) {
+        assertEquals(
+            (await test.request("POST", `${path}/${action}`, "alice", ["write:statuses"])).status,
+            403,
+        );
+        assertEquals(
+            (await test.request("POST", `${path}/${action}`, "alice", ["write:accounts"])).status,
+            200,
+        );
+        assertEquals((await test.request("POST", `${path}/${action}`, null)).status, 401);
+    }
+
+    const readers = createTestApp(test.ctx, noteRoutes(defaultSettings().limits), {
+        permissions: { anonymous: [], default: ["read:note"] },
+    });
+    assertEquals(
+        (await test.request("POST", `${path}/pin`, "alice", undefined, readers)).status,
+        403,
+    );
 });

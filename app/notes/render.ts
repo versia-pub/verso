@@ -26,6 +26,8 @@ import {
     tagsOf,
     versionsOf,
 } from "./note_queries.ts";
+import { pinnedAmong } from "./pin_queries.ts";
+import { isPinnable } from "./pins.ts";
 
 /**
  * The note's id in Versia, the URL its Note entity is fetched from, or for a local share, its
@@ -42,14 +44,15 @@ const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
 };
 
 /**
- * What only a logged-in viewer is told: whether they like a note, and share it. The rest isn't
- * possible yet.
+ * What only a logged-in viewer is told: whether they like a note, and share it, and, of their own
+ * that they can pin, whether they pin it. The rest isn't possible yet.
  */
-const viewerFlags = (liked: boolean, shared: boolean) => ({
+const viewerFlags = (liked: boolean, shared: boolean, pinned: boolean | undefined) => ({
     favourited: liked,
     reblogged: shared,
     muted: false,
     bookmarked: false,
+    ...pinned === undefined ? {} : { pinned },
 });
 
 /**
@@ -112,6 +115,7 @@ export const renderStatuses = async (
     const uncounted = await blockedCounts(ctx, noteIds, blocked);
     const liked = viewerId === null ? new Set() : await likedAmong(ctx, viewerId, noteIds);
     const shared = viewerId === null ? new Set() : await sharedAmong(ctx, viewerId, noteIds);
+    const pinned = viewerId === null ? new Set() : await pinnedAmong(ctx, viewerId, noteIds);
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
 
     const accountIds = [
@@ -173,7 +177,11 @@ export const renderStatuses = async (
             language: note.language,
             text: options.source ? note.content : null,
             edited_at: note.edited_at?.toISOString() ?? null,
-            ...(viewerId === null ? {} : viewerFlags(liked.has(note.id), shared.has(note.id))),
+            ...(viewerId === null ? {} : viewerFlags(
+                liked.has(note.id),
+                shared.has(note.id),
+                isPinnable(note, viewerId) ? pinned.has(note.id) : undefined,
+            )),
         }];
     });
 };

@@ -1,13 +1,15 @@
 import { Context, Status, StatusEdit, StatusSource } from "@versia/client-api";
 import { z } from "zod";
 import { findAccount } from "../accounts/account_queries.ts";
-import { NotFound } from "../http/errors.ts";
+import { NotFound, Unprocessable } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { Flag } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import { countText } from "../kernel/markup.ts";
 import { notePageBy } from "./note_queries.ts";
+import { pinnedNotes } from "./pin_queries.ts";
+import { pin, pinLimit, unpin } from "./pins.ts";
 import { unshare } from "../interactions/shares.ts";
 import {
     editNote,
@@ -77,8 +79,8 @@ const edit = (limits: Limits) =>
     }).refine(limited(limits).check, limited(limits).error);
 
 /**
- * Which of an account's statuses to give. Verso has no media or pins yet, so asking only for
- * statuses with media, or pinned ones, gives none.
+ * Which of an account's statuses to give. Verso has no media yet, so asking only for statuses with
+ * media gives none. Pinned ones, of which there are few, are given all at once.
  * @see https://docs.joinmastodon.org/methods/accounts/#statuses
  */
 const AccountStatusesQuery = PageQuery({ default: 20, max: 40 }).extend({
@@ -196,12 +198,22 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             const viewerId = viewer?.accountId ?? null;
             const account = await findAccount(ctx, params.id);
             if (account === undefined) throw new NotFound();
-            if (query.only_media || query.pinned) return { status: 200, body: [], cursors: {} };
+            if (query.only_media) return { status: 200, body: [], cursors: {} };
+
+            const visibilities = await visibilitiesFor(ctx, account.id, viewerId);
+            if (query.pinned) {
+                const pinned = await pinnedNotes(ctx, account.id, visibilities);
+                return {
+                    status: 200,
+                    body: await renderStatuses(ctx, pinned, viewerId),
+                    cursors: {},
+                };
+            }
 
             const notes = await notePageBy(
                 ctx,
                 account.id,
-                await visibilitiesFor(ctx, account.id, viewerId),
+                visibilities,
                 {
                     excludeReplies: query.exclude_replies,
                     excludeShares: query.exclude_reblogs,
@@ -214,6 +226,50 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 body: await renderStatuses(ctx, notes, viewerId),
                 cursors: cursorsOf(notes, query, (note) => note.id),
             };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v1/statuses/:id/pin",
+        summary: "Pin status to profile",
+        description: "Feature one of your own public statuses at the top of your profile.\n\n" +
+            `Like Mastodon, Verso lets an account pin its public, unlisted and private statuses, ` +
+            `up to ${pinLimit} of them.`,
+        docs: "https://docs.joinmastodon.org/methods/statuses/#pin",
+        tags: ["statuses"],
+        auth: { require: "user", scope: "write:accounts", permission: "owner:note" },
+        params: z.object({ id: z.string() }),
+        responses: { 200: Status },
+        handler: async (ctx, { params, viewer }) => {
+            const result = await pin(ctx, viewer.accountId, params.id);
+            if (result === "missing") throw new NotFound();
+            if (result === "unpinnable") {
+                throw new Unprocessable("Only one's own statuses, not reblogs nor direct ones");
+            }
+            if (result === "full") {
+                throw new Unprocessable(`At most ${pinLimit} statuses can be pinned`);
+            }
+
+            const [status] = await renderStatuses(ctx, [result], viewer.accountId);
+            return { status: 200, body: status };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v1/statuses/:id/unpin",
+        summary: "Unpin status from profile",
+        description: "Unfeature a status from the top of your profile.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#unpin",
+        tags: ["statuses"],
+        auth: { require: "user", scope: "write:accounts", permission: "owner:note" },
+        params: z.object({ id: z.string() }),
+        responses: { 200: Status },
+        handler: async (ctx, { params, viewer }) => {
+            const note = await unpin(ctx, viewer.accountId, params.id);
+            if (note === undefined) throw new NotFound();
+
+            const [status] = await renderStatuses(ctx, [note], viewer.accountId);
+            return { status: 200, body: status };
         },
     }),
     defineRoute({

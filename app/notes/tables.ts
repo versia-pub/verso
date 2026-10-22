@@ -66,3 +66,13 @@ export type NoteVersionsTable = {
     /** When the note came to say this: when it was made, or the edit before. */
     created_at: Date;
 };
+
+/** A note its author features on their profile, which Mastodon calls pinning it. */
+export type NotePinsTable = {
+    /** Orders pins by when they were made. */
+    id: string;
+    /** Who pins it, always its author. */
+    account_id: string;
+    note_id: string;
+    created_at: Date;
+};

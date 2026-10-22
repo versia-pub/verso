@@ -18,6 +18,7 @@ import type { JobsTable } from "../jobs/tables.ts";
 import type { MediaTable } from "../media/tables.ts";
 import type {
     NoteMentionsTable,
+    NotePinsTable,
     NotesTable,
     NoteTagsTable,
     NoteVersionsTable,
@@ -47,6 +48,7 @@ export type Database = {
     media: MediaTable;
     note_emojis: NoteEmojisTable;
     note_mentions: NoteMentionsTable;
+    note_pins: NotePinsTable;
     note_tags: NoteTagsTable;
     note_versions: NoteVersionsTable;
     notes: NotesTable;

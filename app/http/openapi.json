@@ -3060,6 +3060,88 @@
                 }
             }
         },
+        "/api/v1/statuses/{id}/pin": {
+            "post": {
+                "summary": "Pin status to profile",
+                "description": "Feature one of your own public statuses at the top of your profile.\n\nLike Mastodon, Verso lets an account pin its public, unlisted and private statuses, up to 5 of them.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#pin"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/unpin": {
+            "post": {
+                "summary": "Unpin status from profile",
+                "description": "Unfeature a status from the top of your profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#unpin"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses/{id}/history": {
             "get": {
                 "summary": "What a status said before each edit, and now, if the viewer may see it",
