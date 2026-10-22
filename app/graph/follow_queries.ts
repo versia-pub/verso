@@ -7,8 +7,8 @@ import type { FollowsTable } from "./tables.ts";
 
 export type FollowRow = Selectable<FollowsTable>;
 
-/** Accounts given as a subquery, for another module's query to use. */
-export type AccountIdQuery = SelectQueryBuilder<Database, "follows", { account_id: string }>;
+/** Accounts given as a subquery, from whichever table, for another module's query to use. */
+export type AccountIdQuery = SelectQueryBuilder<Database, keyof Database, { account_id: string }>;
 
 /** How a follower wants to see the account they follow. Options left out stay as they are. */
 export type FollowOptions = {

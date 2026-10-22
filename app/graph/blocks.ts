@@ -8,15 +8,8 @@
  */
 import { findAccount } from "../accounts/account_queries.ts";
 import type { Context } from "../kernel/context.ts";
-import {
-    type BlockedIdQuery,
-    blockedIdsQuery,
-    blocksBetween,
-    deleteBlock,
-    insertBlock,
-} from "./block_queries.ts";
-
-export type { BlockedIdQuery };
+import { blockedIdsQuery, deleteBlock, insertBlock } from "./block_queries.ts";
+import type { AccountIdQuery } from "./follow_queries.ts";
 
 /**
  * Has `accountId` block `targetId`. Returns whether there is such an account, other than the
@@ -37,20 +30,13 @@ export const block = async (
 export const unblock = (ctx: Context, accountId: string, targetId: string): Promise<boolean> =>
     deleteBlock(ctx, accountId, targetId);
 
-/** Which of `otherIds` `accountId` blocks. */
-export const blockedAmong = async (
-    ctx: Context,
-    accountId: string,
-    otherIds: readonly string[],
-): Promise<Set<string>> => (await blocksBetween(ctx, accountId, otherIds)).blocking;
-
 /**
  * The accounts `accountId` blocks, as a subquery, for leaving what they wrote and shared out of
  * what reaches it.
  */
-export const blockedSubquery = (ctx: Context, accountId: string): BlockedIdQuery =>
+export const blockedSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
     blockedIdsQuery(ctx, accountId);
 
 /** The accounts a viewer blocks, as {@link blockedSubquery} has them, or none without a viewer. */
-export const viewerBlocks = (ctx: Context, viewerId: string | null): BlockedIdQuery | null =>
+export const viewerBlocks = (ctx: Context, viewerId: string | null): AccountIdQuery | null =>
     viewerId === null ? null : blockedIdsQuery(ctx, viewerId);

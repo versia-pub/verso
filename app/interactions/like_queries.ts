@@ -2,7 +2,7 @@ import type { Insertable, Selectable } from "kysely";
 import type { Visibility } from "../accounts/tables.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
-import type { BlockedIdQuery } from "../graph/blocks.ts";
+import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { LikeKind, LikesTable } from "./tables.ts";
 
@@ -97,7 +97,7 @@ export const likedAmong = async (
 export const likePage = async (
     ctx: Context,
     by:
-        | { readonly noteId: string; readonly blocked: BlockedIdQuery | null }
+        | { readonly noteId: string; readonly blocked: AccountIdQuery | null }
         | { readonly accountId: string },
     page: PageBounds,
 ): Promise<LikeRow[]> => {
@@ -219,7 +219,7 @@ export const countNotesLikedBy = async (
 export const countLikesBy = async (
     ctx: Context,
     noteIds: readonly string[],
-    by: BlockedIdQuery,
+    by: AccountIdQuery,
 ): Promise<Map<string, number>> => {
     if (noteIds.length === 0) return new Map();
 

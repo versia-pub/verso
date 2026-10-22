@@ -1,8 +1,10 @@
 import { assertEquals } from "@std/assert";
 import type { Insertable } from "kysely";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
-import { block, blockedSubquery } from "../graph/blocks.ts";
+import { block } from "../graph/blocks.ts";
 import { follow, followedSubquery, sharingSubquery } from "../graph/follows.ts";
+import { hiddenSubquery } from "../graph/hidden.ts";
+import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import type { NotesTable } from "./tables.ts";
@@ -50,7 +52,7 @@ const open = async () => {
             "alice",
             followedSubquery(test.ctx, "alice"),
             sharingSubquery(test.ctx, "alice"),
-            blockedSubquery(test.ctx, "alice"),
+            hiddenSubquery(test.ctx, "alice"),
             { limit: 40, ...page },
         ))
             .map((note) => names.get(note.id) ?? note.id);
@@ -70,7 +72,7 @@ const open = async () => {
     ) => (await publicPage(
         test.ctx,
         origin,
-        viewerId === null ? null : blockedSubquery(test.ctx, viewerId),
+        viewerId === null ? null : hiddenSubquery(test.ctx, viewerId),
         { limit: 40, ...page },
     ))
         .map((note) => names.get(note.id) ?? note.id);
@@ -192,4 +194,24 @@ Deno.test("the public timeline leaves out the notes of the accounts the viewer b
     assertEquals(await test.everyone("all", {}, "alice"), ["dave's"]);
     assertEquals(await test.everyone("all", {}, "dave"), ["dave's", "bob's"]);
     assertEquals(await test.everyone(), ["dave's", "bob's"]);
+});
+
+Deno.test("timelines leave out the accounts the viewer mutes, while the mute lasts", async () => {
+    await using test = await open();
+    await test.add("bob's", "bob");
+    await test.add("dave's", "dave");
+    await test.share("share", "carol", "dave's");
+    await test.add("carol's", "carol");
+    await mute(test.ctx, "alice", "bob", { notifications: true, duration: 0 });
+    await mute(test.ctx, "alice", "dave", { notifications: false, duration: 60 });
+    // Muted by someone else, carol is still seen.
+    await mute(test.ctx, "bob", "carol", { notifications: true, duration: 0 });
+
+    assertEquals(await test.home(), ["carol's"]);
+    assertEquals(await test.everyone("all", {}, "alice"), ["carol's"]);
+    assertEquals(await test.everyone(), ["carol's", "dave's", "bob's"]);
+
+    test.clock.advance(60_000);
+    assertEquals(await test.home(), ["carol's", "share"]);
+    assertEquals(await test.everyone("all", {}, "alice"), ["carol's", "dave's"]);
 });

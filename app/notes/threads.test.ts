@@ -3,6 +3,7 @@ import type { Insertable } from "kysely";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { follow } from "../graph/follows.ts";
+import { mute } from "../graph/mutes.ts";
 import { createTestContext } from "../testing/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 import type { NotesTable } from "./tables.ts";
@@ -162,4 +163,24 @@ Deno.test("replies under a blocked one don't count against the 60, but blocked o
     await test.add("below", "bob", "last");
 
     assertEquals((await test.thread(busy, "alice")).descendants, ["last"]);
+});
+
+Deno.test("a thread leaves out the notes of the accounts the viewer mutes, while the mute lasts", async () => {
+    await using test = await open();
+    await test.add("root", "alice");
+    await test.add("parent", "dave", "root");
+    const note = await test.add("note", "alice", "parent");
+    await test.add("muted", "dave", "note");
+    await test.add("under", "bob", "muted");
+    await test.add("other", "bob", "note");
+    await mute(test.ctx, "alice", "dave", { notifications: true, duration: 60 });
+
+    assertEquals(await test.thread(note, "alice"), { ancestors: ["root"], descendants: ["other"] });
+    assertEquals((await test.thread(note, "bob")).descendants, ["muted", "under", "other"]);
+
+    test.clock.advance(60_000);
+    assertEquals(await test.thread(note, "alice"), {
+        ancestors: ["root", "parent"],
+        descendants: ["muted", "under", "other"],
+    });
 });

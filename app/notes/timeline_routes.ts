@@ -1,5 +1,5 @@
 import { Status } from "@versia/client-api";
-import { blockedSubquery, viewerBlocks } from "../graph/blocks.ts";
+import { hiddenSubquery, viewerHidden } from "../graph/hidden.ts";
 import { followedSubquery, sharingSubquery } from "../graph/follows.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
@@ -38,7 +38,7 @@ export const timelineRoutes: readonly Route[] = [
                 viewer.accountId,
                 followedSubquery(ctx, viewer.accountId),
                 sharingSubquery(ctx, viewer.accountId),
-                blockedSubquery(ctx, viewer.accountId),
+                hiddenSubquery(ctx, viewer.accountId),
                 query,
             );
             return {
@@ -61,7 +61,7 @@ export const timelineRoutes: readonly Route[] = [
 
             const origin = query.local ? "local" : query.remote ? "remote" : "all";
             const viewerId = viewer?.accountId ?? null;
-            const notes = await publicPage(ctx, origin, viewerBlocks(ctx, viewerId), query);
+            const notes = await publicPage(ctx, origin, viewerHidden(ctx, viewerId), query);
             return {
                 status: 200,
                 body: await renderStatuses(ctx, notes, viewerId),

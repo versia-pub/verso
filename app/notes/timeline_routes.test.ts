@@ -3,6 +3,7 @@ import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts"
 import { tokenFor } from "../auth/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { follow } from "../graph/follows.ts";
+import { mute } from "../graph/mutes.ts";
 import { routes } from "../http/routes.ts";
 import { createInstance, defaultSettings } from "../instances/testing.ts";
 import type { Scope } from "../kernel/scopes.ts";
@@ -73,6 +74,17 @@ Deno.test("timelines leave out the statuses of the accounts the viewer blocks", 
     await using test = await open();
     const note = await createNote(test.ctx, "bob");
     await block(test.ctx, "alice", "bob");
+    const ids = (page: { body: { id: string }[] }) => page.body.map((status) => status.id);
+
+    assertEquals(ids(await test.home()), []);
+    assertEquals(ids(await test.everyone("", "alice")), []);
+    assertEquals(ids(await test.everyone()), [note.id]);
+});
+
+Deno.test("timelines leave out the statuses of the accounts the viewer mutes", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "bob");
+    await mute(test.ctx, "alice", "bob", { notifications: true, duration: 0 });
     const ids = (page: { body: { id: string }[] }) => page.body.map((status) => status.id);
 
     assertEquals(ids(await test.home()), []);

@@ -3,6 +3,7 @@ import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { follow, unfollow } from "../graph/follows.ts";
+import { mute } from "../graph/mutes.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -243,4 +244,27 @@ Deno.test("the blocker isn't shown, or counted, the likes, shares and reactions 
     }
     const seen = (await test.request("POST", `${path}/favourite`, "dave")).body;
     assertEquals([seen.favourites_count, seen.reblogs_count], [2, 2]);
+});
+
+Deno.test("the likes, shares and reactions of those the viewer mutes are still shown, and counted", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    await like(test.ctx, "dave", note.id);
+    await share(test.ctx, "dave", note.id, "public");
+    await react(test.ctx, "dave", note.id, "🎉");
+    await mute(test.ctx, "alice", "dave", { notifications: true, duration: 0 });
+    const path = `/api/v1/statuses/${note.id}`;
+    const ids = async (list: string) =>
+        (await test.request("GET", `${path}/${list}`, "alice")).body.map((
+            account: { id: string },
+        ) => account.id);
+
+    assertEquals(await ids("favourited_by"), ["dave"]);
+    assertEquals(await ids("reblogged_by"), ["dave"]);
+    assertEquals(
+        (await test.request("GET", `${path}/reactions`, "alice")).body[0].account_ids,
+        ["dave"],
+    );
+    const status = (await test.request("POST", `${path}/favourite`, "alice")).body;
+    assertEquals([status.favourites_count, status.reblogs_count], [2, 1]);
 });

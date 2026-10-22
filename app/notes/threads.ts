@@ -2,7 +2,7 @@
  * Threads: the notes a note replies to, and the replies under it, as far as Verso has them.
  * @module
  */
-import { blockedAmong } from "../graph/blocks.ts";
+import { hiddenAmong } from "../graph/hidden.ts";
 import { followedSubquery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, type NoteRow, notesSeenBy, type Onlooker, repliesTo } from "./note_queries.ts";
@@ -35,19 +35,19 @@ const ancestorsOf = async (ctx: Context, note: NoteRow) => {
  */
 const lookedThroughLimit = 4 * descendantsLimit;
 
-/** Which of `notes` are by accounts `onlooker` blocks. */
-const blockedOf = async (ctx: Context, notes: readonly NoteRow[], onlooker: Onlooker) => {
+/** Which of `notes` are by accounts `onlooker` blocks or mutes. */
+const hiddenOf = async (ctx: Context, notes: readonly NoteRow[], onlooker: Onlooker) => {
     if (onlooker === null) return new Set<string>();
 
-    const blocked = await blockedAmong(ctx, onlooker.id, notes.map((each) => each.account_id));
-    return new Set(notes.filter((each) => blocked.has(each.account_id)).map((each) => each.id));
+    const hidden = await hiddenAmong(ctx, onlooker.id, notes.map((each) => each.account_id));
+    return new Set(notes.filter((each) => hidden.has(each.account_id)).map((each) => each.id));
 };
 
 /**
  * The replies to `note`, and to them, that `onlooker` may see, in thread order: each reply followed
  * by the replies under it, oldest first. Those nearest `note` are found first, so a long thread
  * loses its deepest replies. Replies under one they may not see are shown too, as on Mastodon, but
- * not those under a reply by an account they block, which are left out with it.
+ * not those under a reply by an account they block or mute, which are left out with it.
  */
 const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) => {
     const children = new Map<string, NoteRow[]>();
@@ -58,8 +58,8 @@ const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) =>
     // Stops once there are enough, rather than asking for none.
     while (level.length > 0 && shown.size < descendantsLimit && looked < lookedThroughLimit) {
         const found = await repliesTo(ctx, level, onlooker, lookedThroughLimit - looked);
-        const blocked = await blockedOf(ctx, found.map((each) => each.note), onlooker);
-        const replies = found.filter((each) => !blocked.has(each.note.id));
+        const hidden = await hiddenOf(ctx, found.map((each) => each.note), onlooker);
+        const replies = found.filter((each) => !hidden.has(each.note.id));
         for (const { note: reply, seen } of replies) {
             const parentId = reply.in_reply_to_id ?? "";
             children.set(parentId, [...children.get(parentId) ?? [], reply]);
@@ -85,7 +85,7 @@ const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) =>
 /**
  * The thread around `note`, as `viewerId` sees it, or anyone if it is `null`: the notes it replies
  * to, oldest first, and the replies under it, in thread order, leaving out those they may not see,
- * and those by the accounts they block.
+ * and those by the accounts they block or mute.
  */
 export const threadOf = async (
     ctx: Context,
@@ -98,10 +98,10 @@ export const threadOf = async (
 
     const ancestors = await ancestorsOf(ctx, note);
     const seen = await notesSeenBy(ctx, ancestors.map((each) => each.id), onlooker);
-    const blocked = await blockedOf(ctx, ancestors, onlooker);
+    const hidden = await hiddenOf(ctx, ancestors, onlooker);
 
     return {
-        ancestors: ancestors.filter((each) => seen.has(each.id) && !blocked.has(each.id)),
+        ancestors: ancestors.filter((each) => seen.has(each.id) && !hidden.has(each.id)),
         descendants: await descendantsOf(ctx, note, onlooker),
     };
 };

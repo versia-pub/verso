@@ -2,6 +2,7 @@ import type { ExpressionBuilder, Selectable } from "kysely";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
+import type { AccountIdQuery } from "./follow_queries.ts";
 import type { MutesTable } from "./tables.ts";
 
 export type MuteRow = Selectable<MutesTable>;
@@ -91,3 +92,10 @@ export const mutePage = async (
         "mutes.id",
         page,
     );
+
+/** The accounts `accountId` mutes for now, as a subquery. */
+export const mutedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
+    ctx.db.selectFrom("mutes")
+        .select("target_id as account_id")
+        .where("account_id", "=", accountId)
+        .where(ongoing(ctx.clock.now()));

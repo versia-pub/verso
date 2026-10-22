@@ -1,6 +1,6 @@
 import { type Insertable, type Selectable, sql } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
-import type { BlockedIdQuery } from "../graph/blocks.ts";
+import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { ReactionsTable } from "./tables.ts";
 
@@ -110,7 +110,7 @@ export const reactionsOf = async (
     ctx: Context,
     noteIds: readonly string[],
     viewerId: string | null,
-    blocked: BlockedIdQuery | null,
+    blocked: AccountIdQuery | null,
 ): Promise<Map<string, ReactionGroup[]>> => {
     if (noteIds.length === 0) return new Map();
 
@@ -168,7 +168,7 @@ export const reactionsOf = async (
 export const reactorsOf = async (
     ctx: Context,
     noteId: string,
-    blocked: BlockedIdQuery | null,
+    blocked: AccountIdQuery | null,
 ): Promise<Map<string, string[]>> => {
     let query = ctx.db.selectFrom("reactions")
         .select(["account_id", "text", "emoji_id"])

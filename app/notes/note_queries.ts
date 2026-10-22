@@ -3,7 +3,6 @@ import { batchesOf } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Database } from "../db/database.ts";
-import type { BlockedIdQuery } from "../graph/blocks.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Visibility } from "../accounts/tables.ts";
@@ -524,7 +523,7 @@ export const sharePage = async (
     ctx: Context,
     noteId: string,
     visibilities: readonly Visibility[],
-    blocked: BlockedIdQuery | null,
+    blocked: AccountIdQuery | null,
     page: PageBounds,
 ): Promise<NoteRow[]> => {
     let query = ctx.db.selectFrom("notes").selectAll()
@@ -539,7 +538,7 @@ export const sharePage = async (
 export const countSharesBy = async (
     ctx: Context,
     noteIds: readonly string[],
-    by: BlockedIdQuery,
+    by: AccountIdQuery,
 ): Promise<Map<string, number>> => {
     if (noteIds.length === 0) return new Map();
 

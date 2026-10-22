@@ -1,13 +1,10 @@
-import type { Selectable, SelectQueryBuilder } from "kysely";
-import type { Database } from "../db/database.ts";
+import type { Selectable } from "kysely";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
+import type { AccountIdQuery } from "./follow_queries.ts";
 import type { BlocksTable } from "./tables.ts";
 
 export type BlockRow = Selectable<BlocksTable>;
-
-/** Blocked accounts given as a subquery, for another module's query to use. */
-export type BlockedIdQuery = SelectQueryBuilder<Database, "blocks", { account_id: string }>;
 
 /** Adds a block, unless the account already blocks the target. */
 export const insertBlock = async (
@@ -84,7 +81,7 @@ export const blockPage = async (
     );
 
 /** The accounts `accountId` blocks, as a subquery. */
-export const blockedIdsQuery = (ctx: Context, accountId: string): BlockedIdQuery =>
+export const blockedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     ctx.db.selectFrom("blocks")
         .select("target_id as account_id")
         .where("account_id", "=", accountId);
