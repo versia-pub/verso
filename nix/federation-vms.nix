@@ -1,6 +1,7 @@
 # Two Verso instances on their own machines, a.test and b.test, federating over real TLS: bea on
 # b.test looks up alice@a.test, so b.test finds her with WebFinger and fetches her, signed. Then bea
-# follows alice, and alice's next note reaches bea's home timeline.
+# follows alice, and alice's next note reaches bea's home timeline, with its totals fetched from
+# a.test. bea likes and shares it, and a.test counts both.
 { pkgs, module }:
 let
   # A certificate authority both machines trust, and a certificate for each. Test keys only.
@@ -126,5 +127,24 @@ pkgs.testers.runNixOSTest {
     assert [status["uri"] for status in home] == [posted["uri"]], f"bea's home has {home!r}"
     assert home[0]["content"] == posted["content"], f"b.test shows {home[0]['content']!r}"
     assert home[0]["account"]["acct"] == "alice@a.test", home[0]["account"]
+
+    # b.test fetched the note's totals from a.test, over collections whose names are encoded.
+    b.wait_until_succeeds(
+        "sudo -u postgres psql -d verso -tAc "
+        "\"select likes, shares, replies from remote_note_totals\" | grep -qx '0|0|0'"
+    )
+
+    # bea likes and shares the note, and a.test counts both.
+    api(b, "bea-token", "POST", f"/api/v1/statuses/{home[0]['id']}/favourite")
+    api(b, "bea-token", "POST", f"/api/v1/statuses/{home[0]['id']}/reblog")
+    for listed in ["favourited_by", "reblogged_by"]:
+        a.wait_until_succeeds(
+            f"curl --fail --silent https://a.test/api/v1/statuses/{posted['id']}/{listed} "
+            "--header 'authorization: Bearer alice-token' | grep -qF '\"acct\":\"bea@b.test\"'"
+        )
+
+    status = api(a, "alice-token", "GET", f"/api/v1/statuses/{posted['id']}")
+    counts = [status["favourites_count"], status["reblogs_count"]]
+    assert counts == [1, 1], f"a.test counts {counts!r}"
   '';
 }
