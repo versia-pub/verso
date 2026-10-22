@@ -11,8 +11,7 @@ import type {
 } from "@versia/client-api";
 import denoConfig from "../../deno.json" with { type: "json" };
 import { countLocalAccounts, findLocalAccount } from "../accounts/account_queries.ts";
-import { renderAccount } from "../accounts/render.ts";
-import { rolesOf } from "../accounts/role_queries.ts";
+import { publicAccount } from "../accounts/public.ts";
 import { escapeHtml, textToHtml } from "../accounts/text.ts";
 import { countAccountsWithTokensSince } from "../auth/token_queries.ts";
 import { NotFound } from "../http/errors.ts";
@@ -58,8 +57,7 @@ const registrationMessage = (issuers: AboutSettings["auth"]["issuers"]) => {
 /** The contact account, if config names a local account that exists. */
 const contactAccount = async (ctx: Context, username: string | undefined) => {
     const row = username === undefined ? undefined : await findLocalAccount(ctx, username);
-    // A local account, which uses no emojis yet.
-    return row ? renderAccount(ctx, row, await rolesOf(ctx, row.id), []) : null;
+    return row ? await publicAccount(ctx, row) : null;
 };
 
 /** The rules, numbered from 1 in the order config lists them. */

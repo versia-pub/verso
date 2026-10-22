@@ -1,7 +1,9 @@
 import { assertEquals } from "@std/assert";
 import { tokenFor } from "../auth/testing.ts";
 import { identiconBanner } from "../accounts/identicon.ts";
+import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
+import { createLocalEmoji } from "../emojis/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { parseConfig } from "../kernel/config.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -133,6 +135,8 @@ registration = { claim = "groups", contains = "verso" }
     await createRole(test.ctx, "Admin", []);
     await test.ctx.db.updateTable("roles").set({ visible: true }).execute();
     await giveRole(test.ctx, "alice", "Admin");
+    await createLocalEmoji(test.ctx, "blob");
+    await updateProfile(test.ctx, "alice", { displayName: "Alice :blob:" });
 
     const instance = await test.get();
 
@@ -146,8 +150,12 @@ registration = { claim = "groups", contains = "verso" }
     );
     assertEquals(instance.contact.email, "admin@social.example");
     assertEquals(
-        [instance.contact.account.username, instance.contact.account.roles],
-        ["alice", [{ id: "Admin", name: "Admin", color: "" }]],
+        [
+            instance.contact.account.username,
+            instance.contact.account.roles,
+            instance.contact.account.emojis.length,
+        ],
+        ["alice", [{ id: "Admin", name: "Admin", color: "" }], 1],
     );
     assertEquals(instance.rules, [
         { id: "1", text: "Be kind", hint: "" },

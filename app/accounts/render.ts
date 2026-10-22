@@ -108,18 +108,18 @@ export const renderAccount = (
 };
 
 /**
- * An account as its owner sees it, with the settings they can change, its roles, highest first,
- * everything it may do, and how many accounts are asking to follow it.
+ * An account as its owner sees it, with the settings they can change, its roles, highest first, the
+ * emojis it uses, everything it may do, and how many accounts are asking to follow it.
  */
 export const renderCredentialAccount = (
     ctx: Context,
     row: AccountRow,
     roles: readonly RoleRow[],
+    emojis: readonly CustomEmoji[],
     permissions: Iterable<Permission>,
     followRequests: number,
 ): CredentialAccount => ({
-    // Local accounts use no emojis yet.
-    ...renderAccount(ctx, row, roles, []),
+    ...renderAccount(ctx, row, roles, emojis),
     source: {
         note: row.note,
         fields: renderFields(row.fields, (field) => field.value),

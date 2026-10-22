@@ -1,6 +1,13 @@
+import { localEmojiIds, setAccountEmojis } from "../emojis/emoji_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import { type AccountChanges, findAccount, updateLocalAccount } from "./account_queries.ts";
+import { scanText } from "../kernel/markup.ts";
+import {
+    type AccountChanges,
+    type AccountRow,
+    findAccount,
+    updateLocalAccount,
+} from "./account_queries.ts";
 import type { ProfileUpdated } from "./events.ts";
 import type { ProfileField, Visibility } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
@@ -32,8 +39,24 @@ const plainField = (name: string, value: string): ProfileField => ({
 });
 
 /**
- * Changes a local account's profile, making the HTML of what was written, and tells the rest of
- * Verso, even if nothing changed, as Mastodon does.
+ * Uses this instance's emojis a local account's display name, bio and fields name, in place of
+ * those it used.
+ */
+const useEmojis = async (ctx: Context, row: AccountRow) => {
+    const shortcodes = new Set([
+        ...scanText(row.display_name, "text/plain").shortcodes,
+        ...scanText(row.note, row.note_format).shortcodes,
+        ...row.fields.flatMap((field) => [
+            ...scanText(field.name, field.format).shortcodes,
+            ...scanText(field.value, field.format).shortcodes,
+        ]),
+    ]);
+    await setAccountEmojis(ctx, row.id, await localEmojiIds(ctx, [...shortcodes]));
+};
+
+/**
+ * Changes a local account's profile, making the HTML of what was written, and finding the emojis
+ * it uses, and tells the rest of Verso, even if nothing changed, as Mastodon does.
  */
 export const updateProfile = async (
     ctx: Context,
@@ -70,6 +93,8 @@ export const updateProfile = async (
         if (before?.domain !== null) return;
 
         await updateLocalAccount(tx, accountId, set);
+        const after = await findAccount(tx, accountId);
+        if (after) await useEmojis(tx, after);
 
         const unlocked = before.locked && changes.locked === false;
         const event: ProfileUpdated = { type: "accounts.profile_updated", accountId, unlocked };

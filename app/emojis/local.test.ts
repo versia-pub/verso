@@ -1,5 +1,12 @@
 import { assertEquals } from "@std/assert";
+import { findAccount } from "../accounts/account_queries.ts";
+import { localVersiaUser } from "../accounts/federation.ts";
+import { updateProfile } from "../accounts/profile.ts";
+import { publicAccount } from "../accounts/public.ts";
+import { accountRoutes } from "../accounts/routes.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
+import { tokenFor } from "../auth/testing.ts";
+import { Limits } from "../kernel/config.ts";
 import { createInstance } from "../instances/testing.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { editNote, postNote } from "../notes/notes.ts";
@@ -65,4 +72,51 @@ Deno.test("a local note uses this instance's emojis its text and warning name", 
 
     await editNote(test.ctx, "alice", note?.id ?? "", { text: "Hi :cat:", spoilerText: "" });
     assertEquals(await test.shown(note?.id ?? ""), ["cat"]);
+});
+
+Deno.test("a local account uses this instance's emojis its name, bio and fields name", async () => {
+    await using test = await open();
+    const app = createTestApp(test.ctx, accountRoutes(Limits.parse({})), { checkResponses: true });
+    const shortcodes = async () => {
+        const row = await findAccount(test.ctx, "alice");
+        return row && (await publicAccount(test.ctx, row)).emojis.map((emoji) => emoji.shortcode);
+    };
+
+    await updateProfile(test.ctx, "alice", { displayName: "Alice :blob:", note: "Hi :cat: :dog:" });
+    assertEquals(await shortcodes(), ["blob", "cat"]);
+
+    await updateProfile(test.ctx, "alice", {
+        displayName: "Alice",
+        note: "Hi",
+        fields: [{ name: ":cat:", value: "x" }, { name: "Site", value: ":blob:" }],
+    });
+    assertEquals(await shortcodes(), ["blob", "cat"]);
+
+    // The owner sees them too, and other instances are sent them.
+    const response = await app.request("/api/v1/accounts/verify_credentials", {
+        headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` },
+    });
+    const own = await response.json();
+    assertEquals(own.emojis.map((emoji: { shortcode: string }) => emoji.shortcode), [
+        "blob",
+        "cat",
+    ]);
+    const user = await localVersiaUser(test.ctx, "alice");
+    assertEquals(user?.extensions, {
+        "pub.versia:custom_emojis": {
+            emojis: ["blob", "cat"].map((shortcode) => ({
+                name: `:${shortcode}:`,
+                content: {
+                    "image/png": {
+                        content: `https://pictures.example/${shortcode}.png`,
+                        remote: true,
+                    },
+                },
+            })),
+        },
+    });
+
+    await updateProfile(test.ctx, "alice", { fields: [] });
+    assertEquals(await shortcodes(), []);
+    assertEquals((await localVersiaUser(test.ctx, "alice"))?.extensions, undefined);
 });

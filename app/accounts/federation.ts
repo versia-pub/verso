@@ -6,7 +6,8 @@
 import { formatReference, type Reference, v0_6 } from "@versia/protocol";
 import type { CollectionProvider, EntityType, Known } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
-import { remoteEmojisOf } from "../emojis/versia.ts";
+import { emojisOfAccounts, type ShownEmoji } from "../emojis/emoji_queries.ts";
+import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
 import { remotePicture } from "../media/versia.ts";
 import {
     type AccountRow,
@@ -31,8 +32,12 @@ const picture = (url: string): v0_6.ContentFormat => ({
     "image/png": { content: url, remote: true },
 });
 
-/** A local account as a Versia User. */
-const renderVersiaUser = (ctx: Context, row: AccountRow): v0_6.User => ({
+/** A local account as a Versia User, with the emojis it uses. */
+const renderVersiaUser = (
+    ctx: Context,
+    row: AccountRow,
+    emojis: readonly ShownEmoji[],
+): v0_6.User => ({
     type: "User",
     id: row.id,
     created_at: row.created_at.toISOString(),
@@ -47,6 +52,7 @@ const renderVersiaUser = (ctx: Context, row: AccountRow): v0_6.User => ({
     header: picture(ctx.urls.url`/accounts/${row.id}/header.png`),
     manually_approves_followers: row.locked,
     indexable: row.indexable,
+    extensions: emojiExtensions(emojis),
 });
 
 /** The local user with this id, or `undefined` if there is none. */
@@ -73,7 +79,10 @@ export const localVersiaUser = async (
     id: string,
 ): Promise<v0_6.User | undefined> => {
     const row = await localUser(ctx, id);
-    return row && renderVersiaUser(ctx, row);
+    if (row === undefined) return undefined;
+
+    const emojis = (await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? [];
+    return renderVersiaUser(ctx, row, emojis);
 };
 
 /** A local user's collection of pinned notes, empty until notes can be pinned. */

@@ -1,5 +1,7 @@
 import { Account, CredentialAccount } from "@versia/client-api";
 import { z } from "zod";
+import { emojisOfAccounts } from "../emojis/emoji_queries.ts";
+import { renderEmojis } from "../emojis/render.ts";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
@@ -26,6 +28,7 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
         ctx,
         row,
         await rolesOf(ctx, row.id),
+        renderEmojis((await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? []),
         await viewer.permissions(),
         await countFollowRequests(ctx, row.id),
     );
