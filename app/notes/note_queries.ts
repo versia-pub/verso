@@ -484,6 +484,37 @@ export const sharedAmong = async (
     return new Set(rows.flatMap((row) => row.reblog_of_id ?? []));
 };
 
+/** The shares of `noteId` with one of `visibilities`. */
+const sharesOf = (ctx: Context, noteId: string, visibilities: readonly Visibility[]) =>
+    ctx.db.selectFrom("notes")
+        .where("reblog_of_id", "=", noteId)
+        .where("visibility", "in", visibilities);
+
+/** The ids of the shares of `noteId`, as {@link sharesOf} finds them, oldest first. */
+export const shareIdsOf = async (
+    ctx: Context,
+    noteId: string,
+    visibilities: readonly Visibility[],
+    offset: number,
+    limit: number,
+): Promise<string[]> =>
+    (await sharesOf(ctx, noteId, visibilities).select("id")
+        .orderBy("id")
+        .offset(offset)
+        .limit(limit)
+        .execute())
+        .map((row) => row.id);
+
+/** How many shares `noteId` has, as {@link sharesOf} finds them. */
+export const countSharesOf = async (
+    ctx: Context,
+    noteId: string,
+    visibilities: readonly Visibility[],
+): Promise<number> =>
+    readCount(
+        await sharesOf(ctx, noteId, visibilities).select(countAll).executeTakeFirstOrThrow(),
+    );
+
 /** A page of the shares of a note with one of `visibilities`, newest first. */
 export const sharePage = async (
     ctx: Context,

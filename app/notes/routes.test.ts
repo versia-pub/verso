@@ -461,7 +461,7 @@ Deno.test("a share is undone by deleting it, can't be edited, and stands for its
     assertEquals((await test.edit(shared.id, { status: "Hi" }, "bob")).status, 404);
     assertEquals((await test.request("DELETE", path, "alice")).status, 404);
 
-    // bob's follower on another instance isn't sent a Delete of a Note.
+    // bob's follower on another instance is sent a Delete of a Share, not of a Note.
     await createInstance(test.ctx, "b.example");
     await createRemoteAccount(test.ctx, "carol", "b.example");
     await follow(test.ctx, "carol", "bob");
@@ -475,6 +475,8 @@ Deno.test("a share is undone by deleting it, can't be edited, and stands for its
     assertEquals((await findNote(test.ctx, note.id))?.shares_count, 0);
     const queued = await test.ctx.db.selectFrom("jobs").select("payload")
         .where("queue", "=", deliverQueue).execute();
-    const types = queued.map((job) => JSON.parse(DeliverJob.parse(job.payload).body).type);
-    assertEquals(types, ["FollowAccept"]);
+    const deletes = queued.map((job) => JSON.parse(DeliverJob.parse(job.payload).body))
+        .filter((entity) => entity.type === "Delete")
+        .map((entity) => entity.deleted_type);
+    assertEquals(deletes, ["pub.versia:share/Share"]);
 });
