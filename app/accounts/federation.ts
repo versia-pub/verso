@@ -4,7 +4,7 @@
  * @module
  */
 import { formatReference, type Reference, v0_6 } from "@versia/protocol";
-import type { CollectionProvider, EntityType, Known } from "../federation/registry.ts";
+import type { EntityType, Known } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
 import { emojisOfAccounts, type ShownEmoji } from "../emojis/emoji_queries.ts";
 import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
@@ -85,15 +85,10 @@ export const localVersiaUser = async (
     return renderVersiaUser(ctx, row, emojis);
 };
 
-/** A local user's collection of pinned notes, empty until notes can be pinned. */
-const emptyCollection: CollectionProvider = async (ctx, id) => {
-    const row = await localUser(ctx, id);
-    return row && { author: row.id, total: 0, items: [] };
-};
-
 /**
  * Users: other instances' ones, kept as remote accounts, and local ones, fetched by other
- * instances, with the notes they wrote and pinned as collections of entities.
+ * instances. Their collections are added by the modules whose they are: who follows whom by the
+ * graph, and what they wrote and pinned by the notes.
  * @see https://versia.pub/entities/user
  */
 export const userType: EntityType<v0_6.User> = {
@@ -111,9 +106,6 @@ export const userType: EntityType<v0_6.User> = {
     deleteRemote: (ctx, id, sender) => deleteRemoteAccount(ctx, sender.instanceId, id),
     known: knownUser,
     find: (ctx, id) => localVersiaUser(ctx, id),
-    // Who follows whom is the graph's, and what they wrote is the notes', which add those
-    // collections.
-    collections: { featured: emptyCollection },
 };
 
 /**

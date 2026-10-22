@@ -23,6 +23,7 @@ import {
     notesBy,
 } from "./note_queries.ts";
 import { removeNote } from "./notes.ts";
+import { pinnedNotes } from "./pin_queries.ts";
 import { knownNote, prepareNote, receiveNote } from "./remote.ts";
 import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";
 
@@ -81,8 +82,24 @@ const outbox: CollectionProvider = async (ctx, id, page) => {
     };
 };
 
+/**
+ * The public and unlisted notes a local user pins to their profile, which Versia calls featuring
+ * them, the latest pinned first, as their profile shows them.
+ */
+const featured: CollectionProvider = async (ctx, id, page) => {
+    const owner = await findAccount(ctx, id);
+    if (owner?.domain !== null) return undefined;
+
+    const notes = await pinnedNotes(ctx, id, everyone);
+    return {
+        author: id,
+        total: notes.length,
+        items: await renderVersiaNotes(ctx, notes.slice(page.offset, page.offset + page.limit)),
+    };
+};
+
 /** The collections notes add to Users. */
-export const noteCollections: Readonly<Record<string, CollectionProvider>> = { outbox };
+export const noteCollections: Readonly<Record<string, CollectionProvider>> = { outbox, featured };
 
 /**
  * The notes that link to a local note by `link`, oldest first, for an instance that may see it.

@@ -17,6 +17,7 @@ import { createTestContext } from "../testing/context.ts";
 import { audienceOf } from "./audience.ts";
 import { noteType } from "./federation.ts";
 import { editNote, postNote, removeNote } from "./notes.ts";
+import { pin } from "./pins.ts";
 import { createNote } from "./testing.ts";
 
 /** Alice and bob here; carol on b.example, who follows alice, and erin on c.example. */
@@ -236,6 +237,40 @@ Deno.test("a user's outbox is their public and unlisted notes, oldest first", as
     assertEquals(await outbox(test.ctx, "carol", { offset: 0, limit: 40 }, "b.example"), undefined);
     assertEquals(
         await outbox(test.ctx, "nobody", { offset: 0, limit: 40 }, "b.example"),
+        undefined,
+    );
+});
+
+Deno.test("a user's featured notes are the public and unlisted ones they pin, the latest first", async () => {
+    await using test = await open();
+    const featured: CollectionProvider | undefined = registry.types.get("User")?.collections
+        ?.featured;
+    if (featured === undefined) throw new Error("Users have no featured notes");
+
+    const ids = [];
+    for (const visibility of ["public", "private", "unlisted", "public"] as const) {
+        test.clock.advance(1);
+        const note = await createNote(test.ctx, "alice", { visibility });
+        await pin(test.ctx, "alice", note.id);
+        ids.push(note.id);
+    }
+    await createNote(test.ctx, "alice");
+    const page = async (offset: number, limit: number) => {
+        const collection = await featured(test.ctx, "alice", { offset, limit }, "b.example");
+        return collection && {
+            ...collection,
+            items: collection.items.map((item) => (item as { id: string }).id),
+        };
+    };
+
+    assertEquals(await page(0, 2), { author: "alice", total: 3, items: [ids[3], ids[2]] });
+    assertEquals(await page(2, 2), { author: "alice", total: 3, items: [ids[0]] });
+    assertEquals(
+        await featured(test.ctx, "carol", { offset: 0, limit: 40 }, "b.example"),
+        undefined,
+    );
+    assertEquals(
+        await featured(test.ctx, "nobody", { offset: 0, limit: 40 }, "b.example"),
         undefined,
     );
 });
