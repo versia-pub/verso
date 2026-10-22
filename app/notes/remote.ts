@@ -49,7 +49,9 @@ export const knownNote = async (ctx: Context, reference: Reference): Promise<Kno
 
     const note = await findRemoteNoteAt(ctx, reference.host, reference.id);
     // A remote note is always saved with when it was fetched.
-    return note && { id: note.id, fetchedAt: note.fetched_at ?? new Date(0) };
+    return note?.reblog_of_id === null
+        ? { id: note.id, fetchedAt: note.fetched_at ?? new Date(0) }
+        : undefined;
 };
 
 /**
@@ -154,6 +156,9 @@ export const receiveNote = async (
     }
 
     if (author === undefined) throw new PermanentFailure(`Verso doesn't have ${note.author}`);
+    if (existing && existing.reblog_of_id !== null) {
+        throw new PermanentFailure(`${note.id} on ${sender.domain} is a Share, not a Note`);
+    }
     if (existing && existing.account_id !== author.id) {
         throw new PermanentFailure(`${sender.domain} may not give ${note.id} another author`);
     }

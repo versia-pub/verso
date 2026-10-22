@@ -1,22 +1,25 @@
 /**
  * Shares as Versia has them: local users' shares, as other instances fetch them and are sent them,
- * with the collection of who shares a note.
+ * with the collection of who shares a note, and other instances' ones, as Verso takes them in.
  * @see https://versia.pub/extensions/share
  * @module
  */
 import { parseReference, v0_6 } from "@versia/protocol";
 import { instancesHosting } from "../accounts/account_queries.ts";
-import { userReferences } from "../accounts/federation.ts";
+import { knownUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
-import type { CollectionProvider, EntityType } from "../federation/registry.ts";
-import { followerInstances } from "../graph/follows.ts";
+import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
+import { followerInstances, hasFollowers } from "../graph/follows.ts";
 import { findInstanceId } from "../instances/instances.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { everyone, instanceMaySee } from "../notes/audience.ts";
 import { countSharesOf, findNote, type NoteRow, shareIdsOf } from "../notes/note_queries.ts";
+import { canSee } from "../notes/notes.ts";
+import { knownNote } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
 import { isShareEvent } from "./events.ts";
+import { keepRemoteShare, undoRemoteShare } from "./shares.ts";
 
 const extension = "pub.versia:share";
 
@@ -110,16 +113,66 @@ export const noteShareCollections: Readonly<Record<string, CollectionProvider>> 
     "pub.versia:share/Shares": noteShares,
 };
 
-/** Local users' shares, which other instances that may see them fetch. */
+/**
+ * Whether a share `sender` sent is one Verso wants, from what Verso has: one of a local note, or by
+ * someone a local user follows. Others could fill Verso with shares nobody here would see.
+ */
+const wanted = async (ctx: Context, share: v0_6.Share, sender: Sender) => {
+    if (parseReference(share.shared, sender.domain)?.host === ctx.urls.domain) return true;
+
+    const reference = parseReference(share.author, sender.domain);
+    const author = reference && await knownUser(ctx, reference);
+    return author !== undefined && await hasFollowers(ctx, author.id);
+};
+
+/**
+ * Shares: other instances' ones, as they send them, and Deletes undo them, and local users' ones,
+ * which other instances that may see them fetch. Verso keeps those it wants, with the notes they
+ * share, which are fetched for the timelines they are shown in.
+ */
 export const shareType: EntityType<v0_6.Share> = {
     type: typeName,
     extension,
     schema: v0_6.Share,
     // Only its author's instance may send it.
     authority: (share, origin) => parseReference(share.author, origin)?.host,
-    receive: () => {
-        throw new PermanentFailure("Verso doesn't take in other instances' shares yet");
+    prepare: async (ctx, share, sender, budget) => {
+        if (!await wanted(ctx, share, sender)) return;
+
+        // Without them, the share can't be kept, so it is tried again later.
+        const author = parseReference(share.author, sender.domain);
+        if (author) await ctx.federation.resolve(ctx, author, "User", budget);
+        const shared = parseReference(share.shared, sender.domain);
+        if (shared) await ctx.federation.resolve(ctx, shared, "Note", budget);
     },
+    receive: async (ctx, share, sender) => {
+        if (!await wanted(ctx, share, sender)) return;
+
+        const author = parseReference(share.author, sender.domain);
+        const user = author && await knownUser(ctx, author);
+        if (user === undefined) throw new PermanentFailure(`Verso doesn't have ${share.author}`);
+
+        const shared = parseReference(share.shared, sender.domain);
+        const known = shared && await knownNote(ctx, shared);
+        const note = known && await findNote(ctx, known.id);
+        if (note === undefined) throw new PermanentFailure(`Verso doesn't have ${share.shared}`);
+        // As for local users' shares.
+        if (!everyone.includes(note.visibility)) {
+            throw new PermanentFailure(`${share.shared} can't be shared`);
+        }
+        if (note.instance_id === null && !await canSee(ctx, note, user.id)) {
+            throw new PermanentFailure(`${share.author} may not see ${share.shared}`);
+        }
+
+        await keepRemoteShare(ctx, {
+            accountId: user.id,
+            note,
+            instanceId: sender.instanceId,
+            remoteId: share.id,
+            createdAt: new Date(share.created_at),
+        });
+    },
+    deleteRemote: (ctx, id, sender) => undoRemoteShare(ctx, sender.instanceId, id),
     find: async (ctx, id, requester) => {
         const share = await findNote(ctx, id);
         if (share?.instance_id !== null || share.reblog_of_id === null) return undefined;

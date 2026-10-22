@@ -115,7 +115,8 @@ export const noteType: EntityType<v0_6.Note> = {
     receive: receiveNote,
     deleteRemote: async (ctx, id, sender) => {
         const note = await findRemoteNote(ctx, sender.instanceId, id);
-        if (note) await removeNote(ctx, note.id);
+        // A share is deleted as a Share, not a Note.
+        if (note?.reblog_of_id === null) await removeNote(ctx, note.id);
     },
     known: knownNote,
     collections: { replies: linkCollection("in_reply_to_id"), quotes: linkCollection("quote_id") },
