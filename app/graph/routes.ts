@@ -5,8 +5,10 @@ import { publicAccounts } from "../accounts/public.ts";
 import { NotFound, NotPermitted } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route, type RouteViewer } from "../http/route.ts";
-import { Flag } from "../http/schemas.ts";
+import { Flag, Text } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
+import { accountNotesOn } from "./account_note_queries.ts";
+import { accountNoteLimit, noteAccount } from "./account_notes.ts";
 import { blockPage, blocksBetween } from "./block_queries.ts";
 import { block, unblock } from "./blocks.ts";
 import { followPage, followsFrom, type FollowSide, followsOf } from "./follow_queries.ts";
@@ -36,13 +38,21 @@ const relationships = async (ctx: Context, viewer: UserViewer, ids: readonly str
     const { blocking, blockedBy } = await blocksBetween(ctx, viewerId, asked);
     const seesBlocks = (await viewer.permissions()).has("blocks");
     const mutes = await mutesOf(ctx, viewerId, asked);
+    const notes = await accountNotesOn(ctx, viewerId, asked);
 
     return asked.filter((id) => known.has(id))
         .map((id) =>
-            renderRelationship(id, outgoing.get(id), incoming.get(id), {
-                blocking: blocking.has(id),
-                blockedBy: seesBlocks && blockedBy.has(id),
-            }, mutes.get(id))
+            renderRelationship(
+                id,
+                outgoing.get(id),
+                incoming.get(id),
+                {
+                    blocking: blocking.has(id),
+                    blockedBy: seesBlocks && blockedBy.has(id),
+                },
+                mutes.get(id),
+                notes.get(id) ?? "",
+            )
         );
 };
 
@@ -181,6 +191,39 @@ const muteRoute = defineRoute({
     },
 });
 
+/**
+ * What the viewer notes about an account, as Mastodon takes it.
+ * @see https://docs.joinmastodon.org/methods/accounts/#note
+ */
+const AccountNoteBody = z.object({
+    comment: Text(accountNoteLimit).default("").meta({
+        description: "The comment to be set on that user. Provide an empty string or leave out " +
+            "this parameter to clear the currently set note.",
+    }),
+});
+
+/** Sets or clears what the viewer notes about an account. */
+const noteRoute = defineRoute({
+    method: "POST",
+    path: "/api/v1/accounts/:id/note",
+    summary: "Set private note on profile",
+    description: "Sets a private note on a user.\n\nAs on Mastodon, a note is at most " +
+        `${accountNoteLimit} characters.`,
+    docs: "https://docs.joinmastodon.org/methods/accounts/#note",
+    tags: ["accounts"],
+    auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
+    params: z.object({ id: z.string() }),
+    body: AccountNoteBody,
+    responses: { 200: Relationship },
+    handler: async (ctx, { params, body, viewer }) => {
+        if (!await noteAccount(ctx, viewer.accountId, params.id, body.comment)) {
+            throw new NotFound();
+        }
+
+        return { status: 200, body: await relationship(ctx, viewer, params.id) };
+    },
+});
+
 /** Stops muting an account. */
 const unmuteRoute = defineRoute({
     method: "POST",
@@ -229,6 +272,7 @@ export const graphRoutes: readonly Route[] = [
     blockRoute("unblock"),
     muteRoute,
     unmuteRoute,
+    noteRoute,
     defineRoute({
         method: "GET",
         path: "/api/v1/mutes",

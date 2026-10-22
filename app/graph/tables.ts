@@ -45,3 +45,13 @@ export type MutesTable = {
     expires_at: Date | null;
     created_at: Date;
 };
+
+/** What an account privately notes about another, which only it sees, as on Mastodon. */
+export type AccountNotesTable = {
+    /** Who wrote it. */
+    account_id: string;
+    /** Who it is about. */
+    target_id: string;
+    comment: string;
+    updated_at: Date;
+};

@@ -4,8 +4,8 @@ import type { MuteRow } from "./mute_queries.ts";
 
 /**
  * The viewer's relationship with the account `id`, from the viewer's follow of it and its follow
- * of the viewer, either of which may be a request, whether either blocks the other, and the
- * viewer's mute of it, if they mute it.
+ * of the viewer, either of which may be a request, whether either blocks the other, the viewer's
+ * mute of it, if they mute it, and what they note about it.
  */
 export const renderRelationship = (
     id: string,
@@ -13,6 +13,7 @@ export const renderRelationship = (
     incoming: FollowRow | undefined,
     blocks: { readonly blocking: boolean; readonly blockedBy: boolean },
     mute: MuteRow | undefined,
+    note: string,
 ): Relationship => ({
     id,
     following: outgoing?.accepted ?? false,
@@ -29,5 +30,5 @@ export const renderRelationship = (
     requested_by: incoming !== undefined && !incoming.accepted,
     domain_blocking: false,
     endorsed: false,
-    note: "",
+    note,
 });

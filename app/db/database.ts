@@ -10,7 +10,7 @@ import type {
 } from "../accounts/tables.ts";
 import type { AccessTokensTable, AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
 import type { AccountEmojisTable, EmojisTable, NoteEmojisTable } from "../emojis/tables.ts";
-import type { BlocksTable, FollowsTable, MutesTable } from "../graph/tables.ts";
+import type { AccountNotesTable, BlocksTable, FollowsTable, MutesTable } from "../graph/tables.ts";
 import type { LikesTable, ReactionsTable } from "../interactions/tables.ts";
 import type { RateLimitsTable } from "../http/tables.ts";
 import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
@@ -32,6 +32,7 @@ import { sqliteDialect } from "./sqlite.ts";
 export type Database = {
     access_tokens: AccessTokensTable;
     account_emojis: AccountEmojisTable;
+    account_notes: AccountNotesTable;
     account_roles: AccountRolesTable;
     accounts: AccountsTable;
     apps: AppsTable;

@@ -36,6 +36,7 @@ import { instanceMessaging } from "./0034_instance_messaging.ts";
 import { blocks } from "./0035_blocks.ts";
 import { mutes } from "./0036_mutes.ts";
 import { notePins } from "./0037_note_pins.ts";
+import { accountNotes } from "./0038_account_notes.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -79,4 +80,5 @@ export const migrations: Record<string, Migration> = {
     "0035_blocks": blocks,
     "0036_mutes": mutes,
     "0037_note_pins": notePins,
+    "0038_account_notes": accountNotes,
 };

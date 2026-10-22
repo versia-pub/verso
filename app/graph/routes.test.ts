@@ -650,3 +650,54 @@ Deno.test("the accounts the viewer mutes are listed, the latest muted first, wit
     const page = await test.request("GET", "/api/v1/mutes?limit=1");
     assertEquals(page.body.map((account: { id: string }) => account.id), ["carol"]);
 });
+
+Deno.test("noting an account gives the relationship with the note, which only the viewer sees", async () => {
+    await using test = await open();
+    const noting = (id: string, comment?: string) =>
+        test.request("POST", `/api/v1/accounts/${id}/note`, {
+            body: JSON.stringify(comment === undefined ? {} : { comment }),
+        });
+
+    const noted = await noting("bob", "Met at the meetup");
+    assertEquals([noted.status, noted.body], [200, {
+        ...none,
+        id: "bob",
+        note: "Met at the meetup",
+    }]);
+    assertEquals(
+        (await test.request("GET", "/api/v1/accounts/relationships?id=bob")).body[0].note,
+        "Met at the meetup",
+    );
+    assertEquals(
+        (await test.request("GET", "/api/v1/accounts/relationships?id=bob", {
+            token: await tokenFor(test.ctx, "bob"),
+        })).body[0].note,
+        "",
+    );
+
+    assertEquals((await noting("bob")).body.note, "");
+    assertEquals((await noting("missing", "Hi")).status, 404);
+    assertEquals((await noting("bob", "é".repeat(2000))).status, 200);
+    assertEquals((await noting("bob", "é".repeat(2001))).status, 422);
+});
+
+Deno.test("noting an account needs a token that may write accounts, and a role that may change one's own", async () => {
+    await using test = await open();
+    const path = "/api/v1/accounts/bob/note";
+
+    assertEquals((await test.request("POST", path, { scopes: ["write:follows"] })).status, 403);
+    assertEquals((await test.request("POST", path, { scopes: ["write:accounts"] })).status, 200);
+
+    await using limited = await createTestContext();
+    await createLocalAccount(limited.ctx, "alice");
+    await createLocalAccount(limited.ctx, "bob");
+    const app = createTestApp(limited.ctx, graphRoutes, {
+        permissions: { anonymous: [], default: ["read:account"] },
+    });
+    const response = await app.request(path, {
+        method: "POST",
+        headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
+    });
+    await response.body?.cancel();
+    assertEquals(response.status, 403);
+});
