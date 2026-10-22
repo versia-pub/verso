@@ -151,11 +151,13 @@ export const notesBy = async (
 export type NoteFilter = {
     /** Leaves out replies, other than to the account itself. */
     readonly excludeReplies?: boolean;
+    /** Leaves out shares. */
+    readonly excludeShares?: boolean;
     /** Only those with this hashtag. */
     readonly tag?: string;
 };
 
-/** A page of an account's notes with one of `visibilities`, not its shares yet, newest first. */
+/** A page of an account's notes and shares with one of `visibilities`, newest first. */
 export const notePageBy = async (
     ctx: Context,
     accountId: string,
@@ -165,9 +167,9 @@ export const notePageBy = async (
 ): Promise<NoteRow[]> => {
     let query = ctx.db.selectFrom("notes").selectAll()
         .where("account_id", "=", accountId)
-        .where("visibility", "in", visibilities)
-        .where("reblog_of_id", "is", null);
+        .where("visibility", "in", visibilities);
 
+    if (filter.excludeShares) query = query.where("reblog_of_id", "is", null);
     if (filter.excludeReplies) {
         query = query.where((eb) =>
             eb.or([eb("in_reply_to_id", "is", null), eb("in_reply_to_account_id", "=", accountId)])

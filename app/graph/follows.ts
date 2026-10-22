@@ -27,6 +27,7 @@ import {
     type FollowOptions,
     followsFrom,
     insertFollow,
+    sharingIdsQuery,
     updateFollowOptions,
 } from "./follow_queries.ts";
 
@@ -209,6 +210,13 @@ export const followedSubquery = (
     ctx: Context,
     accountId: string,
 ): AccountIdQuery => followedIdsQuery(ctx, accountId);
+
+/**
+ * The accounts `accountId` follows, and was accepted by, whose shares it sees, which is all of them
+ * unless it chose not to, as a subquery, for its home timeline.
+ */
+export const sharingSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
+    sharingIdsQuery(ctx, accountId);
 
 /** Whether anyone follows `accountId`, and was accepted. */
 export const hasFollowers = (ctx: Context, accountId: string): Promise<boolean> =>

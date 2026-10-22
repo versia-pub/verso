@@ -236,6 +236,11 @@ export const followedIdsQuery = (
     accountId: string,
 ): AccountIdQuery => listed(ctx, "following", accountId).select("followee_id as account_id");
 
+/** The accounts an account follows and sees the shares of, as a subquery. */
+export const sharingIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
+    listed(ctx, "following", accountId).where("show_reblogs", "=", true)
+        .select("followee_id as account_id");
+
 /** How many accounts are on one of an account's lists. */
 export const countFollows = async (
     ctx: Context,

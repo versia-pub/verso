@@ -35,13 +35,19 @@ import {
 /**
  * Whether `viewerId`, or anyone if it is `null`, may see `note`. Public and unlisted notes are for
  * anyone, private ones for the author's followers, and direct ones for those they mention, who
- * may always see a note, as may its author.
+ * may always see a note, as may its author. A share is seen only by those who may see what it
+ * shares too, which can have been made private since.
  */
 export const canSee = async (
     ctx: Context,
     note: NoteRow,
     viewerId: string | null,
 ): Promise<boolean> => {
+    if (note.reblog_of_id !== null) {
+        const shared = await findNote(ctx, note.reblog_of_id);
+        if (shared === undefined || !await canSee(ctx, shared, viewerId)) return false;
+    }
+
     if (note.visibility === "public" || note.visibility === "unlisted") return true;
     if (viewerId === null) return false;
     if (viewerId === note.account_id || await isMentioned(ctx, note.id, viewerId)) return true;

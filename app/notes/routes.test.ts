@@ -305,7 +305,7 @@ Deno.test("an account's statuses are those the viewer may see, newest first", as
     assertStringIncludes(response.headers.get("link") ?? "", `max_id=${ids[0]}>; rel="next"`);
 });
 
-Deno.test("an account's statuses may leave out replies to others, or be only those with a hashtag", async () => {
+Deno.test("an account's statuses may leave out replies to others or shares, or be only those with a hashtag", async () => {
     await using test = await open();
     const other = await createNote(test.ctx, "bob");
     const own = await createNote(test.ctx, "alice", {}, [], ["verso"]);
@@ -323,12 +323,14 @@ Deno.test("an account's statuses may leave out replies to others, or be only tho
         [],
         ["verso", "deno"],
     );
+    const shared = await share(test.ctx, "alice", other.id);
+    if (typeof shared !== "object") throw new Error(`Not shared: ${shared}`);
     const statuses = async (query: string) =>
         (await test.request("GET", `/api/v1/accounts/alice/statuses${query}`)).body
             .map((status: { id: string }) => status.id);
 
-    assertEquals(await statuses(""), [toBob.id, toSelf.id, own.id]);
-    assertEquals(await statuses("?exclude_replies=true"), [toSelf.id, own.id]);
+    assertEquals(await statuses(""), [shared.id, toBob.id, toSelf.id, own.id]);
+    assertEquals(await statuses("?exclude_replies=true"), [shared.id, toSelf.id, own.id]);
     assertEquals(await statuses("?tagged=Verso"), [toBob.id, own.id]);
     assertEquals(await statuses("?tagged=deno&exclude_replies=1"), []);
     assertEquals(await statuses("?exclude_reblogs=true"), [toBob.id, toSelf.id, own.id]);

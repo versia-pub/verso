@@ -5,6 +5,7 @@
 import type { Status, StatusEdit } from "@versia/client-api";
 import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
+import { followedSubquery } from "../graph/follows.ts";
 import { likedAmong } from "../interactions/like_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
@@ -13,6 +14,7 @@ import {
     findNotes,
     mentionsOf,
     type NoteRow,
+    notesSeenBy,
     sharedAmong,
     tagsOf,
     versionsOf,
@@ -44,8 +46,8 @@ const viewerFlags = (liked: boolean, shared: boolean) => ({
 });
 
 /**
- * The notes `shares` share, as statuses, by id, as `viewerId` sees them. Notes shared aren't
- * shares themselves, so this goes no deeper.
+ * The notes `shares` share that `viewerId` may see, as statuses, by id. A note shared can have
+ * been made private since. Notes shared aren't shares themselves, so this goes no deeper.
  */
 const sharedStatuses = async (
     ctx: Context,
@@ -55,15 +57,20 @@ const sharedStatuses = async (
     const ids = [...new Set(shares.flatMap((note) => note.reblog_of_id ?? []))];
     if (ids.length === 0) return new Map();
 
-    const statuses = await renderStatuses(ctx, await findNotes(ctx, ids), viewerId);
+    const onlooker = viewerId === null
+        ? null
+        : { id: viewerId, followed: followedSubquery(ctx, viewerId) };
+    const seen = await notesSeenBy(ctx, ids, onlooker);
+    const notes = (await findNotes(ctx, ids)).filter((note) => seen.has(note.id));
+    const statuses = await renderStatuses(ctx, notes, viewerId);
     return new Map(statuses.map((status) => [status.id, status]));
 };
 
 /**
  * Notes as statuses, in the order given, as `viewerId` sees them, or anyone if it is `null`. Each
  * note's author must exist, which the database makes sure of. A share has the note it shares as its
- * `reblog`. With `source`, they carry what their authors wrote, as Mastodon gives a deleted status
- * back for redrafting.
+ * `reblog`, and is left out if the viewer may not see that. With `source`, they carry what their
+ * authors wrote, as Mastodon gives a deleted status back for redrafting.
  */
 export const renderStatuses = async (
     ctx: Context,
@@ -85,12 +92,15 @@ export const renderStatuses = async (
     const domains = new Map(rows.map((row) => [row.id, row.domain]));
     const accounts = await publicAccountsOf(ctx, rows);
 
-    return notes.map((note): Status => {
+    return notes.flatMap((note): Status[] => {
+        const reblog = note.reblog_of_id === null ? null : reblogs.get(note.reblog_of_id);
+        if (reblog === undefined) return [];
+
         const account = accounts.get(note.account_id);
         if (account === undefined) throw new Error(`Note ${note.id} has no author`);
         const domain = domains.get(note.account_id) ?? null;
 
-        return {
+        return [{
             id: note.id,
             uri: noteUri(ctx, note, domain).href,
             created_at: note.created_at.toISOString(),
@@ -124,14 +134,14 @@ export const renderStatuses = async (
             url: null,
             in_reply_to_id: note.in_reply_to_id,
             in_reply_to_account_id: note.in_reply_to_account_id,
-            reblog: note.reblog_of_id === null ? null : reblogs.get(note.reblog_of_id) ?? null,
+            reblog,
             poll: null,
             card: null,
             language: note.language,
             text: options.source ? note.content : null,
             edited_at: note.edited_at?.toISOString() ?? null,
             ...(viewerId === null ? {} : viewerFlags(liked.has(note.id), shared.has(note.id))),
-        };
+        }];
     });
 };
 

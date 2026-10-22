@@ -4,23 +4,26 @@ import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 
 /**
- * A page of `viewerId`'s home timeline, newest first: all their own notes, and those of `followed`
- * that they may see. Of those, a direct note must mention them, and a reply must be to them or to
- * someone they follow, its author among them, as on Mastodon.
+ * A page of `viewerId`'s home timeline, newest first: all their own notes and shares, those notes
+ * of `followed` that they may see, and the shares of `sharing`, the accounts of `followed` whose
+ * shares they see. Of those notes, a direct one must mention them, and a reply must be to them or
+ * to someone they follow, its author among them, as on Mastodon.
  */
 export const homePage = async (
     ctx: Context,
     viewerId: string,
     followed: AccountIdQuery,
+    sharing: AccountIdQuery,
     page: PageBounds,
 ): Promise<NoteRow[]> => {
-    // Shares aren't shown yet.
     const query = ctx.db.selectFrom("notes").selectAll()
-        .where("reblog_of_id", "is", null)
         .where((eb) =>
             eb.or([
                 eb("account_id", "=", viewerId),
+                // Shares are never direct, so any of them is for their followers.
+                eb.and([eb("reblog_of_id", "is not", null), eb("account_id", "in", sharing)]),
                 eb.and([
+                    eb("reblog_of_id", "is", null),
                     eb("account_id", "in", followed),
                     eb.or([
                         eb("visibility", "!=", "direct"),

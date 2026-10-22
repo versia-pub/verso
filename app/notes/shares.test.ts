@@ -2,15 +2,15 @@ import { assertEquals } from "@std/assert";
 import { findAccount } from "../accounts/account_queries.ts";
 import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
-import { follow, followedSubquery } from "../graph/follows.ts";
+import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { registry } from "../registry.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findNote, notePageBy } from "./note_queries.ts";
-import { removeNote } from "./notes.ts";
+import { canSee, removeNote } from "./notes.ts";
 import { knownNote } from "./remote.ts";
+import { renderStatuses } from "./render.ts";
 import { createNote, createShare } from "./testing.ts";
-import { homePage, publicPage } from "./timeline_queries.ts";
 
 /** alice and bob here, who follows alice, and carol on b.example. */
 const open = async () => {
@@ -76,18 +76,51 @@ Deno.test("an account deleted takes its shares and the shares of its notes, unco
     assertEquals((await findAccount(test.ctx, "bob"))?.statuses_count, 1);
 });
 
-Deno.test("shares aren't shown or sent as notes yet", async () => {
+Deno.test("an account's shares are among its statuses, unless left out", async () => {
     await using test = await open();
-    const note = await createNote(test.ctx, "alice");
+    const note = await createNote(test.ctx, "bob");
     const share = await createShare(test.ctx, "alice", note.id);
+    const own = await createNote(test.ctx, "alice");
     const page = { limit: 40 };
     const ids = (notes: readonly { id: string }[]) => notes.map((each) => each.id);
 
-    assertEquals(ids(await homePage(test.ctx, "bob", followedSubquery(test.ctx, "bob"), page)), [
-        note.id,
+    assertEquals(ids(await notePageBy(test.ctx, "alice", ["public"], {}, page)), [
+        own.id,
+        share.id,
     ]);
-    assertEquals(ids(await publicPage(test.ctx, "all", page)), [note.id]);
-    assertEquals(ids(await notePageBy(test.ctx, "alice", ["public"], {}, page)), [note.id]);
+    assertEquals(
+        ids(await notePageBy(test.ctx, "alice", ["public"], { excludeShares: true }, page)),
+        [own.id],
+    );
+    // A share has no hashtags.
+    assertEquals(ids(await notePageBy(test.ctx, "alice", ["public"], { tag: "verso" }, page)), []);
+});
+
+Deno.test("a share is seen only by those who may see what it shares", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice", { visibility: "unlisted" });
+    const share = await createShare(test.ctx, "carol", note.id, {
+        instance_id: "b.example",
+        remote_id: "s1",
+    });
+    assertEquals(await canSee(test.ctx, share, null), true);
+
+    await test.ctx.db.updateTable("notes").set({ visibility: "private" })
+        .where("id", "=", note.id).execute();
+    assertEquals(await canSee(test.ctx, share, null), false);
+    assertEquals(await canSee(test.ctx, share, "bob"), true);
+
+    // Nor is it shown in a list, such as a timeline read before the note was made private.
+    const shown = async (viewerId: string | null) =>
+        (await renderStatuses(test.ctx, [share], viewerId)).map((status) => status.reblog?.id);
+    assertEquals(await shown(null), []);
+    assertEquals(await shown("bob"), [note.id]);
+});
+
+Deno.test("shares aren't sent as notes", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const share = await createShare(test.ctx, "alice", note.id);
 
     const noteType = registry.types.get("Note");
     assertEquals(await noteType?.find?.(test.ctx, share.id, "b.example"), undefined);

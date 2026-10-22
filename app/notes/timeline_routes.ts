@@ -1,5 +1,5 @@
 import { Status } from "@versia/client-api";
-import { followedSubquery } from "../graph/follows.ts";
+import { followedSubquery, sharingSubquery } from "../graph/follows.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { Flag } from "../http/schemas.ts";
@@ -25,7 +25,8 @@ export const timelineRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/timelines/home",
-        summary: "The viewer's statuses and those of the accounts they follow, newest first",
+        summary:
+            "The viewer's statuses and those of the accounts they follow, and their shares, newest first",
         tags: ["timelines"],
         auth: { require: "user", scope: "read:statuses", permission: "read:note" },
         query: PageQuery({ default: 20, max: 40 }),
@@ -35,6 +36,7 @@ export const timelineRoutes: readonly Route[] = [
                 ctx,
                 viewer.accountId,
                 followedSubquery(ctx, viewer.accountId),
+                sharingSubquery(ctx, viewer.accountId),
                 query,
             );
             return {

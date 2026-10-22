@@ -77,13 +77,13 @@ const edit = (limits: Limits) =>
     }).refine(limited(limits).check, limited(limits).error);
 
 /**
- * Which of an account's statuses to give. Verso has no media, shares or pins yet, so asking only
- * for statuses with media, or pinned ones, gives none.
+ * Which of an account's statuses to give. Verso has no media or pins yet, so asking only for
+ * statuses with media, or pinned ones, gives none.
  * @see https://docs.joinmastodon.org/methods/accounts/#statuses
  */
 const AccountStatusesQuery = PageQuery({ default: 20, max: 40 }).extend({
     exclude_replies: Flag.default(false),
-    exclude_reblogs: Flag.optional(),
+    exclude_reblogs: Flag.default(false),
     only_media: Flag.default(false),
     pinned: Flag.default(false),
     tagged: z.string().optional(),
@@ -202,7 +202,11 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 ctx,
                 account.id,
                 await visibilitiesFor(ctx, account.id, viewerId),
-                { excludeReplies: query.exclude_replies, tag: query.tagged },
+                {
+                    excludeReplies: query.exclude_replies,
+                    excludeShares: query.exclude_reblogs,
+                    tag: query.tagged,
+                },
                 query,
             );
             return {

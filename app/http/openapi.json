@@ -3208,7 +3208,7 @@
         },
         "/api/v1/timelines/home": {
             "get": {
-                "summary": "The viewer's statuses and those of the accounts they follow, newest first",
+                "summary": "The viewer's statuses and those of the accounts they follow, and their shares, newest first",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `read:note` permission.",
                 "tags": [
                     "timelines"
