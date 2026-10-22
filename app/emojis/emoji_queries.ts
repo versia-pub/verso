@@ -15,6 +15,21 @@ export const findRemoteEmoji = async (
         .where("shortcode", "=", shortcode)
         .executeTakeFirst();
 
+/** The ids of this instance's emojis named any of `shortcodes`. */
+export const localEmojiIds = async (
+    ctx: Context,
+    shortcodes: readonly string[],
+): Promise<string[]> => {
+    if (shortcodes.length === 0) return [];
+
+    const rows = await ctx.db.selectFrom("emojis").select("id")
+        .where("instance_id", "is", null)
+        .where("shortcode", "in", shortcodes)
+        .orderBy("shortcode")
+        .execute();
+    return rows.map((row) => row.id);
+};
+
 export const insertEmoji = async (ctx: Context, emoji: Insertable<EmojisTable>): Promise<void> => {
     await ctx.db.insertInto("emojis").values(emoji).execute();
 };
@@ -47,14 +62,38 @@ export const setAccountEmojis = async (
         .execute();
 };
 
-/** An emoji something uses, with where its picture is. */
-export type UsedEmoji = {
+/** An emoji, with its picture. */
+export type ShownEmoji = {
+    readonly shortcode: string;
+    /** The instance it is from, or `null` for this one. */
+    readonly instance_id: string | null;
+    /** Where its picture is, or `null` if Verso keeps it, which it can't serve yet. */
+    readonly url: string | null;
+    readonly media_type: string;
+};
+
+/** An emoji something uses. */
+export type UsedEmoji = ShownEmoji & {
     /** The note or account that uses it. */
     readonly user_id: string;
-    readonly shortcode: string;
-    /** `null` for a local picture, which Verso serves. */
-    readonly url: string | null;
 };
+
+/** The columns of {@link ShownEmoji}, from `emojis` joined with `media`. */
+const shownColumns = [
+    "emojis.shortcode",
+    "emojis.instance_id",
+    "media.url",
+    "media.media_type",
+] as const;
+
+/** This instance's emojis, by shortcode. */
+export const localEmojis = async (ctx: Context): Promise<ShownEmoji[]> =>
+    await ctx.db.selectFrom("emojis")
+        .innerJoin("media", "media.id", "emojis.media_id")
+        .select(shownColumns)
+        .where("emojis.instance_id", "is", null)
+        .orderBy("emojis.shortcode")
+        .execute();
 
 /** Groups emojis by what uses them, in shortcode order. */
 const byUser = (rows: readonly UsedEmoji[]) => {
@@ -75,7 +114,7 @@ export const emojisOfNotes = async (
         await ctx.db.selectFrom("note_emojis")
             .innerJoin("emojis", "emojis.id", "note_emojis.emoji_id")
             .innerJoin("media", "media.id", "emojis.media_id")
-            .select(["note_emojis.note_id as user_id", "emojis.shortcode", "media.url"])
+            .select(["note_emojis.note_id as user_id", ...shownColumns])
             .where("note_emojis.note_id", "in", noteIds)
             .orderBy("emojis.shortcode")
             .execute(),
@@ -93,7 +132,7 @@ export const emojisOfAccounts = async (
         await ctx.db.selectFrom("account_emojis")
             .innerJoin("emojis", "emojis.id", "account_emojis.emoji_id")
             .innerJoin("media", "media.id", "emojis.media_id")
-            .select(["account_emojis.account_id as user_id", "emojis.shortcode", "media.url"])
+            .select(["account_emojis.account_id as user_id", ...shownColumns])
             .where("account_emojis.account_id", "in", accountIds)
             .orderBy("emojis.shortcode")
             .execute(),

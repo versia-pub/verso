@@ -1,5 +1,4 @@
 import {
-    CustomEmoji,
     ExtendedDescription,
     Instance,
     PrivacyPolicy,
@@ -117,14 +116,5 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => [
 
             return Promise.resolve({ status: 200, body: terms });
         },
-    }),
-    defineRoute({
-        method: "GET",
-        path: "/api/v1/custom_emojis",
-        summary: "The instance's custom emojis",
-        tags: ["instance"],
-        responses: { 200: z.array(CustomEmoji) },
-        // Custom emojis arrive in a later step.
-        handler: () => Promise.resolve({ status: 200, body: [] }),
     }),
 ];

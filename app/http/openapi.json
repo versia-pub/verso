@@ -3408,6 +3408,29 @@
                 }
             }
         },
+        "/api/v1/custom_emojis": {
+            "get": {
+                "summary": "This instance's custom emojis, for the picker",
+                "tags": [
+                    "emojis"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CustomEmoji"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/roles": {
             "get": {
                 "summary": "Every role, highest priority first",
@@ -6030,29 +6053,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/TermsOfService"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/custom_emojis": {
-            "get": {
-                "summary": "The instance's custom emojis",
-                "tags": [
-                    "instance"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A JSON body",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/CustomEmoji"
-                                    }
                                 }
                             }
                         }

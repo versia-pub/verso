@@ -3,20 +3,20 @@
  * @module
  */
 import type { CustomEmoji } from "@versia/client-api";
-import type { UsedEmoji } from "./emoji_queries.ts";
+import type { ShownEmoji } from "./emoji_queries.ts";
 
 /**
- * Emojis something uses, as the client API has them. Other instances' pictures are shown where
- * they are, as Verso makes no still versions of them, and they are only for showing, not for the
- * picker.
+ * Emojis as the client API has them. Pictures are shown where they are, as Verso makes no still
+ * versions of them, and those Verso keeps itself are left out until it can serve them. Only this
+ * instance's emojis are for the picker; other instances' ones are only for showing.
  */
-export const renderEmojis = (emojis: readonly UsedEmoji[]): CustomEmoji[] =>
+export const renderEmojis = (emojis: readonly ShownEmoji[]): CustomEmoji[] =>
     emojis.flatMap((emoji) =>
         emoji.url === null ? [] : [{
             shortcode: emoji.shortcode,
             url: emoji.url,
             static_url: emoji.url,
-            visible_in_picker: false,
+            visible_in_picker: emoji.instance_id === null,
             category: null,
         }]
     );

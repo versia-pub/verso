@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { remoteEmojisOf } from "./versia.ts";
+import { emojiExtensions, remoteEmojisOf } from "./versia.ts";
 
 /** An emoji named `name`, with a picture at `url` of `type`. */
 const emoji = (name: string, url = "https://b.example/blob.png", type = "image/png") => ({
@@ -48,4 +48,19 @@ Deno.test("an entity has at most 100 emojis, and a malformed extension has none"
     assertEquals(remoteEmojisOf({ "pub.versia:custom_emojis": { emojis: "blob" } }), []);
     // A name without anything around it makes the whole extension malformed.
     assertEquals(remoteEmojisOf(extensions(emoji(":blob:"), emoji("blob"))), []);
+});
+
+Deno.test("emojis are sent by name, with their pictures, unless Verso keeps the picture", () => {
+    const emoji = { shortcode: "blob", instance_id: null, media_type: "image/gif" };
+
+    assertEquals(emojiExtensions([{ ...emoji, url: "https://a.example/blob.gif" }]), {
+        "pub.versia:custom_emojis": {
+            emojis: [{
+                name: ":blob:",
+                content: { "image/gif": { content: "https://a.example/blob.gif", remote: true } },
+            }],
+        },
+    });
+    assertEquals(emojiExtensions([{ ...emoji, url: null }]), undefined);
+    assertEquals(emojiExtensions([]), undefined);
 });

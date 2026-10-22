@@ -288,7 +288,7 @@ terms_of_service = { text = "Be kind.", updated = 2026-01-04 }
     assertEquals((await test.fetch("/api/v1/instance/terms_of_service/2026-01-03")).status, 404);
 });
 
-Deno.test("texts that aren't configured aren't found, and there are no custom emojis yet", async () => {
+Deno.test("texts that aren't configured aren't found", async () => {
     await using test = await open();
 
     for (
@@ -304,5 +304,4 @@ Deno.test("texts that aren't configured aren't found, and there are no custom em
             body: { error: "Record not found" },
         });
     }
-    assertEquals(await test.fetch("/api/v1/custom_emojis"), { status: 200, body: [] });
 });

@@ -6,6 +6,8 @@ import { fetchSigned } from "../federation/request.ts";
 import type { CollectionProvider } from "../federation/registry.ts";
 import { follow } from "../graph/follows.ts";
 import { addFollowers } from "../graph/testing.ts";
+import { setNoteEmojis } from "../emojis/emoji_queries.ts";
+import { createLocalEmoji } from "../emojis/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import { registry } from "../registry.ts";
 import { createNetwork } from "../testing/network.ts";
@@ -54,7 +56,7 @@ const sent = async (ctx: Context) =>
 const post = (ctx: Context, accountId: string, text: string, visibility: Visibility = "public") =>
     postNote(ctx, accountId, { text, format: "text/plain", spoilerText: "", visibility });
 
-Deno.test("a local note is a Versia Note, with who it mentions and what it replies to", async () => {
+Deno.test("a local note is a Versia Note, with who it mentions, what it replies to and its emojis", async () => {
     await using test = await open();
     const parent = await createNote(test.ctx, "carol", {
         instance_id: "b.example",
@@ -80,6 +82,7 @@ Deno.test("a local note is a Versia Note, with who it mentions and what it repli
         },
         ["bob", "carol"],
     );
+    await setNoteEmojis(test.ctx, note.id, [await createLocalEmoji(test.ctx, "blob")]);
 
     const entity = await test.find(note.id, "");
     assertEquals(entity, {
@@ -100,11 +103,21 @@ Deno.test("a local note is a Versia Note, with who it mentions and what it repli
         quotes: "b.example:c2",
         attachments: [],
         previews: [],
+        extensions: {
+            "pub.versia:custom_emojis": {
+                emojis: [{
+                    name: ":blob:",
+                    content: {
+                        "image/png": { content: "https://pictures.example/blob.png", remote: true },
+                    },
+                }],
+            },
+        },
     });
     assertEquals(v0_6.Note.safeParse(entity).success, true);
 });
 
-Deno.test("a local reply is to a bare id, and a note without a warning has no subject", async () => {
+Deno.test("a local reply is to a bare id, and a note without a warning or emojis has neither", async () => {
     await using test = await open();
     const parent = await createNote(test.ctx, "bob");
     const note = await createNote(test.ctx, "alice", {
@@ -113,11 +126,10 @@ Deno.test("a local reply is to a bare id, and a note without a warning has no su
     });
 
     const entity = await test.find(note.id, "");
-    assertEquals([entity?.replies_to, entity?.subject, entity?.is_sensitive], [
-        parent.id,
-        undefined,
-        false,
-    ]);
+    assertEquals(
+        [entity?.replies_to, entity?.subject, entity?.is_sensitive, entity?.extensions],
+        [parent.id, undefined, false, undefined],
+    );
 });
 
 Deno.test("a reply to a remote note without its instance's id is a mistake", async () => {

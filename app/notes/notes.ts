@@ -9,11 +9,12 @@ import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import { userUri } from "../accounts/render.ts";
 import { isAccountDeleting } from "../accounts/events.ts";
 import type { TextFormat, Visibility } from "../accounts/tables.ts";
+import { localEmojiIds, setNoteEmojis } from "../emojis/emoji_queries.ts";
 import { fetchBudget } from "../federation/resolver.ts";
 import { isFollowing } from "../graph/follows.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import { type Mention, renderText, scanText } from "../kernel/markup.ts";
+import { type Found, type Mention, renderText, scanText } from "../kernel/markup.ts";
 import type { NoteDeleted, NoteEdited, NotePosted } from "./events.ts";
 import {
     countReply,
@@ -202,6 +203,18 @@ const renderDraft = (
 });
 
 /**
+ * Uses this instance's emojis named in a local note's text, as `found`, and its warning, in place
+ * of those it used.
+ */
+const useEmojis = async (ctx: Context, noteId: string, found: Found, spoilerText: string) => {
+    const shortcodes = new Set([
+        ...found.shortcodes,
+        ...scanText(spoilerText, "text/plain").shortcodes,
+    ]);
+    await setNoteEmojis(ctx, noteId, await localEmojiIds(ctx, [...shortcodes]));
+};
+
+/**
  * Posts a note by `accountId`, a local user, and counts it. Who it mentions is found first, outside
  * the transaction, as that can mean asking other instances. Returns `undefined` if the note it
  * replies to isn't there, or `accountId` may not see it.
@@ -248,6 +261,7 @@ export const postNote = async (
             [...accounts.values()].map((row) => row.id),
             found.hashtags,
         );
+        await useEmojis(tx, note.id, found, draft.spoilerText);
 
         await countPosted(tx, note, 1);
 
@@ -320,6 +334,7 @@ export const editNote = async (
             [...accounts.values()].map((row) => row.id),
             found.hashtags,
         );
+        await useEmojis(tx, note.id, found, spoilerText);
 
         const event: NoteEdited = { type: "notes.edited", noteId: note.id };
         await emit(tx, event);
