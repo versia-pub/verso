@@ -156,7 +156,7 @@ Deno.test("a local reaction is fetched by instances that may see its note, or wh
     assertEquals((await test.find(followed, "c.example"))?.created_at, madeAt);
     assertEquals(await test.find(followed, "d.example"), undefined);
 
-    // Neither another instance's user's reaction, nor a note, is fetched as a reaction.
+    // Neither another instance's reaction, nor a note, is fetched as a reaction.
     await test.ctx.db.insertInto("reactions")
         .values({
             id: "r1",
@@ -164,6 +164,8 @@ Deno.test("a local reaction is fetched by instances that may see its note, or wh
             note_id: local.id,
             text: "🎉",
             emoji_id: null,
+            instance_id: "b.example",
+            remote_id: "r1",
             created_at: test.ctx.clock.now(),
         })
         .execute();

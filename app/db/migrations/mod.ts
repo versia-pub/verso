@@ -31,6 +31,7 @@ import { shares } from "./0029_shares.ts";
 import { emojis } from "./0030_emojis.ts";
 import { localEmojis } from "./0031_local_emojis.ts";
 import { reactions } from "./0032_reactions.ts";
+import { remoteReactions } from "./0033_remote_reactions.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -69,4 +70,5 @@ export const migrations: Record<string, Migration> = {
     "0030_emojis": emojis,
     "0031_local_emojis": localEmojis,
     "0032_reactions": reactions,
+    "0033_remote_reactions": remoteReactions,
 };

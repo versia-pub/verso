@@ -1,4 +1,4 @@
-import { type Selectable, sql } from "kysely";
+import { type Insertable, type Selectable, sql } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
 import type { ReactionsTable } from "./tables.ts";
@@ -37,6 +37,34 @@ export const insertReaction = async (
         .onConflict((conflict) => conflict.doNothing())
         .returningAll()
         .executeTakeFirst();
+
+/** Adds another instance's reaction, unless it or the same one by another id is already here. */
+export const insertRemoteReaction = async (
+    ctx: Context,
+    reaction: Insertable<ReactionsTable>,
+): Promise<void> => {
+    await ctx.db.insertInto("reactions")
+        .values(reaction)
+        // Any index: by its remote id, or of one reaction with each emoji.
+        .onConflict((conflict) => conflict.doNothing())
+        .execute();
+};
+
+/** The reaction with the id `remoteId` on the instance `instanceId`, if Verso has it. */
+export const findRemoteReaction = async (
+    ctx: Context,
+    instanceId: string,
+    remoteId: string,
+): Promise<ReactionRow | undefined> =>
+    await ctx.db.selectFrom("reactions").selectAll()
+        .where("instance_id", "=", instanceId)
+        .where("remote_id", "=", remoteId)
+        .executeTakeFirst();
+
+/** Removes a reaction. */
+export const deleteReactionById = async (ctx: Context, id: string): Promise<void> => {
+    await ctx.db.deleteFrom("reactions").where("id", "=", id).execute();
+};
 
 /** Removes an account's reaction to a note with an emoji, and returns it, if there was one. */
 export const deleteReaction = async (
@@ -160,29 +188,32 @@ export const findLocalReaction = async (
     id: string,
 ): Promise<LocalReaction | undefined> =>
     await ctx.db.selectFrom("reactions")
-        .innerJoin("accounts", "accounts.id", "reactions.account_id")
         .leftJoin("emojis", "emojis.id", "reactions.emoji_id")
         .leftJoin("media", "media.id", "emojis.media_id")
         .selectAll("reactions")
         .select(["emojis.shortcode", "media.url", "media.media_type"])
         .where("reactions.id", "=", id)
-        .where("accounts.instance_id", "is", null)
+        .where("reactions.instance_id", "is", null)
         .executeTakeFirst();
 
-/** The ids of a note's reactions, oldest first, from `offset`. */
-export const reactionIdsOf = async (
+/**
+ * A note's reactions, oldest first, from `offset`: their ids here, and for those from other
+ * instances, their ids there and the instances' domains.
+ */
+export const reactionPage = async (
     ctx: Context,
     noteId: string,
     offset: number,
     limit: number,
-): Promise<string[]> =>
-    (await ctx.db.selectFrom("reactions").select("id")
-        .where("note_id", "=", noteId)
-        .orderBy("id")
+): Promise<{ id: string; remote_id: string | null; domain: string | null }[]> =>
+    await ctx.db.selectFrom("reactions")
+        .leftJoin("instances", "instances.id", "reactions.instance_id")
+        .select(["reactions.id", "reactions.remote_id", "instances.domain"])
+        .where("reactions.note_id", "=", noteId)
+        .orderBy("reactions.id")
         .offset(offset)
         .limit(limit)
-        .execute())
-        .map((row) => row.id);
+        .execute();
 
 /** How many reactions a note has, of any emoji. */
 export const countReactionsOf = async (ctx: Context, noteId: string): Promise<number> =>

@@ -28,5 +28,9 @@ export type ReactionsTable = {
     note_id: string;
     text: string | null;
     emoji_id: string | null;
+    /** The instance it came from, or `null` if it was made here. */
+    instance_id: string | null;
+    /** Its id on that instance. */
+    remote_id: string | null;
     created_at: Date;
 };

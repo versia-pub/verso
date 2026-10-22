@@ -1,20 +1,28 @@
 /**
- * Reactions to notes, each with an emoji: a Unicode one, or one of this instance's custom ones.
- * A user reacts to a note with each emoji once, and with as many emojis as they like, as on Versia
- * Server.
+ * Reactions to notes, each with an emoji: a Unicode one, or a custom one, which local users take
+ * from this instance's. A user reacts to a note with each emoji once, and with as many emojis as
+ * they like, as on Versia Server.
  * @see https://versia.pub/extensions/reactions
  * @module
  */
 import { localEmojiIds } from "../emojis/emoji_queries.ts";
+import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { visibleNote, visibleOriginal } from "../notes/notes.ts";
 import type { ReactionEvent } from "./events.ts";
-import { deleteReaction, insertReaction, type ReactionEmoji } from "./reaction_queries.ts";
+import {
+    deleteReaction,
+    deleteReactionById,
+    findRemoteReaction,
+    insertReaction,
+    insertRemoteReaction,
+    type ReactionEmoji,
+} from "./reaction_queries.ts";
 
-/** One Unicode emoji, as Unicode recommends them, with any skin tone. */
-const unicodeEmoji = /^\p{RGI_Emoji}$/v;
+/** Whether `text` is one Unicode emoji, as Unicode recommends them, with any skin tone. */
+export const isUnicodeEmoji = (text: string): boolean => /^\p{RGI_Emoji}$/v.test(text);
 
 /**
  * The emoji a local user names to react with: a Unicode emoji, or one of this instance's custom
@@ -30,7 +38,7 @@ export const reactionEmoji = async (
         return id === undefined ? undefined : { text: null, emoji_id: id };
     }
 
-    return unicodeEmoji.test(name) ? { text: name, emoji_id: null } : undefined;
+    return isUnicodeEmoji(name) ? { text: name, emoji_id: null } : undefined;
 };
 
 /** What became of reacting to a note, or undoing it: the note, or why there is none. */
@@ -104,3 +112,46 @@ export const unreact = (
 
         return await findNote(tx, reacted) ?? "missing";
     });
+
+/** Another instance's reaction, as Verso keeps it. */
+export type RemoteReaction = {
+    readonly accountId: string;
+    readonly noteId: string;
+    /** A Unicode emoji, or one of the instance's custom emojis. */
+    readonly emoji: string | RemoteEmoji;
+    readonly instanceId: string;
+    readonly remoteId: string;
+    readonly createdAt: Date;
+};
+
+/**
+ * Keeps another instance's reaction, with its custom emoji, unless Verso has it, or the account
+ * already reacts to the note with that emoji.
+ */
+export const keepRemoteReaction = async (ctx: Context, reaction: RemoteReaction): Promise<void> => {
+    const { emoji } = reaction;
+    const [emojiId] = typeof emoji === "string"
+        ? []
+        : await keepRemoteEmojis(ctx, reaction.instanceId, [emoji]);
+
+    await insertRemoteReaction(ctx, {
+        id: ctx.ids(),
+        account_id: reaction.accountId,
+        note_id: reaction.noteId,
+        text: typeof emoji === "string" ? emoji : null,
+        emoji_id: emojiId ?? null,
+        instance_id: reaction.instanceId,
+        remote_id: reaction.remoteId,
+        created_at: reaction.createdAt,
+    });
+};
+
+/** Undoes another instance's reaction, which a Delete said is gone, if Verso has it. */
+export const undoRemoteReaction = async (
+    ctx: Context,
+    instanceId: string,
+    remoteId: string,
+): Promise<void> => {
+    const reaction = await findRemoteReaction(ctx, instanceId, remoteId);
+    if (reaction) await deleteReactionById(ctx, reaction.id);
+};
