@@ -7,7 +7,7 @@ import { findNote } from "../notes/note_queries.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findLike, likedAmong } from "./like_queries.ts";
-import { like, unlike } from "./likes.ts";
+import { keepRemoteLike, like, unlike } from "./likes.ts";
 
 const open = async () => {
     const test = await createTestContext();
@@ -63,6 +63,14 @@ Deno.test("a remote account deleted is uncounted from the notes it liked", async
     const other = await createNote(test.ctx, "alice");
     for (const by of ["carol", "bob"]) await like(test.ctx, by, liked.id);
     await like(test.ctx, "bob", other.id);
+    await keepRemoteLike(test.ctx, {
+        accountId: "carol",
+        noteId: other.id,
+        kind: "dislike",
+        instanceId: "b.example",
+        remoteId: "d1",
+        createdAt: test.ctx.clock.now(),
+    });
 
     await deleteRemoteAccount(test.ctx, "b.example", "carol");
 

@@ -2,6 +2,7 @@ import { userType } from "./accounts/federation.ts";
 import { deleteType } from "./federation/delete.ts";
 import { createRegistry } from "./federation/registry.ts";
 import { followCollections, followTypes } from "./graph/federation.ts";
+import { likeTypes } from "./interactions/federation.ts";
 import { noteCollections, noteType } from "./notes/federation.ts";
 
 /** Users, with the collections other modules add. */
@@ -11,7 +12,7 @@ const user = {
 };
 
 /** The types of entities Verso keeps. Extensions add theirs here. */
-const types = [user, noteType];
+const types = [user, noteType, ...likeTypes];
 
 /**
  * Every Versia entity type Verso knows: the ones it keeps, Delete, which deletes them, and the

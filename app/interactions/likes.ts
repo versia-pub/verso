@@ -7,7 +7,16 @@ import { isAccountDeleting } from "../accounts/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { visibleNote } from "../notes/notes.ts";
-import { countLike, deleteLike, insertLike, uncountLikesBy } from "./like_queries.ts";
+import {
+    countLike,
+    deleteLike,
+    deleteLikeById,
+    findRemoteLike,
+    insertLike,
+    insertRemoteLike,
+    uncountLikesBy,
+} from "./like_queries.ts";
+import type { LikeKind } from "./tables.ts";
 
 /**
  * Likes a note for `accountId`, and counts it, unless it already likes it. Returns the note as it
@@ -29,7 +38,8 @@ export const like = (
 /**
  * Undoes `accountId`'s like of a note, and uncounts it. Returns the note as it is now, or
  * `undefined` if there is none. As on Mastodon, a note it liked can be unliked even if it may no
- * longer see it, and one it didn't only if it may.
+ * longer see it, and one it didn't only if it may. Local users never dislike notes, so there is no
+ * dislike to undo.
  */
 export const unlike = (
     ctx: Context,
@@ -44,6 +54,50 @@ export const unlike = (
         await countLike(tx, noteId, -1);
         return await findNote(tx, noteId);
     });
+
+/** Another instance's like or dislike of a note, by one of its users. */
+export type RemoteLike = {
+    readonly accountId: string;
+    readonly noteId: string;
+    readonly kind: LikeKind;
+    readonly instanceId: string;
+    readonly remoteId: string;
+    readonly createdAt: Date;
+};
+
+/**
+ * Keeps another instance's like or dislike, in place of the account's other one of the note, if
+ * it has one, as an account can't like and dislike a note at once. Only likes are counted. One
+ * Verso has already is left as it is.
+ */
+export const keepRemoteLike = async (ctx: Context, like: RemoteLike): Promise<void> => {
+    if (await findRemoteLike(ctx, like.instanceId, like.remoteId)) return;
+
+    const replaced = await deleteLike(ctx, like.accountId, like.noteId);
+    if (replaced?.kind === "like") await countLike(ctx, like.noteId, -1);
+
+    await insertRemoteLike(ctx, {
+        id: ctx.ids(),
+        account_id: like.accountId,
+        note_id: like.noteId,
+        kind: like.kind,
+        instance_id: like.instanceId,
+        remote_id: like.remoteId,
+        created_at: like.createdAt,
+    });
+    if (like.kind === "like") await countLike(ctx, like.noteId, 1);
+};
+
+/** Undoes another instance's like or dislike, which a Delete said is gone, if Verso has it. */
+export const undoRemoteLike = async (
+    ctx: Context,
+    instanceId: string,
+    remoteId: string,
+): Promise<void> => {
+    const like = await findRemoteLike(ctx, instanceId, remoteId);
+    const removed = like && await deleteLikeById(ctx, like.id);
+    if (removed?.kind === "like") await countLike(ctx, removed.note_id, -1);
+};
 
 /** Uncounts the likes of an account about to be deleted, before they go with it. */
 export const uncountLikesOf = async (ctx: Context, event: DomainEvent): Promise<void> => {

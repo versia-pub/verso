@@ -101,8 +101,12 @@ Deno.test("an entity of no known type, or not matching its type, is a 422", asyn
 
 Deno.test("an entity of an extension Verso doesn't know is accepted and dropped", async () => {
     await using test = await open();
-    const like = { type: "pub.versia:likes/Like", id: "1", created_at: "2026-10-18T12:00:00Z" };
+    const entity = {
+        type: "org.example:unknown/Thing",
+        id: "1",
+        created_at: "2026-10-18T12:00:00Z",
+    };
 
-    assertEquals(await test.send(like), { status: 202, body: undefined });
+    assertEquals(await test.send(entity), { status: 202, body: undefined });
     assertEquals(await test.jobs(), []);
 });

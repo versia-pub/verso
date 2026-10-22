@@ -1,8 +1,18 @@
-/** A note an account likes, which Mastodon calls a favourite. */
+import type { Generated } from "kysely";
+
+/** Whether an account likes a note or dislikes it. Mastodon has only likes, as favourites. */
+export type LikeKind = "like" | "dislike";
+
+/** A note an account likes or dislikes, but never both. */
 export type LikesTable = {
     /** Orders likes by when they were made, for paging through them. */
     id: string;
     account_id: string;
     note_id: string;
+    kind: Generated<LikeKind>;
+    /** The instance it came from, or `null` if it was made here. */
+    instance_id: string | null;
+    /** Its id on that instance. */
+    remote_id: string | null;
     created_at: Date;
 };
