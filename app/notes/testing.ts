@@ -2,6 +2,7 @@ import type { Insertable } from "kysely";
 import { countNote } from "../accounts/count_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { insertNote, type NoteRow } from "./note_queries.ts";
+import { countPosted } from "./notes.ts";
 import type { NotesTable } from "./tables.ts";
 
 /**
@@ -37,6 +38,40 @@ export const createNote = async (
         tags,
     );
     await countNote(ctx, accountId, 1, row.created_at);
+
+    return row;
+};
+
+/** Adds a public share by `accountId` of `noteId`, and counts it, as sharing would. */
+export const createShare = async (
+    ctx: Context,
+    accountId: string,
+    noteId: string,
+    share: Partial<Insertable<NotesTable>> = {},
+): Promise<NoteRow> => {
+    const row = await insertNote(
+        ctx,
+        {
+            id: ctx.ids(),
+            account_id: accountId,
+            instance_id: null,
+            remote_id: null,
+            visibility: "public",
+            content: "",
+            content_format: "text/plain",
+            content_html: "",
+            language: null,
+            in_reply_to_id: null,
+            in_reply_to_account_id: null,
+            reblog_of_id: noteId,
+            created_at: ctx.clock.now(),
+            edited_at: null,
+            ...share,
+        },
+        [],
+        [],
+    );
+    await countPosted(ctx, row, 1);
 
     return row;
 };

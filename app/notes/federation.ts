@@ -121,7 +121,10 @@ export const noteType: EntityType<v0_6.Note> = {
     collections: { replies: linkCollection("in_reply_to_id"), quotes: linkCollection("quote_id") },
     find: async (ctx, id, requester) => {
         const note = await findNote(ctx, id);
-        if (note === undefined || note.instance_id !== null) return undefined;
+        // A share is fetched as a Share, not a Note.
+        if (note === undefined || note.instance_id !== null || note.reblog_of_id !== null) {
+            return undefined;
+        }
         if (!await instanceMaySee(ctx, note, requester)) return undefined;
 
         const [rendered] = await renderVersiaNotes(ctx, [note]);

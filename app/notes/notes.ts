@@ -17,6 +17,7 @@ import { type Mention, renderText, scanText } from "../kernel/markup.ts";
 import type { NoteDeleted, NoteEdited, NotePosted } from "./events.ts";
 import {
     countReply,
+    countShare,
     deleteNote,
     findNote,
     insertNote,
@@ -25,6 +26,9 @@ import {
     mentionsOf,
     type NoteRow,
     uncountRepliesBy,
+    uncountSharersOf,
+    uncountSharersOfNotesBy,
+    uncountSharesBy,
     updateNote,
 } from "./note_queries.ts";
 
@@ -75,24 +79,33 @@ export const visibleNote = async (
 
 /**
  * Counts a note its author posted, or deleted, as Mastodon does: a direct note isn't counted, and
- * only a public or unlisted one as a reply, so the counts don't tell of notes others can't see.
+ * only a public or unlisted one as a reply, so the counts don't tell of notes others can't see. A
+ * share is counted as the author's, and as a share of the note it shares.
  */
 export const countPosted = async (
     ctx: Context,
-    note: Pick<NoteRow, "account_id" | "visibility" | "created_at" | "in_reply_to_id">,
+    note: Pick<
+        NoteRow,
+        "account_id" | "visibility" | "created_at" | "in_reply_to_id" | "reblog_of_id"
+    >,
     by: 1 | -1,
 ): Promise<void> => {
     if (note.visibility !== "direct") await countNote(ctx, note.account_id, by, note.created_at);
 
     const listed = note.visibility === "public" || note.visibility === "unlisted";
     if (listed && note.in_reply_to_id !== null) await countReply(ctx, note.in_reply_to_id, by);
+    if (note.reblog_of_id !== null) await countShare(ctx, note.reblog_of_id, by);
 };
 
-/** Deletes a note, uncounting it. Returns whether there was one. */
+/**
+ * Deletes a note, uncounting it, and the shares of it, which go with it. Returns whether there was
+ * one.
+ */
 export const removeNote = (ctx: Context, id: string): Promise<boolean> =>
     ctx.transaction(async (tx) => {
         // Read while they are there: the event says who could see the note, so they can be told.
         const mentionIds = (await mentionsOf(tx, [id])).get(id) ?? [];
+        await uncountSharersOf(tx, id);
         const note = await deleteNote(tx, id);
         if (note === undefined) return false;
 
@@ -294,9 +307,14 @@ export const editNote = async (
 };
 
 /**
- * Uncounts the replies of an account about to be deleted from the notes they reply to, before its
- * notes go with it.
+ * Uncounts what goes with an account about to be deleted, before it does: its replies, from the
+ * notes they reply to, its shares, from the notes they share, and the shares of its notes, from
+ * the accounts that made them.
  */
-export const uncountRepliesOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
-    if (isAccountDeleting(event)) await uncountRepliesBy(ctx, event.accountId);
+export const uncountNotesOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
+    if (!isAccountDeleting(event)) return;
+
+    await uncountRepliesBy(ctx, event.accountId);
+    await uncountSharesBy(ctx, event.accountId);
+    await uncountSharersOfNotesBy(ctx, event.accountId);
 };

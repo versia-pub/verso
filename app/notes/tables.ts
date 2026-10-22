@@ -29,8 +29,14 @@ export type NotesTable = {
     in_reply_to_account_id: string | null;
     /** The note it quotes, or `null` if none, or it is gone. Only other instances' quote yet. */
     quote_id: string | null;
+    /**
+     * The note it shares, which Mastodon calls a reblog, or `null` if it isn't a share. A share
+     * says nothing itself, and goes with the note it shares.
+     */
+    reblog_of_id: string | null;
     replies_count: Generated<number>;
     likes_count: Generated<number>;
+    shares_count: Generated<number>;
     created_at: Date;
     edited_at: Date | null;
     /** When it was last fetched or sent, or `null` if it was written here. */

@@ -130,7 +130,7 @@ export const noteOrigins = async (
         .where("notes.id", "in", ids)
         .execute();
 
-/** An account's notes with one of `visibilities`, oldest first, from `offset`. */
+/** An account's notes with one of `visibilities`, not its shares, oldest first, from `offset`. */
 export const notesBy = async (
     ctx: Context,
     accountId: string,
@@ -141,6 +141,7 @@ export const notesBy = async (
     await ctx.db.selectFrom("notes").selectAll()
         .where("account_id", "=", accountId)
         .where("visibility", "in", visibilities)
+        .where("reblog_of_id", "is", null)
         .orderBy("id")
         .offset(offset)
         .limit(limit)
@@ -154,7 +155,7 @@ export type NoteFilter = {
     readonly tag?: string;
 };
 
-/** A page of an account's notes with one of `visibilities`, newest first. */
+/** A page of an account's notes with one of `visibilities`, not its shares yet, newest first. */
 export const notePageBy = async (
     ctx: Context,
     accountId: string,
@@ -164,7 +165,8 @@ export const notePageBy = async (
 ): Promise<NoteRow[]> => {
     let query = ctx.db.selectFrom("notes").selectAll()
         .where("account_id", "=", accountId)
-        .where("visibility", "in", visibilities);
+        .where("visibility", "in", visibilities)
+        .where("reblog_of_id", "is", null);
 
     if (filter.excludeReplies) {
         query = query.where((eb) =>
@@ -261,7 +263,8 @@ const linkedTo = (
     visibilities: readonly Visibility[],
 ) => ctx.db.selectFrom("notes")
     .where(link, "=", noteId)
-    .where("visibility", "in", visibilities);
+    .where("visibility", "in", visibilities)
+    .where("reblog_of_id", "is", null);
 
 /** The ids of the notes linking to `noteId`, as {@link linkedTo} finds them, oldest first. */
 export const linkedNoteIds = async (
@@ -290,7 +293,7 @@ export const countLinkedNotes = async (
         await linkedTo(ctx, link, noteId, visibilities).select(countAll).executeTakeFirstOrThrow(),
     );
 
-/** How many notes an account has with one of `visibilities`. */
+/** How many notes an account has with one of `visibilities`, not counting its shares. */
 export const countNotesBy = async (
     ctx: Context,
     accountId: string,
@@ -300,6 +303,7 @@ export const countNotesBy = async (
         await ctx.db.selectFrom("notes").select(countAll)
             .where("account_id", "=", accountId)
             .where("visibility", "in", visibilities)
+            .where("reblog_of_id", "is", null)
             .executeTakeFirstOrThrow(),
     );
 
@@ -380,5 +384,62 @@ export const uncountRepliesBy = async (ctx: Context, accountId: string): Promise
         .where("id", "in", (eb) =>
             eb.selectFrom("notes as reply").select("reply.in_reply_to_id")
                 .where("reply.account_id", "=", accountId))
+        .execute();
+};
+
+/** Counts a share of a note, or one deleted. */
+export const countShare = async (ctx: Context, noteId: string, by: 1 | -1): Promise<void> => {
+    await ctx.db.updateTable("notes")
+        .set((eb) => ({ shares_count: eb("shares_count", "+", by) }))
+        .where("id", "=", noteId)
+        .execute();
+};
+
+/** Uncounts the shares an account made from the notes they share. An account shares a note once. */
+export const uncountSharesBy = async (ctx: Context, accountId: string): Promise<void> => {
+    await ctx.db.updateTable("notes")
+        .set((eb) => ({ shares_count: eb("shares_count", "-", 1) }))
+        .where("id", "in", (eb) =>
+            eb.selectFrom("notes as share").select("share.reblog_of_id")
+                .where("share.account_id", "=", accountId)
+                .where("share.reblog_of_id", "is not", null))
+        .execute();
+};
+
+/**
+ * Uncounts the shares of `noteId` from the statuses of the accounts that made them, as they go with
+ * it. Direct ones aren't counted, so they aren't uncounted.
+ */
+export const uncountSharersOf = async (ctx: Context, noteId: string): Promise<void> => {
+    await ctx.db.updateTable("accounts")
+        .set((eb) => ({ statuses_count: eb("statuses_count", "-", 1) }))
+        .where("id", "in", (eb) =>
+            eb.selectFrom("notes").select("notes.account_id")
+                .where("notes.reblog_of_id", "=", noteId)
+                .where("notes.visibility", "!=", "direct"))
+        .execute();
+};
+
+/**
+ * Uncounts the shares of an account's notes from the statuses of the accounts that made them, as
+ * they go with its notes when it is deleted.
+ */
+export const uncountSharersOfNotesBy = async (ctx: Context, authorId: string): Promise<void> => {
+    const sharesBy = (eb: ExpressionBuilder<Database, "accounts">) =>
+        eb.selectFrom("notes as share")
+            .innerJoin("notes as shared", "shared.id", "share.reblog_of_id")
+            .where("shared.account_id", "=", authorId)
+            .where("share.visibility", "!=", "direct");
+
+    await ctx.db.updateTable("accounts")
+        .set((eb) => ({
+            statuses_count: eb(
+                "statuses_count",
+                "-",
+                sharesBy(eb).select((count) => count.fn.countAll<number>().as("count"))
+                    .whereRef("share.account_id", "=", "accounts.id"),
+            ),
+        }))
+        .where("id", "in", (eb) => sharesBy(eb).select("share.account_id"))
         .execute();
 };

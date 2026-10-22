@@ -34,11 +34,17 @@ const logger = getLogger(["verso", "notes"]);
 const visibilityOf = (group: string | null | undefined): Visibility =>
     group === "public" ? "public" : group === "followers" ? "private" : "direct";
 
-/** The note `reference` points at, local or remote, if Verso has it, without fetching it. */
+/**
+ * The note `reference` points at, local or remote, if Verso has it, without fetching it. Shares
+ * aren't notes here.
+ */
 export const knownNote = async (ctx: Context, reference: Reference): Promise<Known | undefined> => {
+    // A share isn't a Note in Versia, so nothing can reply to, quote or like it.
     if (reference.host === ctx.urls.domain) {
         const note = await findNote(ctx, reference.id);
-        return note?.instance_id === null ? { id: note.id, fetchedAt: null } : undefined;
+        return note?.instance_id === null && note.reblog_of_id === null
+            ? { id: note.id, fetchedAt: null }
+            : undefined;
     }
 
     const note = await findRemoteNoteAt(ctx, reference.host, reference.id);

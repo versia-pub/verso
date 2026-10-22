@@ -82,7 +82,7 @@ export const renderStatuses = async (
                 url: ctx.urls.url`/tags/${name}`,
             })),
             emojis: [],
-            reblogs_count: 0,
+            reblogs_count: note.shares_count,
             favourites_count: note.likes_count,
             replies_count: note.replies_count,
             // Verso has no web pages for notes.

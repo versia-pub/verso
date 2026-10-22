@@ -14,7 +14,9 @@ export const homePage = async (
     followed: AccountIdQuery,
     page: PageBounds,
 ): Promise<NoteRow[]> => {
+    // Shares aren't shown yet.
     const query = ctx.db.selectFrom("notes").selectAll()
+        .where("reblog_of_id", "is", null)
         .where((eb) =>
             eb.or([
                 eb("account_id", "=", viewerId),
@@ -46,7 +48,7 @@ export type Origin = "all" | "local" | "remote";
 
 /**
  * A page of the public timeline, newest first: public notes from `origin`, without replies but to
- * their own authors, as on Mastodon.
+ * their own authors, or shares, as on Mastodon.
  */
 export const publicPage = async (
     ctx: Context,
@@ -55,6 +57,7 @@ export const publicPage = async (
 ): Promise<NoteRow[]> => {
     let query = ctx.db.selectFrom("notes").selectAll()
         .where("visibility", "=", "public")
+        .where("reblog_of_id", "is", null)
         .where((eb) =>
             eb.or([
                 eb("in_reply_to_account_id", "is", null),
