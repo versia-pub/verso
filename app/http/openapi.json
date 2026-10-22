@@ -6132,6 +6132,30 @@
                 }
             }
         },
+        "/.versia/v0.6/messaging": {
+            "post": {
+                "summary": "A message from another instance about why something this one sent failed",
+                "tags": [
+                    "versia"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "text/plain": {
+                            "schema": {
+                                "type": "string",
+                                "minLength": 1
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "No body"
+                    }
+                }
+            }
+        },
         "/api/v2/instance": {
             "get": {
                 "summary": "The instance, its limits, and how to join and contact it",

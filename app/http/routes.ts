@@ -4,6 +4,7 @@ import { webfingerRoutes } from "../accounts/webfinger.ts";
 import { authRoutes } from "../auth/routes.ts";
 import { emojiRoutes } from "../emojis/routes.ts";
 import { inboxRoute } from "../federation/inbox.ts";
+import { messagingRoute } from "../federation/messaging.ts";
 import { interactionRoutes } from "../interactions/routes.ts";
 import { entityRoutes } from "../federation/registry.ts";
 import { graphRoutes } from "../graph/routes.ts";
@@ -36,6 +37,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...webfingerRoutes,
         ...entityRoutes(registry),
         inboxRoute(registry),
+        messagingRoute,
         ...instanceRoutes(settings),
         ...versiaInstanceRoutes(settings.instance, registry.extensions),
         docsRoute,

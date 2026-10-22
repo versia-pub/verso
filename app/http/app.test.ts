@@ -162,6 +162,16 @@ const echo = defineRoute({
     handler: (_, { body }) => Promise.resolve({ status: 200, body }),
 });
 
+const echoText = defineRoute({
+    method: "POST",
+    path: "/echo-text",
+    summary: "Answers with the text it was sent",
+    textBody: true,
+    body: z.string(),
+    responses: { 200: z.object({ text: z.string() }) },
+    handler: (_, { body }) => Promise.resolve({ status: 200, body: { text: body } }),
+});
+
 const numbers = defineRoute({
     method: "GET",
     path: "/numbers",
@@ -205,6 +215,7 @@ const open = async () => {
     const app = createTestApp(test.ctx, [
         rename,
         echo,
+        echoText,
         sloppy,
         welcome,
         scripted,
@@ -381,6 +392,25 @@ Deno.test("a missing or empty body is read as an empty one, of any type", async 
     });
     assertEquals((await test.send("/echo", "", "text/plain")).status, 415);
     assertEquals((await test.send("/echo", " ")).status, 400);
+});
+
+Deno.test("a route that takes plain text reads it as it was sent, and only that", async () => {
+    await using test = await open();
+
+    assertEquals(await test.send("/echo-text", '{"a": 1}\n', "text/plain; charset=utf-8"), {
+        status: 200,
+        body: { text: '{"a": 1}\n' },
+    });
+    assertEquals((await test.send("/echo-text", "{}")).status, 415);
+    assertEquals(
+        (await test.send("/echo-text", "a=b", "application/x-www-form-urlencoded")).status,
+        415,
+    );
+
+    // A missing or empty body is an empty one.
+    const missing = await test.app.request("/echo-text", { method: "POST" });
+    assertEquals([missing.status, await missing.json()], [200, { text: "" }]);
+    assertEquals(await test.send("/echo-text", ""), { status: 200, body: { text: "" } });
 });
 
 Deno.test("a body over 256 KiB is refused before it is read", async () => {

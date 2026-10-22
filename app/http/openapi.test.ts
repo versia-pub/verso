@@ -122,6 +122,27 @@ Deno.test("a body is optional when an empty one is valid, since a missing one re
     assertEquals(required(z.object({ name: z.string() })), true);
 });
 
+Deno.test("a plain-text body is described as text, needed unless an empty one is valid", () => {
+    const route = (body: z.ZodType) =>
+        defineRoute({
+            method: "POST",
+            path: "/api/v1/notes",
+            summary: "Leave a note",
+            textBody: true,
+            body,
+            responses: { 200: NoBody },
+            handler: unused,
+        });
+    const described = (body: z.ZodType) =>
+        openApiDocument([route(body)], info, origin).paths["/api/v1/notes"]?.post?.requestBody;
+
+    assertEquals(described(z.string().min(1)), {
+        required: true,
+        content: { "text/plain": { schema: { type: "string", minLength: 1 } } },
+    });
+    assertEquals(described(z.string())?.required, false);
+});
+
 Deno.test("a page of a list is an array of its items, with a link to the pages around", () => {
     const route = defineRoute({
         method: "GET",

@@ -93,19 +93,19 @@ export type EntityType<T = unknown> = {
 export type Registry = {
     readonly types: ReadonlyMap<string, EntityType>;
     /**
-     * The extensions the types come from, and those that only add fields to entities, for
+     * The extensions the types come from, and those that add none, for
      * `compatibility.extensions`, sorted.
      */
     readonly extensions: readonly string[];
 };
 
 /**
- * A registry of `types`. `fieldExtensions` are the extensions Verso supports that add no types,
- * only fields to entities, such as `pub.versia:custom_emojis`.
+ * A registry of `types`. `otherExtensions` are the extensions Verso supports that add no types,
+ * such as `pub.versia:custom_emojis`, which adds fields to entities.
  */
 export const createRegistry = (
     types: readonly EntityType[],
-    fieldExtensions: readonly string[] = [],
+    otherExtensions: readonly string[] = [],
 ): Registry => {
     const byName = new Map<string, EntityType>();
 
@@ -116,7 +116,7 @@ export const createRegistry = (
 
     const extensions = new Set([
         ...types.flatMap((type) => type.extension ?? []),
-        ...fieldExtensions,
+        ...otherExtensions,
     ]);
 
     return { types: byName, extensions: [...extensions].toSorted() };

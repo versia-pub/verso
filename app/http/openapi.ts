@@ -275,8 +275,11 @@ const operation = (route: Route, names: Naming): Operation => {
         ...body && {
             requestBody: {
                 // A missing body is read as an empty one, which some routes take.
-                required: !route.body?.safeParse({}).success,
-                content: Object.fromEntries(bodyTypes.map((type) => [type, { schema: body }])),
+                required: !route.body?.safeParse(route.textBody ? "" : {}).success,
+                content: Object.fromEntries(
+                    (route.textBody ? ["text/plain"] : bodyTypes)
+                        .map((type) => [type, { schema: body }]),
+                ),
             },
         },
         responses: Object.fromEntries(

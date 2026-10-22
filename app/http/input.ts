@@ -89,14 +89,21 @@ const formOf = async (c: HonoContext) => {
 };
 
 /**
- * Mastodon clients send JSON or forms, so every route accepts both. They send actions such as
- * follows with no body at all, which Mastodon reads as an empty one. Deno's server gives those an
- * empty body, with no type.
+ * Mastodon clients send JSON or forms, so every route accepts both, except those that take plain
+ * text. They send actions such as follows with no body at all, which Mastodon reads as an empty
+ * one. Deno's server gives those an empty body, with no type.
  */
 const bodyOf = async (c: HonoContext, route: Route) => {
-    if (!route.body || c.req.raw.body === null) return {};
-
     const type = c.req.header("content-type")?.split(";")[0].trim().toLowerCase();
+    if (route.body && route.textBody) {
+        const text = c.req.raw.body === null ? "" : await c.req.text();
+        if (text !== "" && type !== "text/plain") {
+            throw new UnsupportedMediaType("The body must be plain text");
+        }
+        return text;
+    }
+
+    if (!route.body || c.req.raw.body === null) return {};
     if (type === undefined && await c.req.text() === "") return {};
     const forms = ["application/x-www-form-urlencoded", "multipart/form-data"];
 

@@ -192,6 +192,11 @@ export type RouteDefinition<
      * values are strings (or files), and a key given more than once, or as `key[]`, is an array.
      */
     readonly body?: B;
+    /**
+     * The body is plain text, `text/plain`, which `body` checks as a string, rather than JSON or a
+     * form. A missing body is an empty string.
+     */
+    readonly textBody?: true;
     /** The cookies the route reads, which are strings. Only the ones Verso set are seen. */
     readonly cookies?: C;
     /** The request headers the route reads, by lowercase name. */
