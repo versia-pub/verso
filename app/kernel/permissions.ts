@@ -14,12 +14,16 @@ export const permissions = [
     "read:note",
     /** View who likes the notes one may see. */
     "read:note_likes",
+    /** View who shares the notes one may see. */
+    "read:note_boosts",
     /** Change one's own profile and settings. */
     "owner:account",
     /** Follow and unfollow accounts. */
     "owner:follow",
     /** Like notes, and undo it. */
     "owner:like",
+    /** Share notes, and undo it. */
+    "owner:boost",
     /** Post and delete one's own notes. */
     "owner:note",
     /** Create, change and assign roles below one's own. */

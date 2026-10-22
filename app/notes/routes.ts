@@ -8,7 +8,15 @@ import { Flag } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import { countText } from "../kernel/markup.ts";
 import { notePageBy } from "./note_queries.ts";
-import { editNote, postNote, removeNote, visibilitiesFor, visibleNote } from "./notes.ts";
+import { unshare } from "../interactions/shares.ts";
+import {
+    editNote,
+    postNote,
+    removeNote,
+    visibilitiesFor,
+    visibleNote,
+    visibleOriginal,
+} from "./notes.ts";
 import { threadOf } from "./threads.ts";
 import { renderHistory, renderStatuses } from "./render.ts";
 
@@ -162,7 +170,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
         responses: { 200: Context },
         handler: async (ctx, { params, viewer }) => {
             const viewerId = viewer?.accountId ?? null;
-            const note = await visibleNote(ctx, params.id, viewerId);
+            const note = await visibleOriginal(ctx, params.id, viewerId);
             if (note === undefined) throw new NotFound();
 
             const thread = await threadOf(ctx, note, viewerId);
@@ -213,7 +221,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
         params: z.object({ id: z.string() }),
         responses: { 200: z.array(StatusEdit) },
         handler: async (ctx, { params, viewer }) => {
-            const note = await visibleNote(ctx, params.id, viewer?.accountId ?? null);
+            const note = await visibleOriginal(ctx, params.id, viewer?.accountId ?? null);
             if (note === undefined) throw new NotFound();
 
             return { status: 200, body: await renderHistory(ctx, note) };
@@ -228,7 +236,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
         params: z.object({ id: z.string() }),
         responses: { 200: StatusSource },
         handler: async (ctx, { params, viewer }) => {
-            const note = await visibleNote(ctx, params.id, viewer.accountId);
+            const note = await visibleOriginal(ctx, params.id, viewer.accountId);
             if (note === undefined) throw new NotFound();
 
             return {
@@ -245,7 +253,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
         method: "DELETE",
         path: "/api/v1/statuses/:id",
-        summary: "Deletes one of the viewer's statuses, and gives it back as written, to redraft",
+        summary: "Deletes one of the viewer's statuses or shares, and gives it back, to redraft",
         tags: ["statuses"],
         auth: { require: "user", scope: "write:statuses", permission: "owner:note" },
         params: z.object({ id: z.string() }),
@@ -255,7 +263,11 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             if (note?.account_id !== viewer.accountId) throw new NotFound();
 
             const [status] = await renderStatuses(ctx, [note], viewer.accountId, { source: true });
-            if (!await removeNote(ctx, note.id)) throw new NotFound();
+            // A share is undone, as unsharing does, rather than deleted as a note.
+            const removed = note.reblog_of_id === null
+                ? await removeNote(ctx, note.id)
+                : await unshare(ctx, viewer.accountId, note.reblog_of_id) !== undefined;
+            if (!removed) throw new NotFound();
 
             return { status: 200, body: status };
         },

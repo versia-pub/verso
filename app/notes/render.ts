@@ -9,28 +9,61 @@ import { likedAmong } from "../interactions/like_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
 import { entityUrl } from "../kernel/urls.ts";
-import { mentionsOf, type NoteRow, tagsOf, versionsOf } from "./note_queries.ts";
+import {
+    findNotes,
+    mentionsOf,
+    type NoteRow,
+    sharedAmong,
+    tagsOf,
+    versionsOf,
+} from "./note_queries.ts";
 
-/** The note's id in Versia, the URL its Note entity is fetched from. */
+/**
+ * The note's id in Versia, the URL its Note entity is fetched from, or for a local share, its
+ * Share entity.
+ */
 const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
-    if (domain === null) return entityUrl(ctx.urls.domain, "Note", note.id);
+    if (domain === null) {
+        const type = note.reblog_of_id === null ? "Note" : "pub.versia:share/Share";
+        return entityUrl(ctx.urls.domain, type, note.id);
+    }
 
     if (note.remote_id === null) throw new Error(`Remote note ${note.id} has no remote id`);
     return entityUrl(domain, "Note", note.remote_id);
 };
 
-/** What only a logged-in viewer is told: whether they like a note. The rest isn't possible yet. */
-const viewerFlags = (liked: boolean) => ({
+/**
+ * What only a logged-in viewer is told: whether they like a note, and share it. The rest isn't
+ * possible yet.
+ */
+const viewerFlags = (liked: boolean, shared: boolean) => ({
     favourited: liked,
-    reblogged: false,
+    reblogged: shared,
     muted: false,
     bookmarked: false,
 });
 
 /**
+ * The notes `shares` share, as statuses, by id, as `viewerId` sees them. Notes shared aren't
+ * shares themselves, so this goes no deeper.
+ */
+const sharedStatuses = async (
+    ctx: Context,
+    shares: readonly NoteRow[],
+    viewerId: string | null,
+): Promise<Map<string, Status>> => {
+    const ids = [...new Set(shares.flatMap((note) => note.reblog_of_id ?? []))];
+    if (ids.length === 0) return new Map();
+
+    const statuses = await renderStatuses(ctx, await findNotes(ctx, ids), viewerId);
+    return new Map(statuses.map((status) => [status.id, status]));
+};
+
+/**
  * Notes as statuses, in the order given, as `viewerId` sees them, or anyone if it is `null`. Each
- * note's author must exist, which the database makes sure of. With `source`, they carry what their
- * authors wrote, as Mastodon gives a deleted status back for redrafting.
+ * note's author must exist, which the database makes sure of. A share has the note it shares as its
+ * `reblog`. With `source`, they carry what their authors wrote, as Mastodon gives a deleted status
+ * back for redrafting.
  */
 export const renderStatuses = async (
     ctx: Context,
@@ -42,6 +75,8 @@ export const renderStatuses = async (
     const mentions = await mentionsOf(ctx, noteIds);
     const tags = await tagsOf(ctx, noteIds);
     const liked = viewerId === null ? new Set() : await likedAmong(ctx, viewerId, noteIds);
+    const shared = viewerId === null ? new Set() : await sharedAmong(ctx, viewerId, noteIds);
+    const reblogs = await sharedStatuses(ctx, notes, viewerId);
 
     const accountIds = [
         ...new Set([...notes.map((note) => note.account_id), ...[...mentions.values()].flat()]),
@@ -89,13 +124,13 @@ export const renderStatuses = async (
             url: null,
             in_reply_to_id: note.in_reply_to_id,
             in_reply_to_account_id: note.in_reply_to_account_id,
-            reblog: null,
+            reblog: note.reblog_of_id === null ? null : reblogs.get(note.reblog_of_id) ?? null,
             poll: null,
             card: null,
             language: note.language,
             text: options.source ? note.content : null,
             edited_at: note.edited_at?.toISOString() ?? null,
-            ...(viewerId === null ? {} : viewerFlags(liked.has(note.id))),
+            ...(viewerId === null ? {} : viewerFlags(liked.has(note.id), shared.has(note.id))),
         };
     });
 };

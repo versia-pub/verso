@@ -2434,7 +2434,7 @@
                 }
             },
             "delete": {
-                "summary": "Deletes one of the viewer's statuses, and gives it back as written, to redraft",
+                "summary": "Deletes one of the viewer's statuses or shares, and gives it back, to redraft",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
                 "tags": [
                     "statuses"
@@ -2987,6 +2987,225 @@
                 }
             }
         },
+        "/api/v1/statuses/{id}/reblog": {
+            "post": {
+                "summary": "Shares a public or unlisted status the viewer may see, and gives the share",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:boost` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "visibility": {
+                                        "type": "string",
+                                        "enum": [
+                                            "public",
+                                            "unlisted",
+                                            "private"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "visibility": {
+                                        "type": "string",
+                                        "enum": [
+                                            "public",
+                                            "unlisted",
+                                            "private"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "visibility": {
+                                        "type": "string",
+                                        "enum": [
+                                            "public",
+                                            "unlisted",
+                                            "private"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/unreblog": {
+            "post": {
+                "summary": "Undoes the viewer's share of a status, and gives the status",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:boost` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/reblogged_by": {
+            "get": {
+                "summary": "The accounts that share a status the viewer may see, publicly, newest first",
+                "description": "Needs the `read:note_boosts` permission.",
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/timelines/home": {
             "get": {
                 "summary": "The viewer's statuses and those of the accounts they follow, newest first",
@@ -3251,9 +3470,11 @@
                                                 "read:account_follows",
                                                 "read:note",
                                                 "read:note_likes",
+                                                "read:note_boosts",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
+                                                "owner:boost",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3326,9 +3547,11 @@
                                                 "read:account_follows",
                                                 "read:note",
                                                 "read:note_likes",
+                                                "read:note_boosts",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
+                                                "owner:boost",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3401,9 +3624,11 @@
                                                 "read:account_follows",
                                                 "read:note",
                                                 "read:note_likes",
+                                                "read:note_boosts",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
+                                                "owner:boost",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3555,9 +3780,11 @@
                                                 "read:account_follows",
                                                 "read:note",
                                                 "read:note_likes",
+                                                "read:note_boosts",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
+                                                "owner:boost",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3627,9 +3854,11 @@
                                                 "read:account_follows",
                                                 "read:note",
                                                 "read:note_likes",
+                                                "read:note_boosts",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
+                                                "owner:boost",
                                                 "owner:note",
                                                 "roles"
                                             ]
@@ -3699,9 +3928,11 @@
                                                 "read:account_follows",
                                                 "read:note",
                                                 "read:note_likes",
+                                                "read:note_boosts",
                                                 "owner:account",
                                                 "owner:follow",
                                                 "owner:like",
+                                                "owner:boost",
                                                 "owner:note",
                                                 "roles"
                                             ]

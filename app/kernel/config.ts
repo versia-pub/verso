@@ -109,6 +109,7 @@ export const Permissions = z.strictObject({
         "read:account_follows",
         "read:note",
         "read:note_likes",
+        "read:note_boosts",
     ]),
     /** For every user. */
     default: z.array(Permission).default([
@@ -116,7 +117,9 @@ export const Permissions = z.strictObject({
         "read:account_follows",
         "read:note",
         "read:note_likes",
+        "read:note_boosts",
         "owner:account",
+        "owner:boost",
         "owner:follow",
         "owner:like",
         "owner:note",

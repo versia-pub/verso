@@ -443,3 +443,56 @@ export const uncountSharersOfNotesBy = async (ctx: Context, authorId: string): P
         .where("id", "in", (eb) => sharesBy(eb).select("share.account_id"))
         .execute();
 };
+
+/** An account's share of a note, if it shares it. */
+export const findShare = async (
+    ctx: Context,
+    accountId: string,
+    noteId: string,
+): Promise<NoteRow | undefined> =>
+    await ctx.db.selectFrom("notes").selectAll()
+        .where("account_id", "=", accountId)
+        .where("reblog_of_id", "=", noteId)
+        .executeTakeFirst();
+
+/** Removes an account's share of a note, and returns it, if there was one. */
+export const deleteShare = async (
+    ctx: Context,
+    accountId: string,
+    noteId: string,
+): Promise<NoteRow | undefined> =>
+    await ctx.db.deleteFrom("notes")
+        .where("account_id", "=", accountId)
+        .where("reblog_of_id", "=", noteId)
+        .returningAll()
+        .executeTakeFirst();
+
+/** Which of `noteIds` the account shares. */
+export const sharedAmong = async (
+    ctx: Context,
+    accountId: string,
+    noteIds: readonly string[],
+): Promise<Set<string>> => {
+    if (noteIds.length === 0) return new Set();
+
+    const rows = await ctx.db.selectFrom("notes").select("reblog_of_id")
+        .where("account_id", "=", accountId)
+        .where("reblog_of_id", "in", noteIds)
+        .execute();
+    return new Set(rows.flatMap((row) => row.reblog_of_id ?? []));
+};
+
+/** A page of the shares of a note with one of `visibilities`, newest first. */
+export const sharePage = async (
+    ctx: Context,
+    noteId: string,
+    visibilities: readonly Visibility[],
+    page: PageBounds,
+): Promise<NoteRow[]> =>
+    await readPage(
+        ctx.db.selectFrom("notes").selectAll()
+            .where("reblog_of_id", "=", noteId)
+            .where("visibility", "in", visibilities),
+        "id",
+        page,
+    );

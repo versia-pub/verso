@@ -1,10 +1,12 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { createLocalAccount } from "../accounts/testing.ts";
+import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
+import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
 import { follow } from "../graph/follows.ts";
 import type { App } from "../http/app.ts";
 import { routes } from "../http/routes.ts";
-import { defaultSettings } from "../instances/testing.ts";
+import { createInstance, defaultSettings } from "../instances/testing.ts";
+import { share } from "../interactions/shares.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -438,4 +440,39 @@ Deno.test("statuses are served among every route", async () => {
 
     const response = await app.request(`/api/v1/statuses/${note.id}`);
     assertEquals([response.status, (await response.json()).id], [200, note.id]);
+});
+
+Deno.test("a share is undone by deleting it, can't be edited, and stands for its status", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const reply = await createNote(test.ctx, "bob", {
+        in_reply_to_id: note.id,
+        in_reply_to_account_id: "alice",
+    });
+    const shared = await share(test.ctx, "bob", note.id);
+    if (typeof shared !== "object") throw new Error(`Not shared: ${shared}`);
+    const path = `/api/v1/statuses/${shared.id}`;
+
+    const thread = await test.request("GET", `${path}/context`, "bob");
+    assertEquals(thread.body.descendants.map((status: { id: string }) => status.id), [reply.id]);
+    assertEquals((await test.request("GET", `${path}/source`, "bob")).body.id, note.id);
+    assertEquals((await test.edit(shared.id, { status: "Hi" }, "bob")).status, 404);
+    assertEquals((await test.request("DELETE", path, "alice")).status, 404);
+
+    // bob's follower on another instance isn't sent a Delete of a Note.
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "carol", "b.example");
+    await follow(test.ctx, "carol", "bob");
+    const deleted = await test.request("DELETE", path, "bob");
+    assertEquals([deleted.status, deleted.body.id, deleted.body.reblog.id], [
+        200,
+        shared.id,
+        note.id,
+    ]);
+    assertEquals(await findNote(test.ctx, shared.id), undefined);
+    assertEquals((await findNote(test.ctx, note.id))?.shares_count, 0);
+    const queued = await test.ctx.db.selectFrom("jobs").select("payload")
+        .where("queue", "=", deliverQueue).execute();
+    const types = queued.map((job) => JSON.parse(DeliverJob.parse(job.payload).body).type);
+    assertEquals(types, ["FollowAccept"]);
 });

@@ -6,6 +6,7 @@ import { createNote } from "../notes/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { like } from "./likes.ts";
+import { share } from "./shares.ts";
 import { interactionRoutes } from "./routes.ts";
 
 const open = async () => {
@@ -97,4 +98,52 @@ Deno.test("the viewer's liked statuses are listed, the latest liked first, if st
     await unfollow(test.ctx, "bob", "alice");
     const seen = await test.request("GET", "/api/v1/favourites");
     assertEquals(seen.body.map((status: { id: string }) => status.id), [older.id, newer.id]);
+});
+
+Deno.test("sharing a status gives the share, with the status in it", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    const path = `/api/v1/statuses/${note.id}`;
+
+    const shared = await test.request("POST", `${path}/reblog`);
+    assertEquals(
+        [shared.status, shared.body.reblogged, shared.body.account.id, shared.body.content],
+        [200, false, "bob", ""],
+    );
+    assertEquals(
+        [shared.body.reblog.id, shared.body.reblog.reblogged, shared.body.reblog.reblogs_count],
+        [note.id, true, 1],
+    );
+    assertEquals(
+        shared.body.uri,
+        `https://${test.ctx.urls.domain}/.versia/v0.6/entities/pub.versia%3Ashare%2FShare/${shared.body.id}`,
+    );
+
+    const undone = await test.request("POST", `${path}/unreblog`);
+    assertEquals(
+        [undone.status, undone.body.id, undone.body.reblogged, undone.body.reblogs_count],
+        [200, note.id, false, 0],
+    );
+});
+
+Deno.test("a status that can't be shared, or seen, is refused", async () => {
+    await using test = await open();
+    const hidden = await createNote(test.ctx, "alice", { visibility: "private" });
+    const path = `/api/v1/statuses/${hidden.id}`;
+
+    assertEquals((await test.request("POST", `${path}/reblog`)).status, 403);
+    assertEquals((await test.request("POST", `${path}/reblog`, "dave")).status, 404);
+    assertEquals((await test.request("POST", `${path}/unreblog`, "dave")).status, 404);
+    assertEquals((await test.request("GET", `${path}/reblogged_by`, "dave")).status, 404);
+});
+
+Deno.test("the accounts that share a status publicly are listed, the latest first", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    await share(test.ctx, "bob", note.id, "public");
+    await share(test.ctx, "dave", note.id, "private");
+    await share(test.ctx, "alice", note.id, "unlisted");
+
+    const listed = await test.request("GET", `/api/v1/statuses/${note.id}/reblogged_by`, null);
+    assertEquals(listed.body.map((account: { id: string }) => account.id), ["alice", "bob"]);
 });

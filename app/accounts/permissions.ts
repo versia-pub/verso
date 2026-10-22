@@ -9,9 +9,11 @@ const mastodonFlags: Readonly<Record<Permission, number>> = {
     "read:account_follows": 0,
     "read:note": 0,
     "read:note_likes": 0,
+    "read:note_boosts": 0,
     "owner:account": 0,
     "owner:follow": 0,
     "owner:like": 0,
+    "owner:boost": 0,
     "owner:note": 0,
     "roles": 0x20000,
 };

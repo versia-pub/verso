@@ -1,14 +1,16 @@
 import { Account, Status } from "@versia/client-api";
 import { z } from "zod";
 import { publicAccounts } from "../accounts/public.ts";
-import { NotFound } from "../http/errors.ts";
+import { NotFound, NotPermitted } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
-import { findNotes } from "../notes/note_queries.ts";
-import { canSee, visibleNote } from "../notes/notes.ts";
+import { everyone } from "../notes/audience.ts";
+import { findNotes, sharePage } from "../notes/note_queries.ts";
+import { canSee, visibleOriginal } from "../notes/notes.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { likePage } from "./like_queries.ts";
 import { like, unlike } from "./likes.ts";
+import { share, unshare } from "./shares.ts";
 
 /** Likes a status, or undoes it, as Mastodon's favourites. */
 const likeRoute = (action: "favourite" | "unfavourite") =>
@@ -33,7 +35,15 @@ const likeRoute = (action: "favourite" | "unfavourite") =>
         },
     });
 
-/** Likes of statuses, which Mastodon calls favourites. */
+/**
+ * Who a share is for. Without it, the sharer's default.
+ * @see https://docs.joinmastodon.org/methods/statuses/#boost
+ */
+const ShareOptions = z.object({
+    visibility: z.enum(["public", "unlisted", "private"]).optional(),
+});
+
+/** Likes of statuses, which Mastodon calls favourites, and shares, which it calls reblogs. */
 export const interactionRoutes: readonly Route[] = [
     likeRoute("favourite"),
     likeRoute("unfavourite"),
@@ -47,7 +57,7 @@ export const interactionRoutes: readonly Route[] = [
         query: PageQuery({ default: 40, max: 80 }),
         responses: { 200: Paged(Account) },
         handler: async (ctx, { params, query, viewer }) => {
-            const note = await visibleNote(ctx, params.id, viewer?.accountId ?? null);
+            const note = await visibleOriginal(ctx, params.id, viewer?.accountId ?? null);
             if (note === undefined) throw new NotFound();
 
             const likes = await likePage(ctx, { noteId: note.id }, query);
@@ -86,6 +96,64 @@ export const interactionRoutes: readonly Route[] = [
                 status: 200,
                 body: await renderStatuses(ctx, seen, viewer.accountId),
                 cursors: cursorsOf(likes, query, (row) => row.id),
+            };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v1/statuses/:id/reblog",
+        summary: "Shares a public or unlisted status the viewer may see, and gives the share",
+        tags: ["statuses"],
+        auth: { require: "user", scope: "write:statuses", permission: "owner:boost" },
+        params: z.object({ id: z.string() }),
+        body: ShareOptions,
+        responses: { 200: Status },
+        handler: async (ctx, { params, body, viewer }) => {
+            const result = await share(ctx, viewer.accountId, params.id, body.visibility);
+            if (result === "missing") throw new NotFound();
+            if (result === "unshareable") {
+                throw new NotPermitted("Only public and unlisted statuses can be shared");
+            }
+
+            const [status] = await renderStatuses(ctx, [result], viewer.accountId);
+            return { status: 200, body: status };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v1/statuses/:id/unreblog",
+        summary: "Undoes the viewer's share of a status, and gives the status",
+        tags: ["statuses"],
+        auth: { require: "user", scope: "write:statuses", permission: "owner:boost" },
+        params: z.object({ id: z.string() }),
+        responses: { 200: Status },
+        handler: async (ctx, { params, viewer }) => {
+            const note = await unshare(ctx, viewer.accountId, params.id);
+            if (note === undefined) throw new NotFound();
+
+            const [status] = await renderStatuses(ctx, [note], viewer.accountId);
+            return { status: 200, body: status };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/statuses/:id/reblogged_by",
+        summary: "The accounts that share a status the viewer may see, publicly, newest first",
+        tags: ["statuses"],
+        auth: { require: "optional", scope: "read:statuses", permission: "read:note_boosts" },
+        params: z.object({ id: z.string() }),
+        query: PageQuery({ default: 40, max: 80 }),
+        responses: { 200: Paged(Account) },
+        handler: async (ctx, { params, query, viewer }) => {
+            const note = await visibleOriginal(ctx, params.id, viewer?.accountId ?? null);
+            if (note === undefined) throw new NotFound();
+
+            // Only the shares anyone may see, so a share for followers doesn't give its sharer away.
+            const shares = await sharePage(ctx, note.id, everyone, query);
+            return {
+                status: 200,
+                body: await publicAccounts(ctx, shares.map((row) => row.account_id)),
+                cursors: cursorsOf(shares, query, (row) => row.id),
             };
         },
     }),

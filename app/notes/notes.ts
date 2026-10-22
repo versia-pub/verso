@@ -78,6 +78,21 @@ export const visibleNote = async (
 };
 
 /**
+ * The note with this id, or if it is a share, the note it shares, if `viewerId` may see both. What
+ * is done to a share, such as liking or replying to it, is done to what it shares, as on Mastodon.
+ */
+export const visibleOriginal = async (
+    ctx: Context,
+    id: string,
+    viewerId: string | null,
+): Promise<NoteRow | undefined> => {
+    const note = await visibleNote(ctx, id, viewerId);
+    if (note?.reblog_of_id == null) return note;
+
+    return await visibleNote(ctx, note.reblog_of_id, viewerId);
+};
+
+/**
  * Counts a note its author posted, or deleted, as Mastodon does: a direct note isn't counted, and
  * only a public or unlisted one as a reply, so the counts don't tell of notes others can't see. A
  * share is counted as the author's, and as a share of the note it shares.
@@ -200,7 +215,7 @@ export const postNote = async (
         const replyTo = draft.inReplyToId;
         const parent = replyTo === undefined
             ? undefined
-            : await visibleNote(tx, replyTo, accountId);
+            : await visibleOriginal(tx, replyTo, accountId);
         if (replyTo !== undefined && parent === undefined) return undefined;
 
         const html = renderDraft(tx, draft.text, draft.format, accounts);
@@ -250,7 +265,8 @@ export type Edit = {
 /**
  * Edits a note `accountId`, a local user, wrote, finding who it mentions again, as posting does.
  * What it said before is kept for its history. Returns the note as it is now, or `undefined` if it
- * isn't theirs. A note left as it was isn't marked edited, or sent again.
+ * isn't theirs, or is a share, which says nothing to edit. A note left as it was isn't marked
+ * edited, or sent again.
  */
 export const editNote = async (
     ctx: Context,
@@ -259,7 +275,7 @@ export const editNote = async (
     edit: Edit,
 ): Promise<NoteRow | undefined> => {
     const before = await findNote(ctx, noteId);
-    if (before?.account_id !== accountId) return undefined;
+    if (before?.account_id !== accountId || before.reblog_of_id !== null) return undefined;
 
     const format = edit.format ?? before.content_format;
     const found = scanText(edit.text, format);

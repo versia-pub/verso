@@ -7,7 +7,7 @@ import { isAccountDeleting } from "../accounts/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
-import { visibleNote } from "../notes/notes.ts";
+import { visibleNote, visibleOriginal } from "../notes/notes.ts";
 import {
     countLike,
     deleteLike,
@@ -21,8 +21,8 @@ import type { LikeEvent } from "./events.ts";
 import type { LikeKind } from "./tables.ts";
 
 /**
- * Likes a note for `accountId`, and counts it, unless it already likes it. Returns the note as it
- * is now, or `undefined` if there is none `accountId` may see.
+ * Likes a note for `accountId`, or what a share shares, and counts it, unless it already likes it.
+ * Returns the note as it is now, or `undefined` if there is none `accountId` may see.
  */
 export const like = (
     ctx: Context,
@@ -30,7 +30,7 @@ export const like = (
     noteId: string,
 ): Promise<NoteRow | undefined> =>
     ctx.transaction(async (tx) => {
-        const note = await visibleNote(tx, noteId, accountId);
+        const note = await visibleOriginal(tx, noteId, accountId);
         if (note === undefined) return undefined;
 
         const added = await insertLike(tx, accountId, note.id);
@@ -50,7 +50,7 @@ export const like = (
     });
 
 /**
- * Undoes `accountId`'s like of a note, and uncounts it. Returns the note as it is now, or
+ * Undoes `accountId`'s like of a note, or of what a share shares, and uncounts it. Returns the note as it is now, or
  * `undefined` if there is none. As on Mastodon, a note it liked can be unliked even if it may no
  * longer see it, and one it didn't only if it may. Local users never dislike notes, so there is no
  * dislike to undo.
@@ -61,20 +61,22 @@ export const unlike = (
     noteId: string,
 ): Promise<NoteRow | undefined> =>
     ctx.transaction(async (tx) => {
-        const removed = await deleteLike(tx, accountId, noteId);
-        if (removed === undefined) return await visibleNote(tx, noteId, accountId);
+        const liked = (await findNote(tx, noteId))?.reblog_of_id ?? noteId;
 
-        await countLike(tx, noteId, -1);
+        const removed = await deleteLike(tx, accountId, liked);
+        if (removed === undefined) return await visibleNote(tx, liked, accountId);
+
+        await countLike(tx, liked, -1);
 
         const event: LikeEvent = {
             type: "interactions.unliked",
             likeId: removed.id,
             accountId,
-            noteId,
+            noteId: liked,
         };
         await emit(tx, event);
 
-        return await findNote(tx, noteId);
+        return await findNote(tx, liked);
     });
 
 /** Another instance's like or dislike of a note, by one of its users. */
