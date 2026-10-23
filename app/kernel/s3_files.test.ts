@@ -73,7 +73,7 @@ Deno.test("what the server refuses is an error saying what it answered", async (
     const error = await assertRejects(() => store.put(bytes, "text/plain"), Error);
     assertEquals(
         error.message,
-        `S3 answered 403 to PUT ${key}: <Error><Code>AccessDenied</Code></Error>`,
+        `S3 answered 403 to PUT ${key}: <Error><Code>SignatureDoesNotMatch</Code></Error>`,
     );
     await assertRejects(() => store.get(key), Error, "S3 answered 403 to GET");
     await assertRejects(() => store.delete(key), Error, "S3 answered 403 to DELETE");
@@ -127,6 +127,11 @@ Deno.test("checking a bucket puts an object and removes it, and fails if it can'
     assertEquals(s3.objects.size, 0);
 
     await assertRejects(() => open({ accessKeyId: "wrong" }).store.check(), Error, "403 to PUT");
+    await assertRejects(
+        () => open({ secretAccessKey: "wrong" }).store.check(),
+        Error,
+        "SignatureDoesNotMatch",
+    );
 
     // One that can put but not remove isn't one Verso can use either.
     const { store: other, transport: refusing } = open();

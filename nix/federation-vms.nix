@@ -1,7 +1,8 @@
 # Two Verso instances on their own machines, a.test and b.test, federating over real TLS: bea on
 # b.test looks up alice@a.test, so b.test finds her with WebFinger and fetches her, signed. Then bea
 # follows alice, and alice's next note reaches bea's home timeline, with its totals fetched from
-# a.test. bea likes and shares it, and a.test counts both.
+# a.test. bea likes and shares it, and a.test counts both. b.test keeps its uploads in a Garage
+# bucket, which it checks it can write to when it starts.
 { pkgs, module }:
 let
   # A certificate authority both machines trust, and a certificate for each. Test keys only.
@@ -57,11 +58,75 @@ let
       '';
       environment.systemPackages = [ pkgs.curl ];
     };
+  # A Garage key for b.test, made up for the test, which Garage is given rather than making one.
+  s3Key = {
+    id = "GK0123456789abcdef01234567";
+    secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  };
+
+  # Garage on b.test, with a bucket Verso keeps its uploads in, under a prefix.
+  bucket =
+    { config, ... }:
+    {
+      services.garage = {
+        enable = true;
+        package = pkgs.garage;
+        settings = {
+          replication_factor = 1;
+          rpc_bind_addr = "127.0.0.1:3901";
+          rpc_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+          s3_api = {
+            api_bind_addr = "127.0.0.1:3900";
+            s3_region = "garage";
+          };
+        };
+      };
+
+      # A new Garage has no storage, keys or buckets until it is told to.
+      systemd.services.garage-bucket = {
+        after = [ "garage.service" ];
+        requires = [ "garage.service" ];
+        before = [ "verso.service" ];
+        requiredBy = [ "verso.service" ];
+        path = [ config.services.garage.package ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+        script = ''
+          until garage status >/dev/null 2>&1; do sleep 1; done
+          garage layout assign -z test -c 1G "$(garage node id --quiet | cut -d@ -f1)"
+          garage layout apply --version 1
+          garage key import --yes -n verso ${s3Key.id} ${s3Key.secret}
+          garage bucket create media
+          garage bucket allow --read --write media --key verso
+        '';
+      };
+
+      services.verso = {
+        settings.media.storage.s3 = {
+          endpoint = "http://127.0.0.1:3900";
+          region = "garage";
+          bucket = "media";
+          prefix = "verso/media";
+          access_key_id = s3Key.id;
+          secret_access_key = "\${file:/run/credentials/verso.service/s3}";
+        };
+        credentials.s3 = "/etc/verso-s3";
+      };
+      environment.etc.verso-s3.text = s3Key.secret;
+      environment.systemPackages = [ config.services.garage.package ];
+    };
 in
 pkgs.testers.runNixOSTest {
   name = "federation-vms";
   nodes.a = instance "a.test";
-  nodes.b = instance "b.test";
+  nodes.b = {
+    imports = [
+      (instance "b.test")
+      bucket
+    ];
+  };
   testScript = ''
     import base64
     import hashlib
@@ -94,6 +159,12 @@ pkgs.testers.runNixOSTest {
         machine.wait_for_open_port(8080)
         machine.wait_for_unit("nginx.service")
         machine.wait_for_open_port(443)
+
+    # b.test started, so it could put an object in its bucket and remove it, signed as Garage
+    # wants, and keeps nothing on its own disk.
+    b.succeed("systemctl is-active garage-bucket.service")
+    b.fail("test -e /var/lib/verso/media")
+    a.succeed("test -d /var/lib/verso/media/tmp")
 
     user(a, "alice", "alice-token")
     user(b, "bea", "bea-token")

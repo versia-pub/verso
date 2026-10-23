@@ -20,11 +20,9 @@ import { work } from "./jobs/worker.ts";
 import { systemClock } from "./kernel/clock.ts";
 import { type Config, readConfig } from "./kernel/config.ts";
 import { type Context, createContext } from "./kernel/context.ts";
-import type { FileStore } from "./kernel/files.ts";
-import { filesystemFiles } from "./kernel/filesystem_files.ts";
+import { filesFor } from "./kernel/file_stores.ts";
 import { idGenerator } from "./kernel/ids.ts";
 import { setUpLogging } from "./kernel/logging.ts";
-import { s3Files } from "./kernel/s3_files.ts";
 import { federationTransport, fetchTransport } from "./kernel/transport.ts";
 import { urlBuilder } from "./kernel/urls.ts";
 
@@ -84,21 +82,6 @@ const serve = (
     return server.finished;
 };
 
-/** The store `storage` names. An S3 server is one the admin chose, so it may be on their network. */
-const filesFor = (storage: Config["media"]["storage"]): FileStore =>
-    "filesystem" in storage ? filesystemFiles(storage.filesystem) : s3Files(
-        {
-            endpoint: storage.s3.endpoint,
-            region: storage.s3.region,
-            bucket: storage.s3.bucket,
-            prefix: storage.s3.prefix,
-            accessKeyId: storage.s3.access_key_id,
-            secretAccessKey: storage.s3.secret_access_key,
-        },
-        fetchTransport,
-        systemClock,
-    );
-
 /** The context every command runs with, and the development login's routes if it is on. */
 const contextFor = (config: Config, db: Kysely<Database>) => {
     const urls = urlBuilder(config.domain, config.http.origin);
@@ -115,7 +98,7 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
         transport: federationTransport({
             allowInternal: config.federation.allow_internal_addresses,
         }),
-        files: filesFor(config.media.storage),
+        files: filesFor(config.media.storage, fetchTransport, systemClock),
         identityProviders,
         federation: federation(config.federation.blocked_domains),
         subscribers,

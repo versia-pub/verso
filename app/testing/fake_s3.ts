@@ -1,3 +1,4 @@
+import { AwsV4Signer } from "aws4fetch";
 import type { Server } from "../kernel/fake_transport.ts";
 import type { S3Bucket } from "../kernel/s3_files.ts";
 
@@ -16,20 +17,41 @@ export type FakeS3 = Server & {
 };
 
 /**
- * Answers as an S3 server would for `fakeBucket`, keeping objects in memory. It doesn't check
- * signatures, only that a request is signed with the bucket's key, and that a body's
- * `x-amz-content-sha256` is its SHA-256, as S3 checks it.
+ * Whether `request` is signed with the bucket's key, as of its `x-amz-date`. The signature is
+ * worked out as aws4fetch works it out, so this checks what it was given, not how it signs.
+ */
+const signed = async (request: Request) => {
+    const headers = new Headers(request.headers);
+    headers.delete("authorization");
+    const expected = await new AwsV4Signer({
+        method: request.method,
+        url: request.url,
+        headers,
+        accessKeyId: fakeBucket.accessKeyId,
+        secretAccessKey: fakeBucket.secretAccessKey,
+        service: "s3",
+        region: fakeBucket.region,
+        datetime: headers.get("x-amz-date") ?? "",
+    }).authHeader();
+
+    return request.headers.get("authorization") === expected;
+};
+
+/**
+ * Answers as an S3 server would for `fakeBucket`, keeping objects in memory. Like S3, it checks
+ * that a request is signed with the bucket's key, and that a body's `x-amz-content-sha256` is its
+ * SHA-256.
  */
 export const fakeS3 = (): FakeS3 => {
     const objects: FakeS3["objects"] = new Map();
     const prefix = `/${fakeBucket.bucket}/`;
-    const credential = `Credential=${fakeBucket.accessKeyId}/`;
 
     const server = async (request: Request) => {
         const { pathname } = new URL(request.url);
-        const authorization = request.headers.get("authorization") ?? "";
-        if (!authorization.startsWith("AWS4-HMAC-SHA256 ") || !authorization.includes(credential)) {
-            return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+        if (!await signed(request)) {
+            return new Response("<Error><Code>SignatureDoesNotMatch</Code></Error>", {
+                status: 403,
+            });
         }
         if (!pathname.startsWith(prefix)) {
             return new Response("<Error><Code>NoSuchBucket</Code></Error>", { status: 404 });
