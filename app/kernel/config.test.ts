@@ -3,6 +3,7 @@ import { parseConfig } from "./config.ts";
 
 const minimal = `
 domain = "social.example"
+media.storage.filesystem = "media"
 
 [database]
 sqlite = "verso.db"
@@ -15,6 +16,7 @@ Deno.test("a minimal config gets the defaults", async () => {
             mode: "production",
             domain: "social.example",
             database: { sqlite: "verso.db" },
+            media: { storage: { filesystem: "media" } },
             http: {
                 port: 8080,
                 trusted_proxies: [],
@@ -74,6 +76,9 @@ domain = "Social.Example"
 [database]
 postgres = "postgresql://verso@/verso?host=/run/postgresql"
 
+[media]
+storage = { filesystem = "/var/lib/verso/media" }
+
 [http]
 port = 3000
 rate_limit = { limit = 30, window_seconds = 60, store = "database" }
@@ -132,6 +137,7 @@ level = "debug"
             database: {
                 postgres: "postgresql://verso@/verso?host=/run/postgresql",
             },
+            media: { storage: { filesystem: "/var/lib/verso/media" } },
             http: {
                 port: 3000,
                 trusted_proxies: [],
@@ -221,6 +227,16 @@ Deno.test("bad configs explain what is wrong", async () => {
     assertStringIncludes(
         await errors(minimal + 'postgres = "postgresql:///verso"'),
         exactlyOne,
+    );
+
+    // Without a directory of its own, uploads would land wherever Verso happened to start.
+    assertStringIncludes(
+        await errors(minimal.replace('media.storage.filesystem = "media"', "")),
+        "→ at media",
+    );
+    assertStringIncludes(
+        await errors(minimal.replace('"media"', '""')),
+        "→ at media.storage.filesystem",
     );
 
     assertStringIncludes(await errors("domain = "), "Invalid TOML");
@@ -332,7 +348,9 @@ Deno.test("a development origin is a bare origin on the domain", async () => {
     assertEquals(valid.ok && valid.config.http.origin, "https://social.example:8443");
 
     for (const local of ["localhost", "verso.localhost", "127.0.0.1"]) {
-        const config = `mode = "development"\ndomain = "${local}"\n[database]\nsqlite = "v.db"\n`;
+        const config =
+            `mode = "development"\ndomain = "${local}"\nmedia.storage.filesystem = "m"\n` +
+            '[database]\nsqlite = "v.db"\n';
         const result = await parseConfig(`${config}[http]\norigin = "http://${local}:8080"\n`);
         assertEquals(result.ok, true, local);
     }
@@ -345,7 +363,7 @@ Deno.test("values can come from the environment or files, before they are checke
     };
 
     const filled = await parseConfig(
-        'domain = "social.example"\n[database]\n' +
+        'domain = "social.example"\nmedia.storage.filesystem = "m"\n[database]\n' +
             'postgres = "postgresql://verso:${env:PGPASS}@db/verso"',
         sources,
     );

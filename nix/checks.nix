@@ -100,6 +100,8 @@ in
           "sudo -u postgres psql -d verso -tAc \"select tableowner from pg_tables where tablename = 'kysely_migration'\""
       )
       assert migrations.strip() == "verso", f"the migrations table is owned by {migrations!r}"
+      # Verso made its media directory, which survives restarts, and checked it can write there.
+      machine.succeed("test -d /var/lib/verso/media/tmp")
     '';
   };
 

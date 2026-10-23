@@ -232,6 +232,10 @@ export const Config = z.strictObject({
             window_seconds: z.int().min(1).default(300),
         }).prefault({}),
     }).prefault({}),
+    media: z.strictObject({
+        /** Where uploaded files are kept: in a directory, by its path. */
+        storage: z.strictObject({ filesystem: z.string().min(1) }),
+    }),
     instance: Instance,
     limits: Limits,
     permissions: Permissions,

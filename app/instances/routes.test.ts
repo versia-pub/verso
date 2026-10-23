@@ -27,7 +27,7 @@ const open = async (settings: AboutSettings = defaultSettings()) => {
 /** Settings from a config file, after the minimal parts every config has. */
 const configured = async (toml: string): Promise<AboutSettings> => {
     const result = await parseConfig(
-        `domain = "social.example"\ndatabase = { sqlite = "v.db" }\n${toml}`,
+        `domain = "social.example"\ndatabase = { sqlite = "v.db" }\nmedia.storage.filesystem = "m"\n${toml}`,
     );
     if (!result.ok) throw new Error(result.error);
 

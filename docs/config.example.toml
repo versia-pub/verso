@@ -15,6 +15,10 @@ domain = "social.example"
 database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # database = { sqlite = "verso.db" }
 
+[media]
+# Where uploaded files are kept: the path of a directory, which Verso makes if it isn't there.
+storage = { filesystem = "/var/lib/verso/media" }
+
 [http]
 # port = 8080
 # Where the instance is reached, if not at https://<domain>. Development only.

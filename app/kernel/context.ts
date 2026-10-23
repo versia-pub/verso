@@ -2,6 +2,7 @@ import type { Reference } from "@versia/protocol";
 import type { Kysely } from "kysely";
 import type { Database } from "../db/database.ts";
 import type { Clock } from "./clock.ts";
+import type { FileStore } from "./files.ts";
 import type { IdentityProvider } from "./identity.ts";
 import type { IdGenerator } from "./ids.ts";
 import type { Transport } from "./transport.ts";
@@ -78,6 +79,8 @@ export type Context<DB = Database> = {
     readonly ids: IdGenerator;
     readonly urls: UrlBuilder;
     readonly transport: Transport;
+    /** Where uploaded files are kept. */
+    readonly files: FileStore;
     /** One for each configured issuer, by issuer URL. */
     readonly identityProviders: Readonly<Record<string, IdentityProvider>>;
     readonly federation: Federation;

@@ -10,6 +10,7 @@ import {
     type Federation,
     type Subscriber,
 } from "../kernel/context.ts";
+import { type FileStore, memoryFiles } from "../kernel/files.ts";
 import type { IdentityProvider } from "../kernel/identity.ts";
 import { type FakeTransport, fakeTransport } from "../kernel/fake_transport.ts";
 import { countingRandom, idGenerator } from "../kernel/ids.ts";
@@ -23,6 +24,8 @@ export type TestContextOptions = {
     readonly clock?: FakeClock;
     /** Defaults to a network with no other servers on it. */
     readonly transport?: FakeTransport;
+    /** Defaults to a new, empty store in memory. */
+    readonly files?: FileStore;
     /** Defaults to a new, empty test database. It is migrated, and closed on disposal. */
     readonly db?: Kysely<Database>;
     /** Defaults to none. */
@@ -66,6 +69,7 @@ export const createTestContext = async (
         ids: idGenerator(clock, countingRandom()),
         urls: urlBuilder(options.domain ?? "social.example"),
         transport,
+        files: options.files ?? memoryFiles(),
         identityProviders: options.identityProviders ?? {},
         federation: { ...federation(), ...options.federation },
         subscribers: options.subscribers ?? subscribers,

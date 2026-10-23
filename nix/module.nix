@@ -88,6 +88,9 @@ in
         }
       ];
 
+    # Under the service's state directory, the only one it can keep files in.
+    services.verso.settings.media.storage.filesystem = lib.mkDefault "/var/lib/verso/media";
+
     services.verso.settings.database = lib.mkIf cfg.database.createLocally {
       postgres = "postgresql://verso@/verso?host=/run/postgresql";
     };
@@ -122,6 +125,7 @@ in
         DynamicUser = true;
         User = "verso";
         CacheDirectory = "verso";
+        StateDirectory = "verso";
 
         CapabilityBoundingSet = "";
         LockPersonality = true;

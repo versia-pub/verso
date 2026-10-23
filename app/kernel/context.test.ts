@@ -4,6 +4,7 @@ import { testDatabase } from "../db/testing.ts";
 import { fakeClock } from "./clock.ts";
 import { type Context, createContext } from "./context.ts";
 import { fakeTransport } from "./fake_transport.ts";
+import { memoryFiles } from "./files.ts";
 import { countingRandom, idGenerator } from "./ids.ts";
 import { urlBuilder } from "./urls.ts";
 
@@ -21,6 +22,7 @@ const open = async () => {
         ids: idGenerator(clock, countingRandom()),
         urls: urlBuilder("social.example"),
         transport: fakeTransport(),
+        files: memoryFiles(),
         identityProviders: {},
         // These tests don't federate.
         federation: {

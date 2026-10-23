@@ -20,6 +20,7 @@ import { work } from "./jobs/worker.ts";
 import { systemClock } from "./kernel/clock.ts";
 import { type Config, readConfig } from "./kernel/config.ts";
 import { type Context, createContext } from "./kernel/context.ts";
+import { filesystemFiles, prepareFilesystemFiles } from "./kernel/filesystem_files.ts";
 import { idGenerator } from "./kernel/ids.ts";
 import { setUpLogging } from "./kernel/logging.ts";
 import { federationTransport, fetchTransport } from "./kernel/transport.ts";
@@ -97,6 +98,7 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
         transport: federationTransport({
             allowInternal: config.federation.allow_internal_addresses,
         }),
+        files: filesystemFiles(config.media.storage.filesystem),
         identityProviders,
         federation: federation(config.federation.blocked_domains),
         subscribers,
@@ -121,6 +123,17 @@ const run = async (role: string, config: Config): Promise<number> => {
         await instanceKey(ctx);
     } catch (error) {
         logger.fatal("{error}", { error: error instanceof Error ? error.message : error });
+        return 1;
+    }
+
+    const media = config.media.storage.filesystem;
+    try {
+        await prepareFilesystemFiles(media);
+    } catch (error) {
+        logger.fatal("Can't keep uploaded files in {media}: {error}", {
+            media,
+            error: error instanceof Error ? error.message : error,
+        });
         return 1;
     }
 

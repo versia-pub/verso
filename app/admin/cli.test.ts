@@ -12,6 +12,7 @@ import { adminCommand, AdminError } from "./cli.ts";
 const config = Config.parse({
     domain: "social.example",
     database: { sqlite: ":memory:" },
+    media: { storage: { filesystem: "media" } },
     federation: { blocked_domains: ["config.example"] },
 });
 
