@@ -20,9 +20,11 @@ import { work } from "./jobs/worker.ts";
 import { systemClock } from "./kernel/clock.ts";
 import { type Config, readConfig } from "./kernel/config.ts";
 import { type Context, createContext } from "./kernel/context.ts";
-import { filesystemFiles, prepareFilesystemFiles } from "./kernel/filesystem_files.ts";
+import type { FileStore } from "./kernel/files.ts";
+import { filesystemFiles } from "./kernel/filesystem_files.ts";
 import { idGenerator } from "./kernel/ids.ts";
 import { setUpLogging } from "./kernel/logging.ts";
+import { s3Files } from "./kernel/s3_files.ts";
 import { federationTransport, fetchTransport } from "./kernel/transport.ts";
 import { urlBuilder } from "./kernel/urls.ts";
 
@@ -82,6 +84,21 @@ const serve = (
     return server.finished;
 };
 
+/** The store `storage` names. An S3 server is one the admin chose, so it may be on their network. */
+const filesFor = (storage: Config["media"]["storage"]): FileStore =>
+    "filesystem" in storage ? filesystemFiles(storage.filesystem) : s3Files(
+        {
+            endpoint: storage.s3.endpoint,
+            region: storage.s3.region,
+            bucket: storage.s3.bucket,
+            prefix: storage.s3.prefix,
+            accessKeyId: storage.s3.access_key_id,
+            secretAccessKey: storage.s3.secret_access_key,
+        },
+        fetchTransport,
+        systemClock,
+    );
+
 /** The context every command runs with, and the development login's routes if it is on. */
 const contextFor = (config: Config, db: Kysely<Database>) => {
     const urls = urlBuilder(config.domain, config.http.origin);
@@ -98,7 +115,7 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
         transport: federationTransport({
             allowInternal: config.federation.allow_internal_addresses,
         }),
-        files: filesystemFiles(config.media.storage.filesystem),
+        files: filesFor(config.media.storage),
         identityProviders,
         federation: federation(config.federation.blocked_domains),
         subscribers,
@@ -126,12 +143,10 @@ const run = async (role: string, config: Config): Promise<number> => {
         return 1;
     }
 
-    const media = config.media.storage.filesystem;
     try {
-        await prepareFilesystemFiles(media);
+        await ctx.files.check();
     } catch (error) {
-        logger.fatal("Can't keep uploaded files in {media}: {error}", {
-            media,
+        logger.fatal("Can't keep uploaded files: {error}", {
             error: error instanceof Error ? error.message : error,
         });
         return 1;

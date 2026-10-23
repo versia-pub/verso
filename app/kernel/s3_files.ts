@@ -1,0 +1,102 @@
+import { AwsClient } from "aws4fetch";
+import type { Clock } from "./clock.ts";
+import { checkFileKey, fileKeyOf, type FileStore } from "./files.ts";
+import type { Transport } from "./transport.ts";
+
+/** A bucket on a server that speaks S3, such as AWS, Garage, MinIO or Cloudflare R2. */
+export type S3Bucket = {
+    /** The server's URL, such as `https://s3.eu-west-1.amazonaws.com`. */
+    readonly endpoint: string;
+    readonly region: string;
+    readonly bucket: string;
+    /** What objects' names start with, such as `verso/media`, if the bucket is shared. */
+    readonly prefix?: string;
+    readonly accessKeyId: string;
+    readonly secretAccessKey: string;
+};
+
+/** What `check` writes, then removes. It isn't a file key, so no file can be kept under it. */
+const checkName = "verso-check";
+
+/**
+ * Keeps files in an S3 bucket, each object named by its key, with requests signed with AWS
+ * Signature Version 4 and sent through `transport`. Buckets are named in the path, which every S3
+ * server understands, rather than in the hostname.
+ * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html
+ */
+export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): FileStore => {
+    const client = new AwsClient({
+        accessKeyId: bucket.accessKeyId,
+        secretAccessKey: bucket.secretAccessKey,
+        service: "s3",
+        region: bucket.region,
+    });
+    const base = [bucket.endpoint.replace(/\/$/, ""), bucket.bucket, bucket.prefix]
+        .filter((part) => part !== undefined).join("/");
+
+    /** Sends `method` for the object `name`, signed as of now. */
+    const send = async (method: string, name: string, init: RequestInit = {}) => {
+        const datetime = clock.now().toISOString().replace(/[:-]|\.\d{3}/g, "");
+        return await transport(
+            await client.sign(`${base}/${name}`, { ...init, method, aws: { datetime } }),
+        );
+    };
+
+    /** An error saying what the server answered to `method` for `name`. */
+    const failure = async (response: Response, method: string, name: string) => {
+        const said = (await response.text()).slice(0, 500);
+        return new Error(`S3 answered ${response.status} to ${method} ${name}: ${said}`);
+    };
+
+    /** Puts `bytes` as `name`, whose SHA-256 they have, so the server checks they arrived whole. */
+    const put = async (
+        name: string,
+        bytes: Uint8Array<ArrayBuffer>,
+        sha256: string,
+        type: string,
+    ) => {
+        const response = await send("PUT", name, {
+            body: bytes,
+            headers: { "content-type": type, "x-amz-content-sha256": sha256 },
+        });
+        if (!response.ok) throw await failure(response, "PUT", name);
+        await response.body?.cancel();
+    };
+
+    /** Removes `name`. One that isn't there counts as removed: S3 answers 204, some servers 404. */
+    const remove = async (name: string) => {
+        const response = await send("DELETE", name);
+        if (!response.ok && response.status !== 404) {
+            throw await failure(response, "DELETE", name);
+        }
+        await response.body?.cancel();
+    };
+
+    return {
+        put: async (bytes, mediaType) => {
+            const key = await fileKeyOf(bytes);
+            await put(key, bytes, key, mediaType);
+            return key;
+        },
+        get: async (key) => {
+            checkFileKey(key);
+            const response = await send("GET", key);
+            if (response.status === 404) {
+                await response.body?.cancel();
+                return undefined;
+            }
+
+            if (!response.ok) throw await failure(response, "GET", key);
+            return response.body ?? ReadableStream.from([]);
+        },
+        delete: async (key) => {
+            checkFileKey(key);
+            await remove(key);
+        },
+        check: async () => {
+            const empty = new Uint8Array();
+            await put(checkName, empty, await fileKeyOf(empty), "application/octet-stream");
+            await remove(checkName);
+        },
+    };
+};

@@ -1,6 +1,10 @@
 import { assertEquals, assertNotEquals, assertRejects } from "@std/assert";
 import { fileKeyOf, type FileStore, isFileKey, memoryFiles } from "./files.ts";
-import { filesystemFiles, prepareFilesystemFiles } from "./filesystem_files.ts";
+import { fakeBucket, fakeS3 } from "../testing/fake_s3.ts";
+import { fakeClock } from "./clock.ts";
+import { fakeTransport } from "./fake_transport.ts";
+import { filesystemFiles } from "./filesystem_files.ts";
+import { s3Files } from "./s3_files.ts";
 
 const bytes = new TextEncoder().encode("Hello");
 
@@ -86,6 +90,12 @@ contract("on the filesystem", async () => {
     return { ...test.store, [Symbol.asyncDispose]: test[Symbol.asyncDispose] };
 });
 
+contract("in S3", () => {
+    const transport = fakeTransport({ "s3.test": fakeS3() });
+    const store = s3Files(fakeBucket, transport, fakeClock());
+    return Promise.resolve({ ...store, [Symbol.asyncDispose]: () => Promise.resolve() });
+});
+
 Deno.test("a key is a SHA-256 in lowercase hex", async () => {
     assertEquals(await fileKeyOf(bytes), helloKey);
     assertEquals(isFileKey(helloKey), true);
@@ -131,19 +141,19 @@ Deno.test("on the filesystem, a file that can't be removed says so", async () =>
     assertEquals(await read(test.store, key), bytes);
 });
 
-Deno.test("preparing a directory makes it, and fails if Verso can't write to it", async () => {
+Deno.test("checking a directory makes it, and fails if Verso can't write to it", async () => {
     await using test = await temporary();
     const root = `${test.root}/media/files`;
 
-    await prepareFilesystemFiles(root);
+    await filesystemFiles(root).check();
     assertEquals((await Deno.stat(`${root}/tmp`)).isDirectory, true);
     assertEquals(await Array.fromAsync(Deno.readDir(`${root}/tmp`)), []);
 
     await Deno.writeFile(`${test.root}/file`, bytes);
-    await assertRejects(() => prepareFilesystemFiles(`${test.root}/file`));
+    await assertRejects(() => filesystemFiles(`${test.root}/file`).check());
 
     // One that is there already is still checked.
     await Deno.chmod(`${root}/tmp`, 0o555);
-    await assertRejects(() => prepareFilesystemFiles(root), Deno.errors.PermissionDenied);
+    await assertRejects(() => filesystemFiles(root).check(), Deno.errors.PermissionDenied);
     await Deno.chmod(`${root}/tmp`, 0o755);
 });

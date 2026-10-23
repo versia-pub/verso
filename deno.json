@@ -50,6 +50,7 @@
         "@types/pg": "npm:@types/pg@8.23.1",
         "@types/qs": "npm:@types/qs@6.15.1",
         "@types/sanitize-html": "npm:@types/sanitize-html@2.16.2",
+        "aws4fetch": "npm:aws4fetch@1.0.20",
         "fast-check": "npm:fast-check@4.10.2",
         "fast-png": "npm:fast-png@8.0.0",
         "kysely": "npm:kysely@0.29.6",

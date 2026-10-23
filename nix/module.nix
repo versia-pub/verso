@@ -9,7 +9,13 @@ self:
 let
   cfg = config.services.verso;
   settingsFormat = pkgs.formats.toml { };
-  configFile = settingsFormat.generate "config.toml" cfg.settings;
+  # Uploads are kept under the service's state directory, the only one it can write to, unless
+  # the settings keep them elsewhere. Added here, since a default in the module would be there
+  # alongside an S3 bucket.
+  settings = lib.recursiveUpdate (lib.optionalAttrs (!(cfg.settings.media.storage or { } ? s3)) {
+    media.storage.filesystem = "/var/lib/verso/media";
+  }) cfg.settings;
+  configFile = settingsFormat.generate "config.toml" settings;
 
   # A whole value of the form ${env:NAME} or ${file:PATH}, which Verso fills in when it starts.
   isReference = value: builtins.match "\\$\\{(env|file):[^}]+}" value != null;
@@ -81,15 +87,20 @@ in
         {
           assertion =
             let
+              secret = cfg.settings.media.storage.s3.secret_access_key or null;
+            in
+            secret == null || isReference secret;
+          message = "services.verso: the S3 secret access key is written in settings. ${secretAdvice}";
+        }
+        {
+          assertion =
+            let
               password = postgresPassword (cfg.settings.database.postgres or "");
             in
             password == null || isReference password;
           message = "services.verso: the database password is written in settings.database.postgres. ${secretAdvice}";
         }
       ];
-
-    # Under the service's state directory, the only one it can keep files in.
-    services.verso.settings.media.storage.filesystem = lib.mkDefault "/var/lib/verso/media";
 
     services.verso.settings.database = lib.mkIf cfg.database.createLocally {
       postgres = "postgresql://verso@/verso?host=/run/postgresql";

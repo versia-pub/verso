@@ -142,6 +142,15 @@ in
         ];
       };
       postgres = connection: { database.postgres = connection; };
+      s3 = secret: {
+        media.storage.s3 = {
+          endpoint = "https://s3.verso.test";
+          region = "garage";
+          bucket = "media";
+          access_key_id = "GK0123";
+          secret_access_key = secret;
+        };
+      };
       expected = {
         "a written secret" = failures (issuer "s3cret") == 1;
         "a file reference" = failures (issuer "\${file:/run/credentials/verso.service/oidc}") == 0;
@@ -154,6 +163,8 @@ in
         "a password reference" =
           failures (postgres "postgresql://verso:\${file:/run/credentials/verso.service/db}@db/verso") == 0;
         "no password" = failures (postgres "postgresql://verso@db:5432/verso") == 0;
+        "a written S3 secret" = failures (s3 "s3cret") == 1;
+        "an S3 secret reference" = failures (s3 "\${file:/run/credentials/verso.service/s3}") == 0;
       };
       wrong = builtins.attrNames (pkgs.lib.filterAttrs (_: ok: !ok) expected);
     in

@@ -139,6 +139,45 @@ const DomainName = z.string().transform((domain, ctx) => {
     return canonical ?? domain;
 });
 
+/** A bucket on a server that speaks S3. */
+const S3Storage = z.strictObject({
+    /** The server's URL, such as `https://s3.eu-west-1.amazonaws.com`. */
+    endpoint: z.url({ protocol: /^https?$/ }),
+    /** Such as `us-east-1`, or whatever the server is set up with, such as `garage`. */
+    region: z.string().min(1),
+    /** In S3's form, such as `verso-media`: lowercase letters, digits, dots and hyphens. */
+    bucket: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, {
+        error: "Must be a bucket name, such as verso-media",
+    }),
+    /** What objects' names start with, such as `verso/media`, to share the bucket with others. */
+    prefix: z.string()
+        .regex(/^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*\/?$/, {
+            error: "Must be a path such as verso/media, of letters, digits, dots, - and _",
+        })
+        .transform((prefix) => prefix.replace(/\/$/, ""))
+        .optional(),
+    access_key_id: z.string().min(1),
+    /** Keep it out of the config file with a reference, such as `${file:/run/secrets/s3}`. */
+    secret_access_key: z.string().min(1),
+});
+
+/**
+ * Exactly one of a directory, by its path, or a bucket on a server that speaks S3. Both are
+ * optional until then, rather than a union, so a mistake in either is reported where it is.
+ */
+const FileStorage = z.strictObject({
+    filesystem: z.string().min(1).optional(),
+    s3: S3Storage.optional(),
+}).transform((storage, ctx): { filesystem: string } | { s3: z.infer<typeof S3Storage> } => {
+    if (storage.filesystem !== undefined && storage.s3 === undefined) {
+        return { filesystem: storage.filesystem };
+    }
+    if (storage.s3 !== undefined && storage.filesystem === undefined) return { s3: storage.s3 };
+
+    ctx.addIssue({ code: "custom", message: 'Set exactly one of "filesystem" or "s3"' });
+    return z.NEVER;
+});
+
 const developmentOnly = 'Only allowed with mode = "development"';
 
 /**
@@ -233,8 +272,8 @@ export const Config = z.strictObject({
         }).prefault({}),
     }).prefault({}),
     media: z.strictObject({
-        /** Where uploaded files are kept: in a directory, by its path. */
-        storage: z.strictObject({ filesystem: z.string().min(1) }),
+        /** Where uploaded files are kept. */
+        storage: FileStorage,
     }),
     instance: Instance,
     limits: Limits,

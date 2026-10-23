@@ -16,8 +16,17 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # database = { sqlite = "verso.db" }
 
 [media]
-# Where uploaded files are kept: the path of a directory, which Verso makes if it isn't there.
+# Where uploaded files are kept. Exactly one of these: the path of a directory, which Verso makes
+# if it isn't there, or a bucket on a server that speaks S3, such as AWS, Garage or MinIO.
 storage = { filesystem = "/var/lib/verso/media" }
+# [media.storage.s3]
+# endpoint = "https://s3.eu-west-1.amazonaws.com"
+# region = "eu-west-1"
+# bucket = "verso-media"
+# What objects' names start with, to share the bucket with other data.
+# prefix = "verso/media"
+# access_key_id = "AKIAIOSFODNN7EXAMPLE"
+# secret_access_key = "${file:/run/secrets/s3}"
 
 [http]
 # port = 8080

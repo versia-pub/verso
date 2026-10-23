@@ -12,6 +12,11 @@ export type FileStore = {
      * remove it once nothing refers to its key.
      */
     readonly delete: (key: string) => Promise<void>;
+    /**
+     * Throws unless Verso can keep files there, so a store it can't use stops Verso when it
+     * starts rather than at the first upload.
+     */
+    readonly check: () => Promise<void>;
 };
 
 /** Whether `key` is one a file could be kept under: a SHA-256, in lowercase hex. */
@@ -47,5 +52,6 @@ export const memoryFiles = (): FileStore => {
                 checkFileKey(key);
                 files.delete(key);
             }),
+        check: () => Promise.resolve(),
     };
 };

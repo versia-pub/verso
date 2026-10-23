@@ -242,6 +242,64 @@ Deno.test("bad configs explain what is wrong", async () => {
     assertStringIncludes(await errors("domain = "), "Invalid TOML");
 });
 
+Deno.test("uploads can be kept in an S3 bucket instead, but not in both", async () => {
+    const s3 = `
+domain = "social.example"
+database.sqlite = "verso.db"
+
+[media.storage.s3]
+endpoint = "http://localhost:3900"
+region = "garage"
+bucket = "media"
+access_key_id = "GK0123"
+secret_access_key = "secret"
+`;
+    const result = await parseConfig(s3);
+    assertEquals(result.ok && result.config.media.storage, {
+        s3: {
+            endpoint: "http://localhost:3900",
+            region: "garage",
+            bucket: "media",
+            access_key_id: "GK0123",
+            secret_access_key: "secret",
+        },
+    });
+
+    const prefixed = await parseConfig(
+        s3.replace('bucket = "media"', '$&\nprefix = "verso/media/"'),
+    );
+    assertEquals(
+        prefixed.ok && "s3" in prefixed.config.media.storage &&
+            prefixed.config.media.storage.s3.prefix,
+        "verso/media",
+    );
+
+    const exactlyOne = 'Set exactly one of "filesystem" or "s3"';
+    const both = s3.replace("[media.storage.s3]", 'media.storage.filesystem = "m"\n\n$&');
+    assertStringIncludes(await errors(both), exactlyOne);
+    assertStringIncludes(
+        await errors(s3.replace("[media.storage.s3]", "[media.storage]")),
+        'Unrecognized keys: "endpoint", "region"',
+    );
+    assertStringIncludes(await errors(`${minimal.replace("filesystem", "s4")}`), "s4");
+    assertStringIncludes(
+        await errors(minimal.replace('media.storage.filesystem = "media"', "media.storage = {}")),
+        exactlyOne,
+    );
+    for (
+        const [from, to, path] of [
+            ["http://", "ftp://", "endpoint"],
+            ['region = "garage"', "", "region"],
+            ['"media"', '""', "bucket"],
+            ['"media"', '"My media"', "bucket"],
+            ['bucket = "media"', 'bucket = "media"\nprefix = "/verso"', "prefix"],
+            ['bucket = "media"', 'bucket = "media"\nprefix = "verso//media"', "prefix"],
+        ]
+    ) {
+        assertStringIncludes(await errors(s3.replace(from, to)), `→ at media.storage.s3.${path}`);
+    }
+});
+
 Deno.test("bad issuers explain what is wrong", async () => {
     const issuer = (fields: string) =>
         errors(`${minimal}[[auth.issuers]]\nname = "ID"\nclient_id = "verso"\n${fields}`);

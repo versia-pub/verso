@@ -27,6 +27,7 @@
     "npm:@types/pg@8.23.1": "8.23.1",
     "npm:@types/qs@6.15.1": "6.15.1",
     "npm:@types/sanitize-html@2.16.2": "2.16.2",
+    "npm:aws4fetch@1.0.20": "1.0.20",
     "npm:fast-check@4.10.2": "4.10.2",
     "npm:fast-png@8.0.0": "8.0.0",
     "npm:kysely@0.29.6": "0.29.6",
@@ -166,6 +167,9 @@
     },
     "argparse@3.0.2": {
       "integrity": "sha512-mFdDM6WqWKraGLsVb+C9CahPnzTXOefAOLq3jYcca2YZ8bEWpr++Tzj+zSaKW9+X9L5uSxcm1AZ3Y6aZJ09OhQ=="
+    },
+    "aws4fetch@1.0.20": {
+      "integrity": "sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g=="
     },
     "call-bind-apply-helpers@1.0.2": {
       "integrity": "sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==",
@@ -515,6 +519,7 @@
       "npm:@types/pg@8.23.1",
       "npm:@types/qs@6.15.1",
       "npm:@types/sanitize-html@2.16.2",
+      "npm:aws4fetch@1.0.20",
       "npm:fast-check@4.10.2",
       "npm:fast-png@8.0.0",
       "npm:kysely@0.29.6",

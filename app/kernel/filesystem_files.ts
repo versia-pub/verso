@@ -10,15 +10,6 @@ const tempOf = (root: string) => `${root}/tmp`;
 const exists = (path: string) => Deno.stat(path).then(() => true, () => false);
 
 /**
- * Makes `root` if it isn't there, and checks Verso can write to it, so a store it can't use stops
- * Verso when it starts rather than at the first upload.
- */
-export const prepareFilesystemFiles = async (root: string): Promise<void> => {
-    await Deno.mkdir(tempOf(root), { recursive: true });
-    await Deno.remove(await Deno.makeTempFile({ dir: tempOf(root) }));
-};
-
-/**
  * Keeps files in the directory `root`. Each is written to a file of its own inside it, then moved
  * into place, so a file is either all there or not there at all. Moving it within `root` keeps it
  * on one filesystem, which moving it from the system's temporary directory might not.
@@ -58,5 +49,10 @@ export const filesystemFiles = (root: string): FileStore => ({
         } catch (error) {
             if (!(error instanceof Deno.errors.NotFound)) throw error;
         }
+    },
+    // Makes `root` if it isn't there, and writes a file to it.
+    check: async () => {
+        await Deno.mkdir(tempOf(root), { recursive: true });
+        await Deno.remove(await Deno.makeTempFile({ dir: tempOf(root) }));
     },
 });
