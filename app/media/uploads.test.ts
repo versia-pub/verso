@@ -1,0 +1,305 @@
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
+import { encode } from "fast-png";
+import { createLocalAccount } from "../accounts/testing.ts";
+import { queues } from "../jobs/queues.ts";
+import { drain } from "../jobs/worker.ts";
+import { fakeClock } from "../kernel/clock.ts";
+import { fakeTransport } from "../kernel/fake_transport.ts";
+import type { ImageProcessor } from "../kernel/images.ts";
+import { s3Files } from "../kernel/s3_files.ts";
+import { vipsImages } from "../kernel/vips_images.ts";
+import { fakeBucket, fakeS3 } from "../testing/fake_s3.ts";
+import { createTestContext, type TestContextOptions } from "../testing/context.ts";
+import { createInstance } from "../instances/testing.ts";
+import { findMedia, saveRemoteMedia } from "./media.ts";
+import { finishUpload } from "./upload_queries.ts";
+import { deleteFileIfUnused, mediaQueue, upload } from "./uploads.ts";
+
+/** A `width`×`height` PNG, all red. */
+const png = (width: number, height: number) =>
+    new Uint8Array(encode({
+        width,
+        height,
+        data: new Uint8Array(width * height * 4).map((_, i) => [200, 30, 30, 255][i % 4]),
+        channels: 4,
+    }));
+
+/** A 3×2 JPEG, saved by a camera held on its side, with where it was taken in its EXIF. */
+const sidewaysJpeg = Uint8Array.fromBase64(
+    "/9j/4QB8RXhpZgAATU0AKgAAAAgAAwESAAMAAAABAAYAAAITAAMAAAABAAEAAIglAAQAAAABAAAAMgAAAAAAAwAAAAEAAAAE" +
+        "AgMAAAABAAIAAAACTgAAAAACAAUAAAADAAAAXAAAAAAAAAAwAAAAAQAAADMAAAABAAAAAAAAAAH/2wBDABALDA4MChAO" +
+        "DQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8a" +
+        "Gi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCAACAAMDASIA" +
+        "AhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIh" +
+        "MUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZn" +
+        "aGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl" +
+        "5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3" +
+        "AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RV" +
+        "VldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU" +
+        "1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDiqKKKAP/Z",
+);
+
+const vips = vipsImages({ maxPixels: 8_294_400 });
+
+const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]);
+
+const open = async (options: TestContextOptions = {}) => {
+    const test = await createTestContext(options);
+    await createLocalAccount(test.ctx, "alice");
+
+    /** The file kept under `key`, or `undefined` if there is none. */
+    const file = async (key: string | null) => {
+        const stream = await test.ctx.files.get(key ?? "");
+        return stream && await new Response(stream).bytes();
+    };
+
+    const jobs = () =>
+        test.ctx.db.selectFrom("jobs").select(["queue", "attempts", "finished_at"])
+            .where("queue", "=", mediaQueue)
+            .execute();
+
+    return { ...test, file, jobs };
+};
+
+/** Whether `bytes` have EXIF metadata, as a JPEG keeps it. */
+const hasExif = (bytes: Uint8Array) => new TextDecoder("latin1").decode(bytes).includes("Exif\0\0");
+
+const sha256Of = async (bytes: Uint8Array<ArrayBuffer>) =>
+    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)).toHex();
+
+Deno.test("a file that isn't a picture is kept as it is, ready at once", async () => {
+    await using test = await open();
+
+    const row = await upload(test.ctx, "alice", {
+        bytes: zip,
+        mediaType: "Application/Zip",
+        description: "My notes",
+    });
+
+    assertEquals(await findMedia(test.ctx, row.id), row);
+    assertEquals(row.account_id, "alice");
+    assertEquals(row.media_type, "application/zip");
+    assertEquals(row.size, zip.length);
+    assertEquals(row.sha256, await sha256Of(zip));
+    assertEquals(row.upload_sha256, row.sha256);
+    assertEquals(row.processed_at, test.clock.now());
+    assertEquals(row.description, "My notes");
+    assertEquals(await test.file(row.sha256), zip);
+    assertEquals(await test.jobs(), []);
+});
+
+Deno.test("a file's type is the client's only if it is written as one", async () => {
+    await using test = await open();
+
+    const row = await upload(test.ctx, "alice", { bytes: zip, mediaType: "a zip, I think" });
+
+    assertEquals(row.media_type, "application/octet-stream");
+});
+
+Deno.test("a file is kept with a type from its bytes, so it can't be served as a page", async () => {
+    const s3 = fakeS3();
+    const files = s3Files(fakeBucket, fakeTransport({ "s3.test": s3 }), fakeClock());
+    await using test = await open({ files });
+    const page = new TextEncoder().encode("<script>alert(1)</script>");
+
+    const html = await upload(test.ctx, "alice", { bytes: page, mediaType: "text/html" });
+    const picture = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "text/html" });
+
+    assertEquals(html.media_type, "text/html");
+    assertEquals(s3.objects.get(html.sha256 ?? "")?.type, "application/octet-stream");
+    assertEquals(picture.media_type, "image/png");
+    assertEquals(s3.objects.get(picture.sha256 ?? "")?.type, "image/png");
+});
+
+Deno.test("a picture is processed by a job, which keeps it without its metadata", async () => {
+    await using test = await open();
+
+    const row = await upload(test.ctx, "alice", {
+        bytes: sidewaysJpeg,
+        mediaType: "image/jpeg",
+        focus: { x: 0.5, y: -0.25 },
+    });
+
+    assertEquals(row.processed_at, null);
+    assertEquals(row.media_type, "image/jpeg");
+    assertEquals([row.focus_x, row.focus_y], [0.5, -0.25]);
+    assertEquals(await test.jobs(), [{ queue: mediaQueue, attempts: 0, finished_at: null }]);
+
+    await drain(test.ctx, queues);
+
+    const processed = await findMedia(test.ctx, row.id);
+    assert(processed);
+    assertEquals(processed.processed_at, test.clock.now());
+    assertEquals(processed.upload_sha256, row.upload_sha256);
+    assertNotEquals(processed.sha256, row.upload_sha256);
+    assertEquals([processed.width, processed.height], [2, 3]);
+    assertEquals([processed.preview_width, processed.preview_height], [2, 3]);
+    assertEquals(processed.media_type, "image/jpeg");
+    assert(processed.thumbhash && processed.blurhash);
+    assertEquals([processed.focus_x, processed.focus_y], [0.5, -0.25]);
+
+    const kept = await test.file(processed.sha256);
+    assert(kept && !hasExif(kept));
+    assertEquals(processed.size, kept.length);
+    assertEquals(processed.sha256, await sha256Of(kept));
+    assert(await test.file(processed.preview_sha256));
+    // What was uploaded, with where it was taken, is gone.
+    assertEquals(await test.file(row.upload_sha256), undefined);
+});
+
+Deno.test("the same picture uploaded twice is processed once, and kept once", async () => {
+    let processed = 0;
+    const images: ImageProcessor = {
+        process: (bytes) => {
+            processed += 1;
+            return vips.process(bytes);
+        },
+        check: () => Promise.resolve(),
+    };
+    await using test = await open({ images });
+
+    const first = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    const second = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    await drain(test.ctx, queues);
+
+    assertEquals(processed, 1);
+    const [one, two] = [await findMedia(test.ctx, first.id), await findMedia(test.ctx, second.id)];
+    assert(one && two);
+    assertEquals(two.processed_at, test.clock.now());
+    assertEquals(
+        [two.sha256, two.preview_sha256, two.width, two.thumbhash, two.blurhash],
+        [one.sha256, one.preview_sha256, one.width, one.thumbhash, one.blurhash],
+    );
+    assertEquals(await test.file(first.upload_sha256), undefined);
+});
+
+Deno.test("uploading a picture as Verso keeps it doesn't remove the one kept", async () => {
+    await using test = await open();
+    const first = await upload(test.ctx, "alice", { bytes: sidewaysJpeg, mediaType: "image/jpeg" });
+    await drain(test.ctx, queues);
+    const kept = (await findMedia(test.ctx, first.id))?.sha256 ?? null;
+    const bytes = await test.file(kept);
+    assert(bytes);
+
+    // Saved from Verso, and uploaded again.
+    const again = await upload(test.ctx, "alice", { bytes, mediaType: "image/jpeg" });
+    await drain(test.ctx, queues);
+
+    assertEquals(again.upload_sha256, kept);
+    assertEquals(await test.file(kept), bytes);
+
+    // Nor uploading its preview.
+    const preview = (await findMedia(test.ctx, first.id))?.preview_sha256 ?? null;
+    const small = await test.file(preview);
+    assert(small);
+    await upload(test.ctx, "alice", { bytes: small, mediaType: "image/webp" });
+    await drain(test.ctx, queues);
+    assertEquals(await test.file(preview), small);
+});
+
+Deno.test("a picture vips refuses is kept as a file, as it was uploaded", async () => {
+    await using test = await open();
+    const broken = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new TextEncoder().encode("oops")]);
+
+    const row = await upload(test.ctx, "alice", { bytes: broken, mediaType: "image/jpeg" });
+    await drain(test.ctx, queues);
+
+    const kept = await findMedia(test.ctx, row.id);
+    assertEquals(kept, { ...row, processed_at: test.clock.now() });
+    assertEquals(await test.file(row.sha256), broken);
+});
+
+Deno.test("a picture that can't be processed is tried again, then kept as a file", async () => {
+    let tries = 0;
+    const images: ImageProcessor = {
+        process: () => {
+            tries += 1;
+            return Promise.reject(new Error("vips took over 60000 ms"));
+        },
+        check: () => Promise.resolve(),
+    };
+    await using test = await open({ images });
+
+    const row = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    await drain(test.ctx, queues);
+    assertEquals([tries, (await findMedia(test.ctx, row.id))?.processed_at], [1, null]);
+
+    for (let i = 0; i < 2; i++) {
+        test.clock.advance(24 * 60 * 60_000);
+        await drain(test.ctx, queues);
+    }
+
+    assertEquals(tries, 3);
+    assertEquals(await findMedia(test.ctx, row.id), { ...row, processed_at: test.clock.now() });
+    assertEquals(await test.file(row.sha256), png(4, 4));
+});
+
+Deno.test("a job for an upload that is gone, or already processed, does nothing", async () => {
+    await using test = await open();
+    const gone = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    await test.ctx.db.deleteFrom("media").where("id", "=", gone.id).execute();
+    const done = await upload(test.ctx, "alice", { bytes: png(5, 5), mediaType: "image/png" });
+    await finishUpload(test.ctx, done.id, {});
+
+    await drain(test.ctx, queues);
+
+    assertEquals(await findMedia(test.ctx, done.id), { ...done, processed_at: test.clock.now() });
+    assertEquals(await test.file(done.sha256), png(5, 5));
+});
+
+Deno.test("an upload whose file is gone isn't processed", async () => {
+    await using test = await open();
+    const row = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    await test.ctx.files.delete(row.sha256 ?? "");
+
+    await drain(test.ctx, queues);
+
+    assertEquals((await findMedia(test.ctx, row.id))?.processed_at, null);
+    // Given up on at once.
+    assertEquals((await test.jobs())[0].attempts, 3);
+});
+
+Deno.test("what a run keeps is removed if another run processed the upload first", async () => {
+    let finishFirst = () => Promise.resolve(false);
+    let made: Uint8Array<ArrayBuffer>[] = [];
+    const images: ImageProcessor = {
+        process: async (bytes) => {
+            const result = await vips.process(bytes);
+            if (result.ok) made = [result.image.bytes, result.image.preview.bytes];
+            await finishFirst();
+            return result;
+        },
+        check: () => Promise.resolve(),
+    };
+    await using test = await open({ images });
+    const row = await upload(test.ctx, "alice", { bytes: sidewaysJpeg, mediaType: "image/jpeg" });
+    finishFirst = () => finishUpload(test.ctx, row.id, {});
+
+    await drain(test.ctx, queues);
+
+    assertEquals(await findMedia(test.ctx, row.id), { ...row, processed_at: test.clock.now() });
+    assertEquals(made.length, 2);
+    for (const bytes of made) assertEquals(await test.file(await sha256Of(bytes)), undefined);
+    assertEquals(await test.file(row.sha256), sidewaysJpeg);
+});
+
+Deno.test("a file is removed only once nothing uses it", async () => {
+    await using test = await open();
+    const row = await upload(test.ctx, "alice", { bytes: zip, mediaType: "application/zip" });
+
+    await deleteFileIfUnused(test.ctx, row.sha256 ?? "");
+    assertEquals(await test.file(row.sha256), zip);
+
+    // Neither another upload being processed nor another instance's file of the same SHA-256
+    // uses it.
+    await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    await createInstance(test.ctx, "b.example");
+    await saveRemoteMedia(test.ctx, "b.example", null, {
+        url: "https://b.example/notes.zip",
+        mediaType: "application/zip",
+        sha256: row.sha256 ?? "",
+    });
+    await test.ctx.db.deleteFrom("media").where("id", "=", row.id).execute();
+    await deleteFileIfUnused(test.ctx, row.sha256 ?? "");
+    assertEquals(await test.file(row.sha256), undefined);
+});

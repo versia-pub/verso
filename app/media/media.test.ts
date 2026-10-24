@@ -32,6 +32,15 @@ Deno.test("a remote file is kept with what its instance said about it", async ()
         thumbhash: picture.thumbhash,
         description: "Bob, smiling",
         created_at: test.clock.now(),
+        account_id: null,
+        upload_sha256: null,
+        processed_at: null,
+        preview_sha256: null,
+        preview_width: null,
+        preview_height: null,
+        blurhash: null,
+        focus_x: null,
+        focus_y: null,
     });
 });
 

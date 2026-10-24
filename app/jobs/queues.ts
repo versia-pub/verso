@@ -6,6 +6,7 @@ import { inboxQueue } from "../federation/inbox.ts";
 import { inboxHandler } from "../federation/inbox_worker.ts";
 import { messageHandler, messageQueue } from "../federation/messaging.ts";
 import { deleteEndedRateLimits } from "../http/rate_limits.ts";
+import { mediaHandler, mediaQueue } from "../media/uploads.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { registry } from "../registry.ts";
 import { deleteExpiredJobs } from "./queue.ts";
@@ -19,6 +20,8 @@ export const queues: Record<string, Queue> = {
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
+    // Each job runs vips a few times, a minute each at most, and takes memory while it does.
+    [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
     "jobs-cleanup": { handler: (ctx) => deleteExpiredJobs(ctx), concurrency: 1 },
     "oauth-cleanup": { handler: (ctx) => deleteExpiredFlows(ctx), concurrency: 1 },
     "rate-limits-cleanup": { handler: (ctx) => deleteEndedRateLimits(ctx), concurrency: 1 },

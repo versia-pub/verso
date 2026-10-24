@@ -39,6 +39,7 @@ import { notePins } from "./0037_note_pins.ts";
 import { accountNotes } from "./0038_account_notes.ts";
 import { accountDomainBlocks } from "./0039_account_domain_blocks.ts";
 import { remoteNoteTotals } from "./0040_remote_note_totals.ts";
+import { uploads } from "./0041_uploads.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -85,4 +86,5 @@ export const migrations: Record<string, Migration> = {
     "0038_account_notes": accountNotes,
     "0039_account_domain_blocks": accountDomainBlocks,
     "0040_remote_note_totals": remoteNoteTotals,
+    "0041_uploads": uploads,
 };
