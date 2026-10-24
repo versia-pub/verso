@@ -65,6 +65,21 @@ Deno.test("a key is fetched from the instance's metadata once, then stored", asy
     });
 });
 
+Deno.test("a lookup that finds nothing stored uses a key fetched since", async () => {
+    await using test = await open();
+    const pair = await keyPair();
+    test.transport.servers.set("b.example", metadataServer("b.example", pair));
+    const keys = remoteKeys();
+
+    // Another lookup fetches the key between this one finding none and fetching it.
+    const key = await keys.get(test.ctx, "b.example", async () => {
+        assert(await isKeyOf(await keys.get(test.ctx, "b.example"), pair));
+    });
+
+    assert(await isKeyOf(key, pair));
+    assertEquals(test.transport.sent.length, 1);
+});
+
 Deno.test("metadata may write the instance's domain in any case", async () => {
     await using test = await open();
     const pair = await keyPair();

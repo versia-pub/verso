@@ -162,7 +162,8 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
             const key = row?.public_key ? await importPublicKey(row.public_key) : undefined;
             if (!key) {
                 await beforeFetch?.();
-                return await fetchAndStore(ctx, domain);
+                // A fetch may have finished while this looked, and it is remembered before it ends.
+                return remembered.get(domain) ?? await fetchAndStore(ctx, domain);
             }
 
             remember(domain, key);
