@@ -51,6 +51,7 @@
         "@types/qs": "npm:@types/qs@6.15.1",
         "@types/sanitize-html": "npm:@types/sanitize-html@2.16.2",
         "aws4fetch": "npm:aws4fetch@1.0.20",
+        "blurhash": "npm:blurhash@2.0.5",
         "fast-check": "npm:fast-check@4.10.2",
         "fast-png": "npm:fast-png@8.0.0",
         "kysely": "npm:kysely@0.29.6",
@@ -58,6 +59,7 @@
         "pg": "npm:pg@8.23.1",
         "qs": "npm:qs@6.16.1",
         "sanitize-html": "npm:sanitize-html@2.18.0",
+        "thumbhash": "npm:thumbhash@0.1.1",
         "zod": "npm:zod@4.6.7"
     }
 }
