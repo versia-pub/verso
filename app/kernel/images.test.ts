@@ -24,17 +24,25 @@ Deno.test("a picture's format is told from how it starts", () => {
             ["gif", bytes("GIF89a", [1, 0, 1, 0])],
             ["gif", bytes("GIF87a", [1, 0, 1, 0])],
             ["webp", bytes("RIFF", [0x24, 0, 0, 0], "WEBPVP8 ")],
-            // As libavif writes them, and as an animated one starts.
+            // As libavif writes them.
             ["avif", ftyp("avif", ["mif1", "miaf", "MA1B"])],
-            ["avif", ftyp("avis", ["msf1", "miaf", "MA1B"])],
             // As iPhones write them, and as some others do, saying only that they're HEIF first.
             ["heic", ftyp("heic", ["mif1", "heic"])],
             ["heic", ftyp("mif1", ["mif1", "heic"])],
-            ["heic", ftyp("msf1", ["msf1", "hevc"])],
+            ["heic", ftyp("mif1", ["mif1", "heix"])],
+            ["heic", ftyp("mif1", ["mif1", "heim"])],
+            ["heic", ftyp("mif1", ["mif1", "heis"])],
             ["avif", ftyp("mif1", ["mif1", "miaf", "avif"])],
         ] as const
     ) {
         assertEquals(imageFormatOf(start), format, String(start.subarray(0, 24)));
+    }
+});
+
+Deno.test("a sequence of pictures isn't one, whatever else it has in it", () => {
+    for (const brand of ["msf1", "avis", "hevc", "hevx", "hevm", "hevs"]) {
+        assertEquals(imageFormatOf(ftyp("heic", ["mif1", "heic", brand])), undefined, brand);
+        assertEquals(imageFormatOf(ftyp(brand, ["mif1", "avif"])), undefined, brand);
     }
 });
 
@@ -55,6 +63,12 @@ Deno.test("anything else isn't a picture Verso takes", () => {
             ftyp("isom", ["isom", "iso2", "mp41"]),
             ftyp("mif1", ["mif1", "miaf"]),
             bytes([0, 0, 0, 12], "JXL ", [0x0d, 0x0a, 0x87, 0x0a]),
+            // Sequences, such as animated AVIFs as libavif and ffmpeg write them, even with a
+            // picture of a kind Verso takes in them too.
+            ftyp("avis", ["avif", "avis", "msf1", "miaf", "MA1B"]),
+            ftyp("avif", ["mif1", "avis"]),
+            ftyp("msf1", ["msf1", "hevc"]),
+            ftyp("heic", ["mif1", "heic", "hevs"]),
             // Brands past the end of the box aren't its brands.
             ftyp("mif1", ["mif1"], { after: "heic" }),
             ftyp("mif1", ["mif1"], { after: "heic", size: 22 }),

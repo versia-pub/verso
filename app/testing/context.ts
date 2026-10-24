@@ -11,10 +11,12 @@ import {
     type Subscriber,
 } from "../kernel/context.ts";
 import { type FileStore, memoryFiles } from "../kernel/files.ts";
+import type { ImageProcessor } from "../kernel/images.ts";
 import type { IdentityProvider } from "../kernel/identity.ts";
 import { type FakeTransport, fakeTransport } from "../kernel/fake_transport.ts";
 import { countingRandom, idGenerator } from "../kernel/ids.ts";
 import { urlBuilder } from "../kernel/urls.ts";
+import { vipsImages } from "../kernel/vips_images.ts";
 import { federation, subscribers } from "../services.ts";
 
 export type TestContextOptions = {
@@ -26,6 +28,8 @@ export type TestContextOptions = {
     readonly transport?: FakeTransport;
     /** Defaults to a new, empty store in memory. */
     readonly files?: FileStore;
+    /** Defaults to vips, with Mastodon's limit on pixels. */
+    readonly images?: ImageProcessor;
     /** Defaults to a new, empty test database. It is migrated, and closed on disposal. */
     readonly db?: Kysely<Database>;
     /** Defaults to none. */
@@ -70,6 +74,7 @@ export const createTestContext = async (
         urls: urlBuilder(options.domain ?? "social.example"),
         transport,
         files: options.files ?? memoryFiles(),
+        images: options.images ?? vipsImages({ maxPixels: 8_294_400 }),
         identityProviders: options.identityProviders ?? {},
         federation: { ...federation(), ...options.federation },
         subscribers: options.subscribers ?? subscribers,

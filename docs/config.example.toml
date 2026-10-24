@@ -16,6 +16,10 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # database = { sqlite = "verso.db" }
 
 [media]
+# How many pixels an uploaded picture may have, in each frame, before it is scaled down: as
+# many as 3840×2160 by default, as on Mastodon.
+# max_pixels = 8294400
+
 # Where uploaded files are kept. Exactly one of these: the path of a directory, which Verso makes
 # if it isn't there, or a bucket on a server that speaks S3, such as AWS, Garage or MinIO.
 storage = { filesystem = "/var/lib/verso/media" }

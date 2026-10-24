@@ -5,6 +5,7 @@ import type { Clock } from "./clock.ts";
 import type { FileStore } from "./files.ts";
 import type { IdentityProvider } from "./identity.ts";
 import type { IdGenerator } from "./ids.ts";
+import type { ImageProcessor } from "./images.ts";
 import type { Transport } from "./transport.ts";
 import type { UrlBuilder } from "./urls.ts";
 
@@ -81,6 +82,8 @@ export type Context<DB = Database> = {
     readonly transport: Transport;
     /** Where uploaded files are kept. */
     readonly files: FileStore;
+    /** Makes uploaded pictures ready to keep and show. */
+    readonly images: ImageProcessor;
     /** One for each configured issuer, by issuer URL. */
     readonly identityProviders: Readonly<Record<string, IdentityProvider>>;
     readonly federation: Federation;

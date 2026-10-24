@@ -25,6 +25,7 @@ import { idGenerator } from "./kernel/ids.ts";
 import { setUpLogging } from "./kernel/logging.ts";
 import { federationTransport, fetchTransport } from "./kernel/transport.ts";
 import { urlBuilder } from "./kernel/urls.ts";
+import { vipsImages } from "./kernel/vips_images.ts";
 
 const banner = `
 ███   ███ ████████ ███████▄  ▄███████▄  ▄██████▄
@@ -99,6 +100,7 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
             allowInternal: config.federation.allow_internal_addresses,
         }),
         files: filesFor(config.media.storage, fetchTransport, systemClock),
+        images: vipsImages({ maxPixels: config.media.max_pixels }),
         identityProviders,
         federation: federation(config.federation.blocked_domains),
         subscribers,
@@ -130,6 +132,15 @@ const run = async (role: string, config: Config): Promise<number> => {
         await ctx.files.check();
     } catch (error) {
         logger.fatal("Can't keep uploaded files: {error}", {
+            error: error instanceof Error ? error.message : error,
+        });
+        return 1;
+    }
+
+    try {
+        await ctx.images.check();
+    } catch (error) {
+        logger.fatal("Can't process pictures: {error}", {
             error: error instanceof Error ? error.message : error,
         });
         return 1;

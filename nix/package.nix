@@ -3,6 +3,7 @@
   stdenvNoCC,
   makeWrapper,
   deno,
+  vips,
   deps,
 }:
 
@@ -34,10 +35,13 @@ stdenvNoCC.mkDerivation {
     # from wherever ''${file:…} points, and the SQLite file is wherever the config says. What runs
     # Verso narrows them instead. The NixOS module's DynamicUser makes the system read-only but
     # for Verso's cache, and the image runs as nobody, who can write only /tmp and mounted volumes.
-    # Running subprocesses, native libraries and system information stay denied.
+    # The only programs Verso runs are vips's, for pictures, which come with it. Native libraries
+    # and system information stay denied.
     makeWrapper ${lib.getExe deno} $out/bin/verso \
       --set DENO_NO_UPDATE_CHECK 1 \
+      --prefix PATH : ${lib.makeBinPath [ vips ]} \
       --add-flags "run --cached-only --frozen --allow-net --allow-read --allow-write --allow-env" \
+      --add-flags "--allow-run=vips,vipsheader" \
       --add-flags "--config $out/share/verso/deno.json $out/share/verso/app/main.ts"
 
     runHook postInstall

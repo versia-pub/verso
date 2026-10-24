@@ -274,6 +274,11 @@ export const Config = z.strictObject({
     media: z.strictObject({
         /** Where uploaded files are kept. */
         storage: FileStorage,
+        /**
+         * How many pixels an uploaded picture may have, in each frame, before it is scaled down.
+         * Mastodon's limit, 3840×2160, by default.
+         */
+        max_pixels: z.int().min(1).default(8_294_400),
     }),
     instance: Instance,
     limits: Limits,

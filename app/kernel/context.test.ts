@@ -7,6 +7,7 @@ import { fakeTransport } from "./fake_transport.ts";
 import { memoryFiles } from "./files.ts";
 import { countingRandom, idGenerator } from "./ids.ts";
 import { urlBuilder } from "./urls.ts";
+import { vipsImages } from "./vips_images.ts";
 
 type Notes = { notes: { id: string } };
 
@@ -23,6 +24,7 @@ const open = async () => {
         urls: urlBuilder("social.example"),
         transport: fakeTransport(),
         files: memoryFiles(),
+        images: vipsImages({ maxPixels: 8_294_400 }),
         identityProviders: {},
         // These tests don't federate.
         federation: {

@@ -16,7 +16,7 @@ Deno.test("a minimal config gets the defaults", async () => {
             mode: "production",
             domain: "social.example",
             database: { sqlite: "verso.db" },
-            media: { storage: { filesystem: "media" } },
+            media: { storage: { filesystem: "media" }, max_pixels: 8_294_400 },
             http: {
                 port: 8080,
                 trusted_proxies: [],
@@ -78,6 +78,7 @@ postgres = "postgresql://verso@/verso?host=/run/postgresql"
 
 [media]
 storage = { filesystem = "/var/lib/verso/media" }
+max_pixels = 1000000
 
 [http]
 port = 3000
@@ -137,7 +138,7 @@ level = "debug"
             database: {
                 postgres: "postgresql://verso@/verso?host=/run/postgresql",
             },
-            media: { storage: { filesystem: "/var/lib/verso/media" } },
+            media: { storage: { filesystem: "/var/lib/verso/media" }, max_pixels: 1_000_000 },
             http: {
                 port: 3000,
                 trusted_proxies: [],
@@ -238,6 +239,15 @@ Deno.test("bad configs explain what is wrong", async () => {
         await errors(minimal.replace('"media"', '""')),
         "→ at media.storage.filesystem",
     );
+
+    for (const pixels of ["0", "1.5"]) {
+        assertStringIncludes(
+            await errors(
+                `${minimal}\n[media]\nmax_pixels = ${pixels}`.replace("media.storage", "storage"),
+            ),
+            "→ at media.max_pixels",
+        );
+    }
 
     assertStringIncludes(await errors("domain = "), "Invalid TOML");
 });

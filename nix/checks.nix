@@ -30,11 +30,18 @@ in
   fmt = denoTask "fmt" "fmt --check";
   lint = denoTask "lint" "lint";
   typecheck = denoTask "typecheck" "check";
-  test-pglite = denoTask "test-pglite" "test";
-  test-sqlite = denoTaskWith "test-sqlite" "test" { setup = "export VERSO_TEST_DATABASE=sqlite"; };
+  # Tests process pictures with vips, as Verso does.
+  test-pglite = denoTaskWith "test-pglite" "test" { packages = [ pkgs.vips ]; };
+  test-sqlite = denoTaskWith "test-sqlite" "test" {
+    packages = [ pkgs.vips ];
+    setup = "export VERSO_TEST_DATABASE=sqlite";
+  };
   # A throwaway PostgreSQL in $TMPDIR, reached over loopback, the only network in the sandbox.
   test-postgres = denoTaskWith "test-postgres" "test --allow-net=127.0.0.1" {
-    packages = [ pkgs.postgresql_18 ];
+    packages = [
+      pkgs.postgresql_18
+      pkgs.vips
+    ];
     setup = ''
       initdb --pgdata="$TMPDIR/pg" --username=postgres --auth=trust >/dev/null
       pg_ctl --pgdata="$TMPDIR/pg" --log="$TMPDIR/pg.log" --wait start \
@@ -45,8 +52,6 @@ in
   };
   import-cycles = denoTask "import-cycles" "import-cycles";
   unused-dependencies = denoTask "unused-dependencies" "unused-dependencies";
-
-  media-spike = import ./media-spike.nix { inherit pkgs; };
 
   # There is no container runtime in the sandbox, so run the entrypoint the image's config names.
   image = pkgs.runCommand "image" { nativeBuildInputs = [ pkgs.jq ]; } ''
