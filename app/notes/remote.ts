@@ -59,18 +59,18 @@ export const knownNote = async (ctx: Context, reference: Reference): Promise<Kno
 };
 
 /**
- * How many mentions and hashtags of another instance's note Verso keeps. Each costs queries, so a
- * note can't make Verso do unbounded work.
+ * How many hashtags of another instance's note Verso keeps. Each costs queries, so a note can't
+ * make Verso do unbounded work. Mentions are held to the settings' limit, as local ones are.
  */
-const remoteLinks = 100;
+const remoteTags = 100;
 
 /**
- * Who a note sent by `sender` names: its author, the first {@link remoteLinks} it mentions, and
- * what it replies to and quotes.
+ * Who a note sent by `sender` names: its author, the first accounts it mentions, as many as
+ * settings allow, and what it replies to and quotes.
  */
-const referencesIn = (note: v0_6.Note, sender: Sender) => ({
+const referencesIn = (ctx: Context, note: v0_6.Note, sender: Sender) => ({
     author: parseReference(note.author, sender.domain),
-    mentions: [...new Set(note.mentions)].slice(0, remoteLinks)
+    mentions: [...new Set(note.mentions)].slice(0, ctx.settings.mentions)
         .flatMap((text) => parseReference(text, sender.domain) ?? []),
     parent: note.replies_to ? parseReference(note.replies_to, sender.domain) : undefined,
     quote: note.quotes ? parseReference(note.quotes, sender.domain) : undefined,
@@ -116,7 +116,7 @@ const wanted = async (
  * names: those are kept, so an unwanted note mustn't make Verso fetch them.
  */
 const mayBeWanted = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
-    const references = referencesIn(note, sender);
+    const references = referencesIn(ctx, note, sender);
     const named = [...references.mentions, references.parent, references.quote];
     if (named.some((reference) => reference?.host === ctx.urls.domain)) return true;
     if (await findRemoteNote(ctx, sender.instanceId, note.id)) return true;
@@ -143,7 +143,7 @@ export const receiveNote = async (
     note: v0_6.Note,
     sender: Sender,
 ): Promise<void> => {
-    const references = referencesIn(note, sender);
+    const references = referencesIn(ctx, note, sender);
     const author = references.author && await knownUser(ctx, references.author);
 
     const mentions = [];
@@ -182,7 +182,7 @@ export const receiveNote = async (
     const hashtags = content.text === ""
         ? scanText(textOfHtml(content.html), "text/plain").hashtags
         : scanText(content.text, content.format).hashtags;
-    const tags = [...new Set(hashtags.map((tag) => tag.toLowerCase()))].slice(0, remoteLinks);
+    const tags = [...new Set(hashtags.map((tag) => tag.toLowerCase()))].slice(0, remoteTags);
     const emojiIds = await keepRemoteEmojis(
         ctx,
         sender.instanceId,
@@ -249,7 +249,7 @@ export const prepareNote = async (
 ): Promise<void> => {
     if (!sender.fetched && !await mayBeWanted(ctx, note, sender)) return;
 
-    const { author, mentions, parent, quote } = referencesIn(note, sender);
+    const { author, mentions, parent, quote } = referencesIn(ctx, note, sender);
     // Without its author, the note can't be kept, so it is tried again later.
     if (author) await ctx.federation.resolve(ctx, author, "User", budget);
 

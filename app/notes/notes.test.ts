@@ -48,6 +48,16 @@ const mention = (uri: string, username: string) =>
     `<span class="h-card" translate="no"><a href="${uri}" class="u-url mention">` +
     `@<span>${username}</span></a></span>`;
 
+Deno.test("a note mentions as many accounts as settings allow, and leaves the rest as text", async () => {
+    await using test = await open({ settings: { mentions: 2 } });
+
+    const note = await post(test.ctx, "alice", "Hi @nobody @bob @bob @dave and @erin");
+    if (note === undefined) throw new Error("Not posted");
+
+    assertEquals((await mentionsOf(test.ctx, [note.id])).get(note.id), ["bob", "dave"]);
+    assertEquals(note.content_html.includes(`${user}/erin`), false);
+});
+
 Deno.test("a posted note links who it mentions and its hashtags, and is counted", async () => {
     const events: unknown[] = [];
     await using test = await open({

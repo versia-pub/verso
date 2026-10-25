@@ -126,6 +126,8 @@ updated = 2026-10-01
 # status = 10000
 # How many files a status may have attached.
 # attachments = 16
+# How many accounts a status may mention. Mentions past them are left as text.
+# mentions = 100
 
 [permissions]
 # What everyone may do, before roles add more: logged-out visitors, and every user.

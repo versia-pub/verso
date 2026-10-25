@@ -11,13 +11,20 @@ export type Settings = {
     readonly deadLetterMs: number;
     /** How long an instance can go unreached before nothing more is sent to it. */
     readonly unreachableMs: number;
+    /** How many accounts a status may mention. */
+    readonly mentions: number;
 };
 
 /** The settings `config` gives. */
-export const settingsOf = (config: Pick<Config, "jobs" | "federation">): Settings => ({
+export const settingsOf = (config: Pick<Config, "jobs" | "federation" | "limits">): Settings => ({
     deadLetterMs: config.jobs.dead_letter_days * dayMs,
     unreachableMs: config.federation.unreachable_days * dayMs,
+    mentions: config.limits.mentions,
 });
 
 /** The settings an instance has when its config leaves them out. */
-export const defaultSettings: Settings = { deadLetterMs: 30 * dayMs, unreachableMs: 7 * dayMs };
+export const defaultSettings: Settings = {
+    deadLetterMs: 30 * dayMs,
+    unreachableMs: 7 * dayMs,
+    mentions: 100,
+};

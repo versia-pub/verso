@@ -66,6 +66,11 @@ export const Limits = z.strictObject({
     status: z.int().min(1).default(10_000),
     /** How many files a status may have attached. */
     attachments: z.int().min(0).default(16),
+    /**
+     * How many accounts a status may mention, its own or another instance's. Each costs queries,
+     * and perhaps a fetch, so the rest are left as text.
+     */
+    mentions: z.int().min(0).default(100),
 }).prefault({});
 export type Limits = z.infer<typeof Limits>;
 

@@ -6,6 +6,7 @@ import { queues as allQueues } from "../jobs/queues.ts";
 import { drain, type Queue } from "../jobs/worker.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
 import { type FakeTransport, fakeTransport } from "../kernel/fake_transport.ts";
+import type { Settings } from "../kernel/settings.ts";
 import { createTestContext, type TestContext } from "../testing/context.ts";
 
 export type Instance = TestContext & { readonly app: App };
@@ -25,6 +26,8 @@ export type NetworkOptions = {
     readonly clock?: FakeClock;
     /** The queues each instance runs. Defaults to the server's own. */
     readonly queues?: Record<string, Queue>;
+    /** Each instance's settings. Defaults to those of a config that leaves them out. */
+    readonly settings?: Partial<Settings>;
 };
 
 /**
@@ -44,7 +47,9 @@ export const createNetwork = async (
     await using stack = new AsyncDisposableStack();
     const instances: Record<string, Instance> = {};
     for (const domain of domains) {
-        const test = stack.use(await createTestContext({ domain, clock, transport }));
+        const test = stack.use(
+            await createTestContext({ domain, clock, transport, settings: options.settings }),
+        );
         const app = createTestApp(test.ctx, routes(defaultSettings()), { checkResponses: true });
         transport.servers.set(domain, app.fetch);
         instances[domain] = { ...test, app };

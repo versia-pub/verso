@@ -9,6 +9,7 @@ import {
     sql,
     type Updateable,
 } from "kysely";
+import { batchesOf } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
@@ -61,12 +62,18 @@ const accountRows = (ctx: Context) =>
 export const findAccount = (ctx: Context, id: string): Promise<AccountRow | undefined> =>
     accountRows(ctx).where("accounts.id", "=", id).executeTakeFirst();
 
-/** The accounts of `ids` that exist, in no particular order. */
+/** The accounts of `ids` that exist, in no particular order, however many `ids` there are. */
 export const findAccounts = async (
     ctx: Context,
     ids: readonly string[],
-): Promise<AccountRow[]> =>
-    ids.length === 0 ? [] : await accountRows(ctx).where("accounts.id", "in", ids).execute();
+): Promise<AccountRow[]> => {
+    const rows = [];
+    for (const batch of batchesOf(ids)) {
+        rows.push(...await accountRows(ctx).where("accounts.id", "in", batch).execute());
+    }
+
+    return rows;
+};
 
 /** The local account named `username`, ignoring case, or `undefined` if there is none. */
 export const findLocalAccount = (

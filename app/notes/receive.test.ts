@@ -7,6 +7,7 @@ import { createNetwork } from "../testing/network.ts";
 import { findRemoteNoteAt, mentionsOf, tagsOf, versionsOf } from "./note_queries.ts";
 import { editNote, postNote, removeNote } from "./notes.ts";
 import { createNote } from "./testing.ts";
+import type { Settings } from "../kernel/settings.ts";
 
 /** A user b.test serves. */
 const user = (id: string) => ({
@@ -38,8 +39,8 @@ const note = (id: string, fields: Record<string, unknown> = {}) => ({
 });
 
 /** a.test, with alice, and b.test, an instance that sends what it is told, with bob and carol. */
-const open = async () => {
-    const network = await createNetwork(["a.test"]);
+const open = async (settings: Partial<Settings> = {}) => {
+    const network = await createNetwork(["a.test"], { settings });
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
     for (const id of ["bob", "carol"]) b.serve(`/.versia/v0.6/entities/User/${id}`, user(id));
@@ -190,6 +191,16 @@ Deno.test("only a note's first hundred mentions and hashtags are kept", async ()
     assertEquals((await mentionsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? ""), [test.alice]);
     const names = (await tagsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? "") ?? [];
     assertEquals([names.length, names.includes("t99"), names.includes("t100")], [100, true, false]);
+});
+
+Deno.test("a note mentions as many accounts as settings allow", async () => {
+    await using test = await open({ mentions: 1 });
+    const bea = await createLocalAccount(test.a, "bea");
+
+    await test.send(note("n1", { mentions: [`a.test:${bea}`, `a.test:${test.alice}`] }));
+
+    const kept = await test.kept("n1");
+    assertEquals((await mentionsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? ""), [bea]);
 });
 
 Deno.test("who a note is for, and its warning, are kept as Mastodon has them", async () => {

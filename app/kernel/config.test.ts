@@ -43,6 +43,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 field_value: 255,
                 status: 10_000,
                 attachments: 16,
+                mentions: 100,
             },
             permissions: {
                 anonymous: [
@@ -132,6 +133,7 @@ hint = " Ads included "
 [limits]
 note = 500
 fields = 4
+mentions = 20
 
 [permissions]
 anonymous = []
@@ -219,6 +221,7 @@ level = "debug"
                 field_value: 255,
                 status: 10_000,
                 attachments: 16,
+                mentions: 20,
             },
             permissions: { anonymous: [], default: ["owner:account"] },
             jobs: { dead_letter_days: 14 },
