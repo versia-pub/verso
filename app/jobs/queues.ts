@@ -18,6 +18,14 @@ import { deleteExpiredJobs } from "./queue.ts";
 import type { Task } from "./scheduler.ts";
 import type { Queue } from "./worker.ts";
 
+/** Work the scheduler enqueues every hour, each in a queue of its own, one job at a time. */
+const hourly: Record<string, Queue["handler"]> = {
+    "jobs-cleanup": (ctx) => deleteExpiredJobs(ctx),
+    "oauth-cleanup": (ctx) => deleteExpiredFlows(ctx),
+    "rate-limits-cleanup": (ctx) => deleteEndedRateLimits(ctx),
+    [unusedUploadsQueue]: (ctx) => removeUnusedUploads(ctx),
+};
+
 /** Every queue the worker runs, by name. Modules add theirs as they need them. */
 export const queues: Record<string, Queue> = {
     [inboxQueue]: { handler: inboxHandler(registry), concurrency: 4 },
@@ -27,16 +35,13 @@ export const queues: Record<string, Queue> = {
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
     // Each job runs vips a few times, a minute each at most, and takes memory while it does.
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
-    "jobs-cleanup": { handler: (ctx) => deleteExpiredJobs(ctx), concurrency: 1 },
-    "oauth-cleanup": { handler: (ctx) => deleteExpiredFlows(ctx), concurrency: 1 },
-    "rate-limits-cleanup": { handler: (ctx) => deleteEndedRateLimits(ctx), concurrency: 1 },
-    [unusedUploadsQueue]: { handler: (ctx) => removeUnusedUploads(ctx), concurrency: 1 },
+    ...Object.fromEntries(
+        Object.entries(hourly).map(([queue, handler]) => [queue, { handler, concurrency: 1 }]),
+    ),
 };
 
 /** Recurring work the scheduler enqueues. */
-export const tasks: readonly Task[] = [
-    { queue: "jobs-cleanup", every: "hour" },
-    { queue: "oauth-cleanup", every: "hour" },
-    { queue: "rate-limits-cleanup", every: "hour" },
-    { queue: unusedUploadsQueue, every: "hour" },
-];
+export const tasks: readonly Task[] = Object.keys(hourly).map((queue) => ({
+    queue,
+    every: "hour",
+}));
