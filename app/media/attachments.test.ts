@@ -111,6 +111,12 @@ Deno.test("only one's own uploads, processed and not attached yet, can be attach
         422,
         `Media still being processed: ${processing}`,
     ]);
+
+    const broken = await test.uploaded(
+        new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new TextEncoder().encode("oops")]),
+    );
+    await drain(test.ctx, queues);
+    assertEquals(await refused([broken]), [422, `Media failed to process: ${broken}`]);
     assertEquals(await test.notes(), notes);
 });
 

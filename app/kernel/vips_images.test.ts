@@ -286,16 +286,21 @@ Deno.test("a picture vips can't read is refused as broken", async () => {
     );
 
     assertEquals(result, { ok: false, reason: "broken" });
+});
 
-    // vips would show what there is of one cut short, and grey for the rest.
+Deno.test("a picture cut short is kept as far as it goes, without its metadata", async () => {
     const noise = await made([], "out.jpg", (_, output) => [["gaussnoise", output, "400", "300"]]);
-    assertEquals((await processed(noise)).width, 400);
-    assertEquals(
-        await vipsImages({ maxPixels: 8_294_400 }).process(
-            noise.slice(0, Math.floor(noise.length * 2 / 3)),
-        ),
-        { ok: false, reason: "broken" },
-    );
+    // The sideways photo's EXIF segment, after its start of image marker.
+    const exif = sidewaysJpeg.subarray(2, 4 + new DataView(sidewaysJpeg.buffer).getUint16(4));
+    const photo = new Uint8Array([...noise.subarray(0, 2), ...exif, ...noise.subarray(2)]);
+    const cut = photo.slice(0, Math.floor(photo.length * 2 / 3));
+    assert(contains(cut, "Exif\0\0"));
+
+    const kept = await processed(cut);
+
+    // Turned upright, as its EXIF says.
+    assertEquals([kept.width, kept.height], [300, 400]);
+    assert(!contains(kept.bytes, "Exif\0\0"));
 });
 
 Deno.test("a picture's metadata can't make it out to be smaller than it is", async () => {

@@ -157,6 +157,23 @@ Deno.test("a picture is answered with 206 when it is changed while it is process
     assertEquals([changed.status, changed.body.description], [206, "Red"]);
 });
 
+Deno.test("a picture that couldn't be processed is answered with 422", async () => {
+    await using test = await open();
+    const broken = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new TextEncoder().encode("oops")]);
+    const { body } = await test.upload(broken, "image/jpeg");
+    await drain(test.ctx, queues);
+    const path = `/api/v1/media/${body.id}`;
+
+    const refused = async (method: string, json?: unknown) => {
+        const reply = await test.request(method, path, { json });
+        return [reply.status, reply.body.error_description];
+    };
+
+    const error = [422, "Error processing thumbnail for uploaded media"];
+    assertEquals(await refused("GET"), error);
+    assertEquals(await refused("PUT", { description: "Hi" }), error);
+});
+
 Deno.test("what is uploaded is checked", async () => {
     await using test = await open(MediaLimits.parse({ max_upload_bytes: 100 }));
     const refused = async (fields: Record<string, string>) =>

@@ -22,7 +22,10 @@ export const insertUpload = async (ctx: Context, row: Insertable<MediaTable>): P
     await ctx.db.insertInto("media").values(row).execute();
 };
 
-/** A processed upload of the same file as was uploaded as `uploadSha256`, if there is one. */
+/**
+ * An upload of the same file as was uploaded as `uploadSha256` that was processed, and kept, if
+ * there is one.
+ */
 export const processedUpload = (
     ctx: Context,
     uploadSha256: string,
@@ -30,6 +33,7 @@ export const processedUpload = (
     ctx.db.selectFrom("media").selectAll()
         .where("upload_sha256", "=", uploadSha256)
         .where("processed_at", "is not", null)
+        .where("sha256", "is not", null)
         .executeTakeFirst();
 
 /** Marks the upload `id` processed, unless it is already. Returns whether it was. */

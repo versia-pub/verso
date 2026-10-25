@@ -4509,7 +4509,7 @@
         "/api/v2/media": {
             "post": {
                 "summary": "Upload media as an attachment (async)",
-                "description": "Creates a media attachment to be used with a new status. The full sized media will be processed asynchronously in the background for large uploads.\n\nPictures are processed, and answered with 202 until they are; any other file, and any picture that can't be processed, is kept as it is, as a file of type `unknown`. Files are at most 16777216 bytes.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
+                "description": "Creates a media attachment to be used with a new status. The full sized media will be processed asynchronously in the background for large uploads.\n\nPictures are processed, and answered with 202 until they are; any other file is kept as it is, as a file of type `unknown`. A picture that can't be processed is removed, as it may hold metadata, and then answered with 422. Files are at most 16777216 bytes.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/media/#v2"
                 },

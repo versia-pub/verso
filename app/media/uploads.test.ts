@@ -13,7 +13,7 @@ import { createTestContext, type TestContextOptions } from "../testing/context.t
 import { createInstance } from "../instances/testing.ts";
 import { findMedia, saveRemoteMedia } from "./media.ts";
 import { finishUpload } from "./upload_queries.ts";
-import { deleteFileIfUnused, mediaQueue, upload } from "./uploads.ts";
+import { deleteFileIfUnused, mediaQueue, processingFailed, upload } from "./uploads.ts";
 
 /** A `width`×`height` PNG, all red. */
 const png = (width: number, height: number) =>
@@ -49,7 +49,7 @@ const open = async (options: TestContextOptions = {}) => {
 
     /** The file kept under `key`, or `undefined` if there is none. */
     const file = async (key: string | null) => {
-        const stream = await test.ctx.files.get(key ?? "");
+        const stream = key === null ? undefined : await test.ctx.files.get(key);
         return stream && await new Response(stream).bytes();
     };
 
@@ -197,7 +197,7 @@ Deno.test("uploading a picture as Verso keeps it doesn't remove the one kept", a
     assertEquals(await test.file(preview), small);
 });
 
-Deno.test("a picture vips refuses is kept as a file, as it was uploaded", async () => {
+Deno.test("a picture vips refuses is removed, as it may hold metadata", async () => {
     await using test = await open();
     const broken = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new TextEncoder().encode("oops")]);
 
@@ -205,11 +205,17 @@ Deno.test("a picture vips refuses is kept as a file, as it was uploaded", async 
     await drain(test.ctx, queues);
 
     const kept = await findMedia(test.ctx, row.id);
-    assertEquals(kept, { ...row, processed_at: test.clock.now() });
-    assertEquals(await test.file(row.sha256), broken);
+    assertEquals(kept, {
+        ...row,
+        sha256: null,
+        size: null,
+        processed_at: test.clock.now(),
+    });
+    assert(kept && processingFailed(kept));
+    assertEquals(await test.file(row.upload_sha256), undefined);
 });
 
-Deno.test("a picture that can't be processed is tried again, then kept as a file", async () => {
+Deno.test("a picture that can't be processed is tried again, then removed", async () => {
     let tries = 0;
     const images: ImageProcessor = {
         process: () => {
@@ -230,8 +236,45 @@ Deno.test("a picture that can't be processed is tried again, then kept as a file
     }
 
     assertEquals(tries, 3);
-    assertEquals(await findMedia(test.ctx, row.id), { ...row, processed_at: test.clock.now() });
-    assertEquals(await test.file(row.sha256), png(4, 4));
+    assertEquals(await findMedia(test.ctx, row.id), {
+        ...row,
+        sha256: null,
+        size: null,
+        processed_at: test.clock.now(),
+    });
+    assertEquals(await test.file(row.upload_sha256), undefined);
+});
+
+Deno.test("a picture that couldn't be processed is processed anew if uploaded again", async () => {
+    let fail = true;
+    const images: ImageProcessor = {
+        process: (bytes) =>
+            fail ? Promise.resolve({ ok: false, reason: "broken" }) : vips.process(bytes),
+        check: () => Promise.resolve(),
+    };
+    await using test = await open({ images });
+    await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    await drain(test.ctx, queues);
+
+    fail = false;
+    const again = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    await drain(test.ctx, queues);
+
+    const kept = await findMedia(test.ctx, again.id);
+    assertEquals([kept?.width, kept && processingFailed(kept)], [4, false]);
+});
+
+Deno.test("what was uploaded is removed when a run stopped after processing it", async () => {
+    await using test = await open();
+    const row = await upload(test.ctx, "alice", { bytes: sidewaysJpeg, mediaType: "image/jpeg" });
+    // As if a run kept the picture, then stopped before removing what was uploaded.
+    const kept = await test.ctx.files.put(png(4, 4), "image/png");
+    await finishUpload(test.ctx, row.id, { sha256: kept });
+
+    await drain(test.ctx, queues);
+
+    assertEquals(await test.file(row.upload_sha256), undefined);
+    assertEquals(await test.file(kept), png(4, 4));
 });
 
 Deno.test("a job for an upload that is gone, or already processed, does nothing", async () => {

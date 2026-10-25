@@ -117,8 +117,9 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
     };
 
     /**
-     * Saves `input` as `output`, upright, in sRGB and scaled to fit a `side`-pixel square, failing
-     * if `input` is cut short or damaged.
+     * Saves `input` as `output`, upright, in sRGB and scaled to fit a `side`-pixel square. What
+     * there is of a picture cut short is saved, with grey for the rest, so that its metadata can
+     * still be left out: vips can't leave it out without reading the picture.
      */
     const thumbnail = (input: string, output: string, side: number) =>
         run("vips", [
@@ -132,8 +133,6 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
             "down",
             "--export-profile",
             "srgb",
-            "--fail-on",
-            "truncated",
         ]);
 
     /** The size of a picture Verso made, which vips must be able to read. */

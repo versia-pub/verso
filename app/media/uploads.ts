@@ -20,8 +20,8 @@ import {
     isFileUsed,
     type Processed,
     processedUpload,
-    type UploadCursor,
     updateUpload,
+    type UploadCursor,
 } from "./upload_queries.ts";
 
 const logger = getLogger(["verso", "media"]);
@@ -156,11 +156,20 @@ const processedFrom = (row: MediaRow): Processed => ({
     preview_height: row.preview_height,
 });
 
+/** What a picture that can't be processed is kept as: nothing, as it may hold metadata. */
+const failed: Processed = { sha256: null, size: null, width: null, height: null };
+
+/**
+ * Whether an upload is a picture that couldn't be processed, which is neither served nor attached.
+ * Uploads are kept under their SHA-256 until then.
+ */
+export const processingFailed = (upload: MediaRow): boolean => upload.sha256 === null;
+
 /**
  * Processes the picture in the job: keeps it upright, without its metadata and no larger than
  * allowed, with a preview, then removes what was uploaded. One that vips refuses, or that still
- * fails on the job's last attempt, is kept as it was uploaded, as any other file is. One uploaded
- * before is processed as it was then.
+ * fails on the job's last attempt, is marked failed and removed, as it may hold metadata. One
+ * uploaded before is processed as it was then.
  */
 export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = MediaJob.safeParse(job.payload);
@@ -171,40 +180,33 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
     const uploaded = row.upload_sha256;
 
     // The same file's other upload may also have removed what was uploaded, or left it for this.
-    // One processed already finds itself, and is left as it is.
+    // One processed already finds itself, as a run that stopped after processing it may have
+    // left what was uploaded.
     const before = await processedUpload(ctx, uploaded);
     if (before !== undefined) {
-        if (await finishUpload(ctx, row.id, processedFrom(before))) {
-            await deleteFileIfUnused(ctx, uploaded);
-        }
-        return;
+        await finishUpload(ctx, row.id, processedFrom(before));
+        return await deleteFileIfUnused(ctx, uploaded);
     }
 
     const stream = await ctx.files.get(uploaded);
     if (stream === undefined) throw new PermanentFailure(`The upload ${row.id} is gone`);
     const bytes = await new Response(stream).bytes();
 
-    let result;
+    let result: Awaited<ReturnType<Context["images"]["process"]>> | undefined;
     try {
         result = await ctx.images.process(bytes);
     } catch (error) {
         if (job.attempts < job.max_attempts) throw error;
-        logger.warn("Couldn't process {id}, so it is kept as a file: {error}", {
-            id: row.id,
-            error,
-        });
+        logger.warn("Couldn't process {id}, so it is removed: {error}", { id: row.id, error });
     }
 
     if (result?.ok !== true) {
         if (result) {
-            logger.info("Kept {id} as a file, as it is {reason}", {
-                id: row.id,
-                reason: result.reason,
-            });
+            logger.info("Removed {id}, as it is {reason}", { id: row.id, reason: result.reason });
         }
 
-        await finishUpload(ctx, row.id, {});
-        return;
+        await finishUpload(ctx, row.id, failed);
+        return await deleteFileIfUnused(ctx, uploaded);
     }
 
     const { image } = result;

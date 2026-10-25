@@ -12,7 +12,10 @@ export type MediaTable = {
     media_type: string;
     /** In bytes. */
     size: number | null;
-    /** The SHA-256 of the file, in hex, which a local one is kept under. */
+    /**
+     * The SHA-256 of the file, in hex, which a local one is kept under. `null` for a local picture
+     * that couldn't be processed, which is kept as nothing, as it may hold metadata.
+     */
     sha256: string | null;
     /** In pixels, for pictures and videos. */
     width: number | null;

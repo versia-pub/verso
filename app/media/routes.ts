@@ -1,6 +1,6 @@
 import { MediaAttachment } from "@versia/client-api";
 import { z } from "zod";
-import { NotFound } from "../http/errors.ts";
+import { NotFound, Unprocessable } from "../http/errors.ts";
 import { Binary, defineRoute, Redirect, type Route } from "../http/route.ts";
 import { Text } from "../http/schemas.ts";
 import type { MediaLimits } from "../kernel/config.ts";
@@ -9,7 +9,7 @@ import type { MediaRow } from "./media.ts";
 import { renderAttachment } from "./render.ts";
 import { serveFile } from "./serving.ts";
 import { findUpload } from "./upload_queries.ts";
-import { describeUpload, upload } from "./uploads.ts";
+import { describeUpload, processingFailed, upload } from "./uploads.ts";
 
 /** How long alt text may be, as on Mastodon. */
 const descriptionLimit = 4000;
@@ -61,11 +61,19 @@ const DescriptionBody = z.object({
 
 const MediaId = z.object({ id: z.string() });
 
-/** The upload, with 200 once it is processed, or 206 while it is, as Mastodon answers. */
-const progressOf = (ctx: Context, row: MediaRow) =>
-    row.processed_at === null
+/**
+ * The upload, with 200 once it is processed, or 206 while it is, as Mastodon answers. A picture
+ * that couldn't be processed is refused with 422, as on Mastodon.
+ */
+const progressOf = (ctx: Context, row: MediaRow) => {
+    if (processingFailed(row)) {
+        throw new Unprocessable("Error processing thumbnail for uploaded media");
+    }
+
+    return row.processed_at === null
         ? { status: 206 as const, body: renderAttachment(ctx, row) }
         : { status: 200 as const, body: renderAttachment(ctx, row) };
+};
 
 /** Uploading files, with what is uploaded held to `limits`, and describing them. */
 export const mediaRoutes = (limits: MediaLimits): readonly Route[] => [
@@ -75,9 +83,10 @@ export const mediaRoutes = (limits: MediaLimits): readonly Route[] => [
         summary: "Upload media as an attachment (async)",
         description: "Creates a media attachment to be used with a new status. The full sized " +
             "media will be processed asynchronously in the background for large uploads.\n\n" +
-            "Pictures are processed, and answered with 202 until they are; any other file, " +
-            "and any picture that can't be processed, is kept as it is, as a file of type " +
-            `\`unknown\`. Files are at most ${limits.max_upload_bytes} bytes.`,
+            "Pictures are processed, and answered with 202 until they are; any other file is " +
+            "kept as it is, as a file of type `unknown`. A picture that can't be processed is " +
+            "removed, as it may hold metadata, and then answered with 422. Files are at most " +
+            `${limits.max_upload_bytes} bytes.`,
         docs: "https://docs.joinmastodon.org/methods/media/#v2",
         tags: ["media"],
         auth: { require: "user", scope: "write:media", permission: "owner:media" },

@@ -84,7 +84,10 @@ export type ProcessedImage = Picture & {
     readonly blurhash: string;
 };
 
-/** Why an upload isn't a picture Verso can show. It is kept as a plain file instead. */
+/**
+ * Why an upload isn't a picture Verso can show. One that is a picture by its bytes can't be kept,
+ * as it may hold metadata.
+ */
 export type ImageRefusal = "unsupported" | "broken" | "too-large";
 
 /** Turns uploads into pictures fit to keep and show. */
@@ -92,8 +95,7 @@ export type ImageProcessor = {
     /**
      * `bytes` upright, without metadata, in sRGB and scaled down if they are too large, with a
      * preview and placeholder hashes. Refuses what isn't a picture in a format Verso takes, what
-     * can't be read, and what has too many pixels to read safely, which are kept as plain files.
-     * Throws if it can't try.
+     * can't be read at all, and what has too many pixels to read safely. Throws if it can't try.
      */
     readonly process: (
         bytes: Uint8Array<ArrayBuffer>,

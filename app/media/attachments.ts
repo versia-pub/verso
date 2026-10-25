@@ -1,6 +1,6 @@
 /**
  * Files attached to notes. Each is an upload its author made, attached to one note at most, once it
- * is processed.
+ * is processed, unless processing it failed.
  * @module
  */
 import { Unprocessable } from "../http/errors.ts";
@@ -13,7 +13,7 @@ import {
     unattachedUploads,
 } from "./attachment_queries.ts";
 import type { MediaRow } from "./media.ts";
-import { describeUpload, type UploadDescription } from "./uploads.ts";
+import { describeUpload, processingFailed, type UploadDescription } from "./uploads.ts";
 
 /**
  * Attaches the uploads `mediaIds`, in that order, to the note `noteId` by `accountId`, as Mastodon
@@ -39,6 +39,12 @@ export const attach = async (
     if (processing.length > 0) {
         throw new Unprocessable(`Media still being processed: ${processing.join(", ")}`);
     }
+
+    const failed = ids.filter((id) => {
+        const upload = uploads.get(id);
+        return upload !== undefined && processingFailed(upload);
+    });
+    if (failed.length > 0) throw new Unprocessable(`Media failed to process: ${failed.join(", ")}`);
 
     await insertAttachments(ctx, noteId, ids);
 };
