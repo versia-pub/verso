@@ -249,6 +249,23 @@ Deno.test("a remote user becomes an account, with its text as written and as HTM
     });
 });
 
+Deno.test("a remote field named only in HTML is named by its text", () => {
+    const account = remoteAccountOf(
+        "b.test",
+        user({
+            fields: [{
+                key: { "text/html": { content: "<b>Site</b> &amp; more", remote: false } },
+                value: { "text/plain": { content: "b.test", remote: false } },
+            }],
+        }),
+    );
+
+    assertEquals(
+        [account.profile.fields[0].name, account.profile.fields[0].name_html],
+        ["Site & more", "<b>Site</b> &amp; more"],
+    );
+});
+
 Deno.test("remote text without HTML is made into HTML, and HTML alone is kept", () => {
     const markdown = remoteAccountOf(
         "b.test",

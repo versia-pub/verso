@@ -6,6 +6,7 @@
 import { formatReference, type Reference, v0_6 } from "@versia/protocol";
 import type { EntityType, Known } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
+import { textOfHtml } from "../kernel/html.ts";
 import { emojisOfAccounts, type ShownEmoji } from "../emojis/emoji_queries.ts";
 import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
 import { remotePicture } from "../media/versia.ts";
@@ -175,7 +176,8 @@ export const remoteAccountOf = (instanceId: string, user: v0_6.User): RemoteAcco
         const value = remoteText(field.value, escapeHtml);
 
         return {
-            name: name.text,
+            // Clients show a field's name as text, so one given only as HTML is shown as its text.
+            name: name.text || textOfHtml(name.html).replaceAll(/\s+/g, " ").trim(),
             value: value.text,
             // Each is in the format of its name, which is nearly always the same as its value's.
             format: name.format,
