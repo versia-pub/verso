@@ -212,7 +212,8 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
         created_at: note.edited_at ?? note.created_at,
     };
     const versions = [...await versionsOf(ctx, note.id), current];
-    // Files an edit removed are shown until they are removed with other unattached uploads.
+    // Files an edit removed are shown until they are removed with other unattached uploads, at
+    // the next hourly run once a day has passed since they were uploaded, which for most is soon.
     const ids = versions.flatMap((version) => version.media.map((media) => media.id));
     const files = new Map((await findMediaRows(ctx, ids)).map((row) => [row.id, row]));
 

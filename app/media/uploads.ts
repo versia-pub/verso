@@ -20,6 +20,7 @@ import {
     isFileUsed,
     type Processed,
     processedUpload,
+    type UploadCursor,
     updateUpload,
 } from "./upload_queries.ts";
 
@@ -36,6 +37,9 @@ const unattachedMs = 24 * 60 * 60 * 1000;
 
 /** How many uploads are removed at once. */
 const removalBatch = 100;
+
+/** How many batches one run removes at most, so it ends well within its lease. */
+const removalBatches = 100;
 
 const MediaJob = z.object({ mediaId: z.string() });
 
@@ -226,17 +230,30 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
 
 /**
  * Removes the uploads made a day ago or more that nothing uses, with their files, unless other
- * uploads use them. Files a note had are its author's to attach again until then, as Mastodon
- * keeps them when a note is deleted, so that it can be redrafted.
+ * uploads use them, up to `batches` batches in a run; the next run removes the rest.
+ * The files of a note that is deleted can be attached again until a day after they were uploaded,
+ * as Mastodon keeps them so that the note can be redrafted.
  */
-export const removeUnusedUploads = async (ctx: Context): Promise<void> => {
+export const removeUnusedUploads = async (
+    ctx: Context,
+    batches = removalBatches,
+): Promise<void> => {
     const before = new Date(ctx.clock.now().getTime() - unattachedMs);
 
-    while (true) {
-        const removed = await deleteUnusedUploads(ctx, before, removalBatch);
-        const keys = new Set(removed.flatMap((row) => [row.sha256, row.preview_sha256]));
+    let after: UploadCursor | undefined;
+    for (let batch = 0; batch < batches; batch++) {
+        const removed = await deleteUnusedUploads(ctx, before, after, removalBatch);
+        const keys = new Set(
+            removed.flatMap((row) => [row.sha256, row.preview_sha256, row.upload_sha256]),
+        );
         for (const key of keys) if (key !== null) await deleteFileIfUnused(ctx, key);
 
         if (removed.length < removalBatch) return;
+        after = removed.reduce((last, row) =>
+            row.created_at > last.created_at ||
+                (row.created_at.getTime() === last.created_at.getTime() && row.id > last.id)
+                ? row
+                : last
+        );
     }
 };

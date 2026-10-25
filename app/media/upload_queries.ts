@@ -102,22 +102,43 @@ export const findServedFile = (
         )
         .executeTakeFirst();
 
+/** Where removing unused uploads got to: the last one it looked at, in the order it looks. */
+export type UploadCursor = Pick<MediaRow, "created_at" | "id">;
+
+/** An upload that was removed, with the keys it kept files under. */
+export type RemovedUpload =
+    & UploadCursor
+    & Pick<MediaRow, "sha256" | "preview_sha256" | "upload_sha256">;
+
 /**
- * Removes up to `limit` uploads made by `before` that nothing uses: no note has them attached,
- * and no account or emoji shows them. Returns the keys their files and previews were kept under,
- * one of which was uploaded, unless processing removed it.
+ * Removes up to `limit` uploads made by `before` that nothing uses, oldest first, after the one
+ * at `after`: no note has them attached, and no account or emoji shows them. A note given one at
+ * the same time makes it fail instead, as attached files can't be deleted.
  */
 export const deleteUnusedUploads = (
     ctx: Context,
     before: Date,
+    after: UploadCursor | undefined,
     limit: number,
-): Promise<Pick<MediaRow, "sha256" | "preview_sha256">[]> =>
+): Promise<RemovedUpload[]> =>
     ctx.db.deleteFrom("media")
-        .where("id", "in", (eb) =>
-            eb.selectFrom("media as unused").select("unused.id")
+        .where("id", "in", (eb) => {
+            let unused = eb.selectFrom("media as unused").select("unused.id")
                 // Only uploads have someone who uploaded them.
                 .where("unused.account_id", "is not", null)
-                .where("unused.created_at", "<=", before)
+                .where("unused.created_at", "<=", before);
+            if (after) {
+                unused = unused.where(
+                    (eb) =>
+                        eb(
+                            eb.refTuple("unused.created_at", "unused.id"),
+                            ">",
+                            eb.tuple(after.created_at, after.id),
+                        ),
+                );
+            }
+
+            return unused
                 .where((eb) =>
                     eb.not(eb.or([
                         eb.exists(
@@ -138,6 +159,9 @@ export const deleteUnusedUploads = (
                         ),
                     ]))
                 )
-                .limit(limit))
-        .returning(["sha256", "preview_sha256"])
+                .orderBy("unused.created_at")
+                .orderBy("unused.id")
+                .limit(limit);
+        })
+        .returning(["created_at", "id", "sha256", "preview_sha256", "upload_sha256"])
         .execute();

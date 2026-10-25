@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { encode } from "fast-png";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
@@ -9,7 +9,7 @@ import { postNote, removeNote } from "../notes/notes.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
 import { findMedia, saveRemoteMedia } from "./media.ts";
-import { upload } from "./uploads.ts";
+import { removeUnusedUploads, upload } from "./uploads.ts";
 
 const hour = 60 * 60 * 1000;
 
@@ -32,7 +32,9 @@ const open = async () => {
 
     /** Whether a file is kept under `key`. */
     const kept = async (key: string | null) => {
-        const stream = await test.ctx.files.get(key ?? "");
+        if (key === null) return false;
+
+        const stream = await test.ctx.files.get(key);
         await stream?.cancel();
         return stream !== undefined;
     };
@@ -125,11 +127,34 @@ Deno.test("only uploads are removed, not files an account or an emoji shows", as
     assertEquals([left.length, left.some((row) => row.id === unused)], [5, false]);
 });
 
-Deno.test("any number of uploads are removed", async () => {
+Deno.test("any number of uploads are removed, a number of batches a run", async () => {
     await using test = await open();
-    for (let n = 0; n < 101; n++) await test.uploaded(zip(n));
+    for (let n = 0; n < 201; n++) await test.uploaded(zip(n));
+    test.clock.advance(24 * hour);
+
+    await removeUnusedUploads(test.ctx, 2);
+    assertEquals((await test.ctx.db.selectFrom("media").select("id").execute()).length, 1);
+
+    await test.later(0);
+    assertEquals(await test.ctx.db.selectFrom("media").select("id").execute(), []);
+});
+
+Deno.test("what was uploaded of a picture is removed with it, if a run left it", async () => {
+    await using test = await open();
+    const picture = await test.uploaded(png);
+    await drain(test.ctx, queues);
+    // As if processing stopped before removing what was uploaded.
+    const left = await test.ctx.files.put(png, "image/png");
 
     await test.later(24 * hour);
 
-    assertEquals(await test.ctx.db.selectFrom("media").select("id").execute(), []);
+    assertEquals([await findMedia(test.ctx, picture), await test.kept(left)], [undefined, false]);
+});
+
+Deno.test("a file attached to a note can't be deleted", async () => {
+    await using test = await open();
+    const file = await test.uploaded(zip(1));
+    await test.post([file]);
+
+    await assertRejects(() => test.ctx.db.deleteFrom("media").where("id", "=", file).execute());
 });
