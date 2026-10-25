@@ -10,7 +10,11 @@ import type {
     V1Instance,
 } from "@versia/client-api";
 import denoConfig from "../../deno.json" with { type: "json" };
-import { countLocalAccounts, findLocalAccount } from "../accounts/account_queries.ts";
+import {
+    countLocalAccounts,
+    countLocalStatuses,
+    findLocalAccount,
+} from "../accounts/account_queries.ts";
 import { publicAccount } from "../accounts/public.ts";
 import { escapeHtml, textToHtml } from "../accounts/text.ts";
 import { countAccountsWithTokensSince } from "../auth/token_queries.ts";
@@ -112,11 +116,35 @@ const configuration = (
     translation: { enabled: false },
 });
 
+/** How many people, statuses and other instances the instance has, as it tells clients. */
+export type InstanceStats = {
+    /** Accounts that logged in in the last 30 days. */
+    readonly activeMonth: number;
+    readonly users: number;
+    readonly statuses: number;
+    /** Other instances it knows of. */
+    readonly domains: number;
+};
+
+/** The instance's stats now. They take a few queries, so the routes keep them for a while. */
+export const instanceStats = async (ctx: Context): Promise<InstanceStats> => ({
+    activeMonth: await countAccountsWithTokensSince(
+        ctx,
+        new Date(ctx.clock.now().getTime() - activeWindowMs),
+    ),
+    users: await countLocalAccounts(ctx),
+    statuses: await countLocalStatuses(ctx),
+    domains: await countInstances(ctx),
+});
+
 /** The instance as Mastodon's API describes it, claiming Mastodon 4.3. */
-export const renderInstance = async (ctx: Context, settings: AboutSettings): Promise<Instance> => {
+export const renderInstance = async (
+    ctx: Context,
+    settings: AboutSettings,
+    stats: InstanceStats,
+): Promise<Instance> => {
     const { instance, limits } = settings;
     const domain = ctx.urls.domain;
-    const since = new Date(ctx.clock.now().getTime() - activeWindowMs);
 
     return {
         domain,
@@ -124,7 +152,7 @@ export const renderInstance = async (ctx: Context, settings: AboutSettings): Pro
         version: `${mastodonVersion} (compatible; Verso ${denoConfig.version})`,
         source_url: sourceUrl,
         description: instance.description,
-        usage: { users: { active_month: await countAccountsWithTokensSince(ctx, since) } },
+        usage: { users: { active_month: stats.activeMonth } },
         thumbnail: { url: ctx.urls.url`/instance/thumbnail.png` },
         icon: [],
         languages: [],
@@ -146,7 +174,7 @@ export const renderInstance = async (ctx: Context, settings: AboutSettings): Pro
 };
 
 /** The instance as Mastodon described it before 4.0, from how it describes itself now. */
-export const renderV1Instance = async (ctx: Context, instance: Instance): Promise<V1Instance> => ({
+export const renderV1Instance = (instance: Instance, stats: InstanceStats): V1Instance => ({
     uri: instance.domain,
     title: instance.title,
     short_description: instance.description,
@@ -155,10 +183,9 @@ export const renderV1Instance = async (ctx: Context, instance: Instance): Promis
     version: instance.version,
     urls: { streaming_api: instance.configuration.urls.streaming },
     stats: {
-        user_count: await countLocalAccounts(ctx),
-        // Statuses arrive in a later step.
-        status_count: 0,
-        domain_count: await countInstances(ctx),
+        user_count: stats.users,
+        status_count: stats.statuses,
+        domain_count: stats.domains,
     },
     thumbnail: instance.thumbnail.url,
     languages: instance.languages,

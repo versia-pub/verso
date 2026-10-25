@@ -7,7 +7,8 @@ import { createLocalEmoji } from "../emojis/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { parseConfig } from "../kernel/config.ts";
 import { createTestContext } from "../testing/context.ts";
-import type { AboutSettings } from "./render.ts";
+import { postNote } from "../notes/notes.ts";
+import { type AboutSettings, instanceStats } from "./render.ts";
 import { instanceRoutes } from "./routes.ts";
 import { createInstance, defaultSettings } from "./testing.ts";
 
@@ -198,8 +199,21 @@ Deno.test("active users are local accounts that logged in within four weeks", as
     await tokenFor(test.ctx, null);
     test.clock.advance(27 * day);
 
-    assertEquals((await test.get()).usage.users.active_month, 3);
+    assertEquals((await instanceStats(test.ctx)).activeMonth, 3);
 
+    test.clock.advance(1);
+    assertEquals((await instanceStats(test.ctx)).activeMonth, 1);
+});
+
+Deno.test("the instance's stats are kept for five minutes", async () => {
+    await using test = await open();
+    assertEquals((await instanceStats(test.ctx)).statuses, 0);
+    assertEquals((await test.get()).usage.users.active_month, 0);
+    await createLocalAccount(test.ctx, "alice");
+    await tokenFor(test.ctx, "alice");
+
+    test.clock.advance(5 * 60_000 - 1);
+    assertEquals((await test.get()).usage.users.active_month, 0);
     test.clock.advance(1);
     assertEquals((await test.get()).usage.users.active_month, 1);
 });
@@ -237,8 +251,13 @@ rules = [{ text = "Be kind", hint = "Always" }]
             instance_id: await createInstance(test.ctx, "b.example"),
             remote_id: "erin",
             created_at: test.ctx.clock.now(),
+            // Other instances' statuses aren't counted.
+            statuses_count: 5,
         })
         .execute();
+    for (const text of ["Hi", "Bye"]) {
+        await postNote(test.ctx, "alice", { text, format: "text/plain", spoilerText: "" });
+    }
     const v2 = await test.get();
 
     const { body, status } = await test.fetch("/api/v1/instance");
@@ -252,7 +271,7 @@ rules = [{ text = "Be kind", hint = "Always" }]
         email: "admin@social.example",
         version: "4.3.0 (compatible; Verso 0.0.0)",
         urls: { streaming_api: "wss://social.example" },
-        stats: { user_count: 2, status_count: 0, domain_count: 1 },
+        stats: { user_count: 2, status_count: 2, domain_count: 1 },
         thumbnail: "https://social.example/instance/thumbnail.png",
         languages: [],
         registrations: false,

@@ -120,6 +120,17 @@ export const instancesHosting = async (ctx: Context, ids: readonly string[]): Pr
     return rows.flatMap((row) => row.instance_id ?? []);
 };
 
+/** How many statuses this instance's accounts have posted, as each account counts them. */
+export const countLocalStatuses = async (ctx: Context): Promise<number> =>
+    readCount(
+        await ctx.db.selectFrom("accounts")
+            .select((eb) =>
+                eb.fn.sum<number | string | bigint | null>("statuses_count").as("count")
+            )
+            .where("instance_id", "is", null)
+            .executeTakeFirstOrThrow(),
+    );
+
 /** How many accounts this instance has. */
 export const countLocalAccounts = async (ctx: Context): Promise<number> =>
     readCount(
