@@ -3,9 +3,9 @@
  * @module
  */
 import { hiddenAmong } from "../graph/hidden.ts";
-import { followedSubquery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, type NoteRow, notesSeenBy, type Onlooker, repliesTo } from "./note_queries.ts";
+import { onlookerOf } from "./notes.ts";
 
 /** How many notes up a thread are looked at, as Mastodon shows to anyone. */
 const ancestorsLimit = 40;
@@ -92,9 +92,7 @@ export const threadOf = async (
     note: NoteRow,
     viewerId: string | null,
 ): Promise<{ ancestors: NoteRow[]; descendants: NoteRow[] }> => {
-    const onlooker = viewerId === null
-        ? null
-        : { id: viewerId, followed: followedSubquery(ctx, viewerId) };
+    const onlooker = onlookerOf(ctx, viewerId);
 
     const ancestors = await ancestorsOf(ctx, note);
     const seen = await notesSeenBy(ctx, ancestors.map((each) => each.id), onlooker);

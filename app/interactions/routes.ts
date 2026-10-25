@@ -7,7 +7,7 @@ import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { everyone } from "../notes/audience.ts";
 import { findNotes, sharePage } from "../notes/note_queries.ts";
-import { canSee, visibleOriginal } from "../notes/notes.ts";
+import { seenAmong, visibleOriginal } from "../notes/notes.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { likePage } from "./like_queries.ts";
 import { like, unlike } from "./likes.ts";
@@ -185,11 +185,11 @@ export const interactionRoutes: readonly Route[] = [
 
             // A note liked may since have become one the viewer can't see, such as when they stop
             // following its author. The page is still as long, so its cursors go by the likes.
-            const seen = [];
-            for (const row of likes) {
+            const visible = await seenAmong(ctx, [...notes.keys()], viewer.accountId);
+            const seen = likes.flatMap((row) => {
                 const note = notes.get(row.note_id);
-                if (note && await canSee(ctx, note, viewer.accountId)) seen.push(note);
-            }
+                return note && visible.has(note.id) ? [note] : [];
+            });
 
             return {
                 status: 200,

@@ -11,7 +11,7 @@ import { isAccountDeleting } from "../accounts/events.ts";
 import type { TextFormat, Visibility } from "../accounts/tables.ts";
 import { localEmojiIds, setNoteEmojis } from "../emojis/emoji_queries.ts";
 import { fetchBudget } from "../federation/resolver.ts";
-import { isFollowing } from "../graph/follows.ts";
+import { followedSubquery, isFollowing } from "../graph/follows.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type Found, type Mention, renderText, scanText } from "../kernel/markup.ts";
@@ -37,6 +37,8 @@ import {
     type NoteRow,
     notesAmongQuery,
     notesOfQuery,
+    notesSeenBy,
+    type Onlooker,
     someNoteIdsOf,
     uncountRepliesAmong,
     uncountSharersOf,
@@ -67,6 +69,20 @@ export const canSee = async (
 
     return note.visibility === "private" && await isFollowing(ctx, viewerId, note.account_id);
 };
+
+/** Someone looking at notes, as queries of many of them take them, or `null` for anyone. */
+export const onlookerOf = (ctx: Context, viewerId: string | null): Onlooker =>
+    viewerId === null ? null : { id: viewerId, followed: followedSubquery(ctx, viewerId) };
+
+/**
+ * Which of `ids`, notes that aren't shares, `viewerId`, or anyone if it is `null`, may see, as
+ * {@link canSee} decides one at a time, in one query.
+ */
+export const seenAmong = (
+    ctx: Context,
+    ids: readonly string[],
+    viewerId: string | null,
+): Promise<Set<string>> => notesSeenBy(ctx, ids, onlookerOf(ctx, viewerId));
 
 /**
  * The visibilities of an account's notes that `viewerId`, or anyone if it is `null`, sees among
