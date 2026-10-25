@@ -2,7 +2,7 @@ import { type ExpressionBuilder, sql } from "kysely";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
-import type { AccountIdQuery } from "./follow_queries.ts";
+import type { InstanceIdQuery } from "./excluded_queries.ts";
 
 /** Adds a domain block, unless the account already blocks the domain. */
 export const insertDomainBlock = async (
@@ -45,11 +45,8 @@ export const domainBlockPage = async (
         page,
     );
 
-/** An account joined with its instance. */
-type OnInstance = ExpressionBuilder<Database, "accounts" | "instances">;
-
-/** Whether `accountId` blocks the joined instance's domain, or one it is under. */
-const blocksInstance = (accountId: string) => (eb: OnInstance) =>
+/** Whether `accountId` blocks the instance's domain, or one it is under. */
+const blocksInstance = (accountId: string) => (eb: ExpressionBuilder<Database, "instances">) =>
     eb.exists(
         eb.selectFrom("account_domain_blocks")
             .select("account_domain_blocks.id")
@@ -66,11 +63,13 @@ const blocksInstance = (accountId: string) => (eb: OnInstance) =>
             ),
     );
 
-/** The accounts on the domains `accountId` blocks, and on their subdomains, as a subquery. */
-export const domainBlockedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
-    ctx.db.selectFrom("accounts")
-        .innerJoin("instances", "instances.id", "accounts.instance_id")
-        .select("accounts.id as account_id")
+/**
+ * The instances on the domains `accountId` blocks, and on their subdomains, as a subquery. They are
+ * far fewer than the accounts on them.
+ */
+export const domainBlockedInstancesQuery = (ctx: Context, accountId: string): InstanceIdQuery =>
+    ctx.db.selectFrom("instances")
+        .select("instances.id as instance_id")
         .where(blocksInstance(accountId));
 
 /** Which of `otherIds` are on domains `accountId` blocks, or their subdomains. */

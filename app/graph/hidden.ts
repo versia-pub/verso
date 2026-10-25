@@ -5,18 +5,20 @@
  */
 import type { Context } from "../kernel/context.ts";
 import { blocksBetween } from "./block_queries.ts";
-import { blockedSubquery } from "./blocks.ts";
+import { blockedByAccount } from "./blocks.ts";
 import { domainBlockedAmong } from "./domain_block_queries.ts";
-import type { AccountIdQuery } from "./follow_queries.ts";
+import type { Excluded } from "./excluded_queries.ts";
 import { mutedIdsQuery, mutesOf } from "./mute_queries.ts";
 
-/** The accounts `accountId` blocks, itself or by their domain, or mutes for now, as a subquery. */
-export const hiddenSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
-    blockedSubquery(ctx, accountId).union(mutedIdsQuery(ctx, accountId));
+/** The accounts `accountId` blocks, itself or by their domain, or mutes for now. */
+export const hiddenFrom = (ctx: Context, accountId: string): Excluded => {
+    const blocked = blockedByAccount(ctx, accountId);
+    return { ...blocked, accounts: blocked.accounts.union(mutedIdsQuery(ctx, accountId)) };
+};
 
-/** The accounts a viewer blocks or mutes, as {@link hiddenSubquery} has them, or none without one. */
-export const viewerHidden = (ctx: Context, viewerId: string | null): AccountIdQuery | null =>
-    viewerId === null ? null : hiddenSubquery(ctx, viewerId);
+/** The accounts a viewer blocks or mutes, as {@link hiddenFrom} has them, or none without one. */
+export const viewerHidden = (ctx: Context, viewerId: string | null): Excluded | null =>
+    viewerId === null ? null : hiddenFrom(ctx, viewerId);
 
 /** Which of `otherIds` `accountId` blocks, itself or by their domain, or mutes for now. */
 export const hiddenAmong = async (

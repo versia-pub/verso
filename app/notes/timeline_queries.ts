@@ -2,22 +2,22 @@ import { hasAttachments } from "../media/attachment_queries.ts";
 import type { ExpressionBuilder } from "kysely";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
+import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 
 /** Leaves out the notes and shares of the accounts `hidden`, and any shares of their notes. */
-const without = (hidden: AccountIdQuery) => (eb: ExpressionBuilder<Database, "notes">) =>
+const without = (hidden: Excluded) => (eb: ExpressionBuilder<Database, "notes">) =>
     eb.and([
-        eb("notes.account_id", "not in", hidden),
+        notExcluded(hidden, "notes.account_id")(eb),
         eb.or([
             eb("notes.reblog_of_id", "is", null),
-            eb(
-                "notes.reblog_of_id",
-                "not in",
+            eb.not(eb.exists(
                 eb.selectFrom("notes as shared").select("shared.id")
-                    .where("shared.account_id", "in", hidden),
-            ),
+                    .whereRef("shared.id", "=", "notes.reblog_of_id")
+                    .where(isExcluded(hidden, "shared.account_id")),
+            )),
         ]),
     ]);
 
@@ -33,7 +33,7 @@ export const homePage = async (
     viewerId: string,
     followed: AccountIdQuery,
     sharing: AccountIdQuery,
-    hidden: AccountIdQuery,
+    hidden: Excluded,
     page: PageBounds,
 ): Promise<NoteRow[]> => {
     const query = ctx.db.selectFrom("notes").selectAll()
@@ -79,7 +79,7 @@ export type Origin = "all" | "local" | "remote";
 export const publicPage = async (
     ctx: Context,
     origin: Origin,
-    hidden: AccountIdQuery | null,
+    hidden: Excluded | null,
     page: PageBounds,
     onlyMedia = false,
 ): Promise<NoteRow[]> => {

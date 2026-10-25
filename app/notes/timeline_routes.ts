@@ -1,5 +1,5 @@
 import { Status } from "@versia/client-api";
-import { hiddenSubquery, viewerHidden } from "../graph/hidden.ts";
+import { hiddenFrom, viewerHidden } from "../graph/hidden.ts";
 import { followedSubquery, sharingSubquery } from "../graph/follows.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
@@ -37,7 +37,7 @@ export const timelineRoutes: readonly Route[] = [
                 viewer.accountId,
                 followedSubquery(ctx, viewer.accountId),
                 sharingSubquery(ctx, viewer.accountId),
-                hiddenSubquery(ctx, viewer.accountId),
+                hiddenFrom(ctx, viewer.accountId),
                 query,
             );
             return {

@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
-import { block, blockedSubquery } from "../graph/blocks.ts";
+import { block, blockedByAccount } from "../graph/blocks.ts";
 import { follow, unfollow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { findNote } from "../notes/note_queries.ts";
@@ -99,8 +99,8 @@ Deno.test("the likes the accounts someone blocks make are counted by note, witho
     await block(test.ctx, "alice", "dave");
 
     assertEquals(
-        await countLikesBy(test.ctx, [first.id, second.id], blockedSubquery(test.ctx, "alice")),
+        await countLikesBy(test.ctx, [first.id, second.id], blockedByAccount(test.ctx, "alice")),
         new Map([[first.id, 1]]),
     );
-    assertEquals(await countLikesBy(test.ctx, [], blockedSubquery(test.ctx, "alice")), new Map());
+    assertEquals(await countLikesBy(test.ctx, [], blockedByAccount(test.ctx, "alice")), new Map());
 });

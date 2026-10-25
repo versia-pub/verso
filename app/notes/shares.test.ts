@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { findAccount } from "../accounts/account_queries.ts";
 import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
-import { block, blockedSubquery } from "../graph/blocks.ts";
+import { block, blockedByAccount } from "../graph/blocks.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { registry } from "../registry.ts";
@@ -147,7 +147,7 @@ Deno.test("the shares the accounts someone blocks make are counted by note", asy
     await block(test.ctx, "alice", "bob");
 
     assertEquals(
-        await countSharesBy(test.ctx, [first.id, second.id], blockedSubquery(test.ctx, "alice")),
+        await countSharesBy(test.ctx, [first.id, second.id], blockedByAccount(test.ctx, "alice")),
         new Map([[first.id, 1]]),
     );
 });

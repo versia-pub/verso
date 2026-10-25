@@ -2,10 +2,10 @@ import { assertEquals } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { block, blockedSubquery } from "./blocks.ts";
+import { block, blockedByAccount, type Excluded, isExcluded } from "./blocks.ts";
 import { domainBlockedAmong, domainBlockPage } from "./domain_block_queries.ts";
 import { blockDomainFor, unblockDomainFor } from "./domain_blocks.ts";
-import { hiddenAmong, hiddenSubquery } from "./hidden.ts";
+import { hiddenAmong, hiddenFrom } from "./hidden.ts";
 import { mute } from "./mutes.ts";
 
 /** alice and bob here, and an account on each of a few domains, named for where it is. */
@@ -24,9 +24,11 @@ const open = async () => {
     }
     const everyone = ["alice", "bob", ...Object.keys(remote)];
 
-    /** The accounts a subquery has, in order. */
-    const ids = async (query: ReturnType<typeof blockedSubquery>) =>
-        (await query.execute()).map((row) => row.account_id).toSorted();
+    /** The accounts that are among `excluded`, in order. */
+    const ids = async (excluded: Excluded) =>
+        (await test.ctx.db.selectFrom("accounts").select("id")
+            .where(isExcluded(excluded, "accounts.id")).execute())
+            .map((row) => row.id).toSorted();
 
     return { ...test, everyone, ids };
 };
@@ -78,8 +80,8 @@ Deno.test("what doesn't reach an account includes the accounts on the domains it
     await mute(test.ctx, "alice", "other", { notifications: true, duration: 0 });
     await blockDomainFor(test.ctx, "bob", "xb.example");
 
-    assertEquals(await test.ids(blockedSubquery(test.ctx, "alice")), ["bob", "exact", "sub"]);
-    assertEquals(await test.ids(hiddenSubquery(test.ctx, "alice")), [
+    assertEquals(await test.ids(blockedByAccount(test.ctx, "alice")), ["bob", "exact", "sub"]);
+    assertEquals(await test.ids(hiddenFrom(test.ctx, "alice")), [
         "bob",
         "exact",
         "other",

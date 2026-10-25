@@ -7,8 +7,7 @@ import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
-import { viewerBlocks } from "../graph/blocks.ts";
-import type { AccountIdQuery } from "../graph/follows.ts";
+import { type Excluded, viewerBlocks } from "../graph/blocks.ts";
 import { followedSubquery } from "../graph/follows.ts";
 import { countLikesBy, likedAmong } from "../interactions/like_queries.ts";
 import { reactionsOf } from "../interactions/reaction_queries.ts";
@@ -87,7 +86,7 @@ const sharedStatuses = async (
 const blockedCounts = async (
     ctx: Context,
     noteIds: readonly string[],
-    blocked: AccountIdQuery | null,
+    blocked: Excluded | null,
 ) => {
     if (blocked === null) return { likes: new Map<string, number>(), shares: new Map() };
 

@@ -3,7 +3,7 @@ import type { Insertable } from "kysely";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { follow, followedSubquery, sharingSubquery } from "../graph/follows.ts";
-import { hiddenSubquery } from "../graph/hidden.ts";
+import { hiddenFrom } from "../graph/hidden.ts";
 import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -52,7 +52,7 @@ const open = async () => {
             "alice",
             followedSubquery(test.ctx, "alice"),
             sharingSubquery(test.ctx, "alice"),
-            hiddenSubquery(test.ctx, "alice"),
+            hiddenFrom(test.ctx, "alice"),
             { limit: 40, ...page },
         ))
             .map((note) => names.get(note.id) ?? note.id);
@@ -72,7 +72,7 @@ const open = async () => {
     ) => (await publicPage(
         test.ctx,
         origin,
-        viewerId === null ? null : hiddenSubquery(test.ctx, viewerId),
+        viewerId === null ? null : hiddenFrom(test.ctx, viewerId),
         { limit: 40, ...page },
     ))
         .map((note) => names.get(note.id) ?? note.id);

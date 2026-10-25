@@ -9,8 +9,10 @@
 import { findAccount } from "../accounts/account_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { blockedIdsQuery, deleteBlock, insertBlock } from "./block_queries.ts";
-import { domainBlockedIdsQuery } from "./domain_block_queries.ts";
-import type { AccountIdQuery } from "./follow_queries.ts";
+import { domainBlockedInstancesQuery } from "./domain_block_queries.ts";
+import { type Excluded, excluded } from "./excluded_queries.ts";
+
+export { type Excluded, isExcluded, notExcluded } from "./excluded_queries.ts";
 
 /**
  * Has `accountId` block `targetId`. Returns whether there is such an account, other than the
@@ -32,12 +34,12 @@ export const unblock = (ctx: Context, accountId: string, targetId: string): Prom
     deleteBlock(ctx, accountId, targetId);
 
 /**
- * The accounts `accountId` blocks, itself or by their domain, as a subquery, for leaving what they
- * wrote and shared out of what reaches it.
+ * The accounts `accountId` blocks, itself or by their domain, for leaving what they wrote and
+ * shared out of what reaches it.
  */
-export const blockedSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
-    blockedIdsQuery(ctx, accountId).union(domainBlockedIdsQuery(ctx, accountId));
+export const blockedByAccount = (ctx: Context, accountId: string): Excluded =>
+    excluded(ctx, blockedIdsQuery(ctx, accountId), domainBlockedInstancesQuery(ctx, accountId));
 
-/** The accounts a viewer blocks, as {@link blockedSubquery} has them, or none without a viewer. */
-export const viewerBlocks = (ctx: Context, viewerId: string | null): AccountIdQuery | null =>
-    viewerId === null ? null : blockedSubquery(ctx, viewerId);
+/** The accounts a viewer blocks, as {@link blockedByAccount} has them, or none without a viewer. */
+export const viewerBlocks = (ctx: Context, viewerId: string | null): Excluded | null =>
+    viewerId === null ? null : blockedByAccount(ctx, viewerId);
