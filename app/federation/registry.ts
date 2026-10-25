@@ -76,6 +76,11 @@ export type EntityType<T = unknown> = {
      */
     deleteRemote?(ctx: Context, id: string, sender: Sender): Promise<void>;
     /**
+     * Runs before `deleteRemote`, outside its transaction, for work too large for one transaction,
+     * such as removing a user's notes. It may run more than once.
+     */
+    prepareDelete?(ctx: Context, id: string, sender: Sender): Promise<void>;
+    /**
      * The entity `reference` points at, local or remote, if Verso has it. Types without it can't
      * be resolved.
      */

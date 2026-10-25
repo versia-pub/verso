@@ -20,7 +20,7 @@ import {
     anyListed,
     countFollows,
     deleteFollow,
-    everyListed,
+    everyListedQuery,
     followedIdsQuery,
     followerInstanceIds,
     followIdsFrom,
@@ -230,6 +230,6 @@ export const uncountFollowsOf = async (ctx: Context, event: DomainEvent): Promis
     if (!isAccountDeleting(event)) return;
     const { accountId } = event;
 
-    await uncountFollowers(ctx, await everyListed(ctx, "following", accountId));
-    await uncountFollowing(ctx, await everyListed(ctx, "followers", accountId));
+    await uncountFollowers(ctx, everyListedQuery(ctx, "following", accountId));
+    await uncountFollowing(ctx, everyListedQuery(ctx, "followers", accountId));
 };

@@ -1,4 +1,10 @@
-import type { ExpressionBuilder, Insertable, Selectable, Updateable } from "kysely";
+import type {
+    ExpressionBuilder,
+    Insertable,
+    Selectable,
+    SelectQueryBuilder,
+    Updateable,
+} from "kysely";
 import { batchesOf } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
@@ -376,8 +382,33 @@ export const countReply = async (ctx: Context, noteId: string, by: 1 | -1): Prom
         .execute();
 };
 
-/** Uncounts the public and unlisted replies an account wrote from the notes they reply to. */
-export const uncountRepliesBy = async (ctx: Context, accountId: string): Promise<void> => {
+/** Notes' ids, as a subquery. */
+export type NoteIdQuery = SelectQueryBuilder<Database, keyof Database, { id: string }>;
+
+/** The notes and shares of `accountId`, as a subquery. */
+export const notesOfQuery = (ctx: Context, accountId: string): NoteIdQuery =>
+    ctx.db.selectFrom("notes").select("notes.id").where("notes.account_id", "=", accountId);
+
+/** The notes `ids`, at least one, as a subquery. */
+export const notesAmongQuery = (ctx: Context, ids: readonly string[]): NoteIdQuery =>
+    ctx.db.selectFrom("notes").select("notes.id").where("notes.id", "in", ids);
+
+/** The ids of up to `limit` of the notes and shares of `accountId`. */
+export const someNoteIdsOf = async (
+    ctx: Context,
+    accountId: string,
+    limit: number,
+): Promise<string[]> =>
+    (await ctx.db.selectFrom("notes").select("id").where("account_id", "=", accountId)
+        .limit(limit).execute()).map((row) => row.id);
+
+/** Deletes the notes `ids`, at least one, with what goes with them, without uncounting anything. */
+export const deleteNotes = async (ctx: Context, ids: readonly string[]): Promise<void> => {
+    await ctx.db.deleteFrom("notes").where("id", "in", ids).execute();
+};
+
+/** Uncounts the public and unlisted replies among `notes` from the notes they reply to. */
+export const uncountRepliesAmong = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
     await ctx.db.updateTable("notes")
         .set((eb) => ({
             replies_count: eb(
@@ -386,14 +417,14 @@ export const uncountRepliesBy = async (ctx: Context, accountId: string): Promise
                 eb.selectFrom("notes as reply")
                     .select((count) => count.fn.countAll<number>().as("count"))
                     .whereRef("reply.in_reply_to_id", "=", "notes.id")
-                    .where("reply.account_id", "=", accountId)
+                    .where("reply.id", "in", notes)
                     .where("reply.visibility", "in", ["public", "unlisted"]),
             ),
         }))
         // Only the notes it replied to, rather than every note, less nothing.
         .where("id", "in", (eb) =>
             eb.selectFrom("notes as reply").select("reply.in_reply_to_id")
-                .where("reply.account_id", "=", accountId))
+                .where("reply.id", "in", notes))
         .execute();
 };
 
@@ -405,13 +436,16 @@ export const countShare = async (ctx: Context, noteId: string, by: 1 | -1): Prom
         .execute();
 };
 
-/** Uncounts the shares an account made from the notes they share. An account shares a note once. */
-export const uncountSharesBy = async (ctx: Context, accountId: string): Promise<void> => {
+/**
+ * Uncounts the shares among `notes` from the notes they share. An account shares a note once, and
+ * `notes` are one account's.
+ */
+export const uncountSharesAmong = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
     await ctx.db.updateTable("notes")
         .set((eb) => ({ shares_count: eb("shares_count", "-", 1) }))
         .where("id", "in", (eb) =>
             eb.selectFrom("notes as share").select("share.reblog_of_id")
-                .where("share.account_id", "=", accountId)
+                .where("share.id", "in", notes)
                 .where("share.reblog_of_id", "is not", null))
         .execute();
 };
@@ -431,14 +465,14 @@ export const uncountSharersOf = async (ctx: Context, noteId: string): Promise<vo
 };
 
 /**
- * Uncounts the shares of an account's notes from the statuses of the accounts that made them, as
- * they go with its notes when it is deleted.
+ * Uncounts the shares of `notes` from the statuses of the accounts that made them, as they go with
+ * the notes when they are deleted.
  */
-export const uncountSharersOfNotesBy = async (ctx: Context, authorId: string): Promise<void> => {
+export const uncountSharersOfAmong = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
     const sharesBy = (eb: ExpressionBuilder<Database, "accounts">) =>
         eb.selectFrom("notes as share")
             .innerJoin("notes as shared", "shared.id", "share.reblog_of_id")
-            .where("shared.account_id", "=", authorId)
+            .where("shared.id", "in", notes)
             .where("share.visibility", "!=", "direct");
 
     await ctx.db.updateTable("accounts")

@@ -2,7 +2,8 @@
  * The counts kept on accounts: who they follow, who follows them, and what they posted.
  * @module
  */
-import { batchesOf } from "../db/batches.ts";
+import type { SelectQueryBuilder } from "kysely";
+import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 
 /**
@@ -26,30 +27,23 @@ export const countFollow = async (
         .execute();
 };
 
-/** Takes one from the followers each of `accountIds` has, as when one of them is deleted. */
-export const uncountFollowers = async (
-    ctx: Context,
-    accountIds: readonly string[],
-): Promise<void> => {
-    for (const batch of batchesOf(accountIds)) {
-        await ctx.db.updateTable("accounts")
-            .set((eb) => ({ followers_count: eb("followers_count", "-", 1) }))
-            .where("id", "in", batch)
-            .execute();
-    }
+/** Accounts' ids, as a subquery of another module's, such as those an account follows. */
+export type AccountIds = SelectQueryBuilder<Database, keyof Database, { account_id: string }>;
+
+/** Takes one from the followers each of `accounts` has, as when one of them is deleted. */
+export const uncountFollowers = async (ctx: Context, accounts: AccountIds): Promise<void> => {
+    await ctx.db.updateTable("accounts")
+        .set((eb) => ({ followers_count: eb("followers_count", "-", 1) }))
+        .where("id", "in", accounts)
+        .execute();
 };
 
-/** Takes one from the accounts each of `accountIds` follows, as when one of them is deleted. */
-export const uncountFollowing = async (
-    ctx: Context,
-    accountIds: readonly string[],
-): Promise<void> => {
-    for (const batch of batchesOf(accountIds)) {
-        await ctx.db.updateTable("accounts")
-            .set((eb) => ({ following_count: eb("following_count", "-", 1) }))
-            .where("id", "in", batch)
-            .execute();
-    }
+/** Takes one from the accounts each of `accounts` follows, as when one of them is deleted. */
+export const uncountFollowing = async (ctx: Context, accounts: AccountIds): Promise<void> => {
+    await ctx.db.updateTable("accounts")
+        .set((eb) => ({ following_count: eb("following_count", "-", 1) }))
+        .where("id", "in", accounts)
+        .execute();
 };
 
 /**

@@ -6,9 +6,9 @@
  * @module
  */
 import { parseReference, v0_6 } from "@versia/protocol";
-import { findAccount } from "../accounts/account_queries.ts";
+import { findAccount, findRemoteAccount } from "../accounts/account_queries.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
-import type { CollectionProvider, EntityType } from "../federation/registry.ts";
+import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { audienceOf, everyone, instanceMaySee } from "./audience.ts";
 import { isNoteDeleted, isNoteEdited, isNotePosted } from "./events.ts";
@@ -22,7 +22,7 @@ import {
     type NoteLink,
     notesBy,
 } from "./note_queries.ts";
-import { removeNote } from "./notes.ts";
+import { removeNote, removeNotesOf } from "./notes.ts";
 import { pinnedNotes } from "./pin_queries.ts";
 import { knownNote, prepareNote, receiveNote } from "./remote.ts";
 import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";
@@ -100,6 +100,19 @@ const featured: CollectionProvider = async (ctx, id, page) => {
 
 /** The collections notes add to Users. */
 export const noteCollections: Readonly<Record<string, CollectionProvider>> = { outbox, featured };
+
+/**
+ * Removes the notes of a user another instance deleted, before the user is, in batches, so that a
+ * user with many doesn't hold one transaction open over them all.
+ */
+export const removeNotesOfDeletedUser = async (
+    ctx: Context,
+    id: string,
+    sender: Sender,
+): Promise<void> => {
+    const account = await findRemoteAccount(ctx, sender.instanceId, id);
+    if (account) await removeNotesOf(ctx, account.id);
+};
 
 /**
  * The notes that link to a local note by `link`, oldest first, for an instance that may see it.

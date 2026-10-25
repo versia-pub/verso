@@ -27,16 +27,21 @@ import {
     countReply,
     countShare,
     deleteNote,
+    deleteNotes,
     findNote,
     insertNote,
     isMentioned,
     keepVersion,
     mentionsOf,
+    type NoteIdQuery,
     type NoteRow,
-    uncountRepliesBy,
+    notesAmongQuery,
+    notesOfQuery,
+    someNoteIdsOf,
+    uncountRepliesAmong,
     uncountSharersOf,
-    uncountSharersOfNotesBy,
-    uncountSharesBy,
+    uncountSharersOfAmong,
+    uncountSharesAmong,
     updateNote,
 } from "./note_queries.ts";
 
@@ -367,9 +372,36 @@ export const editNote = async (
  * the accounts that made them.
  */
 export const uncountNotesOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
-    if (!isAccountDeleting(event)) return;
+    if (isAccountDeleting(event)) await uncountAmong(ctx, notesOfQuery(ctx, event.accountId));
+};
 
-    await uncountRepliesBy(ctx, event.accountId);
-    await uncountSharesBy(ctx, event.accountId);
-    await uncountSharersOfNotesBy(ctx, event.accountId);
+/** Uncounts what goes with `notes`, as {@link uncountNotesOf} does. */
+const uncountAmong = async (ctx: Context, notes: NoteIdQuery) => {
+    await uncountRepliesAmong(ctx, notes);
+    await uncountSharesAmong(ctx, notes);
+    await uncountSharersOfAmong(ctx, notes);
+};
+
+/** How many notes of an account are removed in each transaction, before it is deleted. */
+const removalBatch = 500;
+
+/**
+ * Removes the notes and shares of `accountId`, a remote account about to be deleted, uncounting
+ * what goes with them, a batch at a time, each in a transaction of its own, so that one with many
+ * doesn't hold its locks all at once. Its deletion uncounts any it posts meanwhile.
+ */
+export const removeNotesOf = async (ctx: Context, accountId: string): Promise<void> => {
+    while (true) {
+        const removed = await ctx.transaction(async (tx) => {
+            const ids = await someNoteIdsOf(tx, accountId, removalBatch);
+            if (ids.length === 0) return 0;
+
+            await uncountAmong(tx, notesAmongQuery(tx, ids));
+            await deleteNotes(tx, ids);
+
+            return ids.length;
+        });
+
+        if (removed < removalBatch) return;
+    }
 };

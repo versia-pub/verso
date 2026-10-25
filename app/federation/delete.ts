@@ -10,7 +10,8 @@ import type { EntityType } from "./registry.ts";
 
 /**
  * Deletes for the entities of `types`. A Delete is sent by its author's instance, or the one that
- * signed it if it names no author, and only deletes an entity that instance hosts.
+ * signed it if it names no author, and only deletes an entity that instance hosts. What is too
+ * large to delete in one transaction is deleted first, by the type's `prepareDelete`.
  */
 export const deleteType = (types: readonly EntityType[]): EntityType<v0_6.Delete> => {
     const byName = new Map(types.map((type) => [type.type, type]));
@@ -20,6 +21,12 @@ export const deleteType = (types: readonly EntityType[]): EntityType<v0_6.Delete
         schema: v0_6.Delete,
         authority: (entity, origin) =>
             entity.author ? parseReference(entity.author, origin)?.host : origin,
+        prepare: async (ctx, entity, sender) => {
+            const target = parseReference(entity.deleted, sender.domain);
+            if (target?.host !== sender.domain) return;
+
+            await byName.get(entity.deleted_type)?.prepareDelete?.(ctx, target.id, sender);
+        },
         receive: async (ctx, entity, sender) => {
             const target = parseReference(entity.deleted, sender.domain);
             if (target?.host !== sender.domain) {

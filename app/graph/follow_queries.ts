@@ -179,14 +179,12 @@ export const followIdsFrom = async (
         .execute())
         .map((row) => row.account_id);
 
-/** The ids of every account on one of an account's lists. */
-export const everyListed = async (
+/** Every account on one of an account's lists, as a subquery. */
+export const everyListedQuery = (
     ctx: Context,
     list: FollowList,
     accountId: string,
-): Promise<string[]> =>
-    (await listed(ctx, list, accountId).select(`${lists[list].listed} as account_id`).execute())
-        .map((row) => row.account_id);
+): AccountIdQuery => listed(ctx, list, accountId).select(`${lists[list].listed} as account_id`);
 
 /** Whether an account has anyone on one of its lists. */
 export const anyListed = async (

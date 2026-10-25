@@ -7,11 +7,12 @@ import { followCollections, followTypes } from "./graph/federation.ts";
 import { likeTypes, noteLikeCollections, userLikeCollections } from "./interactions/federation.ts";
 import { noteReactionCollections, reactionType } from "./interactions/reaction_federation.ts";
 import { noteShareCollections, shareType } from "./interactions/share_federation.ts";
-import { noteCollections, noteType } from "./notes/federation.ts";
+import { noteCollections, noteType, removeNotesOfDeletedUser } from "./notes/federation.ts";
 
-/** Users, with the collections other modules add. */
+/** Users, with the collections other modules add, and their notes removed before they are. */
 const user = {
     ...userType,
+    prepareDelete: removeNotesOfDeletedUser,
     collections: {
         ...userType.collections,
         ...followCollections,
