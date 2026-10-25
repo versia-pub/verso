@@ -62,6 +62,9 @@ const accountRows = (ctx: Context) =>
 export const findAccount = (ctx: Context, id: string): Promise<AccountRow | undefined> =>
     accountRows(ctx).where("accounts.id", "=", id).executeTakeFirst();
 
+/** An account's id, with its pictures' ids. */
+export type AccountPictures = Pick<AccountRow, "id" | "avatar_id" | "header_id">;
+
 /** The accounts of `ids` that exist, in no particular order, however many `ids` there are. */
 export const findAccounts = async (
     ctx: Context,
@@ -232,7 +235,7 @@ export const upsertRemoteAccount = async (
         readonly createdAt: Date;
         readonly profile: RemoteProfile;
     },
-): Promise<{ id: string; avatar_id: string | null; header_id: string | null }> => {
+): Promise<AccountPictures> => {
     const changes = { ...account.profile, fetched_at: ctx.clock.now() };
 
     return await ctx.db.insertInto("accounts")
@@ -255,7 +258,7 @@ export const findRemoteAccount = (
     ctx: Context,
     instanceId: string,
     remoteId: string,
-): Promise<{ id: string; avatar_id: string | null; header_id: string | null } | undefined> =>
+): Promise<AccountPictures | undefined> =>
     ctx.db.selectFrom("accounts")
         .select(["id", "avatar_id", "header_id"])
         .where("instance_id", "=", instanceId)

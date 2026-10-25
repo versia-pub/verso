@@ -50,10 +50,10 @@ export const like = (
     });
 
 /**
- * Undoes `accountId`'s like of a note, or of what a share shares, and uncounts it. Returns the note as it is now, or
- * `undefined` if there is none. As on Mastodon, a note it liked can be unliked even if it may no
- * longer see it, and one it didn't only if it may. Local users never dislike notes, so there is no
- * dislike to undo.
+ * Undoes `accountId`'s like of a note, or of what a share shares, and uncounts it. Returns the note
+ * as it is now, or `undefined` if there is none. As on Mastodon, a note it liked can be unliked even
+ * if it may no longer see it, and one it didn't only if it may. Local users never dislike notes, so
+ * there is no dislike to undo.
  */
 export const unlike = (
     ctx: Context,

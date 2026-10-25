@@ -81,7 +81,9 @@ export const oidcProvider = (issuer: IssuerConfig, options: OidcOptions): Identi
                 expectedNonce: flow.nonce,
                 idTokenExpected: true,
             });
-            const claims = tokens.claims() as Claims;
+            // The grant checks there is an ID token, as `idTokenExpected` asks.
+            const claims: Claims | undefined = tokens.claims();
+            if (claims === undefined) throw new Error("The issuer gave no ID token");
 
             // Many issuers leave claims such as groups out of the ID token, and only give them
             // here. Where both have a claim, the signed ID token's wins.

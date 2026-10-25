@@ -18,8 +18,9 @@ import { fetchBudget } from "./resolver.ts";
 const logger = getLogger(["verso", "federation"]);
 
 /**
- * How long a job may spend fetching what an entity refers to. Each fetch may take 30 seconds more,
- * so the job still ends well within its lease.
+ * How long a job may spend fetching what an entity refers to. The fetch under way when it runs out
+ * may take a minute more, its entity and the metadata to check its signature, so the job still
+ * ends well within its five-minute lease.
  */
 const prepareMs = 2 * 60_000;
 
@@ -27,7 +28,7 @@ const Named = z.object({ type: z.string(), id: z.string().optional() });
 
 /** What an entity is, for a message about it: its type, and its id if it has one. */
 const describe = (body: string) => {
-    let parsed;
+    let parsed: ReturnType<typeof Named.safeParse>;
     try {
         parsed = Named.safeParse(JSON.parse(body));
     } catch {
@@ -81,7 +82,7 @@ export const inboxHandler = (registry: Registry): Handler => async (ctx, job) =>
 
 /** Checks the entity `signer` sent, and applies it. */
 const apply = async (ctx: Context, registry: Registry, signer: string, body: string) => {
-    let checked;
+    let checked: ReturnType<typeof checkEntity>;
     try {
         checked = checkEntity(registry, new TextEncoder().encode(body));
     } catch (error) {

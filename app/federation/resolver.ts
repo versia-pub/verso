@@ -88,7 +88,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
             throw new ResolveFailed(`${host} answered ${reply.status} for ${type.type} ${id}`);
         }
 
-        let checked;
+        let checked: ReturnType<typeof checkEntity>;
         try {
             checked = checkEntity(registry, reply.body);
         } catch (error) {

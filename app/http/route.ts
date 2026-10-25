@@ -143,6 +143,7 @@ export type RouteDefinition<
     H extends Schema,
     A extends Auth | undefined,
     R extends Responses,
+    S extends true | undefined = true | undefined,
 > = {
     readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
     /** In Hono's syntax, such as `/api/v1/accounts/:id`. */
@@ -199,7 +200,7 @@ export type RouteDefinition<
      * and its replies are signed as this instance.
      * @see https://versia.pub/signatures
      */
-    readonly signed?: true;
+    readonly signed?: S;
     readonly params?: P;
     /**
      * Query values are strings, so use `z.coerce` for other types. A key given more than once, or
@@ -233,12 +234,12 @@ export type RouteDefinition<
             headers: z.output<H>;
             viewer: ViewerFor<A>;
             /** The domain of the instance that signed the request, on `signed` routes. */
-            signedBy: string | undefined;
+            signedBy: S extends true ? string : undefined;
             /**
              * The body exactly as it was signed, on `signed` routes, for ones that read it by
              * the protocol's rules rather than through `body`.
              */
-            signedBody: Uint8Array<ArrayBuffer> | undefined;
+            signedBody: S extends true ? Uint8Array<ArrayBuffer> : undefined;
         },
     ) => Promise<Reply<R>>;
 };
@@ -263,4 +264,5 @@ export const defineRoute = <
     H extends Schema = Empty,
     const A extends Auth | undefined = undefined,
     R extends Responses = Responses,
->(route: RouteDefinition<P, Q, B, C, H, A, R>): Route => route as unknown as Route;
+    const S extends true | undefined = undefined,
+>(route: RouteDefinition<P, Q, B, C, H, A, R, S>): Route => route as unknown as Route;

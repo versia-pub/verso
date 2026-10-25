@@ -79,7 +79,7 @@ const fetchTotal = async (ctx: Context, domain: string, remoteId: string, name: 
         throw new Error(`${domain} answered ${reply.status} for ${name} of ${remoteId}`);
     }
 
-    let parsed;
+    let parsed: ReturnType<typeof Total.safeParse> | undefined;
     try {
         parsed = Total.safeParse(JSON.parse(new TextDecoder().decode(reply.body)));
     } catch {

@@ -122,7 +122,7 @@ export const visibleOriginal = async (
     viewerId: string | null,
 ): Promise<NoteRow | undefined> => {
     const note = await visibleNote(ctx, id, viewerId);
-    if (note?.reblog_of_id == null) return note;
+    if (note === undefined || note.reblog_of_id === null) return note;
 
     return await visibleNote(ctx, note.reblog_of_id, viewerId);
 };

@@ -132,11 +132,12 @@ const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
 };
 
 /**
- * Saves a note `sender` sent, or a newer version of one Verso has, with the emojis it uses, without
- * who it mentions or the notes it replies to or quotes that Verso doesn't have. A new one is
- * counted, its totals are fetched later, and what it replies to and quotes stay for good, even if a newer version says
- * otherwise. A newer version that says something else is marked edited now, as Versia doesn't say
- * when, and what it said is kept for its history.
+ * Saves a note `sender` sent, or a newer version of one Verso has, with the emojis it uses. Who it
+ * mentions, and the notes it replies to or quotes, are left out if Verso doesn't have them.
+ *
+ * A new note is counted, and its totals are fetched later. What it replies to and quotes stays for
+ * good, whatever a newer version says. A newer version that says something else is marked edited
+ * now, as Versia doesn't say when, and what the note said before is kept for its history.
  */
 export const receiveNote = async (
     ctx: Context,

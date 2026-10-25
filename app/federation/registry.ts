@@ -5,7 +5,7 @@
  */
 import { type Reference, v0_6 } from "@versia/protocol";
 import { z } from "zod";
-import { BadSignature, NotFound } from "../http/errors.ts";
+import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, versiaJson } from "../http/route.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 
@@ -146,8 +146,6 @@ const routesOf = (type: EntityType): Route[] => {
             params: z.object({ id: v0_6.Id }),
             responses: { 200: type.schema },
             handler: async (ctx, { params, signedBy }) => {
-                // A signed route has refused an unsigned request already.
-                if (signedBy === undefined) throw new BadSignature();
                 const entity = await find(ctx, params.id, signedBy);
                 if (entity === undefined) throw new NotFound();
 
@@ -171,7 +169,6 @@ const routesOf = (type: EntityType): Route[] => {
                 const provider = Object.hasOwn(collections, params.name)
                     ? collections[params.name]
                     : undefined;
-                if (signedBy === undefined) throw new BadSignature();
                 const page = await provider?.(ctx, params.id, query, signedBy);
                 if (page === undefined) throw new NotFound();
 

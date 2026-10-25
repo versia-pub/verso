@@ -6,7 +6,7 @@
  */
 import { parseJson } from "@versia/protocol";
 import { z } from "zod";
-import { BadRequest, BadSignature, ValidationFailed } from "../http/errors.ts";
+import { BadRequest, ValidationFailed } from "../http/errors.ts";
 import { defineRoute, NoBody, type Route } from "../http/route.ts";
 import { recordReached } from "../instances/reachability.ts";
 import { enqueue, resumeGroup } from "../jobs/queue.ts";
@@ -116,8 +116,6 @@ export const inboxRoute = (registry: Registry): Route =>
         signed: true,
         responses: { 202: NoBody },
         handler: async (ctx, { signedBy, signedBody }) => {
-            // A signed route has refused an unsigned request already.
-            if (signedBy === undefined || signedBody === undefined) throw new BadSignature();
             await queueEntity(ctx, registry, signedBy, signedBody);
             return { status: 202 };
         },
