@@ -1,6 +1,5 @@
 import { getLogger } from "@logtape/logtape";
 import pg from "pg";
-import type { Config } from "../kernel/config.ts";
 
 /** The Postgres channel `enqueue` notifies with the job's queue name. */
 export const jobsChannel = "verso_jobs";
@@ -12,7 +11,7 @@ export const jobsChannel = "verso_jobs";
  * later, workers fall back to polling too.
  */
 export const listenForJobs = async (
-    config: Config["database"],
+    config: { readonly postgres: string } | { readonly sqlite: string },
 ): Promise<(EventTarget & AsyncDisposable) | undefined> => {
     if (!("postgres" in config)) return undefined;
 

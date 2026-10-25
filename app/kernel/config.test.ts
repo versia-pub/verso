@@ -83,6 +83,8 @@ domain = "Social.Example"
 
 [database]
 postgres = "postgresql://verso@/verso?host=/run/postgresql"
+pool_size = 50
+statement_timeout_seconds = 0
 
 [media]
 storage = { filesystem = "/var/lib/verso/media" }
@@ -152,6 +154,9 @@ level = "debug"
             domain: "social.example",
             database: {
                 postgres: "postgresql://verso@/verso?host=/run/postgresql",
+                pool_size: 50,
+                connect_timeout_seconds: 10,
+                statement_timeout_seconds: 0,
             },
             media: {
                 storage: { filesystem: "/var/lib/verso/media" },
@@ -471,6 +476,9 @@ Deno.test("values can come from the environment or files, before they are checke
 
     assertEquals(filled.ok && filled.config.database, {
         postgres: "postgresql://verso:hunter2@db/verso",
+        pool_size: 30,
+        connect_timeout_seconds: 10,
+        statement_timeout_seconds: 60,
     });
     assertEquals(missing, {
         ok: false,

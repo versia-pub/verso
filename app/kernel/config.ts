@@ -229,7 +229,22 @@ export const Config = z.strictObject({
     domain: z.hostname().transform((domain) => domain.toLowerCase()),
     /** Exactly one of a libpq connection string for PostgreSQL, or the path of a SQLite file. */
     database: z.union([
-        z.strictObject({ postgres: z.string().min(1) }),
+        z.strictObject({
+            postgres: z.string().min(1),
+            /**
+             * How many connections each process may have open. The default leaves room for every
+             * queue's jobs at once, and the requests of a web node beside them.
+             */
+            pool_size: z.int().min(1).default(30),
+            /** How long to wait for a connection, from the pool or to the server. */
+            connect_timeout_seconds: z.int().min(1).default(10),
+            /**
+             * How long a query may run, and a transaction wait between queries, before Postgres
+             * ends it, so one stuck can't hold its locks and connection; 0 for no limit. It doesn't
+             * apply to migrations.
+             */
+            statement_timeout_seconds: z.int().min(0).default(60),
+        }),
         z.strictObject({ sqlite: z.string().min(1) }),
     ], { error: 'Set exactly one of "postgres" or "sqlite"' }),
     http: z.strictObject({

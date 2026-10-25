@@ -14,6 +14,10 @@ domain = "social.example"
 # Exactly one of these: a PostgreSQL connection string, or the path of a SQLite file.
 database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # database = { sqlite = "verso.db" }
+# With PostgreSQL, also how many connections each process may have, how long to wait for one, and
+# how long a query may run (0 for no limit), which migrations aren't held to:
+# database = { postgres = "…", pool_size = 30, connect_timeout_seconds = 10,
+#     statement_timeout_seconds = 60 }
 
 [media]
 # How many pixels an uploaded picture may have, in each frame, before it is scaled down: as

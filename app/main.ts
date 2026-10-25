@@ -181,7 +181,7 @@ const run = async (role: string, config: Config): Promise<number> => {
 const runMigrations = async (config: Config): Promise<number> => {
     const logger = getLogger(["verso", "db"]);
 
-    await using db = openDatabase(config.database);
+    await using db = openDatabase(config.database, { forMigrations: true });
     const result = await migrate(db);
 
     if (!result.ok) {

@@ -85,12 +85,26 @@ const openSqlite = (path: string) => {
     return database;
 };
 
+/** How a pool connects, and how long it lets queries run. */
+export type PoolOptions = {
+    readonly size?: number;
+    readonly connectTimeoutMs?: number;
+    /** How long a query may run, and a transaction wait idle, or 0 for no limit. */
+    readonly statementTimeoutMs?: number;
+};
+
 /**
  * A pool of connections to Postgres. A connection that drops while idle, such as when Postgres
  * restarts, is logged and replaced on the next query: unheard, its error would end the process.
  */
-export const postgresPool = (url: string): pg.Pool => {
-    const pool = new pg.Pool({ connectionString: url });
+export const postgresPool = (url: string, options: PoolOptions = {}): pg.Pool => {
+    const pool = new pg.Pool({
+        connectionString: url,
+        max: options.size,
+        connectionTimeoutMillis: options.connectTimeoutMs,
+        statement_timeout: options.statementTimeoutMs || undefined,
+        idle_in_transaction_session_timeout: options.statementTimeoutMs || undefined,
+    });
     pool.on("error", (error) => {
         getLogger(["verso", "db"]).warn("A database connection failed: {error}", { error });
     });
@@ -98,10 +112,24 @@ export const postgresPool = (url: string): pg.Pool => {
     return pool;
 };
 
-/** Opens the configured database. Postgres connects lazily, on the first query. */
-export const openDatabase = (config: Config["database"]): Kysely<Database> =>
+/**
+ * Opens the configured database. Postgres connects lazily, on the first query. Migrations can run
+ * longer than any query should, so they open it without a time limit.
+ */
+export const openDatabase = (
+    config: Config["database"],
+    options: { readonly forMigrations?: boolean } = {},
+): Kysely<Database> =>
     connect(
         "postgres" in config
-            ? new PostgresDialect({ pool: postgresPool(config.postgres) })
+            ? new PostgresDialect({
+                pool: postgresPool(config.postgres, {
+                    size: config.pool_size,
+                    connectTimeoutMs: config.connect_timeout_seconds * 1000,
+                    statementTimeoutMs: options.forMigrations
+                        ? 0
+                        : config.statement_timeout_seconds * 1000,
+                }),
+            })
             : sqliteDialect(openSqlite(config.sqlite)),
     );
