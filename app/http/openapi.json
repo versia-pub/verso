@@ -4633,6 +4633,33 @@
                 }
             }
         },
+        "/media/{key}": {
+            "get": {
+                "summary": "A file someone uploaded, or its preview",
+                "description": "Files are kept under the SHA-256 of their bytes, so they never change. Pictures are served as pictures; any other file is served for browsers to save, as `application/octet-stream`.",
+                "tags": [
+                    "media"
+                ],
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A file",
+                        "content": {
+                            "application/octet-stream": {}
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/custom_emojis": {
             "get": {
                 "summary": "This instance's custom emojis, for the picker",

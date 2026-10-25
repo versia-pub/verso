@@ -87,3 +87,17 @@ export const updateUpload = async (
         .where("account_id", "=", accountId)
         .execute();
 };
+
+/** An upload kept under `key` once it is processed, or whose preview is. Only local ones are. */
+export const findServedFile = (
+    ctx: Context,
+    key: string,
+): Promise<Pick<MediaRow, "media_type" | "preview_sha256"> | undefined> =>
+    ctx.db.selectFrom("media").select(["media_type", "preview_sha256"])
+        .where((eb) =>
+            eb.or([
+                eb.and([eb("sha256", "=", key), eb("processed_at", "is not", null)]),
+                eb("preview_sha256", "=", key),
+            ])
+        )
+        .executeTakeFirst();

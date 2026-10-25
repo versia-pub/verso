@@ -8,7 +8,8 @@ import { MediaLimits } from "../kernel/config.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findMedia } from "./media.ts";
+import { createInstance } from "../instances/testing.ts";
+import { findMedia, saveRemoteMedia } from "./media.ts";
 import { mediaRoutes } from "./routes.ts";
 
 /** A `width`×`height` PNG, all red. */
@@ -56,7 +57,20 @@ const open = async (limits = MediaLimits.parse({})) => {
         return request("POST", "/api/v2/media", { form, as });
     };
 
-    return { ...test, request, upload };
+    /** The file at `url`, as served, with the headers that say how. */
+    const download = async (url: string) => {
+        const response = await app.request(new URL(url).pathname);
+
+        return {
+            status: response.status,
+            type: response.headers.get("content-type"),
+            disposition: response.headers.get("content-disposition"),
+            cache: response.headers.get("cache-control"),
+            bytes: new Uint8Array(await response.arrayBuffer()),
+        };
+    };
+
+    return { ...test, request, upload, download };
 };
 
 const sha256Of = async (bytes: Uint8Array<ArrayBuffer>) =>
@@ -170,4 +184,57 @@ Deno.test("uploading needs the write:media scope", async () => {
     const reply = await test.request("POST", "/api/v2/media", { form, scopes: ["read"] });
 
     assertEquals(reply.status, 403);
+});
+
+Deno.test("a file that isn't a picture is served to be saved, and cached for good", async () => {
+    await using test = await open();
+    const { body } = await test.upload(zip, "application/zip");
+
+    assertEquals(await test.download(body.url), {
+        status: 200,
+        type: "application/octet-stream",
+        disposition: "attachment",
+        cache: "public, max-age=31536000, immutable",
+        bytes: zip,
+    });
+});
+
+Deno.test("a picture is served once it is processed, with its preview", async () => {
+    await using test = await open();
+    const picture = png(40, 30);
+    const { body } = await test.upload(picture, "image/png");
+    const raw = `https://social.example/media/${await sha256Of(picture)}`;
+
+    // What was uploaded may hold metadata, so it isn't served while it is processed.
+    assertEquals((await test.download(raw)).status, 404);
+
+    await drain(test.ctx, queues);
+    const processed = (await test.request("GET", `/api/v1/media/${body.id}`)).body;
+    const original = await test.download(processed.url);
+    const preview = await test.download(processed.preview_url);
+
+    assertEquals([original.status, original.type, original.disposition], [200, "image/png", null]);
+    assertEquals(original.cache, "public, max-age=31536000, immutable");
+    assertEquals([preview.status, preview.type, preview.disposition], [200, "image/webp", null]);
+});
+
+Deno.test("only local files that are kept are served", async () => {
+    await using test = await open();
+    const key = await test.ctx.files.put(zip, "application/zip");
+    await createInstance(test.ctx, "b.example");
+    await saveRemoteMedia(test.ctx, "b.example", null, {
+        url: "https://b.example/notes.zip",
+        mediaType: "application/zip",
+        sha256: key,
+    });
+
+    const { body } = await test.upload(png(4, 4), "image/png");
+    await drain(test.ctx, queues);
+    const kept = (await test.request("GET", `/api/v1/media/${body.id}`)).body.url.slice(-64);
+    await test.ctx.files.delete(kept);
+
+    for (const path of [key, "0".repeat(64), "nope", "../config.toml", kept]) {
+        const missing = await test.download(`https://social.example/media/${path}`);
+        assertEquals([missing.status, missing.cache], [404, "no-store"], path);
+    }
 });

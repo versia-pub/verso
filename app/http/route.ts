@@ -58,7 +58,14 @@ export type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 
 type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
     : R extends typeof Redirect ? { status: S & RedirectStatusCode; location: string }
-    : R extends Binary ? { status: S; file: Uint8Array }
+    : R extends Binary ? {
+            status: S;
+            file: Uint8Array | ReadableStream<Uint8Array>;
+            /** The file's media type, if not the one declared. */
+            type?: string;
+            /** Has browsers save the file rather than show it. */
+            download?: true;
+        }
     : R extends Paged ? { status: S; body: z.input<R["item"]>[]; cursors: Cursors }
     : R extends typeof NoBody ? { status: S }
     : R extends Schema ? { status: S; body: z.input<R> }
@@ -168,6 +175,11 @@ export type RouteDefinition<
      * for everyone, such as pictures. Without it, nothing may cache them.
      */
     readonly maxAge?: number;
+    /**
+     * Anyone may cache the route's successful replies for a year, and never check them again, for
+     * files kept under the hash of their bytes, which never change.
+     */
+    readonly immutable?: true;
     /**
      * What the route's pages may load and run, as a Content-Security-Policy, for a page that needs
      * more than styles of its own, such as a script. Pages can never be framed, whatever it says.

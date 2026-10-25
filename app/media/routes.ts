@@ -1,12 +1,13 @@
 import { MediaAttachment } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
-import { defineRoute, type Route } from "../http/route.ts";
+import { Binary, defineRoute, type Route } from "../http/route.ts";
 import { Text } from "../http/schemas.ts";
 import type { MediaLimits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import type { MediaRow } from "./media.ts";
 import { renderAttachment } from "./render.ts";
+import { serveFile } from "./serving.ts";
 import { findUpload } from "./upload_queries.ts";
 import { describeUpload, upload } from "./uploads.ts";
 
@@ -132,6 +133,30 @@ export const mediaRoutes = (limits: MediaLimits): readonly Route[] => [
             if (row === undefined) throw new NotFound();
 
             return progressOf(ctx, row);
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/media/:key",
+        summary: "A file someone uploaded, or its preview",
+        description: "Files are kept under the SHA-256 of their bytes, so they never change. " +
+            "Pictures are served as pictures; any other file is served for browsers to save, " +
+            "as `application/octet-stream`.",
+        tags: ["media"],
+        immutable: true,
+        rateLimit: false,
+        params: z.object({ key: z.string() }),
+        responses: { 200: Binary("application/octet-stream") },
+        handler: async (ctx, { params }) => {
+            const file = await serveFile(ctx, params.key);
+            if (file === undefined) throw new NotFound();
+
+            return {
+                status: 200,
+                file: file.stream,
+                type: file.mediaType,
+                ...file.download && { download: true as const },
+            };
         },
     }),
 ];

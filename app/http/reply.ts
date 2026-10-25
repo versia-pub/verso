@@ -19,6 +19,8 @@ const setCookies = (c: HonoContext, cookies: CookieChanges = {}) => {
     }
 };
 
+const yearSeconds = 365 * 24 * 60 * 60;
+
 const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
     declared instanceof z.ZodType;
 
@@ -95,8 +97,12 @@ export const send = (
         if (link !== undefined) c.header("link", link);
     }
 
-    if (route.maxAge !== undefined && reply.status < 300) {
-        c.header("cache-control", `public, max-age=${route.maxAge}`);
+    const maxAge = route.immutable ? yearSeconds : route.maxAge;
+    if (maxAge !== undefined && reply.status < 300) {
+        c.header(
+            "cache-control",
+            `public, max-age=${maxAge}${route.immutable ? ", immutable" : ""}`,
+        );
     }
 
     if ("location" in reply) return c.redirect(reply.location, reply.status);
@@ -104,9 +110,14 @@ export const send = (
 
     if ("file" in reply) {
         const declared = route.responses[reply.status];
-        const type = declared && "type" in declared ? declared.type : "application/octet-stream";
+        const type = reply.type ??
+            (declared && "type" in declared ? declared.type : "application/octet-stream");
+        const file = reply.file instanceof Uint8Array ? new Uint8Array(reply.file) : reply.file;
 
-        return c.body(new Uint8Array(reply.file), reply.status, { "content-type": type });
+        return c.body(file, reply.status, {
+            "content-type": type,
+            ...reply.download && { "content-disposition": "attachment" },
+        });
     }
 
     if (!("body" in reply)) return c.body(null, reply.status);
