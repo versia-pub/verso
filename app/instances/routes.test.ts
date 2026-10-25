@@ -65,9 +65,16 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
                 characters_reserved_per_url: 23,
             },
             media_attachments: {
-                supported_mime_types: [],
-                image_size_limit: 0,
-                image_matrix_limit: 0,
+                supported_mime_types: [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "image/gif",
+                    "image/avif",
+                    "image/heic",
+                ],
+                image_size_limit: 16_777_216,
+                image_matrix_limit: 8_294_400,
                 video_size_limit: 0,
                 video_frame_rate_limit: 0,
                 video_matrix_limit: 0,
@@ -94,6 +101,9 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
 
 Deno.test("an instance describes itself as configured", async () => {
     const settings = await configured(`
+media.max_pixels = 1000000
+media.max_upload_bytes = 2000000
+
 [instance]
 name = "Example Social"
 description = "A place to talk."
@@ -144,6 +154,8 @@ registration = { claim = "groups", contains = "verso" }
     assertEquals(instance.description, "A place to talk.");
     assertEquals(instance.configuration.accounts.max_profile_fields, 4);
     assertEquals(instance.configuration.statuses.max_characters, 1000);
+    assertEquals(instance.configuration.media_attachments.image_size_limit, 2_000_000);
+    assertEquals(instance.configuration.media_attachments.image_matrix_limit, 1_000_000);
     assertEquals(
         instance.registrations.message,
         "<p>New accounts are made by logging in with Open &amp; Free ID or Partner ID.</p>",

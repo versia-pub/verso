@@ -19,6 +19,8 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # How many pixels an uploaded picture may have, in each frame, before it is scaled down: as
 # many as 3840×2160 by default, as on Mastodon.
 # max_pixels = 8294400
+# How many bytes an uploaded file may have: 16 MiB by default, as Mastodon allows pictures.
+# max_upload_bytes = 16777216
 
 # Where uploaded files are kept. Exactly one of these: the path of a directory, which Verso makes
 # if it isn't there, or a bucket on a server that speaks S3, such as AWS, Garage or MinIO.
@@ -122,6 +124,7 @@ updated = 2026-10-01
 #     "read:note",
 #     "owner:account",
 #     "owner:follow",
+#     "owner:media",
 #     "owner:note",
 # ]
 

@@ -62,3 +62,28 @@ export const isFileUsed = async (ctx: Context, key: string): Promise<boolean> =>
         )
         .where("instance_id", "is", null)
         .executeTakeFirst() !== undefined;
+
+/** The upload `id`, if `accountId` uploaded it. */
+export const findUpload = (
+    ctx: Context,
+    id: string,
+    accountId: string,
+): Promise<MediaRow | undefined> =>
+    ctx.db.selectFrom("media").selectAll()
+        .where("id", "=", id)
+        .where("account_id", "=", accountId)
+        .executeTakeFirst();
+
+/** Changes how the upload `id` is described, if `accountId` uploaded it. */
+export const updateUpload = async (
+    ctx: Context,
+    id: string,
+    accountId: string,
+    changes: Pick<Updateable<MediaTable>, "description" | "focus_x" | "focus_y">,
+): Promise<void> => {
+    await ctx.db.updateTable("media")
+        .set(changes)
+        .where("id", "=", id)
+        .where("account_id", "=", accountId)
+        .execute();
+};

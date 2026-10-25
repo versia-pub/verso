@@ -19,6 +19,7 @@ const mastodonFlags: Readonly<Record<Permission, number>> = {
     "owner:boost": 0,
     "owner:reaction": 0,
     "owner:note": 0,
+    "owner:media": 0,
     "blocks": 0,
     "roles": 0x20000,
 };

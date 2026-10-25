@@ -34,6 +34,8 @@ export const permissions = [
     "owner:reaction",
     /** Post and delete one's own notes. */
     "owner:note",
+    /** Upload files, and describe one's own. */
+    "owner:media",
     /**
      * See who blocks each account, which is otherwise only the blocker's to know, as moderators
      * may need to.

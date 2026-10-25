@@ -4353,6 +4353,286 @@
                 }
             }
         },
+        "/api/v2/media": {
+            "post": {
+                "summary": "Upload media as an attachment (async)",
+                "description": "Creates a media attachment to be used with a new status. The full sized media will be processed asynchronously in the background for large uploads.\n\nPictures are processed, and answered with 202 until they are; any other file, and any picture that can't be processed, is kept as it is, as a file of type `unknown`. Files are at most 16777216 bytes.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/media/#v2"
+                },
+                "tags": [
+                    "media"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:media"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216,
+                                        "description": "The file to be attached."
+                                    },
+                                    "thumbnail": {},
+                                    "description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "focus": {
+                                        "type": "string",
+                                        "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+                                        "description": "Two floating points (x,y), comma-delimited, ranging from -1.0 to 1.0."
+                                    }
+                                },
+                                "required": [
+                                    "file"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216,
+                                        "description": "The file to be attached."
+                                    },
+                                    "thumbnail": {},
+                                    "description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "focus": {
+                                        "type": "string",
+                                        "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+                                        "description": "Two floating points (x,y), comma-delimited, ranging from -1.0 to 1.0."
+                                    }
+                                },
+                                "required": [
+                                    "file"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216,
+                                        "description": "The file to be attached."
+                                    },
+                                    "thumbnail": {},
+                                    "description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "focus": {
+                                        "type": "string",
+                                        "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+                                        "description": "Two floating points (x,y), comma-delimited, ranging from -1.0 to 1.0."
+                                    }
+                                },
+                                "required": [
+                                    "file"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaAttachment"
+                                }
+                            }
+                        }
+                    },
+                    "202": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaAttachment"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/media/{id}": {
+            "get": {
+                "summary": "Get media attachment",
+                "description": "Get a media attachment, before it is attached to a status and posted, but after it is accepted for processing. Use this method to check that the full-sized media has finished processing.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/media/#get"
+                },
+                "tags": [
+                    "media"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:media"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaAttachment"
+                                }
+                            }
+                        }
+                    },
+                    "206": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaAttachment"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update media attachment",
+                "description": "Update a MediaAttachment's parameters, before it is attached to a status and posted.\n\nAn empty description clears it.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/media/#update"
+                },
+                "tags": [
+                    "media"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:media"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "focus": {
+                                        "type": "string",
+                                        "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+                                        "description": "Two floating points (x,y), comma-delimited, ranging from -1.0 to 1.0."
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "focus": {
+                                        "type": "string",
+                                        "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+                                        "description": "Two floating points (x,y), comma-delimited, ranging from -1.0 to 1.0."
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "focus": {
+                                        "type": "string",
+                                        "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+                                        "description": "Two floating points (x,y), comma-delimited, ranging from -1.0 to 1.0."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaAttachment"
+                                }
+                            }
+                        }
+                    },
+                    "206": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaAttachment"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/custom_emojis": {
             "get": {
                 "summary": "This instance's custom emojis, for the picker",
@@ -4448,6 +4728,7 @@
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
+                                                "owner:media",
                                                 "blocks",
                                                 "roles"
                                             ]
@@ -4530,6 +4811,7 @@
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
+                                                "owner:media",
                                                 "blocks",
                                                 "roles"
                                             ]
@@ -4612,6 +4894,7 @@
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
+                                                "owner:media",
                                                 "blocks",
                                                 "roles"
                                             ]
@@ -4773,6 +5056,7 @@
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
+                                                "owner:media",
                                                 "blocks",
                                                 "roles"
                                             ]
@@ -4852,6 +5136,7 @@
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
+                                                "owner:media",
                                                 "blocks",
                                                 "roles"
                                             ]
@@ -4931,6 +5216,7 @@
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
+                                                "owner:media",
                                                 "blocks",
                                                 "roles"
                                             ]

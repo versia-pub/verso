@@ -125,6 +125,7 @@ export const Permissions = z.strictObject({
         "owner:boost",
         "owner:follow",
         "owner:like",
+        "owner:media",
         "owner:mute",
         "owner:note",
         "owner:reaction",
@@ -177,6 +178,18 @@ const FileStorage = z.strictObject({
     ctx.addIssue({ code: "custom", message: 'Set exactly one of "filesystem" or "s3"' });
     return z.NEVER;
 });
+
+/** How large uploads may be. */
+export const MediaLimits = z.strictObject({
+    /**
+     * How many pixels an uploaded picture may have, in each frame, before it is scaled down.
+     * Mastodon's limit, 3840×2160, by default.
+     */
+    max_pixels: z.int().min(1).default(8_294_400),
+    /** How many bytes an uploaded file may have. Mastodon's limit for pictures, 16 MiB, by default. */
+    max_upload_bytes: z.int().min(1).default(16 * 1024 * 1024),
+});
+export type MediaLimits = z.infer<typeof MediaLimits>;
 
 const developmentOnly = 'Only allowed with mode = "development"';
 
@@ -271,14 +284,9 @@ export const Config = z.strictObject({
             window_seconds: z.int().min(1).default(300),
         }).prefault({}),
     }).prefault({}),
-    media: z.strictObject({
+    media: MediaLimits.extend({
         /** Where uploaded files are kept. */
         storage: FileStorage,
-        /**
-         * How many pixels an uploaded picture may have, in each frame, before it is scaled down.
-         * Mastodon's limit, 3840×2160, by default.
-         */
-        max_pixels: z.int().min(1).default(8_294_400),
     }),
     instance: Instance,
     limits: Limits,

@@ -172,6 +172,17 @@ const echoText = defineRoute({
     handler: (_, { body }) => Promise.resolve({ status: 200, body: { text: body } }),
 });
 
+const echoLong = defineRoute({
+    method: "POST",
+    path: "/echo-long",
+    summary: "Answers with how long the text it was sent is, of up to 300 KiB",
+    textBody: true,
+    maxBodyBytes: 300 * 1024,
+    body: z.string(),
+    responses: { 200: z.object({ length: z.int() }) },
+    handler: (_, { body }) => Promise.resolve({ status: 200, body: { length: body.length } }),
+});
+
 const numbers = defineRoute({
     method: "GET",
     path: "/numbers",
@@ -216,6 +227,7 @@ const open = async () => {
         rename,
         echo,
         echoText,
+        echoLong,
         sloppy,
         welcome,
         scripted,
@@ -429,6 +441,18 @@ Deno.test("a body over 256 KiB is refused before it is read", async () => {
     });
     assertEquals(stated.status, 413);
     assertEquals((await test.send("/things/a?notify=1", atLimit)).status, 422);
+});
+
+Deno.test("a route can take a larger body, up to a limit of its own", async () => {
+    await using test = await open();
+    const text = (length: number) => "x".repeat(length);
+
+    assertEquals(await test.send("/echo-long", text(300 * 1024), "text/plain"), {
+        status: 200,
+        body: { length: 300 * 1024 },
+    });
+    assertEquals((await test.send("/echo-long", text(300 * 1024 + 1), "text/plain")).status, 413);
+    assertEquals((await test.send("/echo-text", text(256 * 1024 + 1), "text/plain")).status, 413);
 });
 
 Deno.test("errors use Mastodon's shape, without internal details", async () => {

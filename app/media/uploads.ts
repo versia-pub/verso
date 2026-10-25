@@ -13,11 +13,13 @@ import type { Context } from "../kernel/context.ts";
 import { type ImageFormat, imageFormatOf, imageFormats } from "../kernel/images.ts";
 import { findMedia, type MediaRow } from "./media.ts";
 import {
+    findUpload,
     finishUpload,
     insertUpload,
     isFileUsed,
     type Processed,
     processedUpload,
+    updateUpload,
 } from "./upload_queries.ts";
 
 const logger = getLogger(["verso", "media"]);
@@ -94,6 +96,28 @@ export const upload = async (
     });
 
     return row;
+};
+
+/** How an upload is described: its alt text, and where its thumbnails are cropped around. */
+export type UploadDescription = Pick<NewUpload, "description" | "focus">;
+
+/**
+ * Changes how the upload `id` is described, if `accountId` uploaded it, and returns it, or
+ * `undefined` if they didn't. What is left out stays as it was; an empty description clears it.
+ */
+export const describeUpload = async (
+    ctx: Context,
+    accountId: string,
+    id: string,
+    changes: UploadDescription,
+): Promise<MediaRow | undefined> => {
+    const columns = {
+        ...changes.description !== undefined && { description: changes.description || null },
+        ...changes.focus && { focus_x: changes.focus.x, focus_y: changes.focus.y },
+    };
+    if (Object.keys(columns).length > 0) await updateUpload(ctx, id, accountId, columns);
+
+    return await findUpload(ctx, id, accountId);
 };
 
 /**

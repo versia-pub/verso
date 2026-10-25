@@ -204,6 +204,8 @@ export type RouteDefinition<
      * form. A missing body is an empty string.
      */
     readonly textBody?: true;
+    /** The largest body the route takes, in bytes, for one larger than any form, such as a file. */
+    readonly maxBodyBytes?: number;
     /** The cookies the route reads, which are strings. Only the ones Verso set are seen. */
     readonly cookies?: C;
     /** The request headers the route reads, by lowercase name. */

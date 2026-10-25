@@ -16,7 +16,11 @@ Deno.test("a minimal config gets the defaults", async () => {
             mode: "production",
             domain: "social.example",
             database: { sqlite: "verso.db" },
-            media: { storage: { filesystem: "media" }, max_pixels: 8_294_400 },
+            media: {
+                storage: { filesystem: "media" },
+                max_pixels: 8_294_400,
+                max_upload_bytes: 16_777_216,
+            },
             http: {
                 port: 8080,
                 trusted_proxies: [],
@@ -59,6 +63,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                     "owner:boost",
                     "owner:follow",
                     "owner:like",
+                    "owner:media",
                     "owner:mute",
                     "owner:note",
                     "owner:reaction",
@@ -79,6 +84,7 @@ postgres = "postgresql://verso@/verso?host=/run/postgresql"
 [media]
 storage = { filesystem = "/var/lib/verso/media" }
 max_pixels = 1000000
+max_upload_bytes = 1000
 
 [http]
 port = 3000
@@ -138,7 +144,11 @@ level = "debug"
             database: {
                 postgres: "postgresql://verso@/verso?host=/run/postgresql",
             },
-            media: { storage: { filesystem: "/var/lib/verso/media" }, max_pixels: 1_000_000 },
+            media: {
+                storage: { filesystem: "/var/lib/verso/media" },
+                max_pixels: 1_000_000,
+                max_upload_bytes: 1000,
+            },
             http: {
                 port: 3000,
                 trusted_proxies: [],

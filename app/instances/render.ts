@@ -15,13 +15,16 @@ import { publicAccount } from "../accounts/public.ts";
 import { escapeHtml, textToHtml } from "../accounts/text.ts";
 import { countAccountsWithTokensSince } from "../auth/token_queries.ts";
 import { NotFound } from "../http/errors.ts";
-import type { Config } from "../kernel/config.ts";
+import type { Config, MediaLimits } from "../kernel/config.ts";
+import { imageFormats } from "../kernel/images.ts";
 import type { Context } from "../kernel/context.ts";
 import { charactersPerLink } from "../kernel/markup.ts";
 import { countInstances } from "./instances.ts";
 
 /** What the instance's description is made from. */
-export type AboutSettings = Pick<Config, "instance" | "limits" | "auth">;
+export type AboutSettings = Pick<Config, "instance" | "limits" | "auth"> & {
+    readonly media: MediaLimits;
+};
 
 /**
  * The Mastodon version clients are told, which they turn features on by. Raise it as Verso does
@@ -72,9 +75,10 @@ export const renderRules = (instance: AboutSettings["instance"]): Rule[] =>
 const configuration = (
     ctx: Context,
     limits: AboutSettings["limits"],
+    media: MediaLimits,
 ): Instance["configuration"] => ({
     urls: { streaming: ctx.urls.origin.replace(/^http/, "ws") },
-    // Push, pins, featured tags, media and polls arrive in later steps.
+    // Push, pins, featured tags, attachments and polls arrive in later steps.
     vapid: { public_key: "" },
     accounts: {
         max_featured_tags: 0,
@@ -90,10 +94,11 @@ const configuration = (
         max_media_attachments: 0,
         characters_reserved_per_url: charactersPerLink,
     },
+    // Any other file is taken too, as a file, but clients offer only what is listed.
     media_attachments: {
-        supported_mime_types: [],
-        image_size_limit: 0,
-        image_matrix_limit: 0,
+        supported_mime_types: Object.values(imageFormats).map((format) => format.mediaType),
+        image_size_limit: media.max_upload_bytes,
+        image_matrix_limit: media.max_pixels,
         video_size_limit: 0,
         video_frame_rate_limit: 0,
         video_matrix_limit: 0,
@@ -123,7 +128,7 @@ export const renderInstance = async (ctx: Context, settings: AboutSettings): Pro
         thumbnail: { url: ctx.urls.url`/instance/thumbnail.png` },
         icon: [],
         languages: [],
-        configuration: configuration(ctx, limits),
+        configuration: configuration(ctx, limits, settings.media),
         // Accounts are made by logging in, never by a client's sign-up form.
         registrations: {
             enabled: false,

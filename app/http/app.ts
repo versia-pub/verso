@@ -17,8 +17,8 @@ import { checkPermission, rateLimitKey, viewerOf, withPermissions } from "./view
 const logger = getLogger(["verso", "http"]);
 
 /**
- * The largest body a route takes, enough for any form or JSON, and for a note as long as a long
- * blog post, of 100,000 characters. Uploads will need their own.
+ * The largest body a route takes unless it says, enough for any form or JSON, and for a note as
+ * long as a long blog post, of 100,000 characters.
  */
 const maxBodyBytes = 256 * 1024;
 
@@ -76,14 +76,6 @@ export const createApp = (
         if (!c.res.headers.has("cache-control")) c.res.headers.set("cache-control", "no-store");
     });
 
-    // Checked before anything reads the body, so a huge one is refused, not held in memory.
-    app.use(bodyLimit({
-        maxSize: maxBodyBytes,
-        onError: () => {
-            throw new ContentTooLarge();
-        },
-    }));
-
     const limits = options.rateLimits;
     const clientKey = (c: HonoContext<AppEnv>) =>
         rateLimitKey(ctx, c, options.trustedProxies ?? [], options.services);
@@ -138,7 +130,15 @@ export const createApp = (
     };
 
     const handle = (route: Route) => {
-        app.on(route.method, route.path, async (c) => {
+        // Checked before anything reads the body, so a huge one is refused, not held in memory.
+        const limit = bodyLimit({
+            maxSize: route.maxBodyBytes ?? maxBodyBytes,
+            onError: () => {
+                throw new ContentTooLarge();
+            },
+        });
+
+        app.on(route.method, route.path, limit, async (c) => {
             if (!route.signed) return await answer(route, c);
 
             // Errors are signed too, so the instance that asked can trust a 404 as much as a 200.
