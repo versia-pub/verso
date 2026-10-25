@@ -5,7 +5,9 @@ import { tokenFor } from "../auth/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
 import { Limits } from "../kernel/config.ts";
+import { pin } from "../notes/pins.ts";
 import { noteRoutes } from "../notes/routes.ts";
+import { timelineRoutes } from "../notes/timeline_routes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findMedia } from "./media.ts";
@@ -28,7 +30,9 @@ const zip = (n: number) => new Uint8Array([0x50, 0x4b, 0x03, 0x04, n]);
 
 const open = async (limits = Limits.parse({})) => {
     const test = await createTestContext();
-    const app = createTestApp(test.ctx, noteRoutes(limits), { checkResponses: true });
+    const app = createTestApp(test.ctx, [...noteRoutes(limits), ...timelineRoutes], {
+        checkResponses: true,
+    });
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
 
     /** Posts a status as alice, in JSON, or as a form if `body` is a string. */
@@ -217,4 +221,27 @@ Deno.test("an edit is held to what posting is, and changes nothing if refused", 
 
     const fetched = await (await test.app.request(`/api/v1/statuses/${body.id}`)).json();
     assertEquals([fetched.content, fetched.media_attachments.map(described)], ["<p>Hi</p>", [a]]);
+});
+
+Deno.test("asked only for statuses with media, an account and the public timeline give those", async () => {
+    await using test = await open();
+    const plain = (await test.post({ status: "Plain" })).body.id;
+    const file = await test.uploaded(zip(1));
+    const attached = (await test.post({ status: "Notes", media_ids: [file] })).body.id;
+    await pin(test.ctx, "alice", plain);
+    await pin(test.ctx, "alice", attached);
+
+    const ids = async (path: string) => {
+        const response = await test.app.request(path);
+        return (await response.json()).map((status: { id: string }) => status.id);
+    };
+
+    assertEquals(await ids("/api/v1/accounts/alice/statuses"), [attached, plain]);
+    assertEquals(await ids("/api/v1/accounts/alice/statuses?only_media=true"), [attached]);
+    assertEquals(await ids("/api/v1/accounts/alice/statuses?pinned=true"), [attached, plain]);
+    assertEquals(await ids("/api/v1/accounts/alice/statuses?pinned=true&only_media=true"), [
+        attached,
+    ]);
+    assertEquals(await ids("/api/v1/timelines/public"), [attached, plain]);
+    assertEquals(await ids("/api/v1/timelines/public?only_media=true"), [attached]);
 });

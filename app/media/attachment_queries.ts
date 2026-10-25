@@ -1,5 +1,16 @@
+import type { ExpressionBuilder, ExpressionWrapper, SqlBool } from "kysely";
+import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 import type { MediaRow } from "./media.ts";
+
+/** Whether a note has files attached, for queries of notes. */
+export const hasAttachments = (
+    eb: ExpressionBuilder<Database, "notes">,
+): ExpressionWrapper<Database, "notes", SqlBool> =>
+    eb.exists(
+        eb.selectFrom("note_media").select("note_media.note_id")
+            .whereRef("note_media.note_id", "=", "notes.id"),
+    );
 
 /** Of `ids`, the uploads `accountId` made that aren't attached to a note. */
 export const unattachedUploads = async (

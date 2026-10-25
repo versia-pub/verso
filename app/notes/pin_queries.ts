@@ -1,3 +1,4 @@
+import { hasAttachments } from "../media/attachment_queries.ts";
 import type { Selectable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
@@ -56,11 +57,14 @@ export const pinnedNotes = async (
     ctx: Context,
     accountId: string,
     visibilities: readonly Visibility[],
-): Promise<NoteRow[]> =>
-    await ctx.db.selectFrom("note_pins")
+    onlyMedia = false,
+): Promise<NoteRow[]> => {
+    let query = ctx.db.selectFrom("note_pins")
         .innerJoin("notes", "notes.id", "note_pins.note_id")
         .selectAll("notes")
         .where("note_pins.account_id", "=", accountId)
-        .where("notes.visibility", "in", visibilities)
-        .orderBy("note_pins.id", "desc")
-        .execute();
+        .where("notes.visibility", "in", visibilities);
+    if (onlyMedia) query = query.where(hasAttachments);
+
+    return await query.orderBy("note_pins.id", "desc").execute();
+};

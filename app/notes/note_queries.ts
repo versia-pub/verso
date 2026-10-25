@@ -6,7 +6,7 @@ import type { Database } from "../db/database.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Visibility } from "../accounts/tables.ts";
-import { attachmentsOf } from "../media/attachment_queries.ts";
+import { attachmentsOf, hasAttachments } from "../media/attachment_queries.ts";
 import type { NotesTable, NoteVersionsTable } from "./tables.ts";
 
 export type NoteRow = Selectable<NotesTable>;
@@ -159,6 +159,8 @@ export type NoteFilter = {
     readonly excludeShares?: boolean;
     /** Only those with this hashtag. */
     readonly tag?: string;
+    /** Only those with files attached, which shares never have. */
+    readonly onlyMedia?: boolean;
 };
 
 /** A page of an account's notes and shares with one of `visibilities`, newest first. */
@@ -174,6 +176,7 @@ export const notePageBy = async (
         .where("visibility", "in", visibilities);
 
     if (filter.excludeShares) query = query.where("reblog_of_id", "is", null);
+    if (filter.onlyMedia) query = query.where(hasAttachments);
     if (filter.excludeReplies) {
         query = query.where((eb) =>
             eb.or([eb("in_reply_to_id", "is", null), eb("in_reply_to_account_id", "=", accountId)])

@@ -1,3 +1,4 @@
+import { hasAttachments } from "../media/attachment_queries.ts";
 import type { ExpressionBuilder } from "kysely";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
@@ -71,14 +72,16 @@ export type Origin = "all" | "local" | "remote";
 
 /**
  * A page of the public timeline, newest first: public notes from `origin`, without replies but to
- * their own authors, or shares, as on Mastodon. The notes of the accounts the viewer blocks or
- * mutes, `hidden`, if there is a viewer, are left out.
+ * their own authors, or shares, as on Mastodon, and with `onlyMedia`, only those with files
+ * attached. The notes of the accounts the viewer blocks or mutes, `hidden`, if there is a viewer,
+ * are left out.
  */
 export const publicPage = async (
     ctx: Context,
     origin: Origin,
     hidden: AccountIdQuery | null,
     page: PageBounds,
+    onlyMedia = false,
 ): Promise<NoteRow[]> => {
     let query = ctx.db.selectFrom("notes").selectAll()
         .where("visibility", "=", "public")
@@ -93,6 +96,7 @@ export const publicPage = async (
     if (hidden !== null) query = query.where(without(hidden));
     if (origin === "local") query = query.where("instance_id", "is", null);
     if (origin === "remote") query = query.where("instance_id", "is not", null);
+    if (onlyMedia) query = query.where(hasAttachments);
 
     return await readPage(query, "notes.id", page);
 };

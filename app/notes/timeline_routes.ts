@@ -8,8 +8,7 @@ import { renderStatuses } from "./render.ts";
 import { homePage, publicPage } from "./timeline_queries.ts";
 
 /**
- * Which public statuses to give. `local` wins over `remote`, as on Mastodon. Verso has no media
- * yet, so asking only for statuses with media gives none.
+ * Which public statuses to give. `local` wins over `remote`, as on Mastodon.
  * @see https://docs.joinmastodon.org/methods/timelines/#public
  */
 const PublicQuery = PageQuery({ default: 20, max: 40 }).extend({
@@ -57,11 +56,15 @@ export const timelineRoutes: readonly Route[] = [
         query: PublicQuery,
         responses: { 200: Paged(Status) },
         handler: async (ctx, { query, viewer }) => {
-            if (query.only_media) return { status: 200, body: [], cursors: {} };
-
             const origin = query.local ? "local" : query.remote ? "remote" : "all";
             const viewerId = viewer?.accountId ?? null;
-            const notes = await publicPage(ctx, origin, viewerHidden(ctx, viewerId), query);
+            const notes = await publicPage(
+                ctx,
+                origin,
+                viewerHidden(ctx, viewerId),
+                query,
+                query.only_media,
+            );
             return {
                 status: 200,
                 body: await renderStatuses(ctx, notes, viewerId),

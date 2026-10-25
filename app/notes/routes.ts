@@ -117,8 +117,8 @@ const edit = (limits: Limits) =>
         .refine(limited(limits).check, limited(limits).error);
 
 /**
- * Which of an account's statuses to give. Verso has no media yet, so asking only for statuses with
- * media gives none. Pinned ones, of which there are few, are given all at once.
+ * Which of an account's statuses to give. Pinned ones, of which there are few, are given all at
+ * once.
  * @see https://docs.joinmastodon.org/methods/accounts/#statuses
  */
 const AccountStatusesQuery = PageQuery({ default: 20, max: 40 }).extend({
@@ -241,11 +241,10 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             const viewerId = viewer?.accountId ?? null;
             const account = await findAccount(ctx, params.id);
             if (account === undefined) throw new NotFound();
-            if (query.only_media) return { status: 200, body: [], cursors: {} };
 
             const visibilities = await visibilitiesFor(ctx, account.id, viewerId);
             if (query.pinned) {
-                const pinned = await pinnedNotes(ctx, account.id, visibilities);
+                const pinned = await pinnedNotes(ctx, account.id, visibilities, query.only_media);
                 return {
                     status: 200,
                     body: await renderStatuses(ctx, pinned, viewerId),
@@ -261,6 +260,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                     excludeReplies: query.exclude_replies,
                     excludeShares: query.exclude_reblogs,
                     tag: query.tagged,
+                    onlyMedia: query.only_media,
                 },
                 query,
             );
