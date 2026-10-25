@@ -21,7 +21,7 @@ import type { LikesTable, ReactionsTable } from "../interactions/tables.ts";
 import type { RateLimitsTable } from "../http/tables.ts";
 import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
 import type { JobsTable } from "../jobs/tables.ts";
-import type { MediaTable } from "../media/tables.ts";
+import type { MediaTable, NoteMediaTable } from "../media/tables.ts";
 import type {
     NoteMentionsTable,
     NotePinsTable,
@@ -56,6 +56,7 @@ export type Database = {
     likes: LikesTable;
     media: MediaTable;
     note_emojis: NoteEmojisTable;
+    note_media: NoteMediaTable;
     note_mentions: NoteMentionsTable;
     note_pins: NotePinsTable;
     note_tags: NoteTagsTable;

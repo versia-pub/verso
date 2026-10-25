@@ -41,6 +41,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 field_name: 255,
                 field_value: 255,
                 status: 10_000,
+                attachments: 16,
             },
             permissions: {
                 anonymous: [
@@ -203,6 +204,7 @@ level = "debug"
                 field_name: 255,
                 field_value: 255,
                 status: 10_000,
+                attachments: 16,
             },
             permissions: { anonymous: [], default: ["owner:account"] },
             logging: { level: "debug" },

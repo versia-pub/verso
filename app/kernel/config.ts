@@ -50,7 +50,10 @@ const Origin = z.url({ protocol: /^https?$/ })
     })
     .transform((url) => new URL(url).origin);
 
-/** How long and how many of what users write may be, in characters, counted by code point. */
+/**
+ * How long and how many of what users write may be, in characters, counted by code point, and how
+ * many files they may attach.
+ */
 export const Limits = z.strictObject({
     display_name: z.int().min(1).default(60),
     /** The bio. */
@@ -61,6 +64,8 @@ export const Limits = z.strictObject({
     field_value: z.int().min(1).default(255),
     /** A status, with its content warning, counted as Mastodon counts them. */
     status: z.int().min(1).default(10_000),
+    /** How many files a status may have attached. */
+    attachments: z.int().min(0).default(16),
 }).prefault({});
 export type Limits = z.infer<typeof Limits>;
 

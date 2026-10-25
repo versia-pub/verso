@@ -78,7 +78,7 @@ const configuration = (
     media: MediaLimits,
 ): Instance["configuration"] => ({
     urls: { streaming: ctx.urls.origin.replace(/^http/, "ws") },
-    // Push, pins, featured tags, attachments and polls arrive in later steps.
+    // Push, featured tags and polls arrive in later steps.
     vapid: { public_key: "" },
     accounts: {
         max_featured_tags: 0,
@@ -91,7 +91,7 @@ const configuration = (
     },
     statuses: {
         max_characters: limits.status,
-        max_media_attachments: 0,
+        max_media_attachments: limits.attachments,
         characters_reserved_per_url: charactersPerLink,
     },
     // Any other file is taken too, as a file, but clients offer only what is listed.

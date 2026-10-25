@@ -47,3 +47,11 @@ export type MediaTable = {
     focus_x: number | null;
     focus_y: number | null;
 };
+
+/** A file attached to a note, at its place among the note's files, from 0. */
+export type NoteMediaTable = {
+    note_id: string;
+    /** Each file is attached to one note at most. */
+    media_id: string;
+    position: number;
+};

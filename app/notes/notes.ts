@@ -15,6 +15,7 @@ import { isFollowing } from "../graph/follows.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type Found, type Mention, renderText, scanText } from "../kernel/markup.ts";
+import { attach } from "../media/attachments.ts";
 import type { NoteDeleted, NoteEdited, NotePosted } from "./events.ts";
 import {
     countReply,
@@ -159,6 +160,8 @@ export type Draft = {
     readonly language?: string;
     /** The note it replies to, which its author must be able to see. */
     readonly inReplyToId?: string;
+    /** The uploads attached to it, in order, which {@link attach} checks. */
+    readonly mediaIds?: readonly string[];
 };
 
 const mentionKey = (mention: Mention) => `${mention.username}@${mention.domain}`.toLowerCase();
@@ -262,6 +265,7 @@ export const postNote = async (
             found.hashtags,
         );
         await useEmojis(tx, note.id, found, draft.spoilerText);
+        await attach(tx, accountId, note.id, draft.mediaIds ?? []);
 
         await countPosted(tx, note, 1);
 

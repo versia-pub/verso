@@ -121,20 +121,20 @@ Deno.test("a status and its warning are held to the limit, with links counting a
     assertEquals(await rejected({ status: "a".repeat(40), spoiler_text: "a".repeat(11) }), {
         "body.status": ["Must be at most 50 characters"],
     });
-    assertEquals(await rejected({ status: " \n" }), { "body.status": ["Can't be blank"] });
+    assertEquals(await rejected({ status: " \n" }), {
+        "body.status": ["Can't be blank without attachments"],
+    });
 
     // And by default, 10,000.
     assertEquals((await test.post({ status: "a".repeat(10_000) })).status, 200);
     assertEquals((await test.post({ status: "a".repeat(10_001) })).status, 422);
 });
 
-Deno.test("attachments, polls and schedules are refused, until Verso has them", async () => {
+Deno.test("polls and schedules are refused, until Verso has them", async () => {
     await using test = await open();
     const fields = async (body: Record<string, unknown> | string) =>
         Object.keys((await test.post(body)).body.details ?? {});
 
-    assertEquals(await fields({ status: "Hi", media_ids: ["1"] }), ["body.media_ids"]);
-    assertEquals(await fields("status=Hi&media_ids[]=1"), ["body.media_ids"]);
     assertEquals(await fields("status=Hi&poll[options][]=a&poll[options][]=b"), ["body.poll"]);
     assertEquals(await fields({ status: "Hi", scheduled_at: "2030-01-01T00:00:00Z" }), [
         "body.scheduled_at",
@@ -144,7 +144,7 @@ Deno.test("attachments, polls and schedules are refused, until Verso has them", 
     assertEquals(empty.status, 200);
 
     // As forms send a field left empty; and without a content type, the text is plain.
-    const form = await test.post("status=Hi *there*&scheduled_at=");
+    const form = await test.post("status=Hi *there*&scheduled_at=&media_ids=");
     assertEquals([form.status, form.body.content], [200, "<p>Hi *there*</p>"]);
 });
 

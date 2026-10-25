@@ -2718,6 +2718,7 @@
                                 "type": "object",
                                 "properties": {
                                     "status": {
+                                        "default": "",
                                         "type": "string"
                                     },
                                     "sensitive": {
@@ -2745,7 +2746,22 @@
                                             }
                                         ]
                                     },
-                                    "media_ids": {},
+                                    "media_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
                                     "poll": {},
                                     "content_type": {
                                         "default": "text/plain",
@@ -2775,10 +2791,7 @@
                                         ]
                                     },
                                     "scheduled_at": {}
-                                },
-                                "required": [
-                                    "status"
-                                ]
+                                }
                             }
                         },
                         "application/x-www-form-urlencoded": {
@@ -2786,6 +2799,7 @@
                                 "type": "object",
                                 "properties": {
                                     "status": {
+                                        "default": "",
                                         "type": "string"
                                     },
                                     "sensitive": {
@@ -2813,7 +2827,22 @@
                                             }
                                         ]
                                     },
-                                    "media_ids": {},
+                                    "media_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
                                     "poll": {},
                                     "content_type": {
                                         "default": "text/plain",
@@ -2843,10 +2872,7 @@
                                         ]
                                     },
                                     "scheduled_at": {}
-                                },
-                                "required": [
-                                    "status"
-                                ]
+                                }
                             }
                         },
                         "multipart/form-data": {
@@ -2854,6 +2880,7 @@
                                 "type": "object",
                                 "properties": {
                                     "status": {
+                                        "default": "",
                                         "type": "string"
                                     },
                                     "sensitive": {
@@ -2881,7 +2908,22 @@
                                             }
                                         ]
                                     },
-                                    "media_ids": {},
+                                    "media_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
                                     "poll": {},
                                     "content_type": {
                                         "default": "text/plain",
@@ -2911,10 +2953,7 @@
                                         ]
                                     },
                                     "scheduled_at": {}
-                                },
-                                "required": [
-                                    "status"
-                                ]
+                                }
                             }
                         }
                     }

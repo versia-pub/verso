@@ -15,6 +15,8 @@ import { reactionsOf } from "../interactions/reaction_queries.ts";
 import { reactionEmojis, renderReactions } from "../interactions/render.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
+import { attachmentsOf } from "../media/attachment_queries.ts";
+import { renderAttachment } from "../media/render.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import {
     countSharesBy,
@@ -111,6 +113,7 @@ export const renderStatuses = async (
     const noteIds = notes.map((note) => note.id);
     const mentions = await mentionsOf(ctx, noteIds);
     const tags = await tagsOf(ctx, noteIds);
+    const attachments = await attachmentsOf(ctx, noteIds);
     const emojis = await emojisOfNotes(ctx, noteIds);
     const blocked = viewerBlocks(ctx, viewerId);
     const reactions = await reactionsOf(ctx, noteIds, viewerId, blocked);
@@ -145,7 +148,9 @@ export const renderStatuses = async (
             visibility: note.visibility,
             sensitive: note.sensitive,
             spoiler_text: note.spoiler_text,
-            media_attachments: [],
+            media_attachments: (attachments.get(note.id) ?? []).map((row) =>
+                renderAttachment(ctx, row)
+            ),
             mentions: (mentions.get(note.id) ?? []).flatMap((id) => {
                 const mentioned = accounts.get(id);
                 return mentioned

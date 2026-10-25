@@ -45,6 +45,21 @@ const text = {
     poll: NotYet("Polls"),
 };
 
+/** The uploads attached to a status, in order, at most `limits.attachments` of them. */
+const MediaIds = (limits: Limits) =>
+    z.union([
+        // As forms send one, or a field left empty.
+        z.string().transform((id) => id === "" ? [] : [id]),
+        z.array(z.string()),
+        z.null().transform(() => []),
+    ])
+        .pipe(
+            z.array(z.string()).max(limits.attachments, {
+                error: `At most ${limits.attachments} files can be attached`,
+            }),
+        )
+        .default([]);
+
 /** Holds a status and its content warning to at most `limits.status` long together. */
 const limited = (limits: Limits) => ({
     check: (body: { status: string; spoiler_text?: string }) =>
@@ -60,12 +75,20 @@ const limited = (limits: Limits) => ({
 const draft = (limits: Limits) =>
     z.object({
         ...text,
+        // Blank, if files are attached.
+        status: z.string().default(""),
+        media_ids: MediaIds(limits),
         content_type: z.enum(["text/plain", "text/markdown"]).default("text/plain"),
         spoiler_text: z.string().default(""),
         visibility: z.enum(["public", "unlisted", "private", "direct"]).optional(),
         in_reply_to_id: z.string().nullish(),
         scheduled_at: NotYet("Scheduled statuses"),
-    }).refine(limited(limits).check, limited(limits).error);
+    })
+        .refine((body) => body.status.trim() !== "" || body.media_ids.length > 0, {
+            error: "Can't be blank without attachments",
+            path: ["status"],
+        })
+        .refine(limited(limits).check, limited(limits).error);
 
 /**
  * What an edited status may say. What is left out stays as it was, including how it is written. A
@@ -114,6 +137,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 sensitive: body.sensitive,
                 language: body.language || undefined,
                 inReplyToId: body.in_reply_to_id ?? undefined,
+                mediaIds: body.media_ids,
             });
             // As Mastodon answers when the status replied to can't be seen.
             if (note === undefined) throw new NotFound("The status replied to doesn't exist");

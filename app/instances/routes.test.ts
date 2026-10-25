@@ -61,7 +61,7 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
             },
             statuses: {
                 max_characters: 10_000,
-                max_media_attachments: 0,
+                max_media_attachments: 16,
                 characters_reserved_per_url: 23,
             },
             media_attachments: {
@@ -119,6 +119,7 @@ hint = "Ads included"
 [limits]
 fields = 4
 status = 1000
+attachments = 2
 
 [[auth.issuers]]
 name = "Closed ID"
@@ -154,6 +155,7 @@ registration = { claim = "groups", contains = "verso" }
     assertEquals(instance.description, "A place to talk.");
     assertEquals(instance.configuration.accounts.max_profile_fields, 4);
     assertEquals(instance.configuration.statuses.max_characters, 1000);
+    assertEquals(instance.configuration.statuses.max_media_attachments, 2);
     assertEquals(instance.configuration.media_attachments.image_size_limit, 2_000_000);
     assertEquals(instance.configuration.media_attachments.image_matrix_limit, 1_000_000);
     assertEquals(
