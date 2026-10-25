@@ -226,7 +226,7 @@ Deno.test("a status is edited by its author, and keeps what the edit leaves out"
     assertEquals((await test.edit(id, { status: "Hi" }, "bob")).status, 404);
     assertEquals((await test.edit("missing", { status: "Hi" })).status, 404);
     assertEquals((await test.edit(id, { status: "" })).body.details, {
-        "body.status": ["Can't be blank"],
+        "body.status": ["Can't be blank without attachments"],
     });
     assertEquals(Object.keys((await test.edit(id, { status: "Hi", poll: {} })).body.details), [
         "body.poll",

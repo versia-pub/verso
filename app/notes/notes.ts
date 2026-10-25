@@ -15,7 +15,13 @@ import { isFollowing } from "../graph/follows.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type Found, type Mention, renderText, scanText } from "../kernel/markup.ts";
-import { attach } from "../media/attachments.ts";
+import {
+    attach,
+    attachedTo,
+    type AttachmentChange,
+    changesAttachments,
+    reattach,
+} from "../media/attachments.ts";
 import type { NoteDeleted, NoteEdited, NotePosted } from "./events.ts";
 import {
     countReply,
@@ -284,6 +290,10 @@ export type Edit = {
     readonly spoilerText?: string;
     readonly sensitive?: boolean;
     readonly language?: string;
+    /** The uploads attached to it in place of its files, in order, which {@link attach} checks. */
+    readonly mediaIds?: readonly string[];
+    /** Changes to how the files it has attached after the edit are described. */
+    readonly mediaChanges?: readonly AttachmentChange[];
 };
 
 /**
@@ -320,10 +330,13 @@ export const editNote = async (
                 (edit.sensitive ?? (edit.spoilerText === undefined && note.sensitive)),
             language: edit.language ?? note.language,
         };
+        const media = await attachedTo(tx, note.id);
+        const mediaChanges = edit.mediaChanges ?? [];
         const same = changes.content === note.content &&
             changes.content_format === note.content_format &&
             changes.spoiler_text === note.spoiler_text && changes.sensitive === note.sensitive &&
-            changes.language === note.language;
+            changes.language === note.language &&
+            !changesAttachments(media, edit.mediaIds, mediaChanges);
         if (same) return note;
 
         await keepVersion(tx, note);
@@ -339,6 +352,7 @@ export const editNote = async (
             found.hashtags,
         );
         await useEmojis(tx, note.id, found, spoilerText);
+        await reattach(tx, accountId, note.id, edit.mediaIds, mediaChanges);
 
         const event: NoteEdited = { type: "notes.edited", noteId: note.id };
         await emit(tx, event);

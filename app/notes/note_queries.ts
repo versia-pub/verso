@@ -6,6 +6,7 @@ import type { Database } from "../db/database.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Visibility } from "../accounts/tables.ts";
+import { attachmentsOf } from "../media/attachment_queries.ts";
 import type { NotesTable, NoteVersionsTable } from "./tables.ts";
 
 export type NoteRow = Selectable<NotesTable>;
@@ -60,8 +61,10 @@ export const updateNote = async (
     await insertMentionsAndTags(ctx, id, mentionIds, tags);
 };
 
-/** Keeps what `note` says now, before it is edited, for its edit history. */
+/** Keeps what `note` says now, and the files it has, before it is edited, for its history. */
 export const keepVersion = async (ctx: Context, note: NoteRow): Promise<void> => {
+    const media = (await attachmentsOf(ctx, [note.id])).get(note.id) ?? [];
+
     await ctx.db.insertInto("note_versions")
         .values({
             id: ctx.ids(),
@@ -69,6 +72,7 @@ export const keepVersion = async (ctx: Context, note: NoteRow): Promise<void> =>
             content_html: note.content_html,
             spoiler_text: note.spoiler_text,
             sensitive: note.sensitive,
+            media: media.map((row) => ({ id: row.id, description: row.description })),
             created_at: note.edited_at ?? note.created_at,
         })
         .execute();

@@ -15,7 +15,8 @@ import { reactionsOf } from "../interactions/reaction_queries.ts";
 import { reactionEmojis, renderReactions } from "../interactions/render.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
-import { attachmentsOf } from "../media/attachment_queries.ts";
+import { attachmentsOf, findMediaRows } from "../media/attachment_queries.ts";
+import { asVersionMedia, attachedTo } from "../media/attachments.ts";
 import { renderAttachment } from "../media/render.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import {
@@ -205,16 +206,29 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
     if (author === undefined) throw new Error(`Note ${note.id} has no author`);
     const account = await publicAccount(ctx, author);
 
-    const current = { ...note, created_at: note.edited_at ?? note.created_at };
+    const current = {
+        ...note,
+        media: asVersionMedia(await attachedTo(ctx, note.id)),
+        created_at: note.edited_at ?? note.created_at,
+    };
+    const versions = [...await versionsOf(ctx, note.id), current];
+    // Files an edit removed are shown until they are removed with other unattached uploads.
+    const ids = versions.flatMap((version) => version.media.map((media) => media.id));
+    const files = new Map((await findMediaRows(ctx, ids)).map((row) => [row.id, row]));
+
     // Versions aren't kept with the emojis they used, so each has the ones the note uses now.
     const emojis = renderEmojis((await emojisOfNotes(ctx, [note.id])).get(note.id) ?? []);
-    return [...await versionsOf(ctx, note.id), current].map((version): StatusEdit => ({
+    return versions.map((version): StatusEdit => ({
         content: author.domain === null ? version.content_html : sanitizeHtml(version.content_html),
         spoiler_text: version.spoiler_text,
         sensitive: version.sensitive,
         created_at: version.created_at.toISOString(),
         account,
-        media_attachments: [],
+        // With their descriptions as they were.
+        media_attachments: version.media.flatMap(({ id, description }) => {
+            const row = files.get(id);
+            return row ? [renderAttachment(ctx, { ...row, description })] : [];
+        }),
         emojis,
     }));
 };

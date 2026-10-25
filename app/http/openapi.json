@@ -2717,10 +2717,6 @@
                             "schema": {
                                 "type": "object",
                                 "properties": {
-                                    "status": {
-                                        "default": "",
-                                        "type": "string"
-                                    },
                                     "sensitive": {
                                         "type": [
                                             "boolean",
@@ -2746,6 +2742,11 @@
                                             }
                                         ]
                                     },
+                                    "poll": {},
+                                    "status": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
                                     "media_ids": {
                                         "anyOf": [
                                             {
@@ -2762,7 +2763,6 @@
                                             }
                                         ]
                                     },
-                                    "poll": {},
                                     "content_type": {
                                         "default": "text/plain",
                                         "type": "string",
@@ -2798,10 +2798,6 @@
                             "schema": {
                                 "type": "object",
                                 "properties": {
-                                    "status": {
-                                        "default": "",
-                                        "type": "string"
-                                    },
                                     "sensitive": {
                                         "type": [
                                             "boolean",
@@ -2827,6 +2823,11 @@
                                             }
                                         ]
                                     },
+                                    "poll": {},
+                                    "status": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
                                     "media_ids": {
                                         "anyOf": [
                                             {
@@ -2843,7 +2844,6 @@
                                             }
                                         ]
                                     },
-                                    "poll": {},
                                     "content_type": {
                                         "default": "text/plain",
                                         "type": "string",
@@ -2879,10 +2879,6 @@
                             "schema": {
                                 "type": "object",
                                 "properties": {
-                                    "status": {
-                                        "default": "",
-                                        "type": "string"
-                                    },
                                     "sensitive": {
                                         "type": [
                                             "boolean",
@@ -2908,6 +2904,11 @@
                                             }
                                         ]
                                     },
+                                    "poll": {},
+                                    "status": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
                                     "media_ids": {
                                         "anyOf": [
                                             {
@@ -2924,7 +2925,6 @@
                                             }
                                         ]
                                     },
-                                    "poll": {},
                                     "content_type": {
                                         "default": "text/plain",
                                         "type": "string",
@@ -3040,9 +3040,6 @@
                             "schema": {
                                 "type": "object",
                                 "properties": {
-                                    "status": {
-                                        "type": "string"
-                                    },
                                     "sensitive": {
                                         "type": [
                                             "boolean",
@@ -3068,8 +3065,49 @@
                                             }
                                         ]
                                     },
-                                    "media_ids": {},
                                     "poll": {},
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "media_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "media_attributes": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "description": "A plain-text description of the media, for accessibility purposes."
+                                                },
+                                                "focus": {
+                                                    "type": "string",
+                                                    "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+                                                    "description": "Two floating points (x,y), comma-delimited, ranging from -1.0 to 1.0."
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
                                     "content_type": {
                                         "type": "string",
                                         "enum": [
@@ -3090,9 +3128,6 @@
                             "schema": {
                                 "type": "object",
                                 "properties": {
-                                    "status": {
-                                        "type": "string"
-                                    },
                                     "sensitive": {
                                         "type": [
                                             "boolean",
@@ -3118,8 +3153,49 @@
                                             }
                                         ]
                                     },
-                                    "media_ids": {},
                                     "poll": {},
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "media_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "media_attributes": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "description": "A plain-text description of the media, for accessibility purposes."
+                                                },
+                                                "focus": {
+                                                    "type": "string",
+                                                    "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+                                                    "description": "Two floating points (x,y), comma-delimited, ranging from -1.0 to 1.0."
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
                                     "content_type": {
                                         "type": "string",
                                         "enum": [
@@ -3140,9 +3216,6 @@
                             "schema": {
                                 "type": "object",
                                 "properties": {
-                                    "status": {
-                                        "type": "string"
-                                    },
                                     "sensitive": {
                                         "type": [
                                             "boolean",
@@ -3168,8 +3241,49 @@
                                             }
                                         ]
                                     },
-                                    "media_ids": {},
                                     "poll": {},
+                                    "status": {
+                                        "type": "string"
+                                    },
+                                    "media_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "media_attributes": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "description": {
+                                                    "type": "string",
+                                                    "description": "A plain-text description of the media, for accessibility purposes."
+                                                },
+                                                "focus": {
+                                                    "type": "string",
+                                                    "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$",
+                                                    "description": "Two floating points (x,y), comma-delimited, ranging from -1.0 to 1.0."
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
                                     "content_type": {
                                         "type": "string",
                                         "enum": [

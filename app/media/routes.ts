@@ -17,12 +17,13 @@ const descriptionLimit = 4000;
 /** Room for a form's other fields, and its boundaries, beside the file. */
 const formBytes = 64 * 1024;
 
-const description = Text(descriptionLimit).meta({
+/** A file's alt text, as Mastodon takes it. */
+export const MediaDescription: z.ZodType<string, string> = Text(descriptionLimit).meta({
     description: "A plain-text description of the media, for accessibility purposes.",
 });
 
 /** A point as Mastodon writes it, such as `0.5,-0.25`, from -1 to 1 on each axis. */
-const focus = z.string()
+export const FocusPoint = z.string()
     .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, { error: "Must be two numbers, such as 0.5,-0.25" })
     .transform((point) => point.split(",").map(Number))
     .refine((point) => point.every((n) => n >= -1 && n <= 1), {
@@ -48,14 +49,14 @@ const UploadBody = (limits: MediaLimits) =>
                 error: "Thumbnails aren't supported yet",
             })
             .optional(),
-        description: description.optional(),
-        focus: focus.optional(),
+        description: MediaDescription.optional(),
+        focus: FocusPoint.optional(),
     });
 
 /** @see https://docs.joinmastodon.org/methods/media/#update */
 const DescriptionBody = z.object({
-    description: description.optional(),
-    focus: focus.optional(),
+    description: MediaDescription.optional(),
+    focus: FocusPoint.optional(),
 });
 
 const MediaId = z.object({ id: z.string() });

@@ -7,6 +7,7 @@ import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { Flag } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config.ts";
 import { countText } from "../kernel/markup.ts";
+import { FocusPoint, MediaDescription } from "../media/routes.ts";
 import { notePageBy } from "./note_queries.ts";
 import { pinnedNotes } from "./pin_queries.ts";
 import { pin, pinLimit, unpin } from "./pins.ts";
@@ -37,11 +38,9 @@ const NotYet = (what: string) =>
 
 /** What a status says, whether it is new or edited. */
 const text = {
-    status: z.string().refine((text) => text.trim() !== "", { error: "Can't be blank" }),
     sensitive: Flag.optional(),
     /** Empty or `null` for the author's default, or for an edit, the status's own. */
     language: z.union([z.literal(""), z.string().regex(/^[a-z]{2}$/)]).nullish(),
-    media_ids: NotYet("Attachments"),
     poll: NotYet("Polls"),
 };
 
@@ -57,8 +56,21 @@ const MediaIds = (limits: Limits) =>
             z.array(z.string()).max(limits.attachments, {
                 error: `At most ${limits.attachments} files can be attached`,
             }),
-        )
-        .default([]);
+        );
+
+/** A change to how a file attached to a status is described. */
+const MediaAttribute = z.object({
+    id: z.string(),
+    description: MediaDescription.optional(),
+    focus: FocusPoint.optional(),
+});
+
+/** Text may be blank, if files are attached. */
+const notBlank = {
+    check: (body: { status: string; media_ids?: string[] }) =>
+        body.status.trim() !== "" || (body.media_ids ?? []).length > 0,
+    error: { error: "Can't be blank without attachments", path: ["status"] },
+};
 
 /** Holds a status and its content warning to at most `limits.status` long together. */
 const limited = (limits: Limits) => ({
@@ -75,19 +87,15 @@ const limited = (limits: Limits) => ({
 const draft = (limits: Limits) =>
     z.object({
         ...text,
-        // Blank, if files are attached.
         status: z.string().default(""),
-        media_ids: MediaIds(limits),
+        media_ids: MediaIds(limits).default([]),
         content_type: z.enum(["text/plain", "text/markdown"]).default("text/plain"),
         spoiler_text: z.string().default(""),
         visibility: z.enum(["public", "unlisted", "private", "direct"]).optional(),
         in_reply_to_id: z.string().nullish(),
         scheduled_at: NotYet("Scheduled statuses"),
     })
-        .refine((body) => body.status.trim() !== "" || body.media_ids.length > 0, {
-            error: "Can't be blank without attachments",
-            path: ["status"],
-        })
+        .refine(notBlank.check, notBlank.error)
         .refine(limited(limits).check, limited(limits).error);
 
 /**
@@ -98,9 +106,15 @@ const draft = (limits: Limits) =>
 const edit = (limits: Limits) =>
     z.object({
         ...text,
+        status: z.string(),
+        /** In place of the status's files. Left out, they stay as they were. */
+        media_ids: MediaIds(limits).optional(),
+        media_attributes: z.array(MediaAttribute).default([]),
         content_type: z.enum(["text/plain", "text/markdown"]).optional(),
         spoiler_text: z.string().optional(),
-    }).refine(limited(limits).check, limited(limits).error);
+    })
+        .refine(notBlank.check, notBlank.error)
+        .refine(limited(limits).check, limited(limits).error);
 
 /**
  * Which of an account's statuses to give. Verso has no media yet, so asking only for statuses with
@@ -180,6 +194,8 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 spoilerText: body.spoiler_text,
                 sensitive: body.sensitive,
                 language: body.language || undefined,
+                mediaIds: body.media_ids,
+                mediaChanges: body.media_attributes,
             });
             if (note === undefined) throw new NotFound();
 

@@ -55,6 +55,9 @@ export type NoteTagsTable = {
     name: string;
 };
 
+/** A file a note had attached before an edit. */
+export type VersionMedia = { readonly id: string; readonly description: string | null };
+
 /** What a note said before an edit, as its edit history shows it. */
 export type NoteVersionsTable = {
     /** Orders a note's versions, oldest first. */
@@ -63,6 +66,8 @@ export type NoteVersionsTable = {
     content_html: string;
     spoiler_text: string;
     sensitive: boolean;
+    /** The files it had attached, in order, with their descriptions then. */
+    media: Generated<VersionMedia[]>;
     /** When the note came to say this: when it was made, or the edit before. */
     created_at: Date;
 };

@@ -37,6 +37,16 @@ export const insertAttachments = async (
         .execute();
 };
 
+/** Detaches every file attached to the note `noteId`. */
+export const deleteAttachments = async (ctx: Context, noteId: string): Promise<void> => {
+    await ctx.db.deleteFrom("note_media").where("note_id", "=", noteId).execute();
+};
+
+/** The files of `ids` that exist, in no order. */
+export const findMediaRows = async (ctx: Context, ids: readonly string[]): Promise<MediaRow[]> =>
+    ids.length === 0 ? [] : await ctx.db.selectFrom("media").selectAll().where("id", "in", ids)
+        .execute();
+
 /** The files attached to each of `noteIds`, in order, by note. */
 export const attachmentsOf = async (
     ctx: Context,

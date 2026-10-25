@@ -8,6 +8,7 @@ import { Limits } from "../kernel/config.ts";
 import { noteRoutes } from "../notes/routes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
+import { findMedia } from "./media.ts";
 import { upload } from "./uploads.ts";
 
 const png = new Uint8Array(encode({
@@ -17,6 +18,12 @@ const png = new Uint8Array(encode({
     channels: 4,
 }));
 
+type Attachment = { id: string; description: string | null };
+
+/** A file's id, and its description, if it has one. */
+const described = (media: Attachment) =>
+    media.description === null ? media.id : `${media.id}: ${media.description}`;
+
 const zip = (n: number) => new Uint8Array([0x50, 0x4b, 0x03, 0x04, n]);
 
 const open = async (limits = Limits.parse({})) => {
@@ -25,9 +32,9 @@ const open = async (limits = Limits.parse({})) => {
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
 
     /** Posts a status as alice, in JSON, or as a form if `body` is a string. */
-    const post = async (body: Record<string, unknown> | string) => {
-        const response = await app.request("/api/v1/statuses", {
-            method: "POST",
+    const post = async (body: Record<string, unknown> | string, method = "POST", path = "") => {
+        const response = await app.request(`/api/v1/statuses${path}`, {
+            method,
             headers: {
                 authorization: `Bearer ${await tokenFor(test.ctx, "alice")}`,
                 "content-type": typeof body === "string"
@@ -46,7 +53,21 @@ const open = async (limits = Limits.parse({})) => {
 
     const notes = async () => (await test.ctx.db.selectFrom("notes").select("id").execute()).length;
 
-    return { ...test, app, post, uploaded, notes };
+    /** Edits alice's status `id`, as {@link post} posts one. */
+    const edit = (id: string, body: Record<string, unknown> | string) =>
+        post(body, "PUT", `/${id}`);
+
+    /** The ids of the files each version of the status `id` had, oldest first. */
+    const history = async (id: string) => {
+        const response = await app.request(`/api/v1/statuses/${id}/history`, {
+            headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` },
+        });
+        const versions: { media_attachments: Attachment[] }[] = await response.json();
+
+        return versions.map((version) => version.media_attachments.map(described));
+    };
+
+    return { ...test, app, post, edit, history, uploaded, notes };
 };
 
 Deno.test("files are attached in the order given, and shown with the status", async () => {
@@ -105,4 +126,95 @@ Deno.test("a status has at most as many files as configured, and isn't blank wit
     const two = await test.post(`media_ids[]=${b}&media_ids[]=${b}`);
     assertEquals([one.status, one.body.media_attachments.length], [200, 1]);
     assertEquals([two.status, two.body.media_attachments.length], [200, 1]);
+});
+
+Deno.test("an edit attaches files in place of the status's, and its history keeps both", async () => {
+    await using test = await open();
+    const [a, b, c] = [
+        await test.uploaded(zip(1)),
+        await test.uploaded(zip(2)),
+        await test.uploaded(zip(3)),
+    ];
+    const { body } = await test.post({ status: "Hi", media_ids: [a, b] });
+
+    // Given as they are, they are left as they were, and the status isn't edited.
+    await test.edit(body.id, { status: "Hi", media_ids: [a, b, a] });
+    assertEquals(await test.history(body.id), [[a, b]]);
+
+    const edited = await test.edit(body.id, { status: "Hi", media_ids: [c, b] });
+
+    assertEquals(edited.status, 200);
+    assertEquals(edited.body.media_attachments.map(described), [c, b]);
+    assertEquals(await test.history(body.id), [[a, b], [c, b]]);
+
+    // Files are enough, without text.
+    assertEquals((await test.edit(body.id, { status: "", media_ids: [b] })).status, 200);
+
+    // What the edit removed can be attached again.
+    assertEquals((await test.post({ status: "Again", media_ids: [a] })).status, 200);
+});
+
+Deno.test("an edit that leaves files out keeps them, and can describe them", async () => {
+    await using test = await open();
+    const [a, other] = [await test.uploaded(zip(1)), await test.uploaded(zip(2))];
+    const { body } = await test.post({ status: "Hi", media_ids: [a] });
+
+    const attributes = (...changes: Record<string, string>[]) =>
+        test.edit(body.id, { status: "Hi", media_attributes: changes });
+
+    // An empty description is none, as the file has.
+    await attributes({ id: a, description: "" });
+    assertEquals(await test.history(body.id), [[a]]);
+
+    const edited = await attributes(
+        { id: a, description: "Notes", focus: "0,1" },
+        // Only the files attached are changed.
+        { id: other, description: "Other" },
+    );
+
+    assertEquals(edited.body.media_attachments.map(described), [`${a}: Notes`]);
+    assertEquals(edited.body.media_attachments[0].meta, { focus: { x: 0, y: 1 } });
+    assertEquals((await findMedia(test.ctx, other))?.description, null);
+    assertEquals(await test.history(body.id), [[a], [`${a}: Notes`]]);
+
+    // Described as they are, they are left as they were, and the status isn't edited again.
+    await attributes({ id: a, description: "Notes", focus: "0,1" }, {
+        id: other,
+        description: "Other",
+    });
+    assertEquals((await test.history(body.id)).length, 2);
+
+    // Moving the focus on either axis is an edit.
+    await attributes({ id: a, focus: "0,0.5" });
+    await attributes({ id: a, focus: "1,0.5" });
+    assertEquals((await test.history(body.id)).length, 4);
+
+    // Forms give changes by index.
+    const form = await test.edit(
+        body.id,
+        `status=Hi&media_attributes[0][id]=${a}&media_attributes[0][description]=Mine`,
+    );
+    assertEquals(form.body.media_attachments.map(described), [`${a}: Mine`]);
+});
+
+Deno.test("an edit is held to what posting is, and changes nothing if refused", async () => {
+    await using test = await open(Limits.parse({ attachments: 1 }));
+    const a = await test.uploaded(zip(1));
+    const bobs = await test.uploaded(zip(2), "bob");
+    const { body } = await test.post({ status: "Hi", media_ids: [a] });
+
+    const refused = await test.edit(body.id, { status: "Bye", media_ids: [bobs] });
+    assertEquals([refused.status, refused.body.error_description], [
+        422,
+        `Media not found: ${bobs}`,
+    ]);
+    assertEquals((await test.edit(body.id, { status: "Bye", media_ids: [a, bobs] })).body.details, {
+        "body.media_ids": ["At most 1 files can be attached"],
+    });
+    assertEquals((await test.edit(body.id, { status: " " })).body.details, {
+        "body.status": ["Can't be blank without attachments"],
+    });
+
+    const fetched = await (await test.app.request(`/api/v1/statuses/${body.id}`)).json();
+    assertEquals([fetched.content, fetched.media_attachments.map(described)], ["<p>Hi</p>", [a]]);
 });
