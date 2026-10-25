@@ -4,22 +4,15 @@
  * @see https://versia.pub/signatures
  * @module
  */
-import type { Context } from "../kernel/context.ts";
-
-/** The key to sign as this instance with, and its public half as InstanceMetadata shows it. */
-export type InstanceKey = {
-    readonly privateKey: CryptoKey;
-    /** SPKI, in base64. */
-    readonly publicKey: string;
-};
+import type { Context, InstanceKey } from "../kernel/context.ts";
 
 /** A private key, as kept, for signing. Importing one takes microseconds, so it isn't kept. */
 const importPrivateKey = (pkcs8: string) =>
     crypto.subtle.importKey("pkcs8", Uint8Array.fromBase64(pkcs8), "Ed25519", false, ["sign"]);
 
 /**
- * The current key: the newest. It is read through `ctx.db`, so it also works in a transaction,
- * and a rotated key is used from the next request on.
+ * The current key: the newest, as the database has it now. It is read through `ctx.db`, so it
+ * also works in a transaction. `ctx.federation.instanceKey` keeps it for a while.
  */
 export const instanceKey = async (ctx: Context): Promise<InstanceKey> => {
     const row = await ctx.db.selectFrom("instance_keys")
@@ -67,13 +60,18 @@ export const createInstanceKey = async (
  * new public key. The old pair is deleted, so it can't sign anything more. Other instances fetch
  * the new public key when a signature from this one stops verifying.
  */
-export const rotateInstanceKey = (ctx: Context): Promise<string> =>
-    ctx.transaction(async (tx) => {
+export const rotateInstanceKey = async (ctx: Context): Promise<string> => {
+    const publicKey = await ctx.transaction(async (tx) => {
         const id = await createInstanceKey(tx);
         await tx.db.deleteFrom("instance_keys").where("id", "!=", id).execute();
 
         return (await instanceKey(tx)).publicKey;
     });
+    // Once it is committed, so the old key isn't read again in the meantime.
+    ctx.federation.forget();
+
+    return publicKey;
+};
 
 /** Makes the instance's first key pair, unless it has one. Returns whether it made one. */
 export const ensureInstanceKey = async (

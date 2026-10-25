@@ -1,10 +1,16 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
-import { blockDomain, domainBlocks, listBlockedDomains, unblockDomain } from "./domain_blocks.ts";
+import {
+    blockDomain,
+    blockedDomainNames,
+    domainBlocks,
+    listBlockedDomains,
+    unblockDomain,
+} from "./domain_blocks.ts";
 
 Deno.test("a blocked domain is blocked with its subdomains, but not its parents", async () => {
     await using test = await createTestContext();
-    const isBlocked = domainBlocks(["config.example"]);
+    const isBlocked = domainBlocks(["config.example"], blockedDomainNames);
     await blockDomain(test.ctx, "evil.example");
 
     const blocked = async (domain: string) => await isBlocked(test.ctx, domain);
@@ -20,7 +26,7 @@ Deno.test("a blocked domain is blocked with its subdomains, but not its parents"
 
 Deno.test("a domain is blocked once, with its first reason, and unblocked once", async () => {
     await using test = await createTestContext();
-    const isBlocked = domainBlocks([]);
+    const isBlocked = domainBlocks([], blockedDomainNames);
 
     const domains = async () =>
         (await listBlockedDomains(test.ctx)).map((block) => [block.domain, block.reason]);
@@ -34,4 +40,25 @@ Deno.test("a domain is blocked once, with its first reason, and unblocked once",
     assertEquals(await unblockDomain(test.ctx, "evil.example"), false);
     assertEquals(await isBlocked(test.ctx, "evil.example"), false);
     assertEquals(await domains(), [["bad.example", ""]]);
+});
+
+Deno.test("blocks made here apply at once, and ones made elsewhere within a minute", async () => {
+    await using test = await createTestContext();
+    const isBlocked = (domain: string) => test.ctx.federation.isBlocked(test.ctx, domain);
+    assertEquals(await isBlocked("evil.example"), false);
+
+    await blockDomain(test.ctx, "evil.example");
+    assertEquals(await isBlocked("evil.example"), true);
+
+    // As the CLI blocks one, from a process of its own.
+    await test.ctx.db.insertInto("domain_blocks")
+        .values({ domain: "bad.example", reason: "", created_at: test.clock.now() })
+        .execute();
+    test.clock.advance(60_000 - 1);
+    assertEquals(await isBlocked("bad.example"), false);
+    test.clock.advance(1);
+    assertEquals(await isBlocked("bad.example"), true);
+
+    await unblockDomain(test.ctx, "evil.example");
+    assertEquals(await isBlocked("evil.example"), false);
 });

@@ -65,7 +65,7 @@ export const signReply = async (
             pathname: new URL(c.req.url).pathname,
             body: new Uint8Array(await response.clone().arrayBuffer()),
         },
-        await ctx.federation.signingKey(ctx),
+        (await ctx.federation.instanceKey(ctx)).privateKey,
         ctx.urls.domain,
         ctx.clock.now(),
     );

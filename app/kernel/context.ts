@@ -52,14 +52,26 @@ export type Resolver = (
  * how to find what they have.
  */
 export type Federation = {
-    /** This instance's private key. */
-    readonly signingKey: (ctx: Context) => Promise<CryptoKey>;
+    /** This instance's current key pair, kept for a minute at most. */
+    readonly instanceKey: (ctx: Context) => Promise<InstanceKey>;
     /** One store for the whole process, so each key is fetched once. */
     readonly remoteKeys: KeyStore;
-    /** Whether Verso doesn't federate with an instance, by its domain. */
+    /**
+     * Whether Verso doesn't federate with an instance, by its domain. The blocks are kept for a
+     * minute at most, so one made by another process, such as the CLI, applies within a minute.
+     */
     readonly isBlocked: (ctx: Context, domain: string) => Promise<boolean>;
     /** One for the whole process, so fetches under way are shared. */
     readonly resolve: Resolver;
+    /** Forgets the key and the blocks it keeps, after this process changed them. */
+    readonly forget: () => void;
+};
+
+/** A key to sign as this instance with, and its public half as InstanceMetadata shows it. */
+export type InstanceKey = {
+    readonly privateKey: CryptoKey;
+    /** SPKI, in base64. */
+    readonly publicKey: string;
 };
 
 /**

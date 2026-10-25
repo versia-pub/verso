@@ -1,7 +1,8 @@
 import { assert, assertEquals, assertNotEquals, assertRejects } from "@std/assert";
 import { importPublicKey, sign, verify } from "@versia/protocol";
 import { createTestContext } from "../testing/context.ts";
-import { createInstanceKey, ensureInstanceKey, type InstanceKey, instanceKey } from "./keys.ts";
+import type { InstanceKey } from "../kernel/context.ts";
+import { createInstanceKey, ensureInstanceKey, instanceKey, rotateInstanceKey } from "./keys.ts";
 
 const message = { method: "GET", pathname: "/.versia/v0.6/instance", body: new Uint8Array() };
 const now = new Date("2026-01-01T00:00:00Z");
@@ -54,4 +55,23 @@ Deno.test("without a key, using it says how to make one", async () => {
 
     const error = await assertRejects(() => instanceKey(test.ctx), Error);
     assert(error.message.includes("verso migrate"));
+});
+
+Deno.test("the key is kept for a minute, but a rotation here applies at once", async () => {
+    await using test = await createTestContext();
+    const kept = () => test.ctx.federation.instanceKey(test.ctx);
+    const first = await kept();
+
+    // As the CLI rotates it, from a process of its own.
+    test.clock.advance(1000);
+    await createInstanceKey(test.ctx);
+    test.clock.advance(60_000 - 1000 - 1);
+    assertEquals((await kept()).publicKey, first.publicKey);
+    test.clock.advance(1);
+    const second = await kept();
+    assertNotEquals(second.publicKey, first.publicKey);
+
+    test.clock.advance(1000);
+    const rotated = await rotateInstanceKey(test.ctx);
+    assertEquals((await kept()).publicKey, rotated);
 });

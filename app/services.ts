@@ -10,8 +10,9 @@ import { uncountLikesOf } from "./interactions/likes.ts";
 import { reactionDeliveries } from "./interactions/reaction_federation.ts";
 import { shareDeliveries } from "./interactions/share_federation.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
+import { cached } from "./kernel/cache.ts";
 import type { Federation, Subscriber } from "./kernel/context.ts";
-import { domainBlocks } from "./moderation/domain_blocks.ts";
+import { blockedDomainNames, domainBlocks } from "./moderation/domain_blocks.ts";
 import { noteDeliveries } from "./notes/federation.ts";
 import { uncountNotesOf } from "./notes/notes.ts";
 import { registry } from "./registry.ts";
@@ -37,13 +38,25 @@ export const subscribers: readonly Subscriber[] = [
     uncountLikesOf,
 ];
 
+/** How long the instance's key and the blocked domains are kept before they are read again. */
+const keptMs = 60_000;
+
 /**
  * Federation as Verso's modules provide it, with `blockedDomains` as config blocks them. Make one
  * for each process, so its keys are fetched once, and fetches under way are shared.
  */
-export const federation = (blockedDomains: readonly string[] = []): Federation => ({
-    signingKey: async (ctx) => (await instanceKey(ctx)).privateKey,
-    remoteKeys: remoteKeys(),
-    isBlocked: domainBlocks(blockedDomains),
-    resolve: createResolver(registry),
-});
+export const federation = (blockedDomains: readonly string[] = []): Federation => {
+    const key = cached(keptMs, instanceKey);
+    const blocked = cached(keptMs, blockedDomainNames);
+
+    return {
+        instanceKey: key.get,
+        remoteKeys: remoteKeys(),
+        isBlocked: domainBlocks(blockedDomains, blocked.get),
+        resolve: createResolver(registry),
+        forget: () => {
+            key.clear();
+            blocked.clear();
+        },
+    };
+};

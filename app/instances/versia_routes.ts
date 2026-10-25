@@ -4,7 +4,6 @@ import denoConfig from "../../deno.json" with { type: "json" };
 import { firstMigratedAt } from "../db/migrate.ts";
 import { defineRoute, type Route, versiaJson } from "../http/route.ts";
 import type { Config } from "../kernel/config.ts";
-import { instanceKey } from "./keys.ts";
 
 /**
  * How other instances find out about this one: which versions of Versia it speaks, then what it
@@ -43,7 +42,10 @@ export const versiaInstanceRoutes = (
                 compatibility: { versions: ["0.6.0"], extensions: [...extensions] },
                 description: instance.description === "" ? undefined : instance.description,
                 domain,
-                public_key: { algorithm: "ed25519", key: (await instanceKey(ctx)).publicKey },
+                public_key: {
+                    algorithm: "ed25519",
+                    key: (await ctx.federation.instanceKey(ctx)).publicKey,
+                },
             };
 
             return { status: 200, body: metadata };

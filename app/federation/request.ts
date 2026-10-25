@@ -105,7 +105,7 @@ export const sendSigned = async (
 ): Promise<FederationReply> => {
     const signature = await sign(
         { method, pathname: url.pathname, body },
-        await ctx.federation.signingKey(ctx),
+        (await ctx.federation.instanceKey(ctx)).privateKey,
         ctx.urls.domain,
         ctx.clock.now(),
     );

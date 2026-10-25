@@ -30,13 +30,14 @@ const open = async () => {
         settings: defaultSettings,
         // These tests don't federate.
         federation: {
-            signingKey: () => Promise.reject(new Error("Unused")),
+            instanceKey: () => Promise.reject(new Error("Unused")),
             remoteKeys: {
                 get: () => Promise.resolve(undefined),
                 refresh: () => Promise.resolve(undefined),
             },
             isBlocked: () => Promise.resolve(false),
             resolve: () => Promise.resolve(undefined),
+            forget: () => {},
         },
         subscribers: [],
         db,

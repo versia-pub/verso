@@ -83,7 +83,7 @@ Deno.test("only a request that fails to get there counts as unreachable", async 
     // A bug in Verso, before anything is sent, is not the instance's doing.
     const broken = {
         ...a,
-        federation: { ...a.federation, signingKey: () => Promise.reject(new TypeError("A bug")) },
+        federation: { ...a.federation, instanceKey: () => Promise.reject(new TypeError("A bug")) },
     };
     await assertRejects(() => fetchSigned(broken, userUrl("down.test", "bob")), TypeError, "A bug");
 });

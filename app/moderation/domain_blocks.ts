@@ -15,7 +15,7 @@ const domainAndParents = (domain: string) =>
 
 /**
  * Blocks a domain, saying why, unless it is already. Returns whether it wasn't; one that was keeps
- * its reason.
+ * its reason. Other processes apply it within a minute.
  */
 export const blockDomain = async (
     ctx: Context,
@@ -27,16 +27,21 @@ export const blockDomain = async (
         .onConflict((conflict) => conflict.doNothing())
         .returning("domain")
         .executeTakeFirst();
+    ctx.federation.forget();
 
     return inserted !== undefined;
 };
 
-/** Unblocks a domain blocked with `blockDomain`. Returns whether it was. */
+/**
+ * Unblocks a domain blocked with `blockDomain`. Returns whether it was. Other processes apply it
+ * within a minute.
+ */
 export const unblockDomain = async (ctx: Context, domain: string): Promise<boolean> => {
     const deleted = await ctx.db.deleteFrom("domain_blocks")
         .where("domain", "=", domain)
         .returning("domain")
         .executeTakeFirst();
+    ctx.federation.forget();
 
     return deleted !== undefined;
 };
@@ -52,14 +57,24 @@ export const blockedByConfig = (configured: readonly string[], domain: string): 
 /** Whether an instance is blocked, by config or by an admin. */
 export type IsBlocked = (ctx: Context, domain: string) => Promise<boolean>;
 
-/** Checks domains against the ones config blocks, and the ones admins blocked. */
-export const domainBlocks = (configured: readonly string[]): IsBlocked => async (ctx, domain) => {
+/** The domains admins blocked, which are few. */
+export const blockedDomainNames = async (ctx: Context): Promise<ReadonlySet<string>> =>
+    new Set(
+        (await ctx.db.selectFrom("domain_blocks").select("domain").execute())
+            .map((row) => row.domain),
+    );
+
+/**
+ * Checks domains against the ones config blocks, and the ones admins blocked, as `blocked` gives
+ * them.
+ */
+export const domainBlocks = (
+    configured: readonly string[],
+    blocked: (ctx: Context) => Promise<ReadonlySet<string>>,
+): IsBlocked =>
+async (ctx, domain) => {
     if (blockedByConfig(configured, domain)) return true;
 
-    const blocked = await ctx.db.selectFrom("domain_blocks")
-        .select("domain")
-        .where("domain", "in", domainAndParents(domain.toLowerCase()))
-        .executeTakeFirst();
-
-    return blocked !== undefined;
+    const names = await blocked(ctx);
+    return domainAndParents(domain.toLowerCase()).some((candidate) => names.has(candidate));
 };

@@ -6,7 +6,7 @@ import { remoteKeys } from "../instances/remote_keys.ts";
 import { type KeyPair, keyPair, metadataServer } from "../instances/testing.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
-import { blockDomain, domainBlocks } from "../moderation/domain_blocks.ts";
+import { blockDomain, blockedDomainNames, domainBlocks } from "../moderation/domain_blocks.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
@@ -64,7 +64,7 @@ const open = async (options: { silentBlocks?: boolean; rateLimits?: RateLimits }
         transport,
         federation: {
             remoteKeys: remoteKeys({ refetchAfterMs: 1000 }),
-            isBlocked: domainBlocks(["blocked.example"]),
+            isBlocked: domainBlocks(["blocked.example"], blockedDomainNames),
         },
     });
     const pair = await keyPair();
