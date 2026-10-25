@@ -1,6 +1,7 @@
 import { assertEquals, assertExists, assertRejects } from "@std/assert";
 import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
+import { recordReached, recordUnreachable } from "../instances/reachability.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context, DomainEvent, Subscriber } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
@@ -80,6 +81,28 @@ Deno.test("an entity is queued once for each instance its recipients are on", as
         { group_key: "b.example", max_attempts: 100 },
         { group_key: "c.example", max_attempts: 100 },
     ]);
+});
+
+Deno.test("an instance unreached for as long as settings say is sent nothing, until it answers", async () => {
+    await using test = await open();
+    await recordUnreachable(test.ctx, "b.example");
+    test.clock.advance(7 * 24 * 60 * 60_000 - 1);
+    await recordUnreachable(test.ctx, "b.example");
+
+    await test.send(["b1", "c1"]);
+    assertEquals((await test.queued()).map((job) => job.domain), ["b.example", "c.example"]);
+
+    test.clock.advance(1);
+    await test.send(["b1", "c1"]);
+    assertEquals((await test.queued()).map((job) => job.domain), [
+        "b.example",
+        "c.example",
+        "c.example",
+    ]);
+
+    await recordReached(test.ctx, "b.example");
+    await test.send(["b1"]);
+    assertEquals((await test.queued()).filter((job) => job.domain === "b.example").length, 2);
 });
 
 Deno.test("nothing is queued without remote recipients", async () => {

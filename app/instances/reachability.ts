@@ -39,15 +39,18 @@ export const parkedUntil = async (ctx: Context, domain: string): Promise<Date | 
 };
 
 /**
- * Notes that `domain` couldn't be reached, again. Returns when it may next be tried, if it failed
- * often enough to be parked.
+ * Notes that `domain` couldn't be reached, again, and since when it can't be if it could before.
+ * Returns when it may next be tried, if it failed often enough to be parked.
  */
 export const recordUnreachable = async (
     ctx: Context,
     domain: string,
 ): Promise<Date | undefined> => {
     const row = await ctx.db.updateTable("instances")
-        .set((eb) => ({ failures: eb("failures", "+", 1) }))
+        .set((eb) => ({
+            failures: eb("failures", "+", 1),
+            unreachable_since: eb.fn.coalesce("unreachable_since", eb.val(ctx.clock.now())),
+        }))
         .where("domain", "=", domain)
         .returning("failures")
         .executeTakeFirst();
@@ -60,10 +63,12 @@ export const recordUnreachable = async (
     return parkedUntil;
 };
 
-/** Notes that `domain` answered. Returns whether it had been failing, or parked. */
+/**
+ * Notes that `domain` answered, or sent something. Returns whether it had been failing, or parked.
+ */
 export const recordReached = async (ctx: Context, domain: string): Promise<boolean> => {
     const row = await ctx.db.updateTable("instances")
-        .set({ failures: 0, parked_until: null })
+        .set({ failures: 0, parked_until: null, unreachable_since: null })
         .where("domain", "=", domain)
         .where((eb) => eb.or([eb("failures", ">", 0), eb("parked_until", "is not", null)]))
         .returning("id")

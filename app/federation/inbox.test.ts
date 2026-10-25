@@ -1,4 +1,7 @@
 import { assertEquals } from "@std/assert";
+import { recordUnreachable } from "../instances/reachability.ts";
+import { postponeGroup } from "../jobs/queue.ts";
+import { deliverQueue } from "./deliver.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
 
@@ -54,6 +57,21 @@ Deno.test("an entity is queued as it was sent, and answered with an empty 202", 
         body,
     });
     assertEquals(job.keep_until, new Date(test.network.clock.now().getTime() + 10 * 60_000));
+});
+
+Deno.test("an instance that sends something can be reached again", async () => {
+    await using test = await open();
+    await test.send(JSON.stringify(user));
+    for (let n = 0; n < 5; n++) await recordUnreachable(test.a, "evil.test");
+    await postponeGroup(test.a, deliverQueue, "evil.test", new Date(Date.UTC(2100, 0)));
+
+    await test.send(JSON.stringify({ ...user, username: "alice2" }));
+
+    const instance = await test.a.db.selectFrom("instances")
+        .select(["failures", "parked_until", "unreachable_since"])
+        .where("domain", "=", "evil.test").executeTakeFirstOrThrow();
+    assertEquals(instance, { failures: 0, parked_until: null, unreachable_since: null });
+    assertEquals(await test.a.db.selectFrom("job_pauses").selectAll().execute(), []);
 });
 
 Deno.test("the same body from the same instance is queued once", async () => {

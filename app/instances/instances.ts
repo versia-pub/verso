@@ -32,3 +32,27 @@ export const domainsOf = async (
 
     return rows.map((row) => row.domain);
 };
+
+/**
+ * The domains of the instances `ids` that are on `protocol`, sorted, but for those that couldn't
+ * be reached since `before` or earlier.
+ */
+export const reachableDomainsOf = async (
+    ctx: Context,
+    ids: readonly string[],
+    protocol: InstancesTable["protocol"],
+    before: Date,
+): Promise<string[]> => {
+    if (ids.length === 0) return [];
+
+    const rows = await ctx.db.selectFrom("instances").select("domain")
+        .where("id", "in", ids)
+        .where("protocol", "=", protocol)
+        .where((eb) =>
+            eb.or([eb("unreachable_since", "is", null), eb("unreachable_since", ">", before)])
+        )
+        .orderBy("domain")
+        .execute();
+
+    return rows.map((row) => row.domain);
+};

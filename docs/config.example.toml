@@ -83,6 +83,9 @@ roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
 # blocked_domains = []
 # Answers blocked instances as if nothing were wrong, rather than telling them they're blocked.
 # silent_blocks = false
+# How many days an instance can go unreached before Verso stops sending it anything, until it
+# hears from it again.
+# unreachable_days = 7
 
 [federation.rate_limit]
 # How many requests each instance may send in a window, apart from clients' limit. Requests

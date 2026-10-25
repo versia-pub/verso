@@ -21,6 +21,8 @@ export type InstancesTable = {
     failures: Generated<number>;
     /** While set, deliveries wait for it to pass, when one of them probes whether it is back. */
     parked_until: Date | null;
+    /** Since when it couldn't be reached, if it can't now. Nothing is sent to it after a while. */
+    unreachable_since: Date | null;
     /**
      * Whether it said it takes instance messages, when its key was last fetched.
      * @see https://versia.pub/extensions/instance-messaging

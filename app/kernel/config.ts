@@ -285,6 +285,11 @@ export const Config = z.strictObject({
          */
         silent_blocks: z.boolean().default(false),
         /**
+         * How many days an instance can go unreached before Verso stops sending it anything, until
+         * it hears from it again. A week by default, as on Mastodon.
+         */
+        unreachable_days: z.int().min(1).default(7),
+        /**
          * How many requests each instance may send in a window of time, counted by who signed
          * them, apart from clients' limit. Requests that aren't validly signed count against their
          * client instead.

@@ -31,6 +31,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 allow_internal_addresses: false,
                 blocked_domains: [],
                 silent_blocks: false,
+                unreachable_days: 7,
                 rate_limit: { limit: 3000, window_seconds: 300 },
             },
             instance: { description: "", contact: {}, rules: [] },
@@ -134,6 +135,9 @@ fields = 4
 anonymous = []
 default = ["owner:account"]
 
+[federation]
+unreachable_days = 3
+
 [jobs]
 dead_letter_days = 14
 
@@ -188,6 +192,7 @@ level = "debug"
                 allow_internal_addresses: false,
                 blocked_domains: [],
                 silent_blocks: false,
+                unreachable_days: 3,
                 rate_limit: { limit: 3000, window_seconds: 300 },
             },
             instance: {

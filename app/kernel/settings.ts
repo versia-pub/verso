@@ -9,12 +9,15 @@ const dayMs = 24 * 60 * 60 * 1000;
 export type Settings = {
     /** How long a job that failed for good is kept. */
     readonly deadLetterMs: number;
+    /** How long an instance can go unreached before nothing more is sent to it. */
+    readonly unreachableMs: number;
 };
 
 /** The settings `config` gives. */
-export const settingsOf = (config: Pick<Config, "jobs">): Settings => ({
+export const settingsOf = (config: Pick<Config, "jobs" | "federation">): Settings => ({
     deadLetterMs: config.jobs.dead_letter_days * dayMs,
+    unreachableMs: config.federation.unreachable_days * dayMs,
 });
 
 /** The settings an instance has when its config leaves them out. */
-export const defaultSettings: Settings = { deadLetterMs: 30 * dayMs };
+export const defaultSettings: Settings = { deadLetterMs: 30 * dayMs, unreachableMs: 7 * dayMs };

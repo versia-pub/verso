@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import { instancesHosting } from "../accounts/account_queries.ts";
-import { domainsOf } from "../instances/instances.ts";
+import { reachableDomainsOf } from "../instances/instances.ts";
 import { enqueueAll } from "../jobs/queue.ts";
 import type { Context } from "../kernel/context.ts";
 
@@ -25,8 +25,9 @@ export type DeliverJob = z.infer<typeof DeliverJob>;
 const maxAttempts = 100;
 
 /**
- * Queues `entity` for each of `instanceIds` that is a Versia instance, except blocked ones, grouped
- * by instance so each can be limited.
+ * Queues `entity` for each of `instanceIds` that is a Versia instance, grouped by instance so each
+ * can be limited, except blocked ones, and ones that couldn't be reached for as long as settings
+ * say, as on Mastodon, until they are heard from again.
  */
 export const queueDeliveriesTo = async (
     ctx: Context,
@@ -36,7 +37,8 @@ export const queueDeliveriesTo = async (
     const body = JSON.stringify(entity);
 
     const jobs = [];
-    for (const domain of await domainsOf(ctx, instanceIds, "versia")) {
+    const before = new Date(ctx.clock.now().getTime() - ctx.settings.unreachableMs);
+    for (const domain of await reachableDomainsOf(ctx, instanceIds, "versia", before)) {
         if (await ctx.federation.isBlocked(ctx, domain)) continue;
 
         const payload: DeliverJob = { domain, body };

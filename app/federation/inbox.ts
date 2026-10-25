@@ -8,8 +8,10 @@ import { parseJson } from "@versia/protocol";
 import { z } from "zod";
 import { BadRequest, BadSignature, ValidationFailed } from "../http/errors.ts";
 import { defineRoute, NoBody, type Route } from "../http/route.ts";
-import { enqueue } from "../jobs/queue.ts";
+import { recordReached } from "../instances/reachability.ts";
+import { enqueue, resumeGroup } from "../jobs/queue.ts";
 import type { Context } from "../kernel/context.ts";
+import { deliverQueue } from "./deliver.ts";
 import type { EntityType, Registry } from "./registry.ts";
 
 export const inboxQueue = "inbox";
@@ -74,7 +76,7 @@ export const checkEntity = (registry: Registry, body: Uint8Array): Checked | und
 
 /**
  * Checks an entity another instance sent and queues it for the inbox worker, unless it was
- * received already or is dropped.
+ * received already or is dropped. An instance that sends one is reachable again.
  */
 export const queueEntity = async (
     ctx: Context,
@@ -83,6 +85,9 @@ export const queueEntity = async (
     body: Uint8Array<ArrayBuffer>,
 ): Promise<void> => {
     if (!checkEntity(registry, body)) return;
+
+    // It is up, so what is queued for it can go, and what is made from now on.
+    if (await recordReached(ctx, signer)) await resumeGroup(ctx, deliverQueue, signer);
 
     const now = ctx.clock.now();
     const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", body));
