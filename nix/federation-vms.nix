@@ -64,7 +64,8 @@ let
     secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
   };
 
-  # Garage on b.test, with a bucket Verso keeps its uploads in, under a prefix.
+  # Garage on b.test, with a bucket Verso keeps its uploads in, under a prefix, which Garage also
+  # serves as a website, at the bucket's public URL.
   bucket =
     { config, ... }:
     {
@@ -78,6 +79,10 @@ let
           s3_api = {
             api_bind_addr = "127.0.0.1:3900";
             s3_region = "garage";
+          };
+          s3_web = {
+            bind_addr = "127.0.0.1:3902";
+            root_domain = ".web.garage";
           };
         };
       };
@@ -100,6 +105,7 @@ let
           garage key import --yes -n verso ${s3Key.id} ${s3Key.secret}
           garage bucket create media
           garage bucket allow --read --write media --key verso
+          garage bucket website --allow media
         '';
       };
 
@@ -111,10 +117,12 @@ let
           prefix = "verso/media";
           access_key_id = s3Key.id;
           secret_access_key = "\${file:/run/credentials/verso.service/s3}";
+          public_url = "http://media.web.garage:3902/verso/media";
         };
         credentials.s3 = "/etc/verso-s3";
       };
       environment.etc.verso-s3.text = s3Key.secret;
+      networking.hosts."127.0.0.1" = [ "media.web.garage" ];
       environment.systemPackages = [ config.services.garage.package ];
     };
 in
@@ -168,6 +176,21 @@ pkgs.testers.runNixOSTest {
 
     user(a, "alice", "alice-token")
     user(b, "bea", "bea-token")
+
+    # bea uploads a file. b.test's bucket serves it, to be saved and cached for good, and b.test
+    # redirects there.
+    uploaded = json.loads(b.succeed(
+        "printf 'PK\\003\\004notes' > /tmp/notes.zip && "
+        "curl --fail-with-body --silent https://b.test/api/v2/media "
+        "--header 'authorization: Bearer bea-token' --form file=@/tmp/notes.zip"
+    ))
+    key = uploaded["url"].removeprefix("http://media.web.garage:3902/verso/media/")
+    assert len(key) == 64, f"b.test answered {uploaded!r}"
+    served = b.succeed(f"curl --fail --silent --dump-header - --output /dev/null {uploaded['url']}").lower()
+    assert "content-disposition: attachment" in served, served
+    assert "cache-control: public, max-age=31536000, immutable" in served, served
+    redirect = b.succeed(f"curl --silent --output /dev/null --write-out '%{{redirect_url}}' https://b.test/media/{key}")
+    assert redirect == uploaded["url"], f"b.test redirects to {redirect!r}"
 
     # b.test finds alice with WebFinger, and fetches her.
     found = api(b, "bea-token", "GET", "/api/v1/accounts/lookup?acct=alice@a.test")

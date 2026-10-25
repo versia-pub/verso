@@ -2,8 +2,9 @@ import type { MediaAttachment } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import type { MediaRow } from "./media.ts";
 
-/** Where Verso serves the local file kept under `key`. */
-export const fileUrl = (ctx: Context, key: string): string => ctx.urls.url`/media/${key}`;
+/** Where the local file kept under `key` is served: by the store, if it serves files, or Verso. */
+export const fileUrl = (ctx: Context, key: string): string =>
+    ctx.files.publicUrl?.(key) ?? ctx.urls.url`/media/${key}`;
 
 /** A size as Mastodon describes it, if it is known. */
 const dimensions = (width: number | null, height: number | null) =>

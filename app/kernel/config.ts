@@ -160,6 +160,11 @@ const S3Storage = z.strictObject({
     access_key_id: z.string().min(1),
     /** Keep it out of the config file with a reference, such as `${file:/run/secrets/s3}`. */
     secret_access_key: z.string().min(1),
+    /**
+     * Where the bucket's files are public, such as a CDN in front of it, each at
+     * `<public_url>/<key>`. Without it, Verso serves them.
+     */
+    public_url: z.url({ protocol: /^https?$/ }).optional(),
 });
 
 /**

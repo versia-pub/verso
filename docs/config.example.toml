@@ -33,6 +33,9 @@ storage = { filesystem = "/var/lib/verso/media" }
 # prefix = "verso/media"
 # access_key_id = "AKIAIOSFODNN7EXAMPLE"
 # secret_access_key = "${file:/run/secrets/s3}"
+# Where the bucket's files are public, such as a CDN in front of it, each at <public_url>/<key>,
+# with the prefix in it if the CDN needs it. Without it, Verso serves them.
+# public_url = "https://media.social.example"
 
 [http]
 # port = 8080

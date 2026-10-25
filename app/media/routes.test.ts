@@ -5,6 +5,7 @@ import { tokenFor } from "../auth/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
 import { MediaLimits } from "../kernel/config.ts";
+import { type FileStore, memoryFiles } from "../kernel/files.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -23,8 +24,8 @@ const png = (width: number, height: number) =>
 
 const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]);
 
-const open = async (limits = MediaLimits.parse({})) => {
-    const test = await createTestContext();
+const open = async (limits = MediaLimits.parse({}), files?: FileStore) => {
+    const test = await createTestContext({ files });
     const app = createTestApp(test.ctx, mediaRoutes(limits), { checkResponses: true });
     await createLocalAccount(test.ctx, "alice");
     await createLocalAccount(test.ctx, "bob");
@@ -70,7 +71,7 @@ const open = async (limits = MediaLimits.parse({})) => {
         };
     };
 
-    return { ...test, request, upload, download };
+    return { ...test, app, request, upload, download };
 };
 
 const sha256Of = async (bytes: Uint8Array<ArrayBuffer>) =>
@@ -237,4 +238,21 @@ Deno.test("only local files that are kept are served", async () => {
         const missing = await test.download(`https://social.example/media/${path}`);
         assertEquals([missing.status, missing.cache], [404, "no-store"], path);
     }
+});
+
+Deno.test("files a store serves itself are at its URL, which Verso's redirects to", async () => {
+    const files = { ...memoryFiles(), publicUrl: (key: string) => `https://cdn.test/${key}` };
+    await using test = await open(undefined, files);
+    const { body } = await test.upload(zip, "application/zip");
+    const key = await sha256Of(zip);
+
+    assertEquals(body.url, `https://cdn.test/${key}`);
+
+    const response = await test.app.request(`/media/${key}`);
+    assertEquals(response.status, 302);
+    assertEquals(response.headers.get("location"), `https://cdn.test/${key}`);
+    assertEquals(
+        (await test.download(`https://social.example/media/${"0".repeat(64)}`)).status,
+        404,
+    );
 });

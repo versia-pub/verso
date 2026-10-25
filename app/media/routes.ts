@@ -1,7 +1,7 @@
 import { MediaAttachment } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
-import { Binary, defineRoute, type Route } from "../http/route.ts";
+import { Binary, defineRoute, Redirect, type Route } from "../http/route.ts";
 import { Text } from "../http/schemas.ts";
 import type { MediaLimits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
@@ -141,15 +141,17 @@ export const mediaRoutes = (limits: MediaLimits): readonly Route[] => [
         summary: "A file someone uploaded, or its preview",
         description: "Files are kept under the SHA-256 of their bytes, so they never change. " +
             "Pictures are served as pictures; any other file is served for browsers to save, " +
-            "as `application/octet-stream`.",
+            "as `application/octet-stream`. Where the store serves files itself, such as " +
+            "through a CDN, this redirects there.",
         tags: ["media"],
         immutable: true,
         rateLimit: false,
         params: z.object({ key: z.string() }),
-        responses: { 200: Binary("application/octet-stream") },
+        responses: { 200: Binary("application/octet-stream"), 302: Redirect },
         handler: async (ctx, { params }) => {
             const file = await serveFile(ctx, params.key);
             if (file === undefined) throw new NotFound();
+            if ("location" in file) return { status: 302, location: file.location };
 
             return {
                 status: 200,

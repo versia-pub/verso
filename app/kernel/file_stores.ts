@@ -22,6 +22,7 @@ export const filesFor = (
             prefix: storage.s3.prefix,
             accessKeyId: storage.s3.access_key_id,
             secretAccessKey: storage.s3.secret_access_key,
+            publicUrl: storage.s3.public_url,
         },
         transport,
         clock,

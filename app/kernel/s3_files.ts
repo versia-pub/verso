@@ -13,7 +13,12 @@ export type S3Bucket = {
     readonly prefix?: string;
     readonly accessKeyId: string;
     readonly secretAccessKey: string;
+    /** Where the bucket's files are public, such as a CDN, each at `<publicUrl>/<key>`. */
+    readonly publicUrl?: string;
 };
+
+/** Files kept under their hash never change, so anything serving them may cache them for good. */
+const cacheControl = "public, max-age=31536000, immutable";
 
 /** What `check` writes, then removes. It isn't a file key, so no file can be kept under it. */
 const checkName = "verso-check";
@@ -57,7 +62,13 @@ export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): F
     ) => {
         const response = await send("PUT", name, {
             body: bytes,
-            headers: { "content-type": type, "x-amz-content-sha256": sha256 },
+            headers: {
+                "content-type": type,
+                "cache-control": cacheControl,
+                // Served from the bucket, a file that may not be shown is saved, as Verso serves it.
+                ...type === "application/octet-stream" && { "content-disposition": "attachment" },
+                "x-amz-content-sha256": sha256,
+            },
         });
         if (!response.ok) throw await failure(response, "PUT", name);
         await response.body?.cancel();
@@ -72,7 +83,10 @@ export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): F
         await response.body?.cancel();
     };
 
+    const publicUrl = bucket.publicUrl?.replace(/\/$/, "");
+
     return {
+        ...publicUrl !== undefined && { publicUrl: (key: string) => `${publicUrl}/${key}` },
         put: async (bytes, mediaType) => {
             const key = await fileKeyOf(bytes);
             await put(key, bytes, key, mediaType);

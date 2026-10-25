@@ -4636,7 +4636,7 @@
         "/media/{key}": {
             "get": {
                 "summary": "A file someone uploaded, or its preview",
-                "description": "Files are kept under the SHA-256 of their bytes, so they never change. Pictures are served as pictures; any other file is served for browsers to save, as `application/octet-stream`.",
+                "description": "Files are kept under the SHA-256 of their bytes, so they never change. Pictures are served as pictures; any other file is served for browsers to save, as `application/octet-stream`. Where the store serves files itself, such as through a CDN, this redirects there.",
                 "tags": [
                     "media"
                 ],
@@ -4655,6 +4655,17 @@
                         "description": "A file",
                         "content": {
                             "application/octet-stream": {}
+                        }
+                    },
+                    "302": {
+                        "description": "A redirect",
+                        "headers": {
+                            "location": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
                         }
                     }
                 }

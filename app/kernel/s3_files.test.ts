@@ -33,8 +33,27 @@ Deno.test("a file is an object named by its key, with its type, put signed", asy
     );
     assertEquals(
         authorization.split(", ")[1],
-        "SignedHeaders=host;x-amz-content-sha256;x-amz-date",
+        "SignedHeaders=cache-control;host;x-amz-content-sha256;x-amz-date",
     );
+    assertEquals(put.headers.get("cache-control"), "public, max-age=31536000, immutable");
+    assertEquals(put.headers.get("content-disposition"), null);
+});
+
+Deno.test("a file that may not be shown is put to be saved, if the bucket serves it", async () => {
+    const { transport, store } = open();
+
+    await store.put(bytes, "application/octet-stream");
+
+    assertEquals(transport.sent[0].headers.get("content-disposition"), "attachment");
+});
+
+Deno.test("a bucket with a public URL serves its files there", () => {
+    assertEquals(open().store.publicUrl, undefined);
+
+    for (const url of ["https://cdn.test/media", "https://cdn.test/media/"]) {
+        const { store } = open({ publicUrl: url });
+        assertEquals(store.publicUrl?.("ab"), "https://cdn.test/media/ab", url);
+    }
 });
 
 Deno.test("an endpoint with a path or a trailing slash has the bucket after it", async () => {

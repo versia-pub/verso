@@ -27,6 +27,7 @@ Deno.test("the configured store is the one files are kept in", async () => {
                 prefix: "verso",
                 access_key_id: fakeBucket.accessKeyId,
                 secret_access_key: fakeBucket.secretAccessKey,
+                public_url: "https://cdn.test",
             },
         },
         transport,
@@ -35,6 +36,7 @@ Deno.test("the configured store is the one files are kept in", async () => {
     const key = await store.put(bytes, "text/plain");
 
     assertEquals([...s3.objects.keys()], [`verso/${key}`]);
+    assertEquals(store.publicUrl?.(key), `https://cdn.test/${key}`);
     assertEquals(
         transport.sent[0].headers.get("authorization")?.split(", ")[0],
         "AWS4-HMAC-SHA256 Credential=GK0123/20260101/garage/s3/aws4_request",

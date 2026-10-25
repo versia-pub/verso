@@ -17,6 +17,11 @@ export type FileStore = {
      * starts rather than at the first upload.
      */
     readonly check: () => Promise<void>;
+    /**
+     * Where anyone may fetch the file kept under `key`, for a store that serves its files itself,
+     * such as a bucket behind a CDN. Without it, Verso serves them.
+     */
+    readonly publicUrl?: (key: string) => string;
 };
 
 /** Whether `key` is one a file could be kept under: a SHA-256, in lowercase hex. */

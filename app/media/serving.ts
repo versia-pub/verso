@@ -7,8 +7,8 @@ import type { Context } from "../kernel/context.ts";
 import { imageFormats } from "../kernel/images.ts";
 import { findServedFile } from "./upload_queries.ts";
 
-/** A kept file, with the type it is served as. */
-export type ServedFile = {
+/** A kept file, with the type it is served as, or where the store serves it. */
+export type ServedFile = { readonly location: string } | {
     readonly stream: ReadableStream<Uint8Array>;
     readonly mediaType: string;
     /** Whether browsers should save it rather than show it. */
@@ -21,8 +21,13 @@ export type ServedFile = {
  */
 export const serveFile = async (ctx: Context, key: string): Promise<ServedFile | undefined> => {
     const row = await findServedFile(ctx, key);
-    const stream = row && await ctx.files.get(key);
-    if (row === undefined || stream === undefined) return undefined;
+    if (row === undefined) return undefined;
+
+    const location = ctx.files.publicUrl?.(key);
+    if (location !== undefined) return { location };
+
+    const stream = await ctx.files.get(key);
+    if (stream === undefined) return undefined;
 
     // Previews are always made as WebP.
     if (row.preview_sha256 === key) {

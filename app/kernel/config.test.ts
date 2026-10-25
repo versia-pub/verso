@@ -294,6 +294,15 @@ secret_access_key = "secret"
         "verso/media",
     );
 
+    const withPublicUrl = await parseConfig(
+        s3.replace('bucket = "media"', '$&\npublic_url = "https://cdn.example/media"'),
+    );
+    assertEquals(
+        withPublicUrl.ok && "s3" in withPublicUrl.config.media.storage &&
+            withPublicUrl.config.media.storage.s3.public_url,
+        "https://cdn.example/media",
+    );
+
     const exactlyOne = 'Set exactly one of "filesystem" or "s3"';
     const both = s3.replace("[media.storage.s3]", 'media.storage.filesystem = "m"\n\n$&');
     assertStringIncludes(await errors(both), exactlyOne);
@@ -314,6 +323,7 @@ secret_access_key = "secret"
             ['"media"', '"My media"', "bucket"],
             ['bucket = "media"', 'bucket = "media"\nprefix = "/verso"', "prefix"],
             ['bucket = "media"', 'bucket = "media"\nprefix = "verso//media"', "prefix"],
+            ['bucket = "media"', 'bucket = "media"\npublic_url = "cdn.example"', "public_url"],
         ]
     ) {
         assertStringIncludes(await errors(s3.replace(from, to)), `→ at media.storage.s3.${path}`);
