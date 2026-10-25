@@ -26,5 +26,15 @@ export type JobsTable = {
     finished_at: Date | null;
 };
 
+/**
+ * A group of a queue's jobs that waits, such as deliveries to an instance that asked to be left
+ * alone: none is claimed until it ends.
+ */
+export type JobPausesTable = {
+    queue: string;
+    group_key: string;
+    until: Date;
+};
+
 /** A JSON object, serialised when enqueued, so later changes can't alter a job already queued. */
 export type JobPayload = Record<string, unknown>;

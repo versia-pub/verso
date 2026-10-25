@@ -90,7 +90,8 @@ export type ClaimOptions = {
 };
 
 /**
- * Leases up to `limit` due jobs from one queue, highest priority first, then oldest. Each claim
+ * Leases up to `limit` due jobs from one queue, highest priority first, then the first made, so a
+ * group's jobs run in the order they were made, but for groups that are paused. Each claim
  * uses up an attempt. A job whose lease expired, say because its worker crashed, is due again, so
  * a job may run more than once and every handler must be idempotent.
  */
@@ -112,6 +113,14 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
                 .where((eb) =>
                     eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
                 )
+                .where((eb) =>
+                    eb.not(eb.exists(
+                        eb.selectFrom("job_pauses").select("job_pauses.queue")
+                            .whereRef("job_pauses.queue", "=", "jobs.queue")
+                            .whereRef("job_pauses.group_key", "=", "jobs.group_key")
+                            .where("job_pauses.until", ">", now),
+                    ))
+                )
                 .$if((options.skipGroups ?? []).length > 0, (query) =>
                     query.where((eb) =>
                         eb.or([
@@ -119,22 +128,19 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
                             eb("group_key", "not in", options.skipGroups ?? []),
                         ])
                     ))
-                .orderBy("priority", "desc").orderBy("run_at").orderBy("id")
+                .orderBy("priority", "desc").orderBy("id")
                 .limit(options.limit)
                 .$call((query) => skippingLocked(ctx.db, query)))
         .returningAll()
         .execute();
 
-    return jobs.toSorted((a, b) =>
-        b.priority - a.priority || a.run_at.getTime() - b.run_at.getTime() ||
-        a.id.localeCompare(b.id)
-    );
+    return jobs.toSorted((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
 };
 
 /**
- * Puts off every waiting job of `group` in `queue` until `runAt`, such as deliveries to an
- * instance that asked to be left alone until then. Jobs due later, or running, are left as they
- * are. Like `postpone`, it uses up no attempts.
+ * Pauses `group` in `queue` until `runAt`, unless it is paused longer already: none of its jobs is
+ * claimed until then, such as deliveries to an instance that asked to be left alone. Jobs running
+ * are left as they are.
  */
 export const postponeGroup = async (
     ctx: Context,
@@ -142,27 +148,27 @@ export const postponeGroup = async (
     group: string,
     runAt: Date,
 ): Promise<void> => {
-    const now = ctx.clock.now();
-
-    await ctx.db.updateTable("jobs")
-        .set({ run_at: runAt })
-        .where("queue", "=", queue)
-        .where("group_key", "=", group)
-        .where("run_at", "<", runAt)
-        .where("finished_at", "is", null)
-        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
-        .where((eb) =>
-            eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
+    await ctx.db.insertInto("job_pauses")
+        .values({ queue, group_key: group, until: runAt })
+        .onConflict((conflict) =>
+            conflict.columns(["queue", "group_key"])
+                .doUpdateSet({ until: runAt })
+                .where("job_pauses.until", "<", runAt)
         )
         .execute();
 };
 
 /**
- * Makes every waiting job of `group` in `queue` due now, such as deliveries to an instance that
- * is back. Running jobs are left as they are.
+ * Ends a pause of `group` in `queue` and makes its waiting jobs due now, such as deliveries to an
+ * instance that is back. Running jobs are left as they are.
  */
 export const resumeGroup = async (ctx: Context, queue: string, group: string): Promise<void> => {
     const now = ctx.clock.now();
+
+    await ctx.db.deleteFrom("job_pauses")
+        .where("queue", "=", queue)
+        .where("group_key", "=", group)
+        .execute();
 
     await ctx.db.updateTable("jobs")
         .set({ run_at: now })
@@ -214,7 +220,10 @@ export const complete = async (ctx: Context, job: JobsTable): Promise<void> => {
     }
 };
 
-/** Deletes finished jobs that no longer need to be kept, and dead letters kept long enough. */
+/**
+ * Deletes finished jobs that no longer need to be kept, dead letters kept as long as settings say,
+ * and pauses that ended.
+ */
 export const deleteExpiredJobs = async (ctx: Context): Promise<void> => {
     const now = ctx.clock.now();
 
@@ -228,6 +237,8 @@ export const deleteExpiredJobs = async (ctx: Context): Promise<void> => {
         .where((eb) => eb("attempts", ">=", eb.ref("max_attempts")))
         .where("run_at", "<=", new Date(now.getTime() - ctx.settings.deadLetterMs))
         .execute();
+
+    await ctx.db.deleteFrom("job_pauses").where("until", "<=", now).execute();
 };
 
 /**

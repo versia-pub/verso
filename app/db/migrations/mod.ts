@@ -43,6 +43,7 @@ import { uploads } from "./0041_uploads.ts";
 import { noteMedia } from "./0042_note_media.ts";
 import { versionMedia } from "./0043_version_media.ts";
 import { keptAttachments } from "./0044_kept_attachments.ts";
+import { jobPauses } from "./0045_job_pauses.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order.
@@ -93,4 +94,5 @@ export const migrations: Record<string, Migration> = {
     "0042_note_media": noteMedia,
     "0043_version_media": versionMedia,
     "0044_kept_attachments": keptAttachments,
+    "0045_job_pauses": jobPauses,
 };

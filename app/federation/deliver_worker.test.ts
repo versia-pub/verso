@@ -113,50 +113,53 @@ Deno.test("a refusal is given up on, and anything else is retried", async () => 
 });
 
 Deno.test("an instance that asks to wait is tried again when it says", async () => {
-    await using test = await open();
-    const now = test.clock.now().getTime();
-
     for (const status of [429, 503]) {
+        await using test = await open();
+        const now = test.clock.now().getTime();
+
         const job = await test.deliver(status, { "retry-after": "120" });
+
         assertEquals([job?.run_at.getTime(), job?.attempts], [now + 120_000, 0], String(status));
     }
 
-    const date = new Date(now + hour);
+    await using test = await open();
+    const date = new Date(test.clock.now().getTime() + hour);
     const job = await test.deliver(429, { "retry-after": date.toUTCString() });
     assertEquals(job?.run_at, date);
 
     // Only those two statuses say when to retry.
-    const failed = await test.deliver(500, { "retry-after": "120" });
+    await using other = await open();
+    const failed = await other.deliver(500, { "retry-after": "120" });
     assertEquals(failed?.attempts, 1);
 });
 
 Deno.test("an instance that asks to wait gets no deliveries until then", async () => {
     await using test = await open();
     const now = test.clock.now().getTime();
-    const runAt = async (ids: string[]) =>
-        await Promise.all(ids.map(async (id) => (await test.job(id))?.run_at.getTime()));
+    const pausedUntil = async () =>
+        (await test.ctx.db.selectFrom("job_pauses").select("until").executeTakeFirst())?.until
+            .getTime();
 
     const waiting = [await test.queue(), await test.queue()];
     const job = await test.deliver(429, { "retry-after": "120" });
     assertEquals(test.received.length, 1);
-    assertEquals(await runAt([...waiting, job?.id ?? ""]), Array(3).fill(now + 120_000));
+    assertEquals(await pausedUntil(), now + 120_000);
+    // Queued since, it waits too.
+    await test.deliver(202);
+    assertEquals(test.received.length, 1);
 
-    // Its rate limit says the same, even when it takes the delivery, which is the oldest.
+    // Its rate limit says the same, even when it takes the delivery, the first that was made.
     test.clock.advance(120_000);
-    const later = now + 180_000;
-    const queued = await test.deliver(202, { "ratelimit-remaining": "0", "ratelimit-reset": "60" });
+    await test.deliver(202, { "ratelimit-remaining": "0", "ratelimit-reset": "60" });
     assertEquals(test.received.length, 2);
-    assertEquals(await runAt([...waiting, job?.id ?? "", queued?.id ?? ""]), [
-        undefined,
-        later,
-        later,
-        later,
-    ]);
+    assertEquals(await test.job(waiting[0]), undefined);
+    assertEquals(await pausedUntil(), now + 180_000);
 
     test.clock.advance(60_000);
     await test.deliver(202, { "ratelimit-remaining": "1", "ratelimit-reset": "60" });
-    // The three put off, and this one.
-    assertEquals(test.received.length, 6);
+    // The four put off, and this one.
+    assertEquals(test.received.length, 7);
+    assertEquals(await test.job(job?.id ?? ""), undefined);
 });
 
 Deno.test("an instance that can't be reached is left alone, but for a probe", async () => {
@@ -171,12 +174,11 @@ Deno.test("an instance that can't be reached is left alone, but for a probe", as
     assertEquals(sent(), 5);
     assertEquals((await test.job(ids[5]))?.last_error, null);
 
-    // One queued meanwhile finds it parked, and so the next one waits without being tried.
+    // Ones queued meanwhile wait too, without being tried.
     ids.push(await test.queue(), await test.queue());
     await drain(test.ctx, queues);
     assertEquals(sent(), 5);
-    assertEquals((await test.job(ids[6]))?.last_error?.includes("left alone"), true);
-    assertEquals((await test.job(ids[7]))?.last_error, null);
+    assertEquals((await test.job(ids[6]))?.last_error, null);
 
     // After a minute, one probe, which fails, so it waits two.
     test.clock.advance(minute);

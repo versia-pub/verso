@@ -241,31 +241,39 @@ Deno.test("claiming can skip groups, but never jobs without one", async () => {
     assertEquals(ids(await claim(test.ctx, { ...options, skipGroups: [] })).toSorted(), [1, 4]);
 });
 
-Deno.test("a group's waiting jobs are put off together", async () => {
+Deno.test("a paused group's jobs aren't claimed until the pause ends", async () => {
     await using test = await open();
     const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
-    const add = (n: number, job: { queue?: string; group?: string; runAt?: Date }) =>
+    const add = (n: number, job: { queue?: string; group?: string }) =>
         enqueue(test.ctx, { queue: "deliver", payload: { n }, ...job });
 
     await add(1, { group: "b.example" });
-    await add(2, { group: "b.example", runAt: at(1) });
-    await add(3, { group: "b.example", runAt: at(20) });
-    await add(4, { group: "c.example" });
-    await add(5, {});
-    await add(6, { queue: "notify", group: "b.example" });
-    const [running] = await claim(test.ctx, { ...options, limit: 1 });
-
+    await add(2, { group: "c.example" });
+    await add(3, {});
+    await add(4, { queue: "notify", group: "b.example" });
     await postponeGroup(test.ctx, "deliver", "b.example", at(10));
+    // A shorter pause doesn't shorten it.
+    await postponeGroup(test.ctx, "deliver", "b.example", at(5));
+    await add(5, { group: "b.example" });
 
-    const rows = await test.ctx.db.selectFrom("jobs").select(["payload", "run_at", "attempts"])
-        .execute();
-    const runAt = Object.fromEntries(rows.map((row) => [row.payload.n, row.run_at]));
-    assertEquals(running.payload.n, 1);
-    assertEquals(runAt, { 1: at(0), 2: at(10), 3: at(20), 4: at(0), 5: at(0), 6: at(0) });
-    assertEquals(rows.map((row) => row.attempts).toSorted(), [0, 0, 0, 0, 0, 1]);
+    const claimed = await claim(test.ctx, options);
+    assertEquals(ids(claimed), [2, 3]);
+    for (const job of claimed) await complete(test.ctx, job);
+    assertEquals(ids(await claim(test.ctx, { ...options, queue: "notify" })), [4]);
+
+    test.clock.advance(10 * minute - 1);
+    assertEquals(await claim(test.ctx, options), []);
+    test.clock.advance(1);
+    assertEquals(ids(await claim(test.ctx, options)), [1, 5]);
+
+    // Only its row is written, not each job's, and it goes once it ends.
+    const rows = await test.ctx.db.selectFrom("jobs").select(["run_at"]).execute();
+    assertEquals(rows.every((row) => row.run_at <= at(0)), true);
+    await deleteExpiredJobs(test.ctx);
+    assertEquals(await test.ctx.db.selectFrom("job_pauses").selectAll().execute(), []);
 });
 
-Deno.test("a group's waiting jobs are made due together", async () => {
+Deno.test("a group's waiting jobs are made due together when it is resumed", async () => {
     await using test = await open();
     const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
     const add = (n: number, job: { queue?: string; group?: string; runAt?: Date }) =>
@@ -285,6 +293,7 @@ Deno.test("a group's waiting jobs are made due together", async () => {
     const runAt = Object.fromEntries(rows.map((row) => [row.payload.n, row.run_at]));
     assertEquals(running.payload.n, 1);
     assertEquals(runAt, { 1: at(-1), 2: at(0), 3: at(10), 4: at(10), 5: at(10) });
+    assertEquals(ids(await claim(test.ctx, options)), [2]);
 });
 
 Deno.test("a job given back is as it was before it was claimed", async () => {
