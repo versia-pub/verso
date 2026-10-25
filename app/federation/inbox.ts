@@ -101,6 +101,8 @@ export const queueEntity = async (
         payload: job,
         dedupeKey: `inbox:${signer}:${digest.toHex()}`,
         keepUntil: new Date(now.getTime() + dedupeMs),
+        // Entities come in by the hundred at busy times, so workers find them by polling.
+        wake: false,
     });
 };
 

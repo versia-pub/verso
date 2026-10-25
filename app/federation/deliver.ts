@@ -42,7 +42,8 @@ export const queueDeliveriesTo = async (
         if (await ctx.federation.isBlocked(ctx, domain)) continue;
 
         const payload: DeliverJob = { domain, body };
-        jobs.push({ queue: deliverQueue, payload, maxAttempts, group: domain });
+        // Deliveries are many, so workers find them by polling.
+        jobs.push({ queue: deliverQueue, payload, maxAttempts, group: domain, wake: false });
     }
     await enqueueAll(ctx, jobs);
 };

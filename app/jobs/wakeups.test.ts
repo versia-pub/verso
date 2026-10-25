@@ -83,7 +83,7 @@ Deno.test({
 });
 
 Deno.test({
-    name: "on Postgres, enqueueing several jobs notifies each queue that got one, once",
+    name: "on Postgres, enqueueing several jobs notifies each queue that got one, once, if asked",
     ignore: testDatabaseKind === "pglite" || testDatabaseKind === "sqlite",
     fn: async () => {
         const url = await testPostgresUrl();
@@ -100,7 +100,7 @@ Deno.test({
 
         await using wakeups = await listenForJobs({ postgres: url });
         const heard: string[] = [];
-        for (const queue of ["deliver", "fetch", "other"]) {
+        for (const queue of ["deliver", "fetch", "other", "quiet"]) {
             wakeups?.addEventListener(queue, () => heard.push(queue));
         }
 
@@ -110,8 +110,11 @@ Deno.test({
                 { queue: "fetch", payload: {} },
                 { queue: "deliver", payload: { n: 2 } },
                 { queue: "other", payload: {}, dedupeKey: "queued" },
+                // Workers find these by polling.
+                { queue: "quiet", payload: {}, wake: false },
             ])
         );
+        await enqueue(ctx, { queue: "quiet", payload: {}, wake: false });
 
         const started = Date.now();
         while (heard.length < 2 && Date.now() - started < 5_000) await delay(5);

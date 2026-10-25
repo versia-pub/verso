@@ -18,6 +18,12 @@ export type NewJob = {
     readonly group?: string;
     /** Keeps the job once finished, and with it its dedupe key, until then. */
     readonly keepUntil?: Date;
+    /**
+     * Whether to wake idle workers on Postgres at once, rather than on their next poll, which is
+     * the default. Each wakeup is a notification, and Postgres commits those one at a time, so
+     * busy queues, whose workers poll soon anyway, are better off without.
+     */
+    readonly wake?: boolean;
 };
 
 /** A new job as a row, due now unless it says otherwise. */
@@ -58,7 +64,7 @@ export const enqueue = async (
         .returning("id")
         .executeTakeFirst();
 
-    if (inserted) await notify(ctx.db, jobsChannel, job.queue);
+    if (inserted && job.wake !== false) await notify(ctx.db, jobsChannel, job.queue);
     return inserted?.id;
 };
 
@@ -75,7 +81,10 @@ export const enqueueAll = async (ctx: Context, jobs: readonly NewJob[]): Promise
         for (const row of inserted) woken.add(row.queue);
     }
 
-    for (const queue of woken) await notify(ctx.db, jobsChannel, queue);
+    // A queue is woken if any job it got asks to be.
+    const waking = new Set(jobs.filter((job) => job.wake !== false).map((job) => job.queue));
+
+    for (const queue of woken) if (waking.has(queue)) await notify(ctx.db, jobsChannel, queue);
 };
 
 export type ClaimOptions = {
