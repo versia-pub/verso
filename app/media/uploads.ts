@@ -13,6 +13,7 @@ import type { Context } from "../kernel/context.ts";
 import { type ImageFormat, imageFormatOf, imageFormats } from "../kernel/images.ts";
 import { findMedia, type MediaRow } from "./media.ts";
 import {
+    deleteUnusedUploads,
     findUpload,
     finishUpload,
     insertUpload,
@@ -26,6 +27,15 @@ const logger = getLogger(["verso", "media"]);
 
 /** The queue that processes uploaded pictures. */
 export const mediaQueue = "media";
+
+/** The queue that removes uploads no one attached. */
+export const unusedUploadsQueue = "media-cleanup";
+
+/** How long an upload may wait to be attached before it is removed, as on Mastodon. */
+const unattachedMs = 24 * 60 * 60 * 1000;
+
+/** How many uploads are removed at once. */
+const removalBatch = 100;
 
 const MediaJob = z.object({ mediaId: z.string() });
 
@@ -212,4 +222,21 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
     // What was uploaded has its metadata, so it goes. If another run got there first, what this
     // one kept may be used by nothing.
     for (const key of finished ? [uploaded] : [kept, preview]) await deleteFileIfUnused(ctx, key);
+};
+
+/**
+ * Removes the uploads made a day ago or more that nothing uses, with their files, unless other
+ * uploads use them. Files a note had are its author's to attach again until then, as Mastodon
+ * keeps them when a note is deleted, so that it can be redrafted.
+ */
+export const removeUnusedUploads = async (ctx: Context): Promise<void> => {
+    const before = new Date(ctx.clock.now().getTime() - unattachedMs);
+
+    while (true) {
+        const removed = await deleteUnusedUploads(ctx, before, removalBatch);
+        const keys = new Set(removed.flatMap((row) => [row.sha256, row.preview_sha256]));
+        for (const key of keys) if (key !== null) await deleteFileIfUnused(ctx, key);
+
+        if (removed.length < removalBatch) return;
+    }
 };

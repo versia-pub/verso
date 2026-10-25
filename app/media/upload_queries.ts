@@ -101,3 +101,43 @@ export const findServedFile = (
             ])
         )
         .executeTakeFirst();
+
+/**
+ * Removes up to `limit` uploads made by `before` that nothing uses: no note has them attached,
+ * and no account or emoji shows them. Returns the keys their files and previews were kept under,
+ * one of which was uploaded, unless processing removed it.
+ */
+export const deleteUnusedUploads = (
+    ctx: Context,
+    before: Date,
+    limit: number,
+): Promise<Pick<MediaRow, "sha256" | "preview_sha256">[]> =>
+    ctx.db.deleteFrom("media")
+        .where("id", "in", (eb) =>
+            eb.selectFrom("media as unused").select("unused.id")
+                // Only uploads have someone who uploaded them.
+                .where("unused.account_id", "is not", null)
+                .where("unused.created_at", "<=", before)
+                .where((eb) =>
+                    eb.not(eb.or([
+                        eb.exists(
+                            eb.selectFrom("note_media").select("note_media.media_id")
+                                .whereRef("note_media.media_id", "=", "unused.id"),
+                        ),
+                        eb.exists(
+                            eb.selectFrom("accounts").select("accounts.id").where((eb) =>
+                                eb.or([
+                                    eb("accounts.avatar_id", "=", eb.ref("unused.id")),
+                                    eb("accounts.header_id", "=", eb.ref("unused.id")),
+                                ])
+                            ),
+                        ),
+                        eb.exists(
+                            eb.selectFrom("emojis").select("emojis.id")
+                                .whereRef("emojis.media_id", "=", "unused.id"),
+                        ),
+                    ]))
+                )
+                .limit(limit))
+        .returning(["sha256", "preview_sha256"])
+        .execute();
