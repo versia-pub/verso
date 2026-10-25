@@ -1,5 +1,6 @@
 import { type Insertable, type Selectable, sql } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
+import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, notExcluded } from "../graph/blocks.ts";
 import type { Context } from "../kernel/context.ts";
 import type { ReactionsTable } from "./tables.ts";
@@ -11,9 +12,13 @@ export type ReactionEmoji =
     | { readonly text: string; readonly emoji_id: null }
     | { readonly text: null; readonly emoji_id: string };
 
-/** Tells reactions with different emojis apart: by the emoji's text, or custom emoji's id. */
-export const emojiKey = (emoji: Pick<ReactionRow, "text" | "emoji_id">): string =>
-    emoji.text ?? emoji.emoji_id ?? "";
+/** The emoji a reaction, or group of them, is made with. Each has its text or a custom emoji. */
+export const emojiOf = (row: Pick<ReactionRow, "text" | "emoji_id">): ReactionEmoji => {
+    if (row.text !== null) return { text: row.text, emoji_id: null };
+    if (row.emoji_id !== null) return { text: null, emoji_id: row.emoji_id };
+
+    throw new Error("A reaction has neither text nor a custom emoji");
+};
 
 /**
  * Adds a local reaction, unless the account already reacts to the note with that emoji. Returns
@@ -162,28 +167,23 @@ export const reactionsOf = async (
 };
 
 /**
- * Who reacts to a note with each emoji, newest first, by {@link emojiKey}, but the accounts
+ * A page of the reactions to a note with one emoji, newest first, but those of the accounts
  * `blocked`.
  */
-export const reactorsOf = async (
+export const emojiReactionPage = async (
     ctx: Context,
     noteId: string,
+    emoji: ReactionEmoji,
     blocked: Excluded | null,
-): Promise<Map<string, string[]>> => {
-    let query = ctx.db.selectFrom("reactions")
-        .select(["account_id", "text", "emoji_id"])
-        .where("note_id", "=", noteId);
+    page: PageBounds,
+): Promise<ReactionRow[]> => {
+    let query = ctx.db.selectFrom("reactions").selectAll().where("note_id", "=", noteId);
+    query = emoji.text === null
+        ? query.where("emoji_id", "=", emoji.emoji_id)
+        : query.where("text", "=", emoji.text);
     if (blocked !== null) query = query.where(notExcluded(blocked, "reactions.account_id"));
 
-    const rows = await query.orderBy("id", "desc").execute();
-
-    const reactors = new Map<string, string[]>();
-    for (const row of rows) {
-        const key = emojiKey(row);
-        reactors.set(key, [...reactors.get(key) ?? [], row.account_id]);
-    }
-
-    return reactors;
+    return await readPage(query, "reactions.id", page);
 };
 
 /** A local user's reaction, with its custom emoji's shortcode and picture, if it is one. */

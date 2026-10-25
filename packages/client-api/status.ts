@@ -34,12 +34,6 @@ export const StatusReaction = z.object({
 });
 export type StatusReaction = z.infer<typeof StatusReaction>;
 
-/** The reactions to a status with one emoji, with who made them, newest first. */
-export const StatusReactionWithAccounts = StatusReaction.extend({
-    account_ids: z.array(z.string()),
-});
-export type StatusReactionWithAccounts = z.infer<typeof StatusReactionWithAccounts>;
-
 /**
  * A hashtag a status uses.
  * @see https://docs.joinmastodon.org/entities/Status/#Tag

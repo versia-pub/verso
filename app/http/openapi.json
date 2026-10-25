@@ -3788,12 +3788,118 @@
                         }
                     }
                 }
+            },
+            "get": {
+                "summary": "The accounts that reacted to a status the viewer may see with an emoji, newest first",
+                "description": "The emoji is named as the status's reactions name it: a Unicode emoji, or a custom one's shortcode in colons, with its domain if it is another instance's, such as `:blob@b.example:`.\n\nNeeds the `read:reaction` permission.",
+                "externalDocs": {
+                    "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1
+                        }
+                    },
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/statuses/{id}/reactions": {
             "get": {
-                "summary": "The reactions to a status the viewer may see, by emoji, with who made them",
-                "description": "Needs the `read:reaction` permission.",
+                "summary": "The reactions to a status the viewer may see, by emoji, with how many made each",
+                "description": "Who made them is listed for each emoji, a page at a time, by `GET /api/v1/statuses/:id/reactions/:name`.\n\nNeeds the `read:reaction` permission.",
+                "externalDocs": {
+                    "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -3823,7 +3929,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/StatusReactionWithAccounts"
+                                        "$ref": "#/components/schemas/StatusReaction"
                                     }
                                 }
                             }
@@ -10512,37 +10618,6 @@
                     "name",
                     "count",
                     "remote"
-                ]
-            },
-            "StatusReactionWithAccounts": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "count": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 9007199254740991
-                    },
-                    "remote": {
-                        "type": "boolean"
-                    },
-                    "me": {
-                        "type": "boolean"
-                    },
-                    "account_ids": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "required": [
-                    "name",
-                    "count",
-                    "remote",
-                    "account_ids"
                 ]
             },
             "StatusSource": {

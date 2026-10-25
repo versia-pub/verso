@@ -1,4 +1,4 @@
-import { Account, Status, StatusReactionWithAccounts } from "@versia/client-api";
+import { Account, Status, StatusReaction } from "@versia/client-api";
 import { z } from "zod";
 import { publicAccounts } from "../accounts/public.ts";
 import { viewerBlocks } from "../graph/blocks.ts";
@@ -11,9 +11,9 @@ import { canSee, visibleOriginal } from "../notes/notes.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { likePage } from "./like_queries.ts";
 import { like, unlike } from "./likes.ts";
-import { emojiKey, reactionsOf, reactorsOf } from "./reaction_queries.ts";
+import { emojiOf, emojiReactionPage, reactionsOf } from "./reaction_queries.ts";
 import { react, unreact } from "./reactions.ts";
-import { renderReaction } from "./render.ts";
+import { reactionName, renderReactions } from "./render.ts";
 import { share, unshare } from "./shares.ts";
 
 /** Likes a status, or undoes it, as Mastodon's favourites. */
@@ -46,6 +46,10 @@ const likeRoute = (action: "favourite" | "unfavourite") =>
 const ShareOptions = z.object({
     visibility: z.enum(["public", "unlisted", "private"]).optional(),
 });
+
+/** Versia Server's reaction routes, which Verso's follow. */
+const versiaServerReactions =
+    "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions";
 
 /**
  * Reacts to a status with an emoji, or undoes it, as Versia Server does. The emoji is a Unicode
@@ -87,25 +91,55 @@ export const interactionRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/reactions",
-        summary: "The reactions to a status the viewer may see, by emoji, with who made them",
+        summary: "The reactions to a status the viewer may see, by emoji, with how many made each",
+        description: "Who made them is listed for each emoji, a page at a time, by " +
+            "`GET /api/v1/statuses/:id/reactions/:name`.",
+        docs: versiaServerReactions,
         tags: ["statuses"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:reaction" },
         params: z.object({ id: z.string() }),
-        responses: { 200: z.array(StatusReactionWithAccounts) },
+        responses: { 200: z.array(StatusReaction) },
         handler: async (ctx, { params, viewer }) => {
             const note = await visibleOriginal(ctx, params.id, viewer?.accountId ?? null);
             if (note === undefined) throw new NotFound();
 
-            const blocked = viewerBlocks(ctx, viewer?.accountId ?? null);
-            const groups = (await reactionsOf(ctx, [note.id], viewer?.accountId ?? null, blocked))
-                .get(note.id) ?? [];
-            const reactors = await reactorsOf(ctx, note.id, blocked);
+            const viewerId = viewer?.accountId ?? null;
+            const groups =
+                (await reactionsOf(ctx, [note.id], viewerId, viewerBlocks(ctx, viewerId)))
+                    .get(note.id) ?? [];
+            return { status: 200, body: renderReactions(groups, viewer !== undefined) };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/statuses/:id/reactions/:name",
+        summary:
+            "The accounts that reacted to a status the viewer may see with an emoji, newest first",
+        description:
+            "The emoji is named as the status's reactions name it: a Unicode emoji, or a " +
+            "custom one's shortcode in colons, with its domain if it is another instance's, " +
+            "such as `:blob@b.example:`.",
+        docs: versiaServerReactions,
+        tags: ["statuses"],
+        auth: { require: "optional", scope: "read:statuses", permission: "read:reaction" },
+        params: z.object({ id: z.string(), name: z.string().min(1) }),
+        query: PageQuery({ default: 40, max: 80 }),
+        responses: { 200: Paged(Account) },
+        handler: async (ctx, { params, query, viewer }) => {
+            const viewerId = viewer?.accountId ?? null;
+            const note = await visibleOriginal(ctx, params.id, viewerId);
+            if (note === undefined) throw new NotFound();
+
+            const blocked = viewerBlocks(ctx, viewerId);
+            const group = (await reactionsOf(ctx, [note.id], viewerId, blocked)).get(note.id)
+                ?.find((group) => reactionName(group) === params.name);
+            if (group === undefined) throw new NotFound();
+
+            const reactions = await emojiReactionPage(ctx, note.id, emojiOf(group), blocked, query);
             return {
                 status: 200,
-                body: groups.map((group) => ({
-                    ...renderReaction(group, viewer !== undefined),
-                    account_ids: reactors.get(emojiKey(group)) ?? [],
-                })),
+                body: await publicAccounts(ctx, reactions.map((row) => row.account_id)),
+                cursors: cursorsOf(reactions, query, (row) => row.id),
             };
         },
     }),

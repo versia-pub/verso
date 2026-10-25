@@ -184,9 +184,10 @@ Deno.test("a reaction with an unknown emoji, or to a status the viewer can't see
         (await test.request("GET", `/api/v1/statuses/${hidden.id}/reactions`, null)).status,
         404,
     );
+    assertEquals((await test.request("GET", path(hidden.id, "🎉"), "dave")).status, 404);
 });
 
-Deno.test("a status's reactions are listed by emoji, with who made them, the latest first", async () => {
+Deno.test("a status's reactions are listed by emoji, with how many made each", async () => {
     await using test = await open();
     const note = await createNote(test.ctx, "alice");
     await createLocalEmoji(test.ctx, "blob");
@@ -196,13 +197,35 @@ Deno.test("a status's reactions are listed by emoji, with who made them, the lat
     const path = `/api/v1/statuses/${note.id}/reactions`;
 
     assertEquals((await test.request("GET", path)).body, [
-        { name: "🎉", count: 2, remote: false, me: true, account_ids: ["alice", "bob"] },
-        { name: ":blob:", count: 1, remote: false, me: false, account_ids: ["dave"] },
+        { name: "🎉", count: 2, remote: false, me: true },
+        { name: ":blob:", count: 1, remote: false, me: false },
     ]);
     assertEquals((await test.request("GET", path, null)).body, [
-        { name: "🎉", count: 2, remote: false, account_ids: ["alice", "bob"] },
-        { name: ":blob:", count: 1, remote: false, account_ids: ["dave"] },
+        { name: "🎉", count: 2, remote: false },
+        { name: ":blob:", count: 1, remote: false },
     ]);
+});
+
+Deno.test("who reacted with an emoji is listed a page at a time, the latest first", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    await createLocalEmoji(test.ctx, "blob");
+    for (const [by, name] of [["bob", "🎉"], ["dave", ":blob:"], ["alice", "🎉"]]) {
+        await react(test.ctx, by, note.id, name);
+    }
+    const path = (name: string, page = "") =>
+        `/api/v1/statuses/${note.id}/reactions/${encodeURIComponent(name)}${page}`;
+    const ids = (body: { id: string }[]) => body.map((account) => account.id);
+
+    const first = await test.request("GET", path("🎉", "?limit=1"));
+    assertEquals(ids(first.body), ["alice"]);
+    const next = new URL(/<([^>]+)>; rel="next"/.exec(first.link ?? "")?.[1] ?? "");
+    assertEquals(ids((await test.request("GET", next.pathname + next.search)).body), ["bob"]);
+    assertEquals(ids((await test.request("GET", path(":blob:"), null)).body), ["dave"]);
+
+    // An emoji no one reacted with is no list.
+    assertEquals((await test.request("GET", path("👀"))).status, 404);
+    assertEquals((await test.request("GET", path(":nope:"))).status, 404);
 });
 
 Deno.test("the blocker isn't shown, or counted, the likes, shares and reactions of those it blocks", async () => {
@@ -224,8 +247,15 @@ Deno.test("the blocker isn't shown, or counted, the likes, shares and reactions 
     assertEquals(await ids("favourited_by", "alice"), ["bob"]);
     assertEquals(await ids("reblogged_by", "alice"), ["bob"]);
     assertEquals((await test.request("GET", `${path}/reactions`, "alice")).body, [
-        { name: "🎉", count: 1, remote: false, me: false, account_ids: ["bob"] },
+        { name: "🎉", count: 1, remote: false, me: false },
     ]);
+    assertEquals(await ids(`reactions/${encodeURIComponent("🎉")}`, "alice"), ["bob"]);
+    // Only dave reacted with this one, so to alice no one did.
+    assertEquals(
+        (await test.request("GET", `${path}/reactions/${encodeURIComponent("👀")}`, "alice"))
+            .status,
+        404,
+    );
     const status =
         (await test.request("PUT", `${path}/reactions/${encodeURIComponent("🎉")}`, "alice"))
             .body;
@@ -263,10 +293,7 @@ Deno.test("the likes, shares and reactions of those the viewer mutes are still s
 
     assertEquals(await ids("favourited_by"), ["dave"]);
     assertEquals(await ids("reblogged_by"), ["dave"]);
-    assertEquals(
-        (await test.request("GET", `${path}/reactions`, "alice")).body[0].account_ids,
-        ["dave"],
-    );
+    assertEquals(await ids(`reactions/${encodeURIComponent("🎉")}`), ["dave"]);
     const status = (await test.request("POST", `${path}/favourite`, "alice")).body;
     assertEquals([status.favourites_count, status.reblogs_count], [2, 1]);
 });
