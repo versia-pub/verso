@@ -214,9 +214,6 @@ export const complete = async (ctx: Context, job: JobsTable): Promise<void> => {
     }
 };
 
-/** How long a dead letter is kept, for someone to look at or retry. */
-const deadLetterMs = 30 * 24 * 60 * 60 * 1000;
-
 /** Deletes finished jobs that no longer need to be kept, and dead letters kept long enough. */
 export const deleteExpiredJobs = async (ctx: Context): Promise<void> => {
     const now = ctx.clock.now();
@@ -229,9 +226,21 @@ export const deleteExpiredJobs = async (ctx: Context): Promise<void> => {
     await ctx.db.deleteFrom("jobs")
         .where("finished_at", "is", null)
         .where((eb) => eb("attempts", ">=", eb.ref("max_attempts")))
-        .where("run_at", "<=", new Date(now.getTime() - deadLetterMs))
+        .where("run_at", "<=", new Date(now.getTime() - ctx.settings.deadLetterMs))
         .execute();
 };
+
+/**
+ * What a job keeps once it dies: its payload, or what `deadPayload` keeps of it, and its dedupe
+ * key only while it is kept anyway, so the same work can be queued again.
+ */
+const deadColumns = (ctx: Context, job: JobsTable, deadPayload?: DeadPayload) => ({
+    ...deadPayload && { payload: deadPayload(job.payload) },
+    ...!(job.keep_until !== null && job.keep_until > ctx.clock.now()) && { dedupe_key: null },
+});
+
+/** What a queue's dead letters keep of their payload, such as a summary of a large one. */
+export type DeadPayload = (payload: JobPayload) => JobPayload;
 
 /**
  * Exponential backoff with jitter: about 30 seconds after the first attempt, doubling each time,
@@ -243,23 +252,24 @@ export const backoffMs = (attempts: number, random: () => number = Math.random):
 
 /**
  * Records a failed run. The job is retried after a backoff, or, once its attempts are used up,
- * stays in the table as a dead letter for a while.
+ * stays in the table as a dead letter for a while, as {@link deadColumns} keeps it.
  */
 export const fail = async (
     ctx: Context,
     job: JobsTable,
     error: string,
-    random?: () => number,
+    options: { readonly random?: () => number; readonly deadPayload?: DeadPayload } = {},
 ): Promise<void> => {
     const dead = job.attempts >= job.max_attempts;
     const now = ctx.clock.now().getTime();
 
     await ctx.db.updateTable("jobs")
         .set({
+            ...dead && deadColumns(ctx, job, options.deadPayload),
             lease_owner: null,
             lease_expires_at: null,
             last_error: error,
-            run_at: new Date(dead ? now : now + backoffMs(job.attempts, random)),
+            run_at: new Date(dead ? now : now + backoffMs(job.attempts, options.random)),
         })
         .where("id", "=", job.id)
         .where("lease_owner", "=", job.lease_owner)
@@ -295,9 +305,15 @@ export const postpone = async (
  * Records a failed run that retrying can't fix, such as an entity that is invalid. The job becomes
  * a dead letter at once, kept for a while like any other.
  */
-export const giveUp = async (ctx: Context, job: JobsTable, error: string): Promise<void> => {
+export const giveUp = async (
+    ctx: Context,
+    job: JobsTable,
+    error: string,
+    deadPayload?: DeadPayload,
+): Promise<void> => {
     await ctx.db.updateTable("jobs")
         .set((eb) => ({
+            ...deadColumns(ctx, job, deadPayload),
             lease_owner: null,
             lease_expires_at: null,
             last_error: error,

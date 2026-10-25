@@ -2,6 +2,7 @@ import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { CompiledQuery, sql } from "kysely";
 import { testDatabaseKind } from "../db/testing.ts";
 import { createTestContext } from "../testing/context.ts";
+import type { JobsTable } from "./tables.ts";
 import {
     backoffMs,
     claim,
@@ -192,7 +193,7 @@ Deno.test("a failed job is retried after a backoff, then kept as a dead letter",
 
     await enqueue(test.ctx, { queue: "deliver", payload: { n: 1 }, maxAttempts: 2 });
     const [first] = await claim(test.ctx, options);
-    await fail(test.ctx, first, "timed out", () => 0);
+    await fail(test.ctx, first, "timed out", { random: () => 0 });
 
     test.clock.advance(15_000 - 1);
     assertEquals(await claim(test.ctx, options), []);
@@ -341,6 +342,69 @@ Deno.test("a dead letter is deleted 30 days after it died, and a job being retri
     test.clock.advance(day);
     await deleteExpiredJobs(test.ctx);
     assertEquals(await queues(), ["retried"]);
+});
+
+Deno.test("dead letters are kept for as long as settings say", async () => {
+    await using test = await createTestContext({ settings: { deadLetterMs: minute } });
+    await enqueue(test.ctx, { queue: "deliver", payload: {}, maxAttempts: 1 });
+    const [job] = await claim(test.ctx, options);
+    await giveUp(test.ctx, job, "invalid");
+
+    test.clock.advance(minute);
+    await deleteExpiredJobs(test.ctx);
+
+    assertEquals(await test.ctx.db.selectFrom("jobs").select("id").execute(), []);
+});
+
+Deno.test("a dead letter keeps what its queue keeps of its payload, and frees its key", async () => {
+    await using test = await open();
+    const summary = () => ({ kept: "summary" });
+    const dead = async (key: string, end: (job: JobsTable) => Promise<void>, keepUntil?: Date) => {
+        await enqueue(test.ctx, {
+            queue: "deliver",
+            payload: { body: "large" },
+            maxAttempts: 1,
+            dedupeKey: key,
+            keepUntil,
+        });
+        const [job] = await claim(test.ctx, options);
+        await end(job);
+
+        return await test.ctx.db.selectFrom("jobs").select(["payload", "dedupe_key"])
+            .where("id", "=", job.id).executeTakeFirstOrThrow();
+    };
+
+    assertEquals(await dead("a", (job) => giveUp(test.ctx, job, "invalid", summary)), {
+        payload: { kept: "summary" },
+        dedupe_key: null,
+    });
+    assertEquals(
+        await dead("b", (job) => fail(test.ctx, job, "refused", { deadPayload: summary })),
+        { payload: { kept: "summary" }, dedupe_key: null },
+    );
+    // Without a summary it is kept whole, and while it is kept anyway, so is its key.
+    const later = new Date(test.clock.now().getTime() + minute);
+    assertEquals(await dead("c", (job) => giveUp(test.ctx, job, "invalid"), later), {
+        payload: { body: "large" },
+        dedupe_key: "c",
+    });
+
+    // A job that will be retried keeps both.
+    await enqueue(test.ctx, { queue: "deliver", payload: { body: "large" }, dedupeKey: "d" });
+    const [retried] = await claim(test.ctx, options);
+    await fail(test.ctx, retried, "refused", { deadPayload: summary });
+    assertEquals(
+        await test.ctx.db.selectFrom("jobs").select(["payload", "dedupe_key"])
+            .where("id", "=", retried.id).executeTakeFirstOrThrow(),
+        { payload: { body: "large" }, dedupe_key: "d" },
+    );
+
+    // The same work can be queued again.
+    assertEquals(
+        typeof await enqueue(test.ctx, { queue: "x", payload: {}, dedupeKey: "a" }),
+        "string",
+    );
+    assertEquals(await enqueue(test.ctx, { queue: "x", payload: {}, dedupeKey: "c" }), undefined);
 });
 
 Deno.test("backoff doubles from 30 seconds up to six hours, with jitter", () => {

@@ -133,5 +133,9 @@ updated = 2026-10-01
 #     "owner:note",
 # ]
 
+[jobs]
+# How many days a job that failed for good is kept, for someone to look at.
+# dead_letter_days = 30
+
 [logging]
 # level = "info"

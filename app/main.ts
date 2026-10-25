@@ -19,6 +19,7 @@ import { listenForJobs } from "./jobs/wakeups.ts";
 import { work } from "./jobs/worker.ts";
 import { systemClock } from "./kernel/clock.ts";
 import { type Config, readConfig } from "./kernel/config.ts";
+import { settingsOf } from "./kernel/settings.ts";
 import { type Context, createContext } from "./kernel/context.ts";
 import { filesFor } from "./kernel/file_stores.ts";
 import { idGenerator } from "./kernel/ids.ts";
@@ -103,6 +104,7 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
         images: vipsImages({ maxPixels: config.media.max_pixels }),
         identityProviders,
         federation: federation(config.federation.blocked_domains),
+        settings: settingsOf(config),
         subscribers,
         db,
     });

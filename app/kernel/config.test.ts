@@ -70,6 +70,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                     "owner:reaction",
                 ],
             },
+            jobs: { dead_letter_days: 30 },
             logging: { level: "info" },
         },
     });
@@ -132,6 +133,9 @@ fields = 4
 [permissions]
 anonymous = []
 default = ["owner:account"]
+
+[jobs]
+dead_letter_days = 14
 
 [logging]
 level = "debug"
@@ -207,6 +211,7 @@ level = "debug"
                 attachments: 16,
             },
             permissions: { anonymous: [], default: ["owner:account"] },
+            jobs: { dead_letter_days: 14 },
             logging: { level: "debug" },
         },
     });

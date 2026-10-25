@@ -9,7 +9,12 @@ import { registry } from "../registry.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { type DeliverJob, deliverQueue } from "./deliver.ts";
-import { deliverHandler, rateLimitReset, retryAfter } from "./deliver_worker.ts";
+import {
+    deliverDeadPayload,
+    deliverHandler,
+    rateLimitReset,
+    retryAfter,
+} from "./deliver_worker.ts";
 
 const minute = 60_000;
 const hour = 60 * minute;
@@ -267,4 +272,9 @@ Deno.test("Retry-After is read as seconds or a date", () => {
     assertEquals(after("30 seconds"), undefined);
     assertEquals(after(""), undefined);
     assertEquals(retryAfter(new Headers(), now), undefined);
+});
+
+Deno.test("a dead delivery keeps the instance it was for, without the entity", () => {
+    assertEquals(deliverDeadPayload({ domain: "b.example", body: "{}" }), { domain: "b.example" });
+    assertEquals(deliverDeadPayload({ body: "{}" }), {});
 });

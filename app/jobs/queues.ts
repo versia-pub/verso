@@ -1,9 +1,9 @@
 import { deleteExpiredFlows } from "../auth/flows.ts";
 import { acceptHandler, acceptQueue } from "../graph/follows.ts";
 import { deliverQueue } from "../federation/deliver.ts";
-import { deliverHandler } from "../federation/deliver_worker.ts";
+import { deliverDeadPayload, deliverHandler } from "../federation/deliver_worker.ts";
 import { inboxQueue } from "../federation/inbox.ts";
-import { inboxHandler } from "../federation/inbox_worker.ts";
+import { inboxDeadPayload, inboxHandler } from "../federation/inbox_worker.ts";
 import { messageHandler, messageQueue } from "../federation/messaging.ts";
 import { deleteEndedRateLimits } from "../http/rate_limits.ts";
 import {
@@ -28,8 +28,17 @@ const hourly: Record<string, Queue["handler"]> = {
 
 /** Every queue the worker runs, by name. Modules add theirs as they need them. */
 export const queues: Record<string, Queue> = {
-    [inboxQueue]: { handler: inboxHandler(registry), concurrency: 4 },
-    [deliverQueue]: { handler: deliverHandler, concurrency: 8, perGroup: 2 },
+    [inboxQueue]: {
+        handler: inboxHandler(registry),
+        concurrency: 4,
+        deadPayload: inboxDeadPayload,
+    },
+    [deliverQueue]: {
+        handler: deliverHandler,
+        concurrency: 8,
+        perGroup: 2,
+        deadPayload: deliverDeadPayload,
+    },
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },

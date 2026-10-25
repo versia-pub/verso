@@ -4,6 +4,7 @@ import { migrate } from "../db/migrate.ts";
 import { ensureInstanceKey } from "../instances/keys.ts";
 import { testDatabase } from "../db/testing.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
+import { defaultSettings, type Settings } from "../kernel/settings.ts";
 import {
     type Context,
     createContext,
@@ -38,6 +39,8 @@ export type TestContextOptions = {
     readonly federation?: Partial<Federation>;
     /** Defaults to Verso's own. */
     readonly subscribers?: readonly Subscriber[];
+    /** Defaults to those of a config that leaves them out. */
+    readonly settings?: Partial<Settings>;
 };
 
 export type TestContext = AsyncDisposable & {
@@ -77,6 +80,7 @@ export const createTestContext = async (
         images: options.images ?? vipsImages({ maxPixels: 8_294_400 }),
         identityProviders: options.identityProviders ?? {},
         federation: { ...federation(), ...options.federation },
+        settings: { ...defaultSettings, ...options.settings },
         subscribers: options.subscribers ?? subscribers,
         db,
     });

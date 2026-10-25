@@ -2,6 +2,7 @@ import type { Reference } from "@versia/protocol";
 import type { Kysely } from "kysely";
 import type { Database } from "../db/database.ts";
 import type { Clock } from "./clock.ts";
+import type { Settings } from "./settings.ts";
 import type { FileStore } from "./files.ts";
 import type { IdentityProvider } from "./identity.ts";
 import type { IdGenerator } from "./ids.ts";
@@ -87,6 +88,8 @@ export type Context<DB = Database> = {
     /** One for each configured issuer, by issuer URL. */
     readonly identityProviders: Readonly<Record<string, IdentityProvider>>;
     readonly federation: Federation;
+    /** What config says services do, such as how long to keep jobs. */
+    readonly settings: Settings;
     /** Every subscriber, each told of every event, such as one for each protocol. */
     readonly subscribers: readonly Subscriber[];
     /** The database, or the current transaction inside `transaction`. */

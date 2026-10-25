@@ -6,6 +6,7 @@ import { type Context, createContext } from "./context.ts";
 import { fakeTransport } from "./fake_transport.ts";
 import { memoryFiles } from "./files.ts";
 import { countingRandom, idGenerator } from "./ids.ts";
+import { defaultSettings } from "./settings.ts";
 import { urlBuilder } from "./urls.ts";
 import { vipsImages } from "./vips_images.ts";
 
@@ -26,6 +27,7 @@ const open = async () => {
         files: memoryFiles(),
         images: vipsImages({ maxPixels: 8_294_400 }),
         identityProviders: {},
+        settings: defaultSettings,
         // These tests don't federate.
         federation: {
             signingKey: () => Promise.reject(new Error("Unused")),

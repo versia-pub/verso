@@ -7,7 +7,7 @@ import { createTestContext } from "../testing/context.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
 import { inboxQueue, queueEntity } from "./inbox.ts";
-import { inboxHandler } from "./inbox_worker.ts";
+import { inboxDeadPayload, inboxHandler } from "./inbox_worker.ts";
 import { createRegistry, type EntityType, type Sender } from "./registry.ts";
 
 const Thing = z.object({ type: z.literal("Thing"), id: z.string(), author: z.string() });
@@ -200,4 +200,14 @@ Deno.test("a User sent unasked updates one Verso has, and is dropped otherwise",
     });
     await network.drain();
     assertEquals((await account()).map((row) => row.display_name), ["Alice"]);
+});
+
+Deno.test("a dead inbox job keeps who sent what, without the entity", () => {
+    const body = JSON.stringify({ type: "Note", id: "n1", content: "x".repeat(1000) });
+
+    assertEquals(inboxDeadPayload({ signer: "b.example", body }), {
+        signer: "b.example",
+        entity: "Note n1",
+    });
+    assertEquals(inboxDeadPayload({ body }), {});
 });

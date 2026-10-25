@@ -1,6 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
-import { claim, complete, fail, giveUp, postpone, release } from "./queue.ts";
+import { claim, complete, type DeadPayload, fail, giveUp, postpone, release } from "./queue.ts";
 import type { JobsTable } from "./tables.ts";
 
 /**
@@ -21,6 +21,8 @@ export type Queue = {
     readonly perGroup?: number;
     /** How long a job may run before another worker may claim it. Defaults to five minutes. */
     readonly leaseMs?: number;
+    /** What its dead letters keep of their payload. Defaults to all of it. */
+    readonly deadPayload?: DeadPayload;
 };
 
 export type WorkOptions = {
@@ -59,7 +61,13 @@ const errorText = (error: unknown) =>
     error instanceof Error ? (error.stack ?? error.message) : String(error);
 
 /** Records how a run of `job` ended when its handler threw `error`. */
-const recordFailure = async (ctx: Context, name: string, job: JobsTable, error: unknown) => {
+const recordFailure = async (
+    ctx: Context,
+    name: string,
+    queue: Queue,
+    job: JobsTable,
+    error: unknown,
+) => {
     if (error instanceof RetryAt) return await postpone(ctx, job, error.runAt, error.message);
 
     const permanent = error instanceof PermanentFailure;
@@ -70,8 +78,8 @@ const recordFailure = async (ctx: Context, name: string, job: JobsTable, error: 
         error,
     });
 
-    if (permanent) await giveUp(ctx, job, errorText(error));
-    else await fail(ctx, job, errorText(error));
+    if (permanent) await giveUp(ctx, job, errorText(error), queue.deadPayload);
+    else await fail(ctx, job, errorText(error), { deadPayload: queue.deadPayload });
 };
 
 const runJob = async (ctx: Context, name: string, queue: Queue, job: JobsTable) => {
@@ -80,7 +88,7 @@ const runJob = async (ctx: Context, name: string, queue: Queue, job: JobsTable) 
         await complete(ctx, job);
     } catch (error) {
         try {
-            await recordFailure(ctx, name, job, error);
+            await recordFailure(ctx, name, queue, job, error);
         } catch (error) {
             // The lease runs out and the job is claimed again, so nothing is lost.
             logger.error("Couldn't record the failure of job {id}: {error}", { id: job.id, error });

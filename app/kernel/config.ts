@@ -301,6 +301,10 @@ export const Config = z.strictObject({
     instance: Instance,
     limits: Limits,
     permissions: Permissions,
+    jobs: z.strictObject({
+        /** How many days a job that failed for good is kept, for someone to look at. */
+        dead_letter_days: z.int().min(1).default(30),
+    }).prefault({}),
     logging: z.strictObject({
         level: z.enum(["trace", "debug", "info", "warning", "error", "fatal"])
             .default("info"),

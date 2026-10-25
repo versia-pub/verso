@@ -5,8 +5,8 @@
  */
 import { getLogger } from "@logtape/logtape";
 import { parkedUntil, recordReached, recordUnreachable } from "../instances/reachability.ts";
-import { postponeGroup, resumeGroup } from "../jobs/queue.ts";
-import type { JobsTable } from "../jobs/tables.ts";
+import { type DeadPayload, postponeGroup, resumeGroup } from "../jobs/queue.ts";
+import type { JobPayload, JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure, RetryAt } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { versiaUrl } from "../kernel/urls.ts";
@@ -40,6 +40,12 @@ export const rateLimitReset = (headers: Headers, now: Date): Date | undefined =>
     }
 
     return new Date(now.getTime() + Number(reset) * 1000);
+};
+
+/** What a delivery keeps once it dies: the instance it was for, without the entity. */
+export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload => {
+    const job = DeliverJob.safeParse(payload);
+    return job.success ? { domain: job.data.domain } : {};
 };
 
 /**

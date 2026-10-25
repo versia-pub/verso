@@ -239,6 +239,29 @@ Deno.test("a job that fails permanently isn't run again", async () => {
     assertEquals(job.last_error?.startsWith("PermanentFailure: failure 1"), true);
 });
 
+Deno.test("a dead letter keeps what its queue keeps of its payload, however it died", async () => {
+    await using test = await open();
+    const queues: Record<string, Queue> = {
+        refused: {
+            handler: () => Promise.reject(new PermanentFailure("refused")),
+            concurrency: 1,
+            deadPayload: (payload) => ({ n: payload.n }),
+        },
+        failing: {
+            handler: () => Promise.reject(new Error("down")),
+            concurrency: 1,
+            deadPayload: (payload) => ({ n: payload.n }),
+        },
+    };
+
+    await enqueue(test.ctx, { queue: "refused", payload: { n: 1, body: "large" } });
+    await enqueue(test.ctx, { queue: "failing", payload: { n: 2, body: "large" }, maxAttempts: 1 });
+    await drain(test.ctx, queues);
+
+    const jobs = await test.ctx.db.selectFrom("jobs").select("payload").orderBy("id").execute();
+    assertEquals(jobs.map((job) => job.payload), [{ n: 1 }, { n: 2 }]);
+});
+
 Deno.test("a job that asks to be retried at a time runs then, however often it asks", async () => {
     await using test = await open();
 

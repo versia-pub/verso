@@ -6,6 +6,8 @@ import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
 import { HttpError } from "../http/errors.ts";
 import { findInstanceId } from "../instances/instances.ts";
+import type { DeadPayload } from "../jobs/queue.ts";
+import type { JobPayload } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { checkEntity, InboxJob } from "./inbox.ts";
@@ -36,6 +38,15 @@ const describe = (body: string) => {
     return parsed.data.id === undefined
         ? parsed.data.type
         : `${parsed.data.type} ${parsed.data.id}`;
+};
+
+/**
+ * What an inbox job keeps once it dies: who sent what, without the entity, which can be large, so
+ * an instance can't fill the database with what Verso refuses.
+ */
+export const inboxDeadPayload: DeadPayload = (payload: JobPayload): JobPayload => {
+    const job = InboxJob.safeParse(payload);
+    return job.success ? { signer: job.data.signer, entity: describe(job.data.body) } : {};
 };
 
 /**
