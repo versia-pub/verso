@@ -22,11 +22,26 @@ const without = (hidden: Excluded) => (eb: ExpressionBuilder<Database, "notes">)
     ]);
 
 /**
+ * Of pages of the same bounds, of rows that no two share, the page of all their rows, as
+ * `readPage` would read it.
+ */
+const mergePages = (pages: readonly NoteRow[][], page: PageBounds) => {
+    const newestFirst = pages.flat().toSorted((a, b) => b.id.localeCompare(a.id));
+
+    // Just after `min_id` are its oldest rows.
+    return page.min_id === undefined
+        ? newestFirst.slice(0, page.limit)
+        : newestFirst.slice(-page.limit);
+};
+
+/**
  * A page of `viewerId`'s home timeline, newest first: all their own notes and shares, those notes
  * of `followed` that they may see, and the shares of `sharing`, the accounts of `followed` whose
  * shares they see. Of those notes, a direct one must mention them, and a reply must be to them or
  * to someone they follow, its author among them, as on Mastodon. Nothing of the accounts they
- * block or mute, `hidden`, is in it, nor anyone's shares of their notes.
+ * block or mute, `hidden`, is in it, nor anyone's shares of their notes. Each of the three is read
+ * on its own, so each can use the index that suits it, however many accounts they follow. No
+ * note is in two of them, as no one follows themselves.
  */
 export const homePage = async (
     ctx: Context,
@@ -36,35 +51,37 @@ export const homePage = async (
     hidden: Excluded,
     page: PageBounds,
 ): Promise<NoteRow[]> => {
-    const query = ctx.db.selectFrom("notes").selectAll()
-        .where(without(hidden))
+    const notes = ctx.db.selectFrom("notes").selectAll().where(without(hidden));
+
+    const own = notes.where("account_id", "=", viewerId);
+    // Shares are never direct, so any of them is for their followers.
+    const shares = notes.where("reblog_of_id", "is not", null).where("account_id", "in", sharing);
+    const others = notes
+        .where("reblog_of_id", "is", null)
+        .where("account_id", "in", followed)
         .where((eb) =>
-            eb.or([
-                eb("account_id", "=", viewerId),
-                // Shares are never direct, so any of them is for their followers.
-                eb.and([eb("reblog_of_id", "is not", null), eb("account_id", "in", sharing)]),
-                eb.and([
-                    eb("reblog_of_id", "is", null),
-                    eb("account_id", "in", followed),
-                    eb.or([
-                        eb("visibility", "!=", "direct"),
-                        eb.exists(
-                            eb.selectFrom("note_mentions").select("note_mentions.note_id")
-                                .whereRef("note_mentions.note_id", "=", "notes.id")
-                                .where("note_mentions.account_id", "=", viewerId),
-                        ),
-                    ]),
-                    // Not a reply, or one to them or to someone they follow too.
-                    eb.or([
-                        eb("in_reply_to_account_id", "is", null),
-                        eb("in_reply_to_account_id", "=", viewerId),
-                        eb("in_reply_to_account_id", "in", followed),
-                    ]),
+            eb.and([
+                eb.or([
+                    eb("visibility", "!=", "direct"),
+                    eb.exists(
+                        eb.selectFrom("note_mentions").select("note_mentions.note_id")
+                            .whereRef("note_mentions.note_id", "=", "notes.id")
+                            .where("note_mentions.account_id", "=", viewerId),
+                    ),
+                ]),
+                // Not a reply, or one to them or to someone they follow too.
+                eb.or([
+                    eb("in_reply_to_account_id", "is", null),
+                    eb("in_reply_to_account_id", "=", viewerId),
+                    eb("in_reply_to_account_id", "in", followed),
                 ]),
             ])
         );
 
-    return await readPage(query, "notes.id", page);
+    const pages = [];
+    for (const query of [own, shares, others]) pages.push(await readPage(query, "notes.id", page));
+
+    return mergePages(pages, page);
 };
 
 /** Where the notes on a public timeline are from: anywhere, this instance, or other instances. */

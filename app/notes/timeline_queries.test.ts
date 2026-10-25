@@ -9,6 +9,7 @@ import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import type { NotesTable } from "./tables.ts";
 import { createNote, createShare } from "./testing.ts";
+import type { PageBounds } from "../db/paging.ts";
 import { homePage, type Origin, publicPage } from "./timeline_queries.ts";
 
 /**
@@ -46,7 +47,7 @@ const open = async () => {
     };
 
     /** Alice's home timeline, by name. */
-    const home = async (page: { max_id?: string; limit?: number } = {}) =>
+    const home = async (page: Partial<PageBounds> = {}) =>
         (await homePage(
             test.ctx,
             "alice",
@@ -158,6 +159,27 @@ Deno.test("home is paged by id", async () => {
 
     assertEquals(await test.home({ limit: 2 }), ["three", "two"]);
     assertEquals(await test.home({ max_id: three }), ["two", "one"]);
+});
+
+Deno.test("home's own notes, shares and others' notes are paged together", async () => {
+    await using test = await open();
+    await test.add("bob's", "bob");
+    await test.add("first", "alice");
+    await test.share("bob's share", "bob", "first");
+    await test.add("bob's other", "bob");
+    await test.add("second", "alice");
+    const id = (name: string) => [...test.names].find(([, each]) => each === name)?.[0];
+
+    assertEquals(await test.home({ limit: 3 }), ["second", "bob's other", "bob's share"]);
+    assertEquals(await test.home({ limit: 2, max_id: id("bob's other") }), [
+        "bob's share",
+        "first",
+    ]);
+    assertEquals(await test.home({ limit: 2, since_id: id("first") }), ["second", "bob's other"]);
+    assertEquals(await test.home({ limit: 2, min_id: id("first") }), [
+        "bob's other",
+        "bob's share",
+    ]);
 });
 
 Deno.test("the public timeline is public notes, without replies but to their own authors", async () => {
