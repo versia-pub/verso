@@ -38,6 +38,15 @@ export const parkedUntil = async (ctx: Context, domain: string): Promise<Date | 
     return probing ? undefined : hold;
 };
 
+/** Whether `domain` is parked now, so that nothing but a delivery's probe is sent to it. */
+export const isParked = async (ctx: Context, domain: string): Promise<boolean> => {
+    const row = await ctx.db.selectFrom("instances").select("parked_until")
+        .where("domain", "=", domain).executeTakeFirst();
+    const until = row?.parked_until ?? null;
+
+    return until !== null && until > ctx.clock.now();
+};
+
 /**
  * Notes that `domain` couldn't be reached, again, and since when it can't be if it could before.
  * Returns when it may next be tried, if it failed often enough to be parked.

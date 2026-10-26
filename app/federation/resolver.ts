@@ -9,6 +9,7 @@ import { canonicalizeDomain, type Reference } from "@versia/protocol";
 import { z } from "zod";
 import { HttpError } from "../http/errors.ts";
 import { findInstanceId } from "../instances/instances.ts";
+import { isParked } from "../instances/reachability.ts";
 import type { Budget, Context, Resolver } from "../kernel/context.ts";
 import { lru } from "../kernel/lru.ts";
 import { entityUrl } from "../kernel/urls.ts";
@@ -55,6 +56,12 @@ export type ResolverOptions = {
     readonly missingMs?: number;
     /** How many missing entities to remember. */
     readonly capacity?: number;
+    /**
+     * How many fetches one process makes from each instance in a window, so that what others send
+     * can't make Verso flood one. Fetches past it are made later, if asked again. Defaults to 600
+     * in 5 minutes.
+     */
+    readonly fetchLimit?: { readonly limit: number; readonly windowMs: number };
 };
 
 const Identified = z.object({ id: z.string() });
@@ -69,6 +76,23 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
     /** Fetches under way, so resolves arriving together fetch once. */
     const fetching = new Map<string, Promise<string | undefined>>();
 
+    const { limit, windowMs } = options.fetchLimit ?? { limit: 600, windowMs: 5 * 60_000 };
+    /** How many fetches each instance was sent in its current window, and when that began. */
+    const fetched = lru<string, { start: number; count: number }>(options.capacity ?? 10_000);
+
+    /** Counts a fetch from `host`, unless it was sent as many as it may be in this window. */
+    const mayFetch = (host: string, now: number) => {
+        const window = fetched.get(host);
+        if (window === undefined || now - window.start >= windowMs) {
+            fetched.set(host, { start: now, count: 1 });
+            return true;
+        }
+        if (window.count >= limit) return false;
+
+        window.count++;
+        return true;
+    };
+
     /** Fetches the entity and saves it, giving its id, or `undefined` if it is gone. */
     const fetchEntity = async (
         ctx: Context,
@@ -78,6 +102,8 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         budget: Budget,
     ) => {
         const { host, id } = reference;
+        // One that can't be reached now is left alone, as deliveries leave it.
+        if (await isParked(ctx, host)) throw new ResolveFailed(`${host} can't be reached now`);
         const reply = await fetchSigned(ctx, entityUrl(host, type.type, id));
 
         if (reply.status === 404 || reply.status === 410) {
@@ -146,7 +172,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         if (pending && budget.saving > 0) return known?.id;
 
         if (!pending) {
-            if (!spend(ctx, budget)) return known?.id;
+            if (!mayFetch(reference.host, now) || !spend(ctx, budget)) return known?.id;
 
             pending = fetchEntity(ctx, type, reference, key, budget).finally(() =>
                 fetching.delete(key)

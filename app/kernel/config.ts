@@ -318,6 +318,14 @@ export const Config = z.strictObject({
             limit: z.int().min(1).default(3000),
             window_seconds: z.int().min(1).default(300),
         }).prefault({}),
+        /**
+         * How many fetches each process makes from one instance in a window of time, so that what
+         * other instances send can't make Verso flood one. Fetches past it are left for later.
+         */
+        fetch_limit: z.strictObject({
+            limit: z.int().min(1).default(600),
+            window_seconds: z.int().min(1).default(300),
+        }).prefault({}),
     }).prefault({}),
     media: MediaLimits.extend({
         /** Where uploaded files are kept. */

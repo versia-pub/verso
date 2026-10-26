@@ -10,16 +10,21 @@ import type { Reference } from "@versia/protocol";
 import type { Budget, Context, Resolver } from "../kernel/context.ts";
 import { createRegistry, type Sender } from "./registry.ts";
 import { BadReply } from "./request.ts";
-import { createResolver, fetchBudget, ResolveFailed } from "./resolver.ts";
+import {
+    createResolver,
+    fetchBudget,
+    ResolveFailed,
+    type ResolverOptions,
+} from "./resolver.ts";
 
 const day = 24 * 60 * 60_000;
 
 /** a.test resolving, and bob on b.test. */
-const open = async () => {
+const open = async (options: ResolverOptions = {}) => {
     const network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"].ctx;
     const bob = await createLocalAccount(network.instances["b.test"].ctx, "bob");
-    const resolve = createResolver(registry);
+    const resolve = createResolver(registry, options);
 
     /** How many entities a.test has fetched from `host`. */
     const fetched = (host: string) =>
@@ -269,4 +274,40 @@ Deno.test("a budget past its deadline fetches nothing", async () => {
         undefined,
     );
     assertEquals(fetched("b.test"), 1);
+});
+
+Deno.test("each instance is sent only so many fetches in a window", async () => {
+    const { network, fetched, user } = await open({ fetchLimit: { limit: 2, windowMs: 1000 } });
+    await using _ = network;
+    const b = network.instances["b.test"].ctx;
+    const ids = [];
+    for (const name of ["bob2", "bob3", "bob4"]) ids.push(await createLocalAccount(b, name));
+
+    assertNotEquals(await user("b.test", ids[0]), undefined);
+    assertNotEquals(await user("b.test", ids[1]), undefined);
+    assertEquals(await user("b.test", ids[2]), undefined);
+    assertEquals(fetched("b.test"), 2);
+
+    network.clock.advance(1000);
+    assertNotEquals(await user("b.test", ids[2]), undefined);
+});
+
+Deno.test("an instance that can't be reached now isn't fetched from", async () => {
+    const { network, a, bob, fetched, user } = await open();
+    await using _ = network;
+    const id = await user("b.test", bob);
+    network.clock.advance(day);
+    await a.db.updateTable("instances")
+        .set({ parked_until: new Date(a.clock.now().getTime() + 60_000) })
+        .where("domain", "=", "b.test").execute();
+
+    // What Verso has is used meanwhile.
+    assertEquals(await user("b.test", bob), id);
+    assertEquals(fetched("b.test"), 1);
+    await assertRejects(() => user("b.test", "nobody"), ResolveFailed);
+
+    // Once its wait is over, it is asked again.
+    network.clock.advance(60_000);
+    assertEquals(await user("b.test", bob), id);
+    assertEquals(fetched("b.test"), 2);
 });

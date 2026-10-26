@@ -1,6 +1,6 @@
 import { accountPermissions } from "./accounts/roles.ts";
 import { authenticateToken } from "./auth/tokens.ts";
-import { createResolver } from "./federation/resolver.ts";
+import { createResolver, type ResolverOptions } from "./federation/resolver.ts";
 import { followDeliveries, profileDeliveries } from "./graph/federation.ts";
 import { acceptWhenUnlocked, uncountFollowsOf } from "./graph/follows.ts";
 import type { AppServices } from "./http/env.ts";
@@ -45,7 +45,10 @@ const keptMs = 60_000;
  * Federation as Verso's modules provide it, with `blockedDomains` as config blocks them. Make one
  * for each process, so its keys are fetched once, and fetches under way are shared.
  */
-export const federation = (blockedDomains: readonly string[] = []): Federation => {
+export const federation = (
+    blockedDomains: readonly string[] = [],
+    resolverOptions: ResolverOptions = {},
+): Federation => {
     const key = cached(keptMs, instanceKey);
     const blocked = cached(keptMs, blockedDomainNames);
 
@@ -53,7 +56,7 @@ export const federation = (blockedDomains: readonly string[] = []): Federation =
         instanceKey: key.get,
         remoteKeys: remoteKeys(),
         isBlocked: domainBlocks(blockedDomains, blocked.get),
-        resolve: createResolver(registry),
+        resolve: createResolver(registry, resolverOptions),
         forget: () => {
             key.clear();
             blocked.clear();

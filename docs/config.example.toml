@@ -91,6 +91,12 @@ roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
 # hears from it again.
 # unreachable_days = 7
 
+[federation.fetch_limit]
+# How many fetches each process makes from one instance in a window, so that what others send
+# can't make Verso flood one.
+# limit = 600
+# window_seconds = 300
+
 [federation.rate_limit]
 # How many requests each instance may send in a window, apart from clients' limit. Requests
 # that aren't validly signed count against their client instead.

@@ -103,7 +103,12 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
         files: filesFor(config.media.storage, fetchTransport, systemClock),
         images: vipsImages({ maxPixels: config.media.max_pixels }),
         identityProviders,
-        federation: federation(config.federation.blocked_domains),
+        federation: federation(config.federation.blocked_domains, {
+            fetchLimit: {
+                limit: config.federation.fetch_limit.limit,
+                windowMs: config.federation.fetch_limit.window_seconds * 1000,
+            },
+        }),
         settings: settingsOf(config),
         subscribers,
         db,

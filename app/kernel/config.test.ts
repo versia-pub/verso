@@ -33,6 +33,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 silent_blocks: false,
                 unreachable_days: 7,
                 rate_limit: { limit: 3000, window_seconds: 300 },
+                fetch_limit: { limit: 600, window_seconds: 300 },
             },
             instance: { description: "", contact: {}, rules: [] },
             limits: {
@@ -201,6 +202,7 @@ level = "debug"
                 silent_blocks: false,
                 unreachable_days: 3,
                 rate_limit: { limit: 3000, window_seconds: 300 },
+                fetch_limit: { limit: 600, window_seconds: 300 },
             },
             instance: {
                 name: "Example Social",
