@@ -4,7 +4,7 @@ import pg from "pg";
 import { connect, type Database } from "../db/database.ts";
 import { testDatabaseKind, testPostgresUrl } from "../db/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { enqueue, enqueueAll } from "./queue.ts";
+import { enqueue, enqueueAll } from "./job_queries.ts";
 import { listenForJobs } from "./wakeups.ts";
 import { work } from "./worker.ts";
 

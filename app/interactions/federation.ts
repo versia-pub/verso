@@ -10,7 +10,7 @@ import { findAccount } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveries } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
-import { findInstanceId } from "../instances/instances.ts";
+import { findInstanceId } from "../instances/instance_queries.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { everyone, instanceMaySee } from "../notes/audience.ts";

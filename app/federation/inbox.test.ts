@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { recordUnreachable } from "../instances/reachability.ts";
-import { postponeGroup } from "../jobs/queue.ts";
+import { postponeGroup } from "../jobs/job_pause_queries.ts";
 import { deliverQueue } from "./deliver.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";

@@ -12,7 +12,7 @@ import {
     insertAttachments,
     unattachedUploads,
 } from "./attachment_queries.ts";
-import type { MediaRow } from "./media.ts";
+import type { MediaRow } from "./media_queries.ts";
 import { describeUpload, processingFailed, type UploadDescription } from "./uploads.ts";
 
 /**

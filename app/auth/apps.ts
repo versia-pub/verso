@@ -2,6 +2,7 @@ import type { Context } from "../kernel/context.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { AppsTable } from "./tables.ts";
+import { insertApp } from "./app_queries.ts";
 
 export type AppRegistration = {
     readonly name: string;
@@ -28,21 +29,7 @@ export const registerApp = async (
         created_at: ctx.clock.now(),
     };
 
-    await ctx.db.insertInto("apps").values(app).execute();
+    await insertApp(ctx, app);
 
     return { app, clientSecret };
 };
-
-/** An app by the client id it sends, if it is registered. */
-export const findAppByClientId = async (
-    ctx: Context,
-    clientId: string | undefined,
-): Promise<AppsTable | undefined> =>
-    clientId === undefined
-        ? undefined
-        : await ctx.db.selectFrom("apps").selectAll().where("client_id", "=", clientId)
-            .executeTakeFirst();
-
-/** An app by its id, which must exist, as it does for a viewer's token. */
-export const getApp = (ctx: Context, id: string): Promise<AppsTable> =>
-    ctx.db.selectFrom("apps").selectAll().where("id", "=", id).executeTakeFirstOrThrow();

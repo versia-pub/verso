@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import { enqueue } from "../jobs/queue.ts";
+import { enqueue } from "../jobs/job_queries.ts";
 import type { Queue } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { createNetwork } from "./network.ts";

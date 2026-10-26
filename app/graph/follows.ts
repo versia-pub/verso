@@ -7,7 +7,7 @@ import { findAccount } from "../accounts/account_queries.ts";
 import { countFollow, uncountFollowers, uncountFollowing } from "../accounts/count_queries.ts";
 import { isAccountDeleting, isProfileUpdated } from "../accounts/events.ts";
 import { batchSize } from "../db/batches.ts";
-import { enqueue } from "../jobs/queue.ts";
+import { enqueue } from "../jobs/job_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";

@@ -1,6 +1,6 @@
 import type { MediaAttachment } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
-import type { MediaRow } from "./media.ts";
+import type { MediaRow } from "./media_queries.ts";
 
 /** Where the local file kept under `key` is served: by the store, if it serves files, or Verso. */
 export const fileUrl = (ctx: Context, key: string): string =>

@@ -7,9 +7,9 @@
  */
 import { z } from "zod";
 import { fetchSigned } from "../federation/request.ts";
-import { domainsOf } from "../instances/instances.ts";
+import { domainsOf } from "../instances/instance_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
-import { enqueue } from "../jobs/queue.ts";
+import { enqueue } from "../jobs/job_queries.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { entityUrl } from "../kernel/urls.ts";

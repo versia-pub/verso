@@ -1,8 +1,9 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { z } from "zod";
-import { enqueue } from "../jobs/queue.ts";
+import { enqueue } from "../jobs/job_queries.ts";
 import { drain } from "../jobs/worker.ts";
-import { blockDomain, listBlockedDomains } from "../moderation/domain_blocks.ts";
+import { blockDomain } from "../moderation/domain_blocks.ts";
+import { listBlockedDomains } from "../moderation/domain_block_queries.ts";
 import { createTestContext } from "../testing/context.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";

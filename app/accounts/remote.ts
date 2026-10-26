@@ -6,7 +6,7 @@ import { setAccountEmojis } from "../emojis/emoji_queries.ts";
 import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import { deleteMedia, type RemoteMedia, saveRemoteMedia } from "../media/media.ts";
+import { deleteMedia, type RemoteMedia, saveRemoteMedia } from "../media/media_queries.ts";
 import type { AccountDeleting } from "./events.ts";
 import {
     deleteAccount,

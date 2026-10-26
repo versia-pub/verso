@@ -1,7 +1,7 @@
 import type { ExpressionBuilder, ExpressionWrapper, SqlBool } from "kysely";
 import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
-import type { MediaRow } from "./media.ts";
+import type { MediaRow } from "./media_queries.ts";
 
 /** Whether a note has files attached, for queries of notes. */
 export const hasAttachments = (

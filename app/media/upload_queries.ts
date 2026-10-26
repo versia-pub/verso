@@ -1,6 +1,6 @@
 import type { Insertable, Updateable } from "kysely";
 import type { Context } from "../kernel/context.ts";
-import type { MediaRow } from "./media.ts";
+import type { MediaRow } from "./media_queries.ts";
 import type { MediaTable } from "./tables.ts";
 
 /** What processing an upload sets: the file it is kept as, and what is known of it. */

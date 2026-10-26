@@ -8,7 +8,7 @@ import { getLogger } from "@logtape/logtape";
 import { canonicalizeDomain, type Reference } from "@versia/protocol";
 import { z } from "zod";
 import { HttpError } from "../http/errors.ts";
-import { findInstanceId } from "../instances/instances.ts";
+import { findInstanceId } from "../instances/instance_queries.ts";
 import { isParked } from "../instances/reachability.ts";
 import type { Budget, Context, Resolver } from "../kernel/context.ts";
 import { lru } from "../kernel/lru.ts";

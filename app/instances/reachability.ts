@@ -4,6 +4,13 @@
  * @module
  */
 import type { Context } from "../kernel/context.ts";
+import {
+    addFailure,
+    clearFailures,
+    findParkedUntil,
+    holdForProbe,
+    setParkedUntil,
+} from "./reachability_queries.ts";
 
 /** How many failures in a row park an instance. */
 const threshold = 5;
@@ -22,28 +29,17 @@ export const parkedForMs = (failures: number): number =>
 export const parkedUntil = async (ctx: Context, domain: string): Promise<Date | undefined> => {
     const now = ctx.clock.now();
 
-    const row = await ctx.db.selectFrom("instances").select("parked_until")
-        .where("domain", "=", domain).executeTakeFirst();
-    if (!row?.parked_until) return undefined;
-    if (row.parked_until > now) return row.parked_until;
+    const until = await findParkedUntil(ctx, domain);
+    if (!until) return undefined;
+    if (until > now) return until;
 
     const hold = new Date(now.getTime() + probeMs);
-    const probing = await ctx.db.updateTable("instances")
-        .set({ parked_until: hold })
-        .where("domain", "=", domain)
-        .where("parked_until", "<=", now)
-        .returning("id")
-        .executeTakeFirst();
-
-    return probing ? undefined : hold;
+    return await holdForProbe(ctx, domain, now, hold) ? undefined : hold;
 };
 
 /** Whether `domain` is parked now, so that nothing but a delivery's probe is sent to it. */
 export const isParked = async (ctx: Context, domain: string): Promise<boolean> => {
-    const row = await ctx.db.selectFrom("instances").select("parked_until")
-        .where("domain", "=", domain).executeTakeFirst();
-    const until = row?.parked_until ?? null;
-
+    const until = await findParkedUntil(ctx, domain) ?? null;
     return until !== null && until > ctx.clock.now();
 };
 
@@ -55,19 +51,11 @@ export const recordUnreachable = async (
     ctx: Context,
     domain: string,
 ): Promise<Date | undefined> => {
-    const row = await ctx.db.updateTable("instances")
-        .set((eb) => ({
-            failures: eb("failures", "+", 1),
-            unreachable_since: eb.fn.coalesce("unreachable_since", eb.val(ctx.clock.now())),
-        }))
-        .where("domain", "=", domain)
-        .returning("failures")
-        .executeTakeFirst();
-    if (!row || row.failures < threshold) return undefined;
+    const failures = await addFailure(ctx, domain);
+    if (failures === undefined || failures < threshold) return undefined;
 
-    const parkedUntil = new Date(ctx.clock.now().getTime() + parkedForMs(row.failures));
-    await ctx.db.updateTable("instances").set({ parked_until: parkedUntil })
-        .where("domain", "=", domain).execute();
+    const parkedUntil = new Date(ctx.clock.now().getTime() + parkedForMs(failures));
+    await setParkedUntil(ctx, domain, parkedUntil);
 
     return parkedUntil;
 };
@@ -75,13 +63,5 @@ export const recordUnreachable = async (
 /**
  * Notes that `domain` answered, or sent something. Returns whether it had been failing, or parked.
  */
-export const recordReached = async (ctx: Context, domain: string): Promise<boolean> => {
-    const row = await ctx.db.updateTable("instances")
-        .set({ failures: 0, parked_until: null, unreachable_since: null })
-        .where("domain", "=", domain)
-        .where((eb) => eb.or([eb("failures", ">", 0), eb("parked_until", "is not", null)]))
-        .returning("id")
-        .executeTakeFirst();
-
-    return row !== undefined;
-};
+export const recordReached = (ctx: Context, domain: string): Promise<boolean> =>
+    clearFailures(ctx, domain);

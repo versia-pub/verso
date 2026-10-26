@@ -5,6 +5,7 @@
  * @module
  */
 import type { Context, InstanceKey } from "../kernel/context.ts";
+import { deleteKeysBut, hasKeyRow, insertKeyRow, newestKeyRow } from "./key_queries.ts";
 
 /** A private key, as kept, for signing. Importing one takes microseconds, so it isn't kept. */
 const importPrivateKey = (pkcs8: string) =>
@@ -15,12 +16,7 @@ const importPrivateKey = (pkcs8: string) =>
  * also works in a transaction. `ctx.federation.instanceKey` keeps it for a while.
  */
 export const instanceKey = async (ctx: Context): Promise<InstanceKey> => {
-    const row = await ctx.db.selectFrom("instance_keys")
-        .select(["id", "public_key", "private_key"])
-        .orderBy("created_at", "desc")
-        .orderBy("id", "desc")
-        .limit(1)
-        .executeTakeFirst();
+    const row = await newestKeyRow(ctx);
 
     if (!row) throw new Error("This instance has no key yet. Run `verso migrate` to make one.");
 
@@ -41,16 +37,14 @@ export const createInstanceKey = async (
 
     const id = ctx.ids();
 
-    await ctx.db.insertInto("instance_keys")
-        .values({
-            id,
-            public_key: new Uint8Array(await crypto.subtle.exportKey("spki", pair.publicKey))
-                .toBase64(),
-            private_key: new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey))
-                .toBase64(),
-            created_at: ctx.clock.now(),
-        })
-        .execute();
+    await insertKeyRow(ctx, {
+        id,
+        public_key: new Uint8Array(await crypto.subtle.exportKey("spki", pair.publicKey))
+            .toBase64(),
+        private_key: new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey))
+            .toBase64(),
+        created_at: ctx.clock.now(),
+    });
 
     return id;
 };
@@ -63,7 +57,7 @@ export const createInstanceKey = async (
 export const rotateInstanceKey = async (ctx: Context): Promise<string> => {
     const publicKey = await ctx.transaction(async (tx) => {
         const id = await createInstanceKey(tx);
-        await tx.db.deleteFrom("instance_keys").where("id", "!=", id).execute();
+        await deleteKeysBut(tx, id);
 
         return (await instanceKey(tx)).publicKey;
     });
@@ -77,9 +71,7 @@ export const rotateInstanceKey = async (ctx: Context): Promise<string> => {
 export const ensureInstanceKey = async (
     ctx: Pick<Context, "db" | "clock" | "ids">,
 ): Promise<boolean> => {
-    const existing = await ctx.db.selectFrom("instance_keys").select("id").limit(1)
-        .executeTakeFirst();
-    if (existing) return false;
+    if (await hasKeyRow(ctx)) return false;
 
     await createInstanceKey(ctx);
     return true;

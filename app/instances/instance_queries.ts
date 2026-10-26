@@ -56,3 +56,38 @@ export const reachableDomainsOf = async (
 
     return rows.map((row) => row.domain);
 };
+
+/** What an instance's metadata said when it was last fetched. */
+export type InstanceMetadataColumns = {
+    readonly public_key: string;
+    readonly key_fetched_at: Date;
+    readonly takes_messages: boolean;
+};
+
+/** Keeps an instance's fetched metadata in its row, which it creates if there is none yet. */
+export const saveInstanceMetadata = async (
+    ctx: Context,
+    domain: string,
+    metadata: InstanceMetadataColumns,
+): Promise<void> => {
+    await ctx.db.insertInto("instances")
+        .values({
+            id: ctx.ids(),
+            domain,
+            protocol: "versia",
+            ...metadata,
+            created_at: ctx.clock.now(),
+        })
+        .onConflict((conflict) => conflict.column("domain").doUpdateSet(metadata))
+        .execute();
+};
+
+/** The key Verso has for the instance at `domain`, and when it was fetched, if it knows it. */
+export const findStoredKey = (
+    ctx: Context,
+    domain: string,
+): Promise<Pick<InstancesTable, "public_key" | "key_fetched_at"> | undefined> =>
+    ctx.db.selectFrom("instances")
+        .select(["public_key", "key_fetched_at"])
+        .where("domain", "=", domain)
+        .executeTakeFirst();

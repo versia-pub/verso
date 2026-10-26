@@ -1,6 +1,14 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
-import { claim, complete, type DeadPayload, fail, giveUp, postpone, release } from "./queue.ts";
+import {
+    claim,
+    complete,
+    type DeadPayload,
+    fail,
+    giveUp,
+    postpone,
+    release,
+} from "./job_queries.ts";
 import type { JobsTable } from "./tables.ts";
 
 /**

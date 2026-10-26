@@ -12,7 +12,7 @@ import { vipsImages } from "../kernel/vips_images.ts";
 import { fakeBucket, fakeS3 } from "../testing/fake_s3.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
-import { findMedia, saveRemoteMedia } from "./media.ts";
+import { findMedia, saveRemoteMedia } from "./media_queries.ts";
 import { finishUpload } from "./upload_queries.ts";
 import { deleteFileIfUnused, mediaQueue, processingFailed, upload } from "./uploads.ts";
 

@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findMedia, type RemoteMedia, saveRemoteMedia } from "./media.ts";
+import { findMedia, type RemoteMedia, saveRemoteMedia } from "./media_queries.ts";
 import { renderAttachment } from "./render.ts";
 
 /** Another instance's file, as Mastodon's API describes it. */

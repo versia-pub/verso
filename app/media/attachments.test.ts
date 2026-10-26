@@ -10,7 +10,7 @@ import { noteRoutes } from "../notes/routes.ts";
 import { timelineRoutes } from "../notes/timeline_routes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findMedia } from "./media.ts";
+import { findMedia } from "./media_queries.ts";
 import { upload } from "./uploads.ts";
 
 const png = new Uint8Array(encode({

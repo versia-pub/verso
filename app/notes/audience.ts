@@ -5,7 +5,7 @@
 import { instancesHosting } from "../accounts/account_queries.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import { followerInstances, hasFollowersOn } from "../graph/follows.ts";
-import { findInstanceId } from "../instances/instances.ts";
+import { findInstanceId } from "../instances/instance_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { mentionsOf, type NoteRow } from "./note_queries.ts";
 

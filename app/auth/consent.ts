@@ -2,7 +2,7 @@ import { getLogger } from "@logtape/logtape";
 import { getUsername } from "../accounts/account_queries.ts";
 import { provision } from "../accounts/provision.ts";
 import type { Context } from "../kernel/context.ts";
-import { getApp } from "./apps.ts";
+import { getApp } from "./app_queries.ts";
 import {
     deleteFlow,
     deleteUnfinishedFlow,
@@ -10,7 +10,7 @@ import {
     findFormFlow,
     markLoggedIn,
     setCode,
-} from "./flows.ts";
+} from "./flow_queries.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";

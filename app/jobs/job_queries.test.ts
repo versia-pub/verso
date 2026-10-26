@@ -13,10 +13,9 @@ import {
     fail,
     giveUp,
     postpone,
-    postponeGroup,
     release,
-    resumeGroup,
-} from "./queue.ts";
+} from "./job_queries.ts";
+import { postponeGroup, resumeGroup } from "./job_pause_queries.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";
 

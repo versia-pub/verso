@@ -1,7 +1,8 @@
 import { Application, CredentialApplication } from "@versia/client-api";
 import { z } from "zod";
 import { defineRoute, type Route } from "../http/route.ts";
-import { getApp, registerApp } from "./apps.ts";
+import { registerApp } from "./apps.ts";
+import { getApp } from "./app_queries.ts";
 import { ScopeList } from "../kernel/scopes.ts";
 import type { AppsTable } from "./tables.ts";
 

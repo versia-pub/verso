@@ -6,7 +6,7 @@ import { getLogger } from "@logtape/logtape";
 import { canonicalizeDomain } from "@versia/protocol";
 import { fetchBudget, isRemoteFailure, spend, withDeadline } from "../federation/resolver.ts";
 import { webfinger } from "../federation/webfinger.ts";
-import { findInstanceId } from "../instances/instances.ts";
+import { findInstanceId } from "../instances/instance_queries.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import {
     type AccountRow,

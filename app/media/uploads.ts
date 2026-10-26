@@ -7,7 +7,7 @@
 import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
 import { lockKey } from "../db/locking.ts";
-import { enqueue } from "../jobs/queue.ts";
+import { enqueue } from "../jobs/job_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
@@ -19,7 +19,7 @@ import {
     imageFormats,
 } from "../kernel/images.ts";
 import { spool } from "../kernel/spool.ts";
-import { findMedia, type MediaRow } from "./media.ts";
+import { findMedia, type MediaRow } from "./media_queries.ts";
 import {
     deleteUnusedUploads,
     findUpload,

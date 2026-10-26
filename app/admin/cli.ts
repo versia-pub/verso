@@ -18,12 +18,8 @@ import { RoleName } from "../accounts/roles.ts";
 import { rotateInstanceKey } from "../instances/keys.ts";
 import type { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-import {
-    blockDomain,
-    blockedByConfig,
-    listBlockedDomains,
-    unblockDomain,
-} from "../moderation/domain_blocks.ts";
+import { blockDomain, blockedByConfig, unblockDomain } from "../moderation/domain_blocks.ts";
+import { listBlockedDomains } from "../moderation/domain_block_queries.ts";
 
 /** What admin commands need from whoever runs them. */
 export type AdminIo = {

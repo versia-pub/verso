@@ -10,7 +10,7 @@ import { knownUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import { followerInstances, hasFollowers } from "../graph/follows.ts";
-import { findInstanceId } from "../instances/instances.ts";
+import { findInstanceId } from "../instances/instance_queries.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { everyone, instanceMaySee } from "../notes/audience.ts";

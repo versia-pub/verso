@@ -10,7 +10,7 @@ import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
-import { findMedia, saveRemoteMedia } from "./media.ts";
+import { findMedia, saveRemoteMedia } from "./media_queries.ts";
 import { mediaRoutes } from "./routes.ts";
 
 /** A `width`×`height` PNG, all red. */

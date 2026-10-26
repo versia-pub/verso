@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { deleteMedia, findMedia, saveRemoteMedia } from "./media.ts";
+import { deleteMedia, findMedia, saveRemoteMedia } from "./media_queries.ts";
 
 const picture = {
     url: "https://b.example/bob.png",

@@ -5,8 +5,8 @@
 import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
 import { HttpError } from "../http/errors.ts";
-import { findInstanceId } from "../instances/instances.ts";
-import type { DeadPayload } from "../jobs/queue.ts";
+import { findInstanceId } from "../instances/instance_queries.ts";
+import type { DeadPayload } from "../jobs/job_queries.ts";
 import type { JobPayload } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";

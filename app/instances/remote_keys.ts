@@ -10,6 +10,7 @@ import { versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import { lru } from "../kernel/lru.ts";
 import { versiaUrl } from "../kernel/urls.ts";
+import { findStoredKey, saveInstanceMetadata } from "./instance_queries.ts";
 
 const logger = getLogger(["verso", "instances"]);
 
@@ -78,25 +79,12 @@ const fetchMetadata = async (ctx: Context, domain: string): Promise<Metadata | u
 };
 
 /** Keeps the fetched metadata, in the instance's row, which it creates if there is none yet. */
-const storeMetadata = async (ctx: Context, domain: string, metadata: Metadata) => {
-    const now = ctx.clock.now();
-    const kept = {
+const storeMetadata = (ctx: Context, domain: string, metadata: Metadata) =>
+    saveInstanceMetadata(ctx, domain, {
         public_key: metadata.key,
-        key_fetched_at: now,
+        key_fetched_at: ctx.clock.now(),
         takes_messages: metadata.takesMessages,
-    };
-
-    await ctx.db.insertInto("instances")
-        .values({
-            id: ctx.ids(),
-            domain,
-            protocol: "versia",
-            ...kept,
-            created_at: now,
-        })
-        .onConflict((conflict) => conflict.column("domain").doUpdateSet(kept))
-        .execute();
-};
+    });
 
 /** A key store for one process, shared by its requests. */
 export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
@@ -144,11 +132,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
         return pending;
     };
 
-    const stored = (ctx: Context, domain: string) =>
-        ctx.db.selectFrom("instances")
-            .select(["public_key", "key_fetched_at"])
-            .where("domain", "=", domain)
-            .executeTakeFirst();
+    const stored = findStoredKey;
 
     return {
         get: async (ctx, domain, beforeFetch) => {

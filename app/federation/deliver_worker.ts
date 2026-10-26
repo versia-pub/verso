@@ -5,7 +5,8 @@
  */
 import { getLogger } from "@logtape/logtape";
 import { parkedUntil, recordReached, recordUnreachable } from "../instances/reachability.ts";
-import { type DeadPayload, postponeGroup, resumeGroup } from "../jobs/queue.ts";
+import type { DeadPayload } from "../jobs/job_queries.ts";
+import { postponeGroup, resumeGroup } from "../jobs/job_pause_queries.ts";
 import type { JobPayload, JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure, RetryAt } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";

@@ -23,7 +23,7 @@ import type { Config, MediaLimits } from "../kernel/config.ts";
 import { imageFormats } from "../kernel/images.ts";
 import type { Context } from "../kernel/context.ts";
 import { charactersPerLink } from "../kernel/markup.ts";
-import { countInstances } from "./instances.ts";
+import { countInstances } from "./instance_queries.ts";
 
 /** What the instance's description is made from. */
 export type AboutSettings = Pick<Config, "instance" | "limits" | "auth"> & {

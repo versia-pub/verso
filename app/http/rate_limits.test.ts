@@ -7,13 +7,8 @@ import { CidrText } from "../kernel/ip.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { defineRoute } from "./route.ts";
-import {
-    consume,
-    databaseRateLimitStore,
-    deleteEndedRateLimits,
-    memoryRateLimitStore,
-    type RateLimitStore,
-} from "./rate_limits.ts";
+import { consume, memoryRateLimitStore, type RateLimitStore } from "./rate_limits.ts";
+import { databaseRateLimitStore, deleteEndedRateLimits } from "./rate_limit_queries.ts";
 
 // Shorter than the memory store's sweep, so windows end before a sweep could forget them.
 const policy = { limit: 2, windowSeconds: 30 };

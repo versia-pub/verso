@@ -5,7 +5,7 @@ import { Binary, defineRoute, Redirect, type Route } from "../http/route.ts";
 import { Text } from "../http/schemas.ts";
 import type { MediaLimits } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-import type { MediaRow } from "./media.ts";
+import type { MediaRow } from "./media_queries.ts";
 import { renderAttachment } from "./render.ts";
 import { serveFile } from "./serving.ts";
 import { findUpload } from "./upload_queries.ts";

@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
-import { enqueue } from "./queue.ts";
+import { enqueue } from "./job_queries.ts";
 import { drain, pause, PermanentFailure, type Queue, RetryAt, work } from "./worker.ts";
 
 const open = () => createTestContext();

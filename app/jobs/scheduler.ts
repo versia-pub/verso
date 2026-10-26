@@ -1,6 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
-import { enqueue } from "./queue.ts";
+import { enqueue } from "./job_queries.ts";
 import type { JobPayload } from "./tables.ts";
 import { pause } from "./worker.ts";
 

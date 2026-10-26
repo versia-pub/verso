@@ -9,7 +9,7 @@ import { bytesSource } from "../kernel/files.ts";
 import { postNote, removeNote } from "../notes/notes.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
-import { findMedia, saveRemoteMedia } from "./media.ts";
+import { findMedia, saveRemoteMedia } from "./media_queries.ts";
 import { removeUnusedUploads, upload } from "./uploads.ts";
 
 const hour = 60 * 60 * 1000;

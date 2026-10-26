@@ -5,8 +5,8 @@
  */
 import { z } from "zod";
 import { instancesHosting } from "../accounts/account_queries.ts";
-import { reachableDomainsOf } from "../instances/instances.ts";
-import { enqueueAll } from "../jobs/queue.ts";
+import { reachableDomainsOf } from "../instances/instance_queries.ts";
+import { enqueueAll } from "../jobs/job_queries.ts";
 import type { Context } from "../kernel/context.ts";
 
 /** Versia's own, so other protocols' deliveries can't hold it up. */

@@ -6,7 +6,7 @@
  * @module
  */
 import type { Context } from "../kernel/context.ts";
-import { type RemoteMedia, saveRemoteMedia } from "../media/media.ts";
+import { type RemoteMedia, saveRemoteMedia } from "../media/media_queries.ts";
 import { findRemoteEmoji, insertEmoji } from "./emoji_queries.ts";
 
 /** Another instance's emoji, as it names it. */

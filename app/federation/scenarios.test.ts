@@ -7,7 +7,7 @@ import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
-import { enqueue } from "../jobs/queue.ts";
+import { enqueue } from "../jobs/job_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { registry } from "../registry.ts";

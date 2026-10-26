@@ -4,7 +4,7 @@
  * @module
  */
 import { v0_6 } from "@versia/protocol";
-import type { RemoteMedia } from "./media.ts";
+import type { RemoteMedia } from "./media_queries.ts";
 
 /** Pictures clients can be counted on to show. */
 const pictureTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);

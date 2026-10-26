@@ -1,8 +1,8 @@
 import type { Viewer } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Scope } from "../kernel/scopes.ts";
-import { findAppByClientId } from "./apps.ts";
-import { deleteFlow, setCodeToken, useCode } from "./flows.ts";
+import { findAppByClientId } from "./app_queries.ts";
+import { deleteFlow, setCodeToken, useCode } from "./flow_queries.ts";
 import { requestedScopes } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import { deleteToken, findTokenByHash, insertToken } from "./token_queries.ts";

@@ -9,8 +9,8 @@
 import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
 import { defineRoute, NoBody, type Route } from "../http/route.ts";
-import { takesMessages } from "../instances/instances.ts";
-import { enqueue } from "../jobs/queue.ts";
+import { takesMessages } from "../instances/instance_queries.ts";
+import { enqueue } from "../jobs/job_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";

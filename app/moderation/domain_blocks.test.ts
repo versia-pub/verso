@@ -1,12 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
-import {
-    blockDomain,
-    blockedDomainNames,
-    domainBlocks,
-    listBlockedDomains,
-    unblockDomain,
-} from "./domain_blocks.ts";
+import { blockDomain, domainBlocks, unblockDomain } from "./domain_blocks.ts";
+import { blockedDomainNames, listBlockedDomains } from "./domain_block_queries.ts";
 
 Deno.test("a blocked domain is blocked with its subdomains, but not its parents", async () => {
     await using test = await createTestContext();

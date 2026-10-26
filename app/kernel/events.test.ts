@@ -1,5 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import { blockDomain, listBlockedDomains } from "../moderation/domain_blocks.ts";
+import { blockDomain } from "../moderation/domain_blocks.ts";
+import { listBlockedDomains } from "../moderation/domain_block_queries.ts";
 import { createTestContext } from "../testing/context.ts";
 import type { DomainEvent, Subscriber } from "./context.ts";
 import { emit } from "./events.ts";

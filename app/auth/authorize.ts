@@ -1,8 +1,8 @@
 import { getLogger } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
 import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
-import { findAppByClientId } from "./apps.ts";
-import { createFlow, findFormFlow, recordLogin } from "./flows.ts";
+import { findAppByClientId } from "./app_queries.ts";
+import { createFlow, findFormFlow, recordLogin } from "./flow_queries.ts";
 import { requestedScopes, type Scope } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import type { AppsTable, OAuthFlowsTable } from "./tables.ts";

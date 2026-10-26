@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { createLocalAccount } from "../accounts/testing.ts";
-import { enqueue } from "../jobs/queue.ts";
+import { enqueue } from "../jobs/job_queries.ts";
 import { drain } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { createNote } from "../notes/testing.ts";

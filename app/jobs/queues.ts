@@ -1,11 +1,11 @@
-import { deleteExpiredFlows } from "../auth/flows.ts";
+import { deleteExpiredFlows } from "../auth/flow_queries.ts";
 import { acceptHandler, acceptQueue } from "../graph/follows.ts";
 import { deliverQueue } from "../federation/deliver.ts";
 import { deliverDeadPayload, deliverHandler } from "../federation/deliver_worker.ts";
 import { inboxQueue } from "../federation/inbox.ts";
 import { inboxDeadPayload, inboxHandler } from "../federation/inbox_worker.ts";
 import { messageHandler, messageQueue } from "../federation/messaging.ts";
-import { deleteEndedRateLimits } from "../http/rate_limits.ts";
+import { deleteEndedRateLimits } from "../http/rate_limit_queries.ts";
 import {
     mediaHandler,
     mediaQueue,
@@ -14,7 +14,7 @@ import {
 } from "../media/uploads.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { registry } from "../registry.ts";
-import { deleteExpiredJobs } from "./queue.ts";
+import { deleteExpiredJobs } from "./job_queries.ts";
 import type { Task } from "./scheduler.ts";
 import type { Queue } from "./worker.ts";
 
