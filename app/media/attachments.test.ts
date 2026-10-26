@@ -11,7 +11,7 @@ import { timelineRoutes } from "../notes/timeline_routes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findMedia } from "./media_queries.ts";
-import { upload } from "./uploads.ts";
+import { upload, uploadPicture } from "./uploads.ts";
 
 const png = new Uint8Array(encode({
     width: 2,
@@ -121,6 +121,22 @@ Deno.test("only one's own uploads, processed and not attached yet, can be attach
     await drain(test.ctx, queues);
     assertEquals(await refused([broken]), [422, `Media failed to process: ${broken}`]);
     assertEquals(await test.notes(), notes);
+});
+
+Deno.test("a picture scaled down to fit a box, such as an avatar, can't be attached", async () => {
+    await using test = await open();
+    const avatar = await uploadPicture(test.ctx, "alice", {
+        file: new Blob([png]),
+        mediaType: "image/png",
+    }, { width: 400, height: 400 });
+    await drain(test.ctx, queues);
+
+    const reply = await test.post({ status: "Hi", media_ids: [avatar?.id] });
+
+    assertEquals([reply.status, reply.body.error_description], [
+        422,
+        `Media not found: ${avatar?.id}`,
+    ]);
 });
 
 Deno.test("a status has at most as many files as configured, and isn't blank without", async () => {

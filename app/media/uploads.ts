@@ -1,7 +1,7 @@
 /**
- * Media uploaded by users, to attach to their statuses. Images are processed by a job, which stores
- * them without metadata and generates previews. Anything else, and any image that can't be
- * processed, is stored as uploaded.
+ * Media uploaded by users, to attach to their statuses or as their avatars and headers. Images are
+ * processed by a job, which stores them without metadata and generates previews. Anything else, and
+ * any image that can't be processed, is stored as uploaded.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
@@ -13,6 +13,7 @@ import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { bytesSource, type FileSource } from "../kernel/files.ts";
 import {
+    type Fit,
     formatHeadLength,
     type ImageFormat,
     imageFormatOf,
@@ -118,18 +119,20 @@ const keepUsed = async (tx: Context, file: FileSource, mediaType: string) => {
     if (!await tx.files.has(file.sha256)) await tx.files.put(file, mediaType);
 };
 
+/** The image format of `file`, from its first bytes, or `undefined` if it isn't an image. */
+const formatOf = async (file: Blob) => imageFormatOf(await file.slice(0, formatHeadLength).bytes());
+
 /**
- * Stores a file uploaded by `accountId`. An image is processed by a job, and its row says it is
- * being processed until then; anything else is ready immediately. The file is written to disk and
- * hashed as it is read, so only what the request has buffered is held in memory.
+ * Stores a file uploaded by `accountId`, in the image format `format` if it is an image, which is
+ * scaled down to fit in `fit` if given.
  */
-export const upload = async (
+const store = async (
     ctx: Context,
     accountId: string,
     given: NewUpload,
+    format: ImageFormat | undefined,
+    fit?: Fit,
 ): Promise<MediaRow> => {
-    const head = await given.file.slice(0, formatHeadLength).bytes();
-    const format = imageFormatOf(head);
     const claimed = claimedTypeOf(given.mediaType);
     const type = keptTypeOf(format, claimed);
 
@@ -160,6 +163,8 @@ export const upload = async (
         blurhash: null,
         focus_x: given.focus?.x ?? null,
         focus_y: given.focus?.y ?? null,
+        fit_width: fit?.width ?? null,
+        fit_height: fit?.height ?? null,
     };
 
     await ctx.transaction(async (tx) => {
@@ -173,6 +178,37 @@ export const upload = async (
 
     return row;
 };
+
+/**
+ * Stores a file uploaded by `accountId`. An image is processed by a job, and its row says it is
+ * being processed until then; anything else is ready immediately. The file is written to disk and
+ * hashed as it is read, so only what the request has buffered is held in memory.
+ */
+export const upload = async (
+    ctx: Context,
+    accountId: string,
+    given: NewUpload,
+): Promise<MediaRow> => await store(ctx, accountId, given, await formatOf(given.file));
+
+/**
+ * Stores an image uploaded by `accountId`, such as an avatar, to be scaled down to fit in `fit` as
+ * it is processed, as `upload` does. Returns `undefined`, storing nothing, if it isn't an image.
+ */
+export const uploadPicture = async (
+    ctx: Context,
+    accountId: string,
+    given: NewUpload,
+    fit: Fit,
+): Promise<MediaRow | undefined> => {
+    const format = await formatOf(given.file);
+    return format && await store(ctx, accountId, given, format, fit);
+};
+
+/** The box the upload `row` is scaled down to fit in, if it has one. */
+const fitOf = (row: MediaRow): Fit | undefined =>
+    row.fit_width === null || row.fit_height === null
+        ? undefined
+        : { width: row.fit_width, height: row.fit_height };
 
 /** How an upload is described: its alt text, and the point its thumbnails are cropped around. */
 export type UploadDescription = Pick<NewUpload, "description" | "focus">;
@@ -232,13 +268,18 @@ const failed: Processed = { sha256: null, size: null, width: null, height: null 
 export const processingFailed = (upload: MediaRow): boolean => upload.sha256 === null;
 
 /**
- * Marks the upload `id` as processed using another upload of the same file, `uploaded`, if there is
- * one, and returns whether there was. Its files are locked and checked to still be stored first, so
+ * Marks the upload `id` as processed using another upload of the same file, `uploaded`, scaled down
+ * to fit the same box `fit`, if there is one, and returns whether there was. Its files are locked and checked to still be stored first, so
  * that if they were removed in the meantime, this upload is processed again rather than left
  * pointing at nothing.
  */
-const reuseProcessed = async (ctx: Context, id: string, uploaded: string) => {
-    const before = await processedUpload(ctx, uploaded);
+const reuseProcessed = async (
+    ctx: Context,
+    id: string,
+    uploaded: string,
+    fit: Fit | undefined,
+) => {
+    const before = await processedUpload(ctx, uploaded, fit);
     if (before === undefined) return false;
 
     return await ctx.transaction(async (tx) => {
@@ -255,8 +296,8 @@ const reuseProcessed = async (ctx: Context, id: string, uploaded: string) => {
 };
 
 /**
- * Processes the image in the job: stores it upright, without metadata and no larger than allowed,
- * with a preview, then removes the original upload. An image that vips rejects, or that still fails
+ * Processes the image in the job: stores it upright, without metadata and no larger than allowed or
+ * than its box, with a preview, then removes the original upload. An image that vips rejects, or that still fails
  * on the job's last attempt, is marked failed and removed, as it may hold metadata. An upload that
  * was already processed once keeps that result.
  */
@@ -267,18 +308,21 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
     const row = await findMedia(ctx, payload.data.mediaId);
     if (row === undefined || row.upload_sha256 === null) return;
     const uploaded = row.upload_sha256;
+    const fit = fitOf(row);
 
     // The other upload of the same file may also have removed the original, or left it for this
     // one. One that was already processed finds itself here, as a run that stopped after processing
     // it may have left the original.
-    if (await reuseProcessed(ctx, row.id, uploaded)) return await deleteFileIfUnused(ctx, uploaded);
+    if (await reuseProcessed(ctx, row.id, uploaded, fit)) {
+        return await deleteFileIfUnused(ctx, uploaded);
+    }
 
     const stream = await ctx.files.get(uploaded);
     if (stream === undefined) throw new PermanentFailure(`The upload ${row.id} is gone`);
 
     let result: Awaited<ReturnType<Context["images"]["process"]>> | undefined;
     try {
-        result = await ctx.images.process(stream);
+        result = await ctx.images.process(stream, fit);
     } catch (error) {
         if (job.attempts < job.max_attempts) throw error;
         logger.warn("Couldn't process {id}, so it is removed: {error}", { id: row.id, error });

@@ -14,7 +14,13 @@ import { createTestContext, type TestContextOptions } from "../testing/context.t
 import { createInstance } from "../instances/testing.ts";
 import { findMedia, saveRemoteMedia } from "./media_queries.ts";
 import { finishUpload } from "./upload_queries.ts";
-import { deleteFileIfUnused, mediaQueue, processingFailed, upload } from "./uploads.ts";
+import {
+    deleteFileIfUnused,
+    mediaQueue,
+    processingFailed,
+    upload,
+    uploadPicture,
+} from "./uploads.ts";
 
 /** A `width`×`height` PNG, entirely red. */
 const png = (width: number, height: number) =>
@@ -205,6 +211,71 @@ Deno.test("the same picture uploaded twice is processed once, and kept once", as
         [one.sha256, one.preview_sha256, one.width, one.thumbhash, one.blurhash],
     );
     assertEquals(await test.file(first.upload_sha256), undefined);
+});
+
+Deno.test("a picture uploaded to fit a box is scaled down to fit in it as it is processed", async () => {
+    await using test = await open();
+
+    const row = await uploadPicture(test.ctx, "alice", {
+        file: new Blob([png(8, 4)]),
+        mediaType: "image/png",
+        description: "A red box",
+    }, { width: 4, height: 4 });
+    assert(row);
+    assertEquals([row.processed_at, row.description], [null, "A red box"]);
+    assertEquals([row.fit_width, row.fit_height], [4, 4]);
+    await drain(test.ctx, queues);
+
+    const processed = await findMedia(test.ctx, row.id);
+    assertEquals([processed?.width, processed?.height], [4, 2]);
+});
+
+Deno.test("a picture is processed once for each box it is uploaded to fit, and once without", async () => {
+    let processed = 0;
+    const images: ImageProcessor = {
+        process: (bytes, fit) => {
+            processed += 1;
+            return vips.process(bytes, fit);
+        },
+        check: () => Promise.resolve(),
+    };
+    await using test = await open({ images });
+
+    /** The size of the picture uploaded to fit `fit`, or as an attachment, once processed. */
+    const sizeOf = async (fit?: { width: number; height: number }) => {
+        const given = { file: new Blob([png(8, 4)]), mediaType: "image/png" };
+        const row = fit
+            ? await uploadPicture(test.ctx, "alice", given, fit)
+            : await upload(test.ctx, "alice", given);
+        await drain(test.ctx, queues);
+
+        const done = await findMedia(test.ctx, row?.id ?? "");
+        return [done?.width, done?.height];
+    };
+
+    assertEquals(await sizeOf({ width: 4, height: 4 }), [4, 2]);
+    assertEquals(await sizeOf(), [8, 4]);
+    assertEquals(await sizeOf({ width: 2, height: 4 }), [2, 1]);
+    assertEquals(await sizeOf({ width: 4, height: 1 }), [2, 1]);
+    assertEquals(processed, 4);
+
+    assertEquals(await sizeOf({ width: 4, height: 4 }), [4, 2]);
+    assertEquals(await sizeOf(), [8, 4]);
+    assertEquals(processed, 4);
+});
+
+Deno.test("a file that isn't a picture isn't uploaded to fit a box, and nothing is kept", async () => {
+    await using test = await open();
+
+    const row = await uploadPicture(test.ctx, "alice", {
+        file: new Blob([zip]),
+        mediaType: "image/png",
+    }, { width: 4, height: 4 });
+
+    assertEquals(row, undefined);
+    assertEquals(await test.ctx.db.selectFrom("media").select("id").execute(), []);
+    assertEquals(await test.file(await sha256Of(zip)), undefined);
+    assertEquals(await test.jobs(), []);
 });
 
 Deno.test("uploading a picture as Verso keeps it doesn't remove the one kept", async () => {

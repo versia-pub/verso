@@ -49,6 +49,12 @@ export type MediaTable = {
     /** The point an image's thumbnails are cropped around, from -1 to 1 on each axis. */
     focus_x: number | null;
     focus_y: number | null;
+    /**
+     * The box a local image was scaled down to fit in, such as for an avatar, or `null` for one
+     * only scaled down to the pixel limit.
+     */
+    fit_width: number | null;
+    fit_height: number | null;
 };
 
 /** A media attachment on a status, at its position among the status's media, counting from 0. */

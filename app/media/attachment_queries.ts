@@ -12,7 +12,10 @@ export const hasAttachments = (
             .whereRef("note_media.note_id", "=", "notes.id"),
     );
 
-/** The ids in `ids` that are uploads by `accountId` and not attached to a status. */
+/**
+ * The ids in `ids` that are uploads by `accountId` and not attached to a status. Images scaled down
+ * to fit a box, such as avatars, are left out, as they aren't attachments.
+ */
 export const unattachedUploads = async (
     ctx: Context,
     accountId: string,
@@ -23,6 +26,7 @@ export const unattachedUploads = async (
     return await ctx.db.selectFrom("media").selectAll()
         .where("id", "in", ids)
         .where("account_id", "=", accountId)
+        .where("fit_width", "is", null)
         .where((eb) =>
             eb.not(eb.exists(
                 eb.selectFrom("note_media").select("media_id").whereRef(

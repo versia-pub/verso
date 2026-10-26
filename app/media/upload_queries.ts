@@ -1,5 +1,6 @@
 import type { Insertable, Updateable } from "kysely";
 import type { Context } from "../kernel/context.ts";
+import type { Fit } from "../kernel/images.ts";
 import type { MediaRow } from "./media_queries.ts";
 import type { MediaTable } from "./tables.ts";
 
@@ -22,15 +23,21 @@ export const insertUpload = async (ctx: Context, row: Insertable<MediaTable>): P
     await ctx.db.insertInto("media").values(row).execute();
 };
 
-/** A processed and stored upload of the same file as `uploadSha256`, if there is one. */
+/**
+ * A processed and stored upload of the same file as `uploadSha256`, scaled down to fit the same box
+ * `fit` or to none, if there is one.
+ */
 export const processedUpload = (
     ctx: Context,
     uploadSha256: string,
+    fit: Fit | undefined,
 ): Promise<MediaRow | undefined> =>
     ctx.db.selectFrom("media").selectAll()
         .where("upload_sha256", "=", uploadSha256)
         .where("processed_at", "is not", null)
         .where("sha256", "is not", null)
+        .where("fit_width", fit ? "=" : "is", fit?.width ?? null)
+        .where("fit_height", fit ? "=" : "is", fit?.height ?? null)
         .executeTakeFirst();
 
 /** Marks the upload `id` as processed, unless it already is. Returns whether it changed. */

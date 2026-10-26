@@ -41,6 +41,8 @@ Deno.test("a remote file is kept with what its instance said about it", async ()
         blurhash: null,
         focus_x: null,
         focus_y: null,
+        fit_width: null,
+        fit_height: null,
     });
 });
 
