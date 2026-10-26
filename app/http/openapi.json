@@ -2702,6 +2702,68 @@
                 }
             }
         },
+        "/api/v1/profile/avatar": {
+            "delete": {
+                "summary": "Delete profile avatar",
+                "description": "Deletes the avatar associated with the user's profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/profile/#delete-profile-avatar"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CredentialAccount"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/profile/header": {
+            "delete": {
+                "summary": "Delete profile header",
+                "description": "Deletes the header image associated with the user's profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/profile/#delete-profile-header"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CredentialAccount"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/accounts/{id}/avatar.png": {
             "get": {
                 "summary": "An account's default avatar",

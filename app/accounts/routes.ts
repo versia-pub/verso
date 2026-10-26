@@ -159,5 +159,23 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
             body: await publicAccount(ctx, found(await findAccount(ctx, params.id))),
         }),
     }),
+    ...(["avatar", "header"] as const).map((picture) =>
+        defineRoute({
+            method: "DELETE",
+            path: `/api/v1/profile/${picture}`,
+            summary: `Delete profile ${picture}`,
+            description: picture === "avatar"
+                ? "Deletes the avatar associated with the user's profile."
+                : "Deletes the header image associated with the user's profile.",
+            docs: `https://docs.joinmastodon.org/methods/profile/#delete-profile-${picture}`,
+            tags: ["accounts"],
+            auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
+            responses: { 200: CredentialAccount },
+            handler: async (ctx, { viewer }) => {
+                await updateProfile(ctx, viewer.accountId, { [picture]: null });
+                return { status: 200, body: await ownAccount(ctx, viewer) };
+            },
+        })
+    ),
     ...pictureRoutes(),
 ];

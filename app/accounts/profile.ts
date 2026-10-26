@@ -44,8 +44,9 @@ export type ProfileChanges = {
     readonly defaultSensitive?: boolean;
     /** An ISO 639-1 code, or empty for none. */
     readonly defaultLanguage?: string;
-    readonly avatar?: PictureChange;
-    readonly header?: PictureChange;
+    /** `null` removes the picture, so the account shows its default one. */
+    readonly avatar?: PictureChange | null;
+    readonly header?: PictureChange | null;
 };
 
 const plainField = (name: string, value: string): ProfileField => ({
@@ -80,22 +81,24 @@ const describeKept = async (
     ctx: Context,
     accountId: string,
     id: string | null,
-    change: PictureChange | undefined,
+    change: PictureChange | null | undefined,
 ) => {
     if (id !== null) await describeUpload(ctx, accountId, id, { description: change?.description });
 };
 
 /**
- * Uploads a new picture for `accountId` as `name`, scaled down to fit in `fit`, or `undefined` if
- * there is none. Refuses a file that isn't an image.
+ * The picture `accountId` has as `name` after the change: a new one, uploaded and to be scaled down
+ * to fit in `fit`, or `null` if it is removed, or `undefined` if it stays. Refuses a file that isn't
+ * an image.
  */
 const uploadedPicture = async (
     ctx: Context,
     accountId: string,
     name: "Avatar" | "Header",
-    change: PictureChange | undefined,
+    change: PictureChange | null | undefined,
     fit: Fit,
 ) => {
+    if (change === null) return null;
     if (change?.file === undefined) return undefined;
 
     const row = await uploadPicture(ctx, accountId, {

@@ -9,6 +9,7 @@ import { createInstance } from "../instances/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
 import { Limits, MediaLimits } from "../kernel/config_sections.ts";
+import type { Scope } from "../kernel/scopes.ts";
 import { createTestContext } from "../testing/context.ts";
 import { accountRoutes } from "./routes.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
@@ -112,7 +113,7 @@ const openApi = async (limits = Limits.parse({}), media = MediaLimits.parse({}))
         return { status: response.status, body: await response.json() };
     };
 
-    return { ...test, get, update };
+    return { ...test, app, get, update };
 };
 
 Deno.test("a user sees their own account, with their settings", async () => {
@@ -424,6 +425,35 @@ Deno.test("a description alone describes the current picture, and an empty one c
 
     assertEquals([body.avatar_description, body.header_description], ["New", ""]);
     assertEquals(body.avatar.startsWith("https://social.example/media/"), true);
+});
+
+Deno.test("a user removes their avatar or header, and their account shows the default", async () => {
+    await using test = await openApi();
+    await test.update(formOf({ avatar: png(4, 4), header: png(4, 4) }));
+    await drain(test.ctx, queues);
+
+    /** Deletes alice's picture `name`, with a token that has `scopes`. */
+    const remove = async (name: string, scopes?: Scope[]) => {
+        const response = await test.app.request(`/api/v1/profile/${name}`, {
+            method: "DELETE",
+            headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice", scopes)}` },
+        });
+        return { status: response.status, body: await response.json() };
+    };
+
+    assertEquals((await remove("avatar", ["read"])).status, 403);
+
+    const removed = await remove("avatar");
+    assertEquals(removed.status, 200);
+    assertEquals(removed.body.avatar, "https://social.example/accounts/alice/avatar.png");
+    assertEquals(removed.body.header.startsWith("https://social.example/media/"), true);
+
+    const both = await remove("header");
+    assertEquals(both.body.header, "https://social.example/accounts/alice/header.png");
+    assertEquals(both.body.avatar, "https://social.example/accounts/alice/avatar.png");
+
+    // Nothing to remove is still removed.
+    assertEquals((await remove("header")).status, 200);
 });
 
 Deno.test("pictures are at most as large as uploads may be", async () => {
