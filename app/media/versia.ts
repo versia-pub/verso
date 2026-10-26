@@ -51,11 +51,11 @@ export const remoteFile = (formats: v0_6.ContentFormat): RemoteMedia | null =>
 /**
  * Local media as Versia describes it: at the URL it is served at, with the type it is served as.
  * Only the file is given, not its preview, which remote instances would take for another version of
- * it. Versia has no focus point to crop images around, so that is omitted. Media that isn't stored
- * because processing failed is `undefined`.
+ * it. Versia has no focus point to crop images around, so that is omitted. Media that isn't
+ * processed yet, or isn't stored because processing failed, is `undefined`.
  */
 export const versiaFile = (ctx: Context, row: MediaRow): v0_6.ContentFormat | undefined => {
-    if (row.sha256 === null) return undefined;
+    if (row.processed_at === null || row.sha256 === null) return undefined;
 
     return {
         [servedTypeOf(row)]: {

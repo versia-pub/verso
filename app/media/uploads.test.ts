@@ -12,6 +12,7 @@ import { vipsImages } from "../kernel/vips_images.ts";
 import { fakeBucket, fakeS3 } from "../testing/fake_s3.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
+import { isMediaProcessed } from "./events.ts";
 import { findMedia, saveRemoteMedia } from "./media_queries.ts";
 import { finishUpload } from "./upload_queries.ts";
 import {
@@ -211,6 +212,29 @@ Deno.test("the same picture uploaded twice is processed once, and kept once", as
         [one.sha256, one.preview_sha256, one.width, one.thumbhash, one.blurhash],
     );
     assertEquals(await test.file(first.upload_sha256), undefined);
+});
+
+Deno.test("each upload processed and stored is announced, even if processed with another", async () => {
+    const processed: string[] = [];
+    await using test = await open({
+        subscribers: [(_, event) => {
+            if (isMediaProcessed(event)) processed.push(event.mediaId);
+            return Promise.resolve();
+        }],
+    });
+    const given = { file: new Blob([png(4, 4)]), mediaType: "image/png" };
+
+    const first = await upload(test.ctx, "alice", given);
+    await drain(test.ctx, queues);
+    const second = await upload(test.ctx, "alice", given);
+    await upload(test.ctx, "alice", {
+        file: new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2])]),
+        mediaType: "image/jpeg",
+    });
+    await upload(test.ctx, "alice", { file: new Blob([zip]), mediaType: "application/zip" });
+    await drain(test.ctx, queues);
+
+    assertEquals(processed, [first.id, second.id]);
 });
 
 Deno.test("a picture uploaded to fit a box is scaled down to fit in it as it is processed", async () => {

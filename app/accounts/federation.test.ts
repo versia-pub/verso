@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { importPublicKey, sign, v0_6, verify } from "@versia/protocol";
+import { encode } from "fast-png";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
@@ -91,6 +92,38 @@ Deno.test("another instance fetches a local user, signed both ways", async () =>
             indexable: true,
         },
     });
+});
+
+Deno.test("a user's own pictures are given once processed, and the default ones until then", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"].ctx;
+    const b = network.instances["b.test"].ctx;
+    await createLocalAccount(a, "alice");
+    const png = new Uint8Array(encode({
+        width: 800,
+        height: 200,
+        data: new Uint8Array(800 * 200 * 4).fill(200),
+        channels: 4,
+    }));
+    await updateProfile(a, "alice", {
+        avatar: { file: new Blob([png]), description: "Me" },
+        header: { file: new Blob([png]) },
+    });
+
+    const pending = await fetchSigned(b, a, "/.versia/v0.6/entities/User/alice");
+    assertEquals(pending.body.avatar, {
+        "image/png": { content: "https://a.test/accounts/alice/avatar.png", remote: true },
+    });
+
+    await network.drain();
+
+    const { body } = await fetchSigned(b, a, "/.versia/v0.6/entities/User/alice");
+    const [[type, avatar]] = Object.entries(v0_6.ContentFormat.parse(body.avatar));
+    assertEquals([type, avatar.content], ["image/png", `https://a.test/media/${avatar.hash}`]);
+    assertEquals([avatar.width, avatar.height, avatar.description], [400, 100, "Me"]);
+
+    const [[, header]] = Object.entries(v0_6.ContentFormat.parse(body.header));
+    assertEquals([header.content, header.width], [`https://a.test/media/${header.hash}`, 800]);
 });
 
 Deno.test("a user without a name or bio leaves them out", async () => {

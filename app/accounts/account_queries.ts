@@ -299,6 +299,15 @@ export const setAccountPictures = async (
     await ctx.db.updateTable("accounts").set(pictures).where("id", "=", id).execute();
 };
 
+/** The id of the account that has the media `mediaId` as its avatar or header, if any. */
+export const findAccountByPicture = async (
+    ctx: Context,
+    mediaId: string,
+): Promise<string | undefined> =>
+    (await ctx.db.selectFrom("accounts").select("id")
+        .where((eb) => eb.or([eb("avatar_id", "=", mediaId), eb("header_id", "=", mediaId)]))
+        .executeTakeFirst())?.id;
+
 /** Deletes an account. */
 export const deleteAccount = async (ctx: Context, id: string): Promise<void> => {
     await ctx.db.deleteFrom("accounts").where("id", "=", id).execute();

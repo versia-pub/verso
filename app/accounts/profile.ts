@@ -1,14 +1,16 @@
 import { localEmojiIds, setAccountEmojis } from "../emojis/emoji_queries.ts";
-import type { Context } from "../kernel/context.ts";
+import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { Unprocessable } from "../http/errors.ts";
 import type { Fit } from "../kernel/images.ts";
 import { scanText } from "../kernel/markup.ts";
+import { isMediaProcessed } from "../media/events.ts";
 import { describeUpload, uploadPicture } from "../media/uploads.ts";
 import {
     type AccountChanges,
     type AccountRow,
     findAccount,
+    findAccountByPicture,
     updateLocalAccount,
 } from "./account_queries.ts";
 import type { ProfileUpdated } from "./events.ts";
@@ -164,4 +166,23 @@ export const updateProfile = async (
         const event: ProfileUpdated = { type: "accounts.profile_updated", accountId, unlocked };
         await emit(tx, event);
     });
+};
+
+/**
+ * Tells the rest of Verso that a local profile changed once its new avatar or header is processed,
+ * as until then the account showed its default one, so it is sent to followers again with it.
+ */
+export const showProcessedPictures = async (ctx: Context, event: DomainEvent): Promise<void> => {
+    if (!isMediaProcessed(event)) return;
+
+    // Only local media is processed, so this is a local account.
+    const accountId = await findAccountByPicture(ctx, event.mediaId);
+    if (accountId === undefined) return;
+
+    const updated: ProfileUpdated = {
+        type: "accounts.profile_updated",
+        accountId,
+        unlocked: false,
+    };
+    await emit(ctx, updated);
 };

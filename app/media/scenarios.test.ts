@@ -1,7 +1,7 @@
 /**
- * Media attachments end to end, between complete instances, through the client API: a status's
- * media reaching followers on another instance, served by the instance that stores it, edited, and
- * removed once the status is deleted.
+ * Media end to end, between complete instances, through the client API: a status's media reaching
+ * followers on another instance, served by the instance that stores it, edited, and removed once the
+ * status is deleted, and avatars reaching followers once processed.
  * @module
  */
 import { assertEquals } from "@std/assert";
@@ -94,4 +94,50 @@ Deno.test("a status's media reaches followers on another instance, edited, until
         "https://a.test/accounts/alice/avatar.png",
         "https://a.test/accounts/alice/header.png",
     ]);
+});
+
+Deno.test("an avatar reaches followers on another instance once processed, until it is removed", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"];
+    const b = network.instances["b.test"];
+    const aliceId = await createLocalAccount(a.ctx, "alice");
+    const bob = await clientOf(b, await createLocalAccount(b.ctx, "bob"));
+    await followAddress(bob, "alice@a.test");
+    await network.drain();
+
+    const form = new FormData();
+    form.append("avatar", new File([png], "avatar.png", { type: "image/png" }));
+    form.append("avatar_description", "A square");
+    const token = `Bearer ${await tokenFor(a.ctx, aliceId)}`;
+    const changed = await a.app.request("/api/v1/accounts/update_credentials", {
+        method: "PATCH",
+        headers: { authorization: token },
+        body: form,
+    });
+    await changed.body?.cancel();
+    await network.drain();
+
+    /** Alice's account as bob sees it. */
+    const seen = async () => (await bob("GET", "/api/v1/accounts/lookup?acct=alice@a.test")).body;
+
+    const own = await seen();
+    assertEquals(own.avatar.startsWith("https://a.test/media/"), true, own.avatar);
+    assertEquals(own.avatar_description, "A square");
+    const served = await a.app.request(own.avatar);
+    assertEquals([served.status, served.headers.get("content-type")], [200, "image/png"]);
+    await served.body?.cancel();
+
+    // Without her avatar, alice is sent as she was while it was processed, which b.test takes for
+    // the same User sent again until it forgets what it received.
+    network.clock.advance(day);
+    await schedule(b.ctx, tasks);
+    await network.drain();
+    const removed = await a.app.request("/api/v1/profile/avatar", {
+        method: "DELETE",
+        headers: { authorization: token },
+    });
+    await removed.body?.cancel();
+    await network.drain();
+
+    assertEquals((await seen()).avatar, "https://a.test/accounts/alice/avatar.png");
 });

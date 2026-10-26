@@ -1,3 +1,4 @@
+import { showProcessedPictures } from "./accounts/profile.ts";
 import { accountPermissions } from "./accounts/roles.ts";
 import { authenticateToken } from "./auth/tokens.ts";
 import { createResolver, type ResolverOptions } from "./federation/resolver.ts";
@@ -29,6 +30,7 @@ export const subscribers: readonly Subscriber[] = [
     // Before the profile is sent, so the followers it accepts are sent it too.
     acceptWhenUnlocked,
     profileDeliveries,
+    showProcessedPictures,
     followDeliveries,
     noteDeliveries,
     likeDeliveries,

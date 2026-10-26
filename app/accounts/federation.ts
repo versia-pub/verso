@@ -8,7 +8,8 @@ import type { Context } from "../kernel/context.ts";
 import { textOfHtml } from "../kernel/html.ts";
 import { emojisOfAccounts, type ShownEmoji } from "../emojis/emoji_queries.ts";
 import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
-import { remotePicture } from "../media/versia.ts";
+import { findMedia } from "../media/media_queries.ts";
+import { remotePicture, versiaFile } from "../media/versia.ts";
 import {
     type AccountRow,
     findAccount,
@@ -27,16 +28,22 @@ const text = (format: TextFormat, written: string, html: string): v0_6.ContentFo
     "text/html": { content: html, remote: false },
 });
 
-/** A picture served by Verso, given by its URL. */
+/** A default picture served by Verso, given by its URL. */
 const picture = (url: string): v0_6.ContentFormat => ({
     "image/png": { content: url, remote: true },
 });
 
-/** A local account as a Versia User, with the custom emojis it uses. */
+/** A local account's picture `id`, once processed, or else its default one at `fallback`. */
+const ownPicture = async (ctx: Context, id: string | null, fallback: string) => {
+    const row = id === null ? undefined : await findMedia(ctx, id);
+    return (row && versiaFile(ctx, row)) ?? picture(fallback);
+};
+
+/** A local account as a Versia User, with the custom emojis it uses and its pictures. */
 const renderVersiaUser = (
-    ctx: Context,
     row: AccountRow,
     emojis: readonly ShownEmoji[],
+    pictures: { readonly avatar: v0_6.ContentFormat; readonly header: v0_6.ContentFormat },
 ): v0_6.User => ({
     type: "User",
     id: row.id,
@@ -48,8 +55,8 @@ const renderVersiaUser = (
         key: text(field.format, field.name, field.name_html),
         value: text(field.format, field.value, field.value_html),
     })),
-    avatar: picture(ctx.urls.url`/accounts/${row.id}/avatar.png`),
-    header: picture(ctx.urls.url`/accounts/${row.id}/header.png`),
+    avatar: pictures.avatar,
+    header: pictures.header,
     manually_approves_followers: row.locked,
     indexable: row.indexable,
     extensions: emojiExtensions(emojis),
@@ -82,7 +89,10 @@ export const localVersiaUser = async (
     if (row === undefined) return undefined;
 
     const emojis = (await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? [];
-    return renderVersiaUser(ctx, row, emojis);
+    return renderVersiaUser(row, emojis, {
+        avatar: await ownPicture(ctx, row.avatar_id, ctx.urls.url`/accounts/${row.id}/avatar.png`),
+        header: await ownPicture(ctx, row.header_id, ctx.urls.url`/accounts/${row.id}/header.png`),
+    });
 };
 
 /**

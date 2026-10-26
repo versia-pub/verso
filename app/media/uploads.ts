@@ -11,6 +11,7 @@ import { enqueue } from "../jobs/job_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
+import { emit } from "../kernel/events.ts";
 import { bytesSource, type FileSource } from "../kernel/files.ts";
 import {
     type Fit,
@@ -20,6 +21,7 @@ import {
     imageFormats,
 } from "../kernel/images.ts";
 import { spool } from "../kernel/spool.ts";
+import type { MediaProcessed } from "./events.ts";
 import { findMedia, type MediaRow } from "./media_queries.ts";
 import {
     deleteUnusedMedia,
@@ -244,6 +246,18 @@ export const deleteFileIfUnused = (ctx: Context, key: string): Promise<void> =>
         if (!await isFileUsed(tx, key)) await tx.files.delete(key);
     });
 
+/**
+ * Marks the upload `id` as processed and stored as `processed`, unless it already is, and tells the
+ * rest of Verso. Returns whether it changed.
+ */
+const finishStored = async (tx: Context, id: string, processed: Processed) => {
+    if (!await finishUpload(tx, id, processed)) return false;
+
+    const event: MediaProcessed = { type: "media.processed", mediaId: id };
+    await emit(tx, event);
+    return true;
+};
+
 /** What processing found, taken from another upload of the same file. */
 const processedFrom = (row: MediaRow): Processed => ({
     sha256: row.sha256,
@@ -290,7 +304,7 @@ const reuseProcessed = async (
             if (!await tx.files.has(key)) return false;
         }
 
-        await finishUpload(tx, id, processedFrom(before));
+        await finishStored(tx, id, processedFrom(before));
         return true;
     });
 };
@@ -347,7 +361,7 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
         await keepUsed(tx, kept, image.mediaType);
         await keepUsed(tx, preview, image.preview.mediaType);
 
-        return await finishUpload(tx, row.id, {
+        return await finishStored(tx, row.id, {
             sha256: kept.sha256,
             size: image.bytes.length,
             media_type: image.mediaType,
