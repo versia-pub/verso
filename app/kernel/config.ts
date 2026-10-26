@@ -175,6 +175,8 @@ const S3Storage = z.strictObject({
      * `<public_url>/<key>`. Without it, Verso serves them.
      */
     public_url: z.url({ protocol: /^https?$/ }).optional(),
+    /** How long a request to the server may take, uploads included, before it is given up on. */
+    timeout_seconds: z.int().min(1).default(120),
 });
 
 /**
@@ -286,6 +288,8 @@ export const Config = z.strictObject({
         ),
         /** A form that logs in as any username, with no password. Development only. */
         dev_login: z.boolean().default(false),
+        /** How long a request to an issuer may take before the login is given up on. */
+        timeout_seconds: z.int().min(1).default(15),
     }).prefault({}),
     federation: z.strictObject({
         /**

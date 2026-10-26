@@ -3,7 +3,7 @@ import type { Config } from "./config.ts";
 import type { FileStore } from "./files.ts";
 import { filesystemFiles } from "./filesystem_files.ts";
 import { s3Files } from "./s3_files.ts";
-import type { Transport } from "./transport.ts";
+import { timedTransport, type Transport } from "./transport.ts";
 
 /**
  * The store `storage` names. An S3 server is one the admin chose, which may be on their network,
@@ -24,6 +24,6 @@ export const filesFor = (
             secretAccessKey: storage.s3.secret_access_key,
             publicUrl: storage.s3.public_url,
         },
-        transport,
+        timedTransport(transport, storage.s3.timeout_seconds * 1000),
         clock,
     );

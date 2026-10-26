@@ -23,7 +23,7 @@ export const createInstance = async (ctx: Context, domain: string): Promise<stri
 export const defaultSettings = (): AboutSettings => ({
     instance: Instance.parse({}),
     limits: Limits.parse({}),
-    auth: { issuers: [], dev_login: false },
+    auth: { issuers: [], dev_login: false, timeout_seconds: 15 },
     media: MediaLimits.parse({}),
 });
 

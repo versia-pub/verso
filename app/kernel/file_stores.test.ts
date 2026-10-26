@@ -28,6 +28,7 @@ Deno.test("the configured store is the one files are kept in", async () => {
                 access_key_id: fakeBucket.accessKeyId,
                 secret_access_key: fakeBucket.secretAccessKey,
                 public_url: "https://cdn.test",
+                timeout_seconds: 120,
             },
         },
         transport,

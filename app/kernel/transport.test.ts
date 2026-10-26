@@ -1,5 +1,10 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import { federationTransport, type FederationTransportOptions } from "./transport.ts";
+import {
+    federationTransport,
+    type FederationTransportOptions,
+    timedTransport,
+    type Transport,
+} from "./transport.ts";
 
 /** A transport over a fake network, where `dns` says what each name resolves to. */
 const open = (dns: Record<string, string[]>, options: FederationTransportOptions = {}) => {
@@ -87,4 +92,27 @@ Deno.test("internal addresses can be allowed, for a local network", async () => 
     await transport(new Request("https://127.0.0.1:8443/"));
 
     assertEquals(sent.map((request) => request.redirect), ["manual", "manual"]);
+});
+
+Deno.test("a timed transport gives up on a server that takes too long, but not on others", async () => {
+    // Answers at once, or never, but for when the request is given up on.
+    const transport: Transport = (request) =>
+        request.url.includes("slow")
+            ? new Promise((_, reject) => {
+                request.signal.addEventListener("abort", () => reject(request.signal.reason));
+            })
+            : Promise.resolve(new Response("Hi"));
+    const timed = timedTransport(transport, 20);
+
+    await assertRejects(() => timed(new Request("https://slow.example/")));
+    assertEquals(await (await timed(new Request("https://fast.example/"))).text(), "Hi");
+
+    // Its own signal still counts, at once.
+    const stopping = new AbortController();
+    const asked = timedTransport(transport, 60 * 60_000)(
+        new Request("https://slow.example/", { signal: stopping.signal }),
+    ).then(() => "answered", () => "stopped");
+    stopping.abort();
+    const soon = new Promise((resolve) => setTimeout(() => resolve("waiting"), 1000));
+    assertEquals(await Promise.race([asked, soon]), "stopped");
 });

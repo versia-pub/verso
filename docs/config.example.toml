@@ -40,6 +40,8 @@ storage = { filesystem = "/var/lib/verso/media" }
 # Where the bucket's files are public, such as a CDN in front of it, each at <public_url>/<key>,
 # with the prefix in it if the CDN needs it. Without it, Verso serves them.
 # public_url = "https://media.social.example"
+# How long a request to the server may take, uploads included.
+# timeout_seconds = 120
 
 [http]
 # port = 8080
@@ -60,6 +62,8 @@ trusted_proxies = ["127.0.0.1", "::1"]
 [auth]
 # A login form that takes any username, with no password. Development only.
 # dev_login = false
+# How long a request to an issuer may take before the login is given up on.
+# timeout_seconds = 15
 
 # The OpenID Connect providers users log in with. Without any, nobody can log in.
 [[auth.issuers]]

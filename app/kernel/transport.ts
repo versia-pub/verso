@@ -10,6 +10,17 @@ export type Transport = (request: Request) => Promise<Response>;
 /** For servers the admin configured, such as identity providers, which may be on their network. */
 export const fetchTransport: Transport = (request: Request): Promise<Response> => fetch(request);
 
+/**
+ * `transport`, with every request given up on after `timeoutMs`, or when its own signal aborts, so
+ * a server that hangs can't hold what waits for it.
+ */
+export const timedTransport = (transport: Transport, timeoutMs: number): Transport => (request) =>
+    transport(
+        new Request(request, {
+            signal: AbortSignal.any([request.signal, AbortSignal.timeout(timeoutMs)]),
+        }),
+    );
+
 /** The addresses a name resolves to, or none if it doesn't resolve. */
 export type DnsResolver = (hostname: string) => Promise<readonly string[]>;
 

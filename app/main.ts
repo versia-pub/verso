@@ -24,7 +24,7 @@ import { type Context, createContext } from "./kernel/context.ts";
 import { filesFor } from "./kernel/file_stores.ts";
 import { idGenerator } from "./kernel/ids.ts";
 import { setUpLogging } from "./kernel/logging.ts";
-import { federationTransport, fetchTransport } from "./kernel/transport.ts";
+import { federationTransport, fetchTransport, timedTransport } from "./kernel/transport.ts";
 import { urlBuilder } from "./kernel/urls.ts";
 import { vipsImages } from "./kernel/vips_images.ts";
 
@@ -89,7 +89,10 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
     const urls = urlBuilder(config.domain, config.http.origin);
     const dev = devLogin(config.auth.dev_login, urls);
     const identityProviders = {
-        ...oidcProviders(config.auth.issuers, { transport: fetchTransport, clock: systemClock }),
+        ...oidcProviders(config.auth.issuers, {
+            transport: timedTransport(fetchTransport, config.auth.timeout_seconds * 1000),
+            clock: systemClock,
+        }),
         ...dev.providers,
     };
 

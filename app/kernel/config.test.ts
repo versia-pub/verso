@@ -26,7 +26,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 trusted_proxies: [],
                 rate_limit: { limit: 300, window_seconds: 300, store: "memory" },
             },
-            auth: { issuers: [], dev_login: false },
+            auth: { issuers: [], dev_login: false, timeout_seconds: 15 },
             federation: {
                 allow_internal_addresses: false,
                 blocked_domains: [],
@@ -195,6 +195,7 @@ level = "debug"
                     },
                 ],
                 dev_login: false,
+                timeout_seconds: 15,
             },
             federation: {
                 allow_internal_addresses: false,
@@ -304,6 +305,7 @@ secret_access_key = "secret"
             bucket: "media",
             access_key_id: "GK0123",
             secret_access_key: "secret",
+            timeout_seconds: 120,
         },
     });
 
