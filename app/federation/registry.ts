@@ -56,6 +56,13 @@ export type EntityType<T = unknown> = {
     readonly extension?: string;
     readonly schema: z.ZodType<T>;
     /**
+     * Whether the same entity may be sent again on purpose, such as a user whose profile changed
+     * back to what it was. It then counts as already received only when the same signed request is
+     * sent again, which is a replay; otherwise whenever the same body is, as a delivery that is
+     * tried again is signed again.
+     */
+    readonly resendable?: boolean;
+    /**
      * The domain of the only instance that may send the entity: its author's, or for an entity with
      * no author, the one it came from, `origin`. `undefined` if it names none.
      */

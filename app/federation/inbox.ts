@@ -19,7 +19,8 @@ export const inboxQueue = "inbox";
 
 /**
  * How long an entity counts as already received: as long as a signature is accepted, from five
- * minutes before its timestamp to five after, so a replayed request is always caught.
+ * minutes before its timestamp to five after, so a replayed request is always caught. A resendable
+ * entity counts as received only when it comes with the same signature.
  */
 const dedupeMs = 10 * 60_000;
 
@@ -76,16 +77,19 @@ export const checkEntity = (registry: Registry, body: Uint8Array): Checked | und
 };
 
 /**
- * Validates an entity sent by a remote instance and queues it for the inbox worker, unless it was
- * already received or is dropped. An instance that sends one is reachable again.
+ * Validates an entity sent by a remote instance, signed with `signature`, and queues it for the
+ * inbox worker, unless it was already received or is dropped. An instance that sends one is
+ * reachable again.
  */
 export const queueEntity = async (
     ctx: Context,
     registry: Registry,
     signer: string,
     body: Uint8Array<ArrayBuffer>,
+    signature: string,
 ): Promise<void> => {
-    if (!checkEntity(registry, body)) return;
+    const checked = checkEntity(registry, body);
+    if (!checked) return;
 
     // It is up, so what is queued for it can go, and what is created from now on.
     if (await recordReached(ctx, signer)) await resumeGroup(ctx, deliverQueue, signer);
@@ -100,7 +104,8 @@ export const queueEntity = async (
     await enqueue(ctx, {
         queue: inboxQueue,
         payload: job,
-        dedupeKey: `inbox:${signer}:${digest.toHex()}`,
+        dedupeKey: `inbox:${signer}:${digest.toHex()}` +
+            (checked.type.resendable ? `:${signature}` : ""),
         keepUntil: new Date(now.getTime() + dedupeMs),
         // Entities arrive in the hundreds at busy times, so workers find them by polling.
         wake: false,
@@ -116,8 +121,8 @@ export const inboxRoute = (registry: Registry): Route =>
         tags: ["versia"],
         signed: true,
         responses: { 202: NoBody },
-        handler: async (ctx, { signedBy, signedBody }) => {
-            await queueEntity(ctx, registry, signedBy, signedBody);
+        handler: async (ctx, { signedBy, signedBody, signature }) => {
+            await queueEntity(ctx, registry, signedBy, signedBody, signature);
             return { status: 202 };
         },
     });

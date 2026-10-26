@@ -133,6 +133,7 @@ export const createApp = (
             viewer,
             signedBy: signed?.signedBy,
             signedBody: signed?.body,
+            signature: signed?.signature,
         });
         if (options.checkResponses) checkReply(route, reply);
 

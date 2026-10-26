@@ -91,6 +91,33 @@ Deno.test("the same body from the same instance is queued once", async () => {
     );
 });
 
+Deno.test("the same user sent again later is queued again, as a profile can change back", async () => {
+    await using test = await open();
+
+    await test.send(user);
+    assertEquals((await test.jobs()).length, 1);
+
+    test.network.clock.advance(1000);
+    await test.send(user);
+    assertEquals((await test.jobs()).length, 2);
+});
+
+Deno.test("anything else sent again later, as a delivery tried again is, is queued once", async () => {
+    await using test = await open();
+    const deleted = {
+        type: "Delete",
+        created_at: "2026-10-18T12:00:00Z",
+        deleted_type: "Note",
+        deleted: "1",
+    };
+
+    await test.send(deleted);
+    test.network.clock.advance(1000);
+    await test.send(deleted);
+
+    assertEquals((await test.jobs()).length, 1);
+});
+
 Deno.test("a body that isn't Versia JSON is a 400", async () => {
     await using test = await open();
 

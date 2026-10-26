@@ -129,6 +129,8 @@ const linkCollection = (link: NoteLink): CollectionProvider => async (ctx, id, p
 export const noteType: EntityType<v0_6.Note> = {
     type: "Note",
     schema: v0_6.Note,
+    // An edit can change a status back to what it was.
+    resendable: true,
     // Only its author's instance may send it.
     authority: (note, origin) => parseReference(note.author, origin)?.host,
     prepare: prepareNote,

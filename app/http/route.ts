@@ -245,6 +245,8 @@ export type RouteDefinition<
              * protocol's rules rather than through `body`.
              */
             signedBody: S extends true ? Uint8Array<ArrayBuffer> : undefined;
+            /** The request's signature, as in `Versia-Signature`, on `signed` routes. */
+            signature: S extends true ? string : undefined;
         },
     ) => Promise<Reply<R>>;
 };

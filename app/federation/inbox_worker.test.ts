@@ -64,6 +64,7 @@ const open = async () => {
             registry,
             signer,
             new TextEncoder().encode(JSON.stringify(body)),
+            "",
         );
         await drain(test.ctx, {
             [inboxQueue]: { handler: inboxHandler(registry), concurrency: 1 },
@@ -145,7 +146,7 @@ Deno.test("an entity from an instance blocked since it was queued is dropped", a
     await using test = await open();
     const body = new TextEncoder().encode('{"type": "Thing", "id": "1", "author": "b.example"}');
 
-    await queueEntity(test.ctx, test.registry, "b.example", body);
+    await queueEntity(test.ctx, test.registry, "b.example", body, "");
     await blockDomain(test.ctx, "b.example");
     await drain(test.ctx, {
         [inboxQueue]: { handler: inboxHandler(test.registry), concurrency: 1 },

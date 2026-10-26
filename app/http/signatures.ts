@@ -9,10 +9,12 @@ import type { Context, KeyStore } from "../kernel/context.ts";
 import { checkSignature } from "../kernel/signatures.ts";
 import { BadSignature, Defederated, StaleSignature } from "./errors.ts";
 
-/** A request with a valid signature: who signed it, and the body they signed. */
+/** A request with a valid signature: who signed it, the body they signed, and the signature. */
 export type SignedRequest = {
     readonly signedBy: string;
     readonly body: Uint8Array<ArrayBuffer>;
+    /** As in `Versia-Signature`. */
+    readonly signature: string;
 };
 
 /**
@@ -43,7 +45,10 @@ export const verifyRequest = async (
     };
 
     const verification = await checkSignature(ctx, keys, message, c.req.raw.headers);
-    if (verification.ok) return { signedBy: verification.signedBy, body: message.body };
+    if (verification.ok) {
+        const signature = c.req.header("versia-signature") ?? "";
+        return { signedBy: verification.signedBy, body: message.body, signature };
+    }
     if (blocked) throw new Defederated();
 
     throw verification.reason === "expired" ? new StaleSignature() : new BadSignature();

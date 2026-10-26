@@ -104,6 +104,8 @@ export const localVersiaUser = async (
 export const userType: EntityType<v0_6.User> = {
     type: "User",
     schema: v0_6.User,
+    // A profile can change back to what it was.
+    resendable: true,
     // A user has no author, and lives where it came from.
     authority: (_, origin) => origin,
     receive: async (ctx, user, sender) => {
