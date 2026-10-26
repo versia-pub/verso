@@ -4,6 +4,8 @@ export type Lru<K, V> = {
     readonly get: (key: K) => V | undefined;
     /** Keeps `value` for `key`, dropping the least recently used value once there are too many. */
     readonly set: (key: K, value: V) => void;
+    /** Forgets the value for `key`. */
+    readonly delete: (key: K) => void;
 };
 
 /** An LRU cache of at most `capacity` values. */
@@ -26,6 +28,9 @@ export const lru = <K, V>(capacity: number): Lru<K, V> => {
 
             const oldest = entries.keys().next();
             if (entries.size > capacity && !oldest.done) entries.delete(oldest.value);
+        },
+        delete: (key) => {
+            entries.delete(key);
         },
     };
 };

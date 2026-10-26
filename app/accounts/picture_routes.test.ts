@@ -35,3 +35,24 @@ Deno.test("an account's pictures are drawn once, and only for accounts that exis
 
     assertEquals(drawn, ["avatar:alice", "header:alice"]);
 });
+
+Deno.test("a picture that couldn't be drawn is drawn again next time", async () => {
+    await using test = await createTestContext();
+    let fails = 1;
+    const draw = (seed: string) =>
+        fails-- > 0
+            ? Promise.reject(new Error("Out of memory"))
+            : Promise.resolve(new TextEncoder().encode(`avatar of ${seed}`));
+    const app = createTestApp(test.ctx, pictureRoutes({ avatar: draw, header: draw }));
+    await createLocalAccount(test.ctx, "alice");
+
+    const first = await app.request("/accounts/alice/avatar.png");
+    await first.body?.cancel();
+    const second = await app.request("/accounts/alice/avatar.png");
+
+    assertEquals([first.status, second.status, await second.text()], [
+        500,
+        200,
+        "avatar of alice",
+    ]);
+});

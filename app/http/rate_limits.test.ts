@@ -119,17 +119,31 @@ const ping = defineRoute({
     handler: () => Promise.resolve({ status: 200, body: {} }),
 });
 
+/** A route a page loads many of, with a bucket of its own allowing twice as many. */
+const picture = defineRoute({
+    method: "GET",
+    path: "/picture",
+    summary: "Answers anyone, many times",
+    rateLimit: { bucket: "pictures", times: 2 },
+    responses: { 200: z.object({}) },
+    handler: () => Promise.resolve({ status: 200, body: {} }),
+});
+
 /** An app allowing two requests every 30 seconds, behind a proxy at 10.0.0.1. */
 const open = async () => {
     const test = await createTestContext();
-    const app = createTestApp(test.ctx, [ping], {
+    const app = createTestApp(test.ctx, [ping, picture], {
         rateLimits: { store: memoryRateLimitStore(test.clock), policy, instancePolicy: policy },
         trustedProxies: [CidrText.parse("10.0.0.1")],
     });
 
     /** The status of a request from `peer`, with these headers. */
-    const status = async (peer: string, headers: Record<string, string> = {}) => {
-        const response = await app.request("/api/v1/ping", { headers }, {
+    const status = async (
+        peer: string,
+        headers: Record<string, string> = {},
+        path = "/api/v1/ping",
+    ) => {
+        const response = await app.request(path, { headers }, {
             remoteAddr: { hostname: peer },
         });
         await response.body?.cancel();
@@ -208,4 +222,15 @@ Deno.test("health checks are never limited", async () => {
         const response = await test.app.request("/health/live");
         assertEquals([response.status, await response.text()], [200, "ok"]);
     }
+});
+
+Deno.test("a route with a bucket of its own is counted apart, with as many more as it says", async () => {
+    await using test = await open();
+    const picture = () => test.status("198.51.100.2", {}, "/picture");
+
+    for (let i = 0; i < 4; i++) assertEquals(await picture(), 200);
+    assertEquals(await picture(), 429);
+
+    // The client's other requests aren't counted with them.
+    assertEquals(await test.status("198.51.100.2"), 200);
 });

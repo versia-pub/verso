@@ -155,7 +155,8 @@ export const mediaRoutes = (limits: MediaLimits): readonly Route[] => [
             "through a CDN, this redirects there.",
         tags: ["media"],
         immutable: true,
-        rateLimit: false,
+        // Pages show many at once, so they are counted apart, with ten times as many allowed.
+        rateLimit: { bucket: "media", times: 10 },
         params: z.object({ key: z.string() }),
         responses: { 200: Binary("application/octet-stream"), 302: Redirect },
         handler: async (ctx, { params }) => {

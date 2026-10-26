@@ -108,8 +108,18 @@ export const createApp = (
         return signed;
     };
 
+    /** Counts a request to a route with a bucket of its own, as its `rateLimit` says. */
+    const countInBucket = async (route: Route, c: HonoContext<AppEnv>) => {
+        if (!limits || typeof route.rateLimit !== "object") return;
+
+        const { bucket, times } = route.rateLimit;
+        const policy = { ...limits.policy, limit: limits.policy.limit * times };
+        await checkRateLimit(c, ctx.clock, limits.store, policy, `${bucket}:${await clientKey(c)}`);
+    };
+
     /** The route's reply to the request, or the error it threw. */
     const answer = async (route: Route, c: HonoContext<AppEnv>) => {
+        await countInBucket(route, c);
         const signed = route.signed ? await verify(c) : undefined;
         const bearer = await viewerOf(ctx, c, route, options.services);
         const viewer = bearer && withPermissions(ctx, bearer, permissions, options.services);
@@ -155,8 +165,8 @@ export const createApp = (
     app.get("/health/live", (c) => c.text("ok"));
 
     // Before the clients' rate limit, which runs only for what is added after it. Signed routes
-    // are limited by who signed, once the signature is checked.
-    const unlimited = (route: Route) => route.rateLimit === false || route.signed === true;
+    // are limited by who signed, once the signature is checked, and routes with a bucket in it.
+    const unlimited = (route: Route) => route.rateLimit !== undefined || route.signed === true;
     for (const route of routes) if (unlimited(route)) handle(route);
 
     // Preflights were answered before this, by the CORS headers.

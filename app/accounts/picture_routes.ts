@@ -17,9 +17,9 @@ const kept = 1000;
 type Draw = (seed: string) => Promise<Uint8Array>;
 
 /**
- * The default pictures of accounts without their own. Timelines load many at once, so they have no
- * rate limit; instead, they are only drawn for accounts that exist, and each is drawn once and
- * kept.
+ * The default pictures of accounts without their own. Timelines load many at once, so they are
+ * counted apart from other requests, with a far larger limit. They are only drawn for accounts that
+ * exist, and each is drawn once and kept; one that couldn't be drawn is drawn again next time.
  */
 export const pictureRoutes = (
     draw: { readonly avatar: Draw; readonly header: Draw } = {
@@ -36,7 +36,8 @@ export const pictureRoutes = (
             summary,
             tags: ["accounts"],
             maxAge: pictureMaxAge,
-            rateLimit: false,
+            // Ten times what a client may ask of other routes.
+            rateLimit: { bucket: "pictures", times: 10 },
             params: AccountId,
             responses: { 200: Binary("image/png") },
             handler: async (ctx, { params }) => {
@@ -47,6 +48,11 @@ export const pictureRoutes = (
                 if (!file) {
                     file = draw[name](params.id);
                     drawn.set(key, file);
+                    const drawing = file;
+                    drawing.catch(() => {
+                        // Unless it was drawn again meanwhile.
+                        if (drawn.get(key) === drawing) drawn.delete(key);
+                    });
                 }
 
                 return { status: 200, file: await file };

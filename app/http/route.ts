@@ -188,10 +188,11 @@ export type RouteDefinition<
      */
     readonly pagePolicy?: string;
     /**
-     * `false` exempts the route from rate limits, for files a page loads many of at once. Signed
-     * routes are limited by the instance that signed, not by client.
+     * `false` exempts the route from rate limits. A bucket counts the route's requests apart from
+     * the client's others, with `times` as many allowed, for files a page loads many of at once.
+     * Signed routes are limited by the instance that signed, not by client.
      */
-    readonly rateLimit?: false;
+    readonly rateLimit?: false | { readonly bucket: string; readonly times: number };
     /** Without it, anyone may call the route, and tokens are ignored. */
     readonly auth?: A;
     /**
