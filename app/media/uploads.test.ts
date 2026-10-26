@@ -121,6 +121,22 @@ Deno.test("a file is kept with a type from its bytes, so it can't be served as a
     assertEquals(s3.objects.get(picture.sha256 ?? "")?.type, "image/png");
 });
 
+Deno.test("video and audio are kept with the type their client says, so they can be played", async () => {
+    const s3 = fakeS3();
+    const files = s3Files(fakeBucket, fakeTransport({ "s3.test": s3 }), fakeClock());
+    await using test = await open({ files });
+
+    for (const type of ["video/mp4", "audio/ogg"]) {
+        const row = await upload(test.ctx, "alice", {
+            file: new Blob([zip, new TextEncoder().encode(type)]),
+            mediaType: type,
+        });
+
+        assertEquals(row.media_type, type);
+        assertEquals(s3.objects.get(row.sha256 ?? "")?.type, type);
+    }
+});
+
 Deno.test("a picture is processed by a job, which keeps it without its metadata", async () => {
     await using test = await open();
 

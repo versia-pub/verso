@@ -1,11 +1,13 @@
 /**
- * The files Verso keeps, as it serves them. Pictures it processed are served as pictures; any
- * other file is served for browsers to save, so an uploaded page or script never runs as one.
+ * The files Verso keeps, as it serves them. Pictures it processed are served as pictures, and video
+ * and audio as what they say they are; any other file is served for browsers to save, so an
+ * uploaded page or script never runs as one.
  * @module
  */
 import type { Context } from "../kernel/context.ts";
 import { imageFormats } from "../kernel/images.ts";
 import { findServedFile } from "./upload_queries.ts";
+import { isPlayable } from "./uploads.ts";
 
 /** A kept file, with the type it is served as, or where the store serves it. */
 export type ServedFile = { readonly location: string } | {
@@ -35,7 +37,7 @@ export const serveFile = async (ctx: Context, key: string): Promise<ServedFile |
         return { stream, mediaType: imageFormats.webp.mediaType, download: false };
     }
 
-    return row.preview_sha256 === null
+    return row.preview_sha256 === null && !isPlayable(row.media_type)
         ? { stream, mediaType: "application/octet-stream", download: true }
         : { stream, mediaType: row.media_type, download: false };
 };

@@ -1,6 +1,7 @@
 import type { MediaAttachment } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import type { MediaRow } from "./media_queries.ts";
+import { isPlayable } from "./uploads.ts";
 
 /** Where the local file kept under `key` is served: by the store, if it serves files, or Verso. */
 export const fileUrl = (ctx: Context, key: string): string =>
@@ -14,13 +15,13 @@ const dimensions = (width: number | null, height: number | null) =>
 
 /**
  * What kind of file Mastodon's clients are told it is. Local files that aren't pictures Verso
- * processed are kept as they were uploaded, so they are only offered as files.
+ * processed are kept as they were uploaded, so they are only offered as files, unless they can be
+ * played.
  */
 const typeOf = (row: MediaRow): MediaAttachment["type"] => {
-    if (row.instance_id === null) {
-        const processing = row.processed_at === null;
-        return processing || row.preview_sha256 !== null ? "image" : "unknown";
-    }
+    const local = row.instance_id === null;
+    if (local && (row.processed_at === null || row.preview_sha256 !== null)) return "image";
+    if (local && !isPlayable(row.media_type)) return "unknown";
 
     const [kind] = row.media_type.split("/");
     return kind === "image" || kind === "video" || kind === "audio" ? kind : "unknown";

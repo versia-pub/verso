@@ -59,11 +59,46 @@ export type NewUpload = {
 };
 
 /**
- * The type a file is kept with, which the file store may serve it as. It comes from its bytes, not
- * from the client, so no one can upload a page or a script that Verso would serve as one.
+ * The video and audio types a file is served as if its client says it is one, which Mastodon also
+ * takes, so clients can play it. Verso doesn't read them, so a file that isn't what it says is
+ * served all the same, but never as a page, as replies tell browsers not to guess.
+ * @see https://github.com/mastodon/mastodon/blob/v4.3.0/app/models/media_attachment.rb
  */
-const keptTypeOf = (format: ImageFormat | undefined) =>
-    format === undefined ? "application/octet-stream" : imageFormats[format].mediaType;
+const playableTypes = new Set([
+    "video/webm",
+    "video/mp4",
+    "video/quicktime",
+    "video/ogg",
+    "audio/wave",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/x-pn-wave",
+    "audio/vnd.wave",
+    "audio/ogg",
+    "audio/vorbis",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/webm",
+    "audio/flac",
+    "audio/aac",
+    "audio/m4a",
+    "audio/x-m4a",
+    "audio/mp4",
+    "audio/3gpp",
+]);
+
+/** Whether a file Verso keeps as it was uploaded, of the type `mediaType`, is served as that. */
+export const isPlayable = (mediaType: string): boolean => playableTypes.has(mediaType);
+
+/**
+ * The type a file is kept with, which the file store may serve it as. A picture's comes from its
+ * bytes, and any other file's is the client's only if it is playable, so no one can upload a page
+ * or a script that Verso would serve as one.
+ */
+const keptTypeOf = (format: ImageFormat | undefined, claimed: string) =>
+    format === undefined
+        ? isPlayable(claimed) ? claimed : "application/octet-stream"
+        : imageFormats[format].mediaType;
 
 /** What a client says a file is, if it says it as a media type is written. */
 const claimedTypeOf = (mediaType: string) =>
@@ -92,7 +127,8 @@ export const upload = async (
 ): Promise<MediaRow> => {
     const head = await given.file.slice(0, formatHeadLength).bytes();
     const format = imageFormatOf(head);
-    const type = keptTypeOf(format);
+    const claimed = claimedTypeOf(given.mediaType);
+    const type = keptTypeOf(format, claimed);
 
     await using file = await spool(given.file.stream());
     // Kept before the transaction, which mustn't wait on the store; `keepUsed` makes sure of it.
@@ -103,7 +139,7 @@ export const upload = async (
         id: ctx.ids(),
         instance_id: null,
         url: null,
-        media_type: format === undefined ? claimedTypeOf(given.mediaType) : type,
+        media_type: format === undefined ? claimed : type,
         size: file.size,
         sha256: file.sha256,
         width: null,

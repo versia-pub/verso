@@ -234,6 +234,33 @@ Deno.test("a file that isn't a picture is served to be saved, and cached for goo
     });
 });
 
+Deno.test("video and audio are served as what they say they are, to be played", async () => {
+    await using test = await open();
+
+    for (const type of ["video/webm", "audio/mpeg"]) {
+        const bytes = new Uint8Array([...zip, ...new TextEncoder().encode(type)]);
+        const { body } = await test.upload(bytes, type);
+
+        assertEquals(body.type, type.split("/")[0]);
+        assertEquals(await test.download(body.url), {
+            status: 200,
+            type,
+            disposition: null,
+            cache: "public, max-age=31536000, immutable",
+            bytes,
+        });
+    }
+});
+
+Deno.test("a file that says it is a picture, but isn't, is offered as a file", async () => {
+    await using test = await open();
+
+    const { body } = await test.upload(zip, "image/png");
+
+    assertEquals(body.type, "unknown");
+    assertEquals((await test.download(body.url)).type, "application/octet-stream");
+});
+
 Deno.test("a picture is served once it is processed, with its preview", async () => {
     await using test = await open();
     const picture = png(40, 30);

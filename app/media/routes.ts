@@ -152,8 +152,9 @@ export const mediaRoutes = (media: MediaLimits, limits: Limits): readonly Route[
         path: "/media/:key",
         summary: "A file someone uploaded, or its preview",
         description: "Files are kept under the SHA-256 of their bytes, so they never change. " +
-            "Pictures are served as pictures; any other file is served for browsers to save, " +
-            "as `application/octet-stream`. Where the store serves files itself, such as " +
+            "Pictures are served as pictures, and video and audio as the type they were " +
+            "uploaded as; any other file is served for browsers to save, as " +
+            "`application/octet-stream`. Where the store serves files itself, such as " +
             "through a CDN, this redirects there.",
         tags: ["media"],
         immutable: true,
