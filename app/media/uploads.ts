@@ -6,11 +6,12 @@
  */
 import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
+import { lockKey } from "../db/locking.ts";
 import { enqueue } from "../jobs/queue.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
-import { bytesSource } from "../kernel/files.ts";
+import { bytesSource, type FileSource } from "../kernel/files.ts";
 import {
     formatHeadLength,
     type ImageFormat,
@@ -72,6 +73,17 @@ const claimedTypeOf = (mediaType: string) =>
     /^[\w.+-]+\/[\w.+-]+$/.test(mediaType) ? mediaType.toLowerCase() : "application/octet-stream";
 
 /**
+ * Makes sure `file`, which was kept before the transaction `tx`, is kept still, once it holds the
+ * lock on its key, as removing an unused file holds it too: until `tx` commits, nothing that
+ * finds it unused can remove it, and if something did before, it is kept again. Run it before
+ * whatever in `tx` comes to use the file.
+ */
+const keepUsed = async (tx: Context, file: FileSource, mediaType: string) => {
+    await lockKey(tx.db, file.sha256);
+    if (!await tx.files.has(file.sha256)) await tx.files.put(file, mediaType);
+};
+
+/**
  * Keeps a file `accountId` uploads. A picture is processed by a job, and its row says it is being
  * processed until then; anything else is ready at once. The file is written to disk, and hashed,
  * as it is read, so it is held in memory only as the request has it.
@@ -86,7 +98,7 @@ export const upload = async (
     const type = keptTypeOf(format);
 
     await using file = await spool(given.file.stream());
-    // Kept before the row is added, so a job finds the file.
+    // Kept before the transaction, which mustn't wait on the store; `keepUsed` makes sure of it.
     await ctx.files.put(file, type);
     const now = ctx.clock.now();
 
@@ -114,6 +126,7 @@ export const upload = async (
     };
 
     await ctx.transaction(async (tx) => {
+        await keepUsed(tx, file, type);
         await insertUpload(tx, row);
         if (format === undefined) return;
 
@@ -148,11 +161,14 @@ export const describeUpload = async (
 
 /**
  * Removes the file kept under `key`, unless a file, a preview or an upload waiting to be
- * processed is kept under it. Run it after the change that stopped using it has committed.
+ * processed is kept under it. Run it after the change that stopped using it has committed. It
+ * holds the key's lock while it checks and removes, so nothing comes to use the file meanwhile.
  */
-export const deleteFileIfUnused = async (ctx: Context, key: string): Promise<void> => {
-    if (!await isFileUsed(ctx, key)) await ctx.files.delete(key);
-};
+export const deleteFileIfUnused = (ctx: Context, key: string): Promise<void> =>
+    ctx.transaction(async (tx) => {
+        await lockKey(tx.db, key);
+        if (!await isFileUsed(tx, key)) await tx.files.delete(key);
+    });
 
 /** What processing a file found, from another upload of the same file. */
 const processedFrom = (row: MediaRow): Processed => ({
@@ -178,6 +194,28 @@ const failed: Processed = { sha256: null, size: null, width: null, height: null 
 export const processingFailed = (upload: MediaRow): boolean => upload.sha256 === null;
 
 /**
+ * Marks the upload `id` processed as another upload of the same file, `uploaded`, was, if there is
+ * one, and returns whether there was. Its files are locked and found still kept first, so that if
+ * they were removed meanwhile, this one is processed anew rather than left pointing at nothing.
+ */
+const reuseProcessed = async (ctx: Context, id: string, uploaded: string) => {
+    const before = await processedUpload(ctx, uploaded);
+    if (before === undefined) return false;
+
+    return await ctx.transaction(async (tx) => {
+        for (const key of [before.sha256, before.preview_sha256]) {
+            if (key === null) continue;
+
+            await lockKey(tx.db, key);
+            if (!await tx.files.has(key)) return false;
+        }
+
+        await finishUpload(tx, id, processedFrom(before));
+        return true;
+    });
+};
+
+/**
  * Processes the picture in the job: keeps it upright, without its metadata and no larger than
  * allowed, with a preview, then removes what was uploaded. One that vips refuses, or that still
  * fails on the job's last attempt, is marked failed and removed, as it may hold metadata. One
@@ -194,11 +232,7 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
     // The same file's other upload may also have removed what was uploaded, or left it for this.
     // One processed already finds itself, as a run that stopped after processing it may have
     // left what was uploaded.
-    const before = await processedUpload(ctx, uploaded);
-    if (before !== undefined) {
-        await finishUpload(ctx, row.id, processedFrom(before));
-        return await deleteFileIfUnused(ctx, uploaded);
-    }
+    if (await reuseProcessed(ctx, row.id, uploaded)) return await deleteFileIfUnused(ctx, uploaded);
 
     const stream = await ctx.files.get(uploaded);
     if (stream === undefined) throw new PermanentFailure(`The upload ${row.id} is gone`);
@@ -227,6 +261,9 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
     await ctx.files.put(preview, image.preview.mediaType);
 
     const finished = await ctx.transaction(async (tx) => {
+        await keepUsed(tx, kept, image.mediaType);
+        await keepUsed(tx, preview, image.preview.mediaType);
+
         return await finishUpload(tx, row.id, {
             sha256: kept.sha256,
             size: image.bytes.length,

@@ -5,7 +5,7 @@ import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
-import { bytesSource } from "../kernel/files.ts";
+import { bytesSource, type FileStore, memoryFiles } from "../kernel/files.ts";
 import type { ImageProcessor } from "../kernel/images.ts";
 import { s3Files } from "../kernel/s3_files.ts";
 import { vipsImages } from "../kernel/vips_images.ts";
@@ -394,4 +394,115 @@ Deno.test("a file is removed only once nothing uses it", async () => {
     await test.ctx.db.deleteFrom("media").where("id", "=", row.id).execute();
     await deleteFileIfUnused(test.ctx, row.sha256 ?? "");
     assertEquals(await test.file(row.sha256), undefined);
+});
+
+/** A store that waits, when it is asked to remove a file, until `release` is called. */
+const pausingFiles = () => {
+    const inner = memoryFiles();
+    let release = () => {};
+    const released = new Promise<void>((resolve) => release = resolve);
+    let removing = () => {};
+    const asked = new Promise<void>((resolve) => removing = resolve);
+
+    const files: FileStore = {
+        ...inner,
+        delete: async (key) => {
+            removing();
+            await released;
+            await inner.delete(key);
+        },
+    };
+
+    return { files, inner, release, asked };
+};
+
+Deno.test("a file uploaded while it is removed as unused is kept", async () => {
+    const store = pausingFiles();
+    await using test = await open({ files: store.files });
+    const key = await store.inner.put(await bytesSource(zip), "application/octet-stream");
+
+    // The removal finds it unused, then waits to remove it.
+    const removing = deleteFileIfUnused(test.ctx, key);
+    await store.asked;
+    const uploading = upload(test.ctx, "alice", { file: new Blob([zip]), mediaType: "a zip" });
+    await Promise.race([uploading, new Promise((resolve) => setTimeout(resolve, 200))]);
+    store.release();
+    const [row] = await Promise.all([uploading, removing]);
+
+    assertEquals(row.sha256, key);
+    assertEquals(await test.file(key), zip);
+});
+
+Deno.test("a file removed after it was uploaded, but before its row was added, is kept again", async () => {
+    const inner = memoryFiles();
+    let removed = false;
+    const files: FileStore = {
+        ...inner,
+        // As if an unused upload's removal took it just then.
+        put: async (file, type) => {
+            const key = await inner.put(file, type);
+            if (!removed) {
+                removed = true;
+                await inner.delete(key);
+            }
+            return key;
+        },
+    };
+    await using test = await open({ files });
+
+    const row = await upload(test.ctx, "alice", { file: new Blob([zip]), mediaType: "a zip" });
+
+    assertEquals(await test.file(row.sha256), zip);
+});
+
+Deno.test("a picture uploaded again is processed anew if what was kept of it is gone", async () => {
+    await using test = await open();
+    const first = await upload(test.ctx, "alice", {
+        file: new Blob([sidewaysJpeg]),
+        mediaType: "image/jpeg",
+    });
+    await drain(test.ctx, queues);
+    const kept = await findMedia(test.ctx, first.id);
+    // As if it were being removed, with its files.
+    await test.ctx.files.delete(kept?.sha256 ?? "");
+
+    const again = await upload(test.ctx, "alice", {
+        file: new Blob([sidewaysJpeg]),
+        mediaType: "image/jpeg",
+    });
+    await drain(test.ctx, queues);
+
+    const processed = await findMedia(test.ctx, again.id);
+    assertEquals(processed?.sha256, kept?.sha256);
+    assertEquals((await test.file(processed?.sha256 ?? null))?.length, kept?.size);
+});
+
+Deno.test("what processing keeps is kept again, if it was removed before it was used", async () => {
+    const inner = memoryFiles();
+    const puts = new Map<string, number>();
+    const files: FileStore = {
+        ...inner,
+        // As if an unused upload's removal took each just then, the first time it was kept: the
+        // second PNG, which is the one kept, and the preview.
+        put: async (file, type) => {
+            const key = await inner.put(file, type);
+            const n = (puts.get(type) ?? 0) + 1;
+            puts.set(type, n);
+            if ((type === "image/png" && n === 2) || (type === "image/webp" && n === 1)) {
+                await inner.delete(key);
+            }
+            return key;
+        },
+    };
+    await using test = await open({ files });
+
+    const row = await upload(test.ctx, "alice", {
+        file: new Blob([png(40, 30)]),
+        mediaType: "image/png",
+    });
+    await drain(test.ctx, queues);
+
+    const processed = await findMedia(test.ctx, row.id);
+    assertNotEquals(await test.file(processed?.sha256 ?? null), undefined);
+    assertNotEquals(await test.file(processed?.preview_sha256 ?? null), undefined);
 });
