@@ -9,6 +9,9 @@ import { editNote, postNote } from "./notes.ts";
 import { removeNote } from "./removal.ts";
 import { createNote } from "./testing.ts";
 import type { Settings } from "../kernel/settings.ts";
+import type { Context } from "../kernel/context.ts";
+import { attachedTo } from "../media/attachments.ts";
+import type { NoteRow } from "./note_queries.ts";
 
 /** A user b.test serves. */
 const user = (id: string) => ({
@@ -202,6 +205,82 @@ Deno.test("a note mentions as many accounts as settings allow", async () => {
 
     const kept = await test.kept("n1");
     assertEquals((await mentionsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? ""), [bea]);
+});
+
+/** The files attached to the note b.test has as `remoteId`, in order. */
+const attached = async (
+    test: { a: Context; kept: (id: string) => Promise<NoteRow | undefined> },
+    remoteId: string,
+) => {
+    const kept = await test.kept(remoteId);
+    return await attachedTo(test.a, kept?.id ?? "");
+};
+
+Deno.test("a note's files are kept, each as the version clients can best show", async () => {
+    await using test = await open();
+    const hash = "AB".repeat(32);
+
+    await test.send(note("n1", {
+        mentions: [`a.test:${test.alice}`],
+        attachments: [
+            {
+                "image/heic": { content: "https://b.test/1.heic", remote: true },
+                "image/png": {
+                    content: "https://b.test/1.png",
+                    remote: true,
+                    description: "A red square",
+                    size: 100,
+                    hash,
+                    thumbhash: "abc",
+                    width: 2,
+                    height: 3,
+                },
+            },
+            {
+                "video/x-matroska": { content: "https://b.test/2.mkv", remote: true },
+                "video/mp4": { content: "https://b.test/2.mp4", remote: true },
+            },
+            { "image/png": { content: "not a web address", remote: true } },
+            { "application/zip": { content: "https://b.test/3.zip", remote: true } },
+        ],
+    }));
+
+    const files = await attached(test, "n1");
+    assertEquals(files.map((row) => [row.url, row.media_type]), [
+        ["https://b.test/1.png", "image/png"],
+        ["https://b.test/2.mp4", "video/mp4"],
+        ["https://b.test/3.zip", "application/zip"],
+    ]);
+    const [picture] = files;
+    assertEquals(
+        [picture.size, picture.sha256, picture.thumbhash, picture.width, picture.height],
+        [100, hash.toLowerCase(), "abc", 2, 3],
+    );
+    assertEquals(files.map((row) => row.description), ["A red square", null, null]);
+    // On the note's instance, and no one's upload.
+    const instanceId = (await test.kept("n1"))?.instance_id;
+    assertEquals(
+        files.map((row) => [row.instance_id, row.account_id]),
+        Array(3).fill([instanceId, null]),
+    );
+});
+
+Deno.test("a note has as many files, described at as much length, as settings allow", async () => {
+    await using test = await open({ attachments: 2, mediaDescription: 3 });
+    const file = (n: number) => ({
+        "image/png": { content: `https://b.test/${n}.png`, remote: true, description: "🎉🎉🎉🎉" },
+    });
+
+    await test.send(note("n1", {
+        mentions: [`a.test:${test.alice}`],
+        attachments: [file(1), file(2), file(3)],
+    }));
+
+    const files = await attached(test, "n1");
+    assertEquals(files.map((row) => [row.url, row.description]), [
+        ["https://b.test/1.png", "🎉🎉🎉"],
+        ["https://b.test/2.png", "🎉🎉🎉"],
+    ]);
 });
 
 Deno.test("who a note is for, and its warning, are kept as Mastodon has them", async () => {

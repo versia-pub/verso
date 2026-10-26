@@ -14,6 +14,10 @@ export type Settings = {
     readonly unreachableMs: number;
     /** How many accounts a status may mention. */
     readonly mentions: number;
+    /** How many files a status may have attached. */
+    readonly attachments: number;
+    /** How long a file's description may be, in code points. */
+    readonly mediaDescription: number;
     /** How long an upload no status was given is kept, and another instance's file nothing uses. */
     readonly unattachedMs: number;
     /** For how long a delivery is tried. */
@@ -27,6 +31,8 @@ export const settingsOf = (
     deadLetterMs: config.jobs.dead_letter_days * dayMs,
     unreachableMs: config.federation.unreachable_days * dayMs,
     mentions: config.limits.mentions,
+    attachments: config.limits.attachments,
+    mediaDescription: config.limits.media_description,
     unattachedMs: config.media.unattached_hours * hourMs,
     deliveryMs: config.federation.delivery_hours * hourMs,
 });
@@ -36,6 +42,8 @@ export const defaultSettings: Settings = {
     deadLetterMs: 30 * dayMs,
     unreachableMs: 7 * dayMs,
     mentions: 100,
+    attachments: 16,
+    mediaDescription: 4000,
     unattachedMs: 24 * hourMs,
     deliveryMs: 48 * hourMs,
 };

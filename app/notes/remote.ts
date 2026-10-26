@@ -14,6 +14,8 @@ import type { Known, Sender } from "../federation/registry.ts";
 import { isRemoteFailure } from "../federation/resolver.ts";
 import { hasFollowers } from "../graph/follows.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
+import { attachRemote } from "../media/attachments.ts";
+import { remoteFile } from "../media/versia.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { textOfHtml } from "../kernel/html.ts";
 import { renderText, scanText } from "../kernel/markup.ts";
@@ -135,8 +137,9 @@ export const knownNoteRow = async (
 };
 
 /**
- * Saves a note `sender` sent, or a newer version of one Verso has, with the emojis it uses. Who it
- * mentions, and the notes it replies to or quotes, are left out if Verso doesn't have them.
+ * Saves a note `sender` sent, or a newer version of one Verso has, with the emojis it uses and the
+ * files attached to it, each as the version clients can best show. Who it mentions, and the notes
+ * it replies to or quotes, are left out if Verso doesn't have them.
  *
  * A new note is counted, and its totals are fetched later. What it replies to and quotes stays for
  * good, whatever a newer version says. A newer version that says something else is marked edited
@@ -237,6 +240,12 @@ export const receiveNote = async (
         tags,
     );
     await setNoteEmojis(ctx, row.id, emojiIds);
+    await attachRemote(
+        ctx,
+        sender.instanceId,
+        row.id,
+        note.attachments.flatMap((formats) => remoteFile(formats) ?? []),
+    );
     await countPosted(ctx, row, 1);
     await fetchTotalsLater(ctx, row);
 };

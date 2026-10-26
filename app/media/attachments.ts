@@ -12,7 +12,7 @@ import {
     insertAttachments,
     unattachedUploads,
 } from "./attachment_queries.ts";
-import type { MediaRow } from "./media_queries.ts";
+import { type MediaRow, type RemoteMedia, saveRemoteMedia } from "./media_queries.ts";
 import { describeUpload, processingFailed, type UploadDescription } from "./uploads.ts";
 
 /**
@@ -108,4 +108,26 @@ export const reattach = async (
     for (const change of changes) {
         if (attached.has(change.id)) await describeUpload(ctx, accountId, change.id, change);
     }
+};
+
+/**
+ * Attaches the files another instance attached to its note `noteId`, as Verso keeps them: the
+ * first as many as a local status may have, with their descriptions cut to the length a local
+ * one's may be, so that a note can't make Verso keep without bound. Run it in the transaction that
+ * keeps the note.
+ */
+export const attachRemote = async (
+    ctx: Context,
+    instanceId: string,
+    noteId: string,
+    files: readonly RemoteMedia[],
+): Promise<void> => {
+    const ids = [];
+    for (const file of files.slice(0, ctx.settings.attachments)) {
+        const description = file.description &&
+            Array.from(file.description).slice(0, ctx.settings.mediaDescription).join("");
+        ids.push(await saveRemoteMedia(ctx, instanceId, null, { ...file, description }));
+    }
+
+    await insertAttachments(ctx, noteId, ids);
 };
