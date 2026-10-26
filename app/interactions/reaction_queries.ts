@@ -107,9 +107,10 @@ export type ReactionGroup = {
 };
 
 /**
- * The reactions to each of `noteIds`, by note, and by emoji in the order they were first used,
- * with whether `viewerId` made each, if there is a viewer, and without those of the accounts it
- * blocks, `blocked`.
+ * The reactions to each of `noteIds`, by note, and by emoji in the order they were first used, with
+ * whether `viewerId` made each, if there is a viewer, and without those of the accounts it blocks,
+ * `blocked`. It reads the `emojis`, `instances` and `media` tables rather than asking their
+ * modules, so that it is one query.
  */
 export const reactionsOf = async (
     ctx: Context,
@@ -193,7 +194,10 @@ export type LocalReaction = ReactionRow & {
     readonly media_type: string | null;
 };
 
-/** A local user's reaction, not one from another instance, if there is one with this id. */
+/**
+ * A local user's reaction, not one from another instance, if there is one with this id. It reads
+ * the `emojis` and `media` tables rather than asking their modules, so that it is one query.
+ */
 export const findLocalReaction = async (
     ctx: Context,
     id: string,
@@ -209,7 +213,8 @@ export const findLocalReaction = async (
 
 /**
  * A note's reactions, oldest first, from `offset`: their ids here, and for those from other
- * instances, their ids there and the instances' domains.
+ * instances, their ids there and the instances' domains. It reads the `instances` table rather than
+ * asking its module, so that it is one query.
  */
 export const reactionPage = async (
     ctx: Context,

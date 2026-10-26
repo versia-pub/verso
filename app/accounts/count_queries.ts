@@ -69,3 +69,22 @@ export const countNote = async (
         .where((eb) => eb.or([eb("last_status_at", "is", null), eb("last_status_at", "<", at)]))
         .execute();
 };
+
+/**
+ * Takes one from the statuses of the account each of `statuses` is by, such as other modules'
+ * shares of a note that is deleted, which go with it.
+ */
+export const uncountStatusesFor = async (ctx: Context, statuses: AccountIds): Promise<void> => {
+    await ctx.db.updateTable("accounts")
+        .set((eb) => ({
+            statuses_count: eb(
+                "statuses_count",
+                "-",
+                eb.selectFrom(statuses.as("uncounted"))
+                    .select((count) => count.fn.countAll<number>().as("count"))
+                    .whereRef("uncounted.account_id", "=", "accounts.id"),
+            ),
+        }))
+        .where("id", "in", (eb) => eb.selectFrom(statuses.as("uncounted")).select("account_id"))
+        .execute();
+};

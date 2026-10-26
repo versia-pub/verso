@@ -1,12 +1,11 @@
+import { uncountStatusesFor } from "../accounts/count_queries.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import { countAll, readCount } from "../db/count.ts";
-import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 import type { NoteIdQuery } from "./removal_queries.ts";
-import type { ExpressionBuilder } from "kysely";
 
 /** Counts a share of a note, or one deleted. */
 export const countShare = async (ctx: Context, noteId: string, by: 1 | -1): Promise<void> => {
@@ -34,39 +33,25 @@ export const uncountSharesAmong = async (ctx: Context, notes: NoteIdQuery): Prom
  * Uncounts the shares of `noteId` from the statuses of the accounts that made them, as they go with
  * it. Direct ones aren't counted, so they aren't uncounted.
  */
-export const uncountSharersOf = async (ctx: Context, noteId: string): Promise<void> => {
-    await ctx.db.updateTable("accounts")
-        .set((eb) => ({ statuses_count: eb("statuses_count", "-", 1) }))
-        .where("id", "in", (eb) =>
-            eb.selectFrom("notes").select("notes.account_id")
-                .where("notes.reblog_of_id", "=", noteId)
-                .where("notes.visibility", "!=", "direct"))
-        .execute();
-};
+export const uncountSharersOf = (ctx: Context, noteId: string): Promise<void> =>
+    uncountStatusesFor(
+        ctx,
+        ctx.db.selectFrom("notes").select("notes.account_id")
+            .where("notes.reblog_of_id", "=", noteId)
+            .where("notes.visibility", "!=", "direct"),
+    );
 
 /**
  * Uncounts the shares of `notes` from the statuses of the accounts that made them, as they go with
  * the notes when they are deleted.
  */
-export const uncountSharersOfAmong = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
-    const sharesBy = (eb: ExpressionBuilder<Database, "accounts">) =>
-        eb.selectFrom("notes as share")
-            .innerJoin("notes as shared", "shared.id", "share.reblog_of_id")
-            .where("shared.id", "in", notes)
-            .where("share.visibility", "!=", "direct");
-
-    await ctx.db.updateTable("accounts")
-        .set((eb) => ({
-            statuses_count: eb(
-                "statuses_count",
-                "-",
-                sharesBy(eb).select((count) => count.fn.countAll<number>().as("count"))
-                    .whereRef("share.account_id", "=", "accounts.id"),
-            ),
-        }))
-        .where("id", "in", (eb) => sharesBy(eb).select("share.account_id"))
-        .execute();
-};
+export const uncountSharersOfAmong = (ctx: Context, notes: NoteIdQuery): Promise<void> =>
+    uncountStatusesFor(
+        ctx,
+        ctx.db.selectFrom("notes").select("notes.account_id")
+            .where("notes.reblog_of_id", "in", notes)
+            .where("notes.visibility", "!=", "direct"),
+    );
 
 /** An account's share of a note, if it shares it. */
 export const findShare = async (

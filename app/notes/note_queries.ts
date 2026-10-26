@@ -5,6 +5,7 @@ import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import { attachmentsOf, hasAttachments } from "../media/attachment_queries.ts";
+import type { NoteIdQuery } from "./removal_queries.ts";
 import type { NotesTable, NoteVersionsTable } from "./tables.ts";
 
 export type NoteRow = Selectable<NotesTable>;
@@ -266,5 +267,21 @@ export const countReply = async (ctx: Context, noteId: string, by: 1 | -1): Prom
     await ctx.db.updateTable("notes")
         .set((eb) => ({ replies_count: eb("replies_count", "+", by) }))
         .where("id", "=", noteId)
+        .execute();
+};
+
+/** Counts a like of a note, or one undone. Likes are the interactions module's. */
+export const countLike = async (ctx: Context, noteId: string, by: 1 | -1): Promise<void> => {
+    await ctx.db.updateTable("notes")
+        .set((eb) => ({ likes_count: eb("likes_count", "+", by) }))
+        .where("id", "=", noteId)
+        .execute();
+};
+
+/** Takes one like from each of `notes`, such as the ones an account that is deleted likes. */
+export const uncountLikesOn = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
+    await ctx.db.updateTable("notes")
+        .set((eb) => ({ likes_count: eb("likes_count", "-", 1) }))
+        .where("id", "in", notes)
         .execute();
 };

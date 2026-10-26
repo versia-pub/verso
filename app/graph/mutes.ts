@@ -1,7 +1,7 @@
 /**
  * Mutes: an account muting another, as on Mastodon, so what the muted account posts doesn't reach
- * it, for a while or for good. Like a block, a mute is the muter's alone: the muted account is never
- * told, and nothing of it is sent to other instances. Unlike a block, nobody else can see it.
+ * it, for a while or for good. Like a block, a mute is the muter's alone: the muted account is
+ * never told, and nothing of it is sent to other instances. Unlike a block, nobody else can see it.
  * @see https://docs.joinmastodon.org/methods/accounts/#mute
  * @module
  */

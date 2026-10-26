@@ -86,7 +86,10 @@ const shownColumns = [
     "media.media_type",
 ] as const;
 
-/** This instance's emojis, by shortcode. */
+/**
+ * This instance's emojis, by shortcode. It reads the `media` table rather than asking its module,
+ * so that it is one query.
+ */
 export const localEmojis = async (ctx: Context): Promise<ShownEmoji[]> =>
     await ctx.db.selectFrom("emojis")
         .innerJoin("media", "media.id", "emojis.media_id")
@@ -103,7 +106,10 @@ const byUser = (rows: readonly UsedEmoji[]) => {
     return groups;
 };
 
-/** The emojis each of `noteIds` uses, by note. */
+/**
+ * The emojis each of `noteIds` uses, by note. It reads the `media` table rather than asking its
+ * module, so that it is one query.
+ */
 export const emojisOfNotes = async (
     ctx: Context,
     noteIds: readonly string[],
@@ -121,7 +127,10 @@ export const emojisOfNotes = async (
     );
 };
 
-/** The emojis each of `accountIds` uses, by account. */
+/**
+ * The emojis each of `accountIds` uses, by account. It reads the `media` table rather than asking
+ * its module, so that it is one query.
+ */
 export const emojisOfAccounts = async (
     ctx: Context,
     accountIds: readonly string[],

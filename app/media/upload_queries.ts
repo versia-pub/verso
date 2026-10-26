@@ -115,9 +115,10 @@ export type RemovedUpload =
     & Pick<MediaRow, "sha256" | "preview_sha256" | "upload_sha256">;
 
 /**
- * Removes up to `limit` uploads made by `before` that nothing uses, oldest first, after the one
- * at `after`: no note has them attached, and no account or emoji shows them. A note given one at
- * the same time makes it fail instead, as attached files can't be deleted.
+ * Removes up to `limit` uploads made by `before` that nothing uses, oldest first, after the one at
+ * `after`: no note has them attached, and no account or emoji shows them. A note given one at the
+ * same time makes it fail instead, as attached files can't be deleted. It reads the `accounts` and
+ * `emojis` tables rather than asking their modules, so that it is one query.
  */
 export const deleteUnusedUploads = (
     ctx: Context,

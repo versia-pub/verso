@@ -5,6 +5,7 @@ import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
 import type { Context } from "../kernel/context.ts";
 import type { LikeKind, LikesTable } from "./tables.ts";
+import { uncountLikesOn } from "../notes/note_queries.ts";
 
 export type LikeRow = Selectable<LikesTable>;
 
@@ -112,24 +113,14 @@ export const likePage = async (
     return await readPage(query, "id", page);
 };
 
-/** Counts a like of a note, or one undone. */
-export const countLike = async (ctx: Context, noteId: string, by: 1 | -1): Promise<void> => {
-    await ctx.db.updateTable("notes")
-        .set((eb) => ({ likes_count: eb("likes_count", "+", by) }))
-        .where("id", "=", noteId)
-        .execute();
-};
-
 /** Uncounts the likes, not dislikes, of an account from the notes it likes. */
-export const uncountLikesBy = async (ctx: Context, accountId: string): Promise<void> => {
-    await ctx.db.updateTable("notes")
-        .set((eb) => ({ likes_count: eb("likes_count", "-", 1) }))
-        .where("id", "in", (eb) =>
-            eb.selectFrom("likes").select("likes.note_id")
-                .where("likes.account_id", "=", accountId)
-                .where("likes.kind", "=", "like"))
-        .execute();
-};
+export const uncountLikesBy = (ctx: Context, accountId: string): Promise<void> =>
+    uncountLikesOn(
+        ctx,
+        ctx.db.selectFrom("likes").select("likes.note_id as id")
+            .where("likes.account_id", "=", accountId)
+            .where("likes.kind", "=", "like"),
+    );
 
 /** A local like, not one from another instance, if there is one with this id. */
 export const findLocalLike = async (ctx: Context, id: string): Promise<LikeRow | undefined> =>
@@ -138,7 +129,10 @@ export const findLocalLike = async (ctx: Context, id: string): Promise<LikeRow |
         .where("instance_id", "is", null)
         .executeTakeFirst();
 
-/** The likes or dislikes of a note, `kind` as they are. */
+/**
+ * The likes or dislikes of a note, `kind` as they are, with the domains of their instances. It
+ * reads the `instances` table rather than asking its module, so that it is one query.
+ */
 const ofNote = (ctx: Context, noteId: string, kind: LikeKind) =>
     ctx.db.selectFrom("likes")
         .leftJoin("instances", "instances.id", "likes.instance_id")

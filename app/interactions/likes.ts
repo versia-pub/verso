@@ -6,10 +6,8 @@
 import { isAccountDeleting } from "../accounts/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { visibleNote, visibleOriginal } from "../notes/visibility.ts";
 import {
-    countLike,
     deleteLike,
     deleteLikeById,
     findRemoteLike,
@@ -17,6 +15,7 @@ import {
     insertRemoteLike,
     uncountLikesBy,
 } from "./like_queries.ts";
+import { countLike, findNote, type NoteRow } from "../notes/note_queries.ts";
 import type { LikeEvent } from "./events.ts";
 import type { LikeKind } from "./tables.ts";
 
@@ -51,9 +50,9 @@ export const like = (
 
 /**
  * Undoes `accountId`'s like of a note, or of what a share shares, and uncounts it. Returns the note
- * as it is now, or `undefined` if there is none. As on Mastodon, a note it liked can be unliked even
- * if it may no longer see it, and one it didn't only if it may. Local users never dislike notes, so
- * there is no dislike to undo.
+ * as it is now, or `undefined` if there is none. As on Mastodon, a note it liked can be unliked
+ * even if it may no longer see it, and one it didn't only if it may. Local users never dislike
+ * notes, so there is no dislike to undo.
  */
 export const unlike = (
     ctx: Context,

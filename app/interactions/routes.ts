@@ -248,7 +248,8 @@ export const interactionRoutes: readonly Route[] = [
             const note = await visibleOriginal(ctx, params.id, viewer?.accountId ?? null);
             if (note === undefined) throw new NotFound();
 
-            // Only the shares anyone may see, so a share for followers doesn't give its sharer away.
+            // Only the shares anyone may see, so a share for followers doesn't give its sharer
+            // away.
             const blocked = viewerBlocks(ctx, viewer?.accountId ?? null);
             const shares = await sharePage(ctx, note.id, everyone, blocked, query);
             return {

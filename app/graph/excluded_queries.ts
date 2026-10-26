@@ -18,7 +18,10 @@ export type Excluded = {
     readonly onInstances: (column: string) => Expression<unknown>;
 };
 
-/** The accounts `accounts`, and those on the instances `instances`. */
+/**
+ * The accounts `accounts`, and those on the instances `instances`. It reads the `accounts` table
+ * rather than asking its module, so that it is one query.
+ */
 export const excluded = (
     ctx: Context,
     accounts: AccountIdQuery,
