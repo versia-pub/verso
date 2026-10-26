@@ -1,6 +1,7 @@
 import { decode } from "fast-png";
 import { blurhashOf, hashedSize, type Pixels, thumbhashOf } from "./image_hashes.ts";
 import {
+    type Fit,
     formatHeadLength,
     type ImageFormat,
     imageFormatOf,
@@ -133,18 +134,19 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
     };
 
     /**
-     * Saves `input` as `output`, upright, in sRGB and scaled to fit a `side`-pixel square. What
-     * there is of a truncated image is saved, with grey for the rest, so that its metadata can
-     * still be removed: vips can't remove it without reading the image.
+     * Saves `input` as `output`, upright, in sRGB and scaled down to fit a `side`-pixel square,
+     * or a `side` by `height` box. What there is of a truncated image is saved, with grey for the
+     * rest, so that its metadata can still be removed: vips can't remove it without reading the
+     * image.
      */
-    const thumbnail = (input: string, output: string, side: number) =>
+    const thumbnail = (input: string, output: string, side: number, height = side) =>
         run("vips", [
             "thumbnail",
             input,
             output,
             `${side}`,
             "--height",
-            `${side}`,
+            `${height}`,
             "--size",
             "down",
             "--export-profile",
@@ -170,8 +172,8 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
 
     const refuse = (reason: ImageRefusal) => ({ ok: false, reason }) as const;
 
-    /** Processes the image at `input`, of `format`, with its files in `dir`. */
-    const processIn = async (dir: string, input: string, format: ImageFormat) => {
+    /** Processes the image at `input`, of `format`, to fit in `fit` if given, in `dir`. */
+    const processIn = async (dir: string, input: string, format: ImageFormat, fit?: Fit) => {
         const [summary] = summariesOf((await run("vipsheader", [input])).stdout);
         if (summary === undefined) return refuse("broken");
 
@@ -185,10 +187,13 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
 
         const { extension, options } = savers[format];
         const original = `${dir}/original.${extension}`;
+        // Within the pixel cap, and the box if there is one.
+        const side = longestSide(width, height, maxPixels);
         const kept = await thumbnail(
             animated.has(format) ? `${input}[n=-1]` : input,
             `${original}[${options}]`,
-            longestSide(width, height, maxPixels),
+            Math.min(side, fit?.width ?? side),
+            Math.min(side, fit?.height ?? side),
         );
         if (!kept.success) return refuse("broken");
 
@@ -231,7 +236,7 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
     };
 
     return {
-        process: (stream) =>
+        process: (stream, fit) =>
             withDirectory(async (dir) => {
                 const input = `${dir}/upload`;
                 await Deno.writeFile(input, stream);
@@ -239,7 +244,7 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
                 const format = imageFormatOf(await headOf(input));
                 if (format === undefined) return refuse("unsupported");
 
-                return await processIn(dir, input, format);
+                return await processIn(dir, input, format, fit);
             }),
         // Running vips throws if it isn't there.
         check: () =>

@@ -8,7 +8,7 @@ import {
 import { isBlurhashValid } from "blurhash";
 import { decode, encode } from "fast-png";
 import { thumbHashToAverageRGBA } from "thumbhash";
-import { type ImageFormat, imageFormats, type ProcessedImage } from "./images.ts";
+import { type Fit, type ImageFormat, imageFormats, type ProcessedImage } from "./images.ts";
 import { previewPixels, vipsImages } from "./vips_images.ts";
 
 /** A `width`×`height` PNG, all of one colour. */
@@ -83,12 +83,13 @@ const averageOf = (thumbhash: string) => {
 const assertColour = (actual: number[], expected: number[]) =>
     expected.forEach((value, i) => assertAlmostEquals(actual[i], value, 12));
 
-/** Processes `bytes`, and fails unless they are stored. */
+/** Processes `bytes`, to fit in `fit` if given, and fails unless they are stored. */
 const processed = async (
     bytes: Uint8Array<ArrayBuffer>,
     options = { maxPixels: 8_294_400 },
+    fit?: Fit,
 ): Promise<ProcessedImage> => {
-    const result = await vipsImages(options).process(ReadableStream.from([bytes]));
+    const result = await vipsImages(options).process(ReadableStream.from([bytes]), fit);
     assert(result.ok, `refused as ${result.ok || result.reason}`);
     return result.image;
 };
@@ -175,6 +176,33 @@ Deno.test("a picture with more pixels than allowed is scaled down to them", asyn
     // And it is as large as fits, at exactly the limit.
     const largest = await processed(await picture("png", 29, 20, red), { maxPixels: 294 });
     assertEquals([largest.width, largest.height], [21, 14]);
+});
+
+Deno.test("a picture given a box is scaled down to fit in it, as it is, and never up", async () => {
+    const box = { width: 40, height: 20 };
+
+    const wide = await processed(await picture("png", 120, 30, red), undefined, box);
+    const tall = await processed(await picture("png", 30, 60, red), undefined, box);
+    const small = await processed(await picture("png", 10, 8, red), undefined, box);
+    const frames = await processed(
+        await animation("gif", 80, 40, [red, [30, 30, 200]]),
+        undefined,
+        box,
+    );
+
+    assertEquals([wide.width, wide.height], [40, 10]);
+    assertEquals([tall.width, tall.height], [10, 20]);
+    assertEquals([small.width, small.height], [10, 8]);
+    assertEquals([frames.width, frames.height, frames.frames], [40, 20, 2]);
+});
+
+Deno.test("a picture given a box larger than allowed has no more pixels than allowed", async () => {
+    const box = { width: 400, height: 400 };
+
+    const wide = await processed(await picture("png", 80, 60, red), { maxPixels: 1200 }, box);
+    const tall = await processed(await picture("png", 60, 80, red), { maxPixels: 1200 }, box);
+
+    assertEquals([wide.width, wide.height, tall.width, tall.height], [40, 30, 30, 40]);
 });
 
 Deno.test("a picture with exactly as many pixels as allowed keeps its size", async () => {

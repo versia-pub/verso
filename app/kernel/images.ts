@@ -93,15 +93,20 @@ export type ProcessedImage = Picture & {
  */
 export type ImageRefusal = "unsupported" | "broken" | "too-large";
 
+/** A box an image is scaled down to fit in, keeping its aspect ratio, such as for an avatar. */
+export type Fit = { readonly width: number; readonly height: number };
+
 /** Turns uploads into images fit to store and display. */
 export type ImageProcessor = {
     /**
-     * `input`'s image upright, without metadata, in sRGB and scaled down if too large, with a
-     * preview and placeholder hashes. Rejects what isn't an image in a format Verso accepts, what
-     * can't be read at all, and what has too many pixels to read safely. Throws if it can't try.
+     * `input`'s image upright, without metadata, in sRGB and scaled down if too large, or to fit
+     * in `fit` if given, with a preview and placeholder hashes. Rejects what isn't an image in a
+     * format Verso accepts, what can't be read at all, and what has too many pixels to read
+     * safely. Throws if it can't try.
      */
     readonly process: (
         input: ReadableStream<Uint8Array>,
+        fit?: Fit,
     ) => Promise<{ ok: true; image: ProcessedImage } | { ok: false; reason: ImageRefusal }>;
     /** Throws unless Verso can process images, so it stops when it starts rather than later. */
     readonly check: () => Promise<void>;
