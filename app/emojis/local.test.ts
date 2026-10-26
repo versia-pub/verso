@@ -6,7 +6,7 @@ import { publicAccount } from "../accounts/public.ts";
 import { accountRoutes } from "../accounts/routes.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
-import { Limits } from "../kernel/config.ts";
+import { Limits } from "../kernel/config_sections.ts";
 import { createInstance } from "../instances/testing.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { editNote, postNote } from "../notes/notes.ts";

@@ -16,7 +16,8 @@ import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
 import { audienceOf } from "./audience.ts";
 import { noteType } from "./federation.ts";
-import { editNote, postNote, removeNote } from "./notes.ts";
+import { editNote, postNote } from "./notes.ts";
+import { removeNote } from "./removal.ts";
 import { pin } from "./pins.ts";
 import { createNote } from "./testing.ts";
 

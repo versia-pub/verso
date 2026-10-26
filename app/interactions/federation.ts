@@ -15,7 +15,7 @@ import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { everyone, instanceMaySee } from "../notes/audience.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
-import { canSee } from "../notes/notes.ts";
+import { canSee } from "../notes/visibility.ts";
 import { knownNote } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
 import { isLikeEvent } from "./events.ts";

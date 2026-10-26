@@ -8,15 +8,9 @@ import type { Context } from "../kernel/context.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { findNote, mentionsOf, tagsOf, versionsOf } from "./note_queries.ts";
-import {
-    canSee,
-    type Draft,
-    type Edit,
-    editNote,
-    postNote,
-    removeNote,
-    visibleNote,
-} from "./notes.ts";
+import { type Draft, type Edit, editNote, postNote } from "./notes.ts";
+import { removeNote } from "./removal.ts";
+import { canSee, visibleNote } from "./visibility.ts";
 import { createNote } from "./testing.ts";
 
 const open = async (options: TestContextOptions = {}) => {

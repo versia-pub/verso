@@ -18,16 +18,9 @@ import { attachmentsOf, findMediaRows } from "../media/attachment_queries.ts";
 import { asVersionMedia, attachedTo } from "../media/attachments.ts";
 import { renderAttachment } from "../media/render.ts";
 import { entityUrl } from "../kernel/urls.ts";
-import {
-    countSharesBy,
-    findNotes,
-    mentionsOf,
-    type NoteRow,
-    notesSeenBy,
-    sharedAmong,
-    tagsOf,
-    versionsOf,
-} from "./note_queries.ts";
+import { findNotes, mentionsOf, type NoteRow, tagsOf, versionsOf } from "./note_queries.ts";
+import { notesSeenBy } from "./thread_queries.ts";
+import { countSharesBy, sharedAmong } from "./share_queries.ts";
 import { pinnedAmong } from "./pin_queries.ts";
 import { isPinnable } from "./pins.ts";
 import { totalsOf } from "./total_queries.ts";

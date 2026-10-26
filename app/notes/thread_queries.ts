@@ -1,0 +1,112 @@
+import type { Visibility } from "../accounts/tables.ts";
+import { countAll, readCount } from "../db/count.ts";
+import type { Database } from "../db/database.ts";
+import type { AccountIdQuery } from "../graph/follows.ts";
+import type { Context } from "../kernel/context.ts";
+import type { NoteRow } from "./note_queries.ts";
+import type { ExpressionBuilder } from "kysely";
+
+/** Someone looking at notes, with the accounts they follow, or `null` for anyone. */
+export type Onlooker = { readonly id: string; readonly followed: AccountIdQuery } | null;
+
+/**
+ * Whether `onlooker` may see a note, as `canSee` decides one at a time: public and unlisted notes
+ * are for anyone, private ones for the author's followers, and direct ones for those they mention,
+ * who may always see a note, as may its author.
+ */
+const seenBy = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">) => {
+    const listed = eb("notes.visibility", "in", ["public", "unlisted"]);
+    if (onlooker === null) return listed;
+
+    return eb.or([
+        listed,
+        eb("notes.account_id", "=", onlooker.id),
+        eb.and([
+            eb("notes.visibility", "=", "private"),
+            eb("notes.account_id", "in", onlooker.followed),
+        ]),
+        eb.exists(
+            eb.selectFrom("note_mentions").select("note_mentions.note_id")
+                .whereRef("note_mentions.note_id", "=", "notes.id")
+                .where("note_mentions.account_id", "=", onlooker.id),
+        ),
+    ]);
+};
+
+/** Which of `ids` are notes `onlooker` may see, in no particular order. */
+export const notesSeenBy = async (
+    ctx: Context,
+    ids: readonly string[],
+    onlooker: Onlooker,
+): Promise<Set<string>> => {
+    if (ids.length === 0) return new Set();
+
+    const rows = await ctx.db.selectFrom("notes").select("id")
+        .where("id", "in", ids)
+        .where(seenBy(onlooker))
+        .execute();
+    return new Set(rows.map((row) => row.id));
+};
+
+/**
+ * The replies to any of `noteIds`, oldest first, at most `limit`, with whether `onlooker` may see
+ * each.
+ */
+export const repliesTo = async (
+    ctx: Context,
+    noteIds: readonly string[],
+    onlooker: Onlooker,
+    limit: number,
+): Promise<{ note: NoteRow; seen: boolean }[]> => {
+    if (noteIds.length === 0) return [];
+
+    const rows = await ctx.db.selectFrom("notes").selectAll()
+        .select((eb) => seenBy(onlooker)(eb).as("seen"))
+        .where("in_reply_to_id", "in", noteIds)
+        .orderBy("id")
+        .limit(limit)
+        .execute();
+    // SQLite gives 1 or 0.
+    return rows.map(({ seen, ...note }) => ({ note, seen: Boolean(seen) }));
+};
+
+/** How a note links to another: by replying to it, or quoting it. */
+export type NoteLink = "in_reply_to_id" | "quote_id";
+
+/** The notes with one of `visibilities` that link to `noteId` by `link`. */
+const linkedTo = (
+    ctx: Context,
+    link: NoteLink,
+    noteId: string,
+    visibilities: readonly Visibility[],
+) => ctx.db.selectFrom("notes")
+    .where(link, "=", noteId)
+    .where("visibility", "in", visibilities)
+    .where("reblog_of_id", "is", null);
+
+/** The ids of the notes linking to `noteId`, as {@link linkedTo} finds them, oldest first. */
+export const linkedNoteIds = async (
+    ctx: Context,
+    link: NoteLink,
+    noteId: string,
+    visibilities: readonly Visibility[],
+    offset: number,
+    limit: number,
+): Promise<string[]> =>
+    (await linkedTo(ctx, link, noteId, visibilities).select("id")
+        .orderBy("id")
+        .offset(offset)
+        .limit(limit)
+        .execute())
+        .map((row) => row.id);
+
+/** How many notes link to `noteId`, as {@link linkedTo} finds them. */
+export const countLinkedNotes = async (
+    ctx: Context,
+    link: NoteLink,
+    noteId: string,
+    visibilities: readonly Visibility[],
+): Promise<number> =>
+    readCount(
+        await linkedTo(ctx, link, noteId, visibilities).select(countAll).executeTakeFirstOrThrow(),
+    );

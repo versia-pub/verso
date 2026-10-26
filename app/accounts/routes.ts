@@ -5,7 +5,7 @@ import { renderEmojis } from "../emojis/render.ts";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
-import type { Limits } from "../kernel/config.ts";
+import type { Limits } from "../kernel/config_sections.ts";
 import { countFollowRequests } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { type AccountRow, findAccount } from "./account_queries.ts";

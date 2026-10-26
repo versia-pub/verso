@@ -3,7 +3,7 @@
  * @module
  */
 import type { Context as HonoContext } from "@hono/hono";
-import type { Permissions } from "../kernel/config.ts";
+import type { Permissions } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import { type Cidr, parseIp } from "../kernel/ip.ts";
 import type { Permission } from "../kernel/permissions.ts";

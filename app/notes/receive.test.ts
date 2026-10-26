@@ -5,7 +5,8 @@ import { follow } from "../graph/follows.ts";
 import { addEvilInstance, type EvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
 import { findRemoteNoteAt, mentionsOf, tagsOf, versionsOf } from "./note_queries.ts";
-import { editNote, postNote, removeNote } from "./notes.ts";
+import { editNote, postNote } from "./notes.ts";
+import { removeNote } from "./removal.ts";
 import { createNote } from "./testing.ts";
 import type { Settings } from "../kernel/settings.ts";
 

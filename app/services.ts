@@ -15,7 +15,7 @@ import type { Federation, Subscriber } from "./kernel/context.ts";
 import { domainBlocks } from "./moderation/domain_blocks.ts";
 import { blockedDomainNames } from "./moderation/domain_block_queries.ts";
 import { noteDeliveries } from "./notes/federation.ts";
-import { uncountNotesOf } from "./notes/notes.ts";
+import { uncountNotesOf } from "./notes/removal.ts";
 import { registry } from "./registry.ts";
 
 /** The services the HTTP app asks for, as Verso's modules provide them. */

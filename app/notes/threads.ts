@@ -4,8 +4,9 @@
  */
 import { hiddenAmong } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
-import { findNote, type NoteRow, notesSeenBy, type Onlooker, repliesTo } from "./note_queries.ts";
-import { onlookerOf } from "./notes.ts";
+import { findNote, type NoteRow } from "./note_queries.ts";
+import { notesSeenBy, type Onlooker, repliesTo } from "./thread_queries.ts";
+import { onlookerOf } from "./visibility.ts";
 
 /** How many notes up a thread are looked at, as Mastodon shows to anyone. */
 const ancestorsLimit = 40;

@@ -1,7 +1,7 @@
 import { type Context as HonoContext, Hono } from "@hono/hono";
 import { bodyLimit } from "@hono/hono/body-limit";
 import { getLogger } from "@logtape/logtape";
-import { Permissions } from "../kernel/config.ts";
+import { Permissions } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Cidr } from "../kernel/ip.ts";
 import type { AppEnv, AppServices } from "./env.ts";

@@ -5,7 +5,7 @@
  */
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
-import { visibleNote } from "./notes.ts";
+import { visibleNote } from "./visibility.ts";
 import { countPins, deletePin, insertPin, pinnedAmong } from "./pin_queries.ts";
 
 /** How many notes an account may pin, as on Mastodon. */

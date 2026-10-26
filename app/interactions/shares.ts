@@ -10,15 +10,11 @@ import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { everyone } from "../notes/audience.ts";
-import {
-    deleteShare,
-    findNote,
-    findRemoteNote,
-    findShare,
-    insertNote,
-    type NoteRow,
-} from "../notes/note_queries.ts";
-import { countPosted, removeNote, visibleNote, visibleOriginal } from "../notes/notes.ts";
+import { findNote, findRemoteNote, insertNote, type NoteRow } from "../notes/note_queries.ts";
+import { deleteShare, findShare } from "../notes/share_queries.ts";
+import { countPosted } from "../notes/notes.ts";
+import { removeNote } from "../notes/removal.ts";
+import { visibleNote, visibleOriginal } from "../notes/visibility.ts";
 import type { ShareEvent } from "./events.ts";
 
 /** What became of sharing a note: the share, or why there is none. */

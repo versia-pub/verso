@@ -12,17 +12,9 @@ import type { CollectionProvider, EntityType, Sender } from "../federation/regis
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { audienceOf, everyone, instanceMaySee } from "./audience.ts";
 import { isNoteDeleted, isNoteEdited, isNotePosted } from "./events.ts";
-import {
-    countLinkedNotes,
-    countNotesBy,
-    findNote,
-    findRemoteNote,
-    linkedNoteIds,
-    mentionsOf,
-    type NoteLink,
-    notesBy,
-} from "./note_queries.ts";
-import { removeNote, removeNotesOf } from "./notes.ts";
+import { countNotesBy, findNote, findRemoteNote, mentionsOf, notesBy } from "./note_queries.ts";
+import { countLinkedNotes, linkedNoteIds, type NoteLink } from "./thread_queries.ts";
+import { removeNote, removeNotesOf } from "./removal.ts";
 import { pinnedNotes } from "./pin_queries.ts";
 import { knownNote, prepareNote, receiveNote } from "./remote.ts";
 import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";

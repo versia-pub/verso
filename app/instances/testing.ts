@@ -1,4 +1,4 @@
-import { Instance, Limits, MediaLimits } from "../kernel/config.ts";
+import { Instance, Limits, MediaLimits } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Server } from "../kernel/fake_transport.ts";
 import type { AboutSettings } from "./render.ts";

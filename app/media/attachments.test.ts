@@ -4,7 +4,7 @@ import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
-import { Limits } from "../kernel/config.ts";
+import { Limits } from "../kernel/config_sections.ts";
 import { pin } from "../notes/pins.ts";
 import { noteRoutes } from "../notes/routes.ts";
 import { timelineRoutes } from "../notes/timeline_routes.ts";

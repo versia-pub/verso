@@ -10,7 +10,7 @@ import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
-import { visibleNote, visibleOriginal } from "../notes/notes.ts";
+import { visibleNote, visibleOriginal } from "../notes/visibility.ts";
 import type { ReactionEvent } from "./events.ts";
 import {
     deleteReaction,

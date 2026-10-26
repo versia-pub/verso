@@ -2,13 +2,11 @@
  * The OpenAPI document, built from the route objects, so it always says what the routes do.
  * @module
  */
-import * as clientApi from "@versia/client-api";
 import { z } from "zod";
 import denoConfig from "../../deno.json" with { type: "json" };
 import { scopes } from "../kernel/scopes.ts";
 import { defineRoute, type Responses, type Route } from "./route.ts";
-
-type JsonSchema = z.core.JSONSchema.JSONSchema;
+import { components, type JsonSchema, jsonSchema, type Naming, naming } from "./openapi_schemas.ts";
 
 /** @see https://spec.openapis.org/oas/v3.1.1.html#parameter-object */
 type Parameter = {
@@ -92,82 +90,6 @@ const securitySchemes = {
             "made at `Versia-Signed-At`. See https://versia.pub/signatures.",
     },
 } as const;
-
-/**
- * The client API's entities, named as the package exports them, so the document describes each
- * once, in its components, and refers to it there. A schema that contains itself, as an account
- * contains the one it moved to, can only be described this way.
- */
-const naming = () => {
-    const entities = new Map<z.ZodType, string>();
-    for (const [id, schema] of Object.entries(clientApi)) {
-        // A schema exported under two names keeps the first.
-        if (schema instanceof z.ZodType && !entities.has(schema)) entities.set(schema, id);
-    }
-
-    const registry = z.registry<{ id: string }>();
-    for (const [schema, id] of entities) registry.add(schema, { id });
-
-    return { entities, registry, ids: new Set(entities.values()) };
-};
-
-type Naming = ReturnType<typeof naming>;
-
-/**
- * A schema as JSON Schema, in the shape it is sent: requests before they are parsed, and replies as
- * handlers give them, which are sent without being parsed either. Named schemas are left in
- * `$defs`.
- */
-const toJson = (schema: z.ZodType, names: Naming) =>
-    z.toJSONSchema(schema, {
-        io: "input",
-        metadata: names.registry,
-        // Descriptions are kept in Zod's own registry, which `metadata` takes the place of.
-        override: ({ zodSchema, jsonSchema }) => {
-            const { id: _, ...meta } = z.globalRegistry.get(zodSchema) ?? {};
-            Object.assign(jsonSchema, meta);
-        },
-    });
-
-/**
- * The schema in `json`, with references to named schemas pointing into the document's components,
- * and the parts Zod named itself, which repeat within one schema, put back in place. `defs` are the
- * schemas Zod gave alongside.
- */
-const resolve = (
-    json: string,
-    defs: Readonly<Record<string, unknown>>,
-    names: Naming,
-    within: readonly string[] = [],
-): JsonSchema =>
-    JSON.parse(json, (_key, value) => {
-        const ref = value?.$ref;
-        if (typeof ref !== "string") return value;
-
-        const id = ref.startsWith("#/$defs/") ? ref.slice("#/$defs/".length) : undefined;
-        if (id === undefined || within.includes(id)) {
-            throw new Error(`A schema that contains itself must be named, at ${ref}`);
-        }
-
-        const { $ref: _, ...rest } = value;
-        return names.ids.has(id)
-            ? { ...value, $ref: `#/components/schemas/${id}` }
-            : { ...rest, ...resolve(JSON.stringify(defs[id]), defs, names, [...within, id]) };
-    });
-
-const jsonSchema = (schema: z.ZodType, names: Naming): JsonSchema => {
-    const { $schema: _, $defs = {}, ...rest } = toJson(schema, names);
-    return resolve(JSON.stringify(rest), $defs, names);
-};
-
-/** Every named schema, as the document's components describe it. */
-const components = (names: Naming) =>
-    Object.fromEntries(
-        [...names.entities].map(([schema, id]) => {
-            const { $defs = {} } = toJson(schema, names);
-            return [id, resolve(JSON.stringify($defs[id]), $defs, names)];
-        }),
-    );
 
 /** The media types every body may be sent as, since Mastodon clients send JSON or forms. */
 const bodyTypes = ["application/json", "application/x-www-form-urlencoded", "multipart/form-data"];

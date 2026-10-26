@@ -4,7 +4,7 @@ import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
-import { MediaLimits } from "../kernel/config.ts";
+import { MediaLimits } from "../kernel/config_sections.ts";
 import { bytesSource, type FileStore, memoryFiles } from "../kernel/files.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";

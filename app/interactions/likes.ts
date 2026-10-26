@@ -7,7 +7,7 @@ import { isAccountDeleting } from "../accounts/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
-import { visibleNote, visibleOriginal } from "../notes/notes.ts";
+import { visibleNote, visibleOriginal } from "../notes/visibility.ts";
 import {
     countLike,
     deleteLike,

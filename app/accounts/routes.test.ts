@@ -6,7 +6,7 @@ import { createTestApp } from "../testing/app.ts";
 import { memoryRateLimitStore } from "../http/rate_limits.ts";
 import { defineRoute } from "../http/route.ts";
 import { createInstance } from "../instances/testing.ts";
-import { Limits } from "../kernel/config.ts";
+import { Limits } from "../kernel/config_sections.ts";
 import { createTestContext } from "../testing/context.ts";
 import { accountRoutes } from "./routes.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
