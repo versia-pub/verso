@@ -72,6 +72,12 @@ Deno.test("relationships are given for each account asked about, once, in order"
     const one = await test.request("GET", "/api/v1/accounts/relationships?id=alice");
     assertEquals(ids(one.body), ["alice"]);
     assertEquals((await test.request("GET", "/api/v1/accounts/relationships")).body, []);
+
+    // At most 80 at once.
+    const asking = (n: number) =>
+        "/api/v1/accounts/relationships?" + Array.from({ length: n }, () => "id[]=bob").join("&");
+    assertEquals((await test.request("GET", asking(80))).status, 200);
+    assertEquals((await test.request("GET", asking(81))).status, 422);
 });
 
 Deno.test("relationships show follows and requests both ways", async () => {

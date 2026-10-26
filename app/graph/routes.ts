@@ -401,9 +401,11 @@ export const graphRoutes: readonly Route[] = [
         summary: "How the viewer is connected to each of some accounts",
         tags: ["accounts"],
         auth: { require: "user", scope: "read:follows" },
-        // `id[]=1&id[]=2`, or a single `id=1`.
+        // `id[]=1&id[]=2`, or a single `id=1`. Each id costs queries, so there are at most as many as
+        // the longest page of accounts.
         query: z.object({
-            id: z.union([z.string().transform((id) => [id]), z.array(z.string())]).default([]),
+            id: z.union([z.string().transform((id) => [id]), z.array(z.string())]).default([])
+                .pipe(z.array(z.string()).max(80, { error: "Must be at most 80 ids" })),
         }),
         responses: { 200: z.array(Relationship) },
         handler: async (ctx, { query, viewer }) => ({
