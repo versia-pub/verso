@@ -169,8 +169,9 @@ export const updateProfile = async (
 };
 
 /**
- * Tells the rest of Verso that a local profile changed once its new avatar or header is processed,
- * as until then the account showed its default one, so it is sent to followers again with it.
+ * Tells the rest of Verso that a local profile changed once its new avatar or header finished
+ * processing, as until then the account showed its default one, and its followers' instances are
+ * only sent it once its pictures are ready.
  */
 export const showProcessedPictures = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isMediaProcessed(event)) return;

@@ -11,7 +11,7 @@ import { tokenFor } from "../auth/testing.ts";
 import { tasks } from "../jobs/queues.ts";
 import { schedule } from "../jobs/scheduler.ts";
 import { clientOf, followAddress } from "../testing/clients.ts";
-import { createNetwork } from "../testing/network.ts";
+import { createNetwork, type Network } from "../testing/network.ts";
 
 const png = new Uint8Array(encode({
     width: 2,
@@ -96,6 +96,23 @@ Deno.test("a status's media reaches followers on another instance, edited, until
     ]);
 });
 
+/** Counts the Users sent to `domain`'s inbox from now on. */
+const countUsersSent = (network: Network, domain: string) => {
+    const serve = network.transport.servers.get(domain);
+    if (serve === undefined) throw new Error(`${domain} isn't on the network`);
+
+    let sent = 0;
+    network.transport.servers.set(domain, async (request) => {
+        if (new URL(request.url).pathname === "/.versia/v0.6/inbox") {
+            if ((await request.clone().json()).type === "User") sent += 1;
+        }
+
+        return await serve(request);
+    });
+
+    return () => sent;
+};
+
 Deno.test("an avatar reaches followers on another instance once processed, until it is removed", async () => {
     await using network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"];
@@ -104,6 +121,7 @@ Deno.test("an avatar reaches followers on another instance once processed, until
     const bob = await clientOf(b, await createLocalAccount(b.ctx, "bob"));
     await followAddress(bob, "alice@a.test");
     await network.drain();
+    const usersSent = countUsersSent(network, "b.test");
 
     const form = new FormData();
     form.append("avatar", new File([png], "avatar.png", { type: "image/png" }));
@@ -119,6 +137,9 @@ Deno.test("an avatar reaches followers on another instance once processed, until
 
     /** Alice's account as bob sees it. */
     const seen = async () => (await bob("GET", "/api/v1/accounts/lookup?acct=alice@a.test")).body;
+
+    // Sent once, when her avatar was ready.
+    assertEquals(usersSent(), 1);
 
     const own = await seen();
     assertEquals(own.avatar.startsWith("https://a.test/media/"), true, own.avatar);
@@ -138,4 +159,35 @@ Deno.test("an avatar reaches followers on another instance once processed, until
     await network.drain();
 
     assertEquals((await seen()).avatar, "https://a.test/accounts/alice/avatar.png");
+});
+
+Deno.test("a profile changed with pictures that can't be processed still reaches followers", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"];
+    const b = network.instances["b.test"];
+    const aliceId = await createLocalAccount(a.ctx, "alice");
+    const bob = await clientOf(b, await createLocalAccount(b.ctx, "bob"));
+    await followAddress(bob, "alice@a.test");
+    await network.drain();
+    const usersSent = countUsersSent(network, "b.test");
+
+    const form = new FormData();
+    form.append("display_name", "Alice");
+    for (const name of ["avatar", "header"]) {
+        form.append(name, new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2])], "a.jpg"));
+    }
+    const changed = await a.app.request("/api/v1/accounts/update_credentials", {
+        method: "PATCH",
+        headers: { authorization: `Bearer ${await tokenFor(a.ctx, aliceId)}` },
+        body: form,
+    });
+    await changed.body?.cancel();
+    await network.drain();
+
+    const { body } = await bob("GET", "/api/v1/accounts/lookup?acct=alice@a.test");
+    assertEquals([body.display_name, body.avatar], [
+        "Alice",
+        "https://a.test/accounts/alice/avatar.png",
+    ]);
+    assertEquals(usersSent(), 1);
 });

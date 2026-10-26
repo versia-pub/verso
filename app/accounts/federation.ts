@@ -33,6 +33,22 @@ const picture = (url: string): v0_6.ContentFormat => ({
     "image/png": { content: url, remote: true },
 });
 
+/**
+ * Whether the local account `id` has an avatar or header still being processed, so it isn't
+ * finished changing and isn't sent to remote instances yet.
+ */
+export const hasPicturesProcessing = async (ctx: Context, id: string): Promise<boolean> => {
+    const row = await localUser(ctx, id);
+    const pictures = [row?.avatar_id ?? null, row?.header_id ?? null];
+
+    for (const picture of pictures) {
+        if (picture === null) continue;
+        if ((await findMedia(ctx, picture))?.processed_at === null) return true;
+    }
+
+    return false;
+};
+
 /** A local account's picture `id`, once processed, or else its default one at `fallback`. */
 const ownPicture = async (ctx: Context, id: string | null, fallback: string) => {
     const row = id === null ? undefined : await findMedia(ctx, id);

@@ -214,11 +214,11 @@ Deno.test("the same picture uploaded twice is processed once, and kept once", as
     assertEquals(await test.file(first.upload_sha256), undefined);
 });
 
-Deno.test("each upload processed and stored is announced, even if processed with another", async () => {
-    const processed: string[] = [];
+Deno.test("each picture processed is announced, stored or not, even if processed with another", async () => {
+    const processed: [string, boolean][] = [];
     await using test = await open({
         subscribers: [(_, event) => {
-            if (isMediaProcessed(event)) processed.push(event.mediaId);
+            if (isMediaProcessed(event)) processed.push([event.mediaId, event.stored]);
             return Promise.resolve();
         }],
     });
@@ -227,14 +227,22 @@ Deno.test("each upload processed and stored is announced, even if processed with
     const first = await upload(test.ctx, "alice", given);
     await drain(test.ctx, queues);
     const second = await upload(test.ctx, "alice", given);
-    await upload(test.ctx, "alice", {
+    const broken = await upload(test.ctx, "alice", {
         file: new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2])]),
         mediaType: "image/jpeg",
     });
+    // A file that isn't a picture isn't processed.
     await upload(test.ctx, "alice", { file: new Blob([zip]), mediaType: "application/zip" });
     await drain(test.ctx, queues);
 
-    assertEquals(processed, [first.id, second.id]);
+    assertEquals(
+        processed.toSorted(),
+        [
+            [first.id, true],
+            [second.id, true],
+            [broken.id, false],
+        ].toSorted(),
+    );
 });
 
 Deno.test("a picture uploaded to fit a box is scaled down to fit in it as it is processed", async () => {

@@ -7,7 +7,12 @@
 import { parseReference, v0_6 } from "@versia/protocol";
 import { findAccount } from "../accounts/account_queries.ts";
 import { isProfileUpdated } from "../accounts/events.ts";
-import { knownUser, localVersiaUser, userReferences } from "../accounts/federation.ts";
+import {
+    hasPicturesProcessing,
+    knownUser,
+    localVersiaUser,
+    userReferences,
+} from "../accounts/federation.ts";
 import { queueDeliveries, queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
@@ -96,9 +101,13 @@ export const followDeliveries = async (ctx: Context, event: DomainEvent): Promis
     }
 };
 
-/** Sends a local user's changed profile to their followers' instances. */
+/**
+ * Sends a local user's changed profile to their followers' instances, once its new pictures are
+ * processed; it is sent again then.
+ */
 export const profileDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isProfileUpdated(event)) return;
+    if (await hasPicturesProcessing(ctx, event.accountId)) return;
 
     const user = await localVersiaUser(ctx, event.accountId);
     if (user === undefined) return;

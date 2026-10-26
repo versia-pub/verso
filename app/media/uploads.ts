@@ -247,13 +247,17 @@ export const deleteFileIfUnused = (ctx: Context, key: string): Promise<void> =>
     });
 
 /**
- * Marks the upload `id` as processed and stored as `processed`, unless it already is, and tells the
- * rest of Verso. Returns whether it changed.
+ * Marks the upload `id` as processed as `processed`, unless it already is, and tells the rest of
+ * Verso. Returns whether it changed.
  */
-const finishStored = async (tx: Context, id: string, processed: Processed) => {
+const finishProcessing = async (tx: Context, id: string, processed: Processed) => {
     if (!await finishUpload(tx, id, processed)) return false;
 
-    const event: MediaProcessed = { type: "media.processed", mediaId: id };
+    const event: MediaProcessed = {
+        type: "media.processed",
+        mediaId: id,
+        stored: processed.sha256 !== null,
+    };
     await emit(tx, event);
     return true;
 };
@@ -304,7 +308,7 @@ const reuseProcessed = async (
             if (!await tx.files.has(key)) return false;
         }
 
-        await finishStored(tx, id, processedFrom(before));
+        await finishProcessing(tx, id, processedFrom(before));
         return true;
     });
 };
@@ -347,7 +351,7 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
             logger.info("Removed {id}, as it is {reason}", { id: row.id, reason: result.reason });
         }
 
-        await finishUpload(ctx, row.id, failed);
+        await ctx.transaction((tx) => finishProcessing(tx, row.id, failed));
         return await deleteFileIfUnused(ctx, uploaded);
     }
 
@@ -361,7 +365,7 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
         await keepUsed(tx, kept, image.mediaType);
         await keepUsed(tx, preview, image.preview.mediaType);
 
-        return await finishStored(tx, row.id, {
+        return await finishProcessing(tx, row.id, {
             sha256: kept.sha256,
             size: image.bytes.length,
             media_type: image.mediaType,
