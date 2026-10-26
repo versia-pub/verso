@@ -6,12 +6,7 @@ import { inboxQueue } from "../federation/inbox.ts";
 import { inboxDeadPayload, inboxHandler } from "../federation/inbox_worker.ts";
 import { messageHandler, messageQueue } from "../federation/messaging.ts";
 import { deleteEndedRateLimits } from "../http/rate_limit_queries.ts";
-import {
-    mediaHandler,
-    mediaQueue,
-    removeUnusedUploads,
-    unusedUploadsQueue,
-} from "../media/uploads.ts";
+import { mediaHandler, mediaQueue, removeUnusedMedia, unusedMediaQueue } from "../media/uploads.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { registry } from "../registry.ts";
 import { deleteExpiredJobs } from "./job_queries.ts";
@@ -23,7 +18,7 @@ const hourly: Record<string, Queue["handler"]> = {
     "jobs-cleanup": (ctx) => deleteExpiredJobs(ctx),
     "oauth-cleanup": (ctx) => deleteExpiredFlows(ctx),
     "rate-limits-cleanup": (ctx) => deleteEndedRateLimits(ctx),
-    [unusedUploadsQueue]: (ctx) => removeUnusedUploads(ctx),
+    [unusedMediaQueue]: (ctx) => removeUnusedMedia(ctx),
 };
 
 /** Every queue the worker runs, by name. Modules add theirs as they need them. */

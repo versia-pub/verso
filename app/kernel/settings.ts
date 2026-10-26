@@ -14,7 +14,7 @@ export type Settings = {
     readonly unreachableMs: number;
     /** How many accounts a status may mention. */
     readonly mentions: number;
-    /** How long an upload no status was given is kept. */
+    /** How long an upload no status was given is kept, and another instance's file nothing uses. */
     readonly unattachedMs: number;
     /** For how long a delivery is tried. */
     readonly deliveryMs: number;

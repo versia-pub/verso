@@ -106,31 +106,30 @@ export const findServedFile = (
         )
         .executeTakeFirst();
 
-/** Where removing unused uploads got to: the last one it looked at, in the order it looks. */
-export type UploadCursor = Pick<MediaRow, "created_at" | "id">;
+/** Where removing unused files got to: the last one it looked at, in the order it looks. */
+export type MediaCursor = Pick<MediaRow, "created_at" | "id">;
 
-/** An upload that was removed, with the keys it kept files under. */
-export type RemovedUpload =
-    & UploadCursor
-    & Pick<MediaRow, "sha256" | "preview_sha256" | "upload_sha256">;
+/** A file that was removed, with where it is and the keys a local one kept files under. */
+export type RemovedMedia =
+    & MediaCursor
+    & Pick<MediaRow, "instance_id" | "sha256" | "preview_sha256" | "upload_sha256">;
 
 /**
- * Removes up to `limit` uploads made by `before` that nothing uses, oldest first, after the one at
- * `after`: no note has them attached, and no account or emoji shows them. A note given one at the
- * same time makes it fail instead, as attached files can't be deleted. It reads the `accounts` and
- * `emojis` tables rather than asking their modules, so that it is one query.
+ * Removes up to `limit` files kept by `before` that nothing uses, local or remote, oldest first,
+ * after the one at `after`: no note has them attached, and no account or emoji shows them. What
+ * comes to use files must be added here. A note given one at the same time makes it fail instead,
+ * as attached files can't be deleted. It reads the `accounts` and `emojis` tables rather than
+ * asking their modules, so that it is one query.
  */
-export const deleteUnusedUploads = (
+export const deleteUnusedMedia = (
     ctx: Context,
     before: Date,
-    after: UploadCursor | undefined,
+    after: MediaCursor | undefined,
     limit: number,
-): Promise<RemovedUpload[]> =>
+): Promise<RemovedMedia[]> =>
     ctx.db.deleteFrom("media")
         .where("id", "in", (eb) => {
             let unused = eb.selectFrom("media as unused").select("unused.id")
-                // Only uploads have someone who uploaded them.
-                .where("unused.account_id", "is not", null)
                 .where("unused.created_at", "<=", before);
             if (after) {
                 unused = unused.where(
@@ -168,5 +167,5 @@ export const deleteUnusedUploads = (
                 .orderBy("unused.id")
                 .limit(limit);
         })
-        .returning(["created_at", "id", "sha256", "preview_sha256", "upload_sha256"])
+        .returning(["created_at", "id", "instance_id", "sha256", "preview_sha256", "upload_sha256"])
         .execute();

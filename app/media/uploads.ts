@@ -21,15 +21,15 @@ import {
 import { spool } from "../kernel/spool.ts";
 import { findMedia, type MediaRow } from "./media_queries.ts";
 import {
-    deleteUnusedUploads,
+    deleteUnusedMedia,
     findUpload,
     finishUpload,
     insertUpload,
     isFileUsed,
+    type MediaCursor,
     type Processed,
     processedUpload,
     updateUpload,
-    type UploadCursor,
 } from "./upload_queries.ts";
 
 const logger = getLogger(["verso", "media"]);
@@ -37,8 +37,8 @@ const logger = getLogger(["verso", "media"]);
 /** The queue that processes uploaded pictures. */
 export const mediaQueue = "media";
 
-/** The queue that removes uploads no one attached. */
-export const unusedUploadsQueue = "media-cleanup";
+/** The queue that removes files nothing uses. */
+export const unusedMediaQueue = "media-cleanup";
 
 /** How many uploads are removed at once. */
 const removalBatch = 100;
@@ -318,22 +318,25 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
 };
 
 /**
- * Removes the uploads made as long ago as settings say, or longer, that nothing uses, with their files, unless other
- * uploads use them, up to `batches` batches in a run; the next run removes the rest.
- * The files of a note that is deleted can be attached again until then,
- * as Mastodon keeps them so that the note can be redrafted.
+ * Removes the uploads made as long ago as settings say, or longer, that nothing uses, with their
+ * files, unless other uploads use them, up to `batches` batches in a run; the next run removes the
+ * rest. The files of a note that is deleted can be attached again until then, as Mastodon keeps
+ * them so that the note can be redrafted. Other instances' files that nothing uses go too, such as
+ * those of their notes that are deleted, or that an edit took off; Verso keeps nothing of them but
+ * their rows.
  */
-export const removeUnusedUploads = async (
+export const removeUnusedMedia = async (
     ctx: Context,
     batches = removalBatches,
 ): Promise<void> => {
     const before = new Date(ctx.clock.now().getTime() - ctx.settings.unattachedMs);
 
-    let after: UploadCursor | undefined;
+    let after: MediaCursor | undefined;
     for (let batch = 0; batch < batches; batch++) {
-        const removed = await deleteUnusedUploads(ctx, before, after, removalBatch);
+        const removed = await deleteUnusedMedia(ctx, before, after, removalBatch);
         const keys = new Set(
-            removed.flatMap((row) => [row.sha256, row.preview_sha256, row.upload_sha256]),
+            removed.filter((row) => row.instance_id === null)
+                .flatMap((row) => [row.sha256, row.preview_sha256, row.upload_sha256]),
         );
         for (const key of keys) if (key !== null) await deleteFileIfUnused(ctx, key);
 

@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { encode } from "fast-png";
-import { createLocalAccount } from "../accounts/testing.ts";
+import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
 import { queues, tasks } from "../jobs/queues.ts";
 import { schedule } from "../jobs/scheduler.ts";
@@ -12,7 +12,7 @@ import type { Settings } from "../kernel/settings.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
 import { findMedia, saveRemoteMedia } from "./media_queries.ts";
-import { removeUnusedUploads, upload } from "./uploads.ts";
+import { removeUnusedMedia, upload } from "./uploads.ts";
 
 const hour = 60 * 60 * 1000;
 
@@ -119,7 +119,7 @@ Deno.test("a deleted note's files can be attached again, until they are removed"
     assertEquals(await findMedia(test.ctx, file), undefined);
 });
 
-Deno.test("only uploads are removed, not files an account or an emoji shows", async () => {
+Deno.test("files an account or an emoji shows aren't removed", async () => {
     await using test = await open();
     const [avatar, header] = [await test.uploaded(zip(1)), await test.uploaded(zip(2))];
     await test.ctx.db.updateTable("accounts").set({ avatar_id: avatar, header_id: header })
@@ -127,17 +127,38 @@ Deno.test("only uploads are removed, not files an account or an emoji shows", as
     await createLocalEmoji(test.ctx, "blob");
     await test.ctx.db.updateTable("media").set({ account_id: "alice" }).execute();
     await createLocalEmoji(test.ctx, "other");
-    await createInstance(test.ctx, "b.example");
-    await saveRemoteMedia(test.ctx, "b.example", null, {
-        url: "https://b.example/bob.png",
-        mediaType: "image/png",
-    });
     const unused = await test.uploaded(zip(3));
 
     await test.later(24 * hour);
 
     const left = await test.ctx.db.selectFrom("media").select("id").execute();
-    assertEquals([left.length, left.some((row) => row.id === unused)], [5, false]);
+    assertEquals([left.length, left.some((row) => row.id === unused)], [4, false]);
+});
+
+Deno.test("other instances' files nothing uses are removed, and nothing kept under their hash", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "bob", "b.example");
+    const remote = (name: string, sha256?: string) =>
+        saveRemoteMedia(test.ctx, "b.example", null, {
+            url: `https://b.example/${name}`,
+            mediaType: "application/zip",
+            sha256,
+        });
+    const avatar = await remote("avatar.png");
+    await test.ctx.db.updateTable("accounts").set({ avatar_id: avatar }).where("id", "=", "bob")
+        .execute();
+    // As if alice were uploading the same file just now, before its row is added.
+    const key = await test.ctx.files.put(await bytesSource(zip(1)), "application/octet-stream");
+    const unused = await remote("notes.zip", key);
+
+    await test.later(24 * hour - 1);
+    assertEquals((await findMedia(test.ctx, unused))?.id, unused);
+
+    await test.later(1);
+    assertEquals(await findMedia(test.ctx, unused), undefined);
+    assertEquals((await findMedia(test.ctx, avatar))?.id, avatar);
+    assertEquals(await test.kept(key), true);
 });
 
 Deno.test("any number of uploads are removed, a number of batches a run", async () => {
@@ -145,7 +166,7 @@ Deno.test("any number of uploads are removed, a number of batches a run", async 
     for (let n = 0; n < 201; n++) await test.uploaded(zip(n));
     test.clock.advance(24 * hour);
 
-    await removeUnusedUploads(test.ctx, 2);
+    await removeUnusedMedia(test.ctx, 2);
     assertEquals((await test.ctx.db.selectFrom("media").select("id").execute()).length, 1);
 
     await test.later(0);
