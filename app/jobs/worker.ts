@@ -20,11 +20,12 @@ export type Handler = (ctx: Context, job: JobsTable) => Promise<void>;
 
 export type Queue = {
     readonly handler: Handler;
-    /** How many of this queue's jobs one worker runs at a time. */
+    /** How many of this queue's jobs one worker runs at a time. Each worker has as many. */
     readonly concurrency: number;
     /**
      * How many jobs of one group one worker runs at a time, such as deliveries to one instance, so
-     * one group can't take every slot. Defaults to no limit.
+     * one group can't take every slot. Defaults to no limit. It is per worker: with three workers,
+     * an instance can be sent three times as many at once.
      */
     readonly perGroup?: number;
     /** How long a job may run before another worker may claim it. Defaults to five minutes. */

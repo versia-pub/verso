@@ -257,7 +257,11 @@ const cli = new Command()
     .action(missingCommand)
     .command("serve", "Answer HTTP requests, until stopped.")
     .action(async ({ config }) => Deno.exit(await run("serve", await setUp(config))))
-    .command("work", "Run jobs, until stopped.")
+    .command(
+        "work",
+        "Run jobs, until stopped. Each worker runs as many jobs at once as its queues allow, " +
+            "including per instance, so more workers send more to each instance at once.",
+    )
     .action(async ({ config }) => Deno.exit(await run("work", await setUp(config))))
     .command("all", "Answer HTTP requests and run jobs, until stopped.")
     .action(async ({ config }) => Deno.exit(await run("all", await setUp(config))))
