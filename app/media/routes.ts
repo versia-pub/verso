@@ -95,7 +95,7 @@ export const mediaRoutes = (limits: MediaLimits): readonly Route[] => [
         responses: { 200: MediaAttachment, 202: MediaAttachment },
         handler: async (ctx, { body, viewer }) => {
             const row = await upload(ctx, viewer.accountId, {
-                bytes: await body.file.bytes(),
+                file: body.file,
                 mediaType: body.file.type,
                 description: body.description || undefined,
                 focus: body.focus,

@@ -53,7 +53,10 @@ const open = async (limits = Limits.parse({})) => {
 
     /** The id of a file `accountId` uploads. */
     const uploaded = async (bytes: Uint8Array<ArrayBuffer>, accountId = "alice") =>
-        (await upload(test.ctx, accountId, { bytes, mediaType: "application/zip" })).id;
+        (await upload(test.ctx, accountId, {
+            file: new Blob([bytes]),
+            mediaType: "application/zip",
+        })).id;
 
     const notes = async () => (await test.ctx.db.selectFrom("notes").select("id").execute()).length;
 

@@ -2,7 +2,7 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { fakeBucket, fakeS3 } from "../testing/fake_s3.ts";
 import { fakeClock } from "./clock.ts";
 import { fakeTransport } from "./fake_transport.ts";
-import { fileKeyOf } from "./files.ts";
+import { bytesSource, fileKeyOf } from "./files.ts";
 import { s3Files } from "./s3_files.ts";
 
 const bytes = new TextEncoder().encode("Hello");
@@ -17,7 +17,7 @@ const open = (bucket: Partial<typeof fakeBucket> = {}) => {
 
 Deno.test("a file is an object named by its key, with its type, put signed", async () => {
     const { s3, transport, store } = open();
-    const key = await store.put(bytes, "image/png");
+    const key = await store.put(await bytesSource(bytes), "image/png");
 
     assertEquals([...s3.objects.keys()], [key]);
     assertEquals(s3.objects.get(key)?.type, "image/png");
@@ -42,7 +42,7 @@ Deno.test("a file is an object named by its key, with its type, put signed", asy
 Deno.test("a file that may not be shown is put to be saved, if the bucket serves it", async () => {
     const { transport, store } = open();
 
-    await store.put(bytes, "application/octet-stream");
+    await store.put(await bytesSource(bytes), "application/octet-stream");
 
     assertEquals(transport.sent[0].headers.get("content-disposition"), "attachment");
 });
@@ -72,7 +72,7 @@ Deno.test("an endpoint with a path or a trailing slash has the bucket after it",
 
 Deno.test("with a prefix, every object's name starts with it, the check's too", async () => {
     const { s3, transport, store } = open({ prefix: "verso/media" });
-    const key = await store.put(bytes, "text/plain");
+    const key = await store.put(await bytesSource(bytes), "text/plain");
     await store.check();
 
     assertEquals([...s3.objects.keys()], [`verso/media/${key}`]);
@@ -89,12 +89,16 @@ Deno.test("what the server refuses is an error saying what it answered", async (
     const { store, s3 } = open({ accessKeyId: "wrong" });
     const key = await fileKeyOf(bytes);
 
-    const error = await assertRejects(() => store.put(bytes, "text/plain"), Error);
+    const error = await assertRejects(
+        async () => store.put(await bytesSource(bytes), "text/plain"),
+        Error,
+    );
     assertEquals(
         error.message,
         `S3 answered 403 to PUT ${key}: <Error><Code>SignatureDoesNotMatch</Code></Error>`,
     );
     await assertRejects(() => store.get(key), Error, "S3 answered 403 to GET");
+    await assertRejects(() => store.has(key), Error, "S3 answered 403 to HEAD");
     await assertRejects(() => store.delete(key), Error, "S3 answered 403 to DELETE");
     assertEquals(s3.objects.size, 0);
 
@@ -122,7 +126,7 @@ Deno.test("what a server answers to a put or removal is let go of, so its connec
             { status: 200 },
         ));
 
-    await store.put(bytes, "text/plain");
+    await store.put(await bytesSource(bytes), "text/plain");
     await store.delete(await fileKeyOf(bytes));
     assertEquals(cancelled, 2);
 });
@@ -131,7 +135,11 @@ Deno.test("a server that can't be reached is an error", async () => {
     const { store, transport } = open();
     transport.down.add("s3.test");
 
-    await assertRejects(() => store.put(bytes, "text/plain"), TypeError, "Can't reach s3.test");
+    await assertRejects(
+        async () => store.put(await bytesSource(bytes), "text/plain"),
+        TypeError,
+        "Can't reach s3.test",
+    );
     await assertRejects(() => store.check(), TypeError, "Can't reach s3.test");
 });
 

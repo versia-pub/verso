@@ -1,4 +1,4 @@
-import { checkFileKey, fileKeyOf, type FileStore } from "./files.ts";
+import { checkFileKey, type FileStore } from "./files.ts";
 
 /** Where in `root` the file kept under `key` is: in a directory named for its first two digits. */
 const pathOf = (root: string, key: string) => `${root}/${key.slice(0, 2)}/${key}`;
@@ -15,8 +15,9 @@ const exists = (path: string) => Deno.stat(path).then(() => true, () => false);
  * on one filesystem, which moving it from the system's temporary directory might not.
  */
 export const filesystemFiles = (root: string): FileStore => ({
-    put: async (bytes) => {
-        const key = await fileKeyOf(bytes);
+    put: async (file) => {
+        const key = file.sha256;
+        checkFileKey(key);
         const path = pathOf(root, key);
         if (await exists(path)) return key;
 
@@ -24,7 +25,7 @@ export const filesystemFiles = (root: string): FileStore => ({
         await Deno.mkdir(`${root}/${key.slice(0, 2)}`, { recursive: true });
         const temp = await Deno.makeTempFile({ dir: tempOf(root) });
         try {
-            await Deno.writeFile(temp, bytes);
+            await Deno.writeFile(temp, await file.open());
             await Deno.rename(temp, path);
         } catch (error) {
             await Deno.remove(temp).catch(() => {});
@@ -33,6 +34,11 @@ export const filesystemFiles = (root: string): FileStore => ({
 
         return key;
     },
+    has: (key) =>
+        Promise.try(() => {
+            checkFileKey(key);
+            return exists(pathOf(root, key));
+        }),
     get: async (key) => {
         checkFileKey(key);
         try {

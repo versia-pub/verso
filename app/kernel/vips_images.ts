@@ -1,6 +1,7 @@
 import { decode } from "fast-png";
 import { blurhashOf, hashedSize, type Pixels, thumbhashOf } from "./image_hashes.ts";
 import {
+    formatHeadLength,
     type ImageFormat,
     imageFormatOf,
     imageFormats,
@@ -69,6 +70,20 @@ const summariesOf = (stdout: Uint8Array) =>
             ? [{ width: Number(summary[1]), height: Number(summary[2]), loader: summary[3] }]
             : [];
     });
+
+/** The first bytes of the file at `path`, or all of them if it is shorter. */
+const headOf = async (path: string) => {
+    using file = await Deno.open(path);
+    const head = new Uint8Array(formatHeadLength);
+    let read = 0;
+    while (read < formatHeadLength) {
+        const n = await file.read(head.subarray(read));
+        if (n === null) break;
+        read += n;
+    }
+
+    return head.subarray(0, read);
+};
 
 /** A PNG's pixels as RGBA. vips makes it 8-bit sRGB, so it has three channels, or four with alpha. */
 const pixelsOf = (png: Uint8Array): Pixels => {
@@ -154,11 +169,8 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
 
     const refuse = (reason: ImageRefusal) => ({ ok: false, reason }) as const;
 
-    /** Processes `bytes`, of `format`, with its files in `dir`. */
-    const processIn = async (dir: string, bytes: Uint8Array<ArrayBuffer>, format: ImageFormat) => {
-        const input = `${dir}/upload`;
-        await Deno.writeFile(input, bytes);
-
+    /** Processes the picture at `input`, of `format`, with its files in `dir`. */
+    const processIn = async (dir: string, input: string, format: ImageFormat) => {
         const [summary] = summariesOf((await run("vipsheader", [input])).stdout);
         if (summary === undefined) return refuse("broken");
 
@@ -218,12 +230,16 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
     };
 
     return {
-        process: (bytes) => {
-            const format = imageFormatOf(bytes);
-            if (format === undefined) return Promise.resolve(refuse("unsupported"));
+        process: (stream) =>
+            withDirectory(async (dir) => {
+                const input = `${dir}/upload`;
+                await Deno.writeFile(input, stream);
 
-            return withDirectory((dir) => processIn(dir, bytes, format));
-        },
+                const format = imageFormatOf(await headOf(input));
+                if (format === undefined) return refuse("unsupported");
+
+                return await processIn(dir, input, format);
+            }),
         // Running vips throws if it isn't there.
         check: () =>
             withDirectory(async (dir) => {

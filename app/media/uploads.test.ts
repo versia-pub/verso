@@ -5,6 +5,7 @@ import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
+import { bytesSource } from "../kernel/files.ts";
 import type { ImageProcessor } from "../kernel/images.ts";
 import { s3Files } from "../kernel/s3_files.ts";
 import { vipsImages } from "../kernel/vips_images.ts";
@@ -71,7 +72,7 @@ Deno.test("a file that isn't a picture is kept as it is, ready at once", async (
     await using test = await open();
 
     const row = await upload(test.ctx, "alice", {
-        bytes: zip,
+        file: new Blob([zip]),
         mediaType: "Application/Zip",
         description: "My notes",
     });
@@ -91,7 +92,10 @@ Deno.test("a file that isn't a picture is kept as it is, ready at once", async (
 Deno.test("a file's type is the client's only if it is written as one", async () => {
     await using test = await open();
 
-    const row = await upload(test.ctx, "alice", { bytes: zip, mediaType: "a zip, I think" });
+    const row = await upload(test.ctx, "alice", {
+        file: new Blob([zip]),
+        mediaType: "a zip, I think",
+    });
 
     assertEquals(row.media_type, "application/octet-stream");
 });
@@ -102,8 +106,14 @@ Deno.test("a file is kept with a type from its bytes, so it can't be served as a
     await using test = await open({ files });
     const page = new TextEncoder().encode("<script>alert(1)</script>");
 
-    const html = await upload(test.ctx, "alice", { bytes: page, mediaType: "text/html" });
-    const picture = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "text/html" });
+    const html = await upload(test.ctx, "alice", {
+        file: new Blob([page]),
+        mediaType: "text/html",
+    });
+    const picture = await upload(test.ctx, "alice", {
+        file: new Blob([png(4, 4)]),
+        mediaType: "text/html",
+    });
 
     assertEquals(html.media_type, "text/html");
     assertEquals(s3.objects.get(html.sha256 ?? "")?.type, "application/octet-stream");
@@ -115,7 +125,7 @@ Deno.test("a picture is processed by a job, which keeps it without its metadata"
     await using test = await open();
 
     const row = await upload(test.ctx, "alice", {
-        bytes: sidewaysJpeg,
+        file: new Blob([sidewaysJpeg]),
         mediaType: "image/jpeg",
         focus: { x: 0.5, y: -0.25 },
     });
@@ -158,8 +168,14 @@ Deno.test("the same picture uploaded twice is processed once, and kept once", as
     };
     await using test = await open({ images });
 
-    const first = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
-    const second = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    const first = await upload(test.ctx, "alice", {
+        file: new Blob([png(4, 4)]),
+        mediaType: "image/png",
+    });
+    const second = await upload(test.ctx, "alice", {
+        file: new Blob([png(4, 4)]),
+        mediaType: "image/png",
+    });
     await drain(test.ctx, queues);
 
     assertEquals(processed, 1);
@@ -175,14 +191,20 @@ Deno.test("the same picture uploaded twice is processed once, and kept once", as
 
 Deno.test("uploading a picture as Verso keeps it doesn't remove the one kept", async () => {
     await using test = await open();
-    const first = await upload(test.ctx, "alice", { bytes: sidewaysJpeg, mediaType: "image/jpeg" });
+    const first = await upload(test.ctx, "alice", {
+        file: new Blob([sidewaysJpeg]),
+        mediaType: "image/jpeg",
+    });
     await drain(test.ctx, queues);
     const kept = (await findMedia(test.ctx, first.id))?.sha256 ?? null;
     const bytes = await test.file(kept);
     assert(bytes);
 
     // Saved from Verso, and uploaded again.
-    const again = await upload(test.ctx, "alice", { bytes, mediaType: "image/jpeg" });
+    const again = await upload(test.ctx, "alice", {
+        file: new Blob([bytes]),
+        mediaType: "image/jpeg",
+    });
     await drain(test.ctx, queues);
 
     assertEquals(again.upload_sha256, kept);
@@ -192,7 +214,7 @@ Deno.test("uploading a picture as Verso keeps it doesn't remove the one kept", a
     const preview = (await findMedia(test.ctx, first.id))?.preview_sha256 ?? null;
     const small = await test.file(preview);
     assert(small);
-    await upload(test.ctx, "alice", { bytes: small, mediaType: "image/webp" });
+    await upload(test.ctx, "alice", { file: new Blob([small]), mediaType: "image/webp" });
     await drain(test.ctx, queues);
     assertEquals(await test.file(preview), small);
 });
@@ -201,7 +223,10 @@ Deno.test("a picture vips refuses is removed, as it may hold metadata", async ()
     await using test = await open();
     const broken = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new TextEncoder().encode("oops")]);
 
-    const row = await upload(test.ctx, "alice", { bytes: broken, mediaType: "image/jpeg" });
+    const row = await upload(test.ctx, "alice", {
+        file: new Blob([broken]),
+        mediaType: "image/jpeg",
+    });
     await drain(test.ctx, queues);
 
     const kept = await findMedia(test.ctx, row.id);
@@ -226,7 +251,10 @@ Deno.test("a picture that can't be processed is tried again, then removed", asyn
     };
     await using test = await open({ images });
 
-    const row = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    const row = await upload(test.ctx, "alice", {
+        file: new Blob([png(4, 4)]),
+        mediaType: "image/png",
+    });
     await drain(test.ctx, queues);
     assertEquals([tries, (await findMedia(test.ctx, row.id))?.processed_at], [1, null]);
 
@@ -253,11 +281,14 @@ Deno.test("a picture that couldn't be processed is processed anew if uploaded ag
         check: () => Promise.resolve(),
     };
     await using test = await open({ images });
-    await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    await upload(test.ctx, "alice", { file: new Blob([png(4, 4)]), mediaType: "image/png" });
     await drain(test.ctx, queues);
 
     fail = false;
-    const again = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    const again = await upload(test.ctx, "alice", {
+        file: new Blob([png(4, 4)]),
+        mediaType: "image/png",
+    });
     await drain(test.ctx, queues);
 
     const kept = await findMedia(test.ctx, again.id);
@@ -266,9 +297,12 @@ Deno.test("a picture that couldn't be processed is processed anew if uploaded ag
 
 Deno.test("what was uploaded is removed when a run stopped after processing it", async () => {
     await using test = await open();
-    const row = await upload(test.ctx, "alice", { bytes: sidewaysJpeg, mediaType: "image/jpeg" });
+    const row = await upload(test.ctx, "alice", {
+        file: new Blob([sidewaysJpeg]),
+        mediaType: "image/jpeg",
+    });
     // As if a run kept the picture, then stopped before removing what was uploaded.
-    const kept = await test.ctx.files.put(png(4, 4), "image/png");
+    const kept = await test.ctx.files.put(await bytesSource(png(4, 4)), "image/png");
     await finishUpload(test.ctx, row.id, { sha256: kept });
 
     await drain(test.ctx, queues);
@@ -279,9 +313,15 @@ Deno.test("what was uploaded is removed when a run stopped after processing it",
 
 Deno.test("a job for an upload that is gone, or already processed, does nothing", async () => {
     await using test = await open();
-    const gone = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    const gone = await upload(test.ctx, "alice", {
+        file: new Blob([png(4, 4)]),
+        mediaType: "image/png",
+    });
     await test.ctx.db.deleteFrom("media").where("id", "=", gone.id).execute();
-    const done = await upload(test.ctx, "alice", { bytes: png(5, 5), mediaType: "image/png" });
+    const done = await upload(test.ctx, "alice", {
+        file: new Blob([png(5, 5)]),
+        mediaType: "image/png",
+    });
     await finishUpload(test.ctx, done.id, {});
 
     await drain(test.ctx, queues);
@@ -292,7 +332,10 @@ Deno.test("a job for an upload that is gone, or already processed, does nothing"
 
 Deno.test("an upload whose file is gone isn't processed", async () => {
     await using test = await open();
-    const row = await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    const row = await upload(test.ctx, "alice", {
+        file: new Blob([png(4, 4)]),
+        mediaType: "image/png",
+    });
     await test.ctx.files.delete(row.sha256 ?? "");
 
     await drain(test.ctx, queues);
@@ -315,7 +358,10 @@ Deno.test("what a run keeps is removed if another run processed the upload first
         check: () => Promise.resolve(),
     };
     await using test = await open({ images });
-    const row = await upload(test.ctx, "alice", { bytes: sidewaysJpeg, mediaType: "image/jpeg" });
+    const row = await upload(test.ctx, "alice", {
+        file: new Blob([sidewaysJpeg]),
+        mediaType: "image/jpeg",
+    });
     finishFirst = () => finishUpload(test.ctx, row.id, {});
 
     await drain(test.ctx, queues);
@@ -328,14 +374,17 @@ Deno.test("what a run keeps is removed if another run processed the upload first
 
 Deno.test("a file is removed only once nothing uses it", async () => {
     await using test = await open();
-    const row = await upload(test.ctx, "alice", { bytes: zip, mediaType: "application/zip" });
+    const row = await upload(test.ctx, "alice", {
+        file: new Blob([zip]),
+        mediaType: "application/zip",
+    });
 
     await deleteFileIfUnused(test.ctx, row.sha256 ?? "");
     assertEquals(await test.file(row.sha256), zip);
 
     // Neither another upload being processed nor another instance's file of the same SHA-256
     // uses it.
-    await upload(test.ctx, "alice", { bytes: png(4, 4), mediaType: "image/png" });
+    await upload(test.ctx, "alice", { file: new Blob([png(4, 4)]), mediaType: "image/png" });
     await createInstance(test.ctx, "b.example");
     await saveRemoteMedia(test.ctx, "b.example", null, {
         url: "https://b.example/notes.zip",

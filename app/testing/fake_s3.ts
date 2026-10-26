@@ -77,6 +77,8 @@ export const fakeS3 = (): FakeS3 => {
             }
             case "GET":
                 return object ? new Response(object.bytes.slice()) : missing();
+            case "HEAD":
+                return object ? new Response(null, { status: 200 }) : missing();
             case "DELETE":
                 objects.delete(name);
                 return new Response(null, { status: 204 });

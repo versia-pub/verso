@@ -1,5 +1,5 @@
 import { assertEquals, assertNotEquals, assertRejects } from "@std/assert";
-import { fileKeyOf, type FileStore, isFileKey, memoryFiles } from "./files.ts";
+import { bytesSource, fileKeyOf, type FileStore, isFileKey, memoryFiles } from "./files.ts";
 import { fakeBucket, fakeS3 } from "../testing/fake_s3.ts";
 import { fakeClock } from "./clock.ts";
 import { fakeTransport } from "./fake_transport.ts";
@@ -28,15 +28,28 @@ const temporary = async () => {
 
 /** What every store does, given a new, empty one. */
 const contract = (name: string, open: () => Promise<FileStore & AsyncDisposable>) => {
+    Deno.test(`${name}: a store says whether it keeps a file, without reading it`, async () => {
+        await using store = await open();
+        const key = await store.put(await bytesSource(bytes), "text/plain");
+
+        assertEquals(await store.has(key), true);
+        await store.delete(key);
+        assertEquals(await store.has(key), false);
+        await assertRejects(() => store.has("../etc/passwd"), TypeError);
+    });
+
     Deno.test(`${name}: a file is kept under the SHA-256 of its bytes, once`, async () => {
         await using store = await open();
-        const key = await store.put(bytes, "text/plain");
+        const key = await store.put(await bytesSource(bytes), "text/plain");
 
         assertEquals(key, helloKey);
-        assertEquals(await store.put(bytes.slice(), "text/plain"), key);
+        assertEquals(await store.put(await bytesSource(bytes.slice()), "text/plain"), key);
         assertEquals(await read(store, key), bytes);
 
-        const other = await store.put(new TextEncoder().encode("Hello!"), "text/plain");
+        const other = await store.put(
+            await bytesSource(new TextEncoder().encode("Hello!")),
+            "text/plain",
+        );
         assertNotEquals(other, key);
         assertEquals(await read(store, other), new TextEncoder().encode("Hello!"));
     });
@@ -44,7 +57,7 @@ const contract = (name: string, open: () => Promise<FileStore & AsyncDisposable>
     Deno.test(`${name}: a file is kept as it was put, whatever happens to its bytes`, async () => {
         await using store = await open();
         const changing = bytes.slice();
-        const key = await store.put(changing, "text/plain");
+        const key = await store.put(await bytesSource(changing), "text/plain");
         changing[0] = 0;
 
         // Whoever reads it gets bytes of their own.
@@ -56,21 +69,24 @@ const contract = (name: string, open: () => Promise<FileStore & AsyncDisposable>
 
     Deno.test(`${name}: a file removed is gone, and removing it again does nothing`, async () => {
         await using store = await open();
-        const key = await store.put(bytes, "text/plain");
-        const other = await store.put(new Uint8Array([1, 2, 3]), "application/octet-stream");
+        const key = await store.put(await bytesSource(bytes), "text/plain");
+        const other = await store.put(
+            await bytesSource(new Uint8Array([1, 2, 3])),
+            "application/octet-stream",
+        );
 
         await store.delete(key);
         assertEquals(await read(store, key), undefined);
         assertEquals(await read(store, other), new Uint8Array([1, 2, 3]));
         await store.delete(key);
 
-        assertEquals(await store.put(bytes, "text/plain"), key);
+        assertEquals(await store.put(await bytesSource(bytes), "text/plain"), key);
         assertEquals(await read(store, key), bytes);
     });
 
     Deno.test(`${name}: a key that isn't a SHA-256 in lowercase hex is refused`, async () => {
         await using store = await open();
-        await store.put(bytes, "text/plain");
+        await store.put(await bytesSource(bytes), "text/plain");
 
         for (const key of ["../" + helloKey.slice(3), helloKey.toUpperCase(), helloKey.slice(1)]) {
             await assertRejects(() => store.get(key), TypeError);
@@ -110,11 +126,11 @@ Deno.test("a key is a SHA-256 in lowercase hex", async () => {
 
 Deno.test("on the filesystem, a file is in a directory for its first two digits, written once", async () => {
     await using test = await temporary();
-    const key = await test.store.put(bytes, "text/plain");
+    const key = await test.store.put(await bytesSource(bytes), "text/plain");
     const path = `${test.root}/18/${key}`;
     const written = await Deno.stat(path);
 
-    await test.store.put(bytes, "text/plain");
+    await test.store.put(await bytesSource(bytes), "text/plain");
     assertEquals((await Deno.stat(path)).ino, written.ino);
     assertEquals(await Deno.readFile(path), bytes);
 
@@ -126,14 +142,17 @@ Deno.test("on the filesystem, a file that can't be moved into place leaves nothi
     await using test = await temporary();
     await Deno.mkdir(`${test.root}/18`, { mode: 0o555 });
 
-    await assertRejects(() => test.store.put(bytes, "text/plain"), Deno.errors.PermissionDenied);
+    await assertRejects(
+        async () => test.store.put(await bytesSource(bytes), "text/plain"),
+        Deno.errors.PermissionDenied,
+    );
     assertEquals(await Array.fromAsync(Deno.readDir(`${test.root}/tmp`)), []);
     await Deno.chmod(`${test.root}/18`, 0o755);
 });
 
 Deno.test("on the filesystem, a file that can't be removed says so", async () => {
     await using test = await temporary();
-    const key = await test.store.put(bytes, "text/plain");
+    const key = await test.store.put(await bytesSource(bytes), "text/plain");
     await Deno.chmod(`${test.root}/18`, 0o555);
 
     await assertRejects(() => test.store.delete(key), Deno.errors.PermissionDenied);

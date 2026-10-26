@@ -3,6 +3,7 @@ import { fakeBucket, fakeS3 } from "../testing/fake_s3.ts";
 import { fakeClock } from "./clock.ts";
 import { fakeTransport } from "./fake_transport.ts";
 import { filesFor } from "./file_stores.ts";
+import { bytesSource } from "./files.ts";
 
 const bytes = new TextEncoder().encode("Hello");
 
@@ -10,7 +11,7 @@ Deno.test("the configured store is the one files are kept in", async () => {
     const root = await Deno.makeTempDir();
     try {
         const key = await filesFor({ filesystem: root }, fakeTransport(), fakeClock())
-            .put(bytes, "text/plain");
+            .put(await bytesSource(bytes), "text/plain");
         assertEquals(await Deno.readFile(`${root}/${key.slice(0, 2)}/${key}`), bytes);
     } finally {
         await Deno.remove(root, { recursive: true });
@@ -34,7 +35,7 @@ Deno.test("the configured store is the one files are kept in", async () => {
         transport,
         fakeClock(),
     );
-    const key = await store.put(bytes, "text/plain");
+    const key = await store.put(await bytesSource(bytes), "text/plain");
 
     assertEquals([...s3.objects.keys()], [`verso/${key}`]);
     assertEquals(store.publicUrl?.(key), `https://cdn.test/${key}`);

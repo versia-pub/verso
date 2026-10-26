@@ -10,7 +10,14 @@ import { enqueue } from "../jobs/queue.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
-import { type ImageFormat, imageFormatOf, imageFormats } from "../kernel/images.ts";
+import { bytesSource } from "../kernel/files.ts";
+import {
+    formatHeadLength,
+    type ImageFormat,
+    imageFormatOf,
+    imageFormats,
+} from "../kernel/images.ts";
+import { spool } from "../kernel/spool.ts";
 import { findMedia, type MediaRow } from "./media.ts";
 import {
     deleteUnusedUploads,
@@ -45,7 +52,7 @@ const MediaJob = z.object({ mediaId: z.string() });
 
 /** A file someone uploads. */
 export type NewUpload = {
-    readonly bytes: Uint8Array<ArrayBuffer>;
+    readonly file: Blob;
     /** What their client says the file is, such as `application/zip`. */
     readonly mediaType: string;
     readonly description?: string;
@@ -66,39 +73,44 @@ const claimedTypeOf = (mediaType: string) =>
 
 /**
  * Keeps a file `accountId` uploads. A picture is processed by a job, and its row says it is being
- * processed until then; anything else is ready at once.
+ * processed until then; anything else is ready at once. The file is written to disk, and hashed,
+ * as it is read, so it is held in memory only as the request has it.
  */
 export const upload = async (
     ctx: Context,
     accountId: string,
-    file: NewUpload,
+    given: NewUpload,
 ): Promise<MediaRow> => {
-    const format = imageFormatOf(file.bytes);
-    // Kept before the row is added, so a job never finds a row without its file.
-    const key = await ctx.files.put(file.bytes, keptTypeOf(format));
+    const head = await given.file.slice(0, formatHeadLength).bytes();
+    const format = imageFormatOf(head);
+    const type = keptTypeOf(format);
+
+    await using file = await spool(given.file.stream());
+    // Kept before the row is added, so a job finds the file.
+    await ctx.files.put(file, type);
     const now = ctx.clock.now();
 
     const row: MediaRow = {
         id: ctx.ids(),
         instance_id: null,
         url: null,
-        media_type: format === undefined ? claimedTypeOf(file.mediaType) : keptTypeOf(format),
-        size: file.bytes.length,
-        sha256: key,
+        media_type: format === undefined ? claimedTypeOf(given.mediaType) : type,
+        size: file.size,
+        sha256: file.sha256,
         width: null,
         height: null,
         thumbhash: null,
-        description: file.description ?? null,
+        description: given.description ?? null,
         created_at: now,
         account_id: accountId,
-        upload_sha256: key,
+        upload_sha256: file.sha256,
         processed_at: format === undefined ? now : null,
         preview_sha256: null,
         preview_width: null,
         preview_height: null,
         blurhash: null,
-        focus_x: file.focus?.x ?? null,
-        focus_y: file.focus?.y ?? null,
+        focus_x: given.focus?.x ?? null,
+        focus_y: given.focus?.y ?? null,
     };
 
     await ctx.transaction(async (tx) => {
@@ -190,11 +202,10 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
 
     const stream = await ctx.files.get(uploaded);
     if (stream === undefined) throw new PermanentFailure(`The upload ${row.id} is gone`);
-    const bytes = await new Response(stream).bytes();
 
     let result: Awaited<ReturnType<Context["images"]["process"]>> | undefined;
     try {
-        result = await ctx.images.process(bytes);
+        result = await ctx.images.process(stream);
     } catch (error) {
         if (job.attempts < job.max_attempts) throw error;
         logger.warn("Couldn't process {id}, so it is removed: {error}", { id: row.id, error });
@@ -210,24 +221,30 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
     }
 
     const { image } = result;
-    const kept = await ctx.files.put(image.bytes, image.mediaType);
-    const preview = await ctx.files.put(image.preview.bytes, image.preview.mediaType);
-    const finished = await finishUpload(ctx, row.id, {
-        sha256: kept,
-        size: image.bytes.length,
-        media_type: image.mediaType,
-        width: image.width,
-        height: image.height,
-        thumbhash: image.thumbhash,
-        blurhash: image.blurhash,
-        preview_sha256: preview,
-        preview_width: image.preview.width,
-        preview_height: image.preview.height,
+    const kept = await bytesSource(image.bytes);
+    const preview = await bytesSource(image.preview.bytes);
+    await ctx.files.put(kept, image.mediaType);
+    await ctx.files.put(preview, image.preview.mediaType);
+
+    const finished = await ctx.transaction(async (tx) => {
+        return await finishUpload(tx, row.id, {
+            sha256: kept.sha256,
+            size: image.bytes.length,
+            media_type: image.mediaType,
+            width: image.width,
+            height: image.height,
+            thumbhash: image.thumbhash,
+            blurhash: image.blurhash,
+            preview_sha256: preview.sha256,
+            preview_width: image.preview.width,
+            preview_height: image.preview.height,
+        });
     });
 
     // What was uploaded has its metadata, so it goes. If another run got there first, what this
     // one kept may be used by nothing.
-    for (const key of finished ? [uploaded] : [kept, preview]) await deleteFileIfUnused(ctx, key);
+    const unused = finished ? [uploaded] : [kept.sha256, preview.sha256];
+    for (const key of unused) await deleteFileIfUnused(ctx, key);
 };
 
 /**

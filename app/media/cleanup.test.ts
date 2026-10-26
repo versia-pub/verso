@@ -5,6 +5,7 @@ import { createLocalEmoji } from "../emojis/testing.ts";
 import { queues, tasks } from "../jobs/queues.ts";
 import { schedule } from "../jobs/scheduler.ts";
 import { drain } from "../jobs/worker.ts";
+import { bytesSource } from "../kernel/files.ts";
 import { postNote, removeNote } from "../notes/notes.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -28,7 +29,8 @@ const open = async () => {
 
     /** The id of a file alice uploads. */
     const uploaded = async (bytes: Uint8Array<ArrayBuffer>) =>
-        (await upload(test.ctx, "alice", { bytes, mediaType: "application/zip" })).id;
+        (await upload(test.ctx, "alice", { file: new Blob([bytes]), mediaType: "application/zip" }))
+            .id;
 
     /** Whether a file is kept under `key`. */
     const kept = async (key: string | null) => {
@@ -144,7 +146,7 @@ Deno.test("what was uploaded of a picture is removed with it, if a run left it",
     const picture = await test.uploaded(png);
     await drain(test.ctx, queues);
     // As if processing stopped before removing what was uploaded.
-    const left = await test.ctx.files.put(png, "image/png");
+    const left = await test.ctx.files.put(await bytesSource(png), "image/png");
 
     await test.later(24 * hour);
 

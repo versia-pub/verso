@@ -87,10 +87,22 @@ export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): F
 
     return {
         ...publicUrl !== undefined && { publicUrl: (key: string) => `${publicUrl}/${key}` },
-        put: async (bytes, mediaType) => {
-            const key = await fileKeyOf(bytes);
-            await put(key, bytes, key, mediaType);
-            return key;
+        // S3 needs the body's length, which a streamed body doesn't say, so the file is read whole.
+        put: async (file, mediaType) => {
+            checkFileKey(file.sha256);
+            const bytes = await new Response(await file.open()).bytes();
+            await put(file.sha256, bytes, file.sha256, mediaType);
+            return file.sha256;
+        },
+        has: async (key) => {
+            checkFileKey(key);
+            const response = await send("HEAD", key);
+            if (!response.ok && response.status !== 404) {
+                throw await failure(response, "HEAD", key);
+            }
+
+            await response.body?.cancel();
+            return response.ok;
         },
         get: async (key) => {
             checkFileKey(key);

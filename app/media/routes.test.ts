@@ -5,7 +5,7 @@ import { tokenFor } from "../auth/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
 import { MediaLimits } from "../kernel/config.ts";
-import { type FileStore, memoryFiles } from "../kernel/files.ts";
+import { bytesSource, type FileStore, memoryFiles } from "../kernel/files.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -238,7 +238,7 @@ Deno.test("a picture is served once it is processed, with its preview", async ()
 
 Deno.test("only local files that are kept are served", async () => {
     await using test = await open();
-    const key = await test.ctx.files.put(zip, "application/zip");
+    const key = await test.ctx.files.put(await bytesSource(zip), "application/zip");
     await createInstance(test.ctx, "b.example");
     await saveRemoteMedia(test.ctx, "b.example", null, {
         url: "https://b.example/notes.zip",

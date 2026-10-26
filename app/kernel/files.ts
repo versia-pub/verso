@@ -1,10 +1,29 @@
+/** A file to keep, which can be read from the start as often as needed. */
+export type FileSource = {
+    /** In bytes. */
+    readonly size: number;
+    /** Its SHA-256, in lowercase hex, which it is kept under. */
+    readonly sha256: string;
+    /** Its bytes, from the start. */
+    readonly open: () => Promise<ReadableStream<Uint8Array>>;
+};
+
+/** `bytes`, as a file to keep. */
+export const bytesSource = async (bytes: Uint8Array<ArrayBuffer>): Promise<FileSource> => ({
+    size: bytes.length,
+    sha256: await fileKeyOf(bytes),
+    open: () => Promise.resolve(ReadableStream.from([bytes])),
+});
+
 /**
  * Where uploaded files are kept, each under the SHA-256 of its bytes, so identical files are kept
  * once.
  */
 export type FileStore = {
-    /** Keeps `bytes`, unless the same file is kept already, and resolves with its key. */
-    readonly put: (bytes: Uint8Array<ArrayBuffer>, mediaType: string) => Promise<string>;
+    /** Keeps `file`, unless the same file is kept already, and resolves with its key. */
+    readonly put: (file: FileSource, mediaType: string) => Promise<string>;
+    /** Whether a file is kept under `key`, without reading it. */
+    readonly has: (key: string) => Promise<boolean>;
     /** The file kept under `key`, or `undefined` if there is none. */
     readonly get: (key: string) => Promise<ReadableStream<Uint8Array> | undefined>;
     /**
@@ -41,11 +60,17 @@ export const memoryFiles = (): FileStore => {
     const files = new Map<string, Uint8Array<ArrayBuffer>>();
 
     return {
-        put: async (bytes) => {
-            const key = await fileKeyOf(bytes);
-            if (!files.has(key)) files.set(key, bytes.slice());
-            return key;
+        put: async (file) => {
+            if (!files.has(file.sha256)) {
+                files.set(file.sha256, await new Response(await file.open()).bytes());
+            }
+            return file.sha256;
         },
+        has: (key) =>
+            Promise.try(() => {
+                checkFileKey(key);
+                return files.has(key);
+            }),
         get: (key) =>
             Promise.try(() => {
                 checkFileKey(key);

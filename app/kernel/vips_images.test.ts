@@ -88,7 +88,7 @@ const processed = async (
     bytes: Uint8Array<ArrayBuffer>,
     options = { maxPixels: 8_294_400 },
 ): Promise<ProcessedImage> => {
-    const result = await vipsImages(options).process(bytes);
+    const result = await vipsImages(options).process(ReadableStream.from([bytes]));
     assert(result.ok, `refused as ${result.ok || result.reason}`);
     return result.image;
 };
@@ -268,7 +268,7 @@ Deno.test("a grey picture is hashed in colour, and a see-through one keeps its a
 Deno.test("what isn't a picture in a format Verso takes is refused as unsupported", async () => {
     const images = vipsImages({ maxPixels: 8_294_400 });
     const refused = async (bytes: Uint8Array<ArrayBuffer>) => {
-        const result = await images.process(bytes);
+        const result = await images.process(ReadableStream.from([bytes]));
         return result.ok ? "kept" : result.reason;
     };
 
@@ -282,7 +282,15 @@ Deno.test("what isn't a picture in a format Verso takes is refused as unsupporte
 
 Deno.test("a picture vips can't read is refused as broken", async () => {
     const result = await vipsImages({ maxPixels: 8_294_400 }).process(
-        new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new TextEncoder().encode("not really a JPEG")]),
+        ReadableStream.from([
+            new Uint8Array([
+                0xff,
+                0xd8,
+                0xff,
+                0xe0,
+                ...new TextEncoder().encode("not really a JPEG"),
+            ]),
+        ]),
     );
 
     assertEquals(result, { ok: false, reason: "broken" });
@@ -331,7 +339,9 @@ Deno.test("a picture's metadata can't make it out to be smaller than it is", asy
         await Deno.remove(dir, { recursive: true });
     }
 
-    const result = await vipsImages({ maxPixels: 8_294_400, maxInputPixels: 1000 }).process(sneaky);
+    const result = await vipsImages({ maxPixels: 8_294_400, maxInputPixels: 1000 }).process(
+        ReadableStream.from([sneaky]),
+    );
 
     assertEquals(result, { ok: false, reason: "too-large" });
 });
@@ -339,7 +349,7 @@ Deno.test("a picture's metadata can't make it out to be smaller than it is", asy
 Deno.test("a picture with too many pixels to read, in all its frames, is refused", async () => {
     const images = vipsImages({ maxPixels: 8_294_400, maxInputPixels: 1200 });
     const reasonOf = async (bytes: Uint8Array<ArrayBuffer>) => {
-        const result = await images.process(bytes);
+        const result = await images.process(ReadableStream.from([bytes]));
         return result.ok ? "kept" : result.reason;
     };
 
@@ -361,7 +371,7 @@ Deno.test("vips taking too long is an error, not a refusal", async () => {
     const images = vipsImages({ maxPixels: 8_294_400, timeoutMs: 1 });
 
     await assertRejects(
-        async () => await images.process(await picture("png", 40, 30, red)),
+        async () => await images.process(ReadableStream.from([await picture("png", 40, 30, red)])),
         Error,
         "took over 1 ms",
     );
@@ -372,8 +382,8 @@ Deno.test("processing and checking leave no files behind", async () => {
     try {
         const images = vipsImages({ maxPixels: 8_294_400, directory });
 
-        assert((await images.process(await picture("png", 40, 30, red))).ok);
-        await images.process(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]));
+        assert((await images.process(ReadableStream.from([await picture("png", 40, 30, red)]))).ok);
+        await images.process(ReadableStream.from([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0])]));
         await images.check();
 
         assertEquals(await Array.fromAsync(Deno.readDir(directory)), []);
@@ -385,7 +395,7 @@ Deno.test("processing and checking leave no files behind", async () => {
     await assertRejects(
         async () =>
             await vipsImages({ maxPixels: 8_294_400, directory: `${directory}/gone` }).process(
-                await picture("png", 40, 30, red),
+                ReadableStream.from([await picture("png", 40, 30, red)]),
             ),
         Deno.errors.NotFound,
     );

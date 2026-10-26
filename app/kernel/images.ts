@@ -44,9 +44,12 @@ const brandsOf = (bytes: Uint8Array) => {
     return brands;
 };
 
+/** How many of a file's first bytes {@link imageFormatOf} needs. */
+export const formatHeadLength = 64;
+
 /**
  * What kind of picture `bytes` are, from how they start rather than what anyone says they are, or
- * `undefined` if they aren't one Verso takes.
+ * `undefined` if they aren't one Verso takes. The first {@link formatHeadLength} are enough.
  */
 export const imageFormatOf = (bytes: Uint8Array): ImageFormat | undefined => {
     if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "jpeg";
@@ -93,12 +96,12 @@ export type ImageRefusal = "unsupported" | "broken" | "too-large";
 /** Turns uploads into pictures fit to keep and show. */
 export type ImageProcessor = {
     /**
-     * `bytes` upright, without metadata, in sRGB and scaled down if they are too large, with a
+     * `input`'s picture upright, without metadata, in sRGB and scaled down if they are too large, with a
      * preview and placeholder hashes. Refuses what isn't a picture in a format Verso takes, what
      * can't be read at all, and what has too many pixels to read safely. Throws if it can't try.
      */
     readonly process: (
-        bytes: Uint8Array<ArrayBuffer>,
+        input: ReadableStream<Uint8Array>,
     ) => Promise<{ ok: true; image: ProcessedImage } | { ok: false; reason: ImageRefusal }>;
     /** Throws unless Verso can process pictures, so it stops when it starts rather than later. */
     readonly check: () => Promise<void>;
