@@ -16,14 +16,19 @@ import type { Context } from "../kernel/context.ts";
 import type { AccountsTable } from "./tables.ts";
 
 /**
- * An account, with the domain of its instance (`null` for the local instance), and the URLs and
- * descriptions of its pictures, if it has its own.
+ * An account, with the domain of its instance (`null` for the local instance), and its own
+ * pictures, if it has them: the URLs of a remote account's, the keys of a local account's and their
+ * previews once processed, and their descriptions.
  */
 export type AccountRow = Selectable<AccountsTable> & {
     readonly domain: string | null;
     readonly avatar_url: string | null;
+    readonly avatar_sha256: string | null;
+    readonly avatar_preview_sha256: string | null;
     readonly avatar_description: string | null;
     readonly header_url: string | null;
+    readonly header_sha256: string | null;
+    readonly header_preview_sha256: string | null;
     readonly header_description: string | null;
 };
 
@@ -50,11 +55,18 @@ const accountRows = (ctx: Context) =>
         .leftJoin("media as avatar", "avatar.id", "accounts.avatar_id")
         .leftJoin("media as header", "header.id", "accounts.header_id")
         .selectAll("accounts")
-        .select([
+        .select((eb) => [
             "instances.domain",
             "avatar.url as avatar_url",
+            // A local picture's key, once processed; until then it is the upload's.
+            eb.case().when("avatar.processed_at", "is not", null).then(eb.ref("avatar.sha256"))
+                .else(null).end().as("avatar_sha256"),
+            "avatar.preview_sha256 as avatar_preview_sha256",
             "avatar.description as avatar_description",
             "header.url as header_url",
+            eb.case().when("header.processed_at", "is not", null).then(eb.ref("header.sha256"))
+                .else(null).end().as("header_sha256"),
+            "header.preview_sha256 as header_preview_sha256",
             "header.description as header_description",
         ]);
 

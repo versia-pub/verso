@@ -2250,6 +2250,26 @@
                                             "string"
                                         ]
                                     },
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "avatar_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "header": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "header_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
                                     "fields_attributes": {
                                         "anyOf": [
                                             {
@@ -2364,6 +2384,26 @@
                                             "string"
                                         ]
                                     },
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "avatar_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "header": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "header_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
                                     "fields_attributes": {
                                         "anyOf": [
                                             {
@@ -2477,6 +2517,26 @@
                                             "boolean",
                                             "string"
                                         ]
+                                    },
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "avatar_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "header": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "header_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
                                     },
                                     "fields_attributes": {
                                         "anyOf": [

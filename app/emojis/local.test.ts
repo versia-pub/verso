@@ -6,7 +6,7 @@ import { publicAccount } from "../accounts/public.ts";
 import { accountRoutes } from "../accounts/routes.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
-import { Limits } from "../kernel/config_sections.ts";
+import { Limits, MediaLimits } from "../kernel/config_sections.ts";
 import { createInstance } from "../instances/testing.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { editNote, postNote } from "../notes/notes.ts";
@@ -76,7 +76,9 @@ Deno.test("a local note uses this instance's emojis its text and warning name", 
 
 Deno.test("a local account uses this instance's emojis its name, bio and fields name", async () => {
     await using test = await open();
-    const app = createTestApp(test.ctx, accountRoutes(Limits.parse({})), { checkResponses: true });
+    const app = createTestApp(test.ctx, accountRoutes(MediaLimits.parse({}), Limits.parse({})), {
+        checkResponses: true,
+    });
     const shortcodes = async () => {
         const row = await findAccount(test.ctx, "alice");
         return row && (await publicAccount(test.ctx, row)).emojis.map((emoji) => emoji.shortcode);

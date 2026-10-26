@@ -1,7 +1,10 @@
 import { localEmojiIds, setAccountEmojis } from "../emojis/emoji_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
+import { Unprocessable } from "../http/errors.ts";
+import type { Fit } from "../kernel/images.ts";
 import { scanText } from "../kernel/markup.ts";
+import { describeUpload, uploadPicture } from "../media/uploads.ts";
 import {
     type AccountChanges,
     type AccountRow,
@@ -11,6 +14,19 @@ import {
 import type { ProfileUpdated } from "./events.ts";
 import type { ProfileField, Visibility } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
+
+/** A picture of a profile: a new image, or a new description of the current one, or both. */
+export type PictureChange = {
+    readonly file?: Blob;
+    /** Alt text. Empty clears it. */
+    readonly description?: string;
+};
+
+/** The box an avatar is scaled down to fit in, as Mastodon's avatars are. */
+const avatarFit: Fit = { width: 400, height: 400 };
+
+/** The box a header is scaled down to fit in, as Mastodon's headers are. */
+const headerFit: Fit = { width: 1500, height: 500 };
 
 /** What a user changes about their profile. Omitted fields stay as they are. */
 export type ProfileChanges = {
@@ -28,6 +44,8 @@ export type ProfileChanges = {
     readonly defaultSensitive?: boolean;
     /** An ISO 639-1 code, or empty for none. */
     readonly defaultLanguage?: string;
+    readonly avatar?: PictureChange;
+    readonly header?: PictureChange;
 };
 
 const plainField = (name: string, value: string): ProfileField => ({
@@ -55,9 +73,46 @@ const useEmojis = async (ctx: Context, row: AccountRow) => {
 };
 
 /**
+ * Describes the picture `id` of `accountId` as the change does, if it does. A picture the change
+ * replaces is described too, which does nothing, as it is no longer used.
+ */
+const describeKept = async (
+    ctx: Context,
+    accountId: string,
+    id: string | null,
+    change: PictureChange | undefined,
+) => {
+    if (id !== null) await describeUpload(ctx, accountId, id, { description: change?.description });
+};
+
+/**
+ * Uploads a new picture for `accountId` as `name`, scaled down to fit in `fit`, or `undefined` if
+ * there is none. Refuses a file that isn't an image.
+ */
+const uploadedPicture = async (
+    ctx: Context,
+    accountId: string,
+    name: "Avatar" | "Header",
+    change: PictureChange | undefined,
+    fit: Fit,
+) => {
+    if (change?.file === undefined) return undefined;
+
+    const row = await uploadPicture(ctx, accountId, {
+        file: change.file,
+        mediaType: change.file.type,
+        description: change.description || undefined,
+    }, fit);
+    if (row === undefined) throw new Unprocessable(`${name} must be an image`);
+
+    return row.id;
+};
+
+/**
  * Updates a local account's profile, rendering the HTML of what was written, finding the custom
  * emojis it uses, and emitting an event for the rest of Verso, even if nothing changed, as Mastodon
- * does.
+ * does. New pictures are processed by a job, and until then the account shows its default ones;
+ * the pictures they replace are removed once unused, as other unused media is.
  */
 export const updateProfile = async (
     ctx: Context,
@@ -74,6 +129,9 @@ export const updateProfile = async (
         default_visibility: changes.defaultVisibility,
         default_sensitive: changes.defaultSensitive,
         default_language: changes.defaultLanguage,
+        // Uploaded before the transaction, which mustn't wait on the file store.
+        avatar_id: await uploadedPicture(ctx, accountId, "Avatar", changes.avatar, avatarFit),
+        header_id: await uploadedPicture(ctx, accountId, "Header", changes.header, headerFit),
     };
 
     if (changes.note !== undefined) {
@@ -94,6 +152,8 @@ export const updateProfile = async (
         if (before?.domain !== null) return;
 
         await updateLocalAccount(tx, accountId, set);
+        await describeKept(tx, accountId, before.avatar_id, changes.avatar);
+        await describeKept(tx, accountId, before.header_id, changes.header);
         const after = await findAccount(tx, accountId);
         if (after) await useEmojis(tx, after);
 

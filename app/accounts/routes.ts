@@ -5,9 +5,10 @@ import { renderEmojis } from "../emojis/render.ts";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Text } from "../http/schemas.ts";
-import type { Limits } from "../kernel/config_sections.ts";
+import type { Limits, MediaLimits } from "../kernel/config_sections.ts";
 import { countFollowRequests } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
+import { MediaDescription } from "../media/routes.ts";
 import { type AccountRow, findAccount } from "./account_queries.ts";
 import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { pictureRoutes } from "./picture_routes.ts";
@@ -34,13 +35,20 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
     );
 };
 
+/** Room for the form's other fields and boundaries, besides the pictures. */
+const formBytes = 64 * 1024;
+
 /**
- * What `update_credentials` changes, within `limits`. Avatars, headers and their descriptions,
- * attribution domains and quote policies are accepted, but not stored yet; Verso doesn't restrict
- * quotes.
+ * What `update_credentials` changes, within `limits`, with pictures at most as large as `media`
+ * allows uploads to be. Attribution domains and quote policies are accepted, but not stored yet;
+ * Verso doesn't restrict quotes.
  * @see https://docs.joinmastodon.org/methods/accounts/#update_credentials
  */
-const credentialChanges = (limits: Limits) => {
+const credentialChanges = (media: MediaLimits, limits: Limits) => {
+    const Picture = z.file().max(media.max_upload_bytes, {
+        error: `Must be at most ${media.max_upload_bytes} bytes`,
+    });
+
     const ProfileField = z.object({
         name: Text(limits.field_name).default(""),
         value: Text(limits.field_value).default(""),
@@ -54,6 +62,10 @@ const credentialChanges = (limits: Limits) => {
         discoverable: Flag.optional(),
         indexable: Flag.optional(),
         hide_collections: Flag.optional(),
+        avatar: Picture.optional(),
+        avatar_description: MediaDescription(limits).optional(),
+        header: Picture.optional(),
+        header_description: MediaDescription(limits).optional(),
         /** An array, or an object by index, as forms send it; either way in order. */
         fields_attributes: z.union([
             z.array(ProfileField),
@@ -71,8 +83,11 @@ const credentialChanges = (limits: Limits) => {
     });
 };
 
-/** Accounts, and the default pictures of accounts without their own. */
-export const accountRoutes = (limits: Limits): readonly Route[] => [
+/**
+ * Accounts, and the default pictures of accounts without their own, with profiles held to `limits`
+ * and pictures to `media`.
+ */
+export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Route[] => [
     // Before `/api/v1/accounts/:id`, which would otherwise match these paths.
     defineRoute({
         method: "GET",
@@ -89,7 +104,8 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
         summary: "Changes the viewer's profile and settings",
         tags: ["accounts"],
         auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
-        body: credentialChanges(limits),
+        maxBodyBytes: 2 * media.max_upload_bytes + formBytes,
+        body: credentialChanges(media, limits),
         responses: { 200: CredentialAccount },
         handler: async (ctx, { viewer, body }) => {
             await updateProfile(ctx, viewer.accountId, {
@@ -104,6 +120,8 @@ export const accountRoutes = (limits: Limits): readonly Route[] => [
                 defaultVisibility: body.source?.privacy,
                 defaultSensitive: body.source?.sensitive,
                 defaultLanguage: body.source?.language,
+                avatar: { file: body.avatar, description: body.avatar_description },
+                header: { file: body.header, description: body.header_description },
             });
 
             return { status: 200, body: await ownAccount(ctx, viewer) };

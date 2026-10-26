@@ -6,6 +6,7 @@ import type { Account, CredentialAccount, CustomEmoji, Field, Role } from "@vers
 import type { Context } from "../kernel/context.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
+import { fileUrl } from "../media/render.ts";
 import type { AccountRow } from "./account_queries.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { mastodonPermissions } from "./permissions.ts";
@@ -54,6 +55,25 @@ export const userUri = (ctx: Context, row: AccountRow): string => {
 const midnight = (date: Date) =>
     new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 
+/**
+ * The URLs of an account's picture and of a still version of it, for clients that don't animate
+ * pictures: a remote account's own at `url`, a local account's own once processed, stored under
+ * `key` with its still preview under `preview`, or else the default at `fallback`.
+ */
+const pictureUrls = (
+    ctx: Context,
+    url: string | null,
+    key: string | null,
+    preview: string | null,
+    fallback: string,
+) => {
+    if (url !== null) return { url, still: url };
+    if (key === null) return { url: fallback, still: fallback };
+
+    const file = fileUrl(ctx, key);
+    return { url: file, still: preview === null ? file : fileUrl(ctx, preview) };
+};
+
 /** An account as anyone sees it, with its roles, highest first, and the custom emojis it uses. */
 export const renderAccount = (
     ctx: Context,
@@ -61,8 +81,20 @@ export const renderAccount = (
     roles: readonly RoleRow[],
     emojis: readonly CustomEmoji[],
 ): Account => {
-    const avatar = row.avatar_url ?? ctx.urls.url`/accounts/${row.id}/avatar.png`;
-    const header = row.header_url ?? ctx.urls.url`/accounts/${row.id}/header.png`;
+    const avatar = pictureUrls(
+        ctx,
+        row.avatar_url,
+        row.avatar_sha256,
+        row.avatar_preview_sha256,
+        ctx.urls.url`/accounts/${row.id}/avatar.png`,
+    );
+    const header = pictureUrls(
+        ctx,
+        row.header_url,
+        row.header_sha256,
+        row.header_preview_sha256,
+        ctx.urls.url`/accounts/${row.id}/header.png`,
+    );
     const local = row.domain === null;
 
     // Verso's own HTML is made safe when it is written; remote instances' HTML is stored as they
@@ -78,11 +110,11 @@ export const renderAccount = (
         uri: userUri(ctx, row),
         display_name: row.display_name,
         note: html(row.note_html),
-        avatar,
-        avatar_static: avatar,
+        avatar: avatar.url,
+        avatar_static: avatar.still,
         avatar_description: row.avatar_description ?? "",
-        header,
-        header_static: header,
+        header: header.url,
+        header_static: header.still,
         header_description: row.header_description ?? "",
         locked: row.locked,
         fields: renderFields(row.fields, (field) => html(field.value_html)),
