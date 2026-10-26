@@ -5,18 +5,17 @@
  * @see https://versia.pub/extensions/likes
  * @module
  */
-import { formatReference, parseReference, v0_6 } from "@versia/protocol";
+import { parseReference, v0_6 } from "@versia/protocol";
 import { findAccount } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveries } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
-import { findInstanceId } from "../instances/instance_queries.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
-import { everyone, instanceMaySee } from "../notes/audience.ts";
+import { everyone, instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { canSee } from "../notes/visibility.ts";
-import { knownNote } from "../notes/remote.ts";
+import { knownNoteRow } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
 import { isLikeEvent } from "./events.ts";
 import {
@@ -29,6 +28,8 @@ import {
 } from "./like_queries.ts";
 import { keepRemoteLike, undoRemoteLike } from "./likes.ts";
 import type { LikeKind } from "./tables.ts";
+import { deleteEntity } from "../federation/delete.ts";
+import { referencesTo } from "../federation/references.ts";
 
 const extension = "pub.versia:likes";
 
@@ -62,9 +63,8 @@ const renderVersiaLike = async (ctx: Context, like: LikeRow): Promise<v0_6.Like 
  * Whether `requester`, another instance, may see a local user's like of `note`: if it may see the
  * note, or the note is its own.
  */
-const maySeeLike = async (ctx: Context, note: NoteRow, requester: string) =>
-    (note.instance_id !== null && note.instance_id === await findInstanceId(ctx, requester)) ||
-    await instanceMaySee(ctx, note, requester);
+const maySeeLike = (ctx: Context, note: NoteRow, requester: string) =>
+    instanceMaySeeInteraction(ctx, note, note, requester);
 
 /**
  * Sends a local user's like of another instance's note to that instance, and a Delete when they
@@ -86,13 +86,7 @@ export const likeDeliveries = async (ctx: Context, event: DomainEvent): Promise<
     const author = await findAccount(ctx, event.accountId);
     if (author?.domain !== null) return;
 
-    const entity: v0_6.Delete = {
-        type: "Delete",
-        created_at: ctx.clock.now().toISOString(),
-        author: author.id,
-        deleted_type: typeNames.like,
-        deleted: event.likeId,
-    };
+    const entity = deleteEntity(ctx, author.id, typeNames.like, event.likeId);
     await queueDeliveries(ctx, entity, [note.account_id]);
 };
 
@@ -109,12 +103,7 @@ const noteLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page, 
     return {
         author: note.account_id,
         total: await countLikesOfNote(ctx, id, kind),
-        items: likes.flatMap((like) => {
-            if (like.domain === null) return [like.id];
-            return like.remote_id === null
-                ? []
-                : [formatReference({ host: like.domain, id: like.remote_id }, ctx.urls.domain)];
-        }),
+        items: referencesTo(ctx, likes),
     };
 };
 
@@ -151,11 +140,8 @@ export const userLikeCollections: Readonly<Record<string, CollectionProvider>> =
 type Liking = { readonly author: string; readonly note: string };
 
 /** The note `liked`, in a like `sender` sent, if Verso has it. */
-const likedNote = async (ctx: Context, liked: string, sender: Sender) => {
-    const reference = parseReference(liked, sender.domain);
-    const known = reference && await knownNote(ctx, reference);
-    return known && await findNote(ctx, known.id);
-};
+const likedNote = (ctx: Context, liked: string, sender: Sender) =>
+    knownNoteRow(ctx, parseReference(liked, sender.domain));
 
 /**
  * Likes or dislikes of notes. Verso keeps those of notes it has, and drops others, rather than

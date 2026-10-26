@@ -18,6 +18,7 @@ import { removeNote, removeNotesOf } from "./removal.ts";
 import { pinnedNotes } from "./pin_queries.ts";
 import { knownNote, prepareNote, receiveNote } from "./remote.ts";
 import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";
+import { deleteEntity } from "../federation/delete.ts";
 
 /**
  * Sends a local note just posted or edited to the instances of those it is shown to. Versia has no
@@ -49,13 +50,7 @@ export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
         visibility: event.visibility,
         in_reply_to_account_id: event.inReplyToAccountId,
     };
-    const entity: v0_6.Delete = {
-        type: "Delete",
-        created_at: ctx.clock.now().toISOString(),
-        author: author.id,
-        deleted_type: "Note",
-        deleted: event.noteId,
-    };
+    const entity = deleteEntity(ctx, author.id, "Note", event.noteId);
     await queueDeliveriesTo(ctx, entity, await audienceOf(ctx, note, event.mentionIds));
 };
 

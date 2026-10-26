@@ -5,7 +5,7 @@
  * @see https://versia.pub/extensions/reactions
  * @module
  */
-import { formatReference, parseReference, v0_6 } from "@versia/protocol";
+import { parseReference, v0_6 } from "@versia/protocol";
 import { instancesHosting } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import type { RemoteEmoji } from "../emojis/emojis.ts";
@@ -13,13 +13,12 @@ import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import { followerInstances } from "../graph/follows.ts";
-import { findInstanceId } from "../instances/instance_queries.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
-import { everyone, instanceMaySee } from "../notes/audience.ts";
+import { everyone, instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { canSee } from "../notes/visibility.ts";
-import { knownNote } from "../notes/remote.ts";
+import { knownNoteRow } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
 import { isReactionEvent } from "./events.ts";
 import {
@@ -29,6 +28,8 @@ import {
     reactionPage,
 } from "./reaction_queries.ts";
 import { isUnicodeEmoji, keepRemoteReaction, undoRemoteReaction } from "./reactions.ts";
+import { deleteEntity } from "../federation/delete.ts";
+import { referencesTo } from "../federation/references.ts";
 
 const extension = "pub.versia:reactions";
 
@@ -92,13 +93,7 @@ export const reactionDeliveries = async (ctx: Context, event: DomainEvent): Prom
         return;
     }
 
-    const entity: v0_6.Delete = {
-        type: "Delete",
-        created_at: ctx.clock.now().toISOString(),
-        author: event.accountId,
-        deleted_type: typeName,
-        deleted: event.reactionId,
-    };
+    const entity = deleteEntity(ctx, event.accountId, typeName, event.reactionId);
     await queueDeliveriesTo(ctx, entity, audience);
 };
 
@@ -106,9 +101,8 @@ export const reactionDeliveries = async (ctx: Context, event: DomainEvent): Prom
  * Whether `requester`, another instance, may see a local user's reaction to `note`: if it may see
  * the note, or the note is its own.
  */
-const maySeeReaction = async (ctx: Context, note: NoteRow, requester: string) =>
-    (note.instance_id !== null && note.instance_id === await findInstanceId(ctx, requester)) ||
-    await instanceMaySee(ctx, note, requester);
+const maySeeReaction = (ctx: Context, note: NoteRow, requester: string) =>
+    instanceMaySeeInteraction(ctx, note, note, requester);
 
 /**
  * The reactions to a local note, oldest first, for an instance that may see it, as references to
@@ -125,13 +119,7 @@ const noteReactions: CollectionProvider = async (ctx, id, page, requester) => {
     return {
         author: note.account_id,
         total: await countReactionsOf(ctx, id),
-        items: reactions.flatMap((reaction) => {
-            if (reaction.domain === null) return [reaction.id];
-            return reaction.remote_id === null ? [] : [formatReference(
-                { host: reaction.domain, id: reaction.remote_id },
-                ctx.urls.domain,
-            )];
-        }),
+        items: referencesTo(ctx, reactions),
     };
 };
 
@@ -141,11 +129,8 @@ export const noteReactionCollections: Readonly<Record<string, CollectionProvider
 };
 
 /** The note a reaction `sender` sent is to, if Verso has it. */
-const reactedNote = async (ctx: Context, reaction: v0_6.Reaction, sender: Sender) => {
-    const reference = parseReference(reaction.object, sender.domain);
-    const known = reference && await knownNote(ctx, reference);
-    return known && await findNote(ctx, known.id);
-};
+const reactedNote = (ctx: Context, reaction: v0_6.Reaction, sender: Sender) =>
+    knownNoteRow(ctx, parseReference(reaction.object, sender.domain));
 
 /**
  * The emoji of a reaction another instance sent: a Unicode emoji, or one of its custom emojis,

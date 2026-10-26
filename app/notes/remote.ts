@@ -126,7 +126,10 @@ const mayBeWanted = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
 };
 
 /** The note `reference` points at, if there is one and Verso has it. */
-const knownNoteRow = async (ctx: Context, reference: Reference | undefined) => {
+export const knownNoteRow = async (
+    ctx: Context,
+    reference: Reference | undefined,
+): Promise<NoteRow | undefined> => {
     const known = reference && await knownNote(ctx, reference);
     return known && await findNote(ctx, known.id);
 };

@@ -53,3 +53,17 @@ export const instanceMaySee = async (
 
     return note.visibility === "private" && await hasFollowersOn(ctx, note.account_id, instanceId);
 };
+
+/**
+ * Whether `requester`, another instance, may see a local user's like, reaction or share of `note`,
+ * shown as `shown`: the note's own instance may, as may any instance that may see `shown`, which
+ * is the note itself but for a share.
+ */
+export const instanceMaySeeInteraction = async (
+    ctx: Context,
+    note: NoteRow,
+    shown: NoteRow,
+    requester: string,
+): Promise<boolean> =>
+    (note.instance_id !== null && note.instance_id === await findInstanceId(ctx, requester)) ||
+    await instanceMaySee(ctx, shown, requester);

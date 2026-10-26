@@ -6,6 +6,7 @@
  */
 import { parseReference, v0_6 } from "@versia/protocol";
 import { PermanentFailure } from "../jobs/worker.ts";
+import type { Context } from "../kernel/context.ts";
 import type { EntityType } from "./registry.ts";
 
 /**
@@ -42,3 +43,17 @@ export const deleteType = (types: readonly EntityType[]): EntityType<v0_6.Delete
         },
     };
 };
+
+/** A Delete by the local user `authorId` of their entity `deleted`, of `deletedType`, as of now. */
+export const deleteEntity = (
+    ctx: Context,
+    authorId: string,
+    deletedType: string,
+    deleted: string,
+): v0_6.Delete => ({
+    type: "Delete",
+    created_at: ctx.clock.now().toISOString(),
+    author: authorId,
+    deleted_type: deletedType,
+    deleted,
+});

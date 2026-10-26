@@ -10,17 +10,17 @@ import { knownUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import { followerInstances, hasFollowers } from "../graph/follows.ts";
-import { findInstanceId } from "../instances/instance_queries.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
-import { everyone, instanceMaySee } from "../notes/audience.ts";
+import { everyone, instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { countSharesOf, shareIdsOf } from "../notes/share_queries.ts";
 import { canSee } from "../notes/visibility.ts";
-import { knownNote } from "../notes/remote.ts";
+import { knownNoteRow } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
 import { isShareEvent } from "./events.ts";
 import { keepRemoteShare, undoRemoteShare } from "./shares.ts";
+import { deleteEntity } from "../federation/delete.ts";
 
 const extension = "pub.versia:share";
 
@@ -70,13 +70,7 @@ export const shareDeliveries = async (ctx: Context, event: DomainEvent): Promise
         return;
     }
 
-    const entity: v0_6.Delete = {
-        type: "Delete",
-        created_at: ctx.clock.now().toISOString(),
-        author: event.accountId,
-        deleted_type: typeName,
-        deleted: event.shareId,
-    };
+    const entity = deleteEntity(ctx, event.accountId, typeName, event.shareId);
     await queueDeliveriesTo(ctx, entity, audience);
 };
 
@@ -85,9 +79,8 @@ export const shareDeliveries = async (ctx: Context, event: DomainEvent): Promise
  * share, or the note is its own. Only public and unlisted notes are shared, and edits don't change
  * that, so anyone may see a local note shared.
  */
-const maySeeShare = async (ctx: Context, share: NoteRow, note: NoteRow, requester: string) =>
-    (note.instance_id !== null && note.instance_id === await findInstanceId(ctx, requester)) ||
-    await instanceMaySee(ctx, share, requester);
+const maySeeShare = (ctx: Context, share: NoteRow, note: NoteRow, requester: string) =>
+    instanceMaySeeInteraction(ctx, note, share, requester);
 
 /**
  * The public and unlisted shares of a local note, oldest first, for an instance that may see it,
@@ -153,9 +146,7 @@ export const shareType: EntityType<v0_6.Share> = {
         const user = author && await knownUser(ctx, author);
         if (user === undefined) throw new PermanentFailure(`Verso doesn't have ${share.author}`);
 
-        const shared = parseReference(share.shared, sender.domain);
-        const known = shared && await knownNote(ctx, shared);
-        const note = known && await findNote(ctx, known.id);
+        const note = await knownNoteRow(ctx, parseReference(share.shared, sender.domain));
         if (note === undefined) throw new PermanentFailure(`Verso doesn't have ${share.shared}`);
         // As for local users' shares.
         if (!everyone.includes(note.visibility)) {
