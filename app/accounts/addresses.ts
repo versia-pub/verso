@@ -4,7 +4,7 @@
  */
 import { getLogger } from "@logtape/logtape";
 import { canonicalizeDomain } from "@versia/protocol";
-import { fetchBudget, isRemoteFailure, spend } from "../federation/resolver.ts";
+import { fetchBudget, isRemoteFailure, spend, withDeadline } from "../federation/resolver.ts";
 import { webfinger } from "../federation/webfinger.ts";
 import { findInstanceId } from "../instances/instances.ts";
 import type { Budget, Context } from "../kernel/context.ts";
@@ -56,7 +56,7 @@ export const findAccountByAddress = async (
         let reference = known?.remote_id ? { host: domain, id: known.remote_id } : undefined;
         if (reference === undefined) {
             if (!spend(ctx, budget)) return undefined;
-            reference = await webfinger(ctx, username, domain);
+            reference = await webfinger(withDeadline(ctx, budget), username, domain);
         }
         if (reference === undefined) return undefined;
 

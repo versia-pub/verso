@@ -35,6 +35,17 @@ export const spend = (ctx: Context, budget: Budget): boolean => {
     return true;
 };
 
+/**
+ * `ctx`, with its requests to other instances stopped when `budget`'s deadline passes, rather than
+ * only no new ones made, so one slow instance can't keep a client waiting past it.
+ */
+export const withDeadline = (ctx: Context, budget: Budget): Context => {
+    if (budget.until === undefined) return ctx;
+
+    const left = AbortSignal.timeout(Math.max(budget.until - ctx.clock.now().getTime(), 0));
+    return { ...ctx, signal: ctx.signal ? AbortSignal.any([ctx.signal, left]) : left };
+};
+
 /** An entity that couldn't be fetched, or wasn't what was asked for. */
 export class ResolveFailed extends Error {
     override readonly name = "ResolveFailed";
@@ -104,7 +115,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         const { host, id } = reference;
         // One that can't be reached now is left alone, as deliveries leave it.
         if (await isParked(ctx, host)) throw new ResolveFailed(`${host} can't be reached now`);
-        const reply = await fetchSigned(ctx, entityUrl(host, type.type, id));
+        const reply = await fetchSigned(withDeadline(ctx, budget), entityUrl(host, type.type, id));
 
         if (reply.status === 404 || reply.status === 410) {
             missing.set(key, ctx.clock.now().getTime() + missingMs);

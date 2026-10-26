@@ -104,6 +104,11 @@ export type Context<DB = Database> = {
     readonly settings: Settings;
     /** Every subscriber, each told of every event, such as one for each protocol. */
     readonly subscribers: readonly Subscriber[];
+    /**
+     * Stops the requests to other instances made with this context when it aborts, such as when a
+     * client's request has waited long enough.
+     */
+    readonly signal?: AbortSignal;
     /** The database, or the current transaction inside `transaction`. */
     readonly db: Kysely<DB>;
     /**

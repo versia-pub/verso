@@ -9,12 +9,13 @@ import { createNetwork } from "../testing/network.ts";
 import type { Reference } from "@versia/protocol";
 import type { Budget, Context, Resolver } from "../kernel/context.ts";
 import { createRegistry, type Sender } from "./registry.ts";
-import { BadReply } from "./request.ts";
+import { BadReply, fetchUnsigned, Unreachable } from "./request.ts";
 import {
     createResolver,
     fetchBudget,
     ResolveFailed,
     type ResolverOptions,
+    withDeadline,
 } from "./resolver.ts";
 
 const day = 24 * 60 * 60_000;
@@ -310,4 +311,37 @@ Deno.test("an instance that can't be reached now isn't fetched from", async () =
     network.clock.advance(60_000);
     assertEquals(await user("b.test", bob), id);
     assertEquals(fetched("b.test"), 2);
+});
+
+Deno.test("a resolve stops fetching when its budget's deadline passes", async () => {
+    const { network, a, user } = await open();
+    await using _ = network;
+    network.transport.servers.set("slow.test", (request) =>
+        new Promise((_, reject) => {
+            request.signal.addEventListener("abort", () => reject(request.signal.reason));
+        }));
+
+    const started = performance.now();
+    await assertRejects(() => user("slow.test", "x", fetchBudget(1, a.clock.now().getTime() + 50)));
+
+    assertEquals(performance.now() - started < 5000, true);
+});
+
+Deno.test("a fetch under way stops when its budget's deadline passes", async () => {
+    const { network, a } = await open();
+    await using _ = network;
+    network.transport.servers.set("slow.test", (request) =>
+        new Promise((_, reject) => {
+            request.signal.addEventListener("abort", () => reject(request.signal.reason));
+        }));
+    const budget = fetchBudget(1, a.clock.now().getTime() + 50);
+
+    const started = performance.now();
+    await assertRejects(
+        () => fetchUnsigned(withDeadline(a, budget), new URL("https://slow.test/"), "*/*"),
+        Unreachable,
+    );
+
+    assertEquals(performance.now() - started < 5000, true);
+    assertEquals(withDeadline(a, fetchBudget()), a);
 });

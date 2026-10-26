@@ -65,9 +65,9 @@ const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> 
 };
 
 /**
- * Sends a request to another instance and reads the reply, giving it `timeoutMs` in all. It
- * rejects with `Unreachable` when the instance can't be reached or takes too long, and with
- * `BadReply` when the reply is too large.
+ * Sends a request to another instance and reads the reply, giving it `timeoutMs` in all, or less
+ * if `ctx.signal` aborts first. It rejects with `Unreachable` when the instance can't be reached or
+ * takes too long, and with `BadReply` when the reply is too large.
  */
 const send = async (
     ctx: Context,
@@ -80,7 +80,9 @@ const send = async (
             ...init.headers,
             "user-agent": `Verso/${denoConfig.version} (+${ctx.urls.origin})`,
         },
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: ctx.signal
+            ? AbortSignal.any([AbortSignal.timeout(timeoutMs), ctx.signal])
+            : AbortSignal.timeout(timeoutMs),
     });
 
     try {
