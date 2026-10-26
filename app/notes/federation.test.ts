@@ -1,5 +1,6 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { v0_6 } from "@versia/protocol";
+import { encode } from "fast-png";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
 import { fetchSigned } from "../federation/request.ts";
@@ -9,11 +10,16 @@ import { addFollowers } from "../graph/testing.ts";
 import { setNoteEmojis } from "../emojis/emoji_queries.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
 import { createInstance } from "../instances/testing.ts";
+import { queues } from "../jobs/queues.ts";
+import { drain } from "../jobs/worker.ts";
+import { findMedia } from "../media/media_queries.ts";
+import { upload } from "../media/uploads.ts";
+import { memoryFiles } from "../kernel/files.ts";
 import { registry } from "../registry.ts";
 import { createNetwork } from "../testing/network.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import type { Context } from "../kernel/context.ts";
-import { createTestContext } from "../testing/context.ts";
+import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { audienceOf } from "./audience.ts";
 import { noteType } from "./federation.ts";
 import { editNote, postNote } from "./notes.ts";
@@ -21,9 +27,18 @@ import { removeNote } from "./removal.ts";
 import { pin } from "./pins.ts";
 import { createNote } from "./testing.ts";
 
+const png = new Uint8Array(encode({
+    width: 2,
+    height: 2,
+    data: new Uint8Array(16).fill(200),
+    channels: 4,
+}));
+
+const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]);
+
 /** Alice and bob here; carol on b.example, who follows alice, and erin on c.example. */
-const open = async () => {
-    const test = await createTestContext();
+const open = async (options: TestContextOptions = {}) => {
+    const test = await createTestContext(options);
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     await createInstance(test.ctx, "b.example");
     await createRemoteAccount(test.ctx, "carol", "b.example");
@@ -131,6 +146,98 @@ Deno.test("a local reply is to a bare id, and a note without a warning or emojis
     assertEquals(
         [entity?.replies_to, entity?.subject, entity?.is_sensitive, entity?.extensions],
         [parent.id, undefined, false, undefined],
+    );
+});
+
+Deno.test("a local note's files are at the URLs they are served at, as what they are served as", async () => {
+    await using test = await open();
+    const picture = await upload(test.ctx, "alice", {
+        file: new Blob([png]),
+        mediaType: "image/png",
+        description: "A red square",
+    });
+    const video = await upload(test.ctx, "alice", {
+        file: new Blob([zip, new Uint8Array([1])]),
+        mediaType: "video/mp4",
+    });
+    const file = await upload(test.ctx, "alice", {
+        file: new Blob([zip]),
+        mediaType: "application/zip",
+    });
+    await drain(test.ctx, queues);
+    const note = await postNote(test.ctx, "alice", {
+        text: "",
+        format: "text/plain",
+        spoilerText: "",
+        visibility: "public",
+        mediaIds: [video.id, picture.id, file.id],
+    });
+    if (note === undefined) throw new Error("Not posted");
+    const kept = await findMedia(test.ctx, picture.id);
+
+    const entity = await test.find(note.id, "");
+
+    // As sent, without what is left out.
+    assertEquals(JSON.parse(JSON.stringify(entity?.attachments)), [
+        {
+            "video/mp4": {
+                content: `https://social.example/media/${video.sha256}`,
+                remote: true,
+                size: 9,
+                hash: video.sha256 ?? undefined,
+            },
+        },
+        {
+            "image/png": {
+                content: `https://social.example/media/${kept?.sha256}`,
+                remote: true,
+                description: "A red square",
+                size: kept?.size ?? undefined,
+                hash: kept?.sha256 ?? undefined,
+                thumbhash: kept?.thumbhash ?? undefined,
+                width: 2,
+                height: 2,
+            },
+        },
+        {
+            "application/octet-stream": {
+                content: `https://social.example/media/${file.sha256}`,
+                remote: true,
+                size: 8,
+                hash: file.sha256 ?? undefined,
+            },
+        },
+    ]);
+    assertEquals(v0_6.Note.safeParse(entity).success, true);
+    assertEquals(kept?.thumbhash !== null && kept?.size !== null, true);
+
+    // Were one no longer kept, the others would still be given.
+    await test.ctx.db.updateTable("media").set({ sha256: null }).where("id", "=", file.id)
+        .execute();
+    assertEquals((await test.find(note.id, ""))?.attachments.length, 2);
+});
+
+Deno.test("a local note's files are where the store serves them, if it does", async () => {
+    const files = { ...memoryFiles(), publicUrl: (key: string) => `https://cdn.example/${key}` };
+    await using test = await open({ files });
+    const file = await upload(test.ctx, "alice", {
+        file: new Blob([zip]),
+        mediaType: "application/zip",
+    });
+    const note = await postNote(test.ctx, "alice", {
+        text: "",
+        format: "text/plain",
+        spoilerText: "",
+        visibility: "public",
+        mediaIds: [file.id],
+    });
+    if (note === undefined) throw new Error("Not posted");
+
+    const entity = await test.find(note.id, "");
+
+    assertEquals(
+        entity?.attachments[0]["application/octet-stream"].content,
+        `https://cdn.example/${file.sha256}`,
     );
 });
 

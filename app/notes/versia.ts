@@ -9,6 +9,8 @@ import type { Visibility } from "../accounts/tables.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { emojiExtensions } from "../emojis/versia.ts";
 import type { Context } from "../kernel/context.ts";
+import { attachmentsOf } from "../media/attachment_queries.ts";
+import { versiaFile } from "../media/versia.ts";
 import { mentionsOf, noteOrigins, type NoteRow } from "./note_queries.ts";
 
 /** Who a note is for, as Versia says it. Unlisted notes are public, as Versia has no unlisted. */
@@ -51,6 +53,7 @@ export const renderVersiaNotes = async (
     const noteIds = notes.map((note) => note.id);
     const mentions = await mentionsOf(ctx, noteIds);
     const emojis = await emojisOfNotes(ctx, noteIds);
+    const attachments = await attachmentsOf(ctx, noteIds);
     const users = await userReferenceMap(ctx, [
         ...new Set([...notes.map((note) => note.account_id), ...[...mentions.values()].flat()]),
     ]);
@@ -79,7 +82,8 @@ export const renderVersiaNotes = async (
             mentions: (mentions.get(note.id) ?? []).flatMap((id) => users.get(id) ?? []),
             replies_to: note.in_reply_to_id === null ? undefined : linked.get(note.in_reply_to_id),
             quotes: note.quote_id === null ? undefined : linked.get(note.quote_id),
-            attachments: [],
+            attachments: (attachments.get(note.id) ?? []).map((row) => versiaFile(ctx, row))
+                .filter((file) => file !== undefined),
             previews: [],
             extensions: emojiExtensions(emojis.get(note.id) ?? []),
         };

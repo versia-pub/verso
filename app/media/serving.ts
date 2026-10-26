@@ -6,6 +6,7 @@
  */
 import type { Context } from "../kernel/context.ts";
 import { imageFormats } from "../kernel/images.ts";
+import type { MediaRow } from "./media_queries.ts";
 import { findServedFile } from "./upload_queries.ts";
 import { isPlayable } from "./uploads.ts";
 
@@ -37,7 +38,15 @@ export const serveFile = async (ctx: Context, key: string): Promise<ServedFile |
         return { stream, mediaType: imageFormats.webp.mediaType, download: false };
     }
 
-    return row.preview_sha256 === null && !isPlayable(row.media_type)
-        ? { stream, mediaType: "application/octet-stream", download: true }
-        : { stream, mediaType: row.media_type, download: false };
+    const mediaType = servedTypeOf(row);
+    return { stream, mediaType, download: mediaType === "application/octet-stream" };
 };
+
+/**
+ * The type a local file is served as: its own, if it is a picture Verso processed or can be played,
+ * or else `application/octet-stream`, for browsers to save.
+ */
+export const servedTypeOf = (row: Pick<MediaRow, "media_type" | "preview_sha256">): string =>
+    row.preview_sha256 === null && !isPlayable(row.media_type)
+        ? "application/octet-stream"
+        : row.media_type;
