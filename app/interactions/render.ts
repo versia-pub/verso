@@ -39,5 +39,8 @@ export const reactionEmojis = (groups: readonly ReactionGroup[]): ShownEmoji[] =
             instance_id: group.instance_id,
             url: group.url,
             media_type: group.media_type,
+            sha256: group.sha256,
+            preview_sha256: group.preview_sha256,
+            processed_at: group.processed_at,
         }]
     );

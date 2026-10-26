@@ -41,6 +41,7 @@ const ownPicture = async (ctx: Context, id: string | null, fallback: string) => 
 
 /** A local account as a Versia User, with the custom emojis it uses and its pictures. */
 const renderVersiaUser = (
+    ctx: Context,
     row: AccountRow,
     emojis: readonly ShownEmoji[],
     pictures: { readonly avatar: v0_6.ContentFormat; readonly header: v0_6.ContentFormat },
@@ -59,7 +60,7 @@ const renderVersiaUser = (
     header: pictures.header,
     manually_approves_followers: row.locked,
     indexable: row.indexable,
-    extensions: emojiExtensions(emojis),
+    extensions: emojiExtensions(ctx, emojis),
 });
 
 /** The local user with this id, or `undefined` if there is none. */
@@ -89,7 +90,7 @@ export const localVersiaUser = async (
     if (row === undefined) return undefined;
 
     const emojis = (await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? [];
-    return renderVersiaUser(row, emojis, {
+    return renderVersiaUser(ctx, row, emojis, {
         avatar: await ownPicture(ctx, row.avatar_id, ctx.urls.url`/accounts/${row.id}/avatar.png`),
         header: await ownPicture(ctx, row.header_id, ctx.urls.url`/accounts/${row.id}/header.png`),
     });

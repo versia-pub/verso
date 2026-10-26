@@ -15,6 +15,6 @@ export const emojiRoutes: readonly Route[] = [
         summary: "This instance's custom emojis, for the picker",
         tags: ["emojis"],
         responses: { 200: z.array(CustomEmoji) },
-        handler: async (ctx) => ({ status: 200, body: renderEmojis(await localEmojis(ctx)) }),
+        handler: async (ctx) => ({ status: 200, body: renderEmojis(ctx, await localEmojis(ctx)) }),
     }),
 ];

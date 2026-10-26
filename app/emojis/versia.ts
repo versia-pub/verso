@@ -4,9 +4,11 @@
  * @module
  */
 import { v0_6 } from "@versia/protocol";
+import type { Context } from "../kernel/context.ts";
 import { remotePicture } from "../media/versia.ts";
 import type { ShownEmoji } from "./emoji_queries.ts";
 import type { RemoteEmoji } from "./emojis.ts";
+import { emojiPicture } from "./render.ts";
 
 /**
  * How many emojis of one entity Verso stores. Each costs queries, so an entity can't make Verso do
@@ -41,17 +43,21 @@ export const remoteEmojisOf = (
 
 /**
  * The `extensions` of an entity whose text uses `emojis`, or `undefined` if it uses none. Emojis
- * whose pictures Verso stores itself are omitted until it can serve them.
+ * whose pictures aren't ready are omitted.
  */
 export const emojiExtensions = (
+    ctx: Context,
     emojis: readonly ShownEmoji[],
 ): v0_6.Entity["extensions"] => {
-    const shown = emojis.flatMap((emoji): v0_6.CustomEmoji[] =>
-        emoji.url === null ? [] : [{
+    const shown = emojis.flatMap((emoji): v0_6.CustomEmoji[] => {
+        const picture = emojiPicture(ctx, emoji);
+        if (picture === undefined) return [];
+
+        return [{
             name: `:${emoji.shortcode}:`,
-            content: { [emoji.media_type]: { content: emoji.url, remote: true } },
-        }]
-    );
+            content: { [emoji.media_type]: { content: picture.url, remote: true } },
+        }];
+    });
     if (shown.length === 0) return undefined;
 
     const extension: v0_6.CustomEmojis = { emojis: shown };

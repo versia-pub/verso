@@ -87,7 +87,7 @@ export const renderVersiaNotes = async (
             attachments: (attachments.get(note.id) ?? []).map((row) => versiaFile(ctx, row))
                 .filter((file) => file !== undefined),
             previews: [],
-            extensions: emojiExtensions(emojis.get(note.id) ?? []),
+            extensions: emojiExtensions(ctx, emojis.get(note.id) ?? []),
         };
     });
 };

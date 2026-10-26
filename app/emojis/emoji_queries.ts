@@ -62,14 +62,23 @@ export const setAccountEmojis = async (
         .execute();
 };
 
+/** Where a custom emoji's picture is: at a URL, or stored by Verso. */
+export type EmojiPicture = {
+    /** Where a remote emoji's picture is, or `null` if Verso stores it. */
+    readonly url: string | null;
+    readonly media_type: string;
+    /** The keys a stored picture and its still preview are stored under, once processed. */
+    readonly sha256: string | null;
+    readonly preview_sha256: string | null;
+    /** When a stored picture was processed, or `null` until then. */
+    readonly processed_at: Date | null;
+};
+
 /** A custom emoji, with its picture. */
-export type ShownEmoji = {
+export type ShownEmoji = EmojiPicture & {
     readonly shortcode: string;
     /** The instance it is from, or `null` for the local instance. */
     readonly instance_id: string | null;
-    /** Where its picture is, or `null` if Verso stores it, which it can't serve yet. */
-    readonly url: string | null;
-    readonly media_type: string;
 };
 
 /** A custom emoji used by something. */
@@ -84,6 +93,9 @@ const shownColumns = [
     "emojis.instance_id",
     "media.url",
     "media.media_type",
+    "media.sha256",
+    "media.preview_sha256",
+    "media.processed_at",
 ] as const;
 
 /**

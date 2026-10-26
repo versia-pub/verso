@@ -161,7 +161,7 @@ export const renderStatuses = async (
                 name,
                 url: ctx.urls.url`/tags/${name}`,
             })),
-            emojis: renderEmojis([
+            emojis: renderEmojis(ctx, [
                 ...emojis.get(note.id) ?? [],
                 ...reactionEmojis(reactions.get(note.id) ?? []),
             ]),
@@ -212,7 +212,7 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
 
     // Versions aren't stored with the custom emojis they used, so each shows the ones the status
     // uses now.
-    const emojis = renderEmojis((await emojisOfNotes(ctx, [note.id])).get(note.id) ?? []);
+    const emojis = renderEmojis(ctx, (await emojisOfNotes(ctx, [note.id])).get(note.id) ?? []);
     return versions.map((version): StatusEdit => ({
         content: author.domain === null ? version.content_html : sanitizeHtml(version.content_html),
         spoiler_text: version.spoiler_text,

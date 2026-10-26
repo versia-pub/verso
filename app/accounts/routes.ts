@@ -29,7 +29,7 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
         ctx,
         row,
         await rolesOf(ctx, row.id),
-        renderEmojis((await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? []),
+        renderEmojis(ctx, (await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? []),
         await viewer.permissions(),
         await countFollowRequests(ctx, row.id),
     );

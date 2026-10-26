@@ -47,10 +47,10 @@ const renderVersiaReaction = async (
     const object = (await noteReferenceMap(ctx, [reaction.note_id])).get(reaction.note_id);
     if (author === undefined || object === undefined) return undefined;
 
-    const { shortcode, url, media_type } = reaction;
+    const { shortcode, media_type } = reaction;
     const emojis = shortcode === null || media_type === null
         ? []
-        : [{ shortcode, instance_id: null, url, media_type }];
+        : [{ ...reaction, shortcode, media_type, instance_id: null }];
 
     return {
         type: typeName,
@@ -59,7 +59,7 @@ const renderVersiaReaction = async (
         author,
         object,
         content: reaction.text ?? `:${shortcode ?? ""}:`,
-        extensions: emojiExtensions(emojis),
+        extensions: emojiExtensions(ctx, emojis),
     };
 };
 

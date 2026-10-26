@@ -106,6 +106,9 @@ export type ReactionGroup = {
     readonly domain: string | null;
     readonly url: string | null;
     readonly media_type: string | null;
+    readonly sha256: string | null;
+    readonly preview_sha256: string | null;
+    readonly processed_at: Date | null;
     readonly count: number;
     /** Whether the viewer is among them. */
     readonly me: boolean;
@@ -138,6 +141,9 @@ export const reactionsOf = async (
             "instances.domain",
             "media.url",
             "media.media_type",
+            "media.sha256",
+            "media.preview_sha256",
+            "media.processed_at",
             countAll(eb),
             eb.fn.min("reactions.id").as("first_id"),
             eb.fn.max(
@@ -159,6 +165,9 @@ export const reactionsOf = async (
             "instances.domain",
             "media.url",
             "media.media_type",
+            "media.sha256",
+            "media.preview_sha256",
+            "media.processed_at",
         ])
         .orderBy("first_id")
         .execute();
@@ -197,6 +206,9 @@ export type LocalReaction = ReactionRow & {
     readonly shortcode: string | null;
     readonly url: string | null;
     readonly media_type: string | null;
+    readonly sha256: string | null;
+    readonly preview_sha256: string | null;
+    readonly processed_at: Date | null;
 };
 
 /**
@@ -212,7 +224,14 @@ export const findLocalReaction = async (
         .leftJoin("emojis", "emojis.id", "reactions.emoji_id")
         .leftJoin("media", "media.id", "emojis.media_id")
         .selectAll("reactions")
-        .select(["emojis.shortcode", "media.url", "media.media_type"])
+        .select([
+            "emojis.shortcode",
+            "media.url",
+            "media.media_type",
+            "media.sha256",
+            "media.preview_sha256",
+            "media.processed_at",
+        ])
         .where("reactions.id", "=", id)
         .where("reactions.instance_id", "is", null)
         .executeTakeFirst();

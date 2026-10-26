@@ -1,4 +1,6 @@
 import { assertEquals } from "@std/assert";
+import { createTestContext } from "../testing/context.ts";
+import type { ShownEmoji } from "./emoji_queries.ts";
 import { emojiExtensions, remoteEmojisOf } from "./versia.ts";
 
 /** An emoji named `name`, with a picture at `url` of `type`. */
@@ -50,10 +52,21 @@ Deno.test("an entity has at most 100 emojis, and a malformed extension has none"
     assertEquals(remoteEmojisOf(extensions(emoji(":blob:"), emoji("blob"))), []);
 });
 
-Deno.test("emojis are sent by name, with their pictures, unless Verso keeps the picture", () => {
-    const emoji = { shortcode: "blob", instance_id: null, media_type: "image/gif" };
+Deno.test("emojis are sent by name, with their pictures, once ready", async () => {
+    await using test = await createTestContext();
+    const emoji: ShownEmoji = {
+        shortcode: "blob",
+        instance_id: null,
+        url: null,
+        media_type: "image/gif",
+        sha256: null,
+        preview_sha256: null,
+        processed_at: null,
+    };
+    const sent = (picture: Partial<ShownEmoji>) =>
+        emojiExtensions(test.ctx, [{ ...emoji, ...picture }]);
 
-    assertEquals(emojiExtensions([{ ...emoji, url: "https://a.example/blob.gif" }]), {
+    assertEquals(sent({ url: "https://a.example/blob.gif" }), {
         "pub.versia:custom_emojis": {
             emojis: [{
                 name: ":blob:",
@@ -61,6 +74,22 @@ Deno.test("emojis are sent by name, with their pictures, unless Verso keeps the 
             }],
         },
     });
-    assertEquals(emojiExtensions([{ ...emoji, url: null }]), undefined);
-    assertEquals(emojiExtensions([]), undefined);
+    assertEquals(
+        sent({ url: null, sha256: "ab", processed_at: test.clock.now() }),
+        {
+            "pub.versia:custom_emojis": {
+                emojis: [{
+                    name: ":blob:",
+                    content: {
+                        "image/gif": { content: "https://social.example/media/ab", remote: true },
+                    },
+                }],
+            },
+        },
+    );
+
+    // Stored, but not processed, or processing failed.
+    assertEquals(sent({ url: null, sha256: "ab" }), undefined);
+    assertEquals(sent({ url: null, processed_at: test.clock.now() }), undefined);
+    assertEquals(emojiExtensions(test.ctx, []), undefined);
 });
