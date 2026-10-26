@@ -16,11 +16,11 @@ export type NewJob = {
     readonly dedupeKey?: string;
     /** Puts it in a group, such as the instance it is for, which its queue may limit. */
     readonly group?: string;
-    /** Keeps the job once finished, and with it its dedupe key, until then. */
+    /** Retains the job after it finishes, and with it its dedupe key, until then. */
     readonly keepUntil?: Date;
     /**
-     * Whether to wake idle workers on Postgres at once, rather than on their next poll, which is
-     * the default. Each wakeup is a notification, and Postgres commits those one at a time, so
+     * Whether to wake idle workers on Postgres immediately, rather than on their next poll, which
+     * is the default. Each wakeup is a notification, and Postgres commits those one at a time, so
      * busy queues, whose workers poll soon anyway, are better off without.
      */
     readonly wake?: boolean;
@@ -50,9 +50,9 @@ const rowOf = (ctx: Context, job: NewJob) => {
 };
 
 /**
- * Adds a job inside the caller's unit of work, so it exists exactly when the change that caused
- * it commits, and wakes idle workers on Postgres once it does. Returns its id, or `undefined`
- * when its dedupe key is already queued.
+ * Adds a job inside the caller's transaction, so it exists exactly when the change that caused it
+ * commits, and wakes idle workers on Postgres once it does. Returns its id, or `undefined` when its
+ * dedupe key is already queued.
  */
 export const enqueue = async (
     ctx: Context,
@@ -81,7 +81,7 @@ export const enqueueAll = async (ctx: Context, jobs: readonly NewJob[]): Promise
         for (const row of inserted) woken.add(row.queue);
     }
 
-    // A queue is woken if any job it got asks to be.
+    // A queue is woken if any job it received asks to be.
     const waking = new Set(jobs.filter((job) => job.wake !== false).map((job) => job.queue));
 
     for (const queue of woken) if (waking.has(queue)) await notify(ctx.db, jobsChannel, queue);
@@ -99,10 +99,10 @@ export type ClaimOptions = {
 };
 
 /**
- * Leases up to `limit` due jobs from one queue, highest priority first, then the first made, so a
- * group's jobs run in the order they were made, but for groups that are paused. Each claim
- * uses up an attempt. A job whose lease expired, say because its worker crashed, is due again, so
- * a job may run more than once and every handler must be idempotent.
+ * Leases up to `limit` due jobs from one queue, highest priority first, then oldest first, so a
+ * group's jobs run in the order they were created, except for groups that are paused. Each claim
+ * uses up an attempt. A job whose lease expired, say because its worker crashed, is due again, so a
+ * job may run more than once and every handler must be idempotent.
  */
 export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTable[]> => {
     const now = ctx.clock.now();
@@ -147,8 +147,8 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
 };
 
 /**
- * Gives a claimed job back without running it, as it was before the claim, so another worker, or
- * this one later, can claim it.
+ * Releases a claimed job without running it, restoring it to its state before the claim, so another
+ * worker, or this one later, can claim it.
  */
 export const release = async (ctx: Context, job: JobsTable): Promise<void> => {
     await ctx.db.updateTable("jobs")
@@ -164,7 +164,7 @@ export const release = async (ctx: Context, job: JobsTable): Promise<void> => {
 };
 
 /**
- * Deletes a job that ran successfully, or marks it finished while it should be kept. Like `fail`,
+ * Deletes a job that ran successfully, or marks it finished if it should be retained. Like `fail`,
  * it only touches the job while this claim still holds it, so a worker that lost its lease can't
  * undo someone else's newer claim.
  */
@@ -184,8 +184,8 @@ export const complete = async (ctx: Context, job: JobsTable): Promise<void> => {
 };
 
 /**
- * Deletes finished jobs that no longer need to be kept, dead letters kept as long as settings say,
- * and pauses that ended.
+ * Deletes finished jobs that no longer need to be retained, dead letters retained as long as the
+ * settings say, and pauses that ended.
  */
 export const deleteExpiredJobs = async (ctx: Context): Promise<void> => {
     const now = ctx.clock.now();
@@ -205,20 +205,20 @@ export const deleteExpiredJobs = async (ctx: Context): Promise<void> => {
 };
 
 /**
- * What a job keeps once it dies: its payload, or what `deadPayload` keeps of it, and its dedupe
- * key only while it is kept anyway, so the same work can be queued again.
+ * What a job retains once it dies: its payload, or what `deadPayload` retains of it, and its dedupe
+ * key only while it is retained anyway, so the same work can be queued again.
  */
 const deadColumns = (ctx: Context, job: JobsTable, deadPayload?: DeadPayload) => ({
     ...deadPayload && { payload: deadPayload(job.payload) },
     ...!(job.keep_until !== null && job.keep_until > ctx.clock.now()) && { dedupe_key: null },
 });
 
-/** What a queue's dead letters keep of their payload, such as a summary of a large one. */
+/** What a queue's dead letters retain of their payload, such as a summary of a large one. */
 export type DeadPayload = (payload: JobPayload) => JobPayload;
 
 /**
- * Exponential backoff with jitter: about 30 seconds after the first attempt, doubling each time,
- * at most six hours. Each wait is scaled by a random factor between ½ and 1, so jobs that failed
+ * Exponential backoff with jitter: about 30 seconds after the first attempt, doubling each time, at
+ * most six hours. Each wait is scaled by a random factor between ½ and 1, so jobs that failed
  * together don't all retry together.
  */
 export const backoffMs = (attempts: number, random: () => number = Math.random): number =>
@@ -226,7 +226,7 @@ export const backoffMs = (attempts: number, random: () => number = Math.random):
 
 /**
  * Records a failed run. The job is retried after a backoff, or, once its attempts are used up,
- * stays in the table as a dead letter for a while, as {@link deadColumns} keeps it.
+ * stays in the table as a dead letter for a while, as {@link deadColumns} retains it.
  */
 export const fail = async (
     ctx: Context,
@@ -252,7 +252,7 @@ export const fail = async (
 };
 
 /**
- * Puts a job off until `runAt`, such as when the server it talks to asked to be left alone until
+ * Postpones a job until `runAt`, such as when the server it talks to asked to be left alone until
  * then. Waiting isn't failing, so the attempt this run used is given back.
  */
 export const postpone = async (
@@ -276,8 +276,8 @@ export const postpone = async (
 };
 
 /**
- * Records a failed run that retrying can't fix, such as an entity that is invalid. The job becomes
- * a dead letter at once, kept for a while like any other.
+ * Records a failed run that retrying can't fix, such as an invalid entity. The job becomes a dead
+ * letter immediately, retained for a while like any other.
  */
 export const giveUp = async (
     ctx: Context,

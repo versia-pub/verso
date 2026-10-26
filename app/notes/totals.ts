@@ -1,7 +1,7 @@
 /**
- * Other instances' notes' totals: how many likes, shares and replies their instances say they
- * have, which Verso can't count itself, as it only hears of some. A job fetches them from the
- * note's collections, so saving a note doesn't wait on its instance.
+ * Totals of remote statuses: how many likes, boosts and replies their instances report. Verso can't
+ * count these itself, as it only hears of some of them. A job fetches them from the status's
+ * collections, so saving a status doesn't wait on its instance.
  * @see https://versia.pub/api/endpoints#entity-collections
  * @module
  */
@@ -16,12 +16,12 @@ import { entityUrl } from "../kernel/urls.ts";
 import { findNote, type NoteRow } from "./note_queries.ts";
 import { saveTotals, totalsOf } from "./total_queries.ts";
 
-/** The queue that fetches other instances' notes' totals. */
+/** The queue that fetches the totals of remote statuses. */
 export const totalsQueue = "note-totals";
 
 const TotalsJob = z.object({ noteId: z.string() });
 
-/** Has a job fetch the totals of `note`, another instance's, unless one is about to. */
+/** Queues a job to fetch the totals of `note`, a remote status, unless one is already queued. */
 export const fetchTotalsLater = async (ctx: Context, note: NoteRow): Promise<void> => {
     if (note.instance_id === null) return;
 
@@ -35,12 +35,12 @@ export const fetchTotalsLater = async (ctx: Context, note: NoteRow): Promise<voi
     });
 };
 
-/** How long totals are shown before a local user opening their note has them fetched again. */
+/** How long totals are shown before a local user opening their status triggers a fresh fetch. */
 const totalsMaxAgeMs = 60 * 60_000;
 
 /**
- * Has the totals of the note `noteId`, or of the note it shares, fetched again, if it is another
- * instance's and they were fetched over an hour ago, or never, when a local user opens it.
+ * Queues a refetch of the totals of the status `noteId`, or of the status it boosts, if it is a
+ * remote status and the totals were fetched over an hour ago, or never, when a local user opens it.
  */
 export const refreshTotals = async (ctx: Context, noteId: string): Promise<void> => {
     const opened = await findNote(ctx, noteId);
@@ -56,16 +56,16 @@ export const refreshTotals = async (ctx: Context, noteId: string): Promise<void>
 };
 
 /**
- * The largest total kept, which a database integer holds. An instance can say its notes have more,
- * but no note does.
+ * The largest total stored, which a database integer can hold. An instance can report more, but no
+ * status has more.
  */
 const largestTotal = 2 ** 31 - 1;
 
-/** Any collection's total, which is all of it Verso reads. */
+/** Any collection's total, which is all of it that Verso reads. */
 const Total = z.object({ total: z.number().int().min(0) });
 
 /**
- * The total of one of a note's collections, or `null` if its instance doesn't have it. Asks for
+ * The total of one of a status's collections, or `null` if its instance doesn't have it. Requests
  * one item, as a page can't be empty.
  */
 const fetchTotal = async (ctx: Context, domain: string, remoteId: string, name: string) => {
@@ -91,8 +91,8 @@ const fetchTotal = async (ctx: Context, domain: string, remoteId: string, name: 
 };
 
 /**
- * Fetches the totals of the note in the job from its instance. A note gone since, or a share, has
- * none, and nor does one on an instance that is blocked.
+ * Fetches the totals of the status in the job from its instance. A status deleted since, or a
+ * boost, has none, and nor does one on a blocked instance.
  */
 export const totalsHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = TotalsJob.safeParse(job.payload);

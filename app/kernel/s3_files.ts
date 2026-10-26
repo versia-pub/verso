@@ -17,14 +17,14 @@ export type S3Bucket = {
     readonly publicUrl?: string;
 };
 
-/** Files kept under their hash never change, so anything serving them may cache them for good. */
+/** Files stored under their hash never change, so anything serving them may cache them for good. */
 const cacheControl = "public, max-age=31536000, immutable";
 
-/** What `check` writes, then removes. It isn't a file key, so no file can be kept under it. */
+/** What `check` writes, then removes. It isn't a file key, so no file can be stored under it. */
 const checkName = "verso-check";
 
 /**
- * Keeps files in an S3 bucket, each object named by its key, with requests signed with AWS
+ * Stores files in an S3 bucket, each object named by its key, with requests signed with AWS
  * Signature Version 4 and sent through `transport`. Buckets are named in the path, which every S3
  * server understands, rather than in the hostname.
  * @see https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html
@@ -47,7 +47,7 @@ export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): F
         );
     };
 
-    /** An error saying what the server answered to `method` for `name`. */
+    /** An error saying how the server responded to `method` for `name`. */
     const failure = async (response: Response, method: string, name: string) => {
         const said = (await response.text()).slice(0, 500);
         return new Error(`S3 answered ${response.status} to ${method} ${name}: ${said}`);
@@ -65,7 +65,8 @@ export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): F
             headers: {
                 "content-type": type,
                 "cache-control": cacheControl,
-                // Served from the bucket, a file that may not be shown is saved, as Verso serves it.
+                // Served from the bucket, a file that may not be displayed is downloaded, as Verso
+                // serves it.
                 ...type === "application/octet-stream" && { "content-disposition": "attachment" },
                 "x-amz-content-sha256": sha256,
             },
@@ -74,7 +75,9 @@ export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): F
         await response.body?.cancel();
     };
 
-    /** Removes `name`. One that isn't there counts as removed: S3 answers 204, some servers 404. */
+    /**
+     * Removes `name`. One that isn't there counts as removed: S3 responds 204, some servers 404.
+     */
     const remove = async (name: string) => {
         const response = await send("DELETE", name);
         if (!response.ok && response.status !== 404) {
@@ -87,7 +90,8 @@ export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): F
 
     return {
         ...publicUrl !== undefined && { publicUrl: (key: string) => `${publicUrl}/${key}` },
-        // S3 needs the body's length, which a streamed body doesn't say, so the file is read whole.
+        // S3 needs the body's length, which a streamed body doesn't give, so the file is read
+        // whole.
         put: async (file, mediaType) => {
             checkFileKey(file.sha256);
             const bytes = await new Response(await file.open()).bytes();

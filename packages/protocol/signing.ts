@@ -19,7 +19,7 @@ export interface SignedMessage {
 
 export type Verification =
     | { readonly ok: true; readonly signedBy: string }
-    /** "invalid" means answering 401, "expired" means 422. */
+    /** "invalid" means respond 401, "expired" means 422. */
     | { readonly ok: false; readonly reason: "invalid" | "expired" };
 
 /** The longest a signature stays valid, either side of its timestamp. */
@@ -65,11 +65,11 @@ export const sign = async (
 };
 
 /**
- * Checks the Versia-* headers on `message`. `publicKeyOf` looks up the public key of the
+ * Validates the Versia-* headers on `message`. `publicKeyOf` looks up the public key of the
  * instance named in Versia-Signed-By, in canonical form (see `canonicalizeDomain`), which is also
  * what `signedBy` holds on success. It is only called once the headers and timestamp have been
- * checked, and only with a domain name, never an IP address or a port, so a request can't point it
- * at an address inside Verso's own network.
+ * validated, and only with a domain name, never an IP address or a port, so a request can't point
+ * it at an address inside Verso's own network.
  */
 export const verify = async (
     message: SignedMessage,

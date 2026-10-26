@@ -8,11 +8,11 @@ import { hashToken, randomToken } from "./secrets.ts";
 import { deleteToken, findTokenByHash, insertToken } from "./token_queries.ts";
 import type { AppsTable } from "./tables.ts";
 
-/** A token this server gave out, found by its hash, since that's all that is kept. */
+/** A token this server issued, found by its hash, since that's all that is stored. */
 const findToken = async (ctx: Context, token: string) =>
     await findTokenByHash(ctx, await hashToken(token));
 
-/** The viewer an access token stands for, if it's a token this server gave out. */
+/** The viewer an access token stands for, if it's a token this server issued. */
 export const authenticateToken = async (
     ctx: Context,
     token: string,
@@ -58,7 +58,7 @@ export const clientCredentialsFrom = (
     }
 };
 
-/** The app these credentials belong to, if they're right. */
+/** The app these credentials belong to, if they're valid. */
 export const authenticateClient = async (
     ctx: Context,
     credentials: ClientCredentials | undefined,
@@ -78,7 +78,7 @@ export type IssuedToken = {
     readonly createdAt: Date;
 };
 
-/** Makes a token for `app` to act for an account, or for itself if `accountId` is `null`. */
+/** Issues a token for `app` to act for an account, or for itself if `accountId` is `null`. */
 export const issueToken = async (
     ctx: Context,
     app: AppsTable,
@@ -102,7 +102,7 @@ export const issueToken = async (
 /** A PKCE code verifier: 43 to 128 of these characters. */
 const codeVerifier = /^[A-Za-z0-9._~-]{43,128}$/;
 
-/** What an app sends to trade a code for a token. */
+/** What an app sends to exchange a code for a token. */
 export type CodeExchange = {
     readonly code: string;
     readonly redirectUri: string | undefined;
@@ -111,7 +111,7 @@ export type CodeExchange = {
 
 /**
  * Whether the verifier matches the flow's S256 challenge, which is its SHA-256 in base64url, the
- * same as `hashToken`. Without a challenge, a verifier is refused rather than ignored, so an
+ * same as `hashToken`. Without a challenge, a verifier is rejected rather than ignored, so an
  * attacker can't strip the challenge from the user's request.
  * @see https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1
  */
@@ -122,10 +122,10 @@ const pkceMatches = async (challenge: string | null, verifier: string | undefine
             await hashToken(verifier) === challenge;
 
 /**
- * Trades a code for a token to act for the user who allowed it, with the scopes they allowed. The
- * code must be for this app and redirect URI, unexpired, and pass PKCE. It can only be tried once,
- * so a failed try uses it up too. Trying it again revokes the token it gave, since someone else
- * may have it.
+ * Exchanges a code for a token to act for the user who allowed it, with the scopes they allowed.
+ * The code must be for this app and redirect URI, unexpired, and pass PKCE. It can only be tried
+ * once, so a failed attempt uses it up too. Trying it again revokes the token it issued, since
+ * someone else may have it.
  * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
  */
 export const exchangeCode = (
@@ -174,7 +174,7 @@ export type GrantRefused = {
 };
 
 /**
- * A token for the grant the app asked for: a code the user allowed, or the app's own credentials.
+ * A token for the grant the app requested: a code the user allowed, or the app's own credentials.
  * @see https://www.rfc-editor.org/rfc/rfc6749#section-5.2
  */
 export const grantToken = async (
@@ -216,8 +216,8 @@ export const grantToken = async (
 };
 
 /**
- * Revokes a token, if `app` may: only the app it was issued to can. A token that doesn't exist,
- * or no longer does, is already revoked, so that is fine too.
+ * Revokes a token, if `app` may: only the app it was issued to can. A token that doesn't exist, or
+ * no longer does, is already revoked, so that is fine too.
  * @see https://www.rfc-editor.org/rfc/rfc7009#section-2.2
  */
 export const revokeToken = async (

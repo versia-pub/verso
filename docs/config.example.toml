@@ -20,16 +20,17 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 #     statement_timeout_seconds = 60 }
 
 [media]
-# How many pixels an uploaded picture may have, in each frame, before it is scaled down: as
-# many as 3840×2160 by default, as on Mastodon.
+# How many pixels an uploaded image may have, in each frame, before it is scaled down: 3840×2160 by
+# default, as on Mastodon.
 # max_pixels = 8294400
-# How many bytes an uploaded file may have: 16 MiB by default, as Mastodon allows pictures.
+# How many bytes an uploaded file may have: 16 MiB by default, as Mastodon allows for images.
 # max_upload_bytes = 16777216
-# How many hours an upload that hasn't been attached to a status may be kept before it is deleted: 24 by default, as Mastodon does. Also includes remote media.
+# How many hours an upload that hasn't been attached to a status is retained before it is deleted:
+# 24 by default, as Mastodon does. Also applies to unused remote media.
 # unattached_hours = 24
 
-# Where uploaded files are kept. Exactly one of these: the path of a directory, which Verso makes
-# if it isn't there, or a bucket on a server that speaks S3, such as AWS, Garage or MinIO.
+# Where uploaded files are stored. Exactly one of these: the path of a directory, which Verso
+# creates if it doesn't exist, or a bucket on a server that speaks S3, such as AWS, Garage or MinIO.
 storage = { filesystem = "/var/lib/verso/media" }
 # [media.storage.s3]
 # endpoint = "https://s3.eu-west-1.amazonaws.com"
@@ -49,8 +50,8 @@ storage = { filesystem = "/var/lib/verso/media" }
 # port = 8080
 # Where the instance is reached, if not at https://<domain>. Development only.
 # origin = "http://localhost:8080"
-# The reverse proxies in front of Verso, as addresses or CIDR ranges. Only these are believed
-# about who the client is (the X-Forwarded-For header).
+# The reverse proxies in front of Verso, as addresses or CIDR ranges. Only these are trusted to say
+# who the client is (the X-Forwarded-For header).
 trusted_proxies = ["127.0.0.1", "::1"]
 
 [http.rate_limit]
@@ -58,7 +59,7 @@ trusted_proxies = ["127.0.0.1", "::1"]
 # without one.
 # limit = 300
 # window_seconds = 300
-# Where counts are kept: "memory", in each server, or "database", shared by several web nodes.
+# Where counts are stored: "memory", in each server, or "database", shared by several web nodes.
 # store = "memory"
 
 [auth]
@@ -77,31 +78,31 @@ client_id = "verso"
 client_secret = "${file:/run/secrets/oidc-client-secret}"
 # The claim a new account's username comes from.
 # username_claim = "preferred_username"
-# Scopes to ask for besides openid and profile, such as "groups" for a groups claim.
+# Scopes to request besides openid and profile, such as "groups" for a groups claim.
 scopes = ["groups"]
 # Who gets an account on first login: "open", "closed", or anyone whose claim holds a value.
 registration = { claim = "groups", contains = "social-users" }
-# Roles given to whoever's claim holds a value, re-checked at every login.
+# Roles granted to whoever's claim holds a value, re-evaluated at every login.
 roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
 
 [federation]
-# Lets Verso reach other instances at internal addresses, such as on a local network.
+# Lets Verso reach remote instances at internal addresses, such as on a local network.
 # Development only.
 # allow_internal_addresses = false
 # Instances not to federate with, with their subdomains, besides the ones blocked with
 # `verso admin domains block`.
 # blocked_domains = []
-# Answers blocked instances as if nothing were wrong, rather than telling them they're blocked.
+# Responds to blocked instances as if nothing were wrong, rather than telling them they're blocked.
 # silent_blocks = false
 # How many days an instance can go unreached before Verso stops sending it anything, until it
 # hears from it again.
 # unreachable_days = 7
-# For how many hours a delivery to an instance is tried before it is given up on, at most 720.
+# For how many hours a delivery to an instance is retried before it is given up on, at most 720.
 # delivery_hours = 48
 
 [federation.fetch_limit]
-# How many fetches each process makes from one instance in a window, so that what others send
-# can't make Verso flood one.
+# How many fetches each process makes from one instance in a window, so that what remote instances
+# send can't make Verso flood one.
 # limit = 600
 # window_seconds = 300
 
@@ -138,11 +139,11 @@ updated = 2026-10-01
 # field_value = 255
 # A status, with its content warning. Links count as 23, whatever their length.
 # status = 10000
-# How many files a status may have attached.
+# How many media attachments a status may have.
 # attachments = 16
-# How many accounts a status may mention. Mentions past them are left as text.
+# How many accounts a status may mention. Mentions beyond that are left as text.
 # mentions = 100
-# A file's description, its alt text.
+# A media attachment's description, its alt text.
 # media_description = 4000
 
 [permissions]
@@ -159,7 +160,7 @@ updated = 2026-10-01
 # ]
 
 [jobs]
-# How many days a job that failed for good is kept, for someone to look at.
+# How many days a job that failed for good is retained, for someone to look at.
 # dead_letter_days = 30
 
 [logging]

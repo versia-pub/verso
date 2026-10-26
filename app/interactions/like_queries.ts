@@ -10,7 +10,7 @@ import { uncountLikesOn } from "../notes/note_queries.ts";
 export type LikeRow = Selectable<LikesTable>;
 
 /**
- * Adds a local like, unless the account already likes or dislikes the note. Returns it if it was
+ * Adds a local like, unless the account already likes or dislikes the status. Returns it if it was
  * added.
  */
 export const insertLike = async (
@@ -29,7 +29,7 @@ export const insertLike = async (
         .returningAll()
         .executeTakeFirst();
 
-/** Removes an account's like or dislike of a note, and returns it, if there was one. */
+/** Removes an account's like or dislike of a status, and returns it, if there was one. */
 export const deleteLike = async (
     ctx: Context,
     accountId: string,
@@ -41,7 +41,7 @@ export const deleteLike = async (
         .returningAll()
         .executeTakeFirst();
 
-/** Adds another instance's like or dislike. */
+/** Adds a remote like or dislike. */
 export const insertRemoteLike = async (
     ctx: Context,
     like: Insertable<LikesTable>,
@@ -64,7 +64,7 @@ export const findRemoteLike = async (
 export const deleteLikeById = async (ctx: Context, id: string): Promise<LikeRow | undefined> =>
     await ctx.db.deleteFrom("likes").where("id", "=", id).returningAll().executeTakeFirst();
 
-/** The account's like or dislike of a note, if it has one. */
+/** The account's like or dislike of a status, if it has one. */
 export const findLike = async (
     ctx: Context,
     accountId: string,
@@ -92,8 +92,8 @@ export const likedAmong = async (
 };
 
 /**
- * A page of the likes, not dislikes, of a note, but those of the accounts `blocked`, or by an
- * account, newest first.
+ * A page of the likes (not dislikes) of a status, excluding those by the accounts `blocked`, or by
+ * an account, newest first.
  */
 export const likePage = async (
     ctx: Context,
@@ -113,7 +113,7 @@ export const likePage = async (
     return await readPage(query, "id", page);
 };
 
-/** Uncounts the likes, not dislikes, of an account from the notes it likes. */
+/** Decrements the like counts of the statuses liked (not disliked) by an account. */
 export const uncountLikesBy = (ctx: Context, accountId: string): Promise<void> =>
     uncountLikesOn(
         ctx,
@@ -122,7 +122,7 @@ export const uncountLikesBy = (ctx: Context, accountId: string): Promise<void> =
             .where("likes.kind", "=", "like"),
     );
 
-/** A local like, not one from another instance, if there is one with this id. */
+/** A local like, not one from a remote instance, if there is one with this id. */
 export const findLocalLike = async (ctx: Context, id: string): Promise<LikeRow | undefined> =>
     await ctx.db.selectFrom("likes").selectAll()
         .where("id", "=", id)
@@ -130,8 +130,9 @@ export const findLocalLike = async (ctx: Context, id: string): Promise<LikeRow |
         .executeTakeFirst();
 
 /**
- * The likes or dislikes of a note, `kind` as they are, with the domains of their instances. It
- * reads the `instances` table rather than asking its module, so that it is one query.
+ * The likes or dislikes of a status, depending on `kind`, with the domains of their instances. It
+ * reads the `instances` table directly rather than going through its module, so that it takes one
+ * query.
  */
 const ofNote = (ctx: Context, noteId: string, kind: LikeKind) =>
     ctx.db.selectFrom("likes")
@@ -140,8 +141,8 @@ const ofNote = (ctx: Context, noteId: string, kind: LikeKind) =>
         .where("likes.kind", "=", kind);
 
 /**
- * A note's likes or dislikes, oldest first, from `offset`: their ids here, and for those from other
- * instances, their ids there and the instances' domains.
+ * A status's likes or dislikes, oldest first, from `offset`: their local ids, and for remote ones,
+ * their ids on the remote instance and the instances' domains.
  */
 export const likesOfNote = async (
     ctx: Context,
@@ -157,7 +158,7 @@ export const likesOfNote = async (
         .limit(limit)
         .execute();
 
-/** How many likes or dislikes a note has. */
+/** How many likes or dislikes a status has. */
 export const countLikesOfNote = async (
     ctx: Context,
     noteId: string,
@@ -165,7 +166,9 @@ export const countLikesOfNote = async (
 ): Promise<number> =>
     readCount(await ofNote(ctx, noteId, kind).select(countAll).executeTakeFirstOrThrow());
 
-/** The notes with one of `visibilities` an account likes or dislikes, `kind` as they are. */
+/**
+ * The statuses with one of `visibilities` that an account likes or dislikes, depending on `kind`.
+ */
 const byAccount = (
     ctx: Context,
     accountId: string,
@@ -178,8 +181,8 @@ const byAccount = (
     .where("notes.visibility", "in", visibilities);
 
 /**
- * The ids of the notes with one of `visibilities` an account likes or dislikes, the earliest liked
- * first, from `offset`.
+ * The ids of the statuses with one of `visibilities` that an account likes or dislikes, earliest
+ * liked first, from `offset`.
  */
 export const notesLikedBy = async (
     ctx: Context,
@@ -197,7 +200,7 @@ export const notesLikedBy = async (
         .execute())
         .map((row) => row.note_id);
 
-/** How many notes with one of `visibilities` an account likes or dislikes. */
+/** How many statuses with one of `visibilities` an account likes or dislikes. */
 export const countNotesLikedBy = async (
     ctx: Context,
     accountId: string,
@@ -209,7 +212,7 @@ export const countNotesLikedBy = async (
             .executeTakeFirstOrThrow(),
     );
 
-/** How many likes, not dislikes, the accounts `by` make of each of `noteIds` they like. */
+/** How many likes (not dislikes) the accounts `by` made of each of `noteIds`. */
 export const countLikesBy = async (
     ctx: Context,
     noteIds: readonly string[],

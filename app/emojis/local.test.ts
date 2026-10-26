@@ -17,7 +17,7 @@ import { keepRemoteEmojis } from "./emojis.ts";
 import { emojiRoutes } from "./routes.ts";
 import { createLocalEmoji } from "./testing.ts";
 
-/** alice, with this instance's emojis blob and cat, and b.example's dog. */
+/** alice, with the local instance's emojis blob and cat, and b.example's dog. */
 const open = async () => {
     const test = await createTestContext();
     await createLocalAccount(test.ctx, "alice");
@@ -28,7 +28,7 @@ const open = async () => {
         picture: { url: "https://b.example/dog.png", mediaType: "image/png" },
     }]);
 
-    /** The shortcodes of the emojis a note uses, as its status shows them. */
+    /** The shortcodes of the emojis a status uses, as the rendered status shows them. */
     const shown = async (noteId: string) => {
         const note = await findNote(test.ctx, noteId);
         const [status] = note ? await renderStatuses(test.ctx, [note], null) : [];
@@ -40,7 +40,7 @@ const open = async () => {
 
 Deno.test("this instance's emojis are listed for the picker, by shortcode", async () => {
     await using test = await open();
-    // One Verso keeps the picture of itself isn't listed until Verso can serve it.
+    // One whose picture Verso stores itself isn't listed until Verso can serve it.
     const id = await createLocalEmoji(test.ctx, "kept");
     await test.ctx.db.updateTable("media").set({ url: null })
         .where("id", "in", (eb) => eb.selectFrom("emojis").select("media_id").where("id", "=", id))
@@ -92,7 +92,7 @@ Deno.test("a local account uses this instance's emojis its name, bio and fields 
     });
     assertEquals(await shortcodes(), ["blob", "cat"]);
 
-    // The owner sees them too, and other instances are sent them.
+    // The owner sees them too, and remote instances are sent them.
     const response = await app.request("/api/v1/accounts/verify_credentials", {
         headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` },
     });

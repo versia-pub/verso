@@ -223,7 +223,7 @@ Deno.test("who reacted with an emoji is listed a page at a time, the latest firs
     assertEquals(ids((await test.request("GET", next.pathname + next.search)).body), ["bob"]);
     assertEquals(ids((await test.request("GET", path(":blob:"), null)).body), ["dave"]);
 
-    // An emoji no one reacted with is no list.
+    // An emoji no one reacted with has no list.
     assertEquals((await test.request("GET", path("👀"))).status, 404);
     assertEquals((await test.request("GET", path(":nope:"))).status, 404);
 });
@@ -263,7 +263,7 @@ Deno.test("the blocker isn't shown, or counted, the likes, shares and reactions 
         { name: "🎉", count: 2, remote: false, me: true },
     ]]);
 
-    // Anyone else, the blocked account too, sees them all.
+    // Anyone else, including the blocked account, sees them all.
     for (const as of ["bob", "dave", null]) {
         assertEquals(await ids("favourited_by", as), ["dave", "bob"]);
         assertEquals(await ids("reblogged_by", as), ["dave", "bob"]);

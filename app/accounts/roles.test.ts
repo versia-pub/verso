@@ -44,7 +44,7 @@ Deno.test("two roles renamed to one name at once get it once", async () => {
     await giveRole(test.ctx, "alice", "Admin");
     const alice = await roleManager(test.ctx, "alice", new Set());
 
-    // Both check the name is free before either takes it.
+    // Both check that the name is free before either takes it.
     const renamed = await Promise.all(
         ["Red", "Blue"].map((id) => updateManagedRole(test.ctx, alice, id, { name: "Purple" })),
     );

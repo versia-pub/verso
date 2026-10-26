@@ -24,7 +24,9 @@ const deliverTested: Subscriber = async (ctx, event) => {
     await queueDeliveries(ctx, user, event.recipients);
 };
 
-/** alice here, two users on b.example, one on c.example, and one on the blocked d.example. */
+/**
+ * alice is local, two users are on b.example, one on c.example, and one on the blocked d.example.
+ */
 const open = async () => {
     const test = await createTestContext({ subscribers: [deliverTested] });
     const alice = await createLocalAccount(test.ctx, "alice");
@@ -54,7 +56,7 @@ const open = async () => {
         return ctx.transaction((tx) => emit(tx, event));
     };
 
-    /** The deliveries queued, by domain. */
+    /** The queued deliveries, by domain. */
     const queued = async () =>
         (await test.ctx.db.selectFrom("jobs").select("payload").where("queue", "=", deliverQueue)
             .execute())
@@ -74,7 +76,7 @@ Deno.test("an entity is queued once for each instance its recipients are on", as
     assertEquals(jobs[0].body, jobs[1].body);
     assertEquals(JSON.parse(jobs[0].body).username, "alice");
 
-    // Grouped by instance, and given up on by age, not by how often they were tried.
+    // Grouped by instance, and given up on by age, not by number of attempts.
     const rows = await test.ctx.db.selectFrom("jobs").select(["group_key", "max_attempts"])
         .orderBy("group_key").execute();
     assertEquals(rows, [

@@ -95,7 +95,7 @@ Deno.test("internal addresses can be allowed, for a local network", async () => 
 });
 
 Deno.test("a timed transport gives up on a server that takes too long, but not on others", async () => {
-    // Answers at once, or never, but for when the request is given up on.
+    // Responds at once, or never, but for when the request is given up on.
     const transport: Transport = (request) =>
         request.url.includes("slow")
             ? new Promise((_, reject) => {

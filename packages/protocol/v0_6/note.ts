@@ -2,7 +2,7 @@ import { z } from "zod";
 import { contentFormatOf, Entity, optional, ReferenceText, WebUrl } from "./common.ts";
 
 /**
- * A post.
+ * A status, as Versia's Note entity.
  * @see https://versia.pub/entities/note
  */
 export const Note = Entity.extend({
@@ -28,7 +28,7 @@ export const Note = Entity.extend({
     })),
     /**
      * "public", "followers", or a reference to a group. "public" and "followers" are also valid
-     * bare ids, so the schema can't tell them apart; the code that reads the note does.
+     * bare ids, so the schema can't tell them apart; the code that reads the Note does.
      */
     group: optional(ReferenceText),
     is_sensitive: z.boolean(),

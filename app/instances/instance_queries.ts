@@ -2,17 +2,17 @@ import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
 import type { InstancesTable } from "./tables.ts";
 
-/** The id of the instance at `domain`, if Verso knows it. */
+/** The id of the instance at `domain`, if Verso has it. */
 export const findInstanceId = async (ctx: Context, domain: string): Promise<string | undefined> =>
     (await ctx.db.selectFrom("instances").select("id").where("domain", "=", domain)
         .executeTakeFirst())?.id;
 
-/** Whether the instance at `domain` takes instance messages, as it last said. */
+/** Whether the instance at `domain` accepts instance messages, as it last said. */
 export const takesMessages = async (ctx: Context, domain: string): Promise<boolean> =>
     (await ctx.db.selectFrom("instances").select("takes_messages").where("domain", "=", domain)
         .executeTakeFirst())?.takes_messages === true;
 
-/** How many other instances this one knows of. */
+/** How many other instances this one has stored. */
 export const countInstances = async (ctx: Context): Promise<number> =>
     readCount(await ctx.db.selectFrom("instances").select(countAll).executeTakeFirstOrThrow());
 
@@ -34,8 +34,8 @@ export const domainsOf = async (
 };
 
 /**
- * The domains of the instances `ids` that are on `protocol`, sorted, but for those that couldn't
- * be reached since `before` or earlier.
+ * The domains of the instances `ids` that are on `protocol`, sorted, except those that have been
+ * unreachable since `before` or earlier.
  */
 export const reachableDomainsOf = async (
     ctx: Context,
@@ -64,7 +64,7 @@ export type InstanceMetadataColumns = {
     readonly takes_messages: boolean;
 };
 
-/** Keeps an instance's fetched metadata in its row, which it creates if there is none yet. */
+/** Stores an instance's fetched metadata in its row, which it creates if there is none yet. */
 export const saveInstanceMetadata = async (
     ctx: Context,
     domain: string,
@@ -82,7 +82,7 @@ export const saveInstanceMetadata = async (
         .execute();
 };
 
-/** The key Verso has for the instance at `domain`, and when it was fetched, if it knows it. */
+/** The key Verso has for the instance at `domain`, and when it was fetched, if it has one. */
 export const findStoredKey = (
     ctx: Context,
     domain: string,

@@ -29,8 +29,8 @@ export const deleteDomainBlock = async (
         .executeTakeFirst()) !== undefined;
 
 /**
- * A page of the domains `accountId` blocks, the latest blocked first, each with the block's id,
- * which pages are counted by.
+ * A page of the domains `accountId` blocks, latest blocked first, each with the block's id, which
+ * pages are counted by.
  */
 export const domainBlockPage = async (
     ctx: Context,
@@ -45,7 +45,7 @@ export const domainBlockPage = async (
         page,
     );
 
-/** Whether `accountId` blocks the instance's domain, or one it is under. */
+/** Whether `accountId` blocks the instance's domain, or a domain it is under. */
 const blocksInstance = (accountId: string) => (eb: ExpressionBuilder<Database, "instances">) =>
     eb.exists(
         eb.selectFrom("account_domain_blocks")
@@ -65,8 +65,8 @@ const blocksInstance = (accountId: string) => (eb: ExpressionBuilder<Database, "
 
 /**
  * The instances on the domains `accountId` blocks, and on their subdomains, as a subquery. They are
- * far fewer than the accounts on them. It reads the `instances` table rather than asking its
- * module, so that it is one query.
+ * far fewer than the accounts on them. It reads the `instances` table directly rather than going
+ * through its module, so that it takes one query.
  */
 export const domainBlockedInstancesQuery = (ctx: Context, accountId: string): InstanceIdQuery =>
     ctx.db.selectFrom("instances")
@@ -75,7 +75,8 @@ export const domainBlockedInstancesQuery = (ctx: Context, accountId: string): In
 
 /**
  * Which of `otherIds` are on domains `accountId` blocks, or their subdomains. It reads the
- * `accounts` and `instances` tables rather than asking their modules, so that it is one query.
+ * `accounts` and `instances` tables directly rather than going through their modules, so that it
+ * takes one query.
  */
 export const domainBlockedAmong = async (
     ctx: Context,

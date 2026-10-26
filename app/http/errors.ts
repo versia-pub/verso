@@ -1,8 +1,8 @@
 import type { ContentfulStatusCode } from "@hono/hono/utils/http-status";
 
 /**
- * An error a request ends in, shown to the client in Mastodon's shape:
- * `{ "error": ..., "error_description": ... }`. Anything else thrown is a 500.
+ * An error a request ends in, returned to the client in Mastodon's shape: `{ "error": ...,
+ * "error_description": ... }`. Anything else thrown is a 500.
  */
 export class HttpError extends Error {
     constructor(
@@ -32,7 +32,7 @@ export class Unauthorized extends HttpError {
     }
 }
 
-/** A request to a route only other instances call, without a valid Versia signature. */
+/** A request to a route that only remote instances call, without a valid Versia signature. */
 export class BadSignature extends HttpError {
     constructor() {
         super(401, "The signature is missing or invalid");
@@ -72,7 +72,7 @@ export class ContentTooLarge extends HttpError {
     }
 }
 
-/** Over the rate limit. The reply's headers say when to come back. */
+/** Over the rate limit. The response's headers say when to come back. */
 export class TooManyRequests extends HttpError {
     constructor() {
         super(429, "Too many requests");
@@ -92,7 +92,7 @@ export class Unprocessable extends HttpError {
     }
 }
 
-/** An app's own token, where a route acts for a user. Mastodon answers 422 here. */
+/** An app's own token, where a route acts for a user. Mastodon responds 422 here. */
 export class UserRequired extends HttpError {
     constructor() {
         super(422, "This method requires an authenticated user");

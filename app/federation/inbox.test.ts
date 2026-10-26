@@ -22,7 +22,7 @@ const open = async () => {
     const evil = await addEvilInstance(network, "evil.test");
     const a = network.instances["a.test"].ctx;
 
-    /** What evil.test sends, with the reply's status and body. */
+    /** What evil.test sends, with the response's status and body. */
     const send = async (body: unknown, signedBy?: string) => {
         const response = await evil.send(inbox, { method: "POST", body, signedBy });
         const text = await response.text();
@@ -82,7 +82,7 @@ Deno.test("the same body from the same instance is queued once", async () => {
     assertEquals((await test.send(user)).status, 202);
     assertEquals((await test.jobs()).length, 1);
 
-    // Another body, or the same one from another instance, isn't the same.
+    // A different body, or the same body from a different instance, isn't a duplicate.
     await test.send({ ...user, username: "alice2" });
     await other.send(inbox, { method: "POST", body: user });
     assertEquals(

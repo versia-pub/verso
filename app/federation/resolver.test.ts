@@ -251,7 +251,7 @@ Deno.test("entities that refer to each other are fetched once each, without wait
                 saved.has(reference.id) ? { id: reference.id, fetchedAt: null } : undefined,
             ),
     };
-    // Read only once the type is made, when the first entity is prepared.
+    // Read only once the type is created, when the first entity is prepared.
     const resolve: Resolver = createResolver(createRegistry([linked]));
 
     evil.serve("/.versia/v0.6/entities/Linked/1", { type: "Linked", id: "1", next: "2" });
@@ -302,12 +302,12 @@ Deno.test("an instance that can't be reached now isn't fetched from", async () =
         .set({ parked_until: new Date(a.clock.now().getTime() + 60_000) })
         .where("domain", "=", "b.test").execute();
 
-    // What Verso has is used meanwhile.
+    // What Verso has is used in the meantime.
     assertEquals(await user("b.test", bob), id);
     assertEquals(fetched("b.test"), 1);
     await assertRejects(() => user("b.test", "nobody"), ResolveFailed);
 
-    // Once its wait is over, it is asked again.
+    // Once its wait is over, it is requested again.
     network.clock.advance(60_000);
     assertEquals(await user("b.test", bob), id);
     assertEquals(fetched("b.test"), 2);

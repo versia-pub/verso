@@ -1,7 +1,6 @@
 /**
- * Likes and dislikes as Versia has them: local users' likes, as other instances fetch them and are
- * sent them, with the collections of who likes what, and other instances' ones, as Verso takes them
- * in.
+ * Likes and dislikes as Versia has them: local users' likes, as remote instances fetch them and are
+ * sent them, with the collections of who likes what, and remote likes, as Verso receives them.
  * @see https://versia.pub/extensions/likes
  * @module
  */
@@ -44,7 +43,7 @@ const collectionNames: Readonly<Record<LikeKind, string>> = {
     dislike: "pub.versia:likes/Dislikes",
 };
 
-/** A local user's like as a Versia Like, if its user and note are still there. */
+/** A local user's like as a Versia Like, if its user and status still exist. */
 const renderVersiaLike = async (ctx: Context, like: LikeRow): Promise<v0_6.Like | undefined> => {
     const [author] = await userReferences(ctx, [like.account_id]);
     const liked = (await noteReferenceMap(ctx, [like.note_id])).get(like.note_id);
@@ -60,15 +59,15 @@ const renderVersiaLike = async (ctx: Context, like: LikeRow): Promise<v0_6.Like 
 };
 
 /**
- * Whether `requester`, another instance, may see a local user's like of `note`: if it may see the
- * note, or the note is its own.
+ * Whether `requester`, a remote instance, may see a local user's like of `note`: if it may see the
+ * status, or the status is its own.
  */
 const maySeeLike = (ctx: Context, note: NoteRow, requester: string) =>
     instanceMaySeeInteraction(ctx, note, note, requester);
 
 /**
- * Sends a local user's like of another instance's note to that instance, and a Delete when they
- * undo it. Likes of local notes are for a local author, so nothing is sent.
+ * Sends a local user's like of a remote status to that status's instance, and a Delete when they
+ * undo it. Likes of local statuses are for a local author, so nothing is sent.
  */
 export const likeDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isLikeEvent(event)) return;
@@ -91,8 +90,8 @@ export const likeDeliveries = async (ctx: Context, event: DomainEvent): Promise<
 };
 
 /**
- * The likes or dislikes of a local note, oldest first, for an instance that may see it, as
- * references to them: bare ids for local ones, and the host and id for other instances' ones.
+ * The likes or dislikes of a local status, oldest first, for an instance that may see it, as
+ * references to them: bare ids for local ones, and the host and id for remote ones.
  */
 const noteLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page, requester) => {
     const note = await findNote(ctx, id);
@@ -108,8 +107,8 @@ const noteLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page, 
 };
 
 /**
- * The public and unlisted notes a local user likes or dislikes, the earliest liked first, so pages
- * stay put as more are liked. Local users never dislike notes, so they have none of those.
+ * The public and unlisted statuses a local user likes or dislikes, earliest liked first, so pages
+ * stay stable as more are liked. Local users never dislike statuses, so they have none of those.
  */
 const userLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page) => {
     const owner = await findAccount(ctx, id);
@@ -124,28 +123,29 @@ const userLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page) 
     };
 };
 
-/** The collections likes add to Notes. */
+/** The collections that likes add to Notes. */
 export const noteLikeCollections: Readonly<Record<string, CollectionProvider>> = {
     [collectionNames.like]: noteLikes("like"),
     [collectionNames.dislike]: noteLikes("dislike"),
 };
 
-/** The collections likes add to Users. */
+/** The collections that likes add to Users. */
 export const userLikeCollections: Readonly<Record<string, CollectionProvider>> = {
     [collectionNames.like]: userLikes("like"),
     [collectionNames.dislike]: userLikes("dislike"),
 };
 
-/** A Like or Dislike, with the note it is of under one name. */
+/** A Like or Dislike, with the status it is of under one name. */
 type Liking = { readonly author: string; readonly note: string };
 
-/** The note `liked`, in a like `sender` sent, if Verso has it. */
+/** The status `liked`, in a like sent by `sender`, if Verso has it. */
 const likedNote = (ctx: Context, liked: string, sender: Sender) =>
     knownNoteRow(ctx, parseReference(liked, sender.domain));
 
 /**
- * Likes or dislikes of notes. Verso keeps those of notes it has, and drops others, rather than
- * fetching notes no one here may want. Those of local notes must be by users who may see them.
+ * Likes or dislikes of statuses. Verso stores those of statuses it has, and drops others, rather
+ * than fetching statuses no local user may want. Those of local statuses must be by users who may
+ * see them.
  */
 const likingType = <T extends v0_6.Like | v0_6.Dislike>(
     kind: LikeKind,
@@ -157,7 +157,7 @@ const likingType = <T extends v0_6.Like | v0_6.Dislike>(
     schema,
     // Only its author's instance may send it.
     authority: (entity, origin) => parseReference(entity.author, origin)?.host,
-    // The author is often new to Verso, but is only fetched for a like Verso will keep.
+    // The author is often new to Verso, but is only fetched for a like Verso will store.
     prepare: async (ctx, entity, sender, budget) => {
         if (await likedNote(ctx, liking(entity).note, sender) === undefined) return;
 
@@ -189,8 +189,8 @@ const likingType = <T extends v0_6.Like | v0_6.Dislike>(
 });
 
 /**
- * Likes and dislikes, as other instances send them, and Deletes undo them, and local users' likes,
- * which other instances that may see their notes fetch.
+ * Likes and dislikes, as remote instances send them, and Deletes undo them, and local users' likes,
+ * which remote instances that may see their statuses fetch.
  */
 export const likeTypes: readonly EntityType[] = [
     {

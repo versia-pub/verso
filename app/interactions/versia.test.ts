@@ -13,7 +13,7 @@ import { createNetwork } from "../testing/network.ts";
 import { findLike } from "./like_queries.ts";
 import { keepRemoteLike, like, unlike } from "./likes.ts";
 
-/** alice and bob here, and carol on b.example and erin on c.example, who follow no one. */
+/** alice and bob are local, and carol is on b.example and erin on c.example, who follow no one. */
 const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
@@ -76,7 +76,7 @@ Deno.test("a like of another instance's note is sent there, and a Delete when un
 Deno.test("a local like is fetched by instances that may see its note, or whose note it is", async () => {
     await using test = await open();
     const hidden = await createNote(test.ctx, "bob", { visibility: "private" });
-    // A note only for alice, which c.example may not see.
+    // A status only for alice, which c.example may not see.
     const theirs = await createNote(
         test.ctx,
         "carol",

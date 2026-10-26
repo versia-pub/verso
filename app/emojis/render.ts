@@ -1,14 +1,15 @@
 /**
- * Turns custom emojis into the client API's entities.
+ * Renders custom emojis as the client API's entities.
  * @module
  */
 import type { CustomEmoji } from "@versia/client-api";
 import type { ShownEmoji } from "./emoji_queries.ts";
 
 /**
- * Emojis as the client API has them. Pictures are shown where they are, as Verso makes no still
- * versions of them, and those Verso keeps itself are left out until it can serve them. Only this
- * instance's emojis are for the picker; other instances' ones are only for showing.
+ * Custom emojis as the client API has them. Pictures are served from where they are, as Verso makes
+ * no still versions of them, and those Verso stores itself are omitted until it can serve them.
+ * Only the local instance's emojis are for the picker; remote instances' emojis are only for
+ * display.
  */
 export const renderEmojis = (emojis: readonly ShownEmoji[]): CustomEmoji[] =>
     emojis.flatMap((emoji) =>

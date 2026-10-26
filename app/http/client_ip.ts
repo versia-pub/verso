@@ -7,9 +7,9 @@ const trusted = (address: string, proxies: readonly Cidr[]) => {
 
 /**
  * The client's IP address. Behind a reverse proxy, every connection comes from the proxy, which
- * names the client in `X-Forwarded-For`. That header is only believed when the connection comes
- * from a trusted proxy, and only as far back as proxies are trusted, since anyone can send it.
- * Each proxy appends who connected to it, so the client is the last address not a trusted proxy.
+ * names the client in `X-Forwarded-For`. That header is only trusted when the connection comes from
+ * a trusted proxy, and only as far back as proxies are trusted, since anyone can send it. Each
+ * proxy appends who connected to it, so the client is the last address that is not a trusted proxy.
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Forwarded-For#selecting_an_ip_address
  */
 export const clientIp = (

@@ -1,7 +1,7 @@
 /**
- * Notes as Versia has them: local ones, as other instances fetch them and are sent them, and other
- * instances' ones, as Verso takes them in. What each takes is in `audience.ts`, `versia.ts` and
- * `remote.ts`; this joins them to the federation engine.
+ * Statuses as Versia Notes: local ones, as remote instances fetch them and are sent them, and
+ * remote ones, as Verso receives them. What each side accepts is in `audience.ts`, `versia.ts` and
+ * `remote.ts`; this module connects them to the federation engine.
  * @see https://versia.pub/entities/note
  * @module
  */
@@ -21,8 +21,9 @@ import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";
 import { deleteEntity } from "../federation/delete.ts";
 
 /**
- * Sends a local note just posted or edited to the instances of those it is shown to. Versia has no
- * edits, so an edited note is sent again whole, and replaces the one they have.
+ * Sends a local status that was just posted or edited to the instances of its audience. Versia has
+ * no edits, so an edited status is sent again in full and replaces the version the remote instance
+ * has.
  */
 const sendNote = async (ctx: Context, noteId: string) => {
     const note = await findNote(ctx, noteId);
@@ -34,9 +35,9 @@ const sendNote = async (ctx: Context, noteId: string) => {
 };
 
 /**
- * Sends other instances the notes local users post and edit, and Deletes for the ones they delete,
- * to the instances of those each is shown to. An edit and a Delete go to the author's followers as
- * they are now, and an edit to who it mentions now.
+ * Sends remote instances the statuses local users post and edit, and Deletes for the ones they
+ * delete, to the instances of each status's audience. An edit and a Delete go to the author's
+ * followers as they are now, and an edit to the users it mentions now.
  */
 export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (isNotePosted(event) || isNoteEdited(event)) return await sendNote(ctx, event.noteId);
@@ -55,7 +56,8 @@ export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
 };
 
 /**
- * A local user's public and unlisted notes, oldest first, so pages stay put as more are written.
+ * A local user's public and unlisted statuses, oldest first, so pages stay stable as more are
+ * posted.
  */
 const outbox: CollectionProvider = async (ctx, id, page) => {
     const owner = await findAccount(ctx, id);
@@ -70,8 +72,8 @@ const outbox: CollectionProvider = async (ctx, id, page) => {
 };
 
 /**
- * The public and unlisted notes a local user pins to their profile, which Versia calls featuring
- * them, the latest pinned first, as their profile shows them.
+ * The public and unlisted statuses a local user pins to their profile, which Versia calls featuring
+ * them, latest pinned first, as the profile shows them.
  */
 const featured: CollectionProvider = async (ctx, id, page) => {
     const owner = await findAccount(ctx, id);
@@ -85,12 +87,12 @@ const featured: CollectionProvider = async (ctx, id, page) => {
     };
 };
 
-/** The collections notes add to Users. */
+/** The collections that statuses add to Users. */
 export const noteCollections: Readonly<Record<string, CollectionProvider>> = { outbox, featured };
 
 /**
- * Removes the notes of a user another instance deleted, before the user is, in batches, so that a
- * user with many doesn't hold one transaction open over them all.
+ * Removes the statuses of a user that a remote instance deleted, before the user is removed, in
+ * batches, so that a user with many statuses doesn't hold one transaction open over all of them.
  */
 export const removeNotesOfDeletedUser = async (
     ctx: Context,
@@ -102,8 +104,9 @@ export const removeNotesOfDeletedUser = async (
 };
 
 /**
- * The notes that link to a local note by `link`, oldest first, for an instance that may see it.
- * Only public and unlisted ones are listed, so none is shown to an instance that may not see it.
+ * The statuses that link to a local status by `link`, oldest first, for an instance that may see
+ * it. Only public and unlisted statuses are listed, so none is exposed to an instance that may not
+ * see it.
  */
 const linkCollection = (link: NoteLink): CollectionProvider => async (ctx, id, page, requester) => {
     const note = await findNote(ctx, id);
@@ -120,8 +123,8 @@ const linkCollection = (link: NoteLink): CollectionProvider => async (ctx, id, p
 };
 
 /**
- * Notes: local ones, fetched by other instances that may see them, and other instances' ones,
- * sent or fetched, with their authors, who they mention and what they reply to fetched first.
+ * Versia Notes: local ones, fetched by remote instances that may see them, and remote ones, sent or
+ * fetched, with their authors, mentioned users and replied-to statuses fetched first.
  */
 export const noteType: EntityType<v0_6.Note> = {
     type: "Note",
@@ -132,14 +135,14 @@ export const noteType: EntityType<v0_6.Note> = {
     receive: receiveNote,
     deleteRemote: async (ctx, id, sender) => {
         const note = await findRemoteNote(ctx, sender.instanceId, id);
-        // A share is deleted as a Share, not a Note.
+        // A boost is deleted as a Share, not a Note.
         if (note?.reblog_of_id === null) await removeNote(ctx, note.id);
     },
     known: knownNote,
     collections: { replies: linkCollection("in_reply_to_id"), quotes: linkCollection("quote_id") },
     find: async (ctx, id, requester) => {
         const note = await findNote(ctx, id);
-        // A share is fetched as a Share, not a Note.
+        // A boost is fetched as a Share, not a Note.
         if (note === undefined || note.instance_id !== null || note.reblog_of_id !== null) {
             return undefined;
         }

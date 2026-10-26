@@ -122,8 +122,8 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
 };
 
 /**
- * Runs as a web node (`serve`), a job worker (`work`) or both (`all`) until SIGINT or SIGTERM,
- * then finishes the requests and jobs in progress. Returns the exit code.
+ * Runs as a web node (`serve`), a job worker (`work`) or both (`all`) until SIGINT or SIGTERM, then
+ * finishes the requests and jobs in progress. Returns the exit code.
  */
 const run = async (role: string, config: Config): Promise<number> => {
     await using db = openDatabase(config.database);

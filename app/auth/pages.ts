@@ -4,7 +4,7 @@ import type { Html } from "../http/route.ts";
 import type { ConsentRequest } from "./consent.ts";
 import type { Issuer } from "../kernel/identity.ts";
 
-/** Tells the user why they can't log in, when there is no app to send them back to. */
+/** Tells the user why they can't log in, when there is no app to redirect them back to. */
 export const errorPage = (description: string): Html =>
     layout("Can't log in", html`<p>${description}</p>`);
 

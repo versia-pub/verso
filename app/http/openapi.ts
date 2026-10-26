@@ -67,7 +67,7 @@ type Document = {
 const scopeList = Object.fromEntries(scopes.map((scope) => [scope, ""]));
 
 /**
- * How clients get tokens, and how other instances sign their requests.
+ * How clients get tokens, and how remote instances sign their requests.
  * @see https://spec.openapis.org/oas/v3.1.1.html#security-scheme-object
  */
 const securitySchemes = {
@@ -94,7 +94,7 @@ const securitySchemes = {
 /** The media types every body may be sent as, since Mastodon clients send JSON or forms. */
 const bodyTypes = ["application/json", "application/x-www-form-urlencoded", "multipart/form-data"];
 
-/** Each key of an object schema, as a parameter `where` in the request. */
+/** Each key of an object schema, as a parameter in `where` of the request. */
 const parameters = (
     where: Parameter["in"],
     schema: z.ZodType | undefined,
@@ -159,7 +159,7 @@ const response = (
     }
 };
 
-/** Who may call the route: another instance, or a client with a token, and with which scope. */
+/** Who may call the route: a remote instance, or a client with a token, and with which scope. */
 const security = (route: Route): Security | undefined => {
     if (route.signed) return [{ VersiaSignature: [] }];
     if (!route.auth) return undefined;
@@ -199,7 +199,7 @@ const operation = (route: Route, names: Naming): Operation => {
         ...all.length > 0 && { parameters: all },
         ...body && {
             requestBody: {
-                // A missing body is read as an empty one, which some routes take.
+                // A missing body is read as an empty one, which some routes accept.
                 required: !route.body?.safeParse(route.textBody ? "" : {}).success,
                 content: Object.fromEntries(
                     (route.textBody ? ["text/plain"] : bodyTypes)
@@ -244,7 +244,7 @@ export const openApiDocument = (
 
 /**
  * Serves the document describing `documented`, and this route, titled with the instance's name or
- * else its domain. It is built once, when first asked for.
+ * else its domain. It is built once, when first requested.
  */
 export const openApiRoute = (documented: readonly Route[], name: string | undefined): Route => {
     let document: Document | undefined;

@@ -33,7 +33,7 @@ const open = async () => {
         };
     };
 
-    /** The public timeline, as anyone sees it, or `as`. */
+    /** The public timeline, as anyone sees it, or as `as` sees it. */
     const everyone = async (query = "", as: string | null = null, on = app) => {
         const headers: HeadersInit = as === null
             ? {}

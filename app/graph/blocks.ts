@@ -1,8 +1,9 @@
 /**
- * Blocks: an account blocking another, so what the blocked account does doesn't reach it. Unlike
- * on Mastodon, a block is the blocker's alone, for their safety: the blocked account is never told,
- * nor can it tell, so it ends no follows, and nothing of it is sent to other instances. Only those
- * whose role lets them see everyone's blocks, such as moderators, see who blocks an account.
+ * Blocks: an account blocking another, so what the blocked account does doesn't reach it. Unlike on
+ * Mastodon, a block is the blocker's alone, for their safety: the blocked account is never
+ * notified, nor can it tell, so it ends no follows, and nothing about it is sent to remote
+ * instances. Only those whose role lets them see everyone's blocks, such as moderators, see who
+ * blocks an account.
  * @see https://docs.joinmastodon.org/methods/accounts/#block
  * @module
  */
@@ -29,17 +30,19 @@ export const block = async (
     return true;
 };
 
-/** Has `accountId` stop blocking `targetId`. Returns whether it blocked them. */
+/** Has `accountId` unblock `targetId`. Returns whether it blocked them. */
 export const unblock = (ctx: Context, accountId: string, targetId: string): Promise<boolean> =>
     deleteBlock(ctx, accountId, targetId);
 
 /**
- * The accounts `accountId` blocks, itself or by their domain, for leaving what they wrote and
- * shared out of what reaches it.
+ * The accounts `accountId` blocks, individually or by their domain, for omitting what they wrote
+ * and boosted from what reaches it.
  */
 export const blockedByAccount = (ctx: Context, accountId: string): Excluded =>
     excluded(ctx, blockedIdsQuery(ctx, accountId), domainBlockedInstancesQuery(ctx, accountId));
 
-/** The accounts a viewer blocks, as {@link blockedByAccount} has them, or none without a viewer. */
+/**
+ * The accounts a viewer blocks, as {@link blockedByAccount} returns them, or none without a viewer.
+ */
 export const viewerBlocks = (ctx: Context, viewerId: string | null): Excluded | null =>
     viewerId === null ? null : blockedByAccount(ctx, viewerId);

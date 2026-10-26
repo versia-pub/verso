@@ -1,5 +1,5 @@
 /**
- * What services read from config as they run, worked out once at startup.
+ * What services read from config as they run, computed once at startup.
  * @module
  */
 import type { Config } from "./config.ts";
@@ -8,23 +8,25 @@ const hourMs = 60 * 60 * 1000;
 const dayMs = 24 * hourMs;
 
 export type Settings = {
-    /** How long a job that failed for good is kept. */
+    /** How long a job that failed for good is retained. */
     readonly deadLetterMs: number;
     /** How long an instance can go unreached before nothing more is sent to it. */
     readonly unreachableMs: number;
     /** How many accounts a status may mention. */
     readonly mentions: number;
-    /** How many files a status may have attached. */
+    /** How many media attachments a status may have. */
     readonly attachments: number;
-    /** How long a file's description may be, in code points. */
+    /** How long a media attachment's description may be, in code points. */
     readonly mediaDescription: number;
-    /** How long an upload no status was given is kept, and another instance's file nothing uses. */
+    /**
+     * How long an upload that was never attached to a status is retained, and unused remote media.
+     */
     readonly unattachedMs: number;
-    /** For how long a delivery is tried. */
+    /** For how long a delivery is retried. */
     readonly deliveryMs: number;
 };
 
-/** The settings `config` gives. */
+/** The settings `config` produces. */
 export const settingsOf = (
     config: Pick<Config, "jobs" | "federation" | "limits" | "media">,
 ): Settings => ({

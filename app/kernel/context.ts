@@ -10,7 +10,7 @@ import type { ImageProcessor } from "./images.ts";
 import type { Transport } from "./transport.ts";
 import type { UrlBuilder } from "./urls.ts";
 
-/** Other instances' public keys, by domain. */
+/** Remote instances' public keys, by domain. */
 export type KeyStore = {
     /** The key Verso has for the instance, or else fetches from it, after `beforeFetch`. */
     readonly get: (
@@ -38,7 +38,7 @@ export type Budget = {
  * Verso's id for the entity of type `type` that `reference` points at, or `undefined` if there is
  * none. A local entity is looked up; a remote one is fetched if Verso doesn't have it, or had it
  * too long ago, unless its instance is blocked, isn't at a domain, or `budget` is spent. If
- * fetching fails, the copy Verso has is used; without one, it throws.
+ * fetching fails, the stored copy is used; without one, it throws.
  */
 export type Resolver = (
     ctx: Context,
@@ -48,22 +48,22 @@ export type Resolver = (
 ) => Promise<string | undefined>;
 
 /**
- * What talking to other instances needs: whose keys to sign and check with, whom to ignore, and
+ * What talking to remote instances needs: whose keys to sign and validate with, whom to ignore, and
  * how to find what they have.
  */
 export type Federation = {
-    /** This instance's current key pair, kept for a minute at most. */
+    /** This instance's current key pair, cached for a minute at most. */
     readonly instanceKey: (ctx: Context) => Promise<InstanceKey>;
     /** One store for the whole process, so each key is fetched once. */
     readonly remoteKeys: KeyStore;
     /**
-     * Whether Verso doesn't federate with an instance, by its domain. The blocks are kept for a
+     * Whether Verso doesn't federate with an instance, by its domain. The blocks are cached for a
      * minute at most, so one made by another process, such as the CLI, applies within a minute.
      */
     readonly isBlocked: (ctx: Context, domain: string) => Promise<boolean>;
-    /** One for the whole process, so fetches under way are shared. */
+    /** One for the whole process, so fetches in progress are shared. */
     readonly resolve: Resolver;
-    /** Forgets the key and the blocks it keeps, after this process changed them. */
+    /** Clears the cached key and blocks, after this process changed them. */
     readonly forget: () => void;
 };
 
@@ -83,7 +83,7 @@ export type DomainEvent = { readonly type: string };
 /**
  * Reacts to events, inside the transaction that emitted them, so what it does commits with the
  * change or not at all. It only writes and enqueues jobs: anything slow, such as fetching from
- * other instances, belongs in a job.
+ * remote instances, belongs in a job.
  */
 export type Subscriber = (ctx: Context, event: DomainEvent) => Promise<void>;
 
@@ -93,19 +93,19 @@ export type Context<DB = Database> = {
     readonly ids: IdGenerator;
     readonly urls: UrlBuilder;
     readonly transport: Transport;
-    /** Where uploaded files are kept. */
+    /** Where uploaded files are stored. */
     readonly files: FileStore;
-    /** Makes uploaded pictures ready to keep and show. */
+    /** Processes uploaded images so they are ready to store and display. */
     readonly images: ImageProcessor;
     /** One for each configured issuer, by issuer URL. */
     readonly identityProviders: Readonly<Record<string, IdentityProvider>>;
     readonly federation: Federation;
-    /** What config says services do, such as how long to keep jobs. */
+    /** What config says services do, such as how long to retain jobs. */
     readonly settings: Settings;
-    /** Every subscriber, each told of every event, such as one for each protocol. */
+    /** Every subscriber, each notified of every event, such as one for each protocol. */
     readonly subscribers: readonly Subscriber[];
     /**
-     * Stops the requests to other instances made with this context when it aborts, such as when a
+     * Aborts the requests to remote instances made with this context when it aborts, such as when a
      * client's request has waited long enough.
      */
     readonly signal?: AbortSignal;

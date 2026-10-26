@@ -33,7 +33,7 @@ export const createRole = async (ctx: Context, role: NewRole): Promise<RoleRow |
         .returningAll()
         .executeTakeFirst();
 
-/** Changes a role, and returns it as it is now, or `undefined` if there is no such role. */
+/** Updates a role, and returns it as it is now, or `undefined` if there is no such role. */
 export const updateRole = async (
     ctx: Context,
     id: string,
@@ -53,7 +53,7 @@ export const updateRole = async (
         .executeTakeFirst();
 };
 
-/** Deletes a role, and takes it away from everyone. */
+/** Deletes a role, and removes it from everyone. */
 export const deleteRole = async (ctx: Context, id: string): Promise<void> => {
     await ctx.db.deleteFrom("roles").where("id", "=", id).execute();
 };
@@ -69,7 +69,10 @@ export const findRole = async (ctx: Context, name: string): Promise<RoleRow | un
         .where((eb) => eb(eb.fn("lower", ["name"]), "=", name.toLowerCase()))
         .executeTakeFirst();
 
-/** Gives an account a role, as an admin. Returns whether it didn't have it from an admin yet. */
+/**
+ * Grants an account a role, as an admin. Returns whether the account didn't already have it from an
+ * admin.
+ */
 export const grantRole = async (
     ctx: Context,
     accountId: string,
@@ -90,8 +93,8 @@ export const grantRole = async (
 };
 
 /**
- * Takes away a role an admin gave an account. Returns whether it had it. A role its issuer's
- * claims gave stays, since the next login would give it back.
+ * Revokes a role that an admin granted an account. Returns whether it had it. A role granted by its
+ * issuer's claims stays, since the next login would grant it again.
  */
 export const revokeRole = async (
     ctx: Context,
@@ -107,7 +110,7 @@ export const revokeRole = async (
     return numDeletedRows > 0n;
 };
 
-/** The roles an account has, from anyone, each once, highest priority first. */
+/** The roles an account has, from any source, each once, highest priority first. */
 export const rolesOf = async (ctx: Context, accountId: string): Promise<RoleRow[]> => {
     const given = ctx.db.selectFrom("account_roles")
         .select("role_id")
@@ -153,7 +156,7 @@ export const listRoles = async (ctx: Context): Promise<RoleRow[]> =>
     await ctx.db.selectFrom("roles").selectAll().orderBy("priority", "desc").orderBy("name")
         .execute();
 
-/** The permissions of each role an account has, from anyone. */
+/** The permissions of each role an account has, from any source. */
 export const rolePermissionsOf = async (
     ctx: Context,
     accountId: string,
@@ -178,8 +181,8 @@ export const findRolesByName = async (
         .execute();
 
 /**
- * Makes the roles `issuer` gives an account exactly `roleIds`, taking away the others it gave.
- * Roles from an admin or another issuer stay.
+ * Sets the roles that `issuer` grants an account to exactly `roleIds`, revoking the others it
+ * granted. Roles from an admin or another issuer stay.
  */
 export const setClaimedRoles = async (
     ctx: Context,

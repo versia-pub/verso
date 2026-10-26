@@ -72,7 +72,7 @@ const getDevLogin = defineRoute({
 });
 
 /**
- * The identity provider and routes the dev login adds to the server, when `enabled` by
+ * The identity provider and routes that the dev login adds to the server, when `enabled` by
  * `auth.dev_login`. Otherwise there are none, so production servers don't have its page at all.
  */
 export const devLogin = (enabled: boolean, urls: UrlBuilder): {

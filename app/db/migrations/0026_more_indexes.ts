@@ -3,8 +3,8 @@ import type { Migration } from "kysely/migration";
 
 /**
  * Indexes for paging through follow lists and replies in order, and for the columns rows are
- * deleted or nulled through, so deleting an account, a picture, an app or an instance doesn't read
- * through every row that might point at it.
+ * deleted or nulled through, so deleting an account, a picture, an app or an instance doesn't scan
+ * every row that might reference it.
  */
 export const moreIndexes: Migration = {
     up: async (db: Kysely<unknown>) => {
@@ -35,7 +35,7 @@ export const moreIndexes: Migration = {
             await db.schema.createIndex(`${table}_by_${column}`).on(table).column(column).execute();
         }
 
-        // For deleting the jobs kept after they finished, once their time is up.
+        // For deleting the jobs retained after they finished, once their time is up.
         await db.schema.createIndex("jobs_by_keep_until").on("jobs").column("keep_until").execute();
     },
 };

@@ -116,7 +116,7 @@ Deno.test("adding instances keeps accounts, their logins and their tokens", asyn
     assertEquals(await db.selectFrom("identities").select("subject").execute(), [{ subject: "1" }]);
     assertEquals(await db.selectFrom("access_tokens").select("id").execute(), [{ id: "t" }]);
 
-    // The username index came through the rebuild too.
+    // The username index survived the table rebuild too.
     await assertRejects(() =>
         db.insertInto("accounts")
             .values({

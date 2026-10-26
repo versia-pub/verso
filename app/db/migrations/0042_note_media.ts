@@ -1,7 +1,7 @@
 import type { Kysely } from "kysely";
 import type { Migration } from "kysely/migration";
 
-/** The files attached to notes, in order. A file is attached to one note at most. */
+/** The media attached to statuses, in order. Media is attached to one status at most. */
 export const noteMedia: Migration = {
     up: async (db: Kysely<unknown>) => {
         await db.schema.createTable("note_media")

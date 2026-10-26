@@ -1,6 +1,6 @@
 /**
- * A request's input, read from its path, query, body, cookies and headers, and checked against the
- * route's schemas.
+ * A request's input, read from its path, query, body, cookies and headers, and validated against
+ * the route's schemas.
  * @module
  */
 import type { Context as HonoContext } from "@hono/hono";
@@ -32,8 +32,8 @@ const validate = <K extends string>(
 };
 
 /**
- * The query's values. A key given more than once is an array, and so is a Rails-style `key[]`,
- * read as `key`, even when given once.
+ * The query's values. A key given more than once is an array, and so is a Rails-style `key[]`, read
+ * as `key`, even when given once.
  */
 const queryOf = (c: HonoContext) => {
     const values = new Map<string, string[]>();
@@ -55,8 +55,8 @@ const queryOf = (c: HonoContext) => {
 };
 
 /**
- * Verso's cookies, without their `__Host-` prefix. Browsers only accept such cookies from this
- * host over HTTPS, so a subdomain or an insecure page can't plant one.
+ * Verso's cookies, without their `__Host-` prefix. Browsers only accept such cookies from this host
+ * over HTTPS, so a subdomain or an insecure page can't plant one.
  */
 const cookiesOf = (c: HonoContext) =>
     Object.fromEntries(
@@ -84,7 +84,7 @@ const formOf = async (c: HonoContext) => {
         }
     }
 
-    // Names nested deeper than five are refused, rather than read as one long key.
+    // Names nested deeper than five are rejected, rather than read as one long key.
     return { ...qs.parse(text.toString(), { strictDepth: true }), ...Object.fromEntries(files) };
 };
 

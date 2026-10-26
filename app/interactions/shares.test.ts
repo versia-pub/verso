@@ -15,7 +15,7 @@ const open = async () => {
     for (const id of ["alice", "bob", "dave"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "bob", "alice");
 
-    /** How many shares a note has, and how many statuses its sharer `by`. */
+    /** How many boosts a status has, and how many statuses its booster `by` has. */
     const counts = async (noteId: string, by: string) => [
         (await findNote(test.ctx, noteId))?.shares_count,
         (await findAccount(test.ctx, by))?.statuses_count,

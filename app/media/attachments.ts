@@ -1,6 +1,6 @@
 /**
- * Files attached to notes. Each is an upload its author made, attached to one note at most, once it
- * is processed, unless processing it failed.
+ * Media attached to statuses. Each attachment is an upload by the status's author, attached to at
+ * most one status, and only once it is processed (unless processing failed).
  * @module
  */
 import { Unprocessable } from "../http/errors.ts";
@@ -16,9 +16,10 @@ import { type MediaRow, type RemoteMedia, saveRemoteMedia } from "./media_querie
 import { describeUpload, processingFailed, type UploadDescription } from "./uploads.ts";
 
 /**
- * Attaches the uploads `mediaIds`, in that order, to the note `noteId` by `accountId`, as Mastodon
- * does: each must be one they uploaded, not attached to another note, and processed. Given twice,
- * one is attached once. Run it in the transaction that makes the note, which it ends otherwise.
+ * Attaches the uploads `mediaIds`, in that order, to the status `noteId` by `accountId`, as
+ * Mastodon does. Each must be an upload by that account, not attached to another status, and
+ * processed. An id given twice is attached once. Run it in the transaction that creates the status;
+ * it ends the transaction otherwise.
  * @see https://docs.joinmastodon.org/methods/statuses/#create
  */
 export const attach = async (
@@ -49,26 +50,26 @@ export const attach = async (
     await insertAttachments(ctx, noteId, ids);
 };
 
-/** A change to how a file attached to a note is described, by the file's id. */
+/** A change to how a media attachment is described, by media id. */
 export type AttachmentChange = UploadDescription & { readonly id: string };
 
-/** The files attached to the note `noteId`, in order. */
+/** The media attached to the status `noteId`, in order. */
 export const attachedTo = async (ctx: Context, noteId: string): Promise<MediaRow[]> =>
     (await attachmentsOf(ctx, [noteId])).get(noteId) ?? [];
 
-/** Files attached to a note, as its history keeps them. */
+/** Media attached to a status, in the form its edit history stores. */
 export const asVersionMedia = (rows: readonly MediaRow[]): VersionMedia[] =>
     rows.map((row) => ({ id: row.id, description: row.description }));
 
-/** Whether `change` would describe `row` differently. */
+/** Whether `change` would change the description of `row`. */
 const describesAnew = (row: MediaRow, change: AttachmentChange) =>
     (change.description !== undefined && (change.description || null) !== row.description) ||
     (change.focus !== undefined &&
         (change.focus.x !== row.focus_x || change.focus.y !== row.focus_y));
 
 /**
- * Whether attaching `mediaIds` in place of the files `current`, or keeping them if it is
- * `undefined`, then describing them as `changes` say, changes anything.
+ * Whether attaching `mediaIds` in place of the media `current` (or keeping `current` if `mediaIds`
+ * is `undefined`), then applying the description `changes`, changes anything.
  */
 export const changesAttachments = (
     current: readonly MediaRow[],
@@ -86,10 +87,11 @@ export const changesAttachments = (
 };
 
 /**
- * Attaches `mediaIds` to the note `noteId` by `accountId` in place of its files, as {@link attach}
- * does, unless it is `undefined`, then describes the files attached as `changes` say, as Mastodon
- * does. Files no longer attached can be attached again, or are removed with other uploads that
- * aren't. Run it in the transaction that edits the note.
+ * Replaces the media attached to the status `noteId` by `accountId` with `mediaIds`, as {@link
+ * attach} does. If `mediaIds` is `undefined`, the media is kept. Then applies the description
+ * `changes` to the attached media, as Mastodon does. Media that is no longer attached can be
+ * attached again, or is removed along with other unattached uploads. Run it in the transaction that
+ * edits the status.
  * @see https://docs.joinmastodon.org/methods/statuses/#edit
  */
 export const reattach = async (
@@ -111,10 +113,10 @@ export const reattach = async (
 };
 
 /**
- * Attaches the files another instance attached to its note `noteId`, as Verso keeps them: the
- * first as many as a local status may have, with their descriptions cut to the length a local
- * one's may be, so that a note can't make Verso keep without bound. Run it in the transaction that
- * keeps the note.
+ * Attaches the media of a remote status `noteId`, storing it as Verso stores remote media. Only the
+ * first N are attached, where N is the maximum a local status may have, and descriptions are
+ * truncated to the maximum length of a local description, so a remote status can't make Verso store
+ * unbounded data. Run it in the transaction that stores the status.
  */
 export const attachRemote = async (
     ctx: Context,

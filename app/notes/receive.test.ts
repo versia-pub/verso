@@ -13,7 +13,7 @@ import type { Context } from "../kernel/context.ts";
 import { attachedTo } from "../media/attachments.ts";
 import type { NoteRow } from "./note_queries.ts";
 
-/** A user b.test serves. */
+/** A user served by b.test. */
 const user = (id: string) => ({
     type: "User",
     id,
@@ -24,7 +24,7 @@ const user = (id: string) => ({
     indexable: true,
 });
 
-/** A public note by bob saying "Hi #Verso", unless `fields` says otherwise. */
+/** A public status by bob saying "Hi #Verso", unless `fields` says otherwise. */
 const note = (id: string, fields: Record<string, unknown> = {}) => ({
     type: "Note",
     id,
@@ -42,7 +42,10 @@ const note = (id: string, fields: Record<string, unknown> = {}) => ({
     ...fields,
 });
 
-/** a.test, with alice, and b.test, an instance that sends what it is told, with bob and carol. */
+/**
+ * a.test, with alice, and b.test, an instance that sends whatever it is told to, with bob and
+ * carol.
+ */
 const open = async (settings: Partial<Settings> = {}) => {
     const network = await createNetwork(["a.test"], { settings });
     const a = network.instances["a.test"].ctx;
@@ -53,7 +56,7 @@ const open = async (settings: Partial<Settings> = {}) => {
     const bob = await a.federation.resolve(a, { host: "b.test", id: "bob" }, "User");
     assertExists(bob);
 
-    /** Has `from` send `entity` to a.test, a second after the last, and a.test take it in. */
+    /** Has `from` send `entity` to a.test, a second after the last, and a.test receive it. */
     const send = async (entity: object, from: EvilInstance = b) => {
         network.clock.advance(1000);
         assertEquals(
@@ -63,7 +66,7 @@ const open = async (settings: Partial<Settings> = {}) => {
         await network.drain();
     };
 
-    /** The note b.test has as `remoteId`, as a.test keeps it, if it does. */
+    /** The status b.test has as `remoteId`, as a.test stores it, if it does. */
     const kept = (remoteId: string) => findRemoteNoteAt(a, "b.test", remoteId);
 
     /** Why a.test gave up on what it was sent, oldest first. */
@@ -207,7 +210,7 @@ Deno.test("a note mentions as many accounts as settings allow", async () => {
     assertEquals((await mentionsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? ""), [bea]);
 });
 
-/** The files attached to the note b.test has as `remoteId`, in order. */
+/** The media attached to the status b.test has as `remoteId`, in order. */
 const attached = async (
     test: { a: Context; kept: (id: string) => Promise<NoteRow | undefined> },
     remoteId: string,
@@ -257,7 +260,7 @@ Deno.test("a note's files are kept, each as the version clients can best show", 
         [100, hash.toLowerCase(), "abc", 2, 3],
     );
     assertEquals(files.map((row) => row.description), ["A red square", null, null]);
-    // On the note's instance, and no one's upload.
+    // On the status's instance, and not an upload by any account.
     const instanceId = (await test.kept("n1"))?.instance_id;
     assertEquals(
         files.map((row) => [row.instance_id, row.account_id]),
@@ -330,7 +333,7 @@ Deno.test("a note sent again replaces the one Verso has, without counting it aga
     await test.send(note("n1", { mentions }));
     const first = await test.kept("n1");
 
-    // No longer mentioning anyone here, which only a new note needs to.
+    // No longer mentioning any local user, which only a new status needs to.
     await test.send(note("n1", {
         content: { "text/plain": { content: "Bye #Gone", remote: false } },
         group: "followers",
@@ -420,7 +423,7 @@ Deno.test("a note sent again for others is counted anew", async () => {
     assertEquals(await counted(), [0, 1]);
     await test.send(reply(null));
     assertEquals(await counted(), [0, 0]);
-    // Changed, as the same note again would be taken for a replay.
+    // Changed, since the same status sent again would be treated as a replay.
     await test.send(reply("public", "Again"));
     assertEquals(await counted(), [1, 1]);
 });

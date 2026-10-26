@@ -251,7 +251,7 @@ rules = [{ text = "Be kind", hint = "Always" }]
             instance_id: await createInstance(test.ctx, "b.example"),
             remote_id: "erin",
             created_at: test.ctx.clock.now(),
-            // Other instances' statuses aren't counted.
+            // Remote instances' statuses aren't counted.
             statuses_count: 5,
         })
         .execute();

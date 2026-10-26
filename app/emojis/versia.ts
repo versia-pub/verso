@@ -9,16 +9,16 @@ import type { ShownEmoji } from "./emoji_queries.ts";
 import type { RemoteEmoji } from "./emojis.ts";
 
 /**
- * How many emojis of one entity Verso keeps. Each costs queries, so an entity can't make Verso do
+ * How many emojis of one entity Verso stores. Each costs queries, so an entity can't make Verso do
  * unbounded work.
  */
 const remoteEmojiLimit = 100;
 
 /**
  * The emojis an entity's `extensions` say its text uses, without any whose picture clients can't
- * show, and with the first of any named twice. Versia lets names have other characters around
- * them, but Mastodon's clients only look for colons, so emojis named otherwise are left out. An
- * extension that isn't as Versia has it is taken for none.
+ * display, and with the first of any named twice. Versia lets names have other characters around
+ * them, but Mastodon's clients only look for colons, so emojis named otherwise are omitted. An
+ * extension that isn't as Versia defines it is treated as having none.
  */
 export const remoteEmojisOf = (
     extensions: v0_6.Entity["extensions"],
@@ -40,8 +40,8 @@ export const remoteEmojisOf = (
 };
 
 /**
- * The `extensions` of an entity whose text uses `emojis`, or `undefined` if it uses none. Those
- * whose pictures Verso keeps itself are left out until it can serve them.
+ * The `extensions` of an entity whose text uses `emojis`, or `undefined` if it uses none. Emojis
+ * whose pictures Verso stores itself are omitted until it can serve them.
  */
 export const emojiExtensions = (
     emojis: readonly ShownEmoji[],

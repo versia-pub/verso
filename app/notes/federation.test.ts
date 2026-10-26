@@ -36,7 +36,7 @@ const png = new Uint8Array(encode({
 
 const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]);
 
-/** Alice and bob here; carol on b.example, who follows alice, and erin on c.example. */
+/** Alice and bob are local; carol, who follows alice, is on b.example; erin is on c.example. */
 const open = async (options: TestContextOptions = {}) => {
     const test = await createTestContext(options);
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
@@ -54,7 +54,7 @@ const open = async (options: TestContextOptions = {}) => {
     return { ...test, find };
 };
 
-/** The notes and Deletes queued to be sent, with the instance each is for. */
+/** The Notes and Deletes queued for delivery, with the instance each is for. */
 const queued = async (ctx: Context) =>
     (await ctx.db.selectFrom("jobs").select("payload").where("queue", "=", deliverQueue)
         .orderBy("id").execute())
@@ -62,7 +62,7 @@ const queued = async (ctx: Context) =>
         .map((job): [string, Record<string, unknown>] => [job.domain, JSON.parse(job.body)])
         .filter(([, entity]) => entity.type === "Note" || entity.type === "Delete");
 
-/** The instance each of `queued` is for, and the type and id of what it is sent. */
+/** The instance each of `queued` is for, and the type and id of the entity sent. */
 const sent = async (ctx: Context) =>
     (await queued(ctx)).map(([domain, entity]) => [
         domain,
@@ -177,7 +177,7 @@ Deno.test("a local note's files are at the URLs they are served at, as what they
 
     const entity = await test.find(note.id, "");
 
-    // As sent, without what is left out.
+    // As sent, without the omitted fields.
     assertEquals(JSON.parse(JSON.stringify(entity?.attachments)), [
         {
             "video/mp4": {
@@ -211,7 +211,7 @@ Deno.test("a local note's files are at the URLs they are served at, as what they
     assertEquals(v0_6.Note.safeParse(entity).success, true);
     assertEquals(kept?.thumbhash !== null && kept?.size !== null, true);
 
-    // Were one no longer kept, the others would still be given.
+    // If one were no longer stored, the others would still be included.
     await test.ctx.db.updateTable("media").set({ sha256: null }).where("id", "=", file.id)
         .execute();
     assertEquals((await test.find(note.id, ""))?.attachments.length, 2);
@@ -299,7 +299,7 @@ Deno.test("a note is shown on the instances of who it mentions, the followers, a
     await using test = await open();
     await createInstance(test.ctx, "d.example");
     await createRemoteAccount(test.ctx, "frank", "d.example");
-    // Bob is here, and frank only asked.
+    // Bob is local, and frank only requested to follow.
     await follow(test.ctx, "bob", "alice");
     await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
         .execute();
@@ -418,7 +418,7 @@ Deno.test("a posted note is sent to the instances of those it is shown to", asyn
         ["d.example", "Note", reply?.id],
     ]);
     const [[, entity]] = await queued(test.ctx);
-    // As sent, without the fields it leaves out.
+    // As sent, without the omitted fields.
     assertEquals(entity, JSON.parse(JSON.stringify(await test.find(note?.id ?? "", ""))));
 });
 
@@ -449,7 +449,7 @@ Deno.test("a deleted local note is deleted where it was sent, and a remote one n
         in_reply_to_account_id: "frank",
     }, ["erin"]);
     const direct = await createNote(test.ctx, "alice", { visibility: "direct" });
-    // Its own instance tells the others it is gone, so Verso doesn't, even to erin.
+    // Its own instance notifies the others that it is deleted, so Verso doesn't, even for erin.
     const remote = await createNote(
         test.ctx,
         "carol",
@@ -478,7 +478,7 @@ Deno.test("a note reaches the instances of more followers than one query can nam
     await using test = await open();
     const instances = ["e0.example", "e1.example", "e2.example"];
     for (const domain of instances) await createInstance(test.ctx, domain);
-    // More than the 65,535 values Postgres lets one query bind.
+    // More than the 65,535 values that Postgres allows one query to bind.
     await addFollowers(test.ctx, "alice", 70_000, [...instances, null]);
 
     const note = await post(test.ctx, "alice", "Hi", "private");

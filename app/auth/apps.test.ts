@@ -124,7 +124,7 @@ Deno.test("invalid registrations are refused with each problem", async () => {
         ["body.redirect_uris.0"],
     );
 
-    // Each fits, but Mastodon limits them joined.
+    // Each fits, but Mastodon limits them when joined.
     const long = `https://a.example/${"x".repeat(990)}`;
     assertEquals(await refused({ client_name: "x", redirect_uris: [long, long, long] }), [
         "body.redirect_uris",

@@ -1,19 +1,19 @@
 /**
- * This instance's key pair, which signs everything it sends over Versia. Every key comes from
- * here, so per-user keys, which other protocols need, can be added beside it.
+ * This instance's key pair, which signs everything it sends over Versia. Every key comes from here,
+ * so per-user keys, which other protocols need, can be added beside it.
  * @see https://versia.pub/signatures
  * @module
  */
 import type { Context, InstanceKey } from "../kernel/context.ts";
 import { deleteKeysBut, hasKeyRow, insertKeyRow, newestKeyRow } from "./key_queries.ts";
 
-/** A private key, as kept, for signing. Importing one takes microseconds, so it isn't kept. */
+/** A private key, as stored, for signing. Importing one takes microseconds, so it isn't cached. */
 const importPrivateKey = (pkcs8: string) =>
     crypto.subtle.importKey("pkcs8", Uint8Array.fromBase64(pkcs8), "Ed25519", false, ["sign"]);
 
 /**
- * The current key: the newest, as the database has it now. It is read through `ctx.db`, so it
- * also works in a transaction. `ctx.federation.instanceKey` keeps it for a while.
+ * The current key: the newest, as the database has it now. It is read through `ctx.db`, so it also
+ * works in a transaction. `ctx.federation.instanceKey` caches it for a while.
  */
 export const instanceKey = async (ctx: Context): Promise<InstanceKey> => {
     const row = await newestKeyRow(ctx);
@@ -26,13 +26,13 @@ export const instanceKey = async (ctx: Context): Promise<InstanceKey> => {
     };
 };
 
-/** Makes a new key pair and makes it current. Returns its id. */
+/** Generates a new key pair and makes it current. Returns its id. */
 export const createInstanceKey = async (
     ctx: Pick<Context, "db" | "clock" | "ids">,
 ): Promise<string> => {
     const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
 
-    // Ed25519 always makes a pair, but the type covers every algorithm.
+    // Ed25519 always generates a pair, but the type covers every algorithm.
     if (!("privateKey" in pair)) throw new Error("Ed25519 didn't make a key pair");
 
     const id = ctx.ids();
@@ -51,7 +51,7 @@ export const createInstanceKey = async (
 
 /**
  * Replaces the key pair with a new one, such as when the old one may have leaked, and returns the
- * new public key. The old pair is deleted, so it can't sign anything more. Other instances fetch
+ * new public key. The old pair is deleted, so it can't sign anything more. Remote instances fetch
  * the new public key when a signature from this one stops verifying.
  */
 export const rotateInstanceKey = async (ctx: Context): Promise<string> => {
@@ -67,7 +67,7 @@ export const rotateInstanceKey = async (ctx: Context): Promise<string> => {
     return publicKey;
 };
 
-/** Makes the instance's first key pair, unless it has one. Returns whether it made one. */
+/** Generates the instance's first key pair, unless it has one. Returns whether it generated one. */
 export const ensureInstanceKey = async (
     ctx: Pick<Context, "db" | "clock" | "ids">,
 ): Promise<boolean> => {

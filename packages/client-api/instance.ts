@@ -22,7 +22,7 @@ const FeedAccess = z.enum(["public", "authenticated", "disabled"]);
 
 /**
  * An instance, as it describes itself to clients. Fields Mastodon added after 4.3 are optional,
- * since servers claiming an older version leave them out.
+ * since servers claiming an older version omit them.
  * @see https://docs.joinmastodon.org/entities/Instance/
  */
 export const Instance = z.object({
@@ -117,7 +117,7 @@ export const Instance = z.object({
         /** Whether clients may offer to sign up. */
         enabled: z.boolean(),
         approval_required: z.boolean(),
-        /** HTML shown when sign-up is closed, or `null`. */
+        /** HTML displayed when sign-up is closed, or `null`. */
         message: z.string().nullable(),
         /** Mastodon 4.4 and later, as is `reason_required`. */
         min_age: z.int().min(0).nullable().optional(),
@@ -156,7 +156,7 @@ export const V1Instance = z.object({
     stats: z.object({
         user_count: z.int().min(0),
         status_count: z.int().min(0),
-        /** Other instances it knows of. */
+        /** Other instances it has stored. */
         domain_count: z.int().min(0),
     }),
     thumbnail: z.url().nullable(),

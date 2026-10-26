@@ -2,7 +2,7 @@ import { z } from "zod";
 import { Entity, ReferenceText } from "./common.ts";
 
 /**
- * `author` shares the note `shared` with their followers.
+ * `author` shares (boosts) the Note `shared` with their followers.
  * @see https://versia.pub/extensions/share
  */
 export const Share = Entity.extend({

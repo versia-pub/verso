@@ -7,8 +7,8 @@ export const countAll = <DB, TB extends keyof DB>(
     eb.fn.countAll<number | string | bigint>().as("count");
 
 /**
- * The count `countAll` selected, or a sum. Drivers give it as a number, a string or a bigint, and
- * a sum of no rows as `null`, which is 0.
+ * The count that `countAll` selected, or a sum. Drivers return it as a number, a string or a
+ * bigint, and a sum of no rows as `null`, which is 0.
  */
 export const readCount = (row: { readonly count: number | string | bigint | null }): number =>
     Number(row.count);

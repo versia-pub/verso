@@ -10,7 +10,7 @@ export type FollowRow = Selectable<FollowsTable>;
 /** Accounts given as a subquery, from whichever table, for another module's query to use. */
 export type AccountIdQuery = SelectQueryBuilder<Database, keyof Database, { account_id: string }>;
 
-/** How a follower wants to see the account they follow. Options left out stay as they are. */
+/** How a follower wants to see the account they follow. Omitted options stay as they are. */
 export type FollowOptions = {
     readonly showReblogs?: boolean;
     readonly notify?: boolean;
@@ -25,8 +25,8 @@ const columnsOf = (options: FollowOptions) => ({
 });
 
 /**
- * Adds a follow, unless the follower already follows or asked to follow the followee. Returns it
- * if it was added.
+ * Adds a follow, unless the follower already follows or has requested to follow the followee.
+ * Returns it if it was added.
  */
 export const insertFollow = async (
     ctx: Context,
@@ -50,7 +50,7 @@ export const insertFollow = async (
         .returningAll()
         .executeTakeFirst();
 
-/** Changes how a follower sees an account they follow or asked to follow. */
+/** Updates how a follower sees an account they follow or have requested to follow. */
 export const updateFollowOptions = async (
     ctx: Context,
     followerId: string,
@@ -58,7 +58,7 @@ export const updateFollowOptions = async (
     options: FollowOptions,
 ): Promise<void> => {
     const changes = columnsOf(options);
-    // Kysely leaves out the columns set to `undefined`, and an update must set something.
+    // Kysely omits the columns set to `undefined`, and an update must set something.
     if (Object.values(changes).every((value) => value === undefined)) return;
 
     await ctx.db.updateTable("follows")
@@ -68,7 +68,7 @@ export const updateFollowOptions = async (
         .execute();
 };
 
-/** Accepts a request to follow. Returns whether there was one, rather than a follow or nothing. */
+/** Accepts a follow request. Returns whether there was one, rather than a follow or nothing. */
 export const acceptPendingFollow = async (
     ctx: Context,
     followerId: string,
@@ -85,8 +85,8 @@ export const acceptPendingFollow = async (
 };
 
 /**
- * Removes a follow or a request to follow, and returns it, if there was one. With `accepted`, it
- * only removes a follow, or only a request.
+ * Removes a follow or a follow request, and returns it, if there was one. With `accepted`, it only
+ * removes a follow, or only a request.
  */
 export const deleteFollow = async (
     ctx: Context,
@@ -102,7 +102,7 @@ export const deleteFollow = async (
     return await query.returningAll().executeTakeFirst();
 };
 
-/** The follows and requests from `followerId` of any of `followeeIds`. */
+/** The follows and follow requests from `followerId` to any of `followeeIds`. */
 export const followsFrom = async (
     ctx: Context,
     followerId: string,
@@ -114,7 +114,7 @@ export const followsFrom = async (
         .where("followee_id", "in", followeeIds)
         .execute();
 
-/** The follows and requests of `followeeId` from any of `followerIds`. */
+/** The follows and follow requests to `followeeId` from any of `followerIds`. */
 export const followsOf = async (
     ctx: Context,
     followeeId: string,
@@ -129,11 +129,14 @@ export const followsOf = async (
 /** An account's followers, or the accounts it follows. */
 export type FollowSide = "followers" | "following";
 
-/** An account's followers, the accounts it follows, or the accounts asking to follow it. */
+/**
+ * An account's followers, the accounts it follows, or the accounts that have requested to follow
+ * it.
+ */
 export type FollowList = FollowSide | "requests";
 
 /**
- * For each list, the column naming the account it is of, the one naming who is listed, and
+ * For each list, the column naming the account it belongs to, the one naming who is listed, and
  * whether its follows are accepted.
  */
 const lists = {
@@ -149,7 +152,7 @@ const listed = (ctx: Context, list: FollowList, accountId: string) =>
 
 /**
  * A page of one of an account's lists, newest first, each as the follow's id, which pages are
- * counted by, and the listed account's.
+ * counted by, and the listed account's id.
  */
 export const followPage = async (
     ctx: Context,
@@ -195,9 +198,9 @@ export const anyListed = async (
     await listed(ctx, list, accountId).select("id").limit(1).executeTakeFirst() !== undefined;
 
 /**
- * The instances an account's followers are on, other than this one. The one query here that reads
- * another module's table: an account can have more followers than a query can name, so their
- * instances are found by joining their accounts, rather than by listing them.
+ * The remote instances an account's followers are on. This is the one query here that reads another
+ * module's table: an account can have more followers than a query can name, so their instances are
+ * found by joining their accounts, rather than by listing them.
  */
 export const followerInstanceIds = async (ctx: Context, accountId: string): Promise<string[]> =>
     (await listed(ctx, "followers", accountId)
@@ -205,7 +208,7 @@ export const followerInstanceIds = async (ctx: Context, accountId: string): Prom
         .select("accounts.instance_id")
         .distinct()
         .execute())
-        // Local accounts have none.
+        // Local accounts have no instance.
         .flatMap((row) => row.instance_id ?? []);
 
 /**
@@ -226,15 +229,16 @@ export const anyFollowerOn = async (
 
 /**
  * The accounts `accountId` follows, as a subquery, for another module to page through what they
- * wrote. The other exception to keeping queries to a module's own tables: someone can follow more
- * accounts than a query can name, and a page sorted across them all can't be read in batches.
+ * wrote. This is the other exception to keeping queries to a module's own tables: someone can
+ * follow more accounts than a query can name, and a page sorted across them all can't be read in
+ * batches.
  */
 export const followedIdsQuery = (
     ctx: Context,
     accountId: string,
 ): AccountIdQuery => listed(ctx, "following", accountId).select("followee_id as account_id");
 
-/** The accounts an account follows and sees the shares of, as a subquery. */
+/** The accounts an account follows and sees the boosts of, as a subquery. */
 export const sharingIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     listed(ctx, "following", accountId).where("show_reblogs", "=", true)
         .select("followee_id as account_id");

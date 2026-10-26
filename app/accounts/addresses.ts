@@ -17,10 +17,10 @@ import {
 
 const logger = getLogger(["verso", "accounts"]);
 
-/** A username, and the domain of its instance, or `null` for this one. */
+/** A username, and the domain of its instance, or `null` for the local instance. */
 export type Address = { readonly username: string; readonly domain: string | null };
 
-/** The address in `user`, `@user` or `user@domain`, or `undefined` if it isn't one. */
+/** The address in `user`, `@user` or `user@domain` form, or `undefined` if it isn't one. */
 export const parseAddress = (ctx: Context, acct: string): Address | undefined => {
     const [username, domain, ...rest] = acct.replace(/^@/, "").split("@");
     if (username === "" || rest.length > 0) return undefined;
@@ -34,8 +34,8 @@ export const parseAddress = (ctx: Context, acct: string): Address | undefined =>
 
 /**
  * The account at `address`, or `undefined` if there is none. With `fetch`, a remote account is
- * found with WebFinger if Verso doesn't know it, and fetched again if Verso had it too long ago,
- * each from `budget`; if its instance fails, the copy Verso has is used.
+ * looked up with WebFinger if Verso doesn't have it, and fetched again if Verso's copy is too old,
+ * each from `budget`; if its instance fails, the stored copy is used.
  */
 export const findAccountByAddress = async (
     ctx: Context,
@@ -63,7 +63,7 @@ export const findAccountByAddress = async (
         const id = await ctx.federation.resolve(ctx, reference, "User", budget);
         const found = id === undefined ? undefined : await findAccount(ctx, id);
 
-        // The instance may have pointed at another of its users.
+        // The instance may have pointed at a different one of its users.
         return found?.username.toLowerCase() === username.toLowerCase() ? found : undefined;
     } catch (error) {
         if (!isRemoteFailure(error)) throw error;

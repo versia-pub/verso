@@ -34,7 +34,7 @@ const RoleFields = z.object({
     icon: z.url({ protocol: /^https?$/ }).nullable(),
 });
 
-/** A role as Versia's role endpoints show it. */
+/** A role as Versia's role endpoints render it. */
 export const renderVersiaRole = (role: RoleRow): VersiaRole => ({
     id: role.id,
     name: role.name,
@@ -42,16 +42,16 @@ export const renderVersiaRole = (role: RoleRow): VersiaRole => ({
     priority: role.priority,
     description: role.description,
     visible: role.visible,
-    // Left out when there is none, as Versia Server does.
+    // Omitted when there is none, as Versia Server does.
     icon: role.icon ?? undefined,
     color: role.color,
 });
 
-/** The viewer, as a manager of roles. */
+/** The viewer, as a role manager. */
 const managerOf = async (ctx: Context, viewer: RouteViewer & { accountId: string }) =>
     await roleManager(ctx, viewer.accountId, await viewer.permissions());
 
-/** The result of a change to roles, or the error that says why it was refused. */
+/** The result of a change to roles, or the error that says why it was rejected. */
 const orRefusal = <T>(result: Managed<T>): T => {
     if (result.ok) return result.value;
 

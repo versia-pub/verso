@@ -16,7 +16,7 @@ import {
 const developmentOnly = 'Only allowed with mode = "development"';
 
 /**
- * Whether browsers keep `__Host-` cookies set by the origin, which needs https, or a local host
+ * Whether browsers store `__Host-` cookies set by the origin, which needs https, or a local host
  * they trust without it.
  */
 const keepsCookies = (origin: string) => {
@@ -67,8 +67,8 @@ export const Config = z.strictObject({
          */
         origin: Origin.optional(),
         /**
-         * The reverse proxies in front of Verso, as addresses or CIDR ranges such as
-         * `127.0.0.1` or `10.0.0.0/8`. Only these are believed about who the client is.
+         * The reverse proxies in front of Verso, as addresses or CIDR ranges such as `127.0.0.1` or
+         * `10.0.0.0/8`. Only these are trusted to say who the client is.
          */
         trusted_proxies: z.array(CidrText).default([]),
         /**
@@ -79,7 +79,7 @@ export const Config = z.strictObject({
             limit: z.int().min(1).default(300),
             window_seconds: z.int().min(1).default(300),
             /**
-             * Where counts are kept: in each server's memory, or in the database, so that several
+             * Where counts are stored: in each server's memory, or in the database, so that several
              * web nodes share them. The database costs a write per request.
              */
             store: z.enum(["memory", "database"]).default("memory"),
@@ -98,7 +98,7 @@ export const Config = z.strictObject({
     }).prefault({}),
     federation: z.strictObject({
         /**
-         * Lets Verso send requests to other instances at internal addresses, such as ones on a
+         * Lets Verso send requests to remote instances at internal addresses, such as ones on a
          * local network or this machine. Development only, since anyone can name an instance.
          */
         allow_internal_addresses: z.boolean().default(false),
@@ -108,9 +108,9 @@ export const Config = z.strictObject({
          */
         blocked_domains: z.array(DomainName).default([]),
         /**
-         * Answers blocked instances as if nothing were wrong, so they can't tell they're blocked,
-         * rather than with a 403 that says why: what they fetch isn't found, and what they send is
-         * accepted, so they don't send it again.
+         * Responds to blocked instances as if nothing were wrong, so they can't tell they're
+         * blocked, rather than with a 403 that says why: what they fetch isn't found, and what they
+         * send is accepted, so they don't send it again.
          */
         silent_blocks: z.boolean().default(false),
         /**
@@ -119,14 +119,14 @@ export const Config = z.strictObject({
          */
         unreachable_days: z.int().min(1).default(7),
         /**
-         * For how many hours a delivery to an instance is tried before it is given up on. Two days
-         * by default; at most 30 days.
+         * For how many hours a delivery to an instance is retried before it is given up on. Two
+         * days by default; at most 30 days.
          */
         delivery_hours: z.int().min(1).max(720).default(48),
         /**
-         * How many requests each instance may send in a window of time, counted by who signed
-         * them, apart from clients' limit. Requests that aren't validly signed count against their
-         * client instead.
+         * How many requests each instance may send in a window of time, counted by who signed them,
+         * apart from clients' limit. Requests that aren't validly signed count against their client
+         * instead.
          */
         rate_limit: z.strictObject({
             limit: z.int().min(1).default(3000),
@@ -134,7 +134,7 @@ export const Config = z.strictObject({
         }).prefault({}),
         /**
          * How many fetches each process makes from one instance in a window of time, so that what
-         * other instances send can't make Verso flood one. Fetches past it are left for later.
+         * remote instances send can't make Verso flood one. Fetches over the limit are made later.
          */
         fetch_limit: z.strictObject({
             limit: z.int().min(1).default(600),
@@ -142,11 +142,11 @@ export const Config = z.strictObject({
         }).prefault({}),
     }).prefault({}),
     media: MediaLimits.extend({
-        /** Where uploaded files are kept. */
+        /** Where uploaded files are stored. */
         storage: FileStorage,
         /**
-         * How many hours an upload no status was given is kept before it is removed. A day by
-         * default, as on Mastodon.
+         * How many hours an upload that was never attached to a status is retained before it is
+         * removed. A day by default, as on Mastodon.
          */
         unattached_hours: z.int().min(1).default(24),
     }),
@@ -154,7 +154,7 @@ export const Config = z.strictObject({
     limits: Limits,
     permissions: Permissions,
     jobs: z.strictObject({
-        /** How many days a job that failed for good is kept, for someone to look at. */
+        /** How many days a job that failed for good is retained, for someone to look at. */
         dead_letter_days: z.int().min(1).default(30),
     }).prefault({}),
     logging: z.strictObject({
@@ -204,7 +204,7 @@ export type ConfigResult =
     | { readonly ok: false; readonly error: string };
 
 /**
- * Parses and checks the text of a TOML config file, after filling in its `${env:…}` and
+ * Parses and validates the text of a TOML config file, after filling in its `${env:…}` and
  * `${file:…}` references from `sources`.
  */
 export const parseConfig = async (

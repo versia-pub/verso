@@ -1,13 +1,13 @@
 import type { Generated } from "kysely";
 import type { TextFormat, Visibility } from "../accounts/tables.ts";
 
-/** A post, local or from another instance. */
+/** A status, local or remote. */
 export type NotesTable = {
-    /** Orders notes by when they were made, for paging through them. */
+    /** Orders statuses by creation time, for paging through them. */
     id: string;
-    /** Who wrote it. */
+    /** The author. */
     account_id: string;
-    /** The instance it came from, or `null` if it was written here. */
+    /** The instance it came from, or `null` if it is a local status. */
     instance_id: string | null;
     /** Its id on that instance. */
     remote_id: string | null;
@@ -16,22 +16,26 @@ export type NotesTable = {
     content: string;
     content_format: TextFormat;
     /**
-     * As HTML: Verso's for local notes, and the instance's own, sanitised when shown, for others.
+     * As HTML: Verso's rendering for local statuses, and the remote instance's own for remote
+     * statuses, sanitised when displayed.
      */
     content_html: string;
     /** A warning shown in place of the content until it is opened, or empty for none. */
     spoiler_text: Generated<string>;
     sensitive: Generated<boolean>;
-    /** An ISO 639-1 code, or `null` if it isn't known. */
+    /** An ISO 639-1 code, or `null` if unknown. */
     language: string | null;
-    /** The note it replies to, or `null` if none, or it is gone. */
+    /** The status it replies to, or `null` if none, or if it has been deleted. */
     in_reply_to_id: string | null;
     in_reply_to_account_id: string | null;
-    /** The note it quotes, or `null` if none, or it is gone. Only other instances' quote yet. */
+    /**
+     * The status it quotes, or `null` if none, or if it has been deleted. Only remote statuses
+     * quote so far.
+     */
     quote_id: string | null;
     /**
-     * The note it shares, which Mastodon calls a reblog, or `null` if it isn't a share. A share
-     * says nothing itself, and goes with the note it shares.
+     * The status it boosts (Mastodon calls this a reblog), or `null` if it isn't a boost. A boost
+     * has no content of its own, and is deleted with the status it boosts.
      */
     reblog_of_id: string | null;
     replies_count: Generated<number>;
@@ -39,52 +43,52 @@ export type NotesTable = {
     shares_count: Generated<number>;
     created_at: Date;
     edited_at: Date | null;
-    /** When it was last fetched or sent, or `null` if it was written here. */
+    /** When it was last fetched or sent, or `null` if it is a local status. */
     fetched_at: Date | null;
 };
 
-/** An account a note mentions, who may see it whatever its visibility. */
+/** An account mentioned by a status, which may see it whatever its visibility. */
 export type NoteMentionsTable = {
     note_id: string;
     account_id: string;
 };
 
-/** A hashtag a note uses, in lower case. */
+/** A hashtag used by a status, in lower case. */
 export type NoteTagsTable = {
     note_id: string;
     name: string;
 };
 
-/** A file a note had attached before an edit. */
+/** A media attachment a status had before an edit. */
 export type VersionMedia = { readonly id: string; readonly description: string | null };
 
-/** What a note said before an edit, as its edit history shows it. */
+/** What a status said before an edit, as its edit history shows it. */
 export type NoteVersionsTable = {
-    /** Orders a note's versions, oldest first. */
+    /** Orders a status's versions, oldest first. */
     id: string;
     note_id: string;
     content_html: string;
     spoiler_text: string;
     sensitive: boolean;
-    /** The files it had attached, in order, with their descriptions then. */
+    /** The media it had attached, in order, with their descriptions at the time. */
     media: Generated<VersionMedia[]>;
-    /** When the note came to say this: when it was made, or the edit before. */
+    /** When the status came to say this: when it was created, or the previous edit. */
     created_at: Date;
 };
 
-/** A note its author features on their profile, which Mastodon calls pinning it. */
+/** A status that its author features on their profile, which Mastodon calls pinning it. */
 export type NotePinsTable = {
-    /** Orders pins by when they were made. */
+    /** Orders pins by creation time. */
     id: string;
-    /** Who pins it, always its author. */
+    /** The account that pins it, always its author. */
     account_id: string;
     note_id: string;
     created_at: Date;
 };
 
 /**
- * How many likes, shares and replies another instance's note has, as its instance says, each
- * `null` if it doesn't say. Verso shows the larger of these and what it counted itself.
+ * How many likes, boosts and replies a remote status has, as its instance reports, each `null` if
+ * the instance doesn't report it. Verso shows the larger of these and what it counted itself.
  */
 export type RemoteNoteTotalsTable = {
     note_id: string;

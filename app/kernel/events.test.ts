@@ -5,7 +5,7 @@ import { createTestContext } from "../testing/context.ts";
 import type { DomainEvent, Subscriber } from "./context.ts";
 import { emit } from "./events.ts";
 
-/** Subscribers that note what they were told, and whether inside a transaction. */
+/** Subscribers that record what they were told, and whether inside a transaction. */
 const listening = () => {
     const told: [string, DomainEvent, boolean][] = [];
     const subscriber = (name: string): Subscriber => (ctx, event) => {

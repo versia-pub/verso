@@ -6,8 +6,8 @@ import { defineRoute, type Route, versiaJson } from "../http/route.ts";
 import type { Config } from "../kernel/config.ts";
 
 /**
- * How other instances find out about this one: which versions of Versia it speaks, then what it
- * says about itself. Neither is signed, since a peer reads them to learn the key to check
+ * How remote instances find out about this one: which versions of Versia it speaks, then what it
+ * says about itself. Neither is signed, since a peer reads them to learn the key to validate
  * signatures with.
  * @see https://versia.pub/federation/discovery
  */
@@ -20,7 +20,7 @@ export const versiaInstanceRoutes = (
         path: "/.well-known/versia",
         summary: "The versions of Versia the instance speaks",
         tags: ["versia"],
-        // As the spec's example answers.
+        // As the spec's example responses.
         contentType: "application/jrd+json",
         responses: { 200: z.object({ versions: z.array(z.string()) }) },
         handler: () => Promise.resolve({ status: 200, body: { versions: ["0.6.0"] } }),

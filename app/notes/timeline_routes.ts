@@ -8,7 +8,7 @@ import { renderStatuses } from "./render.ts";
 import { homePage, publicPage } from "./timeline_queries.ts";
 
 /**
- * Which public statuses to give. `local` wins over `remote`, as on Mastodon.
+ * Which public statuses to return. `local` wins over `remote`, as on Mastodon.
  * @see https://docs.joinmastodon.org/methods/timelines/#public
  */
 const PublicQuery = PageQuery({ default: 20, max: 40 }).extend({
@@ -18,8 +18,8 @@ const PublicQuery = PageQuery({ default: 20, max: 40 }).extend({
 });
 
 /**
- * Timelines: the notes of the accounts someone follows, found when they are read rather than
- * written out to each follower, and everyone's public notes.
+ * Timelines: the statuses of the accounts someone follows, assembled when the timeline is read
+ * rather than written out to each follower, and everyone's public statuses.
  */
 export const timelineRoutes: readonly Route[] = [
     defineRoute({

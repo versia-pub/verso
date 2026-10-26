@@ -1,10 +1,10 @@
 /**
- * The logins at identity providers linked to local accounts.
+ * The logins at identity providers that are linked to local accounts.
  * @module
  */
 import type { Context } from "../kernel/context.ts";
 
-/** The account a login at `issuer` as `subject` is linked to, if any. */
+/** The account that a login at `issuer` as `subject` is linked to, if any. */
 export const linkedAccount = async (
     ctx: Context,
     issuer: string,
@@ -20,7 +20,7 @@ export const linkedAccount = async (
 };
 
 /**
- * Links a login to an account. Returns whether it did, which it doesn't if it was linked already.
+ * Links a login to an account. Returns whether it did, which it doesn't if it was already linked.
  */
 export const linkIdentity = async (
     ctx: Context,

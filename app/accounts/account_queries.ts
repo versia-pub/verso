@@ -16,7 +16,7 @@ import type { Context } from "../kernel/context.ts";
 import type { AccountsTable } from "./tables.ts";
 
 /**
- * An account, with the domain of its instance, or `null` for this one, and the addresses and
+ * An account, with the domain of its instance (`null` for the local instance), and the URLs and
  * descriptions of its pictures, if it has its own.
  */
 export type AccountRow = Selectable<AccountsTable> & {
@@ -28,8 +28,8 @@ export type AccountRow = Selectable<AccountsTable> & {
 };
 
 /**
- * Whether an account named `username`, ignoring case, is on the instance `instanceId`, or local if
- * it is `null`, written as the unique index on them is, so lookups use it.
+ * Whether an account named `username`, ignoring case, is on the instance `instanceId` (or local if
+ * it is `null`), written the way the unique index on them is, so lookups use it.
  */
 const named =
     (instanceId: string | null, username: string) =>
@@ -40,9 +40,9 @@ const named =
         ]);
 
 /**
- * Accounts with their instance's domain and their pictures' addresses, which everything that shows
- * an account needs. It joins the instances' and media's tables rather than asking those modules,
- * so that a page of accounts is one query.
+ * Accounts with their instance's domain and their pictures' URLs, which everything that displays an
+ * account needs. It joins the instances and media tables rather than going through those modules,
+ * so that a page of accounts takes one query.
  */
 const accountRows = (ctx: Context) =>
     ctx.db.selectFrom("accounts")
@@ -62,10 +62,10 @@ const accountRows = (ctx: Context) =>
 export const findAccount = (ctx: Context, id: string): Promise<AccountRow | undefined> =>
     accountRows(ctx).where("accounts.id", "=", id).executeTakeFirst();
 
-/** An account's id, with its pictures' ids. */
+/** An account's id, with its picture ids. */
 export type AccountPictures = Pick<AccountRow, "id" | "avatar_id" | "header_id">;
 
-/** The accounts of `ids` that exist, in no particular order, however many `ids` there are. */
+/** The accounts in `ids` that exist, in no particular order, however many `ids` there are. */
 export const findAccounts = async (
     ctx: Context,
     ids: readonly string[],
@@ -87,7 +87,7 @@ export const findLocalAccount = (
 
 /**
  * The account named `username`, ignoring case, on the instance `instanceId`, or `undefined` if
- * Verso doesn't know it.
+ * Verso doesn't have it.
  */
 export const findRemoteAccountByName = (
     ctx: Context,
@@ -118,7 +118,7 @@ export const getUsername = async (ctx: Context, accountId: string): Promise<stri
     return username;
 };
 
-/** The instances that host any of the accounts `ids`, in `instances`, in no particular order. */
+/** The instances in `instances` that host any of the accounts `ids`, in no particular order. */
 export const instancesHosting = async (ctx: Context, ids: readonly string[]): Promise<string[]> => {
     if (ids.length === 0) return [];
 
@@ -126,7 +126,7 @@ export const instancesHosting = async (ctx: Context, ids: readonly string[]): Pr
         .where("id", "in", ids)
         .execute();
 
-    // Local accounts have none.
+    // Local accounts have no instance.
     return rows.flatMap((row) => row.instance_id ?? []);
 };
 
@@ -152,7 +152,7 @@ export const countLocalAccounts = async (ctx: Context): Promise<number> =>
 
 /**
  * The usernames of local accounts that start with `start`, ignoring case, in lowercase. In `like`,
- * `_` matches any character, so a few more may be found.
+ * `_` matches any character, so a few extra usernames may be found.
  */
 export const localUsernamesStartingWith = async (
     ctx: Context,
@@ -204,10 +204,10 @@ export type RemoteProfile = Required<
 >;
 
 /**
- * Takes `username` from the account on the instance `instanceId` that has it, renaming it to `~`
- * and its id there, which no username can be, and marking it to be fetched again, which gives it
- * its new name. Usernames are unique on an instance, so an account saved with one has taken it
- * from any account Verso last saw before it changed, or else is that account.
+ * Frees `username` on the instance `instanceId` by renaming the account that has it to `~` followed
+ * by its remote id (which no username can be), and marking it to be fetched again, which gives it
+ * its new name. Usernames are unique per instance, so an account saved with that username has taken
+ * it from whichever account Verso last saw before it changed, or else is that account.
  */
 export const releaseRemoteUsername = async (
     ctx: Context,
@@ -224,8 +224,8 @@ export const releaseRemoteUsername = async (
 };
 
 /**
- * Adds a remote account, or, if it is known by its id on its instance, replaces what it says about
- * itself. Either way, it is marked as fetched now. Returns its id here and its pictures.
+ * Adds a remote account or, if it is known by its id on its instance, replaces what it says about
+ * itself. Either way, it is marked as fetched now. Returns its local id and its pictures.
  */
 export const upsertRemoteAccount = async (
     ctx: Context,
@@ -292,16 +292,16 @@ export const deleteAccount = async (ctx: Context, id: string): Promise<void> => 
     await ctx.db.deleteFrom("accounts").where("id", "=", id).execute();
 };
 
-/** Columns of an account to change. */
+/** Columns of an account to update. */
 export type AccountChanges = Updateable<AccountsTable>;
 
-/** Changes a local account. Columns left out, or set to `undefined`, stay as they are. */
+/** Updates a local account. Columns that are omitted or set to `undefined` stay as they are. */
 export const updateLocalAccount = async (
     ctx: Context,
     id: string,
     changes: AccountChanges,
 ): Promise<void> => {
-    // Kysely leaves out the columns set to `undefined`, and an update must set something.
+    // Kysely omits the columns set to `undefined`, and an update must set something.
     if (Object.values(changes).every((value) => value === undefined)) return;
 
     await ctx.db.updateTable("accounts")

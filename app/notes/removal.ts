@@ -15,12 +15,13 @@ import {
 import { uncountSharersOf, uncountSharersOfAmong, uncountSharesAmong } from "./share_queries.ts";
 
 /**
- * Deletes a note, uncounting it, and the shares of it, which go with it. Returns whether there was
- * one.
+ * Deletes a status, decrementing its counts, along with the boosts of it. Returns whether it
+ * existed.
  */
 export const removeNote = (ctx: Context, id: string): Promise<boolean> =>
     ctx.transaction(async (tx) => {
-        // Read while they are there: the event says who could see the note, so they can be told.
+        // Read while they still exist: the event says who could see the status, so they can be
+        // notified.
         const mentionIds = (await mentionsOf(tx, [id])).get(id) ?? [];
         await uncountSharersOf(tx, id);
         const note = await deleteNote(tx, id);
@@ -42,28 +43,29 @@ export const removeNote = (ctx: Context, id: string): Promise<boolean> =>
     });
 
 /**
- * Uncounts what goes with an account about to be deleted, before it does: its replies, from the
- * notes they reply to, its shares, from the notes they share, and the shares of its notes, from
- * the accounts that made them.
+ * Decrements the counts that depend on an account about to be deleted, before it is deleted: the
+ * reply counts of the statuses it replied to, the boost counts of the statuses it boosted, and the
+ * boost counts of the accounts that boosted its statuses.
  */
 export const uncountNotesOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (isAccountDeleting(event)) await uncountAmong(ctx, notesOfQuery(ctx, event.accountId));
 };
 
-/** Uncounts what goes with `notes`, as {@link uncountNotesOf} does. */
+/** Decrements the counts that depend on `notes`, as {@link uncountNotesOf} does. */
 const uncountAmong = async (ctx: Context, notes: NoteIdQuery) => {
     await uncountRepliesAmong(ctx, notes);
     await uncountSharesAmong(ctx, notes);
     await uncountSharersOfAmong(ctx, notes);
 };
 
-/** How many notes of an account are removed in each transaction, before it is deleted. */
+/** How many statuses of an account are removed in each transaction, before it is deleted. */
 const removalBatch = 500;
 
 /**
- * Removes the notes and shares of `accountId`, a remote account about to be deleted, uncounting
- * what goes with them, a batch at a time, each in a transaction of its own, so that one with many
- * doesn't hold its locks all at once. Its deletion uncounts any it posts meanwhile.
+ * Removes the statuses and boosts of `accountId`, a remote account about to be deleted,
+ * decrementing the counts that depend on them, one batch at a time, each in its own transaction, so
+ * that an account with many statuses doesn't hold all its locks at once. Deleting the account then
+ * decrements the counts of any it posted in the meantime.
  */
 export const removeNotesOf = async (ctx: Context, accountId: string): Promise<void> => {
     while (true) {

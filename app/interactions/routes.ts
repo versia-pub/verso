@@ -41,20 +41,20 @@ const likeRoute = (action: "favourite" | "unfavourite") =>
     });
 
 /**
- * Who a share is for. Without it, the sharer's default.
+ * Who a boost is for. If omitted, the booster's default.
  * @see https://docs.joinmastodon.org/methods/statuses/#boost
  */
 const ShareOptions = z.object({
     visibility: z.enum(["public", "unlisted", "private"]).optional(),
 });
 
-/** Versia Server's reaction routes, which Verso's follow. */
+/** Versia Server's reaction routes, which Verso's routes follow. */
 const versiaServerReactions =
     "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions";
 
 /**
  * Reacts to a status with an emoji, or undoes it, as Versia Server does. The emoji is a Unicode
- * one, or one of this instance's by its shortcode in colons.
+ * one, or one of the local instance's by its shortcode in colons.
  * @see https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions
  */
 const reactionRoute = (method: "PUT" | "DELETE") =>
@@ -83,7 +83,7 @@ const reactionRoute = (method: "PUT" | "DELETE") =>
     });
 
 /**
- * Likes of statuses, which Mastodon calls favourites, shares, which it calls reblogs, and
+ * Likes of statuses (which Mastodon calls favourites), boosts (which it calls reblogs), and
  * reactions, as Versia Server has them.
  */
 export const interactionRoutes: readonly Route[] = [
@@ -184,7 +184,7 @@ export const interactionRoutes: readonly Route[] = [
                 ) => [note.id, note]),
             );
 
-            // A note liked may since have become one the viewer can't see, such as when they stop
+            // A liked status may since have become one the viewer can't see, such as when they stop
             // following its author. The page is still as long, so its cursors go by the likes.
             const visible = await seenAmong(ctx, [...notes.keys()], viewer.accountId);
             const seen = likes.flatMap((row) => {
@@ -248,8 +248,7 @@ export const interactionRoutes: readonly Route[] = [
             const note = await visibleOriginal(ctx, params.id, viewer?.accountId ?? null);
             if (note === undefined) throw new NotFound();
 
-            // Only the shares anyone may see, so a share for followers doesn't give its sharer
-            // away.
+            // Only the boosts anyone may see, so a boost for followers doesn't reveal its booster.
             const blocked = viewerBlocks(ctx, viewer?.accountId ?? null);
             const shares = await sharePage(ctx, note.id, everyone, blocked, query);
             return {

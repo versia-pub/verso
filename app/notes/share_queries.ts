@@ -7,7 +7,7 @@ import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 import type { NoteIdQuery } from "./removal_queries.ts";
 
-/** Counts a share of a note, or one deleted. */
+/** Increments the boost count of a status, or decrements it when a boost is deleted. */
 export const countShare = async (ctx: Context, noteId: string, by: 1 | -1): Promise<void> => {
     await ctx.db.updateTable("notes")
         .set((eb) => ({ shares_count: eb("shares_count", "+", by) }))
@@ -16,8 +16,8 @@ export const countShare = async (ctx: Context, noteId: string, by: 1 | -1): Prom
 };
 
 /**
- * Uncounts the shares among `notes` from the notes they share. An account shares a note once, and
- * `notes` are one account's.
+ * Decrements the boost counts of the statuses boosted by `notes`. An account boosts a status once,
+ * and `notes` all belong to one account.
  */
 export const uncountSharesAmong = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
     await ctx.db.updateTable("notes")
@@ -30,8 +30,8 @@ export const uncountSharesAmong = async (ctx: Context, notes: NoteIdQuery): Prom
 };
 
 /**
- * Uncounts the shares of `noteId` from the statuses of the accounts that made them, as they go with
- * it. Direct ones aren't counted, so they aren't uncounted.
+ * Decrements the status counts of the accounts that boosted `noteId`, as the boosts are deleted
+ * with it. Direct boosts aren't counted, so they aren't decremented.
  */
 export const uncountSharersOf = (ctx: Context, noteId: string): Promise<void> =>
     uncountStatusesFor(
@@ -42,8 +42,8 @@ export const uncountSharersOf = (ctx: Context, noteId: string): Promise<void> =>
     );
 
 /**
- * Uncounts the shares of `notes` from the statuses of the accounts that made them, as they go with
- * the notes when they are deleted.
+ * Decrements the status counts of the accounts that boosted `notes`, as the boosts are deleted
+ * along with the statuses.
  */
 export const uncountSharersOfAmong = (ctx: Context, notes: NoteIdQuery): Promise<void> =>
     uncountStatusesFor(
@@ -53,7 +53,7 @@ export const uncountSharersOfAmong = (ctx: Context, notes: NoteIdQuery): Promise
             .where("notes.visibility", "!=", "direct"),
     );
 
-/** An account's share of a note, if it shares it. */
+/** An account's boost of a status, if it boosts it. */
 export const findShare = async (
     ctx: Context,
     accountId: string,
@@ -64,7 +64,7 @@ export const findShare = async (
         .where("reblog_of_id", "=", noteId)
         .executeTakeFirst();
 
-/** Removes an account's share of a note, and returns it, if there was one. */
+/** Removes an account's boost of a status, and returns it if there was one. */
 export const deleteShare = async (
     ctx: Context,
     accountId: string,
@@ -76,7 +76,7 @@ export const deleteShare = async (
         .returningAll()
         .executeTakeFirst();
 
-/** Which of `noteIds` the account shares. */
+/** Which of `noteIds` the account has boosted. */
 export const sharedAmong = async (
     ctx: Context,
     accountId: string,
@@ -91,13 +91,13 @@ export const sharedAmong = async (
     return new Set(rows.flatMap((row) => row.reblog_of_id ?? []));
 };
 
-/** The shares of `noteId` with one of `visibilities`. */
+/** The boosts of `noteId` with one of `visibilities`. */
 const sharesOf = (ctx: Context, noteId: string, visibilities: readonly Visibility[]) =>
     ctx.db.selectFrom("notes")
         .where("reblog_of_id", "=", noteId)
         .where("visibility", "in", visibilities);
 
-/** The ids of the shares of `noteId`, as {@link sharesOf} finds them, oldest first. */
+/** The ids of the boosts of `noteId`, as {@link sharesOf} finds them, oldest first. */
 export const shareIdsOf = async (
     ctx: Context,
     noteId: string,
@@ -112,7 +112,7 @@ export const shareIdsOf = async (
         .execute())
         .map((row) => row.id);
 
-/** How many shares `noteId` has, as {@link sharesOf} finds them. */
+/** How many boosts `noteId` has, as {@link sharesOf} finds them. */
 export const countSharesOf = async (
     ctx: Context,
     noteId: string,
@@ -123,8 +123,8 @@ export const countSharesOf = async (
     );
 
 /**
- * A page of the shares of a note with one of `visibilities`, but those of the accounts `blocked`,
- * newest first.
+ * A page of the boosts of a status with one of `visibilities`, excluding those by the accounts
+ * `blocked`, newest first.
  */
 export const sharePage = async (
     ctx: Context,
@@ -141,7 +141,7 @@ export const sharePage = async (
     return await readPage(query, "id", page);
 };
 
-/** How many shares the accounts `by` make of each of `noteIds` they share. */
+/** How many boosts the accounts `by` made of each of `noteIds`. */
 export const countSharesBy = async (
     ctx: Context,
     noteIds: readonly string[],

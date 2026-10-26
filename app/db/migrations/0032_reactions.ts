@@ -2,7 +2,7 @@ import { type Kysely, sql } from "kysely";
 import type { Migration } from "kysely/migration";
 import { columnTypes } from "../columns.ts";
 
-/** Accounts' reactions to notes, each with an emoji: a Unicode one, or a custom one. */
+/** Accounts' reactions to statuses, each with an emoji: a Unicode one, or a custom one. */
 export const reactions: Migration = {
     up: async (db: Kysely<unknown>) => {
         await db.schema.createTable("reactions")
@@ -30,7 +30,7 @@ export const reactions: Migration = {
             )
             .execute();
 
-        // An account reacts to a note with each emoji once.
+        // An account reacts to a status with each emoji once.
         await db.schema.createIndex("reactions_by_text").on("reactions")
             .unique()
             .columns(["note_id", "account_id", "text"])
@@ -42,7 +42,7 @@ export const reactions: Migration = {
             .where(sql<boolean>`text is null`)
             .execute();
 
-        // For deleting an account or an emoji, without reading every reaction.
+        // For deleting an account or an emoji, without scanning every reaction.
         await db.schema.createIndex("reactions_by_account").on("reactions")
             .column("account_id")
             .execute();

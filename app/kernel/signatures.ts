@@ -1,5 +1,5 @@
 /**
- * Checking Versia signatures with the keys Verso has for other instances.
+ * Validating Versia signatures with the keys Verso has for remote instances.
  * @see https://versia.pub/signatures
  * @module
  */
@@ -7,8 +7,8 @@ import { type SignedMessage, type Verification, verify } from "@versia/protocol"
 import type { Context, KeyStore } from "./context.ts";
 
 /**
- * Checks the signature on `message`. When the key Verso has for the signer doesn't verify it, the
- * key is fetched again, in case the instance rotated it. With `from`, only that domain may have
+ * Validates the signature on `message`. When the key Verso has for the signer doesn't verify it,
+ * the key is fetched again, in case the instance rotated it. With `from`, only that domain may have
  * signed it, and no other instance's key is looked up.
  */
 export const checkSignature = async (

@@ -5,10 +5,10 @@ import { findNote, isMentioned, type NoteRow } from "./note_queries.ts";
 import { notesSeenBy, type Onlooker } from "./thread_queries.ts";
 
 /**
- * Whether `viewerId`, or anyone if it is `null`, may see `note`. Public and unlisted notes are for
- * anyone, private ones for the author's followers, and direct ones for those they mention, who
- * may always see a note, as may its author. A share is seen only by those who may see what it
- * shares too, which can have been made private since.
+ * Whether `viewerId`, or anyone if it is `null`, may see `note`. Public and unlisted statuses are
+ * visible to anyone, private ones to the author's followers, and direct ones to the users they
+ * mention. Mentioned users and the author may always see a status. A boost is visible only to those
+ * who may also see the status it boosts, which may have been made private since.
  */
 export const canSee = async (
     ctx: Context,
@@ -27,13 +27,13 @@ export const canSee = async (
     return note.visibility === "private" && await isFollowing(ctx, viewerId, note.account_id);
 };
 
-/** Someone looking at notes, as queries of many of them take them, or `null` for anyone. */
+/** Someone viewing statuses, in the form queries over many statuses take, or `null` for anyone. */
 export const onlookerOf = (ctx: Context, viewerId: string | null): Onlooker =>
     viewerId === null ? null : { id: viewerId, followed: followedSubquery(ctx, viewerId) };
 
 /**
- * Which of `ids`, notes that aren't shares, `viewerId`, or anyone if it is `null`, may see, as
- * {@link canSee} decides one at a time, in one query.
+ * Which of `ids`, statuses that aren't boosts, `viewerId` (or anyone if it is `null`) may see, as
+ * {@link canSee} decides one at a time, in a single query.
  */
 export const seenAmong = (
     ctx: Context,
@@ -42,9 +42,9 @@ export const seenAmong = (
 ): Promise<Set<string>> => notesSeenBy(ctx, ids, onlookerOf(ctx, viewerId));
 
 /**
- * The visibilities of an account's notes that `viewerId`, or anyone if it is `null`, sees among
- * them: all of them for the account itself, private ones too for its followers, and otherwise
- * public and unlisted ones. Direct notes that mention the viewer aren't among them, as on Mastodon.
+ * The visibilities of an account's statuses that `viewerId` (or anyone if it is `null`) can see:
+ * all of them for the account itself, private ones too for its followers, and otherwise public and
+ * unlisted ones. Direct statuses that mention the viewer aren't among them, as on Mastodon.
  */
 export const visibilitiesFor = async (
     ctx: Context,
@@ -59,7 +59,7 @@ export const visibilitiesFor = async (
     return ["public", "unlisted"];
 };
 
-/** The note with this id, if there is one and `viewerId` may see it. */
+/** The status with this id, if there is one and `viewerId` may see it. */
 export const visibleNote = async (
     ctx: Context,
     id: string,
@@ -70,8 +70,9 @@ export const visibleNote = async (
 };
 
 /**
- * The note with this id, or if it is a share, the note it shares, if `viewerId` may see both. What
- * is done to a share, such as liking or replying to it, is done to what it shares, as on Mastodon.
+ * The status with this id, or if it is a boost, the status it boosts, if `viewerId` may see both.
+ * What is done to a boost, such as liking or replying to it, is done to the status it boosts, as on
+ * Mastodon.
  */
 export const visibleOriginal = async (
     ctx: Context,

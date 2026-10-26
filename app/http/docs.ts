@@ -1,5 +1,5 @@
 /**
- * The API documentation, as Scalar shows the OpenAPI document.
+ * The API documentation, as Scalar renders the OpenAPI document.
  * @see https://github.com/scalar/scalar
  * @module
  */

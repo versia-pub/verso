@@ -12,7 +12,7 @@ type Empty = z.ZodType<Record<string, never>>;
 export const Page = { kind: "page" } as const;
 
 /**
- * The type Versia's entity endpoints answer with, for a route's `contentType`.
+ * The type Versia's entity endpoints respond with, for a route's `contentType`.
  * @see https://versia.pub/federation/http#http-response-content-type
  */
 export const versiaJson = "application/vnd.versia+json; charset=utf-8";
@@ -63,7 +63,7 @@ type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
             file: Uint8Array | ReadableStream<Uint8Array>;
             /** The file's media type, if not the one declared. */
             type?: string;
-            /** Has browsers save the file rather than show it. */
+            /** Has browsers download the file rather than display it. */
             download?: true;
         }
     : R extends Paged ? { status: S; body: z.input<R["item"]>[]; cursors: Cursors }
@@ -72,7 +72,7 @@ type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
     : never;
 
 /**
- * Cookies a reply sets, by name, or deletes with `null`. They last until the browser closes, and
+ * Cookies a response sets, by name, or deletes with `null`. They last until the browser closes, and
  * scripts and other sites can't read them.
  */
 export type CookieChanges = Readonly<Record<string, string | null>>;
@@ -87,8 +87,8 @@ export type Reply<R extends Responses> = {
 /** Who may call a route, by the access token in its `Authorization: Bearer` header. */
 export type Auth = {
     /**
-     * `user`: a token for a user. `app`: any token, also one an app got for itself. `optional`:
-     * anyone, but a token sent must be valid.
+     * `user`: a token for a user. `app`: any token, also one an app obtained for itself.
+     * `optional`: anyone, but a token sent must be valid.
      */
     readonly require: "user" | "app" | "optional";
     /**
@@ -97,8 +97,8 @@ export type Auth = {
      */
     readonly scope?: Scope;
     /**
-     * What the caller must be allowed to do, checked after the scope. Users may do what config
-     * lets every user, and what their roles allow; anyone else, what it lets anonymous visitors.
+     * What the caller must be allowed to do, checked after the scope. Users may do what config lets
+     * every user, and what their roles allow; anyone else, what it lets anonymous visitors.
      */
     readonly permission?: Permission;
 };
@@ -115,8 +115,9 @@ export type Viewer = {
 /** Who is calling, as a route's handler sees them. */
 export type RouteViewer = Viewer & {
     /**
-     * What the caller may do: a user, what config lets every user and their roles allow, and an
-     * app acting for itself, what it lets anonymous visitors. Looked up once, when first asked.
+     * What the caller may do: for a user, what config lets every user and their roles allow, and
+     * for an app acting for itself, what it lets anonymous visitors. Looked up once, when first
+     * requested.
      */
     readonly permissions: () => Promise<ReadonlySet<Permission>>;
 };
@@ -161,24 +162,24 @@ export type RouteDefinition<
     readonly tags?: readonly string[];
     /**
      * The media type of the route's JSON bodies, if not `application/json`. Versia's entity
-     * endpoints, for one, must answer `application/vnd.versia+json; charset=utf-8`.
+     * endpoints, for one, must respond with `application/vnd.versia+json; charset=utf-8`.
      * @see https://versia.pub/federation/http#http-response-content-type
      */
     readonly contentType?: string;
     /**
-     * Answers input it can't read as OAuth does, with 400 `invalid_request`, rather than Mastodon's
+     * Handles input it can't read as OAuth does, with 400 `invalid_request`, rather than Mastodon's
      * 422. For the endpoints apps call as OAuth clients, such as `/oauth/token`.
      * @see https://www.rfc-editor.org/rfc/rfc6749#section-5.2
      */
     readonly oauthErrors?: boolean;
     /**
-     * How many seconds anyone may cache the route's successful replies, for ones that are the same
-     * for everyone, such as pictures. Without it, nothing may cache them.
+     * How many seconds anyone may cache the route's successful responses, for ones that are the
+     * same for everyone, such as pictures. Without it, nothing may cache them.
      */
     readonly maxAge?: number;
     /**
-     * Anyone may cache the route's successful replies for a year, and never check them again, for
-     * files kept under the hash of their bytes, which never change.
+     * Anyone may cache the route's successful responses for a year, and never revalidate them, for
+     * files stored under the hash of their bytes, which never change.
      */
     readonly immutable?: true;
     /**
@@ -188,17 +189,17 @@ export type RouteDefinition<
      */
     readonly pagePolicy?: string;
     /**
-     * `false` exempts the route from rate limits. A bucket counts the route's requests apart from
-     * the client's others, with `times` as many allowed, for files a page loads many of at once.
-     * Signed routes are limited by the instance that signed, not by client.
+     * `false` exempts the route from rate limits. A bucket counts the route's requests separately
+     * from the client's others, with `times` as many allowed, for files a page loads many of at
+     * once. Signed routes are limited by the instance that signed, not by client.
      */
     readonly rateLimit?: false | { readonly bucket: string; readonly times: number };
     /** Without it, anyone may call the route, and tokens are ignored. */
     readonly auth?: A;
     /**
-     * Only other instances may call the route: the request must carry a valid Versia signature,
-     * which is checked before anything else. The handler gets the signer's domain as `signedBy`,
-     * and its replies are signed as this instance.
+     * Only remote instances may call the route: the request must carry a valid Versia signature,
+     * which is validated before anything else. The handler gets the signer's domain as `signedBy`,
+     * and its responses are signed as this instance.
      * @see https://versia.pub/signatures
      */
     readonly signed?: S;
@@ -209,16 +210,19 @@ export type RouteDefinition<
      */
     readonly query?: Q;
     /**
-     * A JSON or form body. Only POST, PUT, PATCH and DELETE routes take one. As in the query, form
-     * values are strings (or files), and a key given more than once, or as `key[]`, is an array.
+     * A JSON or form body. Only POST, PUT, PATCH and DELETE routes accept one. As in the query,
+     * form values are strings (or files), and a key given more than once, or as `key[]`, is an
+     * array.
      */
     readonly body?: B;
     /**
-     * The body is plain text, `text/plain`, which `body` checks as a string, rather than JSON or a
-     * form. A missing body is an empty string.
+     * The body is plain text, `text/plain`, which `body` validates as a string, rather than JSON or
+     * a form. A missing body is an empty string.
      */
     readonly textBody?: true;
-    /** The largest body the route takes, in bytes, for one larger than any form, such as a file. */
+    /**
+     * The largest body the route accepts, in bytes, for one larger than any form, such as a file.
+     */
     readonly maxBodyBytes?: number;
     /** The cookies the route reads, which are strings. Only the ones Verso set are seen. */
     readonly cookies?: C;
@@ -237,8 +241,8 @@ export type RouteDefinition<
             /** The domain of the instance that signed the request, on `signed` routes. */
             signedBy: S extends true ? string : undefined;
             /**
-             * The body exactly as it was signed, on `signed` routes, for ones that read it by
-             * the protocol's rules rather than through `body`.
+             * The body exactly as it was signed, on `signed` routes, for ones that read it by the
+             * protocol's rules rather than through `body`.
              */
             signedBody: S extends true ? Uint8Array<ArrayBuffer> : undefined;
         },
@@ -256,7 +260,7 @@ export type Route = RouteDefinition<
     Responses
 >;
 
-/** Checks a route's types and erases them. */
+/** Validates a route's types and erases them. */
 export const defineRoute = <
     P extends Schema = Empty,
     Q extends Schema = Empty,

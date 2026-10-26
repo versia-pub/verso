@@ -24,7 +24,7 @@ const user = {
     indexable: true,
 };
 
-/** bob's public note `n1`. */
+/** bob's public status `n1`. */
 const note = {
     type: "Note",
     id: "n1",
@@ -38,13 +38,13 @@ const note = {
     previews: [],
 };
 
-/** Where b.test serves the collection `name` of bob's note. */
+/** Where b.test serves the collection `name` of bob's status. */
 const collection = (name: string) =>
     `/.versia/v0.6/entities/Note/n1/collections/${encodeURIComponent(name)}`;
 
 /**
- * a.test, with alice, who follows bob, and b.test, which sends what it is told, with bob and the
- * totals of his note's collections given, each `undefined` for one it doesn't have.
+ * a.test, with alice, who follows bob, and b.test, which sends whatever it is told to, with bob and
+ * the totals of his status's collections, each `undefined` if the collection doesn't exist.
  */
 const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unknown }) => {
     const network = await createNetwork(["a.test"]);
@@ -75,7 +75,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
     });
     await network.drain();
 
-    /** Has b.test send bob's note to a.test, and a.test take it in, totals and all. */
+    /** Has b.test send bob's status to a.test, and a.test receive it, totals and all. */
     const send = async () => {
         const sent = await b.send("https://a.test/.versia/v0.6/inbox", { body: note });
         assertEquals(sent.status, 202);
@@ -86,7 +86,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
         return row;
     };
 
-    /** The likes, shares and replies of bob's note, as the client API counts them. */
+    /** The likes, boosts and replies of bob's status, as the client API counts them. */
     const counts = async () => {
         const row = await findRemoteNoteAt(a, "b.test", "n1");
         assertExists(row);
@@ -94,7 +94,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
         return [status.favourites_count, status.reblogs_count, status.replies_count];
     };
 
-    /** How many requests b.test was sent for the collections of bob's note. */
+    /** How many requests b.test received for the collections of bob's status. */
     const asked = () =>
         network.transport.sent.filter((request) =>
             new URL(request.url).pathname.startsWith("/.versia/v0.6/entities/Note/n1/collections/")
@@ -135,7 +135,7 @@ Deno.test("another instance's note shows the totals its instance gives, when the
     await like(test.a, test.alice, row.id);
     assertEquals(await test.counts(), [5, 2, 3]);
 
-    // Fetched again, the totals are what b.test says now.
+    // Fetched again, the totals are what b.test reports now.
     test.b.serve(collection("pub.versia:likes/Likes"), { total: 7, items: [] });
     await fetchTotalsLater(test.a, row);
     await test.network.drain();

@@ -1,7 +1,7 @@
 /**
- * Files people upload, to attach to their notes. Pictures are processed by a job, which keeps them
- * without their metadata and makes their previews; anything else, and any picture that can't be
- * processed, is kept as it was uploaded.
+ * Media uploaded by users, to attach to their statuses. Images are processed by a job, which stores
+ * them without metadata and generates previews. Anything else, and any image that can't be
+ * processed, is stored as uploaded.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
@@ -34,34 +34,35 @@ import {
 
 const logger = getLogger(["verso", "media"]);
 
-/** The queue that processes uploaded pictures. */
+/** The queue that processes uploaded images. */
 export const mediaQueue = "media";
 
-/** The queue that removes files nothing uses. */
+/** The queue that removes unused media. */
 export const unusedMediaQueue = "media-cleanup";
 
 /** How many uploads are removed at once. */
 const removalBatch = 100;
 
-/** How many batches one run removes at most, so it ends well within its lease. */
+/** The maximum number of batches one run removes, so that it ends well within its lease. */
 const removalBatches = 100;
 
 const MediaJob = z.object({ mediaId: z.string() });
 
-/** A file someone uploads. */
+/** A file being uploaded. */
 export type NewUpload = {
     readonly file: Blob;
-    /** What their client says the file is, such as `application/zip`. */
+    /** The media type the client says the file has, such as `application/zip`. */
     readonly mediaType: string;
     readonly description?: string;
-    /** The point a picture's thumbnails are cropped around, from -1 to 1 on each axis. */
+    /** The point an image's thumbnails are cropped around, from -1 to 1 on each axis. */
     readonly focus?: { readonly x: number; readonly y: number };
 };
 
 /**
- * The video and audio types a file is served as if its client says it is one, which Mastodon also
- * takes, so clients can play it. Verso doesn't read them, so a file that isn't what it says is
- * served all the same, but never as a page, as replies tell browsers not to guess.
+ * The video and audio types a file is served as when its client declares one of them. Mastodon
+ * accepts these too, so clients can play the file. Verso doesn't inspect the contents, so a file
+ * that isn't what it declares is still served that way, but never as a page, because responses tell
+ * browsers not to sniff types.
  * @see https://github.com/mastodon/mastodon/blob/v4.3.0/app/models/media_attachment.rb
  */
 const playableTypes = new Set([
@@ -87,28 +88,30 @@ const playableTypes = new Set([
     "audio/3gpp",
 ]);
 
-/** Whether a file Verso keeps as it was uploaded, of the type `mediaType`, is served as that. */
+/**
+ * Whether a file that Verso stores as uploaded, with the type `mediaType`, is served as that type.
+ */
 export const isPlayable = (mediaType: string): boolean => playableTypes.has(mediaType);
 
 /**
- * The type a file is kept with, which the file store may serve it as. A picture's comes from its
- * bytes, and any other file's is the client's only if it is playable, so no one can upload a page
- * or a script that Verso would serve as one.
+ * The type a file is stored with, which the file store may serve it as. An image's type comes from
+ * its bytes. Any other file gets the client's declared type only if it is playable, so no one can
+ * upload a page or script that Verso would serve as one.
  */
 const keptTypeOf = (format: ImageFormat | undefined, claimed: string) =>
     format === undefined
         ? isPlayable(claimed) ? claimed : "application/octet-stream"
         : imageFormats[format].mediaType;
 
-/** What a client says a file is, if it says it as a media type is written. */
+/** The type a client declares for a file, if it is a well-formed media type. */
 const claimedTypeOf = (mediaType: string) =>
     /^[\w.+-]+\/[\w.+-]+$/.test(mediaType) ? mediaType.toLowerCase() : "application/octet-stream";
 
 /**
- * Makes sure `file`, which was kept before the transaction `tx`, is kept still, once it holds the
- * lock on its key, as removing an unused file holds it too: until `tx` commits, nothing that
- * finds it unused can remove it, and if something did before, it is kept again. Run it before
- * whatever in `tx` comes to use the file.
+ * Ensures that `file`, which was stored before the transaction `tx`, is still stored, by taking the
+ * lock on its key. Removal of unused files takes the same lock, so until `tx` commits nothing that
+ * finds the file unused can remove it, and if something already did, it is stored again. Run it
+ * before anything in `tx` that starts using the file.
  */
 const keepUsed = async (tx: Context, file: FileSource, mediaType: string) => {
     await lockKey(tx.db, file.sha256);
@@ -116,9 +119,9 @@ const keepUsed = async (tx: Context, file: FileSource, mediaType: string) => {
 };
 
 /**
- * Keeps a file `accountId` uploads. A picture is processed by a job, and its row says it is being
- * processed until then; anything else is ready at once. The file is written to disk, and hashed,
- * as it is read, so it is held in memory only as the request has it.
+ * Stores a file uploaded by `accountId`. An image is processed by a job, and its row says it is
+ * being processed until then; anything else is ready immediately. The file is written to disk and
+ * hashed as it is read, so only what the request has buffered is held in memory.
  */
 export const upload = async (
     ctx: Context,
@@ -131,7 +134,8 @@ export const upload = async (
     const type = keptTypeOf(format, claimed);
 
     await using file = await spool(given.file.stream());
-    // Kept before the transaction, which mustn't wait on the store; `keepUsed` makes sure of it.
+    // Stored before the transaction, which mustn't wait on the file store; `keepUsed` ensures it is
+    // still stored.
     await ctx.files.put(file, type);
     const now = ctx.clock.now();
 
@@ -170,12 +174,13 @@ export const upload = async (
     return row;
 };
 
-/** How an upload is described: its alt text, and where its thumbnails are cropped around. */
+/** How an upload is described: its alt text, and the point its thumbnails are cropped around. */
 export type UploadDescription = Pick<NewUpload, "description" | "focus">;
 
 /**
- * Changes how the upload `id` is described, if `accountId` uploaded it, and returns it, or
- * `undefined` if they didn't. What is left out stays as it was; an empty description clears it.
+ * Updates the description of the upload `id` if `accountId` uploaded it, and returns it, or
+ * `undefined` if they didn't. Fields that are omitted stay unchanged; an empty description clears
+ * it.
  */
 export const describeUpload = async (
     ctx: Context,
@@ -193,9 +198,9 @@ export const describeUpload = async (
 };
 
 /**
- * Removes the file kept under `key`, unless a file, a preview or an upload waiting to be
- * processed is kept under it. Run it after the change that stopped using it has committed. It
- * holds the key's lock while it checks and removes, so nothing comes to use the file meanwhile.
+ * Removes the file stored under `key`, unless media, a preview or an upload waiting to be processed
+ * is stored under it. Run it after the change that stopped using the file has committed. It holds
+ * the key's lock while it checks and removes, so nothing starts using the file in the meantime.
  */
 export const deleteFileIfUnused = (ctx: Context, key: string): Promise<void> =>
     ctx.transaction(async (tx) => {
@@ -203,7 +208,7 @@ export const deleteFileIfUnused = (ctx: Context, key: string): Promise<void> =>
         if (!await isFileUsed(tx, key)) await tx.files.delete(key);
     });
 
-/** What processing a file found, from another upload of the same file. */
+/** What processing found, taken from another upload of the same file. */
 const processedFrom = (row: MediaRow): Processed => ({
     sha256: row.sha256,
     size: row.size,
@@ -217,19 +222,20 @@ const processedFrom = (row: MediaRow): Processed => ({
     preview_height: row.preview_height,
 });
 
-/** What a picture that can't be processed is kept as: nothing, as it may hold metadata. */
+/** What an image that can't be processed is stored as: nothing, as it may hold metadata. */
 const failed: Processed = { sha256: null, size: null, width: null, height: null };
 
 /**
- * Whether an upload is a picture that couldn't be processed, which is neither served nor attached.
- * Uploads are kept under their SHA-256 until then.
+ * Whether an upload is an image that couldn't be processed, which is neither served nor attached.
+ * Until then, uploads are stored under their SHA-256.
  */
 export const processingFailed = (upload: MediaRow): boolean => upload.sha256 === null;
 
 /**
- * Marks the upload `id` processed as another upload of the same file, `uploaded`, was, if there is
- * one, and returns whether there was. Its files are locked and found still kept first, so that if
- * they were removed meanwhile, this one is processed anew rather than left pointing at nothing.
+ * Marks the upload `id` as processed using another upload of the same file, `uploaded`, if there is
+ * one, and returns whether there was. Its files are locked and checked to still be stored first, so
+ * that if they were removed in the meantime, this upload is processed again rather than left
+ * pointing at nothing.
  */
 const reuseProcessed = async (ctx: Context, id: string, uploaded: string) => {
     const before = await processedUpload(ctx, uploaded);
@@ -249,10 +255,10 @@ const reuseProcessed = async (ctx: Context, id: string, uploaded: string) => {
 };
 
 /**
- * Processes the picture in the job: keeps it upright, without its metadata and no larger than
- * allowed, with a preview, then removes what was uploaded. One that vips refuses, or that still
- * fails on the job's last attempt, is marked failed and removed, as it may hold metadata. One
- * uploaded before is processed as it was then.
+ * Processes the image in the job: stores it upright, without metadata and no larger than allowed,
+ * with a preview, then removes the original upload. An image that vips rejects, or that still fails
+ * on the job's last attempt, is marked failed and removed, as it may hold metadata. An upload that
+ * was already processed once keeps that result.
  */
 export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = MediaJob.safeParse(job.payload);
@@ -262,9 +268,9 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
     if (row === undefined || row.upload_sha256 === null) return;
     const uploaded = row.upload_sha256;
 
-    // The same file's other upload may also have removed what was uploaded, or left it for this.
-    // One processed already finds itself, as a run that stopped after processing it may have
-    // left what was uploaded.
+    // The other upload of the same file may also have removed the original, or left it for this
+    // one. One that was already processed finds itself here, as a run that stopped after processing
+    // it may have left the original.
     if (await reuseProcessed(ctx, row.id, uploaded)) return await deleteFileIfUnused(ctx, uploaded);
 
     const stream = await ctx.files.get(uploaded);
@@ -311,19 +317,18 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
         });
     });
 
-    // What was uploaded has its metadata, so it goes. If another run got there first, what this
-    // one kept may be used by nothing.
+    // The original upload has its metadata, so it is removed. If another run got there first, what
+    // this run stored may be unused.
     const unused = finished ? [uploaded] : [kept.sha256, preview.sha256];
     for (const key of unused) await deleteFileIfUnused(ctx, key);
 };
 
 /**
- * Removes the uploads made as long ago as settings say, or longer, that nothing uses, with their
- * files, unless other uploads use them, up to `batches` batches in a run; the next run removes the
- * rest. The files of a note that is deleted can be attached again until then, as Mastodon keeps
- * them so that the note can be redrafted. Other instances' files that nothing uses go too, such as
- * those of their notes that are deleted, or that an edit took off; Verso keeps nothing of them but
- * their rows.
+ * Removes uploads created at least as long ago as the settings say that nothing uses, along with
+ * their files unless other uploads use them, in up to `batches` batches per run; the next run
+ * removes the rest. The media of a deleted status can be attached again until then, as Mastodon
+ * keeps it so the status can be redrafted. Unused remote media is removed too, such as media of
+ * deleted remote statuses or removed by an edit; Verso stores only the rows for remote media.
  */
 export const removeUnusedMedia = async (
     ctx: Context,

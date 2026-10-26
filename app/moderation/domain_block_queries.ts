@@ -4,18 +4,18 @@ import type { Selectable } from "kysely";
 
 export type DomainBlock = Selectable<DomainBlocksTable>;
 
-/** The blocks made with `blockDomain`, by domain. */
+/** The blocks created with `blockDomain`, by domain. */
 export const listBlockedDomains = (ctx: Context): Promise<DomainBlock[]> =>
     ctx.db.selectFrom("domain_blocks").selectAll().orderBy("domain").execute();
 
-/** The domains admins blocked, which are few. */
+/** The domains that admins blocked, which are few. */
 export const blockedDomainNames = async (ctx: Context): Promise<ReadonlySet<string>> =>
     new Set(
         (await ctx.db.selectFrom("domain_blocks").select("domain").execute())
             .map((row) => row.domain),
     );
 
-/** Adds a block of `domain`, unless there is one. Returns whether there wasn't. */
+/** Adds a block of `domain`, unless there is one. Returns whether it was added. */
 export const insertDomainBlock = async (
     ctx: Context,
     domain: string,

@@ -5,8 +5,8 @@ import { connect, postgresPool } from "./database.ts";
 import { sqliteDialect } from "./sqlite.ts";
 
 /**
- * The database tests run on, chosen by `VERSO_TEST_DATABASE`: `pglite` (the default), `sqlite`,
- * or the URL of a PostgreSQL server that tests may create databases on.
+ * The database tests run on, chosen by `VERSO_TEST_DATABASE`: `pglite` (the default), `sqlite`, or
+ * the URL of a PostgreSQL server that tests may create databases on.
  */
 export const testDatabaseKind: string = Deno.env.get("VERSO_TEST_DATABASE") ??
     "pglite";

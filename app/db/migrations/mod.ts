@@ -48,8 +48,8 @@ import { unreachableSince } from "./0046_unreachable_since.ts";
 import { publicTimelines } from "./0047_public_timelines.ts";
 
 /**
- * Every migration, by name. Names start with a four-digit number, since they run in name order.
- * A migration never changes once released; fix mistakes in a new one.
+ * Every migration, by name. Names start with a four-digit number, since they run in name order. A
+ * migration never changes once released; fix mistakes in a new one.
  */
 export const migrations: Record<string, Migration> = {
     "0001_jobs": jobs,

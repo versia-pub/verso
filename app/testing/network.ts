@@ -31,8 +31,8 @@ export type NetworkOptions = {
 };
 
 /**
- * Starts complete instances in one process, each with its own database, reachable from each
- * other at their domains through a shared fake network.
+ * Starts complete instances in one process, each with its own database, reachable from each other
+ * at their domains through a shared fake network.
  */
 export const createNetwork = async (
     domains: readonly string[],

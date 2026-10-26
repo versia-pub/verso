@@ -165,7 +165,7 @@ Deno.test("a code becomes a token for the user who allowed it, once", async () =
         await hashToken(first.body.access_token),
     ]);
 
-    // Someone else may have the code, so trying it again revokes the token it gave.
+    // Someone else may have the code, so trying it again revokes the token it issued.
     const again = await test.exchange(code);
     assertEquals([again.status, again.body.error], [400, "invalid_grant"]);
     assertEquals(await tokens(), []);

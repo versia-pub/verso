@@ -2,7 +2,7 @@ import type { Kysely } from "kysely";
 import type { Migration } from "kysely/migration";
 import { columnTypes } from "../columns.ts";
 
-/** Custom emojis, with their pictures in `media`, and the notes and accounts that use them. */
+/** Custom emojis, with their pictures in `media`, and the statuses and accounts that use them. */
 export const emojis: Migration = {
     up: async (db: Kysely<unknown>) => {
         await db.schema.createTable("emojis")
@@ -17,7 +17,7 @@ export const emojis: Migration = {
             .addColumn("created_at", columnTypes(db).timestamp, (column) => column.notNull())
             .execute();
 
-        // An instance has one emoji by each name, as on Mastodon.
+        // An instance has one emoji per name, as on Mastodon.
         await db.schema.createIndex("emojis_by_shortcode").on("emojis")
             .unique()
             .columns(["instance_id", "shortcode"])

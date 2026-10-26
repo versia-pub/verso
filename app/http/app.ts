@@ -17,12 +17,12 @@ import { checkPermission, rateLimitKey, viewerOf, withPermissions } from "./view
 const logger = getLogger(["verso", "http"]);
 
 /**
- * The largest body a route takes unless it says, enough for any form or JSON, and for a note as
- * long as a long blog post, of 100,000 characters.
+ * The largest body a route accepts unless it says otherwise: enough for any form or JSON, and for a
+ * status as long as a long blog post, of 100,000 characters.
  */
 const maxBodyBytes = 256 * 1024;
 
-/** The reply to a request that failed with `error`. */
+/** The response to a request that failed with `error`. */
 const errorReply = (error: unknown, c: HonoContext<AppEnv>): Response => {
     c.header("cache-control", "no-store");
     if (error instanceof HttpError) return c.json(error, error.status);
@@ -47,19 +47,19 @@ export type App = Hono<AppEnv>;
 
 export type AppOptions = {
     readonly services: AppServices;
-    /** Checks every reply against its route's declared response schemas. For tests. */
+    /** Validates every response against its route's declared response schemas. For tests. */
     readonly checkResponses?: boolean;
     /** Without them, requests aren't limited. */
     readonly rateLimits?: RateLimits;
-    /** The reverse proxies believed about who the client is. */
+    /** The reverse proxies trusted to say who the client is. */
     readonly trustedProxies?: readonly Cidr[];
     /** What everyone may do, before roles add more. Without it, what config allows by default. */
     readonly permissions?: Permissions;
-    /** Answers blocked instances as if nothing were wrong, rather than with 403. */
+    /** Responds to blocked instances as if nothing were wrong, rather than with 403. */
     readonly silentBlocks?: boolean;
 };
 
-/** Every route the server answers. Tests call its `fetch` directly, with no network in between. */
+/** Every route the server serves. Tests call its `fetch` directly, with no network in between. */
 export const createApp = (
     ctx: Context,
     routes: readonly Route[],
@@ -69,7 +69,7 @@ export const createApp = (
     const permissions = options.permissions ?? Permissions.parse({});
     useHeaders(app, ctx.urls.origin);
 
-    // Replies are about one user, or carry secrets such as tokens, so nothing may cache them,
+    // Responses are about one user, or carry secrets such as tokens, so nothing may cache them,
     // unless their route says. Errors skip this, so the error handler sets it too.
     app.use(async (c, next) => {
         await next();
@@ -81,7 +81,7 @@ export const createApp = (
         rateLimitKey(ctx, c, options.trustedProxies ?? [], options.services);
 
     /**
-     * Checks a signed request's signature, counting the request against the instance that signed
+     * Validates a signed request's signature, counting the request against the instance that signed
      * it, or, if it isn't validly signed, against its client, like any other request. A signer
      * whose key Verso must fetch is counted against the client first, so a client over its limit
      * can't make Verso fetch keys.
@@ -117,7 +117,7 @@ export const createApp = (
         await checkRateLimit(c, ctx.clock, limits.store, policy, `${bucket}:${await clientKey(c)}`);
     };
 
-    /** The route's reply to the request, or the error it threw. */
+    /** The route's response to the request, or the error it threw. */
     const answer = async (route: Route, c: HonoContext<AppEnv>) => {
         await countInBucket(route, c);
         const signed = route.signed ? await verify(c) : undefined;
@@ -140,7 +140,7 @@ export const createApp = (
     };
 
     const handle = (route: Route) => {
-        // Checked before anything reads the body, so a huge one is refused, not held in memory.
+        // Checked before anything reads the body, so a huge one is rejected, not held in memory.
         const limit = bodyLimit({
             maxSize: route.maxBodyBytes ?? maxBodyBytes,
             onError: () => {
@@ -151,7 +151,8 @@ export const createApp = (
         app.on(route.method, route.path, limit, async (c) => {
             if (!route.signed) return await answer(route, c);
 
-            // Errors are signed too, so the instance that asked can trust a 404 as much as a 200.
+            // Errors are signed too, so the instance that sent the request can trust a 404 as much
+            // as a 200.
             const response = await answer(route, c).catch((error) =>
                 error instanceof Defederated && options.silentBlocks
                     ? silentReply(c)
@@ -164,12 +165,12 @@ export const createApp = (
     // For load balancers and orchestrators, not clients, so it stays plain text.
     app.get("/health/live", (c) => c.text("ok"));
 
-    // Before the clients' rate limit, which runs only for what is added after it. Signed routes
-    // are limited by who signed, once the signature is checked, and routes with a bucket in it.
+    // Before the clients' rate limit, which runs only for what is added after it. Signed routes are
+    // limited by who signed, once the signature is validated, and routes with a bucket in it.
     const unlimited = (route: Route) => route.rateLimit !== undefined || route.signed === true;
     for (const route of routes) if (unlimited(route)) handle(route);
 
-    // Preflights were answered before this, by the CORS headers.
+    // Preflights were handled before this, by the CORS headers.
     if (limits) app.use(rateLimit<AppEnv>(ctx.clock, limits, clientKey));
 
     for (const route of routes) if (!unlimited(route)) handle(route);

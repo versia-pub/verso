@@ -1,8 +1,8 @@
 /**
- * Instance messaging: instances tell each other, in plain text, why something one sent the other
- * failed, as Versia has it for debugging federation. Messages Verso gets are only logged, for
- * admins to read, and it sends them to instances that take them when it gives up on what they
- * sent.
+ * Instance messaging: instances tell each other, in plain text, why something the other sent
+ * failed, as Versia specifies for debugging federation. Messages Verso receives are only logged,
+ * for admins to read, and it sends messages to instances that accept them when it gives up on
+ * something they sent.
  * @see https://versia.pub/extensions/instance-messaging
  * @module
  */
@@ -20,16 +20,16 @@ import { postUnsigned } from "./request.ts";
 export const messagingExtension = "pub.versia:instance_messaging";
 
 /**
- * The longest message logged, enough to name what failed and why, and to quote some of it. Longer
- * ones are cut, so a message can't fill the logs.
+ * The longest message that is logged, enough to name what failed and why, and to quote some of it.
+ * Longer messages are truncated, so a message can't fill the logs.
  */
 const maxMessageLength = 4096;
 
 const logger = getLogger(["verso", "federation", "messaging"]);
 
 /**
- * Where other instances send messages. Versia doesn't sign them, so anyone may send one, and what
- * it says of who sent it can't be trusted. Rate limits keep anyone from sending too many.
+ * Where remote instances send messages. Versia doesn't sign them, so anyone may send one, and what
+ * it says about who sent it can't be trusted. Rate limits keep anyone from sending too many.
  */
 export const messagingRoute: Route = defineRoute({
     method: "POST",
@@ -51,7 +51,7 @@ export const messagingRoute: Route = defineRoute({
 
 export const messageQueue = "versia-messages";
 
-/** A message job's payload: what to tell an instance. */
+/** The payload of a message job: what to tell an instance. */
 export const MessageJob = z.object({
     domain: z.string(),
     text: z.string(),
@@ -59,15 +59,15 @@ export const MessageJob = z.object({
 export type MessageJob = z.output<typeof MessageJob>;
 
 /**
- * How long a message counts as already sent to an instance, so one that sends the same thing over
- * and over is told once.
+ * How long a message counts as already sent to an instance, so an instance that sends the same
+ * thing repeatedly is told only once.
  */
 const dedupeMs = 60 * 60_000;
 
-/** Messages help, but aren't worth trying long for. */
+/** Messages help, but aren't worth many retries. */
 const maxAttempts = 3;
 
-/** Queues `text` for the instance at `domain`, if it takes messages. */
+/** Queues `text` for the instance at `domain`, if it accepts messages. */
 export const queueMessage = async (ctx: Context, domain: string, text: string): Promise<void> => {
     if (!await takesMessages(ctx, domain)) return;
 
@@ -86,9 +86,9 @@ export const queueMessage = async (ctx: Context, domain: string, text: string): 
 };
 
 /**
- * Runs message jobs: posts each message to its instance, unsigned, as Versia has them. One to an
- * instance blocked since is dropped. An instance that refuses it, with a 4xx, is given up on; any
- * other failure is retried, a few times.
+ * Runs message jobs: posts each message to its instance, unsigned, as Versia specifies. One to an
+ * instance blocked since is dropped. If the instance rejects it with a 4xx, it is given up on; any
+ * other failure is retried a few times.
  */
 export const messageHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = MessageJob.safeParse(job.payload);

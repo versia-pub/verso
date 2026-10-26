@@ -1,8 +1,8 @@
 import type { Context } from "../kernel/context.ts";
 
 /**
- * One of this instance's emojis, with its picture at `url`, for tests until emojis can be made.
- * Returns its id.
+ * One of the local instance's emojis, with its picture at `url`, for tests until emojis can be
+ * created. Returns its id.
  */
 export const createLocalEmoji = async (
     ctx: Context,

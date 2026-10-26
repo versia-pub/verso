@@ -53,7 +53,7 @@ const open = async (provider = stubProvider(), registration: Partial<AppRegistra
 
     const consent = (cookie: string | undefined) => request("/oauth/consent", cookie);
 
-    /** Answers on the consent page, as shown now unless an older one's form token is given. */
+    /** Responds on the consent page, as shown now unless an older one's form token is given. */
     const decide = async (
         cookie: string | undefined,
         decision: "allow" | "deny",
@@ -161,7 +161,7 @@ Deno.test("a failed login, or a closed registration, is denied to the app, and e
 });
 
 Deno.test("a callback failing while another logs in leaves that login be", async () => {
-    // The issuer answers "slow" only once told to, refusing it, as a code used twice would be.
+    // The issuer responds "slow" only once told to, rejecting it, as a code used twice would be.
     const { promise: answered, resolve: answer } = Promise.withResolvers<void>();
     const stub = stubProvider();
     const provider: IdentityProvider = {

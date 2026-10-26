@@ -36,9 +36,9 @@ class TransactionalSqliteAdapter extends SqliteAdapter {
 }
 
 /**
- * Transactions take the write lock when they begin. Begun as Kysely does, one that reads and then
- * writes fails at once with `SQLITE_BUSY` if another process wrote in between, without waiting
- * out `busy_timeout`; begun this way, it waits for the other writer from the start instead.
+ * Transactions take the write lock when they begin. Begun as Kysely does, a transaction that reads
+ * and then writes fails immediately with `SQLITE_BUSY` if another process wrote in between, without
+ * waiting out `busy_timeout`; begun this way, it waits for the other writer from the start instead.
  */
 class ImmediateSqliteDriver extends SqliteDriver {
     override async beginTransaction(connection: DatabaseConnection): Promise<void> {
@@ -68,8 +68,8 @@ class NodeSqliteDialect extends SqliteDialect {
  * better-sqlite3, which has the same shape apart from how it tells whether a statement returns
  * rows. Closing Kysely closes the database.
  *
- * SQLite has no date, JSON or boolean types. Dates are written as ISO 8601 text and booleans as
- * 1 or 0 (JSON arrives as text from the `jsonValues` plugin). Reading converts them back, going by
+ * SQLite has no date, JSON or boolean types. Dates are written as ISO 8601 text and booleans as 1
+ * or 0 (JSON arrives as text from the `jsonValues` plugin). Reading converts them back, going by
  * each column's declared type.
  */
 export const sqliteDialect = (database: DatabaseSync): Dialect =>

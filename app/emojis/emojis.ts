@@ -1,7 +1,7 @@
 /**
- * Custom emojis, which text shows where it has their names, such as `:blobcat:`. Other instances'
- * ones are kept as they name them, one by each name on each instance, as on Mastodon: a newer
- * picture for a name replaces the older one wherever it is used.
+ * Custom emojis, which text displays where it has their names, such as `:blobcat:`. Remote
+ * instances' emojis are stored as they name them, one per name per instance, as on Mastodon: a
+ * newer picture for a name replaces the older one wherever it is used.
  * @see https://versia.pub/extensions/custom-emojis
  * @module
  */
@@ -9,7 +9,7 @@ import type { Context } from "../kernel/context.ts";
 import { type RemoteMedia, saveRemoteMedia } from "../media/media_queries.ts";
 import { findRemoteEmoji, insertEmoji } from "./emoji_queries.ts";
 
-/** Another instance's emoji, as it names it. */
+/** A remote instance's custom emoji, as it names it. */
 export type RemoteEmoji = {
     /** Without the colons around it. */
     readonly shortcode: string;
@@ -17,8 +17,8 @@ export type RemoteEmoji = {
 };
 
 /**
- * Keeps emojis of the instance `instanceId`, each in place of the one Verso has by its name, if it
- * has one. Returns their ids, in the order given.
+ * Stores custom emojis of the instance `instanceId`, each replacing the one Verso has under its
+ * name, if it has one. Returns their ids, in the order given.
  */
 export const keepRemoteEmojis = async (
     ctx: Context,

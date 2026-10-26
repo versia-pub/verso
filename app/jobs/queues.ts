@@ -13,7 +13,7 @@ import { deleteExpiredJobs } from "./job_queries.ts";
 import type { Task } from "./scheduler.ts";
 import type { Queue } from "./worker.ts";
 
-/** Work the scheduler enqueues every hour, each in a queue of its own, one job at a time. */
+/** Work the scheduler enqueues every hour, each in its own queue, one job at a time. */
 const hourly: Record<string, Queue["handler"]> = {
     "jobs-cleanup": (ctx) => deleteExpiredJobs(ctx),
     "oauth-cleanup": (ctx) => deleteExpiredFlows(ctx),
@@ -37,7 +37,7 @@ export const queues: Record<string, Queue> = {
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
-    // Each job runs vips a few times, a minute each at most, and takes memory while it does.
+    // Each job runs vips a few times, a minute each at most, and uses memory while it does.
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
     ...Object.fromEntries(
         Object.entries(hourly).map(([queue, handler]) => [queue, { handler, concurrency: 1 }]),

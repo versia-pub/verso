@@ -17,10 +17,10 @@ import type { OAuthFlowsTable } from "./tables.ts";
 
 const logger = getLogger(["verso", "auth"]);
 
-/** How long an app has to trade its code for a token, as in Mastodon. */
+/** How long an app has to exchange its code for a token, as in Mastodon. */
 const codeLifetimeMs = 10 * 60_000;
 
-/** Where to send the browser back to, and what to tell the app. */
+/** Where to redirect the browser, and what to tell the app. */
 export type SendBack = {
     readonly result: "send-back";
     readonly redirectUri: string;
@@ -40,8 +40,8 @@ const denied = (flow: OAuthFlowsTable, description: string) =>
     sendBack(flow, { error: "access_denied", error_description: description });
 
 /**
- * Tells the app the login was denied, and forgets its flow, which can't be finished now. If the
- * login finished meanwhile, the flow is left to it, and this answer only says it is over.
+ * Tells the app the login was denied, and deletes its flow, which can't be finished now. If the
+ * login finished in the meantime, the flow is left to it, and this response only says it is over.
  */
 const loginDenied = async (ctx: Context, flow: OAuthFlowsTable, description: string) =>
     await deleteUnfinishedFlow(ctx, flow.id)
@@ -49,9 +49,9 @@ const loginDenied = async (ctx: Context, flow: OAuthFlowsTable, description: str
         : { result: "expired" as const };
 
 /**
- * Finishes the login when the issuer sends the browser back. On success the user is asked to
- * allow the app. If the login failed, or the issuer's policy won't let the user register, the app
- * is told the user was denied.
+ * Finishes the login when the issuer sends the browser back. On success the user is asked to allow
+ * the app. If the login failed, or the issuer's policy won't let the user register, the app is told
+ * the user was denied.
  */
 export const finishLogin = async (
     ctx: Context,
@@ -104,8 +104,8 @@ export const consentRequest = async (
 };
 
 /**
- * Records the user's answer. Allowing gives the app a code, valid for ten minutes, to trade for a
- * token; only its hash is kept. Denying ends the flow.
+ * Records the user's answer. Allowing gives the app a code, valid for ten minutes, to exchange for
+ * a token; only its hash is stored. Denying ends the flow.
  */
 export const decide = async (
     ctx: Context,

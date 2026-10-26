@@ -18,7 +18,7 @@ const open = async () => {
     const links = (...links: unknown[]) =>
         evil.serve("/.well-known/webfinger", { subject: "acct:x@evil.test", links });
 
-    /** How many WebFinger lookups `host` was sent. */
+    /** How many WebFinger lookups were sent to `host`. */
     const asked = (host: string) =>
         network.transport.sent.filter((request) => new URL(request.url).host === host).length;
 

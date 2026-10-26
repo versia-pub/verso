@@ -3,20 +3,22 @@ import type { Context } from "../kernel/context.ts";
 import type { MediaRow } from "./media_queries.ts";
 import { isPlayable } from "./uploads.ts";
 
-/** Where the local file kept under `key` is served: by the store, if it serves files, or Verso. */
+/**
+ * Where the local file stored under `key` is served: by the file store if it serves files,
+ * otherwise by Verso.
+ */
 export const fileUrl = (ctx: Context, key: string): string =>
     ctx.files.publicUrl?.(key) ?? ctx.urls.url`/media/${key}`;
 
-/** A size as Mastodon describes it, if it is known. */
+/** A size as Mastodon renders it, if known. */
 const dimensions = (width: number | null, height: number | null) =>
     width === null || height === null || width === 0 || height === 0
         ? undefined
         : { width, height, size: `${width}x${height}`, aspect: width / height };
 
 /**
- * What kind of file Mastodon's clients are told it is. Local files that aren't pictures Verso
- * processed are kept as they were uploaded, so they are only offered as files, unless they can be
- * played.
+ * The media type that Mastodon clients are told. Local media that isn't an image Verso processed is
+ * stored as uploaded, so it is only offered as a generic file unless it is playable.
  */
 const typeOf = (row: MediaRow): MediaAttachment["type"] => {
     const local = row.instance_id === null;
@@ -28,8 +30,8 @@ const typeOf = (row: MediaRow): MediaAttachment["type"] => {
 };
 
 /**
- * A file, as Mastodon's API describes it. A local one is at Verso's URL for it once processed;
- * another instance's is at its own.
+ * Media as Mastodon's API renders it. Local media is served at Verso's URL once processed; remote
+ * media is served at the remote instance's URL.
  * @see https://docs.joinmastodon.org/entities/MediaAttachment/
  */
 export const renderAttachment = (ctx: Context, row: MediaRow): MediaAttachment => {
@@ -46,9 +48,9 @@ export const renderAttachment = (ctx: Context, row: MediaRow): MediaAttachment =
         type: typeOf(row),
         url: local ? (ready && row.sha256 ? fileUrl(ctx, row.sha256) : null) : row.url,
         preview_url: row.preview_sha256 ? fileUrl(ctx, row.preview_sha256) : null,
-        // Local files have no URL of their own.
+        // Local media has no remote URL.
         remote_url: row.url,
-        // A preview is only made of a picture whose size is known.
+        // A preview is only made for an image whose size is known.
         meta: original || focus
             ? {
                 ...original && { original },

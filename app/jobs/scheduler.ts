@@ -18,9 +18,9 @@ const periods = {
 };
 
 /**
- * Enqueues each task's job for the current period, such as `cleanup:2026-10-14T03`. Every node
- * may call it, any number of times: the dedupe key, kept until the period ends, means each
- * period's job is created only once.
+ * Enqueues each task's job for the current period, such as `cleanup:2026-10-14T03`. Every node may
+ * call it, any number of times: the dedupe key, retained until the period ends, means each period's
+ * job is created only once.
  */
 export const schedule = async (ctx: Context, tasks: readonly Task[]): Promise<void> => {
     const now = ctx.clock.now().getTime();

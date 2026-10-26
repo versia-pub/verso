@@ -2,7 +2,7 @@ import type { Kysely } from "kysely";
 import type { Migration } from "kysely/migration";
 import { columnTypes } from "../columns.ts";
 
-/** Whether instances can be reached: how often they failed in a row, and how long to wait. */
+/** Whether instances can be reached: how many times in a row they failed, and how long to wait. */
 export const instanceReachability: Migration = {
     up: async (db: Kysely<unknown>) => {
         const types = columnTypes(db);

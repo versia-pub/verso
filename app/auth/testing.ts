@@ -7,7 +7,7 @@ import { issueToken } from "./tokens.ts";
 
 /**
  * An access token, for tests that skip logging in: for the account, or for an app itself with
- * `null`. It has the scopes a usual client asks for, unless others are given.
+ * `null`. It has the scopes a usual client requests, unless others are given.
  */
 export const tokenFor = async (
     ctx: Context,
@@ -24,7 +24,10 @@ export const tokenFor = async (
     return (await issueToken(ctx, app, accountId, scopes)).token;
 };
 
-/** Phanpy, registered with a web redirect URI and an out-of-band one, unless `changes` say. */
+/**
+ * Phanpy, registered with a web redirect URI and an out-of-band one, unless `changes` say
+ * otherwise.
+ */
 export const registerTestApp = (
     ctx: Context,
     changes: Partial<AppRegistration> = {},
@@ -65,7 +68,7 @@ export const stubProvider = (issuer: Partial<Issuer> = {}): IdentityProvider => 
     };
 };
 
-/** The login's cookie that a response sets, or "" if it sets none. */
+/** The login cookie that a response sets, or "" if it sets none. */
 export const flowCookie = (response: Response): string =>
     /__Host-oauth_flow=([^;]+)/.exec(response.headers.get("set-cookie") ?? "")?.[1] ?? "";
 

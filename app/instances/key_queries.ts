@@ -21,7 +21,7 @@ export const insertKeyRow = async (
     await ctx.db.insertInto("instance_keys").values(row).execute();
 };
 
-/** Deletes every key pair but `id`. */
+/** Deletes every key pair except `id`. */
 export const deleteKeysBut = async (ctx: Pick<Context, "db">, id: string): Promise<void> => {
     await ctx.db.deleteFrom("instance_keys").where("id", "!=", id).execute();
 };

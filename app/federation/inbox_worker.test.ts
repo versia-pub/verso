@@ -16,7 +16,7 @@ type Thing = z.infer<typeof Thing>;
 
 /**
  * Things are sent by their author's instance. One with the id `fail` can't be applied, `partial`
- * fails after a write, which must not be kept, and `unready` can't be prepared.
+ * fails after a write, which must not be committed, and `unready` can't be prepared.
  */
 const things = () => {
     const received: { thing: Thing; sender: Sender }[] = [];

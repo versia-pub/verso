@@ -11,7 +11,7 @@ export type JobsTable = {
      */
     run_at: Date;
     attempts: number;
-    /** A job that has used all its attempts is a dead letter, kept for inspection and retry. */
+    /** A job that has used all its attempts is a dead letter, retained for inspection and retry. */
     max_attempts: number;
     lease_owner: string | null;
     lease_expires_at: Date | null;
@@ -20,9 +20,9 @@ export type JobsTable = {
     group_key: string | null;
     last_error: string | null;
     created_at: Date;
-    /** A finished job is kept until then instead of deleted, so its dedupe key stays taken. */
+    /** A finished job is retained until then instead of deleted, so its dedupe key stays taken. */
     keep_until: Date | null;
-    /** Set on a finished job that is being kept. */
+    /** Set on a finished job that is being retained. */
     finished_at: Date | null;
 };
 

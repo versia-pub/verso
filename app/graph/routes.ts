@@ -13,7 +13,7 @@ import { blockRoutes } from "./block_routes.ts";
 import { relationship, relationships } from "./relationships.ts";
 
 /**
- * How a follower wants to see an account. Options left out stay as they were, and an empty list of
+ * How a follower wants to see an account. Omitted options stay as they were, and an empty list of
  * languages means all of them.
  * @see https://docs.joinmastodon.org/methods/accounts/#follow
  */
@@ -52,7 +52,7 @@ const followList = (side: FollowSide) =>
         },
     });
 
-/** Accepts or rejects an account's request to follow the viewer. */
+/** Accepts or rejects an account's follow request to the viewer. */
 const answerRequest = (answer: "authorize" | "reject") =>
     defineRoute({
         method: "POST",
@@ -75,7 +75,7 @@ const answerRequest = (answer: "authorize" | "reject") =>
     });
 
 /**
- * What the viewer notes about an account, as Mastodon takes it.
+ * What the viewer notes about an account, as Mastodon accepts it.
  * @see https://docs.joinmastodon.org/methods/accounts/#note
  */
 const AccountNoteBody = z.object({
@@ -109,7 +109,7 @@ const noteRoute = defineRoute({
 
 /**
  * Who follows, blocks and mutes whom. Before the account routes, whose `/api/v1/accounts/:id` would
- * take these.
+ * otherwise match these paths.
  */
 export const graphRoutes: readonly Route[] = [
     followList("followers"),

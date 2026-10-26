@@ -1,5 +1,5 @@
 /**
- * Other instances' notes, as Verso takes them in, sent or fetched.
+ * Remote statuses, as Verso receives them, sent or fetched, as Versia Notes.
  * @see https://versia.pub/entities/note
  * @module
  */
@@ -34,18 +34,18 @@ import { fetchTotalsLater } from "./totals.ts";
 const logger = getLogger(["verso", "notes"]);
 
 /**
- * A note's visibility, from who Versia says it is for. Verso has no groups, so a group's note is
- * only for those it mentions.
+ * A status's visibility, from the audience Versia gives. Verso has no groups, so a group's Note is
+ * only visible to the users it mentions.
  */
 const visibilityOf = (group: string | null | undefined): Visibility =>
     group === "public" ? "public" : group === "followers" ? "private" : "direct";
 
 /**
- * The note `reference` points at, local or remote, if Verso has it, without fetching it. Shares
- * aren't notes here.
+ * The status that `reference` points at, local or remote, if Verso has it, without fetching it.
+ * Boosts aren't statuses here.
  */
 export const knownNote = async (ctx: Context, reference: Reference): Promise<Known | undefined> => {
-    // A share isn't a Note in Versia, so nothing can reply to, quote or like it.
+    // A Share isn't a Note in Versia, so nothing can reply to, quote or like it.
     if (reference.host === ctx.urls.domain) {
         const note = await findNote(ctx, reference.id);
         return note?.instance_id === null && note.reblog_of_id === null
@@ -54,21 +54,21 @@ export const knownNote = async (ctx: Context, reference: Reference): Promise<Kno
     }
 
     const note = await findRemoteNoteAt(ctx, reference.host, reference.id);
-    // A remote note is always saved with when it was fetched.
+    // A remote status is always saved with the time it was fetched.
     return note?.reblog_of_id === null
         ? { id: note.id, fetchedAt: note.fetched_at ?? new Date(0) }
         : undefined;
 };
 
 /**
- * How many hashtags of another instance's note Verso keeps. Each costs queries, so a note can't
- * make Verso do unbounded work. Mentions are held to the settings' limit, as local ones are.
+ * How many hashtags of a remote status Verso stores. Each costs queries, so a status can't make
+ * Verso do unbounded work. Mentions are limited by the settings, as for local statuses.
  */
 const remoteTags = 100;
 
 /**
- * Who a note sent by `sender` names: its author, the first accounts it mentions, as many as
- * settings allow, and what it replies to and quotes.
+ * The references in a Note sent by `sender`: its author, the first accounts it mentions (as many as
+ * the settings allow), and the statuses it replies to and quotes.
  */
 const referencesIn = (ctx: Context, note: v0_6.Note, sender: Sender) => ({
     author: parseReference(note.author, sender.domain),
@@ -78,7 +78,10 @@ const referencesIn = (ctx: Context, note: v0_6.Note, sender: Sender) => ({
     quote: note.quotes ? parseReference(note.quotes, sender.domain) : undefined,
 });
 
-/** Fetches what a note names, if Verso doesn't have it; a note does without what can't be had. */
+/**
+ * Fetches what a Note references, if Verso doesn't have it; a status is still processed without
+ * references that can't be fetched.
+ */
 const resolveIfAble = async (
     ctx: Context,
     reference: Reference,
@@ -98,9 +101,9 @@ const resolveIfAble = async (
 };
 
 /**
- * Whether a note sent unasked is one Verso wants: by someone a local user follows, or mentioning,
- * replying to or quoting something local. Others could fill Verso with notes nobody here would
- * see.
+ * Whether a Note that was sent unsolicited is one Verso wants: it is by someone a local user
+ * follows, or it mentions, replies to or quotes something local. Others could fill Verso with
+ * statuses nobody local would see.
  */
 const wanted = async (
     ctx: Context,
@@ -109,13 +112,13 @@ const wanted = async (
     linked: readonly (NoteRow | undefined)[],
 ) => mentions.some((mention) => mention.local) ||
     linked.some((note) => note?.instance_id === null) ||
-    // Verso keeps only follows with a local side, so any follower of another instance's user is a
-    // local one.
+    // Verso stores only follows with a local side, so any follower of a remote user is local.
     (authorId !== undefined && await hasFollowers(ctx, authorId));
 
 /**
- * Whether a note sent unasked may be {@link wanted}, from what Verso has, before fetching what it
- * names: those are kept, so an unwanted note mustn't make Verso fetch them.
+ * Whether a Note that was sent unsolicited may be {@link wanted}, judging from what Verso already
+ * has, before fetching what it references. Fetched entities are stored, so an unwanted Note mustn't
+ * make Verso fetch them.
  */
 const mayBeWanted = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
     const references = referencesIn(ctx, note, sender);
@@ -127,7 +130,7 @@ const mayBeWanted = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
     return author !== undefined && await hasFollowers(ctx, author.id);
 };
 
-/** The note `reference` points at, if there is one and Verso has it. */
+/** The status that `reference` points at, if there is one and Verso has it. */
 export const knownNoteRow = async (
     ctx: Context,
     reference: Reference | undefined,
@@ -137,13 +140,14 @@ export const knownNoteRow = async (
 };
 
 /**
- * Saves a note `sender` sent, or a newer version of one Verso has, with the emojis it uses and the
- * files attached to it, each as the version clients can best show. Who it mentions, and the notes
- * it replies to or quotes, are left out if Verso doesn't have them.
+ * Saves a remote status sent by `sender`, or updates the stored one, with its custom emojis and
+ * media attachments (for each, the format clients can best display). Mentioned users, and the
+ * statuses it replies to or quotes, are omitted if Verso doesn't have them.
  *
- * A new note is counted, and its totals are fetched later. What it replies to and quotes stays for
- * good, whatever a newer version says. A newer version that says something else is marked edited
- * now, as Versia doesn't say when, and what the note said before is kept for its history.
+ * A new status is counted, and its totals are fetched later. What it replies to and quotes is never
+ * changed by a newer version. A newer version with different content is marked as edited at the
+ * time it is received, since Versia doesn't say when, and the previous content is saved in its edit
+ * history.
  */
 export const receiveNote = async (
     ctx: Context,
@@ -185,7 +189,7 @@ export const receiveNote = async (
         fetched_at: ctx.clock.now(),
     };
     const mentionIds = mentions.map((mention) => mention.id);
-    // A note only in HTML has its hashtags in that.
+    // A Note with only HTML content has its hashtags in that.
     const hashtags = content.text === ""
         ? scanText(textOfHtml(content.html), "text/plain").hashtags
         : scanText(content.text, content.format).hashtags;
@@ -204,7 +208,7 @@ export const receiveNote = async (
             changes.sensitive !== existing.sensitive;
         if (edited) await keepVersion(ctx, existing);
 
-        // Who it is for may change, and with it whether it is counted.
+        // Its audience may change, and with it whether it is counted.
         if (changes.visibility !== existing.visibility) {
             await countPosted(ctx, existing, -1);
             await countPosted(ctx, { ...existing, visibility: changes.visibility }, 1);
@@ -228,7 +232,7 @@ export const receiveNote = async (
             instance_id: sender.instanceId,
             remote_id: note.id,
             ...changes,
-            // Versia doesn't say.
+            // Versia doesn't provide it.
             language: null,
             in_reply_to_id: parent?.id ?? null,
             in_reply_to_account_id: parent?.account_id ?? null,
@@ -251,8 +255,9 @@ export const receiveNote = async (
 };
 
 /**
- * Fetches what a note `sender` sent names, before its transaction, unless it was sent unasked and
- * isn't wanted: its author, who it mentions, and what it replies to and quotes.
+ * Fetches what a Note sent by `sender` references, before its transaction, unless it was sent
+ * unsolicited and isn't wanted: its author, mentioned users, and the statuses it replies to and
+ * quotes.
  */
 export const prepareNote = async (
     ctx: Context,
@@ -263,7 +268,7 @@ export const prepareNote = async (
     if (!sender.fetched && !await mayBeWanted(ctx, note, sender)) return;
 
     const { author, mentions, parent, quote } = referencesIn(ctx, note, sender);
-    // Without its author, the note can't be kept, so it is tried again later.
+    // Without its author, the status can't be stored, so it is retried later.
     if (author) await ctx.federation.resolve(ctx, author, "User", budget);
 
     for (const mention of mentions) await resolveIfAble(ctx, mention, "User", budget);

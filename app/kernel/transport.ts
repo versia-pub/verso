@@ -36,8 +36,8 @@ const systemResolver: DnsResolver = async (hostname) => {
 /**
  * Addresses that aren't on the public internet: this machine, private and shared networks,
  * link-local ones such as cloud metadata at 169.254.169.254, reserved, documentation and multicast
- * ranges, and IPv6 ranges that carry an IPv4 address (NAT64, 6to4 and Teredo), which could carry
- * an internal one.
+ * ranges, and IPv6 ranges that carry an IPv4 address (NAT64, 6to4 and Teredo), which could carry an
+ * internal one.
  * @see https://www.iana.org/assignments/iana-ipv4-special-registry
  * @see https://www.iana.org/assignments/iana-ipv6-special-registry
  */
@@ -82,8 +82,8 @@ export type FederationTransportOptions = {
 };
 
 /**
- * For other instances, which anyone can name, such as in a signature's `Versia-Signed-By`. Names
- * that resolve to an internal address are refused, so a request can't make Verso reach into its
+ * For remote instances, which anyone can name, such as in a signature's `Versia-Signed-By`. Names
+ * that resolve to an internal address are rejected, so a request can't make Verso reach into its
  * own network, and redirects aren't followed, since they could point anywhere and Versia's
  * endpoints don't redirect: the redirect itself is the response.
  *

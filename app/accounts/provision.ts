@@ -20,8 +20,9 @@ export type Provisioned =
     | { readonly ok: false; readonly reason: "registration-closed" };
 
 /**
- * Turns a claim into a username Versia allows: letters, digits, `_` and `-`. Accents are dropped
- * rather than the whole letter, so "Zoë" becomes "Zoe". Returns `undefined` if nothing is left.
+ * Turns a claim into a username that Versia allows: letters, digits, `_` and `-`. Accents are
+ * dropped rather than the whole letter, so "Zoë" becomes "Zoe". Returns `undefined` if nothing is
+ * left.
  */
 export const usernameFrom = (claim: unknown): string | undefined => {
     if (typeof claim !== "string") return undefined;
@@ -31,8 +32,8 @@ export const usernameFrom = (claim: unknown): string | undefined => {
 };
 
 /**
- * Turns a claim, such as `name`, into a display name: trimmed, and cut to Mastodon's limit without
- * splitting a character in two. Anything else gives none.
+ * Turns a claim, such as `name`, into a display name: trimmed, and truncated to Mastodon's limit
+ * without splitting a character in two. Anything else gives an empty name.
  */
 export const displayNameFrom = (claim: unknown): string =>
     typeof claim === "string"
@@ -58,14 +59,14 @@ const candidate = (base: string | undefined, n: number) => {
 
 /**
  * The local usernames, in lowercase, that `base` might become, and some others: every candidate
- * starts with the base cut to leave room for ten digits.
+ * starts with the base truncated to leave room for ten digits.
  */
 const takenFrom = (ctx: Context, base: string | undefined) =>
     localUsernamesStartingWith(ctx, (base ?? "user").slice(0, maxUsernameLength - 10));
 
 /**
  * Creates a local account with the first free username for `base`, found with one query rather than
- * one insert per number taken.
+ * one insert per taken number.
  */
 const createAccount = async (
     ctx: Context,
@@ -75,7 +76,7 @@ const createAccount = async (
     const id = ctx.ids();
     const failed = new Set<string>();
 
-    // Another login may take the name between looking and inserting; then look again.
+    // Another login may take the name between the lookup and the insert; then look again.
     for (;;) {
         const taken = await takenFrom(ctx, base);
         const free = (name: string) =>
@@ -109,8 +110,8 @@ const linkAccount = async (tx: Context, issuer: Issuer, claims: Claims): Promise
     const identity = { issuer: issuer.url, subject: claims.sub, accountId };
     if (await linkIdentity(tx, identity)) return { ok: true, accountId, created: true };
 
-    // The same login finished first in another request, such as a double-submitted callback.
-    // Its account is the user's, so the one made here goes.
+    // The same login finished first in another request, such as a double-submitted callback. Its
+    // account is the user's, so the one created here is deleted.
     await deleteAccount(tx, accountId);
     const winner = await linkedAccount(tx, issuer.url, claims.sub);
     if (winner === undefined) {

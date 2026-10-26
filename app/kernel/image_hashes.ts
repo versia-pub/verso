@@ -1,14 +1,14 @@
 import { encode } from "blurhash";
 import { rgbaToThumbHash } from "thumbhash";
 
-/** A small picture's pixels, row by row, four bytes each: red, green, blue and alpha. */
+/** A small image's pixels, row by row, four bytes each: red, green, blue and alpha. */
 export type Pixels = {
     readonly width: number;
     readonly height: number;
     readonly rgba: Uint8Array;
 };
 
-/** How large a picture a ThumbHash is made from, on each side, at most. */
+/** How large an image a ThumbHash is generated from, on each side, at most. */
 export const hashedSize = 100;
 
 /**
@@ -20,8 +20,8 @@ export const thumbhashOf = (pixels: Pixels): string =>
     rgbaToThumbHash(pixels.width, pixels.height, pixels.rgba).toBase64();
 
 /**
- * The BlurHash of `pixels`, as Mastodon gives it, with four components each way as Mastodon and
- * the old server make it.
+ * The BlurHash of `pixels`, as Mastodon gives it, with four components each way as Mastodon and the
+ * old server generate it.
  * @see https://blurha.sh/
  */
 export const blurhashOf = (pixels: Pixels): string =>

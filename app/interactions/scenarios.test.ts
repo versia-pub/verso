@@ -1,7 +1,7 @@
 /**
- * Interactions end to end, between complete instances, through the client API: likes, shares and
- * reactions reaching the note's instance and the sharer's followers, blocks and mutes that tell no
- * one, and pinned notes other instances can fetch.
+ * Interactions end to end, between complete instances, through the client API: likes, boosts and
+ * reactions reaching the status's instance and the booster's followers, blocks and mutes that
+ * notify no one, and pinned statuses that remote instances can fetch.
  * @module
  */
 import { assertEquals, assertExists } from "@std/assert";
@@ -40,7 +40,7 @@ const open = async () => {
         return posted.body.id as string;
     };
 
-    /** The status `user` has on their own home timeline for alice's note `id`, if any. */
+    /** The status `user` has on their own home timeline for alice's status `id`, if any. */
     const seen = async (user: string, id: string) => {
         const uri = `https://a.test/.versia/v0.6/entities/Note/${id}`;
         const statuses = await users[user]("GET", "/api/v1/timelines/home");
@@ -49,7 +49,9 @@ const open = async () => {
         );
     };
 
-    /** How alice's note `id` looks to her: its counts, who liked and shared it, and reactions. */
+    /**
+     * How alice's status `id` looks to her: its counts, who liked and boosted it, and reactions.
+     */
     const onA = async (id: string) => {
         const accts = async (list: string) =>
             (await users.alice("GET", `/api/v1/statuses/${id}/${list}`)).body.map((
@@ -97,7 +99,7 @@ Deno.test("a like, share and reaction reach the note's instance, and the share t
         shared: ["bob@b.test"],
         reactions: [["🎉", 1]],
     });
-    // Erin follows bob, not alice, so she sees the note through his share.
+    // Erin follows bob, not alice, so she sees the status through his boost.
     const shared = await test.seen("erin", id);
     assertEquals(shared?.account.acct, "bob@b.test");
     assertEquals(shared?.reblog.account.acct, "alice@a.test");
@@ -130,7 +132,7 @@ Deno.test("blocks, mutes and domain blocks tell no one, and only change what the
     await test.network.drain();
     assertEquals(test.network.transport.sent.length, from);
 
-    // Bob still follows her and sees her notes, and his like still reaches her instance.
+    // Bob still follows her and sees her statuses, and his like still reaches her instance.
     const onB = await test.seen("bob", id);
     assertExists(onB);
     await users.bob("POST", `/api/v1/statuses/${onB.id}/favourite`);
@@ -143,7 +145,7 @@ Deno.test("blocks, mutes and domain blocks tell no one, and only change what the
         (await users.alice("GET", `/api/v1/accounts/relationships?id=${bob}`)).body;
     assertEquals([relationship.blocking, relationship.followed_by], [true, true]);
 
-    // Dave's notes, and the shares of hers by those she blocks, don't reach her home.
+    // Dave's statuses, and the boosts of hers by those she blocks, don't reach her home timeline.
     await test.post("dave", "Hello");
     await users.bob("POST", `/api/v1/statuses/${onB.id}/reblog`);
     await test.network.drain();

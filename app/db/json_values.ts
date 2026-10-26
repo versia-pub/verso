@@ -26,7 +26,7 @@ class JsonTransformer extends OperationNodeTransformer {
 
 /**
  * Sends plain objects and arrays to the database as JSON text, for the JSON column helper. Left
- * alone, `pg` would send arrays as Postgres arrays and SQLite would refuse both.
+ * alone, `pg` would send arrays as Postgres arrays and SQLite would reject both.
  *
  * So a query can't take an array as one parameter, as in `= any(${ids})`; use `in` instead.
  */

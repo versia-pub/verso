@@ -31,8 +31,8 @@ Deno.test("the API is described by an OpenAPI document, titled with the instance
 });
 
 /**
- * Changes to the API show up in review as changes to `openapi.json`. When they are meant,
- * `deno task update-openapi` rewrites it.
+ * Changes to the API show up in review as changes to `openapi.json`. When they are intended, `deno
+ * task update-openapi` rewrites it.
  */
 Deno.test("the OpenAPI document is unchanged", async () => {
     const { body } = await fetchDocument();

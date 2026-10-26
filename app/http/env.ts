@@ -8,7 +8,7 @@ import type { Viewer } from "./route.ts";
 
 /** What Hono carries for each request. */
 export type AppEnv = {
-    /** From `Deno.serve`. Tests that call the app directly may leave it out. */
+    /** From `Deno.serve`. Tests that call the app directly may omit it. */
     Bindings: { readonly remoteAddr?: { readonly hostname: string } } | undefined;
     Variables: { bearer?: Promise<Viewer | undefined> };
 };
@@ -18,7 +18,7 @@ export type AppEnv = {
  * depend on the modules that serve it.
  */
 export type AppServices = {
-    /** The viewer an access token stands for, if this server gave it out and it is still valid. */
+    /** The viewer an access token stands for, if this server issued it and it is still valid. */
     readonly authenticate: (ctx: Context, token: string) => Promise<Viewer | undefined>;
     /** What an account may do: what config lets every user, and what its roles allow. */
     readonly permissionsOf: (

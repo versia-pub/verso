@@ -9,7 +9,7 @@ import { noteReactionCollections, reactionType } from "./interactions/reaction_f
 import { noteShareCollections, shareType } from "./interactions/share_federation.ts";
 import { noteCollections, noteType, removeNotesOfDeletedUser } from "./notes/federation.ts";
 
-/** Users, with the collections other modules add, and their notes removed before they are. */
+/** Users, with the collections other modules add, and their statuses removed before the user is. */
 const user = {
     ...userType,
     prepareDelete: removeNotesOfDeletedUser,
@@ -21,7 +21,7 @@ const user = {
     },
 };
 
-/** Notes, with the collections other modules add. */
+/** Statuses, with the collections other modules add. */
 const note = {
     ...noteType,
     collections: {
@@ -32,12 +32,12 @@ const note = {
     },
 };
 
-/** The types of entities Verso keeps. Extensions add theirs here. */
+/** The types of entities Verso stores. Extensions add theirs here. */
 const types = [user, note, ...likeTypes, shareType, reactionType];
 
 /**
- * Every Versia entity type Verso knows: the ones it keeps, Delete, which deletes them, and the
- * transient ones follows are sent as, and the extensions that add no types.
+ * Every Versia entity type Verso supports: the ones it stores, Delete, which deletes them, the
+ * transient ones that follows are sent as, and the extensions that add no types.
  */
 export const registry = createRegistry(
     [...types, deleteType(types), ...followTypes],

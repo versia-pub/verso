@@ -1,7 +1,4 @@
-/**
- * Following accounts, on this instance or another.
- * @module
- */
+/** Following accounts, local or remote. */
 import { z } from "zod";
 import { findAccount } from "../accounts/account_queries.ts";
 import { countFollow, uncountFollowers, uncountFollowing } from "../accounts/count_queries.ts";
@@ -33,7 +30,7 @@ import {
 
 export type { AccountIdQuery };
 
-/** What became of asking to follow an account. */
+/** The result of requesting to follow an account. */
 export type FollowResult =
     /** There is no such account, or it is the follower's own. */
     | "missing"
@@ -55,8 +52,8 @@ const emitFollow = (
 };
 
 /**
- * Has `followerId` follow `followeeId`, or ask to, if the followee is locked or on another
- * instance, which accepts for it. Following again only changes the options given.
+ * Has `followerId` follow `followeeId`, or request to follow if the followee is locked or on a
+ * remote instance, which accepts for it. Following again only changes the options given.
  */
 export const follow = (
     ctx: Context,
@@ -89,7 +86,8 @@ export const follow = (
     });
 
 /**
- * Has `followeeId` accept the follow `followerId` asked for. Returns whether there was one waiting.
+ * Has `followeeId` accept the follow request from `followerId`. Returns whether there was one
+ * waiting.
  */
 export const acceptFollow = (
     ctx: Context,
@@ -106,7 +104,7 @@ export const acceptFollow = (
     });
 
 /**
- * Removes a follow, or a request for one, and says why. With `accepted`, it only removes a follow,
+ * Removes a follow, or a follow request, and says why. With `accepted`, it only removes a follow,
  * or only a request.
  */
 const endFollow = (
@@ -126,9 +124,9 @@ const endFollow = (
 });
 
 /**
- * Has `followeeId` reject `followerId`: their request to follow, or their follow, which removes
- * them as a follower. With `accepted`, it only rejects a follower, or only a request. Returns
- * whether there was anything to reject.
+ * Has `followeeId` reject `followerId`: their follow request, or their follow, which removes them
+ * as a follower. With `accepted`, it only rejects a follower, or only a request. Returns whether
+ * there was anything to reject.
  */
 export const rejectFollow = (
     ctx: Context,
@@ -138,24 +136,24 @@ export const rejectFollow = (
 ): Promise<boolean> => endFollow(ctx, "graph.follow_rejected", followerId, followeeId, accepted);
 
 /**
- * Has `followerId` stop following `followeeId`, or withdraw asking to. Returns whether there was
- * anything to stop.
+ * Has `followerId` unfollow `followeeId`, or withdraw their follow request. Returns whether there
+ * was anything to remove.
  */
 export const unfollow = (ctx: Context, followerId: string, followeeId: string): Promise<boolean> =>
     endFollow(ctx, "graph.unfollowed", followerId, followeeId);
 
-/** How many accounts are asking to follow `accountId`. */
+/** How many accounts have requested to follow `accountId`. */
 export const countFollowRequests = (ctx: Context, accountId: string): Promise<number> =>
     countFollows(ctx, "requests", accountId);
 
-/** The queue that accepts everyone asking to follow an account that was unlocked. */
+/** The queue that accepts all follow requests to an account that was unlocked. */
 export const acceptQueue = "follow-requests";
 
 const AcceptJob = z.object({ accountId: z.string() });
 
 /**
- * Accepts everyone asking to follow an account once it is unlocked, as Mastodon does. A job does
- * it, so an account many are asking to follow can be saved at once.
+ * Accepts all follow requests to an account once it is unlocked, as Mastodon does. A job does it,
+ * so an account with many pending requests can be saved at once.
  */
 export const acceptWhenUnlocked = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isProfileUpdated(event) || !event.unlocked) return;
@@ -165,7 +163,7 @@ export const acceptWhenUnlocked = async (ctx: Context, event: DomainEvent): Prom
 };
 
 /**
- * Accepts the requests to follow the account in the job, a batch at a time, until none are left.
+ * Accepts the follow requests to the account in the job, one batch at a time, until none are left.
  */
 export const acceptHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = AcceptJob.safeParse(job.payload);
@@ -192,14 +190,16 @@ export const isFollowing = async (
     return follow?.accepted === true;
 };
 
-/** Whether an account following `accountId`, and accepted, is on the instance `instanceId`. */
+/**
+ * Whether an account that follows `accountId`, and was accepted, is on the instance `instanceId`.
+ */
 export const hasFollowersOn = (
     ctx: Context,
     accountId: string,
     instanceId: string,
 ): Promise<boolean> => anyFollowerOn(ctx, accountId, instanceId);
 
-/** The other instances that accounts following `accountId`, and accepted, are on. */
+/** The remote instances that accounts following `accountId`, and accepted, are on. */
 export const followerInstances = (ctx: Context, accountId: string): Promise<string[]> =>
     followerInstanceIds(ctx, accountId);
 
@@ -212,7 +212,7 @@ export const followedSubquery = (
 ): AccountIdQuery => followedIdsQuery(ctx, accountId);
 
 /**
- * The accounts `accountId` follows, and was accepted by, whose shares it sees, which is all of them
+ * The accounts `accountId` follows, and was accepted by, whose boosts it sees, which is all of them
  * unless it chose not to, as a subquery, for its home timeline.
  */
 export const sharingSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
@@ -223,8 +223,8 @@ export const hasFollowers = (ctx: Context, accountId: string): Promise<boolean> 
     anyListed(ctx, "followers", accountId);
 
 /**
- * Uncounts the follows of an account about to be deleted, from the accounts on their other side,
- * before the follows go with it. Requests were never counted.
+ * Decrements the counts of the accounts on the other side of the follows of an account about to be
+ * deleted, before the follows are deleted with it. Follow requests were never counted.
  */
 export const uncountFollowsOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isAccountDeleting(event)) return;

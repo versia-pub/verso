@@ -1,7 +1,7 @@
-/** A custom emoji, which text shows where it has `:shortcode:`. */
+/** A custom emoji, which text displays where it has `:shortcode:`. */
 export type EmojisTable = {
     id: string;
-    /** The instance it is from, in `instances`, or `null` for this one. */
+    /** The instance it is from, in `instances`, or `null` for the local instance. */
     instance_id: string | null;
     /** Its name, without the colons around it. */
     shortcode: string;
@@ -10,13 +10,13 @@ export type EmojisTable = {
     created_at: Date;
 };
 
-/** The emojis a note's content and warning use. */
+/** The custom emojis used in a status's content and content warning. */
 export type NoteEmojisTable = {
     note_id: string;
     emoji_id: string;
 };
 
-/** The emojis an account's display name, bio and fields use. */
+/** The custom emojis used in an account's display name, bio and fields. */
 export type AccountEmojisTable = {
     account_id: string;
     emoji_id: string;

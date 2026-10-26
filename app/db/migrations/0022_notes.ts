@@ -46,7 +46,7 @@ export const notes: Migration = {
             .columns(["instance_id", "remote_id"])
             .execute();
 
-        // For an account's notes, and timelines of the accounts someone follows, newest first.
+        // For an account's statuses, and timelines of the accounts someone follows, newest first.
         await db.schema.createIndex("notes_by_account").on("notes")
             .columns(["account_id", "id"])
             .execute();

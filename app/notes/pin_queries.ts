@@ -8,7 +8,7 @@ import type { NotePinsTable } from "./tables.ts";
 
 export type NotePinRow = Selectable<NotePinsTable>;
 
-/** Pins a note for an account, unless it already is. */
+/** Pins a status for an account, unless it is already pinned. */
 export const insertPin = async (ctx: Context, accountId: string, noteId: string): Promise<void> => {
     await ctx.db.insertInto("note_pins")
         .values({
@@ -21,7 +21,7 @@ export const insertPin = async (ctx: Context, accountId: string, noteId: string)
         .execute();
 };
 
-/** Unpins a note for an account. */
+/** Unpins a status for an account. */
 export const deletePin = async (ctx: Context, accountId: string, noteId: string): Promise<void> => {
     await ctx.db.deleteFrom("note_pins")
         .where("account_id", "=", accountId)
@@ -29,7 +29,7 @@ export const deletePin = async (ctx: Context, accountId: string, noteId: string)
         .execute();
 };
 
-/** How many notes an account pins. */
+/** How many statuses an account has pinned. */
 export const countPins = async (ctx: Context, accountId: string): Promise<number> =>
     readCount(
         await ctx.db.selectFrom("note_pins").select(countAll)
@@ -37,7 +37,7 @@ export const countPins = async (ctx: Context, accountId: string): Promise<number
             .executeTakeFirstOrThrow(),
     );
 
-/** Which of `noteIds` the account pins. */
+/** Which of `noteIds` the account has pinned. */
 export const pinnedAmong = async (
     ctx: Context,
     accountId: string,
@@ -52,7 +52,7 @@ export const pinnedAmong = async (
     return new Set(rows.map((row) => row.note_id));
 };
 
-/** The notes an account pins with one of `visibilities`, the latest pinned first. */
+/** The statuses an account has pinned with one of `visibilities`, latest pinned first. */
 export const pinnedNotes = async (
     ctx: Context,
     accountId: string,

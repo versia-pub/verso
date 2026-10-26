@@ -1,7 +1,8 @@
 /**
  * Mutes: an account muting another, as on Mastodon, so what the muted account posts doesn't reach
  * it, for a while or for good. Like a block, a mute is the muter's alone: the muted account is
- * never told, and nothing of it is sent to other instances. Unlike a block, nobody else can see it.
+ * never notified, and nothing about it is sent to remote instances. Unlike a block, nobody else can
+ * see it.
  * @see https://docs.joinmastodon.org/methods/accounts/#mute
  * @module
  */
@@ -9,7 +10,7 @@ import { findAccount } from "../accounts/account_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { deleteMute, upsertMute } from "./mute_queries.ts";
 
-/** How an account mutes another, as Mastodon takes it. */
+/** How an account mutes another, as Mastodon accepts it. */
 export type MuteRequest = {
     /** Whether the muted account's notifications are muted too. */
     readonly notifications: boolean;
@@ -39,6 +40,6 @@ export const mute = async (
     return true;
 };
 
-/** Has `accountId` stop muting `targetId`. Returns whether it muted them. */
+/** Has `accountId` unmute `targetId`. Returns whether it muted them. */
 export const unmute = (ctx: Context, accountId: string, targetId: string): Promise<boolean> =>
     deleteMute(ctx, accountId, targetId);

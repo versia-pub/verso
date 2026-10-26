@@ -6,7 +6,7 @@
 import type { Context, DomainEvent } from "./context.ts";
 
 /**
- * Tells every subscriber of `event`, in turn. It must be inside the transaction that made the
+ * Notifies every subscriber of `event`, in turn. It must be inside the transaction that made the
  * change, so the jobs subscribers enqueue commit with it: alone, they could outlive it or be lost.
  */
 export const emit = async (ctx: Context, event: DomainEvent): Promise<void> => {

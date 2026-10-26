@@ -16,7 +16,7 @@ const config = Config.parse({
     federation: { blocked_domains: ["config.example"] },
 });
 
-/** Runs `verso admin` with `args` on `ctx`, and returns what it printed. */
+/** Runs `verso admin` with `args` on `ctx`, and returns its output. */
 const admin = async (ctx: Context, ...args: string[]) => {
     const printed: string[] = [];
     const paths: string[] = [];

@@ -10,16 +10,17 @@ const AccountId = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
 /** A day: the pictures never change, but how they are drawn might. */
 const pictureMaxAge = 24 * 60 * 60;
 
-/** How many drawn pictures are kept, at a few kilobytes each. */
+/** How many generated pictures are cached, at a few kilobytes each. */
 const kept = 1000;
 
-/** Draws a picture from an account's id. */
+/** Generates a picture from an account's id. */
 type Draw = (seed: string) => Promise<Uint8Array>;
 
 /**
- * The default pictures of accounts without their own. Timelines load many at once, so they are
- * counted apart from other requests, with a far larger limit. They are only drawn for accounts that
- * exist, and each is drawn once and kept; one that couldn't be drawn is drawn again next time.
+ * The default pictures of accounts without their own. Timelines load many at once, so these
+ * requests are counted separately from other requests, with a far larger limit. Pictures are only
+ * generated for accounts that exist, and each is generated once and cached; one that couldn't be
+ * generated is generated again next time.
  */
 export const pictureRoutes = (
     draw: { readonly avatar: Draw; readonly header: Draw } = {
@@ -36,7 +37,7 @@ export const pictureRoutes = (
             summary,
             tags: ["accounts"],
             maxAge: pictureMaxAge,
-            // Ten times what a client may ask of other routes.
+            // Ten times what a client may request from other routes.
             rateLimit: { bucket: "pictures", times: 10 },
             params: AccountId,
             responses: { 200: Binary("image/png") },
@@ -50,7 +51,7 @@ export const pictureRoutes = (
                     drawn.set(key, file);
                     const drawing = file;
                     drawing.catch(() => {
-                        // Unless it was drawn again meanwhile.
+                        // Unless it was generated again in the meantime.
                         if (drawn.get(key) === drawing) drawn.delete(key);
                     });
                 }

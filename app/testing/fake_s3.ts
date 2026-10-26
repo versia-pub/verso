@@ -18,7 +18,7 @@ export type FakeS3 = Server & {
 
 /**
  * Whether `request` is signed with the bucket's key, as of its `x-amz-date`. The signature is
- * worked out as aws4fetch works it out, so this checks what it was given, not how it signs.
+ * computed as aws4fetch computes it, so this validates what it was given, not how it signs.
  */
 const signed = async (request: Request) => {
     const headers = new Headers(request.headers);
@@ -38,7 +38,7 @@ const signed = async (request: Request) => {
 };
 
 /**
- * Answers as an S3 server would for `fakeBucket`, keeping objects in memory. Like S3, it checks
+ * Responds as an S3 server would for `fakeBucket`, storing objects in memory. Like S3, it validates
  * that a request is signed with the bucket's key, and that a body's `x-amz-content-sha256` is its
  * SHA-256.
  */

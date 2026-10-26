@@ -7,7 +7,7 @@ import { registry } from "../registry.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
 
-/** A user b.test serves. */
+/** A user served by b.test. */
 const user = (id: string) => ({
     type: "User",
     id,
@@ -18,7 +18,7 @@ const user = (id: string) => ({
     indexable: true,
 });
 
-/** bob's Reaction to the note `object` with `content`, and the emojis of `extensions`. */
+/** bob's Reaction to the status `object` with `content`, and the emojis of `extensions`. */
 const reaction = (id: string, object: string, content: string, extensions?: object) => ({
     type: "pub.versia:reactions/Reaction",
     id,
@@ -48,7 +48,7 @@ const undo = (id: string) => ({
     deleted: id,
 });
 
-/** a.test, with alice and her note, and b.test, which sends what it is told, with bob. */
+/** a.test, with alice and her status, and b.test, which sends whatever it is told to, with bob. */
 const open = async () => {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
@@ -58,7 +58,7 @@ const open = async () => {
     const alice = await createLocalAccount(a, "alice");
     const local = await createNote(a, alice);
 
-    /** Has b.test send `entity` to a.test, a second after the last, and a.test take it in. */
+    /** Has b.test send `entity` to a.test, a second after the last, and a.test receive it. */
     const send = async (entity: object) => {
         network.clock.advance(1000);
         assertEquals(
@@ -68,7 +68,7 @@ const open = async () => {
         await network.drain();
     };
 
-    /** The reactions to the note `noteId`, as alice is shown them, with the emojis they use. */
+    /** The reactions to the status `noteId`, as alice is shown them, with the emojis they use. */
     const shown = async (noteId: string) => {
         const note = await findNote(a, noteId);
         if (note === undefined) throw new Error(`There is no note ${noteId}`);
@@ -79,7 +79,7 @@ const open = async () => {
         };
     };
 
-    /** How many reactions a.test keeps, to any note. */
+    /** How many reactions a.test stores, to any status. */
     const kept = async () => (await a.db.selectFrom("reactions").select("id").execute()).length;
 
     /** Why a.test gave up on what it was sent, oldest first. */
@@ -111,7 +111,7 @@ Deno.test("a reaction to a local note is kept, once, and a Delete undoes it", as
         emojis: [],
     });
 
-    // It is kept as made then.
+    // It is stored as it was made then.
     assertEquals(
         (await test.a.db.selectFrom("reactions").select("created_at").executeTakeFirst())
             ?.created_at.toISOString(),
@@ -124,7 +124,7 @@ Deno.test("a reaction to a local note is kept, once, and a Delete undoes it", as
 
     await test.send(undo("r2"));
     assertEquals(await test.kept(), 1);
-    // Another instance can't undo it, though its own reaction has that id.
+    // A different remote instance can't undo it, though its own reaction has that id.
     const c = await addEvilInstance(test.network, "c.test");
     c.serve("/.versia/v0.6/entities/User/bob", user("bob"));
     assertEquals(
@@ -148,7 +148,7 @@ Deno.test("a reaction with the sender's custom emoji is kept with it", async () 
         emojis: [["blob@b.test", "https://b.test/blob.png"]],
     });
 
-    // Undone, its emoji is kept, as others may use it.
+    // Once undone, its emoji is still stored, as others may use it.
     await test.send(undo("r1"));
     assertEquals(await test.kept(), 0);
     assertEquals(

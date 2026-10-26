@@ -1,7 +1,7 @@
 import type { Kysely } from "kysely";
 import type { Migration } from "kysely/migration";
 
-/** Other instances' reactions, with their ids there, so Deletes can undo them. */
+/** Remote reactions, with their remote ids, so Deletes can undo them. */
 export const remoteReactions: Migration = {
     up: async (db: Kysely<unknown>) => {
         await db.schema.alterTable("reactions")

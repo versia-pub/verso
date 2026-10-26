@@ -10,7 +10,7 @@ import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 
 const open = async () => {
     const test = await createTestContext();
-    // Users may do only what their roles allow, so the tests can tell what each gives.
+    // Users may do only what their roles allow, so the tests can tell what each role grants.
     const app = createTestApp(test.ctx, roleRoutes, {
         checkResponses: true,
         permissions: { anonymous: [], default: [] },

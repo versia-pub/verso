@@ -76,7 +76,9 @@ const open = async (options: { silentBlocks?: boolean; rateLimits?: RateLimits }
         rateLimits: options.rateLimits,
     });
 
-    /** Sends a request signed as `signedBy` with `key`, over `signed` unless the request differs. */
+    /**
+     * Sends a request signed as `signedBy` with `key`, over `signed` unless the request differs.
+     */
     const send = async (
         request: { method?: string; path?: string; body?: string; signedBy?: string },
         signed: { method?: string; path?: string; body?: string; at?: Date; key?: KeyPair } = {},
@@ -143,7 +145,7 @@ Deno.test("a request without a valid signature is refused", async () => {
     assertEquals(await test.send({}, { path: "/other" }), badSignature);
     assertEquals(await test.send({}, { method: "POST" }), badSignature);
     assertEquals(await test.send({ signedBy: "c.example" }), badSignature);
-    // An instance with no key is asked for one once, not again to refresh it.
+    // An instance with no key is requested for one once, not again to refresh it.
     assertEquals(
         test.transport.sent.filter((request) => new URL(request.url).host === "c.example").length,
         1,
@@ -172,8 +174,8 @@ Deno.test("instances are limited by who signed, and bad signatures as clients", 
     };
     const anyone = async () => ({ status: (await test.app.request("/public")).status });
 
-    // Instances aren't held to the clients' limit, but to their own. Only the first request,
-    // which made Verso fetch the key, counts against the client too.
+    // Instances aren't held to the clients' limit, but to their own. Only the first request, which
+    // made Verso fetch the key, counts against the client too.
     assertEquals(await statuses(4, () => test.send({})), [200, 200, 200, 429]);
     assertEquals(await statuses(1, anyone), [200]);
 
@@ -226,7 +228,7 @@ Deno.test("a blocked instance is refused before Verso asks it for its key", asyn
     assertEquals(await test.send({ signedBy: "a.blocked.example" }), defederated);
     assertEquals(asked("blocked.example") + asked("a.blocked.example"), 0);
 
-    // The headers and the time are checked first.
+    // The headers and the time are validated first.
     const old = new Date(test.clock.now().getTime() - 600_000);
     assertEquals((await test.send({ signedBy: "blocked.example" }, { at: old })).status, 422);
 

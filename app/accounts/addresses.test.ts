@@ -4,7 +4,7 @@ import { createNetwork } from "../testing/network.ts";
 import { type Address, findAccountByAddress, parseAddress } from "./addresses.ts";
 import { createLocalAccount } from "./testing.ts";
 
-/** a.test finding accounts, and bob on b.test. */
+/** a.test looking up accounts, and bob on b.test. */
 const open = async () => {
     const network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"].ctx;
@@ -18,7 +18,7 @@ const open = async () => {
         return row && { id: row.id, acct: `${row.username}@${row.domain ?? "a.test"}` };
     };
 
-    /** How many requests a.test has sent `host`. */
+    /** How many requests a.test has sent to `host`. */
     const asked = (host: string) =>
         network.transport.sent.filter((request) => new URL(request.url).host === host).length;
 
@@ -49,7 +49,7 @@ Deno.test("a remote account is found by its address, and then by its id there", 
     assertEquals(bob?.acct, "bob@b.test");
     assertEquals(await find("BOB@b.test"), bob);
 
-    // WebFinger, the key, and the User; then nothing more until it is a day old.
+    // WebFinger, the key, and the User; then nothing more until the stored copy is a day old.
     assertEquals(asked("b.test"), 3);
 
     network.clock.advance(24 * 60 * 60_000);

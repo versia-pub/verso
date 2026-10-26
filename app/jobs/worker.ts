@@ -30,7 +30,7 @@ export type Queue = {
     readonly perGroup?: number;
     /** How long a job may run before another worker may claim it. Defaults to five minutes. */
     readonly leaseMs?: number;
-    /** What its dead letters keep of their payload. Defaults to all of it. */
+    /** What its dead letters retain of their payload. Defaults to all of it. */
     readonly deadPayload?: DeadPayload;
 };
 
@@ -150,7 +150,7 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
         const free = queue.concurrency - running.size;
         const finishedBefore = finishedCount;
 
-        // Claiming no more than one group may run means giving few back when they share one.
+        // Claiming no more than one group may run means releasing few when they share one.
         const limit = Math.min(free, perGroup);
         let jobs: JobsTable[] = [];
         if (limit > 0) {
@@ -192,8 +192,8 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
             running.add(run);
         }
 
-        // A full batch means more may be due, and so may a slot freed meanwhile. Otherwise wait for
-        // a free slot, a new job or the next poll.
+        // A full batch means more may be due, and so may a slot freed in the meantime. Otherwise
+        // wait for a free slot, a new job or the next poll.
         const waiting = limit <= 0 || jobs.length < limit;
         if (waiting && finishedCount === finishedBefore) {
             await pause(options.pollMs, options.signal, wakeups);
@@ -223,8 +223,8 @@ export const work = async (
 
 /**
  * Runs due jobs one at a time, in the order a worker would claim them, until none are left, and
- * returns how many ran. Jobs enqueued along the way run too if they are due. A failed job waits
- * out its backoff, so with a fake clock this always ends. For tests, in place of `work`.
+ * returns how many ran. Jobs enqueued along the way run too if they are due. A failed job waits out
+ * its backoff, so with a fake clock this always ends. For tests, in place of `work`.
  */
 export const drain = async (
     ctx: Context,

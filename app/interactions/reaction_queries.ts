@@ -12,7 +12,9 @@ export type ReactionEmoji =
     | { readonly text: string; readonly emoji_id: null }
     | { readonly text: null; readonly emoji_id: string };
 
-/** The emoji a reaction, or group of them, is made with. Each has its text or a custom emoji. */
+/**
+ * The emoji a reaction, or group of reactions, is made with. Each has its text or a custom emoji.
+ */
 export const emojiOf = (row: Pick<ReactionRow, "text" | "emoji_id">): ReactionEmoji => {
     if (row.text !== null) return { text: row.text, emoji_id: null };
     if (row.emoji_id !== null) return { text: null, emoji_id: row.emoji_id };
@@ -21,7 +23,7 @@ export const emojiOf = (row: Pick<ReactionRow, "text" | "emoji_id">): ReactionEm
 };
 
 /**
- * Adds a local reaction, unless the account already reacts to the note with that emoji. Returns
+ * Adds a local reaction, unless the account already reacts to the status with that emoji. Returns
  * it if it was added.
  */
 export const insertReaction = async (
@@ -44,7 +46,7 @@ export const insertReaction = async (
         .returningAll()
         .executeTakeFirst();
 
-/** Adds another instance's reaction, unless it or the same one by another id is already here. */
+/** Adds a remote reaction, unless it, or the same one under another id, already exists. */
 export const insertRemoteReaction = async (
     ctx: Context,
     reaction: Insertable<ReactionsTable>,
@@ -72,7 +74,7 @@ export const deleteReactionById = async (ctx: Context, id: string): Promise<void
     await ctx.db.deleteFrom("reactions").where("id", "=", id).execute();
 };
 
-/** Removes an account's reaction to a note with an emoji, and returns it, if there was one. */
+/** Removes an account's reaction to a status with an emoji, and returns it, if there was one. */
 export const deleteReaction = async (
     ctx: Context,
     accountId: string,
@@ -90,13 +92,16 @@ export const deleteReaction = async (
         .executeTakeFirst();
 };
 
-/** The reactions to a note with one emoji, and the custom emoji's picture, if it is one. */
+/** The reactions to a status with one emoji, and the custom emoji's picture, if it is one. */
 export type ReactionGroup = {
     readonly note_id: string;
     readonly text: string | null;
     readonly emoji_id: string | null;
     readonly shortcode: string | null;
-    /** The custom emoji's instance, and its domain, or `null` if it is this one's, or Unicode. */
+    /**
+     * The custom emoji's instance, and its domain, or `null` if it is the local instance's, or
+     * Unicode.
+     */
     readonly instance_id: string | null;
     readonly domain: string | null;
     readonly url: string | null;
@@ -107,10 +112,10 @@ export type ReactionGroup = {
 };
 
 /**
- * The reactions to each of `noteIds`, by note, and by emoji in the order they were first used, with
- * whether `viewerId` made each, if there is a viewer, and without those of the accounts it blocks,
- * `blocked`. It reads the `emojis`, `instances` and `media` tables rather than asking their
- * modules, so that it is one query.
+ * The reactions to each of `noteIds`, by status, and by emoji in the order they were first used,
+ * with whether `viewerId` made each, if there is a viewer, and without those of the accounts it
+ * blocks, `blocked`. It reads the `emojis`, `instances` and `media` tables directly rather than
+ * going through their modules, so that it takes one query.
  */
 export const reactionsOf = async (
     ctx: Context,
@@ -168,7 +173,7 @@ export const reactionsOf = async (
 };
 
 /**
- * A page of the reactions to a note with one emoji, newest first, but those of the accounts
+ * A page of the reactions to a status with one emoji, newest first, excluding those by the accounts
  * `blocked`.
  */
 export const emojiReactionPage = async (
@@ -195,8 +200,9 @@ export type LocalReaction = ReactionRow & {
 };
 
 /**
- * A local user's reaction, not one from another instance, if there is one with this id. It reads
- * the `emojis` and `media` tables rather than asking their modules, so that it is one query.
+ * A local user's reaction, not one from a remote instance, if there is one with this id. It reads
+ * the `emojis` and `media` tables directly rather than going through their modules, so that it
+ * takes one query.
  */
 export const findLocalReaction = async (
     ctx: Context,
@@ -212,9 +218,9 @@ export const findLocalReaction = async (
         .executeTakeFirst();
 
 /**
- * A note's reactions, oldest first, from `offset`: their ids here, and for those from other
- * instances, their ids there and the instances' domains. It reads the `instances` table rather than
- * asking its module, so that it is one query.
+ * A status's reactions, oldest first, from `offset`: their local ids, and for remote ones, their
+ * ids on the remote instance and the instances' domains. It reads the `instances` table directly
+ * rather than going through its module, so that it takes one query.
  */
 export const reactionPage = async (
     ctx: Context,
@@ -231,7 +237,7 @@ export const reactionPage = async (
         .limit(limit)
         .execute();
 
-/** How many reactions a note has, of any emoji. */
+/** How many reactions a status has, of any emoji. */
 export const countReactionsOf = async (ctx: Context, noteId: string): Promise<number> =>
     readCount(
         await ctx.db.selectFrom("reactions").select(countAll)

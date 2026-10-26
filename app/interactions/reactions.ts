@@ -1,7 +1,7 @@
 /**
- * Reactions to notes, each with an emoji: a Unicode one, or a custom one, which local users take
- * from this instance's. A user reacts to a note with each emoji once, and with as many emojis as
- * they like, as on Versia Server.
+ * Reactions to statuses, each with an emoji: a Unicode one, or a custom one, which local users take
+ * from the local instance's emojis. A user reacts to a status with each emoji once, and with as
+ * many emojis as they like, as on Versia Server.
  * @see https://versia.pub/extensions/reactions
  * @module
  */
@@ -25,8 +25,8 @@ import {
 export const isUnicodeEmoji = (text: string): boolean => /^\p{RGI_Emoji}$/v.test(text);
 
 /**
- * The emoji a local user names to react with: a Unicode emoji, or one of this instance's custom
- * emojis by its shortcode in colons, such as `:blobcat:`, or `undefined` if it is neither.
+ * The emoji a local user names to react with: a Unicode emoji, or one of the local instance's
+ * custom emojis by its shortcode in colons, such as `:blobcat:`, or `undefined` if it is neither.
  */
 export const reactionEmoji = async (
     ctx: Context,
@@ -41,17 +41,17 @@ export const reactionEmoji = async (
     return isUnicodeEmoji(name) ? { text: name, emoji_id: null } : undefined;
 };
 
-/** What became of reacting to a note, or undoing it: the note, or why there is none. */
+/** The result of reacting to a status, or undoing it: the status, or why there is none. */
 export type ReactionResult =
     | NoteRow
-    /** There is no such note, or the account may not see it. */
+    /** There is no such status, or the account may not see it. */
     | "missing"
-    /** The emoji is neither Unicode nor this instance's. */
+    /** The emoji is neither Unicode nor the local instance's. */
     | "unknown emoji";
 
 /**
- * Reacts to a note for `accountId`, a local user, or to what a share shares, with the emoji
- * `name`, unless it already has. Returns the note as it is now.
+ * Reacts to a status for `accountId`, a local user, or to the status a boost boosts, with the emoji
+ * `name`, unless it already has. Returns the status as it is now.
  */
 export const react = (
     ctx: Context,
@@ -81,9 +81,9 @@ export const react = (
     });
 
 /**
- * Undoes `accountId`'s reaction to a note, or to what a share shares, with the emoji `name`.
- * Returns the note as it is now. As with likes, a note reacted to can be undone even if the
- * account may no longer see it, and one not reacted to only if it may.
+ * Undoes `accountId`'s reaction to a status, or to the status a boost boosts, with the emoji
+ * `name`. Returns the status as it is now. As with likes, a status that was reacted to can be
+ * undone even if the account may no longer see it, and one that wasn't only if it may.
  */
 export const unreact = (
     ctx: Context,
@@ -113,11 +113,11 @@ export const unreact = (
         return await findNote(tx, reacted) ?? "missing";
     });
 
-/** Another instance's reaction, as Verso keeps it. */
+/** A remote reaction, as Verso stores it. */
 export type RemoteReaction = {
     readonly accountId: string;
     readonly noteId: string;
-    /** A Unicode emoji, or one of the instance's custom emojis. */
+    /** A Unicode emoji, or one of the remote instance's custom emojis. */
     readonly emoji: string | RemoteEmoji;
     readonly instanceId: string;
     readonly remoteId: string;
@@ -125,8 +125,8 @@ export type RemoteReaction = {
 };
 
 /**
- * Keeps another instance's reaction, with its custom emoji, unless Verso has it, or the account
- * already reacts to the note with that emoji.
+ * Stores a remote reaction, with its custom emoji, unless Verso has it, or the account already
+ * reacts to the status with that emoji.
  */
 export const keepRemoteReaction = async (ctx: Context, reaction: RemoteReaction): Promise<void> => {
     const { emoji } = reaction;
@@ -146,7 +146,7 @@ export const keepRemoteReaction = async (ctx: Context, reaction: RemoteReaction)
     });
 };
 
-/** Undoes another instance's reaction, which a Delete said is gone, if Verso has it. */
+/** Undoes a remote reaction, which a Delete said is gone, if Verso has it. */
 export const undoRemoteReaction = async (
     ctx: Context,
     instanceId: string,

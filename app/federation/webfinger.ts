@@ -1,5 +1,5 @@
 /**
- * Finding users on other instances by their address, such as `bob@b.example`, with WebFinger.
+ * Finding users on remote instances by their address, such as `bob@b.example`, with WebFinger.
  * @see https://versia.pub/federation/discovery
  * @module
  */
@@ -9,16 +9,16 @@ import type { Context } from "../kernel/context.ts";
 import { fetchUnsigned } from "./request.ts";
 import { ResolveFailed } from "./resolver.ts";
 
-/** The parts of a JSON Resource Descriptor read here. Other instances may send more. */
+/** The parts of a JSON Resource Descriptor read here. Remote instances may send more. */
 const Jrd = z.object({
     links: z.array(z.object({ rel: z.string(), type: z.string().optional(), href: z.string() }))
         .default([]),
 });
 
-/** Where a Versia 0.6 User is fetched, so the link gives its id. */
+/** Where a Versia 0.6 User is fetched from, so the link gives its id. */
 const userPath = /^\/\.versia\/v0\.6\/entities\/User\/([A-Za-z0-9_-]+)$/;
 
-/** The user a WebFinger link points at, if it is a Versia User on `domain`. */
+/** The user that a WebFinger link points at, if it is a Versia User on `domain`. */
 const userOf = (domain: string, href: string): Reference | undefined => {
     const url = URL.parse(href);
     if (url?.protocol !== "https:" || url.host !== domain || url.search !== "") return undefined;
@@ -28,9 +28,9 @@ const userOf = (domain: string, href: string): Reference | undefined => {
 };
 
 /**
- * The Versia User `username@domain` is, asking `domain`, or `undefined` if there is none, or
- * none Verso may look up: on a blocked instance, or one at an address that isn't a domain. It
- * throws if the instance can't be reached or gives an answer that isn't WebFinger.
+ * The Versia User `username@domain`, looked up on `domain`, or `undefined` if there is none or none
+ * Verso may look up: on a blocked instance, or at an address that isn't a domain. It throws if the
+ * instance can't be reached or gives a response that isn't WebFinger.
  */
 export const webfinger = async (
     ctx: Context,

@@ -17,21 +17,24 @@ export type ProfileField = {
     readonly value_html: string;
 };
 
-/** Who sees a status: everyone, everyone but not in public timelines, followers, or mentions. */
+/**
+ * Who can see a status: everyone; everyone but not in public timelines; followers; or mentioned
+ * users.
+ */
 export type Visibility = "public" | "unlisted" | "private" | "direct";
 
 /**
- * A user on this instance or another. Rich text, such as the bio, is kept as HTML, which every
- * account has, and, for local accounts, as its owner wrote it, for them to edit. Local HTML is
- * made when the text is written. Remote HTML is kept as received, and sanitised when shown.
+ * A local or remote user. Rich text, such as the bio, is stored as HTML, which every account has,
+ * and, for local accounts, as its owner wrote it, for them to edit. Local HTML is generated when
+ * the text is written. Remote HTML is stored as received, and sanitised when displayed.
  */
 export type AccountsTable = {
     id: string;
     /** Unique per instance, ignoring case. */
     username: string;
-    /** The instance the account lives on, in `instances`, or `null` for this one. */
+    /** The instance the account lives on, in `instances`, or `null` for the local instance. */
     instance_id: string | null;
-    /** The account's id on its own instance, opaque to us, or `null` for local accounts. */
+    /** The account's id on its own instance, opaque to Verso, or `null` for local accounts. */
     remote_id: string | null;
     created_at: Date;
 
@@ -50,7 +53,7 @@ export type AccountsTable = {
     discoverable: Generated<boolean>;
     /** Whether its public statuses may appear in search results. */
     indexable: Generated<boolean>;
-    /** Whether its followers and follows are hidden from others. */
+    /** Whether its followers and following are hidden from others. */
     hide_collections: Generated<boolean>;
 
     /** Defaults for new statuses, which clients read and change through Mastodon's `source`. */
@@ -59,7 +62,7 @@ export type AccountsTable = {
     /** An ISO 639-1 code, or empty for none. */
     default_language: Generated<string>;
 
-    /** Kept up to date as they change, rather than counted when shown. */
+    /** Updated whenever they change, rather than counted when displayed. */
     statuses_count: Generated<number>;
     followers_count: Generated<number>;
     following_count: Generated<number>;
@@ -82,7 +85,7 @@ export type IdentitiesTable = {
     created_at: Date;
 };
 
-/** A named set of permissions, which accounts are given by an admin or by an IdP claim. */
+/** A named set of permissions, which accounts are granted by an admin or by an IdP claim. */
 export type RolesTable = {
     id: string;
     /** Unique, ignoring case. */
@@ -91,7 +94,7 @@ export type RolesTable = {
     permissions: Permission[];
     /** Accounts may only manage roles below their own highest. */
     priority: Generated<number>;
-    /** Whether the role shows on its accounts' profiles. */
+    /** Whether the role is displayed on its accounts' profiles. */
     visible: Generated<boolean>;
     /** A hex color such as `#ff0000`, or empty for none. */
     color: Generated<string>;
@@ -101,13 +104,13 @@ export type RolesTable = {
 };
 
 /**
- * A role given to an account, by an admin or by an issuer mapping its claims. An account may have
- * the same role from several of them, so a login through one issuer only changes what it gave.
+ * A role granted to an account, by an admin or by an issuer mapping its claims. An account may have
+ * the same role from several sources, so a login through one issuer only changes what it granted.
  */
 export type AccountRolesTable = {
     account_id: string;
     role_id: string;
-    /** The issuer whose claims gave the role, or `null` if an admin did. */
+    /** The issuer whose claims granted the role, or `null` if an admin did. */
     issuer: string | null;
     created_at: Date;
 };

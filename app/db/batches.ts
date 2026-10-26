@@ -1,6 +1,6 @@
 /**
- * How many rows, or ids, go in one query. Databases cap the values one query may bind, Postgres at
- * 65,535, so long lists are split into batches well under it.
+ * How many rows, or ids, go in one query. Databases limit the values one query may bind, Postgres
+ * to 65,535, so long lists are split into batches well under it.
  */
 export const batchSize = 1000;
 

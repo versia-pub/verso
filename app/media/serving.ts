@@ -1,7 +1,7 @@
 /**
- * The files Verso keeps, as it serves them. Pictures it processed are served as pictures, and video
- * and audio as what they say they are; any other file is served for browsers to save, so an
- * uploaded page or script never runs as one.
+ * Media stored by Verso, as served. Processed images are served as images, and video and audio as
+ * the type they declare. Any other file is served as a download, so an uploaded page or script
+ * never runs as one.
  * @module
  */
 import type { Context } from "../kernel/context.ts";
@@ -10,18 +10,18 @@ import type { MediaRow } from "./media_queries.ts";
 import { findServedFile } from "./upload_queries.ts";
 import { isPlayable } from "./uploads.ts";
 
-/** A kept file, with the type it is served as, or where the store serves it. */
+/** A stored file, with the type it is served as, or the location where the file store serves it. */
 export type ServedFile = { readonly location: string } | {
     readonly stream: ReadableStream<Uint8Array>;
     readonly mediaType: string;
-    /** Whether browsers should save it rather than show it. */
+    /** Whether browsers should download it rather than display it. */
     readonly download: boolean;
 };
 
 /**
- * The file kept under `key`, if an upload that is processed is kept as it, or has it as its
- * preview. What was uploaded of a picture is never served, as it may hold metadata: it is only kept
- * until it is processed.
+ * The file stored under `key`, if a processed upload is stored as it, or has it as its preview. The
+ * original upload of an image is never served, as it may hold metadata: it is only stored until
+ * processing finishes.
  */
 export const serveFile = async (ctx: Context, key: string): Promise<ServedFile | undefined> => {
     const row = await findServedFile(ctx, key);
@@ -33,7 +33,7 @@ export const serveFile = async (ctx: Context, key: string): Promise<ServedFile |
     const stream = await ctx.files.get(key);
     if (stream === undefined) return undefined;
 
-    // Previews are always made as WebP.
+    // Previews are always WebP.
     if (row.preview_sha256 === key) {
         return { stream, mediaType: imageFormats.webp.mediaType, download: false };
     }
@@ -43,8 +43,8 @@ export const serveFile = async (ctx: Context, key: string): Promise<ServedFile |
 };
 
 /**
- * The type a local file is served as: its own, if it is a picture Verso processed or can be played,
- * or else `application/octet-stream`, for browsers to save.
+ * The type a local file is served as: its own type if it is an image Verso processed or is
+ * playable, otherwise `application/octet-stream`, so browsers download it.
  */
 export const servedTypeOf = (row: Pick<MediaRow, "media_type" | "preview_sha256">): string =>
     row.preview_sha256 === null && !isPlayable(row.media_type)

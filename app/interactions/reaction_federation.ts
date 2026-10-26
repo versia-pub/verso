@@ -1,7 +1,6 @@
 /**
- * Reactions as Versia has them: local users' reactions, as other instances fetch them and are sent
- * them, with the collection of a note's reactions, and other instances' ones, as Verso takes them
- * in.
+ * Reactions as Versia has them: local users' reactions, as remote instances fetch them and are sent
+ * them, with the collection of a status's reactions, and remote reactions, as Verso receives them.
  * @see https://versia.pub/extensions/reactions
  * @module
  */
@@ -36,9 +35,9 @@ const extension = "pub.versia:reactions";
 const typeName = "pub.versia:reactions/Reaction";
 
 /**
- * A local user's reaction as a Versia Reaction, if its user and note are still there. A custom
- * emoji is named in colons, with its picture in the extension for custom emojis, as Versia Server
- * sends them.
+ * A local user's reaction as a Versia Reaction, if its user and status still exist. A custom emoji
+ * is named in colons, with its picture in the extension for custom emojis, as Versia Server sends
+ * them.
  */
 const renderVersiaReaction = async (
     ctx: Context,
@@ -65,9 +64,9 @@ const renderVersiaReaction = async (
 };
 
 /**
- * The other instances a local user's reaction to a note is sent to: the one of the note's author,
- * which must be told, and for a note anyone may see, those of the reactor's followers, as Versia
- * says. Others aren't told of reactions to notes they may not see.
+ * The remote instances a local user's reaction to a status is sent to: the instance of the status's
+ * author, which must be told, and for a status anyone may see, those of the reactor's followers, as
+ * Versia specifies. Other instances aren't told of reactions to statuses they may not see.
  */
 const audienceOfReaction = async (ctx: Context, accountId: string, note: NoteRow) => {
     const author = await instancesHosting(ctx, [note.account_id]);
@@ -98,15 +97,15 @@ export const reactionDeliveries = async (ctx: Context, event: DomainEvent): Prom
 };
 
 /**
- * Whether `requester`, another instance, may see a local user's reaction to `note`: if it may see
- * the note, or the note is its own.
+ * Whether `requester`, a remote instance, may see a local user's reaction to `note`: if it may see
+ * the status, or the status is its own.
  */
 const maySeeReaction = (ctx: Context, note: NoteRow, requester: string) =>
     instanceMaySeeInteraction(ctx, note, note, requester);
 
 /**
- * The reactions to a local note, oldest first, for an instance that may see it, as references to
- * them: bare ids for local ones, and the host and id for other instances' ones.
+ * The reactions to a local status, oldest first, for an instance that may see it, as references to
+ * them: bare ids for local ones, and the host and id for remote ones.
  */
 const noteReactions: CollectionProvider = async (ctx, id, page, requester) => {
     const note = await findNote(ctx, id);
@@ -123,19 +122,19 @@ const noteReactions: CollectionProvider = async (ctx, id, page, requester) => {
     };
 };
 
-/** The collections reactions add to Notes. */
+/** The collections that reactions add to Notes. */
 export const noteReactionCollections: Readonly<Record<string, CollectionProvider>> = {
     "pub.versia:reactions/Reactions": noteReactions,
 };
 
-/** The note a reaction `sender` sent is to, if Verso has it. */
+/** The status that a reaction sent by `sender` is to, if Verso has it. */
 const reactedNote = (ctx: Context, reaction: v0_6.Reaction, sender: Sender) =>
     knownNoteRow(ctx, parseReference(reaction.object, sender.domain));
 
 /**
- * The emoji of a reaction another instance sent: a Unicode emoji, or one of its custom emojis,
+ * The emoji of a reaction sent by a remote instance: a Unicode emoji, or one of its custom emojis,
  * named in colons, with its picture in the reaction's extensions. Versia lets a reaction be any
- * text, which Mastodon's clients can't show, so for others it is `undefined`.
+ * text, which Mastodon's clients can't display, so for others it is `undefined`.
  */
 const remoteReactionEmoji = (reaction: v0_6.Reaction): string | RemoteEmoji | undefined => {
     if (isUnicodeEmoji(reaction.content)) return reaction.content;
@@ -145,10 +144,10 @@ const remoteReactionEmoji = (reaction: v0_6.Reaction): string | RemoteEmoji | un
 };
 
 /**
- * Reactions: other instances' ones, as they send them, and Deletes undo them, and local users'
- * ones, which other instances that may see their notes fetch. Verso keeps those to notes it has,
- * with an emoji it can show, and drops others. Those to local notes must be by users who may see
- * them.
+ * Reactions: remote ones, as remote instances send them, and Deletes undo them, and local users'
+ * ones, which remote instances that may see their statuses fetch. Verso stores those to statuses it
+ * has, with an emoji it can display, and drops others. Those to local statuses must be by users who
+ * may see them.
  */
 export const reactionType: EntityType<v0_6.Reaction> = {
     type: typeName,
@@ -156,7 +155,7 @@ export const reactionType: EntityType<v0_6.Reaction> = {
     schema: v0_6.Reaction,
     // Only its author's instance may send it.
     authority: (reaction, origin) => parseReference(reaction.author, origin)?.host,
-    // The author is often new to Verso, but is only fetched for a reaction Verso will keep.
+    // The author is often new to Verso, but is only fetched for a reaction Verso will store.
     prepare: async (ctx, reaction, sender, budget) => {
         if (remoteReactionEmoji(reaction) === undefined) return;
         if (await reactedNote(ctx, reaction, sender) === undefined) return;

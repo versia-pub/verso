@@ -23,14 +23,14 @@ const deletion = (deleted: string, more: Record<string, string> = {}) => ({
     ...more,
 });
 
-/** a.test, knowing alice on evil.test and bob on other.test. */
+/** a.test, with alice on evil.test and bob on other.test already stored. */
 const open = async () => {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const evil = await addEvilInstance(network, "evil.test");
     const other = await addEvilInstance(network, "other.test");
 
-    // a.test fetches them, since it doesn't take users sent unasked.
+    // a.test fetches them, since it doesn't accept users sent unsolicited.
     for (
         const [instance, host, id] of [[evil, "evil.test", "alice"], [
             other,
@@ -76,7 +76,7 @@ Deno.test("an instance can delete its own users, with their pictures", async () 
     assertEquals(await test.usernames(), ["bob"]);
     assertEquals(await test.pictures(), 1);
 
-    // By its author, or deleting a user it doesn't have, is the same.
+    // A Delete by its author is the same as one deleting a user that Verso doesn't have.
     assertEquals(await test.send(deletion("evil.test:alice", { author: "alice" })), undefined);
 });
 

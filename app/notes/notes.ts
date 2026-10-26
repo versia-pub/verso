@@ -1,6 +1,5 @@
 /**
- * Notes, on this instance or another: posting and editing them, who may see them, and deleting
- * them.
+ * Statuses, local or remote: posting and editing them, who may see them, and deleting them.
  * @module
  */
 import { type AccountRow, findAccount } from "../accounts/account_queries.ts";
@@ -33,9 +32,10 @@ import { countShare } from "./share_queries.ts";
 import { visibleOriginal } from "./visibility.ts";
 
 /**
- * Counts a note its author posted, or deleted, as Mastodon does: a direct note isn't counted, and
- * only a public or unlisted one as a reply, so the counts don't tell of notes others can't see. A
- * share is counted as the author's, and as a share of the note it shares.
+ * Counts a status that its author posted, or uncounts one they deleted, as Mastodon does. A direct
+ * status isn't counted, and only a public or unlisted status is counted as a reply, so the counts
+ * don't reveal statuses that others can't see. A boost is counted as the author's status, and as a
+ * boost of the status it boosts.
  */
 export const countPosted = async (
     ctx: Context,
@@ -53,31 +53,33 @@ export const countPosted = async (
 };
 
 /**
- * What a local user posts. Without a visibility, sensitivity or language, it has their defaults.
+ * What a local user posts. Without a visibility, sensitivity or language, the user's defaults
+ * apply.
  */
 export type Draft = {
     readonly text: string;
     readonly format: TextFormat;
-    /** Empty for none. A note with one is sensitive. */
+    /** Empty for none. A status with a content warning is sensitive. */
     readonly spoilerText: string;
     readonly visibility?: Visibility;
     readonly sensitive?: boolean;
     readonly language?: string;
-    /** The note it replies to, which its author must be able to see. */
+    /** The status it replies to, which its author must be able to see. */
     readonly inReplyToId?: string;
-    /** The uploads attached to it, in order, which {@link attach} checks. */
+    /** The uploads attached to it, in order, which {@link attach} validates. */
     readonly mediaIds?: readonly string[];
 };
 
 const mentionKey = (mention: Mention) => `${mention.username}@${mention.domain}`.toLowerCase();
 
-/** How long posting may spend finding the users it mentions. */
+/** How long posting may spend looking up the users it mentions. */
 const mentionsMs = 15_000;
 
 /**
- * The accounts `mentions` are of, by {@link mentionKey}, with other instances' users fetched if
- * Verso doesn't have them, from one budget, so a post can't make Verso fetch without end. Mentions
- * of no one are left out, and so are those past as many accounts as settings allow.
+ * The accounts that `mentions` refer to, by {@link mentionKey}, fetching remote users if Verso
+ * doesn't have them, from one shared budget, so a post can't make Verso fetch without end. Mentions
+ * of nonexistent accounts are dropped, and so are those beyond the number of accounts the settings
+ * allow.
  */
 const mentioned = async (ctx: Context, mentions: readonly Mention[]) => {
     const budget = fetchBudget(20, ctx.clock.now().getTime() + mentionsMs);
@@ -112,8 +114,8 @@ const renderDraft = (
 });
 
 /**
- * Uses this instance's emojis named in a local note's text, as `found`, and its warning, in place
- * of those it used.
+ * Links the local instance's custom emojis named in a local status's text and content warning, as
+ * `found`, replacing the ones it linked before.
  */
 const useEmojis = async (ctx: Context, noteId: string, found: Found, spoilerText: string) => {
     const shortcodes = new Set([
@@ -124,9 +126,9 @@ const useEmojis = async (ctx: Context, noteId: string, found: Found, spoilerText
 };
 
 /**
- * Posts a note by `accountId`, a local user, and counts it. Who it mentions is found first, outside
- * the transaction, as that can mean asking other instances. Returns `undefined` if the note it
- * replies to isn't there, or `accountId` may not see it.
+ * Posts a status by `accountId`, a local user, and counts it. The mentioned users are looked up
+ * first, outside the transaction, as that can mean fetching from remote instances. Returns
+ * `undefined` if the status it replies to doesn't exist or `accountId` may not see it.
  */
 export const postNote = async (
     ctx: Context,
@@ -182,25 +184,28 @@ export const postNote = async (
     });
 };
 
-/** What a local user changes in a note. What is left out stays as it was. */
+/** What a local user changes in a status. Omitted fields stay as they were. */
 export type Edit = {
     readonly text: string;
     readonly format?: TextFormat;
-    /** Empty for none. A note with one is sensitive. */
+    /** Empty for none. A status with a content warning is sensitive. */
     readonly spoilerText?: string;
     readonly sensitive?: boolean;
     readonly language?: string;
-    /** The uploads attached to it in place of its files, in order, which {@link attach} checks. */
+    /**
+     * The uploads to attach in place of its current media, in order, which {@link attach}
+     * validates.
+     */
     readonly mediaIds?: readonly string[];
-    /** Changes to how the files it has attached after the edit are described. */
+    /** Changes to the descriptions of the media attached after the edit. */
     readonly mediaChanges?: readonly AttachmentChange[];
 };
 
 /**
- * Edits a note `accountId`, a local user, wrote, finding who it mentions again, as posting does.
- * What it said before is kept for its history. Returns the note as it is now, or `undefined` if it
- * isn't theirs, or is a share, which says nothing to edit. A note left as it was isn't marked
- * edited, or sent again.
+ * Edits a status written by `accountId`, a local user, and looks up the mentioned users again, as
+ * posting does. The previous version is saved in its edit history. Returns the status as it is now,
+ * or `undefined` if it isn't theirs or is a boost, which has nothing to edit. A status left
+ * unchanged isn't marked as edited or sent again.
  */
 export const editNote = async (
     ctx: Context,
@@ -216,7 +221,7 @@ export const editNote = async (
     const accounts = await mentioned(ctx, found.mentions);
 
     return await ctx.transaction(async (tx) => {
-        // Unless it was deleted meanwhile.
+        // Unless it was deleted in the meantime.
         const note = await findNote(tx, noteId);
         if (note === undefined) return undefined;
 
@@ -225,7 +230,8 @@ export const editNote = async (
             content: edit.text,
             content_format: format,
             spoiler_text: spoilerText,
-            // As on Mastodon, a warning given without a word on sensitivity decides it.
+            // As on Mastodon, a content warning sent without an explicit sensitivity makes the
+            // status sensitive.
             sensitive: spoilerText !== "" ||
                 (edit.sensitive ?? (edit.spoilerText === undefined && note.sensitive)),
             language: edit.language ?? note.language,

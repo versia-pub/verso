@@ -1,5 +1,6 @@
 /**
- * Threads: the notes a note replies to, and the replies under it, as far as Verso has them.
+ * Threads: the statuses that a status replies to, and the replies under it, as far as Verso has
+ * them.
  * @module
  */
 import { hiddenAmong } from "../graph/hidden.ts";
@@ -8,13 +9,13 @@ import { findNote, type NoteRow } from "./note_queries.ts";
 import { notesSeenBy, type Onlooker, repliesTo } from "./thread_queries.ts";
 import { onlookerOf } from "./visibility.ts";
 
-/** How many notes up a thread are looked at, as Mastodon shows to anyone. */
+/** How many statuses up a thread are examined, as Mastodon shows to anyone. */
 const ancestorsLimit = 40;
 
-/** How many replies under a note are looked at, as Mastodon shows to anyone. */
+/** How many replies under a status are examined, as Mastodon shows to anyone. */
 const descendantsLimit = 60;
 
-/** The notes `note` replies to, and the ones they reply to, oldest first. */
+/** The statuses `note` replies to, and the ones they reply to, oldest first. */
 const ancestorsOf = async (ctx: Context, note: NoteRow) => {
     const ancestors = [];
 
@@ -31,12 +32,12 @@ const ancestorsOf = async (ctx: Context, note: NoteRow) => {
 };
 
 /**
- * How many replies under a note are looked through, seen or not, so replies nobody may see can't
- * hide the rest, or make Verso look through a thread without end.
+ * How many replies under a status are examined, whether visible or not, so that replies nobody may
+ * see can't hide the rest, or make Verso traverse a thread without end.
  */
 const lookedThroughLimit = 4 * descendantsLimit;
 
-/** Which of `notes` are by accounts `onlooker` blocks or mutes. */
+/** Which of `notes` are by accounts that `onlooker` blocks or mutes. */
 const hiddenOf = async (ctx: Context, notes: readonly NoteRow[], onlooker: Onlooker) => {
     if (onlooker === null) return new Set<string>();
 
@@ -45,10 +46,11 @@ const hiddenOf = async (ctx: Context, notes: readonly NoteRow[], onlooker: Onloo
 };
 
 /**
- * The replies to `note`, and to them, that `onlooker` may see, in thread order: each reply followed
- * by the replies under it, oldest first. Those nearest `note` are found first, so a long thread
- * loses its deepest replies. Replies under one they may not see are shown too, as on Mastodon, but
- * not those under a reply by an account they block or mute, which are left out with it.
+ * The replies to `note`, and their replies, that `onlooker` may see, in thread order: each reply
+ * followed by the replies under it, oldest first. Those nearest `note` are found first, so a long
+ * thread loses its deepest replies. Replies under a reply the viewer may not see are shown too, as
+ * on Mastodon, but not those under a reply by an account they block or mute, which are omitted
+ * along with it.
  */
 const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) => {
     const children = new Map<string, NoteRow[]>();
@@ -56,7 +58,7 @@ const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) =>
 
     let level = [note.id];
     let looked = 0;
-    // Stops once there are enough, rather than asking for none.
+    // Stops once there are enough, rather than requesting none.
     while (level.length > 0 && shown.size < descendantsLimit && looked < lookedThroughLimit) {
         const found = await repliesTo(ctx, level, onlooker, lookedThroughLimit - looked);
         const hidden = await hiddenOf(ctx, found.map((each) => each.note), onlooker);
@@ -84,9 +86,9 @@ const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) =>
 };
 
 /**
- * The thread around `note`, as `viewerId` sees it, or anyone if it is `null`: the notes it replies
- * to, oldest first, and the replies under it, in thread order, leaving out those they may not see,
- * and those by the accounts they block or mute.
+ * The thread around `note`, as `viewerId` sees it, or as anyone sees it if it is `null`: the
+ * statuses it replies to, oldest first, and the replies under it, in thread order, omitting those
+ * they may not see and those by the accounts they block or mute.
  */
 export const threadOf = async (
     ctx: Context,

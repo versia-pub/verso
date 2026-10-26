@@ -3,8 +3,8 @@ import type { Migration } from "kysely/migration";
 import { columnTypes } from "../columns.ts";
 
 /**
- * When a flow's code was used, and the token it gave, so that a code used again, which may have
- * been stolen, revokes that token. Used flows are kept until they expire.
+ * When a flow's code was used, and the token it issued, so that a code used again, which may have
+ * been stolen, revokes that token. Used flows are retained until they expire.
  */
 export const usedCodes: Migration = {
     up: async (db: Kysely<unknown>) => {

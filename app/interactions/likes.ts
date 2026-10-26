@@ -1,5 +1,5 @@
 /**
- * Likes of notes, which Mastodon calls favourites.
+ * Likes of statuses, which Mastodon calls favourites.
  * @see https://versia.pub/extensions/likes
  * @module
  */
@@ -20,8 +20,9 @@ import type { LikeEvent } from "./events.ts";
 import type { LikeKind } from "./tables.ts";
 
 /**
- * Likes a note for `accountId`, or what a share shares, and counts it, unless it already likes it.
- * Returns the note as it is now, or `undefined` if there is none `accountId` may see.
+ * Likes a status for `accountId`, or the status a boost boosts, and increments its like count,
+ * unless the account already likes it. Returns the status as it is now, or `undefined` if there is
+ * none `accountId` may see.
  */
 export const like = (
     ctx: Context,
@@ -49,10 +50,10 @@ export const like = (
     });
 
 /**
- * Undoes `accountId`'s like of a note, or of what a share shares, and uncounts it. Returns the note
- * as it is now, or `undefined` if there is none. As on Mastodon, a note it liked can be unliked
- * even if it may no longer see it, and one it didn't only if it may. Local users never dislike
- * notes, so there is no dislike to undo.
+ * Undoes `accountId`'s like of a status, or of the status a boost boosts, and decrements the like
+ * count. Returns the status as it is now, or `undefined` if there is none. As on Mastodon, a status
+ * it liked can be unliked even if it may no longer see it, and one it didn't like only if it may
+ * see it. Local users never dislike statuses, so there is no dislike to undo.
  */
 export const unlike = (
     ctx: Context,
@@ -78,7 +79,7 @@ export const unlike = (
         return await findNote(tx, liked);
     });
 
-/** Another instance's like or dislike of a note, by one of its users. */
+/** A remote like or dislike of a status, by one of the remote instance's users. */
 export type RemoteLike = {
     readonly accountId: string;
     readonly noteId: string;
@@ -89,9 +90,9 @@ export type RemoteLike = {
 };
 
 /**
- * Keeps another instance's like or dislike, in place of the account's other one of the note, if
- * it has one, as an account can't like and dislike a note at once. Only likes are counted. One
- * Verso has already is left as it is.
+ * Stores a remote like or dislike, replacing the account's other one of the status if it has one,
+ * as an account can't like and dislike a status at once. Only likes are counted. One Verso already
+ * has is left unchanged.
  */
 export const keepRemoteLike = async (ctx: Context, like: RemoteLike): Promise<void> => {
     if (await findRemoteLike(ctx, like.instanceId, like.remoteId)) return;
@@ -111,7 +112,7 @@ export const keepRemoteLike = async (ctx: Context, like: RemoteLike): Promise<vo
     if (like.kind === "like") await countLike(ctx, like.noteId, 1);
 };
 
-/** Undoes another instance's like or dislike, which a Delete said is gone, if Verso has it. */
+/** Undoes a remote like or dislike, which a Delete said is gone, if Verso has it. */
 export const undoRemoteLike = async (
     ctx: Context,
     instanceId: string,
@@ -122,7 +123,10 @@ export const undoRemoteLike = async (
     if (removed?.kind === "like") await countLike(ctx, removed.note_id, -1);
 };
 
-/** Uncounts the likes of an account about to be deleted, before they go with it. */
+/**
+ * Decrements the like counts that depend on an account about to be deleted, before its likes are
+ * deleted with it.
+ */
 export const uncountLikesOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (isAccountDeleting(event)) await uncountLikesBy(ctx, event.accountId);
 };

@@ -32,7 +32,7 @@ const user = (extensions: object) => ({
     extensions,
 });
 
-/** bob's public note `n1`, saying `text` with the emojis of `extensions`. */
+/** bob's public status `n1`, saying `text` with the emojis of `extensions`. */
 const note = (text: string, extensions: object, created_at = "2026-01-01T00:00:00Z") => ({
     type: "Note",
     id: "n1",
@@ -47,7 +47,9 @@ const note = (text: string, extensions: object, created_at = "2026-01-01T00:00:0
     extensions,
 });
 
-/** a.test, with alice, who follows bob, and b.test, which sends what it is told, with bob. */
+/**
+ * a.test, with alice, who follows bob, and b.test, which sends whatever it is told to, with bob.
+ */
 const open = async () => {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
@@ -59,7 +61,7 @@ const open = async () => {
     assertExists(bob);
     await follow(a, alice, bob);
 
-    /** Has b.test send `entity` to a.test, a second after the last, and a.test take it in. */
+    /** Has b.test send `entity` to a.test, a second after the last, and a.test receive it. */
     const send = async (entity: object) => {
         network.clock.advance(1000);
         assertEquals(
@@ -75,18 +77,18 @@ const open = async () => {
         created_at: "2026-01-01T00:00:00Z",
     });
 
-    /** The shortcode and URL of each emoji `of` uses. */
+    /** The shortcode and URL of each emoji that `of` uses. */
     const shown = (of: { emojis: readonly { shortcode: string; url: string }[] }) =>
         of.emojis.map((emoji) => [emoji.shortcode, emoji.url]);
 
-    /** bob's account, as the client API shows it. */
+    /** bob's account, as the client API renders it. */
     const account = async () => {
         const row = await findAccount(a, bob);
         assertExists(row);
         return await publicAccount(a, row);
     };
 
-    /** bob's note, as the client API shows it. */
+    /** bob's status, as the client API renders it. */
     const status = async () => {
         const row = await findRemoteNoteAt(a, "b.test", "n1");
         assertExists(row);
@@ -134,7 +136,7 @@ Deno.test("a remote note's emojis are shown with it, and a newer version's repla
         ["blob", "https://b.test/blob.png"],
         ["cat", "https://b.test/cat.png"],
     ]);
-    // Its author is shown with theirs.
+    // Its author is displayed with theirs.
     assertEquals(test.shown((await test.status()).account), [["blob", "https://b.test/blob.png"]]);
 
     await test.send(note("Hi :cat: :dog:", emojis("cat", "dog"), "2026-01-02T00:00:00Z"));

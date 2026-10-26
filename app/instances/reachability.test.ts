@@ -46,7 +46,7 @@ Deno.test("once the wait is over, one probe at a time is let through", async () 
     assertEquals(asked.toSorted(), [held, held, undefined]);
     assertEquals(await parkedUntil(test.ctx, "b.example"), held);
 
-    // The probe failing waits twice as long.
+    // The probe failing makes the wait twice as long.
     assertEquals(
         await recordUnreachable(test.ctx, "b.example"),
         new Date(test.clock.now().getTime() + 2 * minute),

@@ -13,8 +13,8 @@ const idPattern = /^[A-Za-z0-9_-]+$/;
  * Parses a reference found inside an entity, such as a Note's `author`.
  *
  * `origin` is the hostname of the instance the entity came from: the one that signed the inbox
- * request, or served the entity we fetched. A bare id refers to an entity on that instance.
- * Returns undefined if the reference is invalid.
+ * request, or served the entity we fetched. A bare id refers to an entity on that instance. Returns
+ * undefined if the reference is invalid.
  */
 export const parseReference = (
     text: string,

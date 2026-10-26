@@ -2,8 +2,8 @@ import { type Kysely, sql } from "kysely";
 import type { Migration } from "kysely/migration";
 
 /**
- * The notes on the public timelines, newest first, so a page of them is read without going through
- * every other note: public ones that aren't shares, and of those, the local ones.
+ * The statuses on the public timelines, newest first, so a page of them is read without going
+ * through every other status: public ones that aren't boosts, and of those, the local ones.
  */
 export const publicTimelines: Migration = {
     up: async (db: Kysely<unknown>) => {

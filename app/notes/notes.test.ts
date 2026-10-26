@@ -19,7 +19,7 @@ const open = async (options: TestContextOptions = {}) => {
     await createInstance(test.ctx, "b.example");
     await createRemoteAccount(test.ctx, "carol", "b.example");
 
-    // Bob follows alice, and dave only asked to.
+    // Bob follows alice, and dave only requested to.
     await follow(test.ctx, "bob", "alice");
     await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
         .execute();

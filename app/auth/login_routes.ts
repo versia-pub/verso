@@ -15,7 +15,7 @@ const unreachable = (issuer: string) => ({
 } as const);
 
 /**
- * Sends the browser back to the app with a code or an error. An out-of-band app has nowhere to
+ * Redirects the browser back to the app with a code or an error. An out-of-band app has nowhere to
  * send it, so the user is shown the code to copy, or the error.
  */
 const replyToApp = ({ redirectUri, params }: Omit<SendBack, "result">) => {
@@ -32,8 +32,9 @@ const replyToApp = ({ redirectUri, params }: Omit<SendBack, "result">) => {
 const FlowCookie = z.object({ oauth_flow: z.string().optional() });
 
 /**
- * Refuses forms posted from other origins, which the form token already stops. Sibling subdomains
- * count as the same site, so SameSite cookies don't. Browsers too old to send it are let through.
+ * Rejects forms posted from other origins, which the form token already stops. Sibling subdomains
+ * count as the same site, so SameSite cookies don't. Browsers too old to send the header are let
+ * through.
  */
 const SameOrigin = z.object({ "sec-fetch-site": z.literal("same-origin").optional() });
 
@@ -119,7 +120,7 @@ const getCallback = defineRoute({
             return { status: 303, location: ctx.urls.url`/oauth/consent` };
         }
 
-        // The flow is over, so its cookie goes too.
+        // The flow is over, so its cookie is removed too.
         return login.result === "expired"
             ? expired
             : { ...replyToApp(login), cookies: { oauth_flow: null } };

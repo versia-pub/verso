@@ -1,13 +1,13 @@
 /**
- * Making HTML from other instances safe to show.
+ * Making HTML from remote instances safe to display.
  * @module
  */
 import sanitize from "sanitize-html";
 
 /**
- * Text formatting, lists, quotes, headings and tables. Anything that loads from elsewhere
- * (pictures, video, audio) or acts like part of the page (forms, fonts and colours) is left out:
- * Verso doesn't proxy remote media, so loading it would show readers' addresses to whoever sent it.
+ * Text formatting, lists, quotes, headings and tables. Anything that loads from elsewhere (images,
+ * video, audio) or acts like part of the page (forms, fonts and colours) is removed: Verso doesn't
+ * proxy remote media, so loading it would reveal readers' addresses to whoever sent it.
  */
 const allowedTags = [
     "a",
@@ -69,7 +69,7 @@ const allowedClasses = [
 /** What links say about themselves: that they lead away, and vouch for nothing. */
 const linkAttributes = { rel: "nofollow noopener noreferrer", target: "_blank" };
 
-/** A link's address, if it is a full http or https URL, which is the only kind kept. */
+/** A link's address, if it is a full http or https URL, which is the only kind allowed. */
 const webAddress = (href: string | undefined) => {
     const url = href === undefined ? null : URL.parse(href);
     return url?.protocol === "http:" || url?.protocol === "https:" ? href : undefined;
@@ -103,8 +103,8 @@ const options: sanitize.IOptions = {
 };
 
 /**
- * HTML with only the tags, attributes and classes clients can be trusted with, as Mastodon's
- * allow. The text of anything else is kept, except of scripts, styles and the like.
+ * HTML with only the tags, attributes and classes clients can be trusted with, as Mastodon's allow.
+ * The text of anything else is retained, except of scripts, styles and the like.
  */
 export const sanitizeHtml = (html: string): string => sanitize(html, options);
 
@@ -119,8 +119,8 @@ const entities: readonly [string, string][] = [
 ];
 
 /**
- * The text of `html`, as plain text, with a space where each tag was, so the text of two
- * paragraphs doesn't run together. Scripts, styles and the like are dropped.
+ * The text of `html`, as plain text, with a space where each tag was, so the text of two paragraphs
+ * doesn't run together. Scripts, styles and the like are dropped.
  */
 export const textOfHtml = (html: string): string =>
     entities.reduce(

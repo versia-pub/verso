@@ -1,5 +1,5 @@
 /**
- * The kinds of picture Verso takes, each with its media type and the vips loaders that read it.
+ * The kinds of image Verso accepts, each with its media type and the vips loaders that read it.
  * Ultra HDR photos are JPEGs with a gain map, which a loader of their own reads. AVIF and HEIC are
  * both HEIF files, which one loader reads.
  */
@@ -23,7 +23,7 @@ const startsWith = (bytes: Uint8Array, expected: readonly number[]) =>
 /**
  * HEIF files' brands, which say what is in them. `mif1` only says a file is HEIF, so its other
  * brands say which kind. Sequences, such as animated AVIFs, have brands of their own: vips can't
- * read them as animations, so they are kept as files rather than as pictures.
+ * read them as animations, so they are stored as files rather than as images.
  * @see https://github.com/AOMediaCodec/av1-avif/blob/main/index.bs
  * @see https://www.iana.org/assignments/media-types/image/heic
  */
@@ -48,8 +48,8 @@ const brandsOf = (bytes: Uint8Array) => {
 export const formatHeadLength = 64;
 
 /**
- * What kind of picture `bytes` are, from how they start rather than what anyone says they are, or
- * `undefined` if they aren't one Verso takes. The first {@link formatHeadLength} are enough.
+ * What kind of image `bytes` are, from how they start rather than what anyone says they are, or
+ * `undefined` if they aren't one Verso accepts. The first {@link formatHeadLength} are enough.
  */
 export const imageFormatOf = (bytes: Uint8Array): ImageFormat | undefined => {
     if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "jpeg";
@@ -67,7 +67,7 @@ export const imageFormatOf = (bytes: Uint8Array): ImageFormat | undefined => {
     return undefined;
 };
 
-/** A picture as Verso keeps it. */
+/** An image as Verso stores it. */
 export type Picture = {
     readonly bytes: Uint8Array<ArrayBuffer>;
     readonly mediaType: string;
@@ -76,7 +76,7 @@ export type Picture = {
     readonly height: number;
 };
 
-/** An uploaded picture, made ready to keep and show. */
+/** An uploaded image, made ready to store and display. */
 export type ProcessedImage = Picture & {
     readonly format: ImageFormat;
     /** How many frames it has: more than one for an animated GIF or WebP. */
@@ -88,21 +88,21 @@ export type ProcessedImage = Picture & {
 };
 
 /**
- * Why an upload isn't a picture Verso can show. One that is a picture by its bytes can't be kept,
- * as it may hold metadata.
+ * Why an upload isn't an image Verso can display. One that is an image by its bytes can't be
+ * stored, as it may hold metadata.
  */
 export type ImageRefusal = "unsupported" | "broken" | "too-large";
 
-/** Turns uploads into pictures fit to keep and show. */
+/** Turns uploads into images fit to store and display. */
 export type ImageProcessor = {
     /**
-     * `input`'s picture upright, without metadata, in sRGB and scaled down if they are too large, with a
-     * preview and placeholder hashes. Refuses what isn't a picture in a format Verso takes, what
+     * `input`'s image upright, without metadata, in sRGB and scaled down if too large, with a
+     * preview and placeholder hashes. Rejects what isn't an image in a format Verso accepts, what
      * can't be read at all, and what has too many pixels to read safely. Throws if it can't try.
      */
     readonly process: (
         input: ReadableStream<Uint8Array>,
     ) => Promise<{ ok: true; image: ProcessedImage } | { ok: false; reason: ImageRefusal }>;
-    /** Throws unless Verso can process pictures, so it stops when it starts rather than later. */
+    /** Throws unless Verso can process images, so it stops when it starts rather than later. */
     readonly check: () => Promise<void>;
 };

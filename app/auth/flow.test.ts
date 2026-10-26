@@ -111,7 +111,7 @@ Deno.test("a client logs a user in through the issuer and uses the token", async
     assertEquals(back.origin + back.pathname, "https://phanpy.example/back");
     assertEquals(back.searchParams.get("state"), "xyz");
 
-    // The client trades the code for a token, and uses it.
+    // The client exchanges the code for a token, and uses it.
     const credentials = { client_id: app.client_id, client_secret: app.client_secret };
     const { status, body: token } = await test.api("/oauth/token", {
         method: "POST",

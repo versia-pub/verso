@@ -1,5 +1,5 @@
 /**
- * The sections of the config file that stand on their own, which `Config` puts together.
+ * The sections of the config file that stand on their own, which `Config` assembles.
  * @module
  */
 import { Permission } from "./permissions.ts";
@@ -21,7 +21,7 @@ export type ClaimTest = z.infer<typeof ClaimTest>;
 const Registration = z.union([z.enum(["open", "closed"]), ClaimTest]);
 
 /**
- * A role the issuer gives to whoever's claim contains a value, by the role's name. Roles live in
+ * A role the issuer grants to whoever's claim contains a value, by the role's name. Roles live in
  * the database, so a rule may name one that doesn't exist yet; logins skip it until it does.
  */
 const RoleRule = ClaimTest.extend({ role: z.string().min(1) });
@@ -37,11 +37,11 @@ export const Issuer = z.strictObject({
     client_secret: z.string().min(1),
     /** The claim a new account's username comes from. */
     username_claim: z.string().min(1).default("preferred_username"),
-    /** Scopes to ask for besides `openid` and `profile`, such as `groups` for a groups claim. */
+    /** Scopes to request besides `openid` and `profile`, such as `groups` for a groups claim. */
     scopes: z.array(z.string().regex(/^\S+$/, { error: "A scope can't contain spaces" }))
         .default([]),
     registration: Registration.default("closed"),
-    /** Re-checked at every login, which replaces the roles the issuer gave before. */
+    /** Re-evaluated at every login, which replaces the roles the issuer granted before. */
     roles: z.array(RoleRule).default([]),
 });
 
@@ -54,7 +54,7 @@ export const Origin = z.url({ protocol: /^https?$/ })
 
 /**
  * How long and how many of what users write may be, in characters, counted by code point, and how
- * many files they may attach.
+ * many media attachments they may add.
  */
 export const Limits = z.strictObject({
     display_name: z.int().min(1).default(60),
@@ -66,14 +66,14 @@ export const Limits = z.strictObject({
     field_value: z.int().min(1).default(255),
     /** A status, with its content warning, counted as Mastodon counts them. */
     status: z.int().min(1).default(10_000),
-    /** How many files a status may have attached. */
+    /** How many media attachments a status may have. */
     attachments: z.int().min(0).default(16),
     /**
-     * How many accounts a status may mention, its own or another instance's. Each costs queries,
-     * and perhaps a fetch, so the rest are left as text.
+     * How many accounts a status may mention, local or remote. Each costs queries, and perhaps a
+     * fetch, so the rest are left as text.
      */
     mentions: z.int().min(0).default(100),
-    /** A file's description, its alt text. Mastodon's limit by default. */
+    /** A media attachment's description, its alt text. Mastodon's limit by default. */
     media_description: z.int().min(1).default(4000),
 }).prefault({});
 
@@ -81,7 +81,7 @@ export type Limits = z.infer<typeof Limits>;
 
 /**
  * A long text about the instance, such as its privacy policy, and the day it last changed. Long
- * texts are best kept in a file and read with `${file:…}`.
+ * texts are best stored in a file and read with `${file:…}`.
  */
 const Document = z.strictObject({
     /** Plain text, with a blank line between paragraphs. */
@@ -149,7 +149,7 @@ export const Permissions = z.strictObject({
 
 export type Permissions = z.infer<typeof Permissions>;
 
-/** Another instance's domain, in the form signatures name it. */
+/** A remote instance's domain, in the form signatures name it. */
 export const DomainName = z.string().transform((domain, ctx) => {
     const canonical = canonicalizeDomain(domain);
     if (canonical === undefined) ctx.addIssue({ code: "custom", message: "Must be a domain name" });
@@ -205,11 +205,13 @@ export const FileStorage = z.strictObject({
 /** How large uploads may be. */
 export const MediaLimits = z.strictObject({
     /**
-     * How many pixels an uploaded picture may have, in each frame, before it is scaled down.
+     * How many pixels an uploaded image may have, in each frame, before it is scaled down.
      * Mastodon's limit, 3840×2160, by default.
      */
     max_pixels: z.int().min(1).default(8_294_400),
-    /** How many bytes an uploaded file may have. Mastodon's limit for pictures, 16 MiB, by default. */
+    /**
+     * How many bytes an uploaded file may have. Mastodon's limit for images, 16 MiB, by default.
+     */
     max_upload_bytes: z.int().min(1).default(16 * 1024 * 1024),
 });
 

@@ -1,17 +1,17 @@
 import type { Generated } from "kysely";
 
 /**
- * One account following another, or asking to. A follow of a locked account, or of one on another
- * instance, is a request until it is accepted.
+ * One account following another, or requesting to. A follow of a locked account, or of one on a
+ * remote instance, is a request until it is accepted.
  */
 export type FollowsTable = {
-    /** Orders follows by when they were made, for paging through them. */
+    /** Orders follows by creation time, for paging through them. */
     id: string;
     follower_id: string;
     followee_id: string;
     /** Whether the followee accepted, or `false` while it is a request. */
     accepted: boolean;
-    /** Whether the followee's shares appear in the follower's home timeline. */
+    /** Whether the followee's boosts appear in the follower's home timeline. */
     show_reblogs: Generated<boolean>;
     /** Whether the follower is notified when the followee posts. */
     notify: Generated<boolean>;
@@ -20,9 +20,9 @@ export type FollowsTable = {
     created_at: Date;
 };
 
-/** An account blocking another, which only the blocker, and moderators, know of. */
+/** An account blocking another, which only the blocker, and moderators, know about. */
 export type BlocksTable = {
-    /** Orders blocks by when they were made, for paging through them. */
+    /** Orders blocks by creation time, for paging through them. */
     id: string;
     /** Who blocks. */
     account_id: string;
@@ -31,9 +31,9 @@ export type BlocksTable = {
     created_at: Date;
 };
 
-/** An account muting another, as on Mastodon, which only the muter knows of. */
+/** An account muting another, as on Mastodon, which only the muter knows about. */
 export type MutesTable = {
-    /** Orders mutes by when they were made, for paging through them. */
+    /** Orders mutes by creation time, for paging through them. */
     id: string;
     /** Who mutes. */
     account_id: string;
@@ -61,7 +61,7 @@ export type AccountNotesTable = {
  * of each would.
  */
 export type AccountDomainBlocksTable = {
-    /** Orders domain blocks by when they were made, for paging through them. */
+    /** Orders domain blocks by creation time, for paging through them. */
     id: string;
     /** Who blocks. */
     account_id: string;

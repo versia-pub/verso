@@ -67,7 +67,7 @@ export const createTestContext = async (
 
     const clock = options.clock ?? fakeClock();
 
-    // Its own ids, so making the key doesn't shift the ids tests expect.
+    // Its own ids, so generating the key doesn't shift the ids tests expect.
     await ensureInstanceKey({ db, clock, ids: idGenerator(clock) });
 
     const transport = options.transport ?? fakeTransport();

@@ -1,6 +1,6 @@
 /**
- * A route's reply, as the response sent: JSON, a list, a page, a redirect or a file, with its
- * cookies.
+ * A route's response, as the HTTP response sent: JSON, a list, a page, a redirect or a file, with
+ * its cookies.
  * @module
  */
 import type { Context as HonoContext } from "@hono/hono";
@@ -24,7 +24,7 @@ const yearSeconds = 365 * 24 * 60 * 60;
 const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
     declared instanceof z.ZodType;
 
-/** Why a reply's body doesn't match `schema`, or a page of a list of it, if it doesn't. */
+/** Why a response's body doesn't match `schema`, or a page of a list of it, if it doesn't. */
 const bodyProblem = (reply: Reply<Responses>, schema: z.ZodType, paged: boolean) => {
     if (!("body" in reply)) return "it has no body";
     if (paged !== "cursors" in reply) return paged ? "it has no cursors" : "it has cursors";
@@ -33,7 +33,7 @@ const bodyProblem = (reply: Reply<Responses>, schema: z.ZodType, paged: boolean)
     return result.success ? undefined : z.prettifyError(result.error);
 };
 
-/** Why a reply doesn't match what its route declares for its status, if it doesn't. */
+/** Why a response doesn't match what its route declares for its status, if it doesn't. */
 const replyProblem = (route: Route, reply: Reply<Responses>) => {
     const declared = route.responses[reply.status];
 
@@ -56,7 +56,7 @@ const replyProblem = (route: Route, reply: Reply<Responses>) => {
     }
 };
 
-/** Throws when a reply doesn't match what its route declares for its status. */
+/** Throws when a response doesn't match what its route declares for its status. */
 export const checkReply = (route: Route, reply: Reply<Responses>): void => {
     const problem = replyProblem(route, reply);
     if (problem === undefined) return;
@@ -80,8 +80,8 @@ const pageHeaders = (route: Route) => ({
 });
 
 /**
- * Sends `reply` to the request in `c`, which came in at `origin`, as Verso's public URLs start,
- * which links to other pages of a list do too.
+ * Sends `reply` as the response to the request in `c`, which arrived at `origin`, which Verso's
+ * public URLs start with, as links to other pages of a list do too.
  */
 export const send = (
     c: HonoContext,

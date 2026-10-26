@@ -1,5 +1,5 @@
 /**
- * The delivery worker, which sends queued entities to other instances' inboxes.
+ * The delivery worker, which sends queued entities to remote instances' inboxes.
  * @see https://versia.pub/federation/http
  * @module
  */
@@ -16,7 +16,7 @@ import { type FederationReply, sendSigned, Unreachable } from "./request.ts";
 
 const logger = getLogger(["verso", "federation"]);
 
-/** When `Retry-After` says to try again, in seconds or as a date, if it says. */
+/** When `Retry-After` says to retry, in seconds or as a date, if present. */
 export const retryAfter = (headers: Headers, now: Date): Date | undefined => {
     const value = headers.get("retry-after");
     if (!value) return undefined;
@@ -28,7 +28,7 @@ export const retryAfter = (headers: Headers, now: Date): Date | undefined => {
 };
 
 /**
- * When an instance's rate limit lets requests through again, if it says none are left, with
+ * When an instance's rate limit allows requests again, if it says none are left, using
  * `RateLimit-Remaining` and `RateLimit-Reset` in seconds, as Verso sends them.
  */
 export const rateLimitReset = (headers: Headers, now: Date): Date | undefined => {
@@ -40,18 +40,19 @@ export const rateLimitReset = (headers: Headers, now: Date): Date | undefined =>
     return new Date(now.getTime() + Number(reset) * 1000);
 };
 
-/** What a delivery keeps once it dies: the instance it was for, without the entity. */
+/** What a delivery stores once it dies: the instance it was for, without the entity. */
 export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload => {
     const job = DeliverJob.safeParse(payload);
     return job.success ? { domain: job.data.domain } : {};
 };
 
 /**
- * Runs delivery jobs: signs each entity and posts it to its instance's inbox. An instance that
- * refuses it, with a 4xx other than 408 and 429, is given up on; any other failure is retried, when
- * the instance asks if it does, for as long as settings say: two days by default. One to an instance blocked since is dropped.
- * An instance that asks to wait, or has no requests left, isn't sent any delivery until then, and
- * nor is one that couldn't be reached too often in a row, but for a probe now and then.
+ * Runs delivery jobs: signs each entity and posts it to the instance's inbox. If the instance
+ * rejects it with a 4xx other than 408 and 429, the delivery is given up on. Any other failure is
+ * retried, for as long as the settings say (two days by default), at the times the instance asks
+ * for, if it does. A delivery to an instance blocked since is dropped. An instance that asks to
+ * wait, or has no requests left, isn't sent any delivery until then, and nor is one that couldn't
+ * be reached too often in a row, except for an occasional probe.
  */
 export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = DeliverJob.safeParse(job.payload);
@@ -74,7 +75,7 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
         throw new RetryAt(parked, `${domain} can't be reached, so it is left alone for now`);
     }
 
-    /** Notes the failure, and parks every delivery to the instance if it is now parked. */
+    /** Records the failure, and parks every delivery to the instance if it is now parked. */
     const unreachable = async () => {
         const until = await recordUnreachable(ctx, domain);
         if (until) await postponeGroup(ctx, deliverQueue, domain, until);
@@ -90,7 +91,7 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
     }
     const { status } = reply;
 
-    // Any answer but a server's failure shows the instance is up, and its deliveries can go.
+    // Any response other than a server failure shows the instance is up, so its deliveries can go.
     if (status >= 500 || status === 408) await unreachable();
     else if (await recordReached(ctx, domain)) await resumeGroup(ctx, deliverQueue, domain);
 

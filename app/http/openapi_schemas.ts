@@ -1,5 +1,5 @@
 /**
- * Zod schemas as JSON Schemas, for the OpenAPI document, with the ones Verso names kept apart as
+ * Zod schemas as JSON Schemas, for the OpenAPI document, with the ones Verso names separated out as
  * its components, and referred to by name.
  * @module
  */
@@ -34,15 +34,15 @@ export type Naming = {
 };
 
 /**
- * A schema as JSON Schema, in the shape it is sent: requests before they are parsed, and replies as
- * handlers give them, which are sent without being parsed either. Named schemas are left in
+ * A schema as JSON Schema, in the shape it is sent: requests before they are parsed, and responses
+ * as handlers return them, which are sent without being parsed either. Named schemas are left in
  * `$defs`.
  */
 const toJson = (schema: z.ZodType, names: Naming) =>
     z.toJSONSchema(schema, {
         io: "input",
         metadata: names.registry,
-        // Descriptions are kept in Zod's own registry, which `metadata` takes the place of.
+        // Descriptions are stored in Zod's own registry, which `metadata` replaces.
         override: ({ zodSchema, jsonSchema }) => {
             const { id: _, ...meta } = z.globalRegistry.get(zodSchema) ?? {};
             Object.assign(jsonSchema, meta);
@@ -52,7 +52,7 @@ const toJson = (schema: z.ZodType, names: Naming) =>
 /**
  * The schema in `json`, with references to named schemas pointing into the document's components,
  * and the parts Zod named itself, which repeat within one schema, put back in place. `defs` are the
- * schemas Zod gave alongside.
+ * schemas Zod provided alongside.
  */
 const resolve = (
     json: string,

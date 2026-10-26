@@ -9,12 +9,12 @@ export const sqliteTypes = {
     json: "json_text",
 } as const;
 
-/** Whether `db` is SQLite, for the few helpers that must do things differently there. */
+/** Whether `db` is SQLite, for the few helpers that must behave differently there. */
 export const usesSqlite = <DB>(db: Kysely<DB>): boolean =>
     db.getExecutor().adapter instanceof SqliteAdapter;
 
 /**
- * Fails if any row refers to a row that doesn't exist. Foreign keys are off on SQLite while
+ * Fails if any row references a row that doesn't exist. Foreign keys are off on SQLite while
  * migrating, so a migration that rebuilds a table calls this before it ends. Postgres always checks
  * them, so there it does nothing.
  * @see https://www.sqlite.org/lang_altertable.html#otheralter
@@ -32,8 +32,7 @@ export const checkForeignKeys = async <DB>(db: Kysely<DB>): Promise<void> => {
 };
 
 /**
- * Column types for migrations. These are the only place where the schema differs between
- * databases.
+ * Column types for migrations. These are the only place where the schema differs between databases.
  */
 export const columnTypes = <DB>(
     db: Kysely<DB>,

@@ -8,7 +8,9 @@ import { blockDomainFor, unblockDomainFor } from "./domain_blocks.ts";
 import { hiddenAmong, hiddenFrom } from "./hidden.ts";
 import { mute } from "./mutes.ts";
 
-/** alice and bob here, and an account on each of a few domains, named for where it is. */
+/**
+ * alice and bob are local, plus an account on each of a few domains, named for the domain it is on.
+ */
 const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);

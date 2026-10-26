@@ -76,7 +76,8 @@ export const connect = <DB = Database>(dialect: Dialect): Kysely<DB> =>
 
 /**
  * Opens a SQLite file so `verso serve` and `verso work` can share it: in WAL mode, readers don't
- * wait for a writer, and a writer waits up to five seconds for another instead of failing at once.
+ * wait for a writer, and a writer waits up to five seconds for another instead of failing
+ * immediately.
  */
 const openSqlite = (path: string) => {
     const database = new DatabaseSync(path);
@@ -89,13 +90,13 @@ const openSqlite = (path: string) => {
 export type PoolOptions = {
     readonly size?: number;
     readonly connectTimeoutMs?: number;
-    /** How long a query may run, and a transaction wait idle, or 0 for no limit. */
+    /** How long a query may run, and a transaction may wait idle, or 0 for no limit. */
     readonly statementTimeoutMs?: number;
 };
 
 /**
  * A pool of connections to Postgres. A connection that drops while idle, such as when Postgres
- * restarts, is logged and replaced on the next query: unheard, its error would end the process.
+ * restarts, is logged and replaced on the next query: unhandled, its error would end the process.
  */
 export const postgresPool = (url: string, options: PoolOptions = {}): pg.Pool => {
     const pool = new pg.Pool({

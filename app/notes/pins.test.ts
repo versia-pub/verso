@@ -6,13 +6,13 @@ import { pinnedAmong, pinnedNotes } from "./pin_queries.ts";
 import { pin, pinLimit, unpin } from "./pins.ts";
 import { createNote, createShare } from "./testing.ts";
 
-/** alice and bob, who follows her. */
+/** alice, and bob, who follows her. */
 const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "bob", "alice");
 
-    /** What became of alice pinning `noteId`: the note's id, or why it wasn't pinned. */
+    /** The result of alice pinning `noteId`: the status id, or why it wasn't pinned. */
     const pinning = async (noteId: string) => {
         const result = await pin(test.ctx, "alice", noteId);
         return typeof result === "string" ? result : result.id;
@@ -33,7 +33,7 @@ Deno.test("an author pins their notes, once each, and unpins them", async () => 
         await pinnedAmong(test.ctx, "alice", [note.id, other.id]),
         new Set([note.id, other.id]),
     );
-    // Only alice pins them.
+    // Only alice has pinned them.
     assertEquals((await pinnedAmong(test.ctx, "bob", [note.id])).size, 0);
 
     assertEquals((await unpin(test.ctx, "alice", note.id))?.id, note.id);
@@ -63,11 +63,11 @@ Deno.test("an author pins at most 5 notes", async () => {
     const [first, ...rest] = notes;
     const last = rest.pop();
 
-    // Others' pins don't count.
+    // Other accounts' pins don't count.
     await pin(test.ctx, "bob", (await createNote(test.ctx, "bob")).id);
     for (const note of [first, ...rest]) assertEquals(await test.pinning(note?.id ?? ""), note?.id);
     assertEquals(await test.pinning(last?.id ?? ""), "full");
-    // One already pinned is still pinned.
+    // A status that is already pinned stays pinned.
     assertEquals(await test.pinning(first?.id ?? ""), first?.id);
 
     await unpin(test.ctx, "alice", first?.id ?? "");

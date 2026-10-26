@@ -9,7 +9,9 @@ import type { FileSource } from "./files.ts";
 /** A file written to a temporary file, removed once it is disposed of. */
 export type SpooledFile = FileSource & AsyncDisposable & { readonly path: string };
 
-/** Writes `stream` to a new temporary file in `directory`, or the system's, hashing it as it goes. */
+/**
+ * Writes `stream` to a new temporary file in `directory`, or the system's, hashing it as it goes.
+ */
 export const spool = async (
     stream: ReadableStream<Uint8Array>,
     directory?: string,

@@ -1,5 +1,5 @@
 /**
- * Accounts on other instances, as Verso keeps them.
+ * Remote accounts, as Verso stores them.
  * @module
  */
 import { setAccountEmojis } from "../emojis/emoji_queries.ts";
@@ -17,7 +17,7 @@ import {
     upsertRemoteAccount,
 } from "./account_queries.ts";
 
-/** A remote account as its instance last described it, whatever protocol it used. */
+/** A remote account as its instance last described it, whichever protocol it used. */
 export type RemoteAccount = {
     /** In `instances`. */
     readonly instanceId: string;
@@ -27,16 +27,16 @@ export type RemoteAccount = {
     readonly profile: RemoteProfile;
     readonly avatar: RemoteMedia | null;
     readonly header: RemoteMedia | null;
-    /** The custom emojis its display name, bio and fields use. */
+    /** The custom emojis used in its display name, bio and fields. */
     readonly emojis: readonly RemoteEmoji[];
 };
 
 /**
- * Saves a remote account, replacing what was known of it, and returns its id here. Its username
- * is taken from any account Verso had with it, which is fetched again later. Its pictures are
- * saved over the ones it had, and one it no longer has is deleted, and the emojis it uses replace
- * the ones it used. Saving the same account again changes nothing but when it was fetched, so
- * receiving it twice is harmless.
+ * Saves a remote account, replacing what was stored for it, and returns its local id. Its username
+ * is taken from any account Verso had with it, which is fetched again later. Its pictures are saved
+ * over the ones it had, and a picture it no longer has is deleted. The custom emojis it uses
+ * replace the ones it used. Saving the same account again changes nothing but the time it was
+ * fetched, so receiving it twice is harmless.
  */
 export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise<string> =>
     ctx.transaction(async (tx) => {
@@ -67,7 +67,7 @@ export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise
 
 /**
  * Deletes a remote account, by its id on its instance, with its pictures, if Verso has it. Other
- * modules are told first, to uncount what goes with it.
+ * modules are notified first, to decrement the counts that depend on it.
  */
 export const deleteRemoteAccount = (
     ctx: Context,

@@ -21,7 +21,7 @@ const found = (row: AccountRow | undefined) => {
     return row;
 };
 
-/** The viewer's own account, with its roles, what it may do, and who asks to follow it. */
+/** The viewer's own account, with its roles, what it may do, and who has requested to follow it. */
 const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly accountId: string }) => {
     const row = found(await findAccount(ctx, viewer.accountId));
     return renderCredentialAccount(
@@ -36,7 +36,7 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
 
 /**
  * What `update_credentials` changes, within `limits`. Avatars, headers and their descriptions,
- * attribution domains and quote policies are accepted, but not kept yet; Verso doesn't restrict
+ * attribution domains and quote policies are accepted, but not stored yet; Verso doesn't restrict
  * quotes.
  * @see https://docs.joinmastodon.org/methods/accounts/#update_credentials
  */
@@ -54,7 +54,7 @@ const credentialChanges = (limits: Limits) => {
         discoverable: Flag.optional(),
         indexable: Flag.optional(),
         hide_collections: Flag.optional(),
-        /** An array, or an object by index, as forms send it, in either case in order. */
+        /** An array, or an object by index, as forms send it; either way in order. */
         fields_attributes: z.union([
             z.array(ProfileField),
             z.record(z.string().regex(/^\d+$/), ProfileField).transform(Object.values),
@@ -73,7 +73,7 @@ const credentialChanges = (limits: Limits) => {
 
 /** Accounts, and the default pictures of accounts without their own. */
 export const accountRoutes = (limits: Limits): readonly Route[] => [
-    // Before `/api/v1/accounts/:id`, which would otherwise take these paths.
+    // Before `/api/v1/accounts/:id`, which would otherwise match these paths.
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/verify_credentials",

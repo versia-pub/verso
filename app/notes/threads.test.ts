@@ -10,14 +10,16 @@ import type { NotesTable } from "./tables.ts";
 import { createNote } from "./testing.ts";
 import { threadOf } from "./threads.ts";
 
-/** Alice, bob, who follows her, and dave, with notes named by what they are in a thread. */
+/** Alice, bob, who follows her, and dave, with statuses named by their position in a thread. */
 const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob", "dave"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "bob", "alice");
     const notes = new Map<string, NoteRow>();
 
-    /** Adds a note called `name` by `accountId`, replying to the note called `parent`, if any. */
+    /**
+     * Adds a status called `name` by `accountId`, replying to the status called `parent`, if any.
+     */
     const add = async (
         name: string,
         accountId: string,
@@ -96,7 +98,7 @@ Deno.test("a thread leaves out the notes of the accounts the viewer blocks, and 
         ancestors: ["root"],
         descendants: ["other"],
     });
-    // Others see it all, the blocked account too.
+    // Others see it all, including the blocked account.
     for (const viewer of ["bob", "dave", null]) {
         assertEquals(await test.thread(note, viewer), {
             ancestors: ["root", "parent"],

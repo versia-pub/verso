@@ -69,7 +69,7 @@ export const oidcProvider = (issuer: IssuerConfig, options: OidcOptions): Identi
         },
 
         completeLogin: async (callback, flow) => {
-            // Only the query comes from the browser; the redirect URI is ours, whatever the
+            // Only the query comes from the browser; the redirect URI is Verso's own, whatever the
             // request URL looked like behind a proxy.
             const returned = new URL(flow.redirectUri);
             returned.search = callback.search;
@@ -85,7 +85,7 @@ export const oidcProvider = (issuer: IssuerConfig, options: OidcOptions): Identi
             const claims: Claims | undefined = tokens.claims();
             if (claims === undefined) throw new Error("The issuer gave no ID token");
 
-            // Many issuers leave claims such as groups out of the ID token, and only give them
+            // Many issuers omit claims such as groups from the ID token, and only provide them
             // here. Where both have a claim, the signed ID token's wins.
             if (config.serverMetadata().userinfo_endpoint === undefined) return claims;
 

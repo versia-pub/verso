@@ -15,7 +15,7 @@ import { renderRelationship } from "./render.ts";
 import { Relationship } from "@versia/client-api";
 
 /**
- * How the viewer is connected to each of `ids` that is an account, in the order asked. Only a
+ * How the viewer is connected to each of `ids` that is an account, in the order requested. Only a
  * viewer whose role lets them see everyone's blocks is shown who blocks them; to others, no one
  * does, so a block can't be found out.
  */

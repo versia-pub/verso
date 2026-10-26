@@ -3,9 +3,9 @@ import type { Migration } from "kysely/migration";
 import { checkForeignKeys, usesSqlite } from "../columns.ts";
 
 /**
- * A file attached to a note can't be deleted, so removing unused uploads fails rather than taking
- * one a note was just given. Uploads are indexed by when they were made, which is the order they
- * are removed in.
+ * Media attached to a status can't be deleted, so removing unused uploads fails rather than
+ * deleting an upload that was just attached to a status. Uploads are indexed by creation time,
+ * which is the order they are removed in.
  */
 export const keptAttachments: Migration = {
     up: async (db: Kysely<unknown>) => {

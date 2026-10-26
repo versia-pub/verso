@@ -6,7 +6,7 @@ import { countPosted } from "./notes.ts";
 import type { NotesTable } from "./tables.ts";
 
 /**
- * Adds a note by `accountId`, public and saying "Hi" unless `note` says otherwise, mentioning
+ * Adds a status by `accountId`, public and saying "Hi" unless `note` says otherwise, mentioning
  * `mentionIds`, and counts it, as posting would.
  */
 export const createNote = async (
@@ -42,7 +42,7 @@ export const createNote = async (
     return row;
 };
 
-/** Adds a public share by `accountId` of `noteId`, and counts it, as sharing would. */
+/** Adds a public boost by `accountId` of `noteId`, and counts it, as boosting would. */
 export const createShare = async (
     ctx: Context,
     accountId: string,

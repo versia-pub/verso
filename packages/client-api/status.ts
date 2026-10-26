@@ -27,7 +27,7 @@ export const StatusReaction = z.object({
     /** A Unicode emoji, or a custom one's shortcode in colons, with its domain if it is remote. */
     name: z.string(),
     count: z.int().min(1),
-    /** Whether the emoji is another instance's. */
+    /** Whether the emoji is a remote instance's. */
     remote: z.boolean(),
     /** Whether the viewer reacted with it, for a viewer. */
     me: z.boolean().optional(),
@@ -47,7 +47,7 @@ export const StatusTag = z.object({
 export type StatusTag = z.infer<typeof StatusTag>;
 
 /**
- * Whether a quote may be shown. Clients treat states they don't know as `unauthorized`.
+ * Whether a quote may be displayed. Clients treat states they don't know as `unauthorized`.
  * @see https://docs.joinmastodon.org/entities/Quote/#state
  */
 const QuoteState = z.enum([
@@ -68,7 +68,7 @@ const QuoteState = z.enum([
  */
 export const ShallowQuote = z.object({
     state: QuoteState,
-    /** `null` unless the quote may be shown. */
+    /** `null` unless the quote may be displayed. */
     quoted_status_id: z.string().nullable(),
 });
 export type ShallowQuote = z.infer<typeof ShallowQuote>;
@@ -87,8 +87,8 @@ export const QuoteApproval = z.object({
 export type QuoteApproval = z.infer<typeof QuoteApproval>;
 
 /**
- * A post, on this instance or another. Fields Mastodon added after 4.3 are optional, since Verso
- * claims 4.3, as are the ones only given to a logged-in viewer.
+ * A status, local or remote. Fields Mastodon added after 4.3 are optional, since Verso claims 4.3,
+ * as are the ones only given to a logged-in viewer.
  * @see https://docs.joinmastodon.org/entities/Status/
  */
 export const Status = z.object({
@@ -101,14 +101,14 @@ export const Status = z.object({
     content: z.string(),
     visibility: Visibility,
     sensitive: z.boolean(),
-    /** A warning shown in place of the content until it is opened, or empty for none. */
+    /** A warning displayed in place of the content until it is opened, or empty for none. */
     spoiler_text: z.string(),
     media_attachments: z.array(MediaAttachment),
-    /** What posted it, for statuses posted on this instance. */
+    /** What posted it, for statuses posted on the local instance. */
     application: z.object({ name: z.string(), website: z.url().nullable() }).optional(),
     mentions: z.array(StatusMention),
     tags: z.array(StatusTag),
-    /** The emojis used in the content and warning, and those it is reacted to with. */
+    /** The custom emojis used in the content and warning, and those it has reactions with. */
     emojis: z.array(CustomEmoji),
     /** Reactions to it, by emoji, the first reacted with first. Versia Server's. */
     reactions: z.array(StatusReaction).optional(),
@@ -121,16 +121,16 @@ export const Status = z.object({
     url: z.url().nullable(),
     in_reply_to_id: z.string().nullable(),
     in_reply_to_account_id: z.string().nullable(),
-    /** The status this one shares, if it is a share. */
+    /** The status this one boosts, if it is a boost. */
     get reblog(): z.ZodNullable<typeof Status> {
         return Status.nullable();
     },
     /** Verso has no polls yet. */
     poll: z.null(),
     card: PreviewCard.nullable(),
-    /** An ISO 639-1 code, or `null` if it isn't known. */
+    /** An ISO 639-1 code, or `null` if unknown. */
     language: z.string().nullable(),
-    /** The content as its author wrote it, only given back when the status is deleted. */
+    /** The content as its author wrote it, only returned when the status is deleted. */
     text: z.string().nullable(),
     edited_at: z.iso.datetime().nullable(),
     /** The status this one quotes, or `null` if it quotes none. Mastodon 4.4 and later. */
@@ -157,7 +157,7 @@ export type Status = z.infer<typeof Status>;
  */
 export const Quote = z.object({
     state: QuoteState,
-    /** `null` unless the quote may be shown. */
+    /** `null` unless the quote may be displayed. */
     get quoted_status(): z.ZodNullable<typeof Status> {
         return Status.nullable();
     },
@@ -190,7 +190,7 @@ export const StatusSource = z.object({
 export type StatusSource = z.infer<typeof StatusSource>;
 
 /**
- * A version of a status, in its edit history. Polls are left out, as Verso has none.
+ * A version of a status, in its edit history. Polls are omitted, as Verso has none.
  * @see https://docs.joinmastodon.org/entities/StatusEdit/
  */
 export const StatusEdit = z.object({

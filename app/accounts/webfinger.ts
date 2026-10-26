@@ -4,7 +4,7 @@ import { defineRoute, type Route } from "../http/route.ts";
 import { findLocalAccount } from "./account_queries.ts";
 
 /**
- * A JSON Resource Descriptor: what a WebFinger lookup answers.
+ * A JSON Resource Descriptor: what a WebFinger lookup returns.
  * @see https://www.rfc-editor.org/rfc/rfc7033#section-4.4
  */
 const Jrd = z.object({
@@ -17,9 +17,9 @@ const Jrd = z.object({
 const acctUri = /^acct:([^@\s]+)@([^@\s]+)$/i;
 
 /**
- * Finds a local account by its address, giving the URL of its Versia User entity, as Versia's
- * discovery does. Anyone may ask, whatever config lets clients view, since this is how other
- * instances find users.
+ * Finds a local account by its address, returning the URL of its Versia User entity, as Versia's
+ * discovery does. Anyone may request it, whatever config lets clients view, since this is how
+ * remote instances find users.
  * @see https://versia.pub/federation/discovery
  */
 export const webfingerRoutes: readonly Route[] = [
@@ -29,7 +29,7 @@ export const webfingerRoutes: readonly Route[] = [
         summary: "A local account, by its acct: address",
         tags: ["versia"],
         contentType: "application/jrd+json",
-        // The resource is checked by hand, so a bad one gets WebFinger's 400 rather than 422.
+        // The resource is validated by hand, so a bad one gets WebFinger's 400 rather than 422.
         query: z.object({ resource: z.string().optional() }),
         responses: { 200: Jrd },
         handler: async (ctx, { query }) => {

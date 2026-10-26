@@ -15,7 +15,7 @@ import { knownNote } from "./remote.ts";
 import { renderStatuses } from "./render.ts";
 import { createNote, createShare } from "./testing.ts";
 
-/** alice and bob here, who follows alice, and carol on b.example. */
+/** alice and bob are local, bob follows alice, and carol is on b.example. */
 const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
@@ -23,7 +23,7 @@ const open = async () => {
     await createRemoteAccount(test.ctx, "carol", "b.example");
     await follow(test.ctx, "bob", "alice");
 
-    /** How many statuses an account has, and how many shares a note has. */
+    /** How many statuses an account has, and how many boosts a status has. */
     const counts = async (accountId: string, noteId: string) => [
         (await findAccount(test.ctx, accountId))?.statuses_count,
         (await findNote(test.ctx, noteId))?.shares_count,
@@ -54,7 +54,7 @@ Deno.test("a note deleted takes its shares with it, uncounted", async () => {
 
     assertEquals(await findNote(test.ctx, share.id), undefined);
     assertEquals((await findAccount(test.ctx, "alice"))?.statuses_count, 0);
-    // The direct share wasn't counted, so it isn't uncounted; bob's own note still is.
+    // The direct boost wasn't counted, so it isn't decremented; bob's own status still is.
     assertEquals((await findAccount(test.ctx, "bob"))?.statuses_count, 1);
 });
 
@@ -67,14 +67,14 @@ Deno.test("an account deleted takes its shares and the shares of its notes, unco
     const local = await createNote(test.ctx, "alice");
     for (const note of theirs) await createShare(test.ctx, "alice", note.id);
     await createShare(test.ctx, "bob", theirs[0].id);
-    // Not counted, so not uncounted.
+    // Not counted, so not decremented.
     await createShare(test.ctx, "bob", theirs[1].id, { visibility: "direct" });
     await createShare(test.ctx, "carol", local.id, { instance_id: "b.example", remote_id: "s1" });
     await createShare(test.ctx, "bob", local.id);
 
     await deleteRemoteAccount(test.ctx, "b.example", "carol");
 
-    // alice keeps her own note, and bob his share of it.
+    // alice keeps her own status, and bob his boost of it.
     assertEquals(await test.counts("alice", local.id), [1, 1]);
     assertEquals((await findAccount(test.ctx, "bob"))?.statuses_count, 1);
 });
@@ -95,7 +95,7 @@ Deno.test("an account's shares are among its statuses, unless left out", async (
         ids(await notePageBy(test.ctx, "alice", ["public"], { excludeShares: true }, page)),
         [own.id],
     );
-    // A share has no hashtags.
+    // A boost has no hashtags.
     assertEquals(ids(await notePageBy(test.ctx, "alice", ["public"], { tag: "verso" }, page)), []);
 });
 
@@ -113,7 +113,7 @@ Deno.test("a share is seen only by those who may see what it shares", async () =
     assertEquals(await canSee(test.ctx, share, null), false);
     assertEquals(await canSee(test.ctx, share, "bob"), true);
 
-    // Nor is it shown in a list, such as a timeline read before the note was made private.
+    // Nor is it shown in a list, such as a timeline read before the status was made private.
     const shown = async (viewerId: string | null) =>
         (await renderStatuses(test.ctx, [share], viewerId)).map((status) => status.reblog?.id);
     assertEquals(await shown(null), []);

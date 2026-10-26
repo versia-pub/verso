@@ -1,6 +1,6 @@
 /**
- * Whether other instances can be reached, so that requests to one that is down wait for it, while
- * one at a time probes whether it is back: a circuit breaker.
+ * Whether remote instances can be reached, so that requests to one that is down wait for it, while
+ * one request at a time probes whether it is back: a circuit breaker.
  * @module
  */
 import type { Context } from "../kernel/context.ts";
@@ -23,8 +23,8 @@ export const parkedForMs = (failures: number): number =>
     Math.min(60_000 * 2 ** Math.max(failures - threshold, 0), 60 * 60_000);
 
 /**
- * When a request may be sent to `domain`, or `undefined` if it may now. Once a parked instance's
- * wait is over, the first to ask probes it, and the others wait for its answer.
+ * When a request may be sent to `domain`, or `undefined` if it may be sent now. Once a parked
+ * instance's wait is over, the first request probes it, and the others wait for the result.
  */
 export const parkedUntil = async (ctx: Context, domain: string): Promise<Date | undefined> => {
     const now = ctx.clock.now();
@@ -44,8 +44,8 @@ export const isParked = async (ctx: Context, domain: string): Promise<boolean> =
 };
 
 /**
- * Notes that `domain` couldn't be reached, again, and since when it can't be if it could before.
- * Returns when it may next be tried, if it failed often enough to be parked.
+ * Records that `domain` couldn't be reached, again, and since when it hasn't been if it could
+ * before. Returns when it may next be tried, if it failed often enough to be parked.
  */
 export const recordUnreachable = async (
     ctx: Context,
@@ -61,7 +61,8 @@ export const recordUnreachable = async (
 };
 
 /**
- * Notes that `domain` answered, or sent something. Returns whether it had been failing, or parked.
+ * Records that `domain` responded, or sent something. Returns whether it had been failing, or
+ * parked.
  */
 export const recordReached = (ctx: Context, domain: string): Promise<boolean> =>
     clearFailures(ctx, domain);

@@ -9,7 +9,7 @@ const emoji = (name: string, url = "https://b.example/blob.png", type = "image/p
 
 const extensions = (...emojis: object[]) => ({ "pub.versia:custom_emojis": { emojis } });
 
-/** The shortcode and picture URL of each emoji kept. */
+/** The shortcode and picture URL of each emoji stored. */
 const kept = (value: Parameters<typeof remoteEmojisOf>[0]) =>
     remoteEmojisOf(value).map((each) => [each.shortcode, each.picture.url]);
 

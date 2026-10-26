@@ -2,8 +2,7 @@ import { type Kysely, sql } from "kysely";
 import type { Migration } from "kysely/migration";
 
 /**
- * The columns this reads and writes. Fields were `{ name, value }`, and gain their format and
- * HTML.
+ * The columns this reads and writes. Fields were `{ name, value }`, and gain their format and HTML.
  */
 type Tables = {
     accounts: { id: string; note: string; note_html: string; fields: Record<string, string>[] };
@@ -29,8 +28,8 @@ const textToHtml = (text: string) =>
         .join("");
 
 /**
- * Keeps bios and profile fields as HTML too, next to the text their owners wrote and what they
- * wrote it in. Everything so far was plain text.
+ * Stores bios and profile fields as HTML too, alongside the text their owners wrote and the format
+ * they wrote it in. Everything so far was plain text.
  */
 export const accountRichText: Migration = {
     up: async (db: Kysely<unknown>) => {

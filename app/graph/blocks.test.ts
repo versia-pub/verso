@@ -7,14 +7,14 @@ import { block, unblock } from "./blocks.ts";
 import { followsFrom } from "./follow_queries.ts";
 import { follow } from "./follows.ts";
 
-/** alice, bob, who follow each other, and carol. */
+/** alice and bob, who follow each other, and carol. */
 const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob", "carol"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "alice", "bob");
     await follow(test.ctx, "bob", "alice");
 
-    /** Whether `from` follows `to`, or asked to. */
+    /** Whether `from` follows `to`, or has requested to. */
     const state = async (from: string, to: string) => {
         const [row] = await followsFrom(test.ctx, from, [to]);
         return row && (row.accepted ? "following" : "requested");

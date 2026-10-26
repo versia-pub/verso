@@ -1,5 +1,5 @@
 /**
- * Who a local note is shown to: the other instances it is sent to, and those that may fetch it.
+ * Who a local status is shown to: the remote instances it is sent to, and those that may fetch it.
  * @module
  */
 import { instancesHosting } from "../accounts/account_queries.ts";
@@ -13,9 +13,9 @@ import { mentionsOf, type NoteRow } from "./note_queries.ts";
 export const everyone: readonly Visibility[] = ["public", "unlisted"];
 
 /**
- * The other instances a local note is shown on: those of the users it mentions, of the author's
- * followers unless it is direct, and of the author of the note a public or unlisted one replies
- * to, which can then show the thread.
+ * The remote instances a local status is shown on: those of the users it mentions, those of the
+ * author's followers unless it is direct, and the instance of the author of the status that a
+ * public or unlisted status replies to, so that it can show the thread.
  */
 export const audienceOf = async (
     ctx: Context,
@@ -34,9 +34,10 @@ export const audienceOf = async (
 };
 
 /**
- * Whether `requester`, another instance, may see a local note: anyone may see a public or unlisted
- * one, and an instance may see another if any of its users is shown it, as {@link audienceOf} has
- * them, without finding every instance the author's followers are on.
+ * Whether the remote instance `requester` may see a local status. Anyone may see a public or
+ * unlisted status. Otherwise an instance may see it if any of its users is in the audience, as
+ * {@link audienceOf} computes it, without having to find every instance the author's followers are
+ * on.
  */
 export const instanceMaySee = async (
     ctx: Context,
@@ -55,9 +56,9 @@ export const instanceMaySee = async (
 };
 
 /**
- * Whether `requester`, another instance, may see a local user's like, reaction or share of `note`,
- * shown as `shown`: the note's own instance may, as may any instance that may see `shown`, which
- * is the note itself but for a share.
+ * Whether the remote instance `requester` may see a local user's like, reaction or boost of `note`,
+ * shown as `shown`: the status's own instance may, as may any instance that may see `shown`, which
+ * is the status itself except for a boost.
  */
 export const instanceMaySeeInteraction = async (
     ctx: Context,

@@ -1,5 +1,5 @@
 /**
- * Local notes as Versia Notes, as other instances fetch them and are sent them.
+ * Local statuses as Versia Notes, as remote instances fetch them and are sent them.
  * @see https://versia.pub/entities/note
  * @module
  */
@@ -13,7 +13,9 @@ import { attachmentsOf } from "../media/attachment_queries.ts";
 import { versiaFile } from "../media/versia.ts";
 import { mentionsOf, noteOrigins, type NoteRow } from "./note_queries.ts";
 
-/** Who a note is for, as Versia says it. Unlisted notes are public, as Versia has no unlisted. */
+/**
+ * Who a status is for, as Versia says it. Unlisted statuses are public, as Versia has no unlisted.
+ */
 const groups: Record<Visibility, string | undefined> = {
     public: "public",
     unlisted: "public",
@@ -22,7 +24,7 @@ const groups: Record<Visibility, string | undefined> = {
     direct: undefined,
 };
 
-/** References to the notes of `ids` that exist, by id, as Verso puts them in what it sends. */
+/** References to the statuses of `ids` that exist, by id, as Verso puts them in what it sends. */
 export const noteReferenceMap = async (
     ctx: Context,
     ids: readonly string[],
@@ -45,7 +47,7 @@ export const noteReferenceMap = async (
     return references;
 };
 
-/** Local notes as Versia Notes, in the order given. */
+/** Local statuses as Versia Notes, in the order given. */
 export const renderVersiaNotes = async (
     ctx: Context,
     notes: readonly NoteRow[],

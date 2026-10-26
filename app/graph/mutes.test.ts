@@ -64,10 +64,10 @@ Deno.test("a mute for a while ends when it runs out", async () => {
         (await mutePage(test.ctx, "alice", { limit: 40 })).map((row) => row.account_id),
         ["carol"],
     );
-    // Undoing one that ran out undoes nothing.
+    // Unmuting a mute that ran out undoes nothing.
     assertEquals(await unmute(test.ctx, "alice", "bob"), false);
 
-    // Muted again, it is on again.
+    // Muted again, it is active again.
     await mute(test.ctx, "alice", "bob", forGood);
     assertEquals(Object.keys(await test.muted()), ["bob", "carol"]);
 });

@@ -10,7 +10,7 @@ import { defineRoute } from "./route.ts";
 import { consume, memoryRateLimitStore, type RateLimitStore } from "./rate_limits.ts";
 import { databaseRateLimitStore, deleteEndedRateLimits } from "./rate_limit_queries.ts";
 
-// Shorter than the memory store's sweep, so windows end before a sweep could forget them.
+// Shorter than the memory store's sweep, so windows end before a sweep could drop them.
 const policy = { limit: 2, windowSeconds: 30 };
 
 /** A store, and the clock it runs on. */
@@ -114,7 +114,7 @@ const ping = defineRoute({
     handler: () => Promise.resolve({ status: 200, body: {} }),
 });
 
-/** A route a page loads many of, with a bucket of its own allowing twice as many. */
+/** A route a page loads many of, with its own bucket allowing twice as many. */
 const picture = defineRoute({
     method: "GET",
     path: "/picture",

@@ -1,5 +1,5 @@
 /**
- * Pins: notes their authors feature on their profiles, as Mastodon has them.
+ * Pins: statuses that their authors feature on their profiles, as Mastodon has them.
  * @see https://docs.joinmastodon.org/methods/statuses/#pin
  * @module
  */
@@ -8,25 +8,27 @@ import type { NoteRow } from "./note_queries.ts";
 import { visibleNote } from "./visibility.ts";
 import { countPins, deletePin, insertPin, pinnedAmong } from "./pin_queries.ts";
 
-/** How many notes an account may pin, as on Mastodon. */
+/** How many statuses an account may pin, as on Mastodon. */
 export const pinLimit = 5;
 
-/** Whether a note can be pinned by its author: one of theirs, not a share, nor direct. */
+/**
+ * Whether a status can be pinned by its author: it must be theirs, and neither a boost nor direct.
+ */
 export const isPinnable = (note: NoteRow, accountId: string): boolean =>
     note.account_id === accountId && note.reblog_of_id === null && note.visibility !== "direct";
 
-/** What became of pinning a note. */
+/** The result of pinning a status. */
 export type PinResult =
-    /** The note, pinned, now or already. */
+    /** The status, pinned now or already. */
     | NoteRow
-    /** There is no such note the account may see. */
+    /** There is no such status that the account may see. */
     | "missing"
-    /** It isn't one the account can pin. */
+    /** The status can't be pinned by the account. */
     | "unpinnable"
-    /** The account pins as many notes as it may. */
+    /** The account already pins as many statuses as it may. */
     | "full";
 
-/** Pins a note for `accountId`, its author. */
+/** Pins a status for `accountId`, its author. */
 export const pin = (ctx: Context, accountId: string, noteId: string): Promise<PinResult> =>
     ctx.transaction(async (tx) => {
         const note = await visibleNote(tx, noteId, accountId);
@@ -40,7 +42,7 @@ export const pin = (ctx: Context, accountId: string, noteId: string): Promise<Pi
         return note;
     });
 
-/** Unpins a note for `accountId`. Returns it, or `undefined` if there is none it may see. */
+/** Unpins a status for `accountId`. Returns it, or `undefined` if there is none it may see. */
 export const unpin = (
     ctx: Context,
     accountId: string,

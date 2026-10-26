@@ -3,7 +3,7 @@ import { decode, isBlurhashValid } from "blurhash";
 import { thumbHashToApproximateAspectRatio, thumbHashToAverageRGBA } from "thumbhash";
 import { blurhashOf, type Pixels, thumbhashOf } from "./image_hashes.ts";
 
-/** A picture `width` by `height`, all of one colour. */
+/** An image `width` by `height`, all of one colour. */
 const solid = (width: number, height: number, [r, g, b, a]: number[]): Pixels => ({
     width,
     height,
@@ -20,12 +20,12 @@ Deno.test("a ThumbHash is in base64, with the picture's colour and shape", () =>
     assertAlmostEquals(average.g, 0, 0.02);
     assertAlmostEquals(average.b, 0, 0.02);
     assertAlmostEquals(average.a, 1, 0.02);
-    // The shape is only roughly kept, but a wide picture stays wider than a tall one.
+    // The shape is only roughly preserved, but a wide image stays wider than a tall one.
     const tall = Uint8Array.fromBase64(thumbhashOf(solid(50, 100, [255, 0, 0, 255])));
     assertEquals(thumbHashToApproximateAspectRatio(bytes) > 1.5, true);
     assertEquals(thumbHashToApproximateAspectRatio(tall) < 0.7, true);
 
-    // A see-through one says so.
+    // A transparent one says so.
     const clear = thumbHashToAverageRGBA(
         Uint8Array.fromBase64(thumbhashOf(solid(10, 10, [0, 0, 255, 0]))),
     );

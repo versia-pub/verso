@@ -1,5 +1,5 @@
 /**
- * Delete, which another instance sends when one of its entities is gone, for any type that can be
+ * Delete, which a remote instance sends when one of its entities is gone, for any type that can be
  * deleted.
  * @see https://versia.pub/entities/delete
  * @module
@@ -10,9 +10,9 @@ import type { Context } from "../kernel/context.ts";
 import type { EntityType } from "./registry.ts";
 
 /**
- * Deletes for the entities of `types`. A Delete is sent by its author's instance, or the one that
- * signed it if it names no author, and only deletes an entity that instance hosts. What is too
- * large to delete in one transaction is deleted first, by the type's `prepareDelete`.
+ * Deletes for the entities of `types`. A Delete is sent by its author's instance, or by the
+ * instance that signed it if it names no author, and only deletes an entity that instance hosts.
+ * Anything too large to delete in one transaction is deleted first, by the type's `prepareDelete`.
  */
 export const deleteType = (types: readonly EntityType[]): EntityType<v0_6.Delete> => {
     const byName = new Map(types.map((type) => [type.type, type]));
@@ -44,7 +44,7 @@ export const deleteType = (types: readonly EntityType[]): EntityType<v0_6.Delete
     };
 };
 
-/** A Delete by the local user `authorId` of their entity `deleted`, of `deletedType`, as of now. */
+/** A Delete by the local user `authorId` of their entity `deleted`, of `deletedType`, dated now. */
 export const deleteEntity = (
     ctx: Context,
     authorId: string,

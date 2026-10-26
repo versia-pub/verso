@@ -1,9 +1,9 @@
 import { type Kysely, type SelectQueryBuilder, sql, SqliteAdapter } from "kysely";
 
 /**
- * Locks the rows a query selects until the transaction ends, skipping rows that another
- * transaction has locked, so concurrent workers never pick the same row. SQLite lets one writer in
- * at a time, so it needs neither.
+ * Locks the rows a query selects until the transaction ends, skipping rows that another transaction
+ * has locked, so concurrent workers never pick the same row. SQLite lets one writer in at a time,
+ * so it needs neither.
  */
 export const skippingLocked = <DB, TB extends keyof DB, O>(
     db: Kysely<DB>,
@@ -13,7 +13,7 @@ export const skippingLocked = <DB, TB extends keyof DB, O>(
 
 /**
  * Holds a lock on `key` until the transaction ends, so that transactions that take it for the same
- * key run one at a time, such as one that keeps a file under a key and one that removes it. SQLite
+ * key run one at a time, such as one that stores a file under a key and one that removes it. SQLite
  * lets one writer in at a time, and its transactions begin as writers, so it needs none.
  */
 export const lockKey = async <DB>(db: Kysely<DB>, key: string): Promise<void> => {

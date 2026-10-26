@@ -10,13 +10,13 @@ import { type AccountRow, findAccounts } from "./account_queries.ts";
 import { renderAccount } from "./render.ts";
 import { rolesOf, rolesOfAccounts } from "./role_queries.ts";
 
-/** An account as anyone sees it, with its roles and the emojis it uses. */
+/** An account as anyone sees it, with its roles and the custom emojis it uses. */
 export const publicAccount = async (ctx: Context, row: AccountRow): Promise<Account> => {
     const emojis = (await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? [];
     return renderAccount(ctx, row, await rolesOf(ctx, row.id), renderEmojis(emojis));
 };
 
-/** Accounts already read, as anyone sees them, by id. */
+/** Accounts that were already fetched, as anyone sees them, by id. */
 export const publicAccountsOf = async (
     ctx: Context,
     rows: readonly AccountRow[],

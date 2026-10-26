@@ -7,7 +7,7 @@ import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 
-/** Leaves out the notes and shares of the accounts `hidden`, and any shares of their notes. */
+/** Excludes the statuses and boosts of the accounts `hidden`, and any boosts of their statuses. */
 const without = (hidden: Excluded) => (eb: ExpressionBuilder<Database, "notes">) =>
     eb.and([
         notExcluded(hidden, "notes.account_id")(eb),
@@ -22,8 +22,8 @@ const without = (hidden: Excluded) => (eb: ExpressionBuilder<Database, "notes">)
     ]);
 
 /**
- * Of pages of the same bounds, of rows that no two share, the page of all their rows, as
- * `readPage` would read it.
+ * Given pages with the same bounds, whose rows are all distinct, returns the page of all their rows
+ * combined, as `readPage` would read it.
  */
 const mergePages = (pages: readonly NoteRow[][], page: PageBounds) => {
     const newestFirst = pages.flat().toSorted((a, b) => b.id.localeCompare(a.id));
@@ -35,13 +35,13 @@ const mergePages = (pages: readonly NoteRow[][], page: PageBounds) => {
 };
 
 /**
- * A page of `viewerId`'s home timeline, newest first: all their own notes and shares, those notes
- * of `followed` that they may see, and the shares of `sharing`, the accounts of `followed` whose
- * shares they see. Of those notes, a direct one must mention them, and a reply must be to them or
- * to someone they follow, its author among them, as on Mastodon. Nothing of the accounts they
- * block or mute, `hidden`, is in it, nor anyone's shares of their notes. Each of the three is read
- * on its own, so each can use the index that suits it, however many accounts they follow. No
- * note is in two of them, as no one follows themselves.
+ * A page of `viewerId`'s home timeline, newest first: all their own statuses and boosts, the
+ * statuses of `followed` that they may see, and the boosts of `sharing`, the accounts of `followed`
+ * whose boosts they see. Of those statuses, a direct one must mention them, and a reply must be to
+ * them or to someone they follow, with its author among them, as on Mastodon. Nothing from the
+ * accounts they block or mute, `hidden`, is included, nor anyone's boosts of their statuses. Each
+ * of the three sets is read on its own, so each can use the index that suits it, however many
+ * accounts they follow. No status is in two of them, as no one follows themselves.
  */
 export const homePage = async (
     ctx: Context,
@@ -54,7 +54,7 @@ export const homePage = async (
     const notes = ctx.db.selectFrom("notes").selectAll().where(without(hidden));
 
     const own = notes.where("account_id", "=", viewerId);
-    // Shares are never direct, so any of them is for their followers.
+    // Boosts are never direct, so any of them is visible to the booster's followers.
     const shares = notes.where("reblog_of_id", "is not", null).where("account_id", "in", sharing);
     const others = notes
         .where("reblog_of_id", "is", null)
@@ -69,7 +69,7 @@ export const homePage = async (
                             .where("note_mentions.account_id", "=", viewerId),
                     ),
                 ]),
-                // Not a reply, or one to them or to someone they follow too.
+                // Not a reply, or a reply to them or to someone they follow.
                 eb.or([
                     eb("in_reply_to_account_id", "is", null),
                     eb("in_reply_to_account_id", "=", viewerId),
@@ -84,14 +84,17 @@ export const homePage = async (
     return mergePages(pages, page);
 };
 
-/** Where the notes on a public timeline are from: anywhere, this instance, or other instances. */
+/**
+ * Where the statuses on a public timeline come from: anywhere, the local instance, or remote
+ * instances.
+ */
 export type Origin = "all" | "local" | "remote";
 
 /**
- * A page of the public timeline, newest first: public notes from `origin`, without replies but to
- * their own authors, or shares, as on Mastodon, and with `onlyMedia`, only those with files
- * attached. The notes of the accounts the viewer blocks or mutes, `hidden`, if there is a viewer,
- * are left out.
+ * A page of the public timeline, newest first: public statuses from `origin`, without replies
+ * (except replies to their own authors) or boosts, as on Mastodon, and with `onlyMedia`, only those
+ * with media attached. If there is a viewer, the statuses of the accounts they block or mute,
+ * `hidden`, are omitted.
  */
 export const publicPage = async (
     ctx: Context,

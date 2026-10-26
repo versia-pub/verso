@@ -6,13 +6,13 @@ import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 import type { ExpressionBuilder } from "kysely";
 
-/** Someone looking at notes, with the accounts they follow, or `null` for anyone. */
+/** Someone viewing statuses, with the accounts they follow, or `null` for anyone. */
 export type Onlooker = { readonly id: string; readonly followed: AccountIdQuery } | null;
 
 /**
- * Whether `onlooker` may see a note, as `canSee` decides one at a time: public and unlisted notes
- * are for anyone, private ones for the author's followers, and direct ones for those they mention,
- * who may always see a note, as may its author.
+ * Whether `onlooker` may see a status, as `canSee` decides for one status at a time: public and
+ * unlisted statuses are visible to anyone, private ones to the author's followers, and direct ones
+ * to the users they mention. Mentioned users and the author may always see a status.
  */
 const seenBy = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">) => {
     const listed = eb("notes.visibility", "in", ["public", "unlisted"]);
@@ -33,7 +33,7 @@ const seenBy = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">
     ]);
 };
 
-/** Which of `ids` are notes `onlooker` may see, in no particular order. */
+/** Which of `ids` are statuses `onlooker` may see, in no particular order. */
 export const notesSeenBy = async (
     ctx: Context,
     ids: readonly string[],
@@ -66,14 +66,14 @@ export const repliesTo = async (
         .orderBy("id")
         .limit(limit)
         .execute();
-    // SQLite gives 1 or 0.
+    // SQLite returns 1 or 0.
     return rows.map(({ seen, ...note }) => ({ note, seen: Boolean(seen) }));
 };
 
-/** How a note links to another: by replying to it, or quoting it. */
+/** How a status links to another: by replying to it, or quoting it. */
 export type NoteLink = "in_reply_to_id" | "quote_id";
 
-/** The notes with one of `visibilities` that link to `noteId` by `link`. */
+/** The statuses with one of `visibilities` that link to `noteId` by `link`. */
 const linkedTo = (
     ctx: Context,
     link: NoteLink,
@@ -84,7 +84,7 @@ const linkedTo = (
     .where("visibility", "in", visibilities)
     .where("reblog_of_id", "is", null);
 
-/** The ids of the notes linking to `noteId`, as {@link linkedTo} finds them, oldest first. */
+/** The ids of the statuses linking to `noteId`, as {@link linkedTo} finds them, oldest first. */
 export const linkedNoteIds = async (
     ctx: Context,
     link: NoteLink,
@@ -100,7 +100,7 @@ export const linkedNoteIds = async (
         .execute())
         .map((row) => row.id);
 
-/** How many notes link to `noteId`, as {@link linkedTo} finds them. */
+/** How many statuses link to `noteId`, as {@link linkedTo} finds them. */
 export const countLinkedNotes = async (
     ctx: Context,
     link: NoteLink,

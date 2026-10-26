@@ -265,7 +265,7 @@ Deno.test("a paused group's jobs aren't claimed until the pause ends", async () 
     test.clock.advance(1);
     assertEquals(ids(await claim(test.ctx, options)), [1, 5]);
 
-    // Only its row is written, not each job's, and it goes once it ends.
+    // Only its row is written, not each job's, and it is removed once it ends.
     const rows = await test.ctx.db.selectFrom("jobs").select(["run_at"]).execute();
     assertEquals(rows.every((row) => row.run_at <= at(0)), true);
     await deleteExpiredJobs(test.ctx);
@@ -390,14 +390,14 @@ Deno.test("a dead letter keeps what its queue keeps of its payload, and frees it
         await dead("b", (job) => fail(test.ctx, job, "refused", { deadPayload: summary })),
         { payload: { kept: "summary" }, dedupe_key: null },
     );
-    // Without a summary it is kept whole, and while it is kept anyway, so is its key.
+    // Without a summary it is retained whole, and while it is retained anyway, so is its key.
     const later = new Date(test.clock.now().getTime() + minute);
     assertEquals(await dead("c", (job) => giveUp(test.ctx, job, "invalid"), later), {
         payload: { body: "large" },
         dedupe_key: "c",
     });
 
-    // A job that will be retried keeps both.
+    // A job that will be retried retains both.
     await enqueue(test.ctx, { queue: "deliver", payload: { body: "large" }, dedupeKey: "d" });
     const [retried] = await claim(test.ctx, options);
     await fail(test.ctx, retried, "refused", { deadPayload: summary });

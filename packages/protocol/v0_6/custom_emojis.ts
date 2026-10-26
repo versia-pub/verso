@@ -2,7 +2,7 @@ import { z } from "zod";
 import { contentFormatOf } from "./common.ts";
 
 /**
- * A custom emoji, which text shows where it has its name, such as `:happy_face:`. The name is
+ * A custom emoji, which text displays where it has its name, such as `:happy_face:`. The name is
  * letters, digits, `_` and `-`, between two characters that aren't.
  * @see https://versia.pub/extensions/custom-emojis
  */

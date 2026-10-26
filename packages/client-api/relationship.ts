@@ -21,9 +21,9 @@ export const Relationship = z.object({
     muting_notifications: z.boolean(),
     /** When the viewer's mute of the account ends, or `null` if it doesn't. */
     muting_expires_at: z.iso.datetime().nullable(),
-    /** Whether the viewer's follow request to the account is waiting. */
+    /** Whether the viewer's follow request to the account is pending. */
     requested: z.boolean(),
-    /** Whether the account's follow request to the viewer is waiting. */
+    /** Whether the account's follow request to the viewer is pending. */
     requested_by: z.boolean(),
     /** Whether the viewer blocks the account's whole domain. */
     domain_blocking: z.boolean(),

@@ -11,7 +11,7 @@ const ignored = { authority: () => undefined, receive: () => Promise.resolve() }
 
 const Thing = z.object({ type: z.literal("Thing"), id: z.string(), seen_by: z.string() });
 
-/** A type whose entities are only found by b.example, and say who asked for them. */
+/** A type whose entities can only be found by b.example, and say who requested them. */
 const thing: EntityType<z.infer<typeof Thing>> = {
     type: "Thing",
     extension: "test.example:things",
@@ -22,7 +22,7 @@ const thing: EntityType<z.infer<typeof Thing>> = {
             requester === "b.example" ? { type: "Thing", id, seen_by: requester } : undefined,
         ),
     collections: {
-        // Tells the page it was asked for, as its total: offset in thousands, and limit.
+        // Tells the page it was requested for, as its total: offset in thousands, and limit.
         parts: (_ctx, id, page) =>
             Promise.resolve(
                 id === "missing"

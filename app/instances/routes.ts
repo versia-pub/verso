@@ -21,7 +21,7 @@ import {
     renderV1Instance,
 } from "./render.ts";
 
-/** The instance's picture, drawn from its domain once, when first asked for. */
+/** The instance's picture, generated from its domain once, when first requested. */
 const thumbnailRoute = () => {
     let drawn: Promise<Uint8Array> | undefined;
 
@@ -39,10 +39,10 @@ const thumbnailRoute = () => {
     });
 };
 
-/** How long the instance's stats are kept: clients ask for them each time they start. */
+/** How long the instance's stats are cached: clients request them each time they start. */
 const statsMs = 5 * 60_000;
 
-/** What the instance tells clients about itself, with its stats kept for a while. */
+/** What the instance tells clients about itself, with its stats cached for a while. */
 export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
     const stats = cached(statsMs, instanceStats);
 

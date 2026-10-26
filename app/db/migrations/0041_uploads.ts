@@ -3,9 +3,9 @@ import type { Migration } from "kysely/migration";
 import { columnTypes } from "../columns.ts";
 
 /**
- * Files uploaded here: who uploaded them, what was uploaded and when it was processed, and the
- * preview, placeholder and focus point of pictures. Indexes are by each column a file's key can be
- * in, so finding whether a file is still used doesn't read every row.
+ * Media uploaded to the local instance: who uploaded it, what was uploaded and when it was
+ * processed, and the preview, placeholder and focus point of images. Indexes are by each column a
+ * file's key can be in, so finding whether a file is still used doesn't scan every row.
  */
 export const uploads: Migration = {
     up: async (db: Kysely<unknown>) => {

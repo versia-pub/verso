@@ -2,7 +2,7 @@ import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { decode } from "fast-png";
 import { identicon, identiconBanner } from "./identicon.ts";
 
-/** The picture's size, palette and pixels' palette indices row by row, with its CRCs checked. */
+/** The image's size, palette and pixels' palette indices row by row, with its CRCs checked. */
 const decodePng = (png: Uint8Array) => {
     const { width, height, palette = [], data, channels } = decode(png, { checkCrc: true });
     assertEquals(channels, 1, "paletted");

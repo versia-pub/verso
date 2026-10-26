@@ -1,6 +1,6 @@
 /**
- * The shared inbox, where other instances send entities. It checks only what must be answered at
- * once, and queues the rest for the inbox worker.
+ * The shared inbox, where remote instances send entities. It checks only what must be answered
+ * immediately, and queues the rest for the inbox worker.
  * @see https://versia.pub/federation/http
  * @module
  */
@@ -18,16 +18,16 @@ import type { EntityType, Registry } from "./registry.ts";
 export const inboxQueue = "inbox";
 
 /**
- * How long an entity counts as already received: as long as a signature is taken, from five
- * minutes before its time to five after, so a replayed request is always caught.
+ * How long an entity counts as already received: as long as a signature is accepted, from five
+ * minutes before its timestamp to five after, so a replayed request is always caught.
  */
 const dedupeMs = 10 * 60_000;
 
-/** An inbox job's payload: an entity as it arrived, for the inbox worker. */
+/** The payload of an inbox job: an entity as it arrived, for the inbox worker. */
 export const InboxJob = z.object({
     /** The domain of the instance that sent it. */
     signer: z.string(),
-    /** The body exactly as signed, already checked against its type's schema. */
+    /** The body exactly as signed, already validated against its type's schema. */
     body: z.string(),
 });
 export type InboxJob = z.output<typeof InboxJob>;
@@ -47,13 +47,13 @@ const detailsOf = (error: z.ZodError) => {
     return details;
 };
 
-/** An entity and its type, as checked. */
+/** An entity and its type, once validated. */
 export type Checked = { readonly type: EntityType; readonly entity: unknown };
 
 /**
- * Checks an entity's body: Versia JSON, of a type in `registry`, matching its schema. It throws
- * when it isn't, and gives `undefined` for one of an extension Verso doesn't know, which is
- * dropped, as the spec says.
+ * Validates an entity's body: it must be Versia JSON, of a type in `registry`, matching its schema.
+ * It throws when it isn't, and returns `undefined` for an extension type Verso doesn't know, which
+ * is dropped, as the spec says.
  * @see https://versia.pub/extensions
  */
 export const checkEntity = (registry: Registry, body: Uint8Array): Checked | undefined => {
@@ -76,8 +76,8 @@ export const checkEntity = (registry: Registry, body: Uint8Array): Checked | und
 };
 
 /**
- * Checks an entity another instance sent and queues it for the inbox worker, unless it was
- * received already or is dropped. An instance that sends one is reachable again.
+ * Validates an entity sent by a remote instance and queues it for the inbox worker, unless it was
+ * already received or is dropped. An instance that sends one is reachable again.
  */
 export const queueEntity = async (
     ctx: Context,
@@ -87,7 +87,7 @@ export const queueEntity = async (
 ): Promise<void> => {
     if (!checkEntity(registry, body)) return;
 
-    // It is up, so what is queued for it can go, and what is made from now on.
+    // It is up, so what is queued for it can go, and what is created from now on.
     if (await recordReached(ctx, signer)) await resumeGroup(ctx, deliverQueue, signer);
 
     const now = ctx.clock.now();
@@ -102,12 +102,12 @@ export const queueEntity = async (
         payload: job,
         dedupeKey: `inbox:${signer}:${digest.toHex()}`,
         keepUntil: new Date(now.getTime() + dedupeMs),
-        // Entities come in by the hundred at busy times, so workers find them by polling.
+        // Entities arrive in the hundreds at busy times, so workers find them by polling.
         wake: false,
     });
 };
 
-/** The shared inbox route, taking the types in `registry`. */
+/** The shared inbox route, accepting the types in `registry`. */
 export const inboxRoute = (registry: Registry): Route =>
     defineRoute({
         method: "POST",

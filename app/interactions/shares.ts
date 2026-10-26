@@ -1,6 +1,6 @@
 /**
- * Shares of notes, which Mastodon calls reblogs. A share is a note that says nothing itself, and
- * shares another.
+ * Boosts of statuses (Mastodon calls them reblogs, Versia calls them Shares). A boost is a status
+ * with no content of its own, which boosts another status.
  * @see https://versia.pub/extensions/share
  * @module
  */
@@ -17,18 +17,18 @@ import { removeNote } from "../notes/removal.ts";
 import { visibleNote, visibleOriginal } from "../notes/visibility.ts";
 import type { ShareEvent } from "./events.ts";
 
-/** What became of sharing a note: the share, or why there is none. */
+/** The result of boosting a status: the boost, or why there is none. */
 export type ShareResult =
     | NoteRow
-    /** There is no such note, or the sharer may not see it. */
+    /** There is no such status, or the booster may not see it. */
     | "missing"
-    /** Only public and unlisted notes can be shared, as on Mastodon. */
+    /** Only public and unlisted statuses can be boosted, as on Mastodon. */
     | "unshareable";
 
 /**
- * Shares a note for `accountId`, a local user, with `visibility`, or without one, their default,
- * and counts it. Sharing a share shares what it shares. A note shared already is shared once, and
- * its share returned as it is.
+ * Boosts a status for `accountId`, a local user, with `visibility`, or without one, their default,
+ * and increments the counts. Boosting a boost boosts the status it boosts. A status that is already
+ * boosted is boosted once, and its boost is returned as it is.
  */
 export const share = (
     ctx: Context,
@@ -54,7 +54,7 @@ export const share = (
                 account_id: accountId,
                 instance_id: null,
                 remote_id: null,
-                // A share is for at least the sharer's followers.
+                // A boost is for at least the booster's followers.
                 visibility: visibility ??
                     (author.default_visibility === "direct"
                         ? "private"
@@ -86,9 +86,10 @@ export const share = (
     });
 
 /**
- * Undoes `accountId`'s share of a note, or of what a share shares, and uncounts it. Returns the
- * note shared as it is now, or `undefined` if there is none. As on Mastodon, a note shared can be
- * unshared even if the sharer may no longer see it, and one not shared only if they may.
+ * Undoes `accountId`'s boost of a status, or of the status a boost boosts, and decrements the
+ * counts. Returns the boosted status as it is now, or `undefined` if there is none. As on Mastodon,
+ * a boosted status can be unboosted even if the booster may no longer see it, and one that isn't
+ * boosted only if they may.
  */
 export const unshare = (
     ctx: Context,
@@ -114,10 +115,10 @@ export const unshare = (
         return await findNote(tx, shared);
     });
 
-/** Another instance's share of a note, by one of its users. */
+/** A remote boost of a status, by one of the remote instance's users. */
 export type RemoteShare = {
     readonly accountId: string;
-    /** A public or unlisted note, not a share. */
+    /** A public or unlisted status, not a boost. */
     readonly note: NoteRow;
     readonly instanceId: string;
     readonly remoteId: string;
@@ -125,9 +126,9 @@ export type RemoteShare = {
 };
 
 /**
- * Keeps another instance's share, and counts it, in place of the account's other share of the
- * note, if it has one, as an account shares a note once. Versia doesn't say who a share is for, so
- * it is for whoever the note is. One Verso has already is left as it is.
+ * Stores a remote boost, and counts it, replacing the account's other boost of the status if it has
+ * one, as an account boosts a status once. Versia doesn't say who a Share is for, so it is for
+ * whoever the status is. One Verso already has is left unchanged.
  */
 export const keepRemoteShare = async (ctx: Context, share: RemoteShare): Promise<void> => {
     const existing = await findRemoteNote(ctx, share.instanceId, share.remoteId);
@@ -164,13 +165,13 @@ export const keepRemoteShare = async (ctx: Context, share: RemoteShare): Promise
     await countPosted(ctx, row, 1);
 };
 
-/** Undoes another instance's share, which a Delete said is gone, if Verso has it. */
+/** Undoes a remote boost, which a Delete said is gone, if Verso has it. */
 export const undoRemoteShare = async (
     ctx: Context,
     instanceId: string,
     remoteId: string,
 ): Promise<void> => {
     const share = await findRemoteNote(ctx, instanceId, remoteId);
-    // A note is deleted as a Note, not a Share.
+    // A Note is deleted as a Note, not a Share.
     if (share && share.reblog_of_id !== null) await removeNote(ctx, share.id);
 };

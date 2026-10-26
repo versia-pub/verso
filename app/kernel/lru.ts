@@ -1,10 +1,10 @@
-/** Values by key, keeping only the most recently used. */
+/** Values by key, retaining only the most recently used. */
 export type Lru<K, V> = {
     /** The value for `key`, which then counts as the most recently used. */
     readonly get: (key: K) => V | undefined;
-    /** Keeps `value` for `key`, dropping the least recently used value once there are too many. */
+    /** Stores `value` for `key`, dropping the least recently used value once there are too many. */
     readonly set: (key: K, value: V) => void;
-    /** Forgets the value for `key`. */
+    /** Removes the value for `key`. */
     readonly delete: (key: K) => void;
 };
 

@@ -1,6 +1,6 @@
 /**
- * Resolving references to entities: the ones Verso has, or else fetched from the instance that
- * hosts them.
+ * Resolving references to entities: those Verso has, or else fetched from the instance that hosts
+ * them.
  * @see https://versia.pub/federation/http
  * @module
  */
@@ -25,7 +25,7 @@ export const fetchBudget = (fetches = 20, until?: number): Budget => ({
     saving: 0,
 });
 
-/** Takes one fetch from `budget`, if it has one left and its deadline hasn't passed. */
+/** Spends one fetch from `budget`, if it has one left and its deadline hasn't passed. */
 export const spend = (ctx: Context, budget: Budget): boolean => {
     if (budget.fetches <= 0 || ctx.clock.now().getTime() >= (budget.until ?? Infinity)) {
         return false;
@@ -36,8 +36,8 @@ export const spend = (ctx: Context, budget: Budget): boolean => {
 };
 
 /**
- * `ctx`, with its requests to other instances stopped when `budget`'s deadline passes, rather than
- * only no new ones made, so one slow instance can't keep a client waiting past it.
+ * `ctx`, with its requests to remote instances aborted when `budget`'s deadline passes, rather than
+ * only preventing new ones, so one slow instance can't keep a client waiting past it.
  */
 export const withDeadline = (ctx: Context, budget: Budget): Context => {
     if (budget.until === undefined) return ctx;
@@ -46,13 +46,13 @@ export const withDeadline = (ctx: Context, budget: Budget): Context => {
     return { ...ctx, signal: ctx.signal ? AbortSignal.any([ctx.signal, left]) : left };
 };
 
-/** An entity that couldn't be fetched, or wasn't what was asked for. */
+/** An entity that couldn't be fetched, or wasn't what was requested. */
 export class ResolveFailed extends Error {
     override readonly name = "ResolveFailed";
 }
 
 /**
- * Whether `error` is another instance failing Verso: unreachable, too slow, or answering with
+ * Whether `error` is a remote instance failing Verso: unreachable, too slow, or responding with
  * something Verso can't use.
  */
 export const isRemoteFailure = (error: unknown): boolean =>
@@ -63,35 +63,41 @@ export const isRemoteFailure = (error: unknown): boolean =>
 export type ResolverOptions = {
     /** How long a fetched entity is used before it is fetched again. Defaults to a day. */
     readonly maxAgeMs?: number;
-    /** How long an entity its instance says is gone counts as missing. Defaults to an hour. */
+    /** How long an entity that its instance says is gone counts as missing. Defaults to an hour. */
     readonly missingMs?: number;
     /** How many missing entities to remember. */
     readonly capacity?: number;
     /**
      * How many fetches one process makes from each instance in a window, so that what others send
-     * can't make Verso flood one. Fetches past it are made later, if asked again. Defaults to 600
-     * in 5 minutes.
+     * can't make Verso flood one. Fetches over the limit are made later, if requested again.
+     * Defaults to 600 in 5 minutes.
      */
     readonly fetchLimit?: { readonly limit: number; readonly windowMs: number };
 };
 
 const Identified = z.object({ id: z.string() });
 
-/** A resolver for the types in `registry`. Make one for each process, and share it. */
+/** A resolver for the types in `registry`. Create one per process, and share it. */
 export const createResolver = (registry: Registry, options: ResolverOptions = {}): Resolver => {
     const maxAgeMs = options.maxAgeMs ?? 24 * 60 * 60_000;
     const missingMs = options.missingMs ?? 60 * 60_000;
 
     /** When each missing entity may be fetched again. */
     const missing = lru<string, number>(options.capacity ?? 10_000);
-    /** Fetches under way, so resolves arriving together fetch once. */
+    /** Fetches in progress, so resolves arriving together fetch once. */
     const fetching = new Map<string, Promise<string | undefined>>();
 
     const { limit, windowMs } = options.fetchLimit ?? { limit: 600, windowMs: 5 * 60_000 };
-    /** How many fetches each instance was sent in its current window, and when that began. */
+    /**
+     * How many fetches were sent to each instance in its current window, and when that window
+     * began.
+     */
     const fetched = lru<string, { start: number; count: number }>(options.capacity ?? 10_000);
 
-    /** Counts a fetch from `host`, unless it was sent as many as it may be in this window. */
+    /**
+     * Counts a fetch from `host`, unless as many as are allowed in this window were already sent to
+     * it.
+     */
     const mayFetch = (host: string, now: number) => {
         const window = fetched.get(host);
         if (window === undefined || now - window.start >= windowMs) {
@@ -104,7 +110,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         return true;
     };
 
-    /** Fetches the entity and saves it, giving its id, or `undefined` if it is gone. */
+    /** Fetches the entity and saves it, returning its id, or `undefined` if it is gone. */
     const fetchEntity = async (
         ctx: Context,
         type: EntityType,
@@ -113,7 +119,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         budget: Budget,
     ) => {
         const { host, id } = reference;
-        // One that can't be reached now is left alone, as deliveries leave it.
+        // An instance that can't be reached now is left alone, as deliveries leave it.
         if (await isParked(ctx, host)) throw new ResolveFailed(`${host} can't be reached now`);
         const reply = await fetchSigned(withDeadline(ctx, budget), entityUrl(host, type.type, id));
 
@@ -133,7 +139,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
             throw new ResolveFailed(`${host} sent an invalid ${type.type}: ${error.message}`);
         }
 
-        // An instance asked for one entity mustn't be able to answer with another, and so
+        // An instance asked for one entity mustn't be able to respond with another, and so
         // overwrite it.
         const entityId = Identified.safeParse(checked?.entity).data?.id;
         if (checked?.type !== type || entityId !== id) {
@@ -144,7 +150,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
             throw new ResolveFailed(`${host} may not send the ${type.type} ${id}`);
         }
 
-        // Its row was made when its key was fetched, to check the reply's signature.
+        // Its row was created when its key was fetched, to validate the response's signature.
         const instanceId = await findInstanceId(ctx, host);
         if (instanceId === undefined) throw new ResolveFailed(`${host} isn't a known instance`);
 
@@ -178,8 +184,8 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
 
         let pending = fetching.get(key);
 
-        // While a fetched entity resolves what it refers to, it can't wait for a fetch under way:
-        // that fetch may be waiting for it, as when two notes reply to each other.
+        // While a fetched entity resolves what it refers to, it can't wait for a fetch in progress:
+        // that fetch may be waiting for it, as when two statuses reply to each other.
         if (pending && budget.saving > 0) return known?.id;
 
         if (!pending) {

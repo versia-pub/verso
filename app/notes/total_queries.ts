@@ -4,7 +4,7 @@ import type { RemoteNoteTotalsTable } from "./tables.ts";
 
 export type RemoteNoteTotals = Selectable<RemoteNoteTotalsTable>;
 
-/** Keeps what another instance says its note's totals are, in place of what it said before. */
+/** Stores the totals that a remote instance reports for its status, replacing the previous ones. */
 export const saveTotals = async (
     ctx: Context,
     totals: RemoteNoteTotals,
@@ -16,7 +16,7 @@ export const saveTotals = async (
         .execute();
 };
 
-/** The totals Verso has for each of `noteIds`, by note. */
+/** The totals Verso has for each of `noteIds`, grouped by status. */
 export const totalsOf = async (
     ctx: Context,
     noteIds: readonly string[],

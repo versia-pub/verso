@@ -8,7 +8,7 @@ import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
 import { findLike } from "./like_queries.ts";
 
-/** A user b.test serves. */
+/** A user served by b.test. */
 const user = (id: string) => ({
     type: "User",
     id,
@@ -19,7 +19,7 @@ const user = (id: string) => ({
     indexable: true,
 });
 
-/** A public note by carol. */
+/** A public status by carol. */
 const note = (id: string) => ({
     type: "Note",
     id,
@@ -33,7 +33,7 @@ const note = (id: string) => ({
     previews: [],
 });
 
-/** bob's Share of the note `shared`. */
+/** bob's Share of the status `shared`. */
 const sharing = (id: string, shared: string, created_at = "2026-01-01T00:00:00Z") => ({
     type: "pub.versia:share/Share",
     id,
@@ -42,7 +42,7 @@ const sharing = (id: string, shared: string, created_at = "2026-01-01T00:00:00Z"
     shared,
 });
 
-/** bob's Delete of his share, or of a note, `id`. */
+/** bob's Delete of his Share, or of a Note, `id`. */
 const undo = (id: string, deleted_type = "pub.versia:share/Share") => ({
     type: "Delete",
     created_at: "2026-01-01T00:00:00Z",
@@ -51,7 +51,10 @@ const undo = (id: string, deleted_type = "pub.versia:share/Share") => ({
     deleted: id,
 });
 
-/** a.test, with alice and her note, and b.test, which sends what it is told, with bob and carol. */
+/**
+ * a.test, with alice and her status, and b.test, which sends whatever it is told to, with bob and
+ * carol.
+ */
 const open = async () => {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
@@ -61,7 +64,7 @@ const open = async () => {
     const alice = await createLocalAccount(a, "alice");
     const local = await createNote(a, alice);
 
-    /** Has b.test send `entity` to a.test, a second after the last, and a.test take it in. */
+    /** Has b.test send `entity` to a.test, a second after the last, and a.test receive it. */
     const send = async (entity: object) => {
         network.clock.advance(1000);
         assertEquals(
@@ -84,10 +87,10 @@ const open = async () => {
         });
     };
 
-    /** What b.test has as `remoteId`, as a.test keeps it, if it does. */
+    /** What b.test has as `remoteId`, as a.test stores it, if it does. */
     const kept = (remoteId: string) => findRemoteNoteAt(a, "b.test", remoteId);
 
-    /** bob's statuses, and the shares of the note with `noteId`. */
+    /** bob's statuses, and the boosts of the status with `noteId`. */
     const counts = async (noteId: string) => {
         const bob = await a.db.selectFrom("accounts").select("id").where("remote_id", "=", "bob")
             .executeTakeFirst();
@@ -130,13 +133,13 @@ Deno.test("a share of a local note is kept and counted, once, and a Delete undoe
     );
     assertEquals(await test.counts(test.local.id), [1, 1]);
 
-    // Sent again, it is the same share. It is sent with another date, so it isn't taken for the
-    // same delivery.
+    // Sent again, it is the same boost. It is sent with a different date, so it isn't mistaken for
+    // the same delivery.
     await test.send(sharing("s1", shared, "2026-01-02T00:00:00Z"));
     assertEquals((await test.kept("s1"))?.id, share?.id);
     assertEquals(await test.counts(test.local.id), [1, 1]);
 
-    // A note's Delete doesn't delete a share.
+    // A Note's Delete doesn't delete a Share.
     await test.send(undo("s1", "Note"));
     assertEquals((await test.kept("s1"))?.id, share?.id);
 
@@ -157,7 +160,7 @@ Deno.test("another share of a note by the same user replaces the first", async (
     assertEquals((await test.kept("s2"))?.reblog_of_id, test.local.id);
     assertEquals(await test.counts(test.local.id), [1, 1]);
 
-    // The share it replaced is gone already.
+    // The boost it replaced is already gone.
     await test.send(undo("s1"));
     assertExists(await test.kept("s2"));
     assertEquals(await test.errors(), []);
@@ -167,7 +170,8 @@ Deno.test("a share of another note by someone a local user follows is kept, with
     await using test = await open();
     test.b.serve("/.versia/v0.6/entities/Note/n1", note("n1"));
 
-    // a.test has bob, but no one here follows him yet, so neither the share nor its note is kept.
+    // a.test has bob, but no local user follows him yet, so neither the boost nor its status is
+    // stored.
     await test.a.federation.resolve(test.a, { host: "b.test", id: "bob" }, "User");
     await test.send(sharing("s1", "n1"));
     assertEquals([await test.kept("s1"), await test.kept("n1")], [undefined, undefined]);
@@ -200,7 +204,7 @@ Deno.test("a share isn't taken for a note, nor a note for a share", async () => 
     await test.send(sharing("s1", `a.test:${test.local.id}`));
     await test.send({ ...note("n1"), author: "bob" });
 
-    // A note, or a like, naming the share's id doesn't find it.
+    // A Note, or a like, naming the Share's id doesn't find it.
     await test.send({ ...note("s1"), author: "bob" });
     await test.send({
         type: "pub.versia:likes/Like",

@@ -20,14 +20,15 @@ import { openApiRoute } from "./openapi.ts";
 import type { Route } from "./route.ts";
 
 /**
- * Every module's routes, with what they accept held to the configured limits, the instance
+ * Every module's routes, with what they accept limited by the configured limits, the instance
  * described as configured, and the API documentation, with the OpenAPI document describing them
  * all.
  */
 export const routes = (settings: AboutSettings): readonly Route[] => {
     const documented = [
         ...authRoutes,
-        // Before the account routes, whose `/api/v1/accounts/:id` would take their paths.
+        // Before the account routes, whose `/api/v1/accounts/:id` would otherwise match their
+        // paths.
         ...graphRoutes,
         ...accountRoutes(settings.limits),
         ...noteRoutes(settings.limits),

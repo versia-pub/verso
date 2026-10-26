@@ -4,13 +4,13 @@ import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 import type { AccountIdQuery } from "./follow_queries.ts";
 
-/** Instances' ids, as a subquery. */
+/** Instance ids, as a subquery. */
 export type InstanceIdQuery = SelectQueryBuilder<Database, keyof Database, { instance_id: string }>;
 
 /**
- * Accounts left out of what reaches someone: the ones they block, or mute too, and every account on
- * the instances whose domains they block. Those are matched by each account's instance, so that a
- * domain with many accounts on it makes no long list.
+ * Accounts excluded from what reaches someone: the ones they block (or mute, too), and every
+ * account on the instances whose domains they block. Those are matched by each account's instance,
+ * so that a domain with many accounts on it makes no long list.
  */
 export type Excluded = {
     readonly accounts: AccountIdQuery;
@@ -20,7 +20,7 @@ export type Excluded = {
 
 /**
  * The accounts `accounts`, and those on the instances `instances`. It reads the `accounts` table
- * rather than asking its module, so that it is one query.
+ * directly rather than going through its module, so that it takes one query.
  */
 export const excluded = (
     ctx: Context,

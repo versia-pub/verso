@@ -4,7 +4,7 @@ import { columnTypes } from "../columns.ts";
 
 /**
  * Groups of jobs that wait, such as deliveries to an instance that is down, as one row each rather
- * than by putting off every job. Due jobs are claimed in the order they were made, which their
+ * than by postponing every job. Due jobs are claimed in the order they were created, which their
  * ids sort in.
  */
 export const jobPauses: Migration = {

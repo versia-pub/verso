@@ -12,8 +12,8 @@ const numberPattern = /^-?(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$/;
 
 /**
  * Parses a request or response body under Versia's JSON rules. `JSON.parse` accepts more than
- * Versia does, and hides duplicate keys and how numbers were written, so the raw text is scanned
- * as well.
+ * Versia does, and hides duplicate keys and how numbers were written, so the raw text is scanned as
+ * well.
  * @see https://versia.pub/json
  */
 export const parseJson = (body: Uint8Array): JsonResult => {

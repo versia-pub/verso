@@ -1,6 +1,6 @@
 /**
- * Rate limits: how many requests a client may make in a window of time. Counts live in a store,
- * in memory or shared between servers, and are reported in the headers Versia requires.
+ * Rate limits: how many requests a client may make in a window of time. Counts live in a store, in
+ * memory or shared between servers, and are reported in the headers Versia requires.
  * @see https://datatracker.ietf.org/doc/html/draft-polli-ratelimit-headers-02
  * @module
  */
@@ -14,22 +14,22 @@ export type Hits = {
     readonly resetsAt: Date;
 };
 
-/** Where request counts are kept. */
+/** Where request counts are stored. */
 export type RateLimitStore = {
     /**
-     * Counts one request for `key` and returns its count so far. A key's window starts at its
-     * first request and lasts `windowMs`; after that, counting starts again from one. Windows start
-     * when each client starts, so clients don't all come back at the same moment.
+     * Counts one request for `key` and returns its count so far. A key's window starts at its first
+     * request and lasts `windowMs`; after that, counting starts again from one. Windows start when
+     * each client starts, so clients don't all come back at the same moment.
      */
     hit(key: string, windowMs: number): Promise<Hits>;
 };
 
-/** How often the memory store forgets windows that have ended. */
+/** How often the memory store drops windows that have ended. */
 const sweepEveryMs = 60_000;
 
 /** A store for one server, whose counts are lost on restart. */
 export type MemoryRateLimitStore = RateLimitStore & {
-    /** How many keys are held, for checking that ended windows are forgotten. */
+    /** How many keys are held, for checking that ended windows are dropped. */
     readonly size: number;
 };
 
@@ -78,7 +78,7 @@ export type Quota = {
     readonly allowed: boolean;
     readonly limit: number;
     readonly remaining: number;
-    /** Whole seconds until the window ends, as `RateLimit-Reset` and `Retry-After` want. */
+    /** Whole seconds until the window ends, as `RateLimit-Reset` and `Retry-After` expect. */
     readonly resetSeconds: number;
     readonly windowSeconds: number;
 };
@@ -102,7 +102,7 @@ export const consume = async (
     };
 };
 
-/** The limits clients and other instances are held to, and where their counts are kept. */
+/** The limits clients and remote instances are held to, and where their counts are stored. */
 export type RateLimits = {
     readonly store: RateLimitStore;
     /** For each client. */
@@ -112,8 +112,8 @@ export type RateLimits = {
 };
 
 /**
- * Counts a request against `key` under `policy`, and refuses it once the key is over the limit.
- * Every reply says how much of the quota is left.
+ * Counts a request against `key` under `policy`, and rejects it once the key is over the limit.
+ * Every response says how much of the quota is left.
  */
 export const checkRateLimit = async (
     c: HonoContext,
@@ -129,7 +129,7 @@ export const checkRateLimit = async (
     c.header("ratelimit-reset", String(quota.resetSeconds));
 
     if (!quota.allowed) {
-        // The same moment as RateLimit-Reset, as the draft asks.
+        // The same moment as RateLimit-Reset, as the draft requires.
         c.header("retry-after", String(quota.resetSeconds));
         throw new TooManyRequests();
     }

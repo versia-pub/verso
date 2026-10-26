@@ -14,8 +14,8 @@ import { Forbidden, NotPermitted, Unauthorized, UserRequired } from "./errors.ts
 import type { Route, RouteViewer, Viewer } from "./route.ts";
 
 /**
- * Who is calling, checked against the route's `auth` as Mastodon checks it. A token sent where none
- * is needed is ignored; on other routes, a token sent must be valid.
+ * Who is calling, validated against the route's `auth` as Mastodon validates it. A token sent where
+ * none is needed is ignored; on other routes, a token sent must be valid.
  */
 export const viewerOf = async (
     ctx: Context,
@@ -39,9 +39,9 @@ export const viewerOf = async (
 };
 
 /**
- * The viewer, able to say what it may do: a user, what every user may and their roles allow, and
- * anyone else, such as an app acting for itself, what anonymous visitors may. That is looked up
- * once, the first time something asks.
+ * The viewer, able to say what it may do: for a user, what every user may do and their roles allow,
+ * and for anyone else, such as an app acting for itself, what anonymous visitors may do. That is
+ * looked up once, the first time something asks.
  */
 export const withPermissions = (
     ctx: Context,
@@ -91,9 +91,9 @@ const bearerOf = (ctx: Context, c: HonoContext<AppEnv>, services: AppServices) =
 
 /**
  * Who a request counts against: the user its access token is for, or else the client's IP address.
- * Every token of a user counts as theirs, and an app's own tokens, which any app can make, as their
- * client, so making more tokens doesn't give more requests. A token that isn't valid doesn't count
- * either, or a client could send a new made-up one each time.
+ * Every token of a user counts as theirs, and an app's own tokens, which any app can create, as
+ * their client, so creating more tokens doesn't allow more requests. A token that isn't valid
+ * doesn't count either, or a client could send a new made-up one each time.
  */
 export const rateLimitKey = async (
     ctx: Context,

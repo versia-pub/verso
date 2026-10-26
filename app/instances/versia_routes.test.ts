@@ -52,7 +52,7 @@ Deno.test("an instance describes itself to others, with its current key", async 
 
     const before = await test.get("/.versia/v0.6/instance");
     assertEquals(before, await expected());
-    // Set up by the migrations, not at the fake clock's time.
+    // Created by the migrations, not at the fake clock's time.
     assertNotEquals(before.body.created_at, test.clock.now().toISOString());
 
     test.clock.advance(1000);

@@ -9,8 +9,8 @@ import { countPosted } from "./notes.ts";
 import { createNote, createShare } from "./testing.ts";
 
 /**
- * alice and carol here, and bob on b.example, who replies to and shares alice's note, and has many
- * notes of his own, one of which carol shares.
+ * alice and carol are local, and bob is on b.example: he replies to and boosts alice's status, and
+ * has many statuses of his own, one of which carol boosts.
  */
 const open = async () => {
     const test = await createTestContext();
@@ -31,7 +31,7 @@ const open = async () => {
     for (let n = 0; n < 600; n++) {
         await createNote(test.ctx, "bob", { instance_id: instanceId, remote_id: `n${n}` });
     }
-    // carol shares one of his notes.
+    // carol boosts one of his statuses.
     await createShare(test.ctx, "carol", reply.id);
 
     const sender = { domain: "b.example", instanceId, fetched: false };
@@ -70,7 +70,7 @@ Deno.test("a deleted user's notes go first, in batches, with what they counted",
     );
 
     assertEquals(await test.counts(), { replies: 0, shares: 0, carol: 0, bob: 0 });
-    // The user itself goes when the Delete is received.
+    // The user itself is removed when the Delete is received.
     const bob = await test.ctx.db.selectFrom("accounts").select("id").where("id", "=", "bob")
         .executeTakeFirst();
     assertEquals(bob?.id, "bob");

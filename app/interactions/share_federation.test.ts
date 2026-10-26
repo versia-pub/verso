@@ -14,8 +14,8 @@ import { shareType } from "./share_federation.ts";
 import { share, unshare } from "./shares.ts";
 
 /**
- * alice and bob here, carol on b.example, erin on c.example, who follows alice, and frank on
- * d.example.
+ * alice and bob are local, carol is on b.example, erin on c.example, who follows alice, and frank
+ * on d.example.
  */
 const open = async () => {
     const test = await createTestContext();
@@ -32,7 +32,7 @@ const open = async () => {
         return shareType.find(test.ctx, id, requester);
     };
 
-    /** A page of a local note's shares, as `requester` may see them. */
+    /** A page of a local status's boosts, as `requester` may see them. */
     const shares = (id: string, requester: string, page = { offset: 0, limit: 40 }) =>
         registry.types.get("Note")?.collections?.["pub.versia:share/Shares"]?.(
             test.ctx,
@@ -44,7 +44,7 @@ const open = async () => {
     return { ...test, find, shares };
 };
 
-/** The shares and Deletes queued to be sent, with the instance each is for. */
+/** The Shares and Deletes queued to be sent, with the instance each is for. */
 const sent = async (ctx: Context) =>
     (await ctx.db.selectFrom("jobs").select("payload").where("queue", "=", deliverQueue)
         .orderBy("id").execute())
@@ -119,7 +119,7 @@ Deno.test("a local share is fetched by instances that may see it, or whose note 
         shared: local.id,
     });
 
-    // Neither other instances' shares, nor notes, are fetched as shares.
+    // Neither remote instances' Shares, nor Notes, are fetched as Shares.
     assertEquals(await test.find(remote.id, "b.example"), undefined);
     assertEquals(await test.find(local.id, "b.example"), undefined);
 });

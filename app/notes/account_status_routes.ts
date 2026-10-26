@@ -11,7 +11,7 @@ import { Status } from "@versia/client-api";
 import { z } from "zod";
 
 /**
- * Which of an account's statuses to give. Pinned ones, of which there are few, are given all at
+ * Which of an account's statuses to return. Pinned statuses are few, so all of them are returned at
  * once.
  * @see https://docs.joinmastodon.org/methods/accounts/#statuses
  */

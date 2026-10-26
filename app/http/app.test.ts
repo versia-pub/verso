@@ -64,7 +64,7 @@ const scripted = defineRoute({
     handler: () => Promise.resolve({ status: 200, page: layout("Scripted", html``) }),
 });
 
-/** Remembers a visit in a cookie, and forgets it on the next one. */
+/** Stores a visit in a cookie, and forgets it on the next one. */
 const visit = defineRoute({
     method: "GET",
     path: "/visit",
@@ -108,7 +108,7 @@ const entity = defineRoute({
     handler: () => Promise.resolve({ status: 200, body: { type: "Note" } }),
 });
 
-/** A cacheable file, or an error: thrown for `missing`, replied for `gone`. */
+/** A cacheable file, or an error: thrown for `missing`, returned for `gone`. */
 const picture = defineRoute({
     method: "GET",
     path: "/pictures/:name",
@@ -203,7 +203,9 @@ const numbers = defineRoute({
     },
 });
 
-/** Declares pages of a list, and, typed loosely as data from elsewhere might be, sends no cursors. */
+/**
+ * Declares pages of a list, and, typed loosely as data from elsewhere might be, sends no cursors.
+ */
 const uncounted = defineRoute({
     method: "GET",
     path: "/uncounted",

@@ -37,7 +37,10 @@ export type IssuerUnreachable = { readonly result: "unreachable"; readonly issue
 
 export type Authorization =
     | IssuerUnreachable
-    /** The app or its redirect URI is wrong, so the user is told instead of redirected. */
+    /**
+     * The app or its redirect URI is invalid, so the user is shown an error instead of being
+     * redirected.
+     */
     | { readonly result: "refused"; readonly description: string }
     /** An OAuth error, to send back to the app's redirect URI. */
     | {
@@ -66,7 +69,7 @@ const beginLogin = async (ctx: Context, provider: IdentityProvider) => {
     }
 };
 
-/** `uri` with `params` added to its query, leaving out undefined ones. */
+/** `uri` with `params` added to its query, omitting undefined ones. */
 export const withParams = (
     uri: string,
     params: Readonly<Record<string, string | undefined>>,
@@ -80,7 +83,7 @@ export const withParams = (
     return url.href;
 };
 
-/** An app's request to log a user in, once checked, or what to answer it with. */
+/** An app's request to log a user in, once validated, or what to respond with. */
 type Checked =
     | {
         readonly ok: true;
@@ -92,8 +95,8 @@ type Checked =
     | { readonly ok: false; readonly answer: Authorization };
 
 /**
- * Checks an app's request to log a user in. Errors before the redirect URI is known can't go back
- * to the app, so they are shown to the user instead.
+ * Validates an app's request to log a user in. Errors before the redirect URI is known can't go
+ * back to the app, so they are shown to the user instead.
  */
 const checkRequest = async (ctx: Context, request: AuthorizeRequest): Promise<Checked> => {
     const refused = (description: string): Checked => ({
@@ -143,7 +146,7 @@ const checkRequest = async (ctx: Context, request: AuthorizeRequest): Promise<Ch
 };
 
 /**
- * Checks an app's request to log a user in, and starts the flow. The flow is tied to the browser
+ * Validates an app's request to log a user in, and starts the flow. The flow is tied to the browser
  * by `browserSecret`, which goes in a cookie, so another browser can't finish it.
  */
 export const authorize = async (

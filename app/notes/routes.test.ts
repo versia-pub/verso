@@ -61,7 +61,7 @@ const open = async () => {
         return { status: response.status, body: await response.json() };
     };
 
-    /** Edits a status as `as`, as {@link post} posts one. */
+    /** Edits a status as `as`, with the same body formats as {@link post}. */
     const edit = (id: string, body: Record<string, unknown> | string, as = "alice", on = app) =>
         post(body, as, on, "PUT", `/api/v1/statuses/${id}`);
 
@@ -424,7 +424,7 @@ Deno.test("statuses are posted, read and deleted with tokens and roles that may"
         403,
     );
 
-    // Reading notes isn't enough to change them.
+    // A read-only token isn't enough to change statuses.
     const readers = createTestApp(test.ctx, noteRoutes(defaultSettings().limits), {
         permissions: { anonymous: [], default: ["read:note"] },
     });
@@ -462,7 +462,7 @@ Deno.test("a share is undone by deleting it, can't be edited, and stands for its
     assertEquals((await test.edit(shared.id, { status: "Hi" }, "bob")).status, 404);
     assertEquals((await test.request("DELETE", path, "alice")).status, 404);
 
-    // bob's follower on another instance is sent a Delete of a Share, not of a Note.
+    // bob's follower on a remote instance is sent a Delete of a Share, not of a Note.
     await createInstance(test.ctx, "b.example");
     await createRemoteAccount(test.ctx, "carol", "b.example");
     await follow(test.ctx, "carol", "bob");

@@ -1,6 +1,6 @@
 /**
- * Default pictures for accounts that haven't uploaded their own: a pattern and colour of their own,
- * drawn from their id, so accounts are told apart at a glance.
+ * Default pictures for accounts that haven't uploaded their own: a pattern and colour unique to
+ * each account, generated from its id, so accounts can be told apart at a glance.
  * @module
  */
 import { encode } from "fast-png";
@@ -8,7 +8,7 @@ import { encode } from "fast-png";
 /** An sRGB colour, each channel from 0 to 255. */
 type Rgb = [number, number, number];
 
-/** A PNG of one colour per pixel, from `palette` by the index `pixel` gives. */
+/** A PNG with one colour per pixel, taken from `palette` by the index `pixel` returns. */
 const paletted = (
     width: number,
     height: number,
@@ -34,7 +34,7 @@ const banner = { width: 1500, height: 500 };
 
 const background: Rgb = [240, 240, 240];
 
-/** An HSL colour, with saturation and lightness from 0 to 1, as sRGB. */
+/** An HSL colour, with saturation and lightness from 0 to 1, converted to sRGB. */
 const hsl = (hue: number, saturation: number, lightness: number): Rgb => {
     const chroma = saturation * Math.min(lightness, 1 - lightness);
     const channel = (n: number) => {
@@ -58,8 +58,8 @@ const looks = async (seed: string) => {
 };
 
 /**
- * A 420×420 PNG of a pattern, mirrored left to right like GitHub's identicons, in a colour. The
- * same seed always gives the same picture.
+ * A 420×420 PNG of a pattern, mirrored left to right like GitHub's identicons, in one colour. The
+ * same seed always gives the same image.
  */
 export const identicon = async (seed: string): Promise<Uint8Array> => {
     const { hue, filled } = await looks(seed);

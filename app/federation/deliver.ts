@@ -1,5 +1,5 @@
 /**
- * Sending entities to other Versia instances: one job for each instance, for the delivery worker.
+ * Sending entities to remote Versia instances: one job per instance, for the delivery worker.
  * @see https://versia.pub/federation/http
  * @module
  */
@@ -9,10 +9,10 @@ import { reachableDomainsOf } from "../instances/instance_queries.ts";
 import { enqueueAll } from "../jobs/job_queries.ts";
 import type { Context } from "../kernel/context.ts";
 
-/** Versia's own, so other protocols' deliveries can't hold it up. */
+/** Versia's own queue, so deliveries of other protocols can't hold it up. */
 export const deliverQueue = "versia-deliver";
 
-/** A delivery job's payload. */
+/** The payload of a delivery job. */
 export const DeliverJob = z.object({
     /** The domain of the instance to send it to. */
     domain: z.string(),
@@ -22,15 +22,15 @@ export const DeliverJob = z.object({
 export type DeliverJob = z.infer<typeof DeliverJob>;
 
 /**
- * More than are ever made: deliveries are given up on by age, after as long as settings say, at
- * most 30 days, with at most six hours between attempts.
+ * More than are ever made: deliveries are given up on by age, after as long as the settings say (at
+ * most 30 days), with at most six hours between attempts.
  */
 const maxAttempts = 1000;
 
 /**
- * Queues `entity` for each of `instanceIds` that is a Versia instance, grouped by instance so each
- * can be limited, except blocked ones, and ones that couldn't be reached for as long as settings
- * say, as on Mastodon, until they are heard from again.
+ * Queues `entity` for delivery to each of `instanceIds` that is a Versia instance, grouped by
+ * instance so each can be rate limited. Skips blocked instances, and instances that couldn't be
+ * reached for as long as the settings say, as on Mastodon, until they are heard from again.
  */
 export const queueDeliveriesTo = async (
     ctx: Context,
@@ -45,16 +45,17 @@ export const queueDeliveriesTo = async (
         if (await ctx.federation.isBlocked(ctx, domain)) continue;
 
         const payload: DeliverJob = { domain, body };
-        // Deliveries are many, so workers find them by polling.
+        // Deliveries are numerous, so workers find them by polling.
         jobs.push({ queue: deliverQueue, payload, maxAttempts, group: domain, wake: false });
     }
     await enqueueAll(ctx, jobs);
 };
 
 /**
- * Queues `entity` for each instance that hosts any of `recipients`, which are account ids, as
- * {@link queueDeliveriesTo} does. Local accounts need nothing delivered. For a few accounts, such
- * as those a note mentions; an account's followers are found by their instances instead.
+ * Queues `entity` for delivery to each instance that hosts any of `recipients`, which are account
+ * ids, as {@link queueDeliveriesTo} does. Local accounts need nothing delivered. This is for a few
+ * accounts, such as those mentioned by a status; an account's followers are found through their
+ * instances instead.
  */
 export const queueDeliveries = async (
     ctx: Context,

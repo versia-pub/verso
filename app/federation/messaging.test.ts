@@ -80,7 +80,7 @@ const like = (created_at = "2026-01-01T00:00:00Z") => ({
     liked: "a.test:n1",
 });
 
-/** The messages a.test sent, by where to. */
+/** The messages a.test sent, by destination. */
 const messagesSent = async (network: Network) =>
     await Promise.all(
         network.transport.sent
@@ -97,7 +97,7 @@ Deno.test("an instance that takes messages is told why Verso gave up on what it 
     await using network = await createNetwork(["a.test"]);
     const c = await addEvilInstance(network, "c.test", ["pub.versia:instance_messaging"]);
 
-    // Sent again, the same mistake is explained once.
+    // Sent again, the same mistake is explained only once.
     for (const created_at of ["2026-01-01T00:00:00Z", "2026-01-01T00:00:01Z"]) {
         await c.send("https://a.test/.versia/v0.6/inbox", { body: like(created_at) });
         await network.drain();

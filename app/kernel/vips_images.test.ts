@@ -43,7 +43,7 @@ const made = async (
     }
 };
 
-/** A `width`×`height` picture of one colour, saved with `extension`, such as `jpg`. */
+/** A `width`×`height` image of one colour, saved with `extension`, such as `jpg`. */
 const picture = (extension: string, width: number, height: number, colour: number[]) =>
     made([png(width, height, colour)], `out.${extension}`, ([input], output) => [
         ["copy", input, output],
@@ -83,7 +83,7 @@ const averageOf = (thumbhash: string) => {
 const assertColour = (actual: number[], expected: number[]) =>
     expected.forEach((value, i) => assertAlmostEquals(actual[i], value, 12));
 
-/** Processes `bytes`, and fails unless they are kept. */
+/** Processes `bytes`, and fails unless they are stored. */
 const processed = async (
     bytes: Uint8Array<ArrayBuffer>,
     options = { maxPixels: 8_294_400 },
@@ -93,7 +93,7 @@ const processed = async (
     return result.image;
 };
 
-/** A 3×2 JPEG, saved by a camera held on its side, so its EXIF says to turn it a quarter right. */
+/** A 3×2 JPEG, taken by a camera held on its side, so its EXIF says to turn it a quarter right. */
 const sidewaysJpeg = Uint8Array.fromBase64(
     "/9j/4QB8RXhpZgAATU0AKgAAAAgAAwESAAMAAAABAAYAAAITAAMAAAABAAEAAIglAAQAAAABAAAAMgAAAAAAAwAAAAEAAAAE" +
         "AgMAAAABAAIAAAACTgAAAAACAAUAAAADAAAAXAAAAAAAAAAwAAAAAQAAADMAAAABAAAAAAAAAAH/2wBDABALDA4MChAO" +
@@ -146,7 +146,7 @@ Deno.test("a photo is turned upright, and its metadata is left out", async () =>
     assert(!contains(image.preview.bytes, "Exif\0\0"));
 });
 
-// GIFs can't keep EXIF metadata.
+// GIFs can't store EXIF metadata.
 for (const extension of ["png", "webp", "avif", "heic"]) {
     Deno.test(`a ${extension} photo's metadata is left out too`, async () => {
         const photo = await made([sidewaysJpeg], `out.${extension}`, ([input], output) => [
@@ -169,7 +169,7 @@ Deno.test("a picture with more pixels than allowed is scaled down to them", asyn
     const odd = await processed(await picture("png", 101, 37, red), { maxPixels: 1000 });
     assert(odd.width * odd.height <= 1000, `${odd.width}×${odd.height}`);
     assert(odd.width * odd.height > 900, `${odd.width}×${odd.height}`);
-    // vips would make this 21×11, rounding the shorter side up.
+    // vips would produce 21×11, rounding the shorter side up.
     const rounded = await processed(await picture("png", 40, 20, red), { maxPixels: 221 });
     assertEquals([rounded.width, rounded.height], [20, 10]);
     // And it is as large as fits, at exactly the limit.
@@ -256,7 +256,7 @@ Deno.test("a grey picture is hashed in colour, and a see-through one keeps its a
     // Grey, and alpha.
     assertEquals(await field(grey, "bands"), "2");
     const greyHash = averageOf((await processed(grey)).thumbhash);
-    // ThumbHash keeps colours only roughly.
+    // ThumbHash preserves colours only roughly.
     assertAlmostEquals(greyHash[0], greyHash[1], 8);
     assertAlmostEquals(greyHash[1], greyHash[2], 8);
 
@@ -361,7 +361,7 @@ Deno.test("a picture with too many pixels to read, in all its frames, is refused
         "too-large",
     );
 
-    // Only the first of a HEIC's pictures is kept, so only it counts.
+    // Only the first of a HEIC's images is stored, so only it counts.
     const burst = await animation("heic", 21, 20, [red, red, red]);
     assertEquals(await field(burst, "n-pages"), "3");
     assertEquals(await reasonOf(burst), "kept");
@@ -391,7 +391,7 @@ Deno.test("processing and checking leave no files behind", async () => {
         await Deno.remove(directory, { recursive: true });
     }
 
-    // They are kept where they are told to be.
+    // They are stored where they are told to be.
     await assertRejects(
         async () =>
             await vipsImages({ maxPixels: 8_294_400, directory: `${directory}/gone` }).process(

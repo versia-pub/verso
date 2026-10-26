@@ -26,7 +26,7 @@ Deno.test("a reply that isn't an error is refused unless the instance asked sign
     const a = network.instances["a.test"];
     await createLocalAccount(network.instances["b.test"].ctx, "bob");
 
-    // Answers with b.test's signed reply, as if it were b.test.
+    // Responds with b.test's signed response, as if it were b.test.
     network.transport.servers.set("evil.test", (request) => {
         const url = new URL(request.url);
         url.host = "b.test";
@@ -80,7 +80,7 @@ Deno.test("only a request that fails to get there counts as unreachable", async 
         "down.test couldn't be reached",
     );
 
-    // A bug in Verso, before anything is sent, is not the instance's doing.
+    // A bug in Verso, before anything is sent, is not the remote instance's fault.
     const broken = {
         ...a,
         federation: { ...a.federation, instanceKey: () => Promise.reject(new TypeError("A bug")) },

@@ -5,8 +5,8 @@ import type { MediaTable } from "./tables.ts";
 export type MediaRow = Selectable<MediaTable>;
 
 /**
- * A file on another instance, as Verso keeps it whatever protocol described it. Only one version
- * of it is kept, even if its instance offered several.
+ * Remote media, stored the same way whichever protocol described it. Only one version is stored,
+ * even if the remote instance offered several.
  */
 export type RemoteMedia = {
     readonly url: string;
@@ -20,7 +20,7 @@ export type RemoteMedia = {
     readonly description?: string;
 };
 
-/** The columns for a remote file, with what it leaves out cleared. */
+/** The columns for remote media, with omitted fields cleared. */
 const columnsOf = (media: RemoteMedia) => ({
     url: media.url,
     media_type: media.mediaType,
@@ -33,8 +33,9 @@ const columnsOf = (media: RemoteMedia) => ({
 });
 
 /**
- * Keeps a remote file on the instance `instanceId`: in place of the file `current`, if there is
- * one, so that the row pointing at it needn't change, or else as a new file. Returns its id.
+ * Stores remote media for the instance `instanceId`. If `current` is given, it is updated in place
+ * so the rows that reference it needn't change; otherwise a new media row is created. Returns its
+ * id.
  */
 export const saveRemoteMedia = async (
     ctx: Context,
@@ -60,11 +61,11 @@ export const saveRemoteMedia = async (
     return id;
 };
 
-/** The file `id`, or `undefined` if there is none. */
+/** The media row `id`, or `undefined` if there is none. */
 export const findMedia = (ctx: Context, id: string): Promise<MediaRow | undefined> =>
     ctx.db.selectFrom("media").selectAll().where("id", "=", id).executeTakeFirst();
 
-/** Deletes a file. Nothing may point at it any more. */
+/** Deletes a media row. Nothing may reference it any more. */
 export const deleteMedia = async (ctx: Context, id: string): Promise<void> => {
     await ctx.db.deleteFrom("media").where("id", "=", id).execute();
 };

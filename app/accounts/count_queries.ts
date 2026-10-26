@@ -1,5 +1,6 @@
 /**
- * The counts kept on accounts: who they follow, who follows them, and what they posted.
+ * The counts stored on accounts: who they follow, who follows them, and how many statuses they
+ * posted.
  * @module
  */
 import type { SelectQueryBuilder } from "kysely";
@@ -7,8 +8,8 @@ import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 
 /**
- * Counts a follow from `followerId` of `followeeId` that began, with `by` 1, or ended, with -1, in
- * both accounts' counts.
+ * Updates the counts of both accounts for a follow from `followerId` to `followeeId` that began
+ * (`by` 1) or ended (`by` -1).
  */
 export const countFollow = async (
     ctx: Context,
@@ -27,10 +28,10 @@ export const countFollow = async (
         .execute();
 };
 
-/** Accounts' ids, as a subquery of another module's, such as those an account follows. */
+/** Account ids, as a subquery from another module, such as those an account follows. */
 export type AccountIds = SelectQueryBuilder<Database, keyof Database, { account_id: string }>;
 
-/** Takes one from the followers each of `accounts` has, as when one of them is deleted. */
+/** Decrements the follower count of each of `accounts`, as when one of them is deleted. */
 export const uncountFollowers = async (ctx: Context, accounts: AccountIds): Promise<void> => {
     await ctx.db.updateTable("accounts")
         .set((eb) => ({ followers_count: eb("followers_count", "-", 1) }))
@@ -38,7 +39,7 @@ export const uncountFollowers = async (ctx: Context, accounts: AccountIds): Prom
         .execute();
 };
 
-/** Takes one from the accounts each of `accounts` follows, as when one of them is deleted. */
+/** Decrements the following count of each of `accounts`, as when one of them is deleted. */
 export const uncountFollowing = async (ctx: Context, accounts: AccountIds): Promise<void> => {
     await ctx.db.updateTable("accounts")
         .set((eb) => ({ following_count: eb("following_count", "-", 1) }))
@@ -47,9 +48,9 @@ export const uncountFollowing = async (ctx: Context, accounts: AccountIds): Prom
 };
 
 /**
- * Counts a note an account posted, or deleted, and when it last posted, which an older note, such
- * as one fetched late from another instance, doesn't move back. Deleting a note leaves when it
- * last posted as it was, as Mastodon does.
+ * Counts a status an account posted, or deleted, and when it last posted. An older status, such as
+ * a remote one fetched late, doesn't move that back. Deleting a status leaves the time it last
+ * posted unchanged, as Mastodon does.
  */
 export const countNote = async (
     ctx: Context,
@@ -71,8 +72,8 @@ export const countNote = async (
 };
 
 /**
- * Takes one from the statuses of the account each of `statuses` is by, such as other modules'
- * shares of a note that is deleted, which go with it.
+ * Decrements the status count of the account that each of `statuses` is by, such as other modules'
+ * boosts of a status that is deleted, which are deleted with it.
  */
 export const uncountStatusesFor = async (ctx: Context, statuses: AccountIds): Promise<void> => {
     await ctx.db.updateTable("accounts")

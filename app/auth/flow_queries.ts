@@ -1,5 +1,5 @@
 /**
- * Every query on the `oauth_flows` table, so its rules are kept in one place.
+ * Every query on the `oauth_flows` table, so its rules are in one place.
  * @module
  */
 import type { Context } from "../kernel/context.ts";
@@ -23,8 +23,8 @@ export const findFlow = async (
         .executeTakeFirst();
 
 /**
- * The flow a form the user sent was for, if it is still the browser's flow. Another login started
- * in the browser since replaces the cookie, so a form left open from before is refused.
+ * The flow that a form sent by the user was for, if it is still the browser's flow. Another login
+ * started in the browser since replaces the cookie, so a form left open from before is rejected.
  */
 export const findFormFlow = async (
     ctx: Context,
@@ -61,8 +61,8 @@ export const markLoggedIn = async (
 };
 
 /**
- * Gives the flow its code, keeping only the hash, and a new expiry. Returns false if it already
- * had one, so when the form is sent twice at once, only the first answer counts.
+ * Gives the flow its code, storing only the hash, and a new expiry. Returns false if it already had
+ * one, so when the form is sent twice at once, only the first response counts.
  */
 export const setCode = async (
     ctx: Context,
@@ -80,9 +80,9 @@ export const setCode = async (
 };
 
 /**
- * Uses up the unexpired flow with this code, and returns it, or the flow it was already used for,
- * saying so. Marking it used first means a code can only be tried once, even by two requests at
- * once.
+ * Marks the unexpired flow with this code as used, and returns it, or the flow it was already used
+ * for, saying so. Marking it used first means a code can only be tried once, even by two
+ * simultaneous requests.
  */
 export const useCode = async (
     ctx: Context,
@@ -100,14 +100,14 @@ export const useCode = async (
         .executeTakeFirst();
     if (unused) return { flow: unused, reused: false };
 
-    // Expired or not, as long as it is kept.
+    // Expired or not, as long as it still exists.
     const used = await ctx.db.selectFrom("oauth_flows").selectAll()
         .where("code_hash", "=", hash)
         .executeTakeFirst();
     return used && { flow: used, reused: true };
 };
 
-/** Notes the token a flow's code was traded for. */
+/** Records the token a flow's code was exchanged for. */
 export const setCodeToken = async (
     ctx: Context,
     flowId: string,
@@ -119,7 +119,7 @@ export const setCodeToken = async (
 
 /**
  * Deletes a flow whose login hasn't finished. Returns false if it has, as when the browser came
- * back twice at once and the other time logged in, so the flow stays for it.
+ * back twice at once and the other request logged in, so the flow stays for it.
  */
 export const deleteUnfinishedFlow = async (ctx: Context, flowId: string): Promise<boolean> => {
     const deleted = await ctx.db.deleteFrom("oauth_flows")
@@ -135,7 +135,9 @@ export const deleteFlow = async (ctx: Context, flowId: string): Promise<void> =>
     await ctx.db.deleteFrom("oauth_flows").where("id", "=", flowId).execute();
 };
 
-/** Deletes flows past their expiry: logins never finished, and codes traded or never traded. */
+/**
+ * Deletes flows past their expiry: logins never finished, and codes exchanged or never exchanged.
+ */
 export const deleteExpiredFlows = async (ctx: Context): Promise<void> => {
     await ctx.db.deleteFrom("oauth_flows").where("expires_at", "<=", ctx.clock.now()).execute();
 };

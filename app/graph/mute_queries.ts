@@ -14,7 +14,7 @@ export type MuteOptions = {
     readonly expiresAt: Date | null;
 };
 
-/** Whether a mute is still on at `now`. */
+/** Whether a mute is still active at `now`. */
 const ongoing = (now: Date) => (eb: ExpressionBuilder<Database, "mutes">) =>
     eb.or([eb("mutes.expires_at", "is", null), eb("mutes.expires_at", ">", now)]);
 
@@ -43,7 +43,7 @@ export const upsertMute = async (
         .execute();
 };
 
-/** Removes a mute. Returns whether there was one still on. */
+/** Removes a mute. Returns whether there was one still active. */
 export const deleteMute = async (
     ctx: Context,
     accountId: string,
@@ -59,7 +59,7 @@ export const deleteMute = async (
         (removed.expires_at === null || removed.expires_at > ctx.clock.now());
 };
 
-/** How `accountId` mutes each of `otherIds` it mutes, by the muted account. */
+/** How `accountId` mutes each of `otherIds` that it mutes, by the muted account. */
 export const mutesOf = async (
     ctx: Context,
     accountId: string,
@@ -76,8 +76,8 @@ export const mutesOf = async (
 };
 
 /**
- * A page of the accounts `accountId` mutes, the latest muted first, each as the mute's id, which
- * pages are counted by, the muted account's, and when the mute ends.
+ * A page of the accounts `accountId` mutes, latest muted first, each as the mute's id, which pages
+ * are counted by, the muted account's id, and when the mute ends.
  */
 export const mutePage = async (
     ctx: Context,
@@ -93,7 +93,7 @@ export const mutePage = async (
         page,
     );
 
-/** The accounts `accountId` mutes for now, as a subquery. */
+/** The accounts `accountId` currently mutes, as a subquery. */
 export const mutedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     ctx.db.selectFrom("mutes")
         .select("target_id as account_id")

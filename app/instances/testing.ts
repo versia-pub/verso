@@ -55,7 +55,9 @@ export const metadata = (
     public_key: { algorithm, key: spki },
 });
 
-/** An instance that answers with its metadata, which says it is `domain`, supporting `extensions`. */
+/**
+ * An instance that responds with its metadata, which says it is `domain`, supporting `extensions`.
+ */
 export const metadataServer = (
     domain: string,
     pair: { spki: string },

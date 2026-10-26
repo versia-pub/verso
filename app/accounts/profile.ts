@@ -12,7 +12,7 @@ import type { ProfileUpdated } from "./events.ts";
 import type { ProfileField, Visibility } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
 
-/** What a user changes about their profile. Anything left out stays as it is. */
+/** What a user changes about their profile. Omitted fields stay as they are. */
 export type ProfileChanges = {
     readonly displayName?: string;
     /** In plain text. */
@@ -39,8 +39,8 @@ const plainField = (name: string, value: string): ProfileField => ({
 });
 
 /**
- * Uses this instance's emojis a local account's display name, bio and fields name, in place of
- * those it used.
+ * Links the local instance's custom emojis used in a local account's display name, bio and field
+ * names, replacing the ones it linked before.
  */
 const useEmojis = async (ctx: Context, row: AccountRow) => {
     const shortcodes = new Set([
@@ -55,8 +55,9 @@ const useEmojis = async (ctx: Context, row: AccountRow) => {
 };
 
 /**
- * Changes a local account's profile, making the HTML of what was written, and finding the emojis
- * it uses, and tells the rest of Verso, even if nothing changed, as Mastodon does.
+ * Updates a local account's profile, rendering the HTML of what was written, finding the custom
+ * emojis it uses, and emitting an event for the rest of Verso, even if nothing changed, as Mastodon
+ * does.
  */
 export const updateProfile = async (
     ctx: Context,

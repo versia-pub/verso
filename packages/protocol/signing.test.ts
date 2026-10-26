@@ -173,7 +173,8 @@ Deno.test("the signer is a canonical domain name, checked before any lookup", as
         signedBy: "bob.com",
     });
 
-    // Addresses inside Verso's own network can't be named, as an IP address, a port or one label.
+    // Addresses inside Verso's own network can't be named, whether as an IP address, a port or a
+    // single label.
     const refused = [
         "",
         "bob.com/x",
@@ -209,7 +210,7 @@ Deno.test("short signatures and unusable keys are rejected", async () => {
 
     assertEquals(await check({}, { "Versia-Signature": short }), invalid);
 
-    // A private key can't verify, so WebCrypto throws; verify still answers.
+    // A private key can't verify, so WebCrypto throws; verify still returns a result.
     assertEquals(
         await verify(
             message,

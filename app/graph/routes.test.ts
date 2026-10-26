@@ -139,7 +139,7 @@ Deno.test("following gives the relationship as it is now, and unfollowing undoes
         },
     });
 
-    // An empty list of languages means all of them, and options left out stay as they were.
+    // An empty list of languages means all of them, and omitted options stay as they were.
     const changed = await test.request("POST", "/api/v1/accounts/bob/follow", {
         body: '{"languages":[]}',
     });
@@ -208,7 +208,7 @@ Deno.test("relationships and follows aren't taken for accounts among every route
     assertEquals([relationships.status, (await relationships.json())[0]?.following], [200, true]);
 });
 
-/** The accounts on a page of `path`, by id, and its links, asked with `token` or by anyone. */
+/** The accounts on a page of `path`, by id, and its links, requested with `token` or by anyone. */
 const list = async (app: App, path: string, token?: string) => {
     const headers: HeadersInit = token ? { authorization: `Bearer ${token}` } : {};
     const response = await app.request(path, { headers });
@@ -251,7 +251,7 @@ Deno.test("an account's followers and follows are listed newest first, a page at
             .executeTakeFirstOrThrow()).id;
     const url = "https://social.example/api/v1/accounts/alice/followers";
 
-    // Erin only asked, and carol hasn't accepted alice yet.
+    // Erin only requested to follow, and carol hasn't accepted alice yet.
     const first = await list(test.app, "/api/v1/accounts/alice/followers?limit=2");
     assertEquals(first.ids, ["dave", "carol"]);
     assertEquals(

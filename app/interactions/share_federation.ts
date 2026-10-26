@@ -1,6 +1,6 @@
 /**
- * Shares as Versia has them: local users' shares, as other instances fetch them and are sent them,
- * with the collection of who shares a note, and other instances' ones, as Verso takes them in.
+ * Shares as Versia has them: local users' boosts, as remote instances fetch them and are sent them,
+ * with the collection of who boosts a status, and remote boosts, as Verso receives them.
  * @see https://versia.pub/extensions/share
  * @module
  */
@@ -26,7 +26,7 @@ const extension = "pub.versia:share";
 
 const typeName = "pub.versia:share/Share";
 
-/** A local user's share as a Versia Share, if its user and the note it shares are still there. */
+/** A local user's boost as a Versia Share, if its user and the status it boosts still exist. */
 const renderVersiaShare = async (
     ctx: Context,
     share: NoteRow,
@@ -47,8 +47,8 @@ const renderVersiaShare = async (
 };
 
 /**
- * The other instances a local user's share of a note is sent to: those of their followers, and
- * the one of the note's author, which must be told. Local users' shares are never direct.
+ * The remote instances a local user's boost of a status is sent to: those of their followers, and
+ * the instance of the status's author, which must be told. Local users' boosts are never direct.
  */
 const audienceOfShare = async (ctx: Context, accountId: string, noteId: string) => {
     const note = await findNote(ctx, noteId);
@@ -57,7 +57,7 @@ const audienceOfShare = async (ctx: Context, accountId: string, noteId: string) 
     return [...new Set([...await followerInstances(ctx, accountId), ...author])].toSorted();
 };
 
-/** Sends local users' shares, and a Delete when they undo one. */
+/** Sends local users' boosts, and a Delete when they undo one. */
 export const shareDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isShareEvent(event)) return;
 
@@ -75,16 +75,16 @@ export const shareDeliveries = async (ctx: Context, event: DomainEvent): Promise
 };
 
 /**
- * Whether `requester`, another instance, may see a local user's share of `note`: if it may see the
- * share, or the note is its own. Only public and unlisted notes are shared, and edits don't change
- * that, so anyone may see a local note shared.
+ * Whether `requester`, a remote instance, may see a local user's boost of `note`: if it may see the
+ * boost, or the status is its own. Only public and unlisted statuses are boosted, and edits don't
+ * change that, so anyone may see a boost of a local status.
  */
 const maySeeShare = (ctx: Context, share: NoteRow, note: NoteRow, requester: string) =>
     instanceMaySeeInteraction(ctx, note, share, requester);
 
 /**
- * The public and unlisted shares of a local note, oldest first, for an instance that may see it,
- * as references to them: bare ids for local ones, and the host and id for other instances' ones.
+ * The public and unlisted boosts of a local status, oldest first, for an instance that may see it,
+ * as references to them: bare ids for local ones, and the host and id for remote ones.
  */
 const noteShares: CollectionProvider = async (ctx, id, page, requester) => {
     const note = await findNote(ctx, id);
@@ -102,14 +102,15 @@ const noteShares: CollectionProvider = async (ctx, id, page, requester) => {
     };
 };
 
-/** The collections shares add to Notes. */
+/** The collections that boosts add to Notes. */
 export const noteShareCollections: Readonly<Record<string, CollectionProvider>> = {
     "pub.versia:share/Shares": noteShares,
 };
 
 /**
- * Whether a share `sender` sent is one Verso wants, from what Verso has: one of a local note, or by
- * someone a local user follows. Others could fill Verso with shares nobody here would see.
+ * Whether a Share sent by `sender` is one Verso wants, judging from what Verso has: a boost of a
+ * local status, or by someone a local user follows. Others could fill Verso with boosts nobody
+ * local would see.
  */
 const wanted = async (ctx: Context, share: v0_6.Share, sender: Sender) => {
     if (parseReference(share.shared, sender.domain)?.host === ctx.urls.domain) return true;
@@ -120,9 +121,9 @@ const wanted = async (ctx: Context, share: v0_6.Share, sender: Sender) => {
 };
 
 /**
- * Shares: other instances' ones, as they send them, and Deletes undo them, and local users' ones,
- * which other instances that may see them fetch. Verso keeps those it wants, with the notes they
- * share, which are fetched for the timelines they are shown in.
+ * Shares: remote ones, as remote instances send them, and Deletes undo them, and local users' ones,
+ * which remote instances that may see them fetch. Verso stores those it wants, with the statuses
+ * they boost, which are fetched for the timelines they are shown in.
  */
 export const shareType: EntityType<v0_6.Share> = {
     type: typeName,
@@ -133,7 +134,7 @@ export const shareType: EntityType<v0_6.Share> = {
     prepare: async (ctx, share, sender, budget) => {
         if (!await wanted(ctx, share, sender)) return;
 
-        // Without them, the share can't be kept, so it is tried again later.
+        // Without them, the boost can't be stored, so it is retried later.
         const author = parseReference(share.author, sender.domain);
         if (author) await ctx.federation.resolve(ctx, author, "User", budget);
         const shared = parseReference(share.shared, sender.domain);
@@ -148,7 +149,7 @@ export const shareType: EntityType<v0_6.Share> = {
 
         const note = await knownNoteRow(ctx, parseReference(share.shared, sender.domain));
         if (note === undefined) throw new PermanentFailure(`Verso doesn't have ${share.shared}`);
-        // As for local users' shares.
+        // As for local users' boosts.
         if (!everyone.includes(note.visibility)) {
             throw new PermanentFailure(`${share.shared} can't be shared`);
         }

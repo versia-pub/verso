@@ -6,8 +6,8 @@ import { s3Files } from "./s3_files.ts";
 import { timedTransport, type Transport } from "./transport.ts";
 
 /**
- * The store `storage` names. An S3 server is one the admin chose, which may be on their network,
- * so `transport` should reach it there.
+ * The store that `storage` names. An S3 server is one the admin chose, which may be on their
+ * network, so `transport` should be able to reach it there.
  */
 export const filesFor = (
     storage: Config["media"]["storage"],

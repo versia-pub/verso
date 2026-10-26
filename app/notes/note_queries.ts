@@ -12,7 +12,7 @@ export type NoteRow = Selectable<NotesTable>;
 
 export type NoteVersionRow = Selectable<NoteVersionsTable>;
 
-/** Adds who a note mentions, and its hashtags, in lower case. */
+/** Adds the users a status mentions and its hashtags, in lower case. */
 const insertMentionsAndTags = async (
     ctx: Context,
     noteId: string,
@@ -32,7 +32,7 @@ const insertMentionsAndTags = async (
     }
 };
 
-/** Adds a note, with the accounts it mentions and its hashtags, in lower case. */
+/** Adds a status, with the accounts it mentions and its hashtags in lower case. */
 export const insertNote = async (
     ctx: Context,
     note: Insertable<NotesTable>,
@@ -46,7 +46,7 @@ export const insertNote = async (
     return row;
 };
 
-/** Changes a note, and replaces who it mentions and its hashtags. */
+/** Updates a status, and replaces its mentions and hashtags. */
 export const updateNote = async (
     ctx: Context,
     id: string,
@@ -61,7 +61,7 @@ export const updateNote = async (
     await insertMentionsAndTags(ctx, id, mentionIds, tags);
 };
 
-/** Keeps what `note` says now, and the files it has, before it is edited, for its history. */
+/** Saves the current text and media of `note`, before it is edited, as a version in its history. */
 export const keepVersion = async (ctx: Context, note: NoteRow): Promise<void> => {
     const media = (await attachmentsOf(ctx, [note.id])).get(note.id) ?? [];
 
@@ -78,7 +78,7 @@ export const keepVersion = async (ctx: Context, note: NoteRow): Promise<void> =>
         .execute();
 };
 
-/** What a note said before each of its edits, oldest first. */
+/** What a status said before each of its edits, oldest first. */
 export const versionsOf = async (ctx: Context, noteId: string): Promise<NoteVersionRow[]> =>
     await ctx.db.selectFrom("note_versions").selectAll()
         .where("note_id", "=", noteId)
@@ -88,13 +88,13 @@ export const versionsOf = async (ctx: Context, noteId: string): Promise<NoteVers
 export const findNote = async (ctx: Context, id: string): Promise<NoteRow | undefined> =>
     await ctx.db.selectFrom("notes").selectAll().where("id", "=", id).executeTakeFirst();
 
-/** The notes of `ids` that exist, in no order. */
+/** The statuses in `ids` that exist, in no particular order. */
 export const findNotes = async (ctx: Context, ids: readonly string[]): Promise<NoteRow[]> =>
     ids.length === 0
         ? []
         : await ctx.db.selectFrom("notes").selectAll().where("id", "in", ids).execute();
 
-/** The note with the id `remoteId` on the instance `instanceId`, if Verso has it. */
+/** The status with the id `remoteId` on the instance `instanceId`, if Verso has it. */
 export const findRemoteNote = async (
     ctx: Context,
     instanceId: string,
@@ -106,8 +106,8 @@ export const findRemoteNote = async (
         .executeTakeFirst();
 
 /**
- * The note with the id `remoteId` on the instance at `domain`, if Verso has it. It joins the
- * instances' table, as references name instances by domain.
+ * The status with the id `remoteId` on the instance at `domain`, if Verso has it. It joins the
+ * instances table, as references name instances by domain.
  */
 export const findRemoteNoteAt = async (
     ctx: Context,
@@ -121,8 +121,8 @@ export const findRemoteNoteAt = async (
         .executeTakeFirst();
 
 /**
- * The notes of `ids` that exist, with the domain of the instance each is from, or `null`, joining
- * the instances' table so a page of notes is one query.
+ * The statuses in `ids` that exist, each with the domain of its instance, or `null` for a local
+ * status. It joins the instances table so a page of statuses takes one query.
  */
 export const noteOrigins = async (
     ctx: Context,
@@ -134,7 +134,9 @@ export const noteOrigins = async (
         .where("notes.id", "in", ids)
         .execute();
 
-/** An account's notes with one of `visibilities`, not its shares, oldest first, from `offset`. */
+/**
+ * An account's statuses with one of `visibilities`, excluding boosts, oldest first, from `offset`.
+ */
 export const notesBy = async (
     ctx: Context,
     accountId: string,
@@ -151,19 +153,19 @@ export const notesBy = async (
         .limit(limit)
         .execute();
 
-/** Which of an account's notes to page through, besides their visibility. */
+/** Which of an account's statuses to page through, besides their visibility. */
 export type NoteFilter = {
-    /** Leaves out replies, other than to the account itself. */
+    /** Excludes replies, other than replies to the account itself. */
     readonly excludeReplies?: boolean;
-    /** Leaves out shares. */
+    /** Excludes boosts. */
     readonly excludeShares?: boolean;
-    /** Only those with this hashtag. */
+    /** Only statuses with this hashtag. */
     readonly tag?: string;
-    /** Only those with files attached, which shares never have. */
+    /** Only statuses with media attached, which boosts never have. */
     readonly onlyMedia?: boolean;
 };
 
-/** A page of an account's notes and shares with one of `visibilities`, newest first. */
+/** A page of an account's statuses and boosts with one of `visibilities`, newest first. */
 export const notePageBy = async (
     ctx: Context,
     accountId: string,
@@ -197,7 +199,7 @@ export const notePageBy = async (
     return await readPage(query, "notes.id", page);
 };
 
-/** How many notes an account has with one of `visibilities`, not counting its shares. */
+/** How many statuses an account has with one of `visibilities`, not counting boosts. */
 export const countNotesBy = async (
     ctx: Context,
     accountId: string,
@@ -211,7 +213,7 @@ export const countNotesBy = async (
             .executeTakeFirstOrThrow(),
     );
 
-/** The ids of the accounts each of `noteIds` mentions, by note. */
+/** The ids of the accounts mentioned by each of `noteIds`, grouped by status. */
 export const mentionsOf = async (
     ctx: Context,
     noteIds: readonly string[],
@@ -230,7 +232,7 @@ export const mentionsOf = async (
     return mentions;
 };
 
-/** The hashtags of each of `noteIds`, by note. */
+/** The hashtags of each of `noteIds`, grouped by status. */
 export const tagsOf = async (
     ctx: Context,
     noteIds: readonly string[],
@@ -247,7 +249,7 @@ export const tagsOf = async (
     return tags;
 };
 
-/** Whether a note mentions an account. */
+/** Whether a status mentions an account. */
 export const isMentioned = async (
     ctx: Context,
     noteId: string,
@@ -258,11 +260,11 @@ export const isMentioned = async (
         .where("account_id", "=", accountId)
         .executeTakeFirst() !== undefined;
 
-/** Removes a note, and returns it, if there was one. */
+/** Deletes a status, and returns it if it existed. */
 export const deleteNote = async (ctx: Context, id: string): Promise<NoteRow | undefined> =>
     await ctx.db.deleteFrom("notes").where("id", "=", id).returningAll().executeTakeFirst();
 
-/** Counts a reply to a note, or one deleted. */
+/** Increments the reply count of a status, or decrements it when a reply is deleted. */
 export const countReply = async (ctx: Context, noteId: string, by: 1 | -1): Promise<void> => {
     await ctx.db.updateTable("notes")
         .set((eb) => ({ replies_count: eb("replies_count", "+", by) }))
@@ -270,7 +272,10 @@ export const countReply = async (ctx: Context, noteId: string, by: 1 | -1): Prom
         .execute();
 };
 
-/** Counts a like of a note, or one undone. Likes are the interactions module's. */
+/**
+ * Increments the like count of a status, or decrements it when a like is undone. Likes belong to
+ * the interactions module.
+ */
 export const countLike = async (ctx: Context, noteId: string, by: 1 | -1): Promise<void> => {
     await ctx.db.updateTable("notes")
         .set((eb) => ({ likes_count: eb("likes_count", "+", by) }))
@@ -278,7 +283,10 @@ export const countLike = async (ctx: Context, noteId: string, by: 1 | -1): Promi
         .execute();
 };
 
-/** Takes one like from each of `notes`, such as the ones an account that is deleted likes. */
+/**
+ * Decrements the like count of each of `notes`, such as the statuses liked by an account that is
+ * being deleted.
+ */
 export const uncountLikesOn = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
     await ctx.db.updateTable("notes")
         .set((eb) => ({ likes_count: eb("likes_count", "-", 1) }))

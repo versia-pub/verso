@@ -8,7 +8,7 @@ import { Account } from "./account.ts";
 export const PreviewCardAuthor = z.object({
     name: z.string(),
     url: z.url(),
-    /** Their account, or `null` if they have none that is known. */
+    /** Their account, or `null` if they have no known account. */
     account: Account.nullable(),
 });
 export type PreviewCardAuthor = z.infer<typeof PreviewCardAuthor>;
@@ -34,11 +34,11 @@ export const PreviewCard = z.object({
     /** Of the embed, or 0 for none. */
     width: z.int().min(0),
     height: z.int().min(0),
-    /** A picture for the preview, or `null` if there is none. */
+    /** An image for the preview, or `null` if there is none. */
     image: z.url().nullable(),
     /** A video or photo to embed, or empty. */
     embed_url: z.string(),
-    /** A placeholder to show while the picture loads, or `null` if there is none. */
+    /** A placeholder to display while the image loads, or `null` if there is none. */
     blurhash: z.string().nullable(),
 });
 export type PreviewCard = z.infer<typeof PreviewCard>;

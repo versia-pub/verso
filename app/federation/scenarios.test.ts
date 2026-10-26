@@ -1,6 +1,6 @@
 /**
- * The federation engine end to end, between complete instances: finding users, delivering to
- * them, peers going down, forged authors and blocks.
+ * The federation engine end to end, between complete instances: finding users, delivering to them,
+ * peers going down, forged authors and blocks.
  * @module
  */
 import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
@@ -24,7 +24,7 @@ const userOf = async (ctx: Context, id: string) => {
     return user;
 };
 
-/** The remote accounts `ctx` knows, by username, with their display names. */
+/** The remote accounts `ctx` has stored, by username, with their display names. */
 const remoteNames = async (ctx: Context) =>
     Object.fromEntries(
         (await ctx.db.selectFrom("accounts").select(["username", "display_name"])
@@ -32,7 +32,7 @@ const remoteNames = async (ctx: Context) =>
             .map((row) => [row.username, row.display_name]),
     );
 
-/** The requests sent to `host`, in all, or only to its inbox. */
+/** The requests sent to `host`, in total, or only to its inbox. */
 const sentTo = (network: Network, host: string, path?: string) =>
     network.transport.sent.filter((request) => {
         const url = new URL(request.url);
@@ -68,7 +68,7 @@ Deno.test("a user found by address is followed, and their followers see profile 
     assertEquals((await relationship.json())[0].following, true);
     assertEquals(await remoteNames(b.ctx), { alice: "" });
 
-    // alice changes her name, and her follower's instance is sent it.
+    // alice changes her name, and her follower's instance is sent the update.
     const updated = await a.app.request("/api/v1/accounts/update_credentials", {
         method: "PATCH",
         headers: {
@@ -81,7 +81,7 @@ Deno.test("a user found by address is followed, and their followers see profile 
     await network.drain();
     assertEquals(await remoteNames(b.ctx), { alice: "Alice" });
 
-    // Sending that delivery again is taken, and changes nothing.
+    // Sending that delivery again is accepted, and changes nothing.
     const sent = [];
     for (const request of network.transport.sent) {
         if (new URL(request.url).host !== "b.test" || request.method !== "POST") continue;
@@ -112,7 +112,7 @@ Deno.test("deliveries to a peer that is down wait for it, and all arrive once", 
         await queueDeliveries(a, await userOf(a, alice), [bob]);
     }
 
-    // Five failures park b.test, and one queued meanwhile waits too.
+    // Five failures park b.test, and one queued in the meantime waits too.
     await network.drain();
     assertEquals(sentTo(network, "b.test", inbox), 5);
     await updateProfile(a, alice, { displayName: "Alice 7" });
@@ -191,14 +191,14 @@ Deno.test("a blocked instance is neither asked, delivered to, nor heard", async 
         .where("queue", "=", deliverQueue).execute();
     assertEquals(deliveries, []);
 
-    // Nor is it asked about its users.
+    // Nor is it queried about its users.
     const lookup = await a.app.request("/api/v1/accounts/lookup?acct=dave@b.test", {
         headers: { authorization: `Bearer ${await tokenFor(a.ctx, alice)}` },
     });
     assertEquals(lookup.status, 404);
     assertEquals(sentTo(network, "b.test"), before);
 
-    // What it sends is refused, so it gives up.
+    // What it sends is rejected, so it gives up.
     const payload: DeliverJob = { domain: "a.test", body: JSON.stringify(await userOf(b, carol)) };
     await enqueue(b, { queue: deliverQueue, payload, group: "a.test" });
     await network.drain();

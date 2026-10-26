@@ -2,7 +2,7 @@ import type { Kysely } from "kysely";
 import type { Migration } from "kysely/migration";
 import { columnTypes } from "../columns.ts";
 
-/** What notes said before they were edited, for their edit history. */
+/** What statuses said before they were edited, for their edit history. */
 export const noteVersions: Migration = {
     up: async (db: Kysely<unknown>) => {
         await db.schema.createTable("note_versions")

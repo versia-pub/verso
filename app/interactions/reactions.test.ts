@@ -10,7 +10,7 @@ import { createTestContext } from "../testing/context.ts";
 import { reactionsOf } from "./reaction_queries.ts";
 import { react, unreact } from "./reactions.ts";
 
-/** alice, bob, who follows her, and dave; this instance's blob, and b.example's dog. */
+/** alice, bob, who follows her, and dave; the local instance's blob, and b.example's dog. */
 const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob", "dave"]) await createLocalAccount(test.ctx, id);
@@ -22,7 +22,7 @@ const open = async () => {
         picture: { url: "https://b.example/dog.png", mediaType: "image/png" },
     }]);
 
-    /** How many reactions a note has, of any emoji. */
+    /** How many reactions a status has, of any emoji. */
     const total = async (noteId: string) =>
         ((await reactionsOf(test.ctx, [noteId], null, null)).get(noteId) ?? [])
             .reduce((sum, group) => sum + group.count, 0);
@@ -106,7 +106,7 @@ Deno.test("a status shows its reactions, and the custom emojis they use among it
     const note = await createNote(test.ctx, "alice");
     await react(test.ctx, "bob", note.id, ":blob:");
     await react(test.ctx, "dave", note.id, "🎉");
-    // Another instance's reaction with its own emoji, as I10 will keep them.
+    // A remote instance's reaction with its own emoji, as I10 will store them.
     await test.ctx.db.insertInto("reactions")
         .values({
             id: test.ctx.ids(),
@@ -129,7 +129,7 @@ Deno.test("a status shows its reactions, and the custom emojis they use among it
         ["dog@b.example", false],
     ]);
 
-    // Without a viewer, no one's are their own.
+    // Without a viewer, no one's reactions are their own.
     const [anyone] = await renderStatuses(test.ctx, [note], null);
     assertEquals(anyone?.reactions?.map((reaction) => reaction.me), [
         undefined,

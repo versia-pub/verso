@@ -2,7 +2,7 @@ import type { Kysely } from "kysely";
 import type { Migration } from "kysely/migration";
 import { columnTypes } from "../columns.ts";
 
-/** Notes accounts like, and how many likes each note has. */
+/** Statuses that accounts like, and how many likes each status has. */
 export const likes: Migration = {
     up: async (db: Kysely<unknown>) => {
         await db.schema.createTable("likes")
@@ -25,7 +25,7 @@ export const likes: Migration = {
             .columns(["account_id", "note_id"])
             .execute();
 
-        // For the notes an account likes, and the accounts that like a note, newest first.
+        // For the statuses an account likes, and the accounts that like a status, newest first.
         await db.schema.createIndex("likes_by_account").on("likes")
             .columns(["account_id", "id"])
             .execute();

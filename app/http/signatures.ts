@@ -1,5 +1,5 @@
 /**
- * Versia signatures on requests from other instances, and on the replies to them.
+ * Versia signatures on requests from remote instances, and on the responses to them.
  * @see https://versia.pub/signatures
  * @module
  */
@@ -16,10 +16,10 @@ export type SignedRequest = {
 };
 
 /**
- * Checks the request's signature, and gives who signed it. When the key Verso has for it doesn't
- * verify, the key is fetched again, at most so often, in case the instance rotated it. A blocked
- * instance is refused once the headers are checked, before its key is looked up, so Verso never
- * sends it a request. `beforeFetch` runs before a key Verso doesn't have is fetched.
+ * Validates the request's signature, and returns who signed it. When the key Verso has for the
+ * signer doesn't verify, the key is fetched again, at most so often, in case the instance rotated
+ * it. A blocked instance is rejected once the headers are validated, before its key is looked up,
+ * so Verso never sends it a request. `beforeFetch` runs before a key Verso doesn't have is fetched.
  */
 export const verifyRequest = async (
     ctx: Context,
@@ -50,8 +50,8 @@ export const verifyRequest = async (
 };
 
 /**
- * Signs a reply as this instance, over the request's method and path and the reply's exact bytes,
- * so the instance that asked can tell it came from here unchanged.
+ * Signs a response as this instance, over the request's method and path and the response's exact
+ * bytes, so the instance that sent the request can tell it came from here unchanged.
  * @see https://versia.pub/signatures
  */
 export const signReply = async (

@@ -4,8 +4,8 @@ import type { Scope } from "../kernel/scopes.ts";
 import type { AccessTokensTable } from "./tables.ts";
 
 /**
- * How many accounts got an access token since `since`, as a measure of who is active. Only local
- * accounts get them.
+ * How many accounts were issued an access token since `since`, as a measure of who is active. Only
+ * local accounts get them.
  */
 export const countAccountsWithTokensSince = async (ctx: Context, since: Date): Promise<number> =>
     readCount(
@@ -17,7 +17,7 @@ export const countAccountsWithTokensSince = async (ctx: Context, since: Date): P
             .executeTakeFirstOrThrow(),
     );
 
-/** The token with this hash, which is all that is kept of it. */
+/** The token with this hash, which is all that is stored of it. */
 export const findTokenByHash = async (
     ctx: Context,
     hash: string,
@@ -27,7 +27,7 @@ export const findTokenByHash = async (
         .where("token_hash", "=", hash)
         .executeTakeFirst();
 
-/** Keeps a new token, by its hash. */
+/** Stores a new token, by its hash. */
 export const insertToken = async (
     ctx: Context,
     token: {

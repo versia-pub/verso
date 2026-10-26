@@ -1,16 +1,16 @@
 import type { Generated } from "kysely";
 
-/** Whether an account likes a note or dislikes it. Mastodon has only likes, as favourites. */
+/** Whether an account likes a status or dislikes it. Mastodon has only likes, as favourites. */
 export type LikeKind = "like" | "dislike";
 
-/** A note an account likes or dislikes, but never both. */
+/** A status an account likes or dislikes, but never both. */
 export type LikesTable = {
-    /** Orders likes by when they were made, for paging through them. */
+    /** Orders likes by creation time, for paging through them. */
     id: string;
     account_id: string;
     note_id: string;
     kind: Generated<LikeKind>;
-    /** The instance it came from, or `null` if it was made here. */
+    /** The instance it came from, or `null` if it was created locally. */
     instance_id: string | null;
     /** Its id on that instance. */
     remote_id: string | null;
@@ -18,17 +18,17 @@ export type LikesTable = {
 };
 
 /**
- * An account's reaction to a note, with an emoji: a Unicode one, as `text`, or a custom one, as
+ * An account's reaction to a status, with an emoji: a Unicode one, as `text`, or a custom one, as
  * `emoji_id`, but never both.
  */
 export type ReactionsTable = {
-    /** Orders reactions by when they were made. */
+    /** Orders reactions by creation time. */
     id: string;
     account_id: string;
     note_id: string;
     text: string | null;
     emoji_id: string | null;
-    /** The instance it came from, or `null` if it was made here. */
+    /** The instance it came from, or `null` if it was created locally. */
     instance_id: string | null;
     /** Its id on that instance. */
     remote_id: string | null;

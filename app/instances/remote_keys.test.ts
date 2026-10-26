@@ -21,7 +21,7 @@ const open = async () => {
             .where("domain", "=", domain)
             .executeTakeFirst();
 
-    /** Whether Verso has it that the instance at `domain` takes instance messages. */
+    /** Whether Verso has recorded that the instance at `domain` accepts instance messages. */
     const takesMessages = async (domain: string) =>
         (await test.ctx.db.selectFrom("instances").select("takes_messages")
             .where("domain", "=", domain)
@@ -122,7 +122,7 @@ Deno.test("a key is fetched again to refresh it only once it is old enough", asy
     await keys.get(test.ctx, "b.example");
     assertEquals(await test.takesMessages("b.example"), false);
 
-    // What else the metadata says is kept with the key.
+    // What else the metadata says is stored with the key.
     test.transport.servers.set(
         "b.example",
         metadataServer("b.example", after, ["pub.versia:instance_messaging"]),

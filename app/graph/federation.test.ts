@@ -42,7 +42,7 @@ Deno.test("a user's followers are references, oldest first, a page at a time", a
     assertEquals(await followers(1, 1), { author: "alice", total: 3, items: ["b.example:carol"] });
     assertEquals(await followers(3, 40), { author: "alice", total: 3, items: [] });
 
-    // Alice only asked to follow carol.
+    // Alice only requested to follow carol.
     assertEquals(
         await followCollections.following(test.ctx, "alice", { offset: 0, limit: 40 }, "b.example"),
         { author: "alice", total: 0, items: [] },
@@ -90,7 +90,7 @@ Deno.test("only local users' follows are given, as Users' collections", async ()
     ]);
 });
 
-/** The entities queued for other instances, by domain. */
+/** The entities queued for remote instances, by domain. */
 const queued = async (ctx: Context) =>
     (await ctx.db.selectFrom("jobs").select("payload").where("queue", "=", deliverQueue)
         .orderBy("id").execute())
@@ -103,7 +103,7 @@ Deno.test("only what local users do to follows with other instances' users is se
     const request = { author: "alice", followee: "b.example:carol" };
     const answer = { author: "alice", follower: "b.example:carol" };
 
-    // Of the follows made, alice accepted carol's, and asked to follow carol.
+    // Of the follows created, alice accepted carol's, and requested to follow carol.
     assertEquals(await queued(test.ctx), [
         ["b.example", { type: "FollowAccept", created_at: at(1), ...answer }],
         ["b.example", { type: "Follow", created_at: at(0), ...request }],
@@ -142,8 +142,8 @@ const openNetwork = async () => {
     assertExists(bob);
 
     /**
-     * Has b.test send `entity` to a.test, which takes it in. Each is sent a second after the last,
-     * so none is taken for one sent again.
+     * Has b.test send `entity` to a.test, which receives it. Each is sent a second after the last,
+     * so none is mistaken for a resend.
      */
     const send = async (entity: Record<string, string>, from = b) => {
         network.clock.advance(1000);
@@ -152,7 +152,7 @@ const openNetwork = async () => {
         await network.drain();
     };
 
-    /** Whether alice follows bob, or asked to, if either. */
+    /** Whether alice follows bob, or has requested to, if either. */
     const state = async () => {
         const [row] = await followsFrom(a, alice, [bob]);
         return row && (row.accepted ? "following" : "requested");
@@ -266,7 +266,7 @@ const openPair = async () => {
         return row && (row.accepted ? "following" : "requested");
     };
 
-    /** Whether bob follows alice, or asked to, as a.test and b.test each have it. */
+    /** Whether bob follows alice, or has requested to, as a.test and b.test each have it. */
     const states =
         async () => [await stateOf(a, "followee_id", alice), await stateOf(b, "follower_id", bob)];
 
@@ -406,7 +406,8 @@ Deno.test("a changed profile is sent to the instances of its followers", async (
     await updateProfile(test.ctx, "alice", { displayName: "Alice" });
     await updateProfile(test.ctx, "bob", { displayName: "Bob" });
 
-    // Only carol follows alice from another instance; erin only asked, and alice follows frank.
+    // Only carol follows alice from a remote instance; erin only requested, and alice follows
+    // frank.
     const sent = (await queued(test.ctx)).slice(before);
     assertEquals(sent.map(([domain, entity]) => [domain, entity.type, entity.display_name]), [
         ["b.example", "User", "Alice"],
@@ -428,7 +429,7 @@ Deno.test("a remote account deleted is uncounted from those it followed and was 
 
     await deleteRemoteAccount(test.ctx, "b.example", "carol");
 
-    // Carol followed alice, and alice carol; carol only asked to follow bob.
+    // Carol followed alice, and alice carol; carol only requested to follow bob.
     assertEquals(await counts(), [["alice", 2, 0], ["bob", 0, 1]]);
 });
 

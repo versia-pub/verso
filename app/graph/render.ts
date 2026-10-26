@@ -3,8 +3,8 @@ import type { FollowRow } from "./follow_queries.ts";
 import type { MuteRow } from "./mute_queries.ts";
 
 /**
- * The viewer's relationship with the account `id`, from the viewer's follow of it and its follow
- * of the viewer, either of which may be a request, whether either blocks the other, whether the
+ * The viewer's relationship with the account `id`, from the viewer's follow of it and its follow of
+ * the viewer (either of which may be a request), whether either blocks the other, whether the
  * viewer blocks its domain, the viewer's mute of it, if they mute it, and what they note about it.
  */
 export const renderRelationship = (

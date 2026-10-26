@@ -3,7 +3,7 @@ import type { Context } from "../kernel/context.ts";
 import type { MediaRow } from "./media_queries.ts";
 import type { MediaTable } from "./tables.ts";
 
-/** What processing an upload sets: the file it is kept as, and what is known of it. */
+/** What processing an upload sets: the file it is stored as, and its metadata. */
 export type Processed = Pick<
     Updateable<MediaTable>,
     | "sha256"
@@ -22,10 +22,7 @@ export const insertUpload = async (ctx: Context, row: Insertable<MediaTable>): P
     await ctx.db.insertInto("media").values(row).execute();
 };
 
-/**
- * An upload of the same file as was uploaded as `uploadSha256` that was processed, and kept, if
- * there is one.
- */
+/** A processed and stored upload of the same file as `uploadSha256`, if there is one. */
 export const processedUpload = (
     ctx: Context,
     uploadSha256: string,
@@ -36,7 +33,7 @@ export const processedUpload = (
         .where("sha256", "is not", null)
         .executeTakeFirst();
 
-/** Marks the upload `id` processed, unless it is already. Returns whether it was. */
+/** Marks the upload `id` as processed, unless it already is. Returns whether it changed. */
 export const finishUpload = async (
     ctx: Context,
     id: string,
@@ -52,8 +49,8 @@ export const finishUpload = async (
 };
 
 /**
- * Whether any file is kept under `key`, or its preview is, or an upload of it is waiting to be
- * processed.
+ * Whether any media is stored under `key`, or has it as its preview, or an upload of it is waiting
+ * to be processed.
  */
 export const isFileUsed = async (ctx: Context, key: string): Promise<boolean> =>
     await ctx.db.selectFrom("media").select("id")
@@ -78,7 +75,7 @@ export const findUpload = (
         .where("account_id", "=", accountId)
         .executeTakeFirst();
 
-/** Changes how the upload `id` is described, if `accountId` uploaded it. */
+/** Updates the description of the upload `id`, if `accountId` uploaded it. */
 export const updateUpload = async (
     ctx: Context,
     id: string,
@@ -92,7 +89,10 @@ export const updateUpload = async (
         .execute();
 };
 
-/** An upload kept under `key` once it is processed, or whose preview is. Only local ones are. */
+/**
+ * An upload stored under `key` once processed, or having it as its preview. Only local media
+ * qualifies.
+ */
 export const findServedFile = (
     ctx: Context,
     key: string,
@@ -106,20 +106,23 @@ export const findServedFile = (
         )
         .executeTakeFirst();
 
-/** Where removing unused files got to: the last one it looked at, in the order it looks. */
+/**
+ * How far removal of unused media got: the last row it looked at, in the order it processes them.
+ */
 export type MediaCursor = Pick<MediaRow, "created_at" | "id">;
 
-/** A file that was removed, with where it is and the keys a local one kept files under. */
+/** Removed media, with its location and the keys of the files a local one stored. */
 export type RemovedMedia =
     & MediaCursor
     & Pick<MediaRow, "instance_id" | "sha256" | "preview_sha256" | "upload_sha256">;
 
 /**
- * Removes up to `limit` files kept by `before` that nothing uses, local or remote, oldest first,
- * after the one at `after`: no note has them attached, and no account or emoji shows them. What
- * comes to use files must be added here. A note given one at the same time makes it fail instead,
- * as attached files can't be deleted. It reads the `accounts` and `emojis` tables rather than
- * asking their modules, so that it is one query.
+ * Removes up to `limit` media rows created before `before` that nothing uses, local or remote,
+ * oldest first, starting after the row at `after`. Media is unused when no status has it attached
+ * and no account or custom emoji uses it. Anything that starts using media must be added here. If a
+ * status gets attached to the media at the same moment, the removal fails instead, since attached
+ * media can't be deleted. It reads the `accounts` and `emojis` tables directly rather than going
+ * through their modules, so that it is a single query.
  */
 export const deleteUnusedMedia = (
     ctx: Context,

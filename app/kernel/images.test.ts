@@ -59,12 +59,12 @@ Deno.test("anything else isn't a picture Verso takes", () => {
             bytes("%PDF-1.7"),
             bytes("II*\0"),
             bytes([0xff, 0x0a]),
-            // An MP4 video, a HEIF file of no kind Verso takes, and a JPEG XL one.
+            // An MP4 video, a HEIF file of no kind Verso accepts, and a JPEG XL one.
             ftyp("isom", ["isom", "iso2", "mp41"]),
             ftyp("mif1", ["mif1", "miaf"]),
             bytes([0, 0, 0, 12], "JXL ", [0x0d, 0x0a, 0x87, 0x0a]),
-            // Sequences, such as animated AVIFs as libavif and ffmpeg write them, even with a
-            // picture of a kind Verso takes in them too.
+            // Sequences, such as animated AVIFs as libavif and ffmpeg write them, even with an
+            // image of a kind Verso accepts in them too.
             ftyp("avis", ["avif", "avis", "msf1", "miaf", "MA1B"]),
             ftyp("avif", ["mif1", "avis"]),
             ftyp("msf1", ["msf1", "hevc"]),

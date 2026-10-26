@@ -11,16 +11,16 @@ import { serveFile } from "./serving.ts";
 import { findUpload } from "./upload_queries.ts";
 import { describeUpload, processingFailed, upload } from "./uploads.ts";
 
-/** Room for a form's other fields, and its boundaries, beside the file. */
+/** Room for the form's other fields and boundaries, besides the file. */
 const formBytes = 64 * 1024;
 
-/** A file's alt text, as Mastodon takes it, at most as long as `limits` allow. */
+/** Media alt text as Mastodon accepts it, at most as long as `limits` allow. */
 export const MediaDescription = (limits: Limits): z.ZodType<string, string> =>
     Text(limits.media_description).meta({
         description: "A plain-text description of the media, for accessibility purposes.",
     });
 
-/** A point as Mastodon writes it, such as `0.5,-0.25`, from -1 to 1 on each axis. */
+/** A focus point as Mastodon writes it, such as `0.5,-0.25`, from -1 to 1 on each axis. */
 export const FocusPoint = z.string()
     .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, { error: "Must be two numbers, such as 0.5,-0.25" })
     .transform((point) => point.split(",").map(Number))
@@ -33,8 +33,8 @@ export const FocusPoint = z.string()
     });
 
 /**
- * A file to upload, as Mastodon takes it. Thumbnails, which Mastodon takes for videos and audio,
- * aren't taken yet.
+ * A media upload as Mastodon accepts it. Thumbnails, which Mastodon accepts for videos and audio,
+ * aren't supported yet.
  * @see https://docs.joinmastodon.org/methods/media/#v2
  */
 const UploadBody = (media: MediaLimits, limits: Limits) =>
@@ -61,8 +61,8 @@ const DescriptionBody = (limits: Limits) =>
 const MediaId = z.object({ id: z.string() });
 
 /**
- * The upload, with 200 once it is processed, or 206 while it is, as Mastodon answers. A picture
- * that couldn't be processed is refused with 422, as on Mastodon.
+ * The upload response: 200 once processed, or 206 while processing, as Mastodon responds. An image
+ * that couldn't be processed is rejected with 422, as on Mastodon.
  */
 const progressOf = (ctx: Context, row: MediaRow) => {
     if (processingFailed(row)) {
@@ -75,8 +75,8 @@ const progressOf = (ctx: Context, row: MediaRow) => {
 };
 
 /**
- * Uploading files, with what is uploaded held to `media`, and describing them, as long as `limits`
- * allow.
+ * Routes for uploading media, limited by `media`, and for updating its description, limited by
+ * `limits`.
  */
 export const mediaRoutes = (media: MediaLimits, limits: Limits): readonly Route[] => [
     defineRoute({
@@ -158,7 +158,8 @@ export const mediaRoutes = (media: MediaLimits, limits: Limits): readonly Route[
             "through a CDN, this redirects there.",
         tags: ["media"],
         immutable: true,
-        // Pages show many at once, so they are counted apart, with ten times as many allowed.
+        // Pages load many at once, so these requests are counted in their own bucket, which allows
+        // ten times as many.
         rateLimit: { bucket: "media", times: 10 },
         params: z.object({ key: z.string() }),
         responses: { 200: Binary("application/octet-stream"), 302: Redirect },

@@ -2,9 +2,9 @@ import { type Kysely, sql } from "kysely";
 import type { Migration } from "kysely/migration";
 
 /**
- * This instance's emojis, one by each name, as other instances' ones are, and indexes for the
- * columns rows are deleted through, so deleting an emoji or a picture doesn't read every row that
- * might point at it.
+ * The local instance's emojis, one per name, as remote instances' emojis are, and indexes for the
+ * columns rows are deleted through, so deleting an emoji or a picture doesn't scan every row that
+ * might reference it.
  */
 export const localEmojis: Migration = {
     up: async (db: Kysely<unknown>) => {

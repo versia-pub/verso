@@ -1,17 +1,17 @@
 /**
- * What the graph tells the rest of Verso: follows asked for, accepted and ended.
+ * Events about the follow graph for the rest of Verso: follows requested, accepted and ended.
  * @module
  */
 import type { DomainEvent } from "../kernel/context.ts";
 
 const followEventTypes = [
-    /** A follow waits for the followee to accept it. */
+    /** A follow is waiting for the followee to accept it. */
     "graph.follow_requested",
-    /** A follow was accepted, as it was made or later. */
+    /** A follow was accepted, when it was created or later. */
     "graph.follow_accepted",
-    /** The followee rejected a follow, or a request for one. */
+    /** The followee rejected a follow, or a follow request. */
     "graph.follow_rejected",
-    /** The follower stopped following, or withdrew asking to. */
+    /** The follower unfollowed, or withdrew their follow request. */
     "graph.unfollowed",
 ] as const;
 

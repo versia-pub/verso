@@ -29,12 +29,12 @@ const open = async (settings: Partial<Settings> = {}) => {
     const test = await createTestContext({ settings });
     await createLocalAccount(test.ctx, "alice");
 
-    /** The id of a file alice uploads. */
+    /** The id of a media upload by alice. */
     const uploaded = async (bytes: Uint8Array<ArrayBuffer>) =>
         (await upload(test.ctx, "alice", { file: new Blob([bytes]), mediaType: "application/zip" }))
             .id;
 
-    /** Whether a file is kept under `key`. */
+    /** Whether a file is stored under `key`. */
     const kept = async (key: string | null) => {
         if (key === null) return false;
 
@@ -43,7 +43,7 @@ const open = async (settings: Partial<Settings> = {}) => {
         return stream !== undefined;
     };
 
-    /** Runs the recurring jobs, as the scheduler would, after `ms` pass. */
+    /** Runs the recurring jobs, as the scheduler would after `ms` have passed. */
     const later = async (ms: number) => {
         test.clock.advance(ms);
         await schedule(test.ctx, tasks);
@@ -90,7 +90,7 @@ Deno.test("uploads no one attached are removed a day on, with files no others us
         [false, false, false],
     );
     assertEquals((await findMedia(test.ctx, attached))?.id, attached);
-    // The same file, uploaded since, keeps it.
+    // The same file, uploaded since, keeps it stored.
     assertEquals([(await findMedia(test.ctx, again))?.id, await test.kept(key)], [again, true]);
 
     await test.later(12 * hour);
@@ -148,7 +148,7 @@ Deno.test("other instances' files nothing uses are removed, and nothing kept und
     const avatar = await remote("avatar.png");
     await test.ctx.db.updateTable("accounts").set({ avatar_id: avatar }).where("id", "=", "bob")
         .execute();
-    // As if alice were uploading the same file just now, before its row is added.
+    // Simulates alice uploading the same file just now, before its row is added.
     const key = await test.ctx.files.put(await bytesSource(zip(1)), "application/octet-stream");
     const unused = await remote("notes.zip", key);
 
@@ -177,7 +177,7 @@ Deno.test("what was uploaded of a picture is removed with it, if a run left it",
     await using test = await open();
     const picture = await test.uploaded(png);
     await drain(test.ctx, queues);
-    // As if processing stopped before removing what was uploaded.
+    // Simulates processing stopping before it removed the original upload.
     const left = await test.ctx.files.put(await bytesSource(png), "image/png");
 
     await test.later(24 * hour);

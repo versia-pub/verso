@@ -1,5 +1,5 @@
 /**
- * The inbox worker, which applies what other instances sent, once the inbox has queued it.
+ * The inbox worker, which applies what remote instances sent, once the inbox has queued it.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
@@ -18,15 +18,15 @@ import { fetchBudget } from "./resolver.ts";
 const logger = getLogger(["verso", "federation"]);
 
 /**
- * How long a job may spend fetching what an entity refers to. The fetch under way when it runs out
- * may take a minute more, its entity and the metadata to check its signature, so the job still
- * ends well within its five-minute lease.
+ * How long a job may spend fetching what an entity refers to. The fetch in progress when it runs
+ * out may take a minute more, for the entity and the metadata to validate its signature, so the job
+ * still ends well within its five-minute lease.
  */
 const prepareMs = 2 * 60_000;
 
 const Named = z.object({ type: z.string(), id: z.string().optional() });
 
-/** What an entity is, for a message about it: its type, and its id if it has one. */
+/** Describes an entity for a message: its type, and its id if it has one. */
 const describe = (body: string) => {
     let parsed: ReturnType<typeof Named.safeParse>;
     try {
@@ -42,8 +42,8 @@ const describe = (body: string) => {
 };
 
 /**
- * What an inbox job keeps once it dies: who sent what, without the entity, which can be large, so
- * an instance can't fill the database with what Verso refuses.
+ * What an inbox job stores once it dies: who sent what, without the entity, which can be large, so
+ * an instance can't fill the database with what Verso rejects.
  */
 export const inboxDeadPayload: DeadPayload = (payload: JobPayload): JobPayload => {
     const job = InboxJob.safeParse(payload);
@@ -51,11 +51,11 @@ export const inboxDeadPayload: DeadPayload = (payload: JobPayload): JobPayload =
 };
 
 /**
- * Runs inbox jobs: checks each entity again, in case Verso changed since it was queued, checks
- * that the instance that sent it may, and applies it. One from an instance blocked since is
- * dropped. An entity that is invalid or sent by the wrong instance is given up on, and its sender
- * is told why, if it takes instance messages; anything else that fails, such as the database, is
- * retried.
+ * Runs inbox jobs: validates each entity again, in case Verso changed since it was queued, checks
+ * that the instance that sent it is allowed to, and applies it. One from an instance blocked since
+ * is dropped. An entity that is invalid or sent by the wrong instance is given up on, and its
+ * sender is told why if it accepts instance messages; any other failure, such as a database error,
+ * is retried.
  */
 export const inboxHandler = (registry: Registry): Handler => async (ctx, job) => {
     const payload = InboxJob.safeParse(job.payload);
@@ -80,7 +80,7 @@ export const inboxHandler = (registry: Registry): Handler => async (ctx, job) =>
     }
 };
 
-/** Checks the entity `signer` sent, and applies it. */
+/** Validates the entity `signer` sent, and applies it. */
 const apply = async (ctx: Context, registry: Registry, signer: string, body: string) => {
     let checked: ReturnType<typeof checkEntity>;
     try {
@@ -99,7 +99,7 @@ const apply = async (ctx: Context, registry: Registry, signer: string, body: str
         );
     }
 
-    // Its row was made when its key was fetched, to check the signature.
+    // Its row was created when its key was fetched, to validate the signature.
     const instanceId = await findInstanceId(ctx, signer);
     if (instanceId === undefined) throw new Error(`${signer} isn't a known instance`);
 

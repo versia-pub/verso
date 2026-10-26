@@ -13,7 +13,7 @@ import type { PageBounds } from "../db/paging.ts";
 import { homePage, type Origin, publicPage } from "./timeline_queries.ts";
 
 /**
- * Alice, who follows bob and carol, on b.example, and asked to follow erin; and dave, whom she
+ * Alice, who follows bob and carol (on b.example) and requested to follow erin; and dave, whom she
  * doesn't follow.
  */
 const open = async () => {
@@ -35,7 +35,7 @@ const open = async () => {
         .execute();
     const names = new Map<string, string>();
 
-    /** Adds a note called `name` by `accountId`, mentioning `mentionIds`. */
+    /** Adds a status called `name` by `accountId`, mentioning `mentionIds`. */
     const add = async (
         name: string,
         accountId: string,
@@ -58,14 +58,14 @@ const open = async () => {
         ))
             .map((note) => names.get(note.id) ?? note.id);
 
-    /** Adds a share called `name` by `accountId` of the note called `shared`. */
+    /** Adds a boost called `name` by `accountId` of the status called `shared`. */
     const share = async (name: string, accountId: string, shared: string) => {
         test.clock.advance(1);
         const [noteId] = [...names].find(([, each]) => each === shared) ?? [];
         names.set((await createShare(test.ctx, accountId, noteId ?? "")).id, name);
     };
 
-    /** The public timeline from `origin`, by name, as `viewerId` sees it, or anyone. */
+    /** The public timeline from `origin`, by name, as `viewerId` sees it, or as anyone sees it. */
     const everyone = async (
         origin: Origin = "all",
         page: { max_id?: string } = {},
@@ -146,7 +146,7 @@ Deno.test("home has nothing of the accounts the viewer blocks, nor others' share
     await test.add("carol's", "carol");
     await test.share("own share", "alice", "note");
     await block(test.ctx, "alice", "bob");
-    // Blocked by someone else, carol is still seen.
+    // Blocked by someone else, carol is still visible.
     await block(test.ctx, "bob", "carol");
 
     assertEquals(await test.home(), ["carol's", "carol's other share"]);
@@ -226,7 +226,7 @@ Deno.test("timelines leave out the accounts the viewer mutes, while the mute las
     await test.add("carol's", "carol");
     await mute(test.ctx, "alice", "bob", { notifications: true, duration: 0 });
     await mute(test.ctx, "alice", "dave", { notifications: false, duration: 60 });
-    // Muted by someone else, carol is still seen.
+    // Muted by someone else, carol is still visible.
     await mute(test.ctx, "bob", "carol", { notifications: true, duration: 0 });
 
     assertEquals(await test.home(), ["carol's"]);

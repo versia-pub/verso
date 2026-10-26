@@ -22,7 +22,7 @@ const png = new Uint8Array(encode({
 
 type Attachment = { id: string; description: string | null };
 
-/** A file's id, and its description, if it has one. */
+/** A media attachment's id, and its description if it has one. */
 const described = (media: Attachment) =>
     media.description === null ? media.id : `${media.id}: ${media.description}`;
 
@@ -51,7 +51,7 @@ const open = async (limits = Limits.parse({})) => {
         return { status: response.status, body: await response.json() };
     };
 
-    /** The id of a file `accountId` uploads. */
+    /** The id of a media upload by `accountId`. */
     const uploaded = async (bytes: Uint8Array<ArrayBuffer>, accountId = "alice") =>
         (await upload(test.ctx, accountId, {
             file: new Blob([bytes]),
@@ -60,11 +60,11 @@ const open = async (limits = Limits.parse({})) => {
 
     const notes = async () => (await test.ctx.db.selectFrom("notes").select("id").execute()).length;
 
-    /** Edits alice's status `id`, as {@link post} posts one. */
+    /** Edits alice's status `id`, with the same body formats as {@link post}. */
     const edit = (id: string, body: Record<string, unknown> | string) =>
         post(body, "PUT", `/${id}`);
 
-    /** The ids of the files each version of the status `id` had, oldest first. */
+    /** The media ids of each version of the status `id`, oldest first. */
     const history = async (id: string) => {
         const response = await app.request(`/api/v1/statuses/${id}/history`, {
             headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` },
@@ -134,7 +134,7 @@ Deno.test("a status has at most as many files as configured, and isn't blank wit
         "body.status": ["Can't be blank without attachments"],
     });
 
-    // Forms give one id, or several.
+    // Forms can send one id or several.
     const one = await test.post(`media_ids=${a}`);
     const two = await test.post(`media_ids[]=${b}&media_ids[]=${b}`);
     assertEquals([one.status, one.body.media_attachments.length], [200, 1]);
@@ -150,7 +150,8 @@ Deno.test("an edit attaches files in place of the status's, and its history keep
     ];
     const { body } = await test.post({ status: "Hi", media_ids: [a, b] });
 
-    // Given as they are, they are left as they were, and the status isn't edited.
+    // If the same media and descriptions are sent unchanged, nothing changes and the status isn't
+    // edited.
     await test.edit(body.id, { status: "Hi", media_ids: [a, b, a] });
     assertEquals(await test.history(body.id), [[a, b]]);
 
@@ -160,10 +161,10 @@ Deno.test("an edit attaches files in place of the status's, and its history keep
     assertEquals(edited.body.media_attachments.map(described), [c, b]);
     assertEquals(await test.history(body.id), [[a, b], [c, b]]);
 
-    // Files are enough, without text.
+    // Media alone is enough, without text.
     assertEquals((await test.edit(body.id, { status: "", media_ids: [b] })).status, 200);
 
-    // What the edit removed can be attached again.
+    // Media removed by the edit can be attached again.
     assertEquals((await test.post({ status: "Again", media_ids: [a] })).status, 200);
 });
 
@@ -175,13 +176,13 @@ Deno.test("an edit that leaves files out keeps them, and can describe them", asy
     const attributes = (...changes: Record<string, string>[]) =>
         test.edit(body.id, { status: "Hi", media_attributes: changes });
 
-    // An empty description is none, as the file has.
+    // An empty description clears it, as on the media itself.
     await attributes({ id: a, description: "" });
     assertEquals(await test.history(body.id), [[a]]);
 
     const edited = await attributes(
         { id: a, description: "Notes", focus: "0,1" },
-        // Only the files attached are changed.
+        // Only media attached to the status is changed.
         { id: other, description: "Other" },
     );
 
@@ -190,19 +191,20 @@ Deno.test("an edit that leaves files out keeps them, and can describe them", asy
     assertEquals((await findMedia(test.ctx, other))?.description, null);
     assertEquals(await test.history(body.id), [[a], [`${a}: Notes`]]);
 
-    // Described as they are, they are left as they were, and the status isn't edited again.
+    // If the sent descriptions match the current ones, nothing changes and the status isn't edited
+    // again.
     await attributes({ id: a, description: "Notes", focus: "0,1" }, {
         id: other,
         description: "Other",
     });
     assertEquals((await test.history(body.id)).length, 2);
 
-    // Moving the focus on either axis is an edit.
+    // Moving the focus point on either axis counts as an edit.
     await attributes({ id: a, focus: "0,0.5" });
     await attributes({ id: a, focus: "1,0.5" });
     assertEquals((await test.history(body.id)).length, 4);
 
-    // Forms give changes by index.
+    // Forms send changes by index.
     const form = await test.edit(
         body.id,
         `status=Hi&media_attributes[0][id]=${a}&media_attributes[0][description]=Mine`,

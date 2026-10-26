@@ -1,9 +1,9 @@
 import type { Context } from "../kernel/context.ts";
 
 /**
- * Pauses `group` in `queue` until `runAt`, unless it is paused longer already: none of its jobs is
- * claimed until then, such as deliveries to an instance that asked to be left alone. Jobs running
- * are left as they are.
+ * Pauses `group` in `queue` until `runAt`, unless it is already paused for longer: none of its jobs
+ * is claimed until then, such as deliveries to an instance that asked to be left alone. Running
+ * jobs are left as they are.
  */
 export const postponeGroup = async (
     ctx: Context,

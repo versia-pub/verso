@@ -10,13 +10,13 @@ export const permissions = [
     "read:account",
     /** View who accounts follow, and who follows them. */
     "read:account_follows",
-    /** View notes, as their visibility allows. */
+    /** View statuses, as their visibility allows. */
     "read:note",
-    /** View who likes the notes one may see. */
+    /** View who likes the statuses one may see. */
     "read:note_likes",
-    /** View who shares the notes one may see. */
+    /** View who boosts the statuses one may see. */
     "read:note_boosts",
-    /** View who reacts to the notes one may see, and with what. */
+    /** View who reacts to the statuses one may see, and with what. */
     "read:reaction",
     /** Change one's own profile and settings. */
     "owner:account",
@@ -26,19 +26,19 @@ export const permissions = [
     "owner:block",
     /** Mute and unmute accounts, and see whom one mutes. */
     "owner:mute",
-    /** Like notes, and undo it. */
+    /** Like statuses, and undo it. */
     "owner:like",
-    /** Share notes, and undo it. */
+    /** Boost statuses, and undo it. */
     "owner:boost",
-    /** React to notes, and undo it. */
+    /** React to statuses, and undo it. */
     "owner:reaction",
-    /** Post and delete one's own notes. */
+    /** Post and delete one's own statuses. */
     "owner:note",
-    /** Upload files, and describe one's own. */
+    /** Upload media, and describe one's own. */
     "owner:media",
     /**
-     * See who blocks each account, which is otherwise only the blocker's to know, as moderators
-     * may need to.
+     * See who blocks each account, which is otherwise only the blocker's to know, as moderators may
+     * need to.
      */
     "blocks",
     /** Create, change and assign roles below one's own. */

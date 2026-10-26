@@ -1,5 +1,5 @@
 /**
- * Turns what users write into the HTML that is stored next to it.
+ * Turns what users write into the HTML that is stored alongside it.
  * @module
  */
 import { renderText } from "../kernel/markup.ts";
@@ -12,7 +12,7 @@ const escapes: Record<string, string> = {
     "'": "&#39;",
 };
 
-/** Text with the characters HTML reads specially escaped, for one line, such as a field. */
+/** Text with the characters that HTML treats specially escaped, for one line, such as a field. */
 export const escapeHtml = (text: string): string =>
     text.replace(/[&<>"']/g, (char) => escapes[char]);
 

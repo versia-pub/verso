@@ -35,7 +35,7 @@ export const deleteBlock = async (
         .returning("id")
         .executeTakeFirst()) !== undefined;
 
-/** Which of `otherIds` `accountId` blocks, and which block it. */
+/** Which of `otherIds` `accountId` blocks, and which of them block it. */
 export const blocksBetween = async (
     ctx: Context,
     accountId: string,
@@ -64,8 +64,8 @@ export const blocksBetween = async (
 };
 
 /**
- * A page of the accounts `accountId` blocks, the latest blocked first, each as the block's id,
- * which pages are counted by, and the blocked account's.
+ * A page of the accounts `accountId` blocks, latest blocked first, each as the block's id, which
+ * pages are counted by, and the blocked account's id.
  */
 export const blockPage = async (
     ctx: Context,

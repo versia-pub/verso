@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ReferenceText, TransientEntity } from "./common.ts";
 
 /**
- * `author` asks to follow `followee`.
+ * `author` requests to follow `followee`.
  * @see https://versia.pub/entities/follow
  */
 export const Follow = TransientEntity.extend({

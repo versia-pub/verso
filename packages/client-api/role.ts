@@ -19,9 +19,9 @@ export type AccountRole = z.infer<typeof AccountRole>;
 export const Role = AccountRole.extend({
     /** A bitmask of Mastodon's permission flags, in decimal, so `"0"` for none. */
     permissions: z.string().regex(/^\d+$/),
-    /** Whether the role is shown on its holders' profiles. */
+    /** Whether the role is displayed on its holders' profiles. */
     highlighted: z.boolean(),
-    /** How many collections its holders may make. */
+    /** How many collections its holders may create. */
     collection_limit: z.int().min(0),
 });
 export type Role = z.infer<typeof Role>;

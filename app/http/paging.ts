@@ -15,8 +15,8 @@ type PageFields = {
 };
 
 /**
- * Which page of a list to give: what is older than `max_id`, newer than `since_id`, or just newer
- * than `min_id`, at most `limit` of it. Clients may ask for more than `max`, and get `max`.
+ * Which page of a list to return: what is older than `max_id`, newer than `since_id`, or just newer
+ * than `min_id`, at most `limit` of it. Clients may request more than `max`, and get `max`.
  */
 export const PageQuery = (
     limit: { readonly default: number; readonly max: number },
@@ -29,12 +29,12 @@ export const PageQuery = (
             .transform((asked) => Math.max(1, Math.min(asked ?? limit.default, limit.max))),
     });
 
-/** A page of a list, as asked for. */
+/** A page of a list, as requested. */
 export type PageQuery = z.output<ReturnType<typeof PageQuery>>;
 
 /**
- * Where the pages before and after `items` start, given each item's cursor, which may be another
- * id than the item's own. There is an older page only if this one is full.
+ * Where the pages before and after `items` start, given each item's cursor, which may be a
+ * different id than the item's own. There is an older page only if this one is full.
  */
 export const cursorsOf = <T>(
     items: readonly T[],
@@ -51,8 +51,8 @@ export const cursorsOf = <T>(
 };
 
 /**
- * The `Link` header for a page at `url`, with the cursors in place of the ones it was asked with,
- * or `undefined` if it links nowhere.
+ * The `Link` header for a page at `url`, with the cursors in place of the ones it was requested
+ * with, or `undefined` if it links nowhere.
  */
 export const linkHeader = (url: URL, cursors: Cursors): string | undefined => {
     const at = (key: "max_id" | "min_id", cursor: string) => {

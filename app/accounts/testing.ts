@@ -29,7 +29,7 @@ export const createRole = async (
     return name;
 };
 
-/** Gives an account a role, as an admin would, or as an issuer's claims would. */
+/** Grants an account a role, as an admin would, or as an issuer's claims would. */
 export const giveRole = async (
     ctx: Context,
     accountId: string,

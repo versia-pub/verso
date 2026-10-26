@@ -3,7 +3,7 @@ import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 import type { MediaRow } from "./media_queries.ts";
 
-/** Whether a note has files attached, for queries of notes. */
+/** Whether a status has media attached, for status queries. */
 export const hasAttachments = (
     eb: ExpressionBuilder<Database, "notes">,
 ): ExpressionWrapper<Database, "notes", SqlBool> =>
@@ -12,7 +12,7 @@ export const hasAttachments = (
             .whereRef("note_media.note_id", "=", "notes.id"),
     );
 
-/** Of `ids`, the uploads `accountId` made that aren't attached to a note. */
+/** The ids in `ids` that are uploads by `accountId` and not attached to a status. */
 export const unattachedUploads = async (
     ctx: Context,
     accountId: string,
@@ -35,7 +35,7 @@ export const unattachedUploads = async (
         .execute();
 };
 
-/** Attaches the files `mediaIds` to the note `noteId`, in that order. */
+/** Attaches the media `mediaIds` to the status `noteId`, in that order. */
 export const insertAttachments = async (
     ctx: Context,
     noteId: string,
@@ -48,17 +48,17 @@ export const insertAttachments = async (
         .execute();
 };
 
-/** Detaches every file attached to the note `noteId`. */
+/** Detaches all media from the status `noteId`. */
 export const deleteAttachments = async (ctx: Context, noteId: string): Promise<void> => {
     await ctx.db.deleteFrom("note_media").where("note_id", "=", noteId).execute();
 };
 
-/** The files of `ids` that exist, in no order. */
+/** The media rows that exist for `ids`, in no particular order. */
 export const findMediaRows = async (ctx: Context, ids: readonly string[]): Promise<MediaRow[]> =>
     ids.length === 0 ? [] : await ctx.db.selectFrom("media").selectAll().where("id", "in", ids)
         .execute();
 
-/** The files attached to each of `noteIds`, in order, by note. */
+/** The media attached to each of `noteIds`, in order, grouped by status. */
 export const attachmentsOf = async (
     ctx: Context,
     noteIds: readonly string[],

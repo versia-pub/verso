@@ -26,14 +26,14 @@ import type { Context } from "../kernel/context.ts";
 import { charactersPerLink } from "../kernel/markup.ts";
 import { countInstances } from "./instance_queries.ts";
 
-/** What the instance's description is made from. */
+/** What the instance's description is built from. */
 export type AboutSettings = Pick<Config, "instance" | "limits" | "auth"> & {
     readonly media: MediaLimits;
 };
 
 /**
- * The Mastodon version clients are told, which they turn features on by. Raise it as Verso does
- * what later versions added.
+ * The Mastodon version clients are told, which they turn features on by. Raise it as Verso
+ * implements what later versions added.
  */
 const mastodonVersion = "4.3.0";
 
@@ -46,7 +46,7 @@ const sourceUrl = "https://github.com/versia-pub/verso";
 const activeWindowMs = 28 * 24 * 60 * 60 * 1000;
 
 /**
- * Why clients can't sign up: accounts are made by logging in with an issuer that lets new people
+ * Why clients can't sign up: accounts are created by logging in with an issuer that lets new people
  * in, if any does.
  */
 const registrationMessage = (issuers: AboutSettings["auth"]["issuers"]) => {
@@ -76,7 +76,7 @@ export const renderRules = (instance: AboutSettings["instance"]): Rule[] =>
         hint: rule.hint,
     }));
 
-/** What clients may send, held to the configured limits, and where they connect. */
+/** What clients may send, limited by the configured limits, and where they connect. */
 const configuration = (
     ctx: Context,
     limits: AboutSettings["limits"],
@@ -99,7 +99,7 @@ const configuration = (
         max_media_attachments: limits.attachments,
         characters_reserved_per_url: charactersPerLink,
     },
-    // Any other file is taken too, as a file, but clients offer only what is listed.
+    // Any other file is accepted too, as a generic file, but clients offer only what is listed.
     media_attachments: {
         supported_mime_types: Object.values(imageFormats).map((format) => format.mediaType),
         image_size_limit: media.max_upload_bytes,
@@ -117,17 +117,17 @@ const configuration = (
     translation: { enabled: false },
 });
 
-/** How many people, statuses and other instances the instance has, as it tells clients. */
+/** How many users, statuses and other instances the instance has, as it tells clients. */
 export type InstanceStats = {
     /** Accounts that logged in in the last 30 days. */
     readonly activeMonth: number;
     readonly users: number;
     readonly statuses: number;
-    /** Other instances it knows of. */
+    /** Other instances it has stored. */
     readonly domains: number;
 };
 
-/** The instance's stats now. They take a few queries, so the routes keep them for a while. */
+/** The instance's stats now. They take a few queries, so the routes cache them for a while. */
 export const instanceStats = async (ctx: Context): Promise<InstanceStats> => ({
     activeMonth: await countAccountsWithTokensSince(
         ctx,
@@ -158,7 +158,7 @@ export const renderInstance = async (
         icon: [],
         languages: [],
         configuration: configuration(ctx, limits, settings.media),
-        // Accounts are made by logging in, never by a client's sign-up form.
+        // Accounts are created by logging in, never by a client's sign-up form.
         registrations: {
             enabled: false,
             approval_required: false,
@@ -174,7 +174,7 @@ export const renderInstance = async (
     };
 };
 
-/** The instance as Mastodon described it before 4.0, from how it describes itself now. */
+/** The instance as Mastodon described it before 4.0, derived from how it describes itself now. */
 export const renderV1Instance = (instance: Instance, stats: InstanceStats): V1Instance => ({
     uri: instance.domain,
     title: instance.title,
@@ -212,7 +212,7 @@ export const renderDocument = (document: Document | undefined): ExtendedDescript
     return { updated_at: document.updated.toISOString(), content: textToHtml(document.text) };
 };
 
-/** The terms of service, in force from their date. Only one version is kept. */
+/** The terms of service, in force from their date. Only one version is stored. */
 export const renderTerms = (ctx: Context, terms: Document | undefined): TermsOfService => {
     if (!terms) throw new NotFound();
 

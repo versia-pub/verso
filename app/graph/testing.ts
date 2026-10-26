@@ -3,8 +3,8 @@ import type { Context } from "../kernel/context.ts";
 
 /**
  * Adds `count` accounts following `followeeId`, accepted and counted, spread in turn over
- * `instanceIds`, where `null` is this instance, as quickly as the database allows. Returns their
- * ids, `follower0` onwards.
+ * `instanceIds`, where `null` is the local instance, as quickly as the database allows. Returns
+ * their ids, `follower0` onwards.
  */
 export const addFollowers = async (
     ctx: Context,

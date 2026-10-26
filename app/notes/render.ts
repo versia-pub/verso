@@ -1,5 +1,5 @@
 /**
- * Notes as the client API shows them, as Mastodon statuses.
+ * Statuses as the client API renders them, in the Mastodon format.
  * @module
  */
 import type { Status, StatusEdit } from "@versia/client-api";
@@ -26,7 +26,7 @@ import { isPinnable } from "./pins.ts";
 import { totalsOf } from "./total_queries.ts";
 
 /**
- * The note's id in Versia, the URL its Note entity is fetched from, or for a local share, its
+ * The status's id in Versia: the URL its Note entity is fetched from, or for a local boost, its
  * Share entity.
  */
 const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
@@ -40,8 +40,8 @@ const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
 };
 
 /**
- * What only a logged-in viewer is told: whether they like a note, and share it, and, of their own
- * that they can pin, whether they pin it. The rest isn't possible yet.
+ * What only a logged-in viewer is told: whether they like and boost the status and, for their own
+ * statuses that they can pin, whether they pin it. The rest isn't supported yet.
  */
 const viewerFlags = (liked: boolean, shared: boolean, pinned: boolean | undefined) => ({
     favourited: liked,
@@ -52,8 +52,9 @@ const viewerFlags = (liked: boolean, shared: boolean, pinned: boolean | undefine
 });
 
 /**
- * The notes `shares` share that `viewerId` may see, as statuses, by id. A note shared can have
- * been made private since. Notes shared aren't shares themselves, so this goes no deeper.
+ * The statuses boosted by `shares` that `viewerId` may see, as rendered statuses by id. A boosted
+ * status may have been made private since. Boosted statuses aren't boosts themselves, so this goes
+ * no deeper.
  */
 const sharedStatuses = async (
     ctx: Context,
@@ -73,7 +74,7 @@ const sharedStatuses = async (
 };
 
 /**
- * How many likes and shares of each of `noteIds` are by the accounts `blocked`, which the viewer
+ * How many likes and boosts of each of `noteIds` are by the accounts `blocked`, which the viewer
  * blocks and isn't shown.
  */
 const blockedCounts = async (
@@ -90,12 +91,12 @@ const blockedCounts = async (
 };
 
 /**
- * Notes as statuses, in the order given, as `viewerId` sees them, or anyone if it is `null`. Each
- * note's author must exist, which the database makes sure of. A share has the note it shares as its
- * `reblog`, and is left out if the viewer may not see that. Another instance's note counts the
- * larger of what Verso counted and what its instance says, as Mastodon does. The likes, shares and
- * reactions of the accounts the viewer blocks aren't counted. With `source`, they carry what their
- * authors wrote, as Mastodon gives a deleted status back for redrafting.
+ * Renders statuses in the order given, as `viewerId` sees them, or as anyone sees them if it is
+ * `null`. Each status's author must exist, which the database guarantees. A boost has the status it
+ * boosts as its `reblog`, and is omitted if the viewer may not see that. A remote status shows the
+ * larger of Verso's own count and the count its instance reports, as Mastodon does. The likes,
+ * boosts and reactions of the accounts the viewer blocks aren't counted. With `source`, statuses
+ * carry the text their authors wrote, as Mastodon returns a deleted status for redrafting.
  */
 export const renderStatuses = async (
     ctx: Context,
@@ -170,7 +171,7 @@ export const renderStatuses = async (
             favourites_count: Math.max(note.likes_count, totals.get(note.id)?.likes ?? 0) -
                 (uncounted.likes.get(note.id) ?? 0),
             replies_count: Math.max(note.replies_count, totals.get(note.id)?.replies ?? 0),
-            // Verso has no web pages for notes.
+            // Verso has no web pages for statuses.
             url: null,
             in_reply_to_id: note.in_reply_to_id,
             in_reply_to_account_id: note.in_reply_to_account_id,
@@ -190,8 +191,8 @@ export const renderStatuses = async (
 };
 
 /**
- * What a note said before each edit, oldest first, and what it says now, last. A note never edited
- * has only the one.
+ * What a status said before each edit, oldest first, and what it says now, last. A status that was
+ * never edited has only the one.
  */
 export const renderHistory = async (ctx: Context, note: NoteRow): Promise<StatusEdit[]> => {
     const [author] = await findAccounts(ctx, [note.account_id]);
@@ -204,12 +205,13 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
         created_at: note.edited_at ?? note.created_at,
     };
     const versions = [...await versionsOf(ctx, note.id), current];
-    // Files an edit removed are shown until they are removed with other unattached uploads, at
-    // the next hourly run once a day has passed since they were uploaded, which for most is soon.
+    // Media removed by an edit is still shown until it is removed with other unattached uploads, at
+    // the next hourly run once a day has passed since upload, which for most is soon.
     const ids = versions.flatMap((version) => version.media.map((media) => media.id));
     const files = new Map((await findMediaRows(ctx, ids)).map((row) => [row.id, row]));
 
-    // Versions aren't kept with the emojis they used, so each has the ones the note uses now.
+    // Versions aren't stored with the custom emojis they used, so each shows the ones the status
+    // uses now.
     const emojis = renderEmojis((await emojisOfNotes(ctx, [note.id])).get(note.id) ?? []);
     return versions.map((version): StatusEdit => ({
         content: author.domain === null ? version.content_html : sanitizeHtml(version.content_html),

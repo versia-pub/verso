@@ -24,7 +24,7 @@ export const appServices = (): AppServices => ({
     permissionsOf: accountPermissions,
 });
 
-/** Who is told of each event. */
+/** Who is notified of each event. */
 export const subscribers: readonly Subscriber[] = [
     // Before the profile is sent, so the followers it accepts are sent it too.
     acceptWhenUnlocked,
@@ -39,12 +39,12 @@ export const subscribers: readonly Subscriber[] = [
     uncountLikesOf,
 ];
 
-/** How long the instance's key and the blocked domains are kept before they are read again. */
+/** How long the instance's key and the blocked domains are cached before they are read again. */
 const keptMs = 60_000;
 
 /**
- * Federation as Verso's modules provide it, with `blockedDomains` as config blocks them. Make one
- * for each process, so its keys are fetched once, and fetches under way are shared.
+ * Federation as Verso's modules provide it, with `blockedDomains` as config blocks them. Create one
+ * per process, so its keys are fetched once, and fetches in progress are shared.
  */
 export const federation = (
     blockedDomains: readonly string[] = [],

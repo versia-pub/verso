@@ -1,6 +1,6 @@
 /**
- * Account notes: what an account privately notes about another, which only it sees, and which is
- * never sent anywhere, as on Mastodon.
+ * Account notes: what an account privately notes about another account, which only it sees, and
+ * which is never sent anywhere, as on Mastodon.
  * @see https://docs.joinmastodon.org/methods/accounts/#note
  * @module
  */
@@ -12,8 +12,8 @@ import { setAccountNote } from "./account_note_queries.ts";
 export const accountNoteLimit = 2000;
 
 /**
- * Sets what `accountId` notes about `targetId`, or with an empty `comment`, clears it. Returns
- * whether there is such an account.
+ * Sets what `accountId` notes about `targetId`, or clears it if `comment` is empty. Returns whether
+ * there is such an account.
  */
 export const noteAccount = async (
     ctx: Context,

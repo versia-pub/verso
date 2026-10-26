@@ -55,7 +55,9 @@ const resolve = async (
     return { problem: `Unknown reference "${text}"; use \${env:NAME} or \${file:PATH}` };
 };
 
-/** `text` with each reference replaced. What a reference reads isn't searched for more. */
+/**
+ * `text` with each reference replaced. What a reference reads isn't searched for more references.
+ */
 const fill = async (
     text: string,
     path: Path,

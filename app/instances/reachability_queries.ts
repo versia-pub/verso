@@ -1,6 +1,8 @@
 import type { Context } from "../kernel/context.ts";
 
-/** Until when `domain` is parked, or `null` if it isn't, or `undefined` if Verso doesn't know it. */
+/**
+ * Until when `domain` is parked, or `null` if it isn't, or `undefined` if Verso doesn't have it.
+ */
 export const findParkedUntil = async (
     ctx: Context,
     domain: string,
@@ -10,7 +12,7 @@ export const findParkedUntil = async (
 
 /**
  * Parks `domain` until `hold`, if its wait was over by `now`, so that one probe may go. Returns
- * whether it did, which only one of those asking at once does.
+ * whether it did, which only one of those asking at the same moment does.
  */
 export const holdForProbe = async (
     ctx: Context,
@@ -26,8 +28,8 @@ export const holdForProbe = async (
         .executeTakeFirst() !== undefined;
 
 /**
- * Counts a failure to reach `domain`, noting since when it couldn't be reached if it could before.
- * Returns how many failures in a row it has, if Verso knows it.
+ * Counts a failure to reach `domain`, recording since when it couldn't be reached if it could
+ * before. Returns how many failures in a row it has, if Verso has the instance.
  */
 export const addFailure = async (ctx: Context, domain: string): Promise<number | undefined> =>
     (await ctx.db.updateTable("instances")

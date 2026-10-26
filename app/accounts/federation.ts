@@ -1,6 +1,5 @@
 /**
- * Accounts as Versia shows them: local ones to other instances, and other instances' users to
- * Verso.
+ * Accounts as Versia renders them: local ones for remote instances, and remote users for Verso.
  * @module
  */
 import { formatReference, type Reference, v0_6 } from "@versia/protocol";
@@ -22,18 +21,18 @@ import type { ProfileField, TextFormat } from "./tables.ts";
 import { escapeHtml } from "./text.ts";
 import { renderText } from "../kernel/markup.ts";
 
-/** Text as its owner wrote it, and as HTML, so each instance can show whichever it can. */
+/** Text as its owner wrote it, and as HTML, so each instance can display whichever it supports. */
 const text = (format: TextFormat, written: string, html: string): v0_6.ContentFormat => ({
     [format]: { content: written, remote: false },
     "text/html": { content: html, remote: false },
 });
 
-/** A picture Verso serves, given by its URL. */
+/** A picture served by Verso, given by its URL. */
 const picture = (url: string): v0_6.ContentFormat => ({
     "image/png": { content: url, remote: true },
 });
 
-/** A local account as a Versia User, with the emojis it uses. */
+/** A local account as a Versia User, with the custom emojis it uses. */
 const renderVersiaUser = (
     ctx: Context,
     row: AccountRow,
@@ -62,7 +61,7 @@ const localUser = async (ctx: Context, id: string) => {
     return row?.domain === null ? row : undefined;
 };
 
-/** The user `reference` points at, local or remote, if Verso has it, without fetching it. */
+/** The user that `reference` points at, local or remote, if Verso has it, without fetching it. */
 export const knownUser = async (ctx: Context, reference: Reference): Promise<Known | undefined> => {
     if (reference.host === ctx.urls.domain) {
         const row = await localUser(ctx, reference.id);
@@ -70,7 +69,7 @@ export const knownUser = async (ctx: Context, reference: Reference): Promise<Kno
     }
 
     const row = await findRemoteAccountAt(ctx, reference.host, reference.id);
-    // A remote account is always saved with when it was fetched.
+    // A remote account is always saved with the time it was fetched.
     return row && { id: row.id, fetchedAt: row.fetched_at ?? new Date(0) };
 };
 
@@ -87,9 +86,9 @@ export const localVersiaUser = async (
 };
 
 /**
- * Users: other instances' ones, kept as remote accounts, and local ones, fetched by other
- * instances. Their collections are added by the modules whose they are: who follows whom by the
- * graph, and what they wrote and pinned by the notes.
+ * Users: remote ones, stored as remote accounts, and local ones, fetched by remote instances. Their
+ * collections are added by the modules that own them: who follows whom by the graph module, and
+ * what they wrote and pinned by the notes module.
  * @see https://versia.pub/entities/user
  */
 export const userType: EntityType<v0_6.User> = {
@@ -98,8 +97,8 @@ export const userType: EntityType<v0_6.User> = {
     // A user has no author, and lives where it came from.
     authority: (_, origin) => origin,
     receive: async (ctx, user, sender) => {
-        // Verso chooses which users it keeps, so an instance can't fill it with ones nobody asked
-        // for: one sent unasked only updates a user Verso has.
+        // Verso chooses which users it stores, so an instance can't fill it with users nobody
+        // requested: a user sent unsolicited only updates a user Verso already has.
         if (!sender.fetched && !await findRemoteAccount(ctx, sender.instanceId, user.id)) return;
 
         await saveRemoteAccount(ctx, remoteAccountOf(sender.instanceId, user));
@@ -111,7 +110,7 @@ export const userType: EntityType<v0_6.User> = {
 
 /**
  * References to the users of `ids` that exist, by id, as Verso puts them in what it sends: a bare
- * id for local users, and the host and id for other instances' ones.
+ * id for local users, and the host and id for remote ones.
  */
 export const userReferenceMap = async (
     ctx: Context,
@@ -141,7 +140,7 @@ export const userReferences = async (ctx: Context, ids: readonly string[]): Prom
     return ids.flatMap((id) => references.get(id) ?? []);
 };
 
-/** Text as written, in the first format Verso knows that holds it, or none. */
+/** Text as written, in the first format Verso supports that contains it, or none. */
 const writtenText = (formats: v0_6.ContentFormat): { format: TextFormat; text: string } => {
     for (const format of ["text/plain", "text/markdown"] as const) {
         const entry = formats[format];
@@ -152,8 +151,9 @@ const writtenText = (formats: v0_6.ContentFormat): { format: TextFormat; text: s
 };
 
 /**
- * Text as Verso keeps it: as written, and as HTML, which is the instance's own if it gave one, kept
- * as it is and sanitised when shown, or else made by `html` from what was written.
+ * Text as Verso stores it: as written, and as HTML. The HTML is the remote instance's own if it
+ * gave one, stored as is and sanitised when displayed, or else generated by `html` from what was
+ * written.
  */
 export const remoteText = (
     formats: v0_6.ContentFormat | null | undefined,
@@ -168,7 +168,7 @@ export const remoteText = (
     };
 };
 
-/** A user on the instance `instanceId`, as Verso keeps it. */
+/** A user on the instance `instanceId`, as Verso stores it. */
 export const remoteAccountOf = (instanceId: string, user: v0_6.User): RemoteAccount => {
     const bio = remoteText(user.bio, renderText);
     const fields = user.fields.map((field): ProfileField => {
@@ -176,7 +176,8 @@ export const remoteAccountOf = (instanceId: string, user: v0_6.User): RemoteAcco
         const value = remoteText(field.value, escapeHtml);
 
         return {
-            // Clients show a field's name as text, so one given only as HTML is shown as its text.
+            // Clients display a field's name as text, so a name given only as HTML is displayed as
+            // its text.
             name: name.text || textOfHtml(name.html).replaceAll(/\s+/g, " ").trim(),
             value: value.text,
             // Each is in the format of its name, which is nearly always the same as its value's.

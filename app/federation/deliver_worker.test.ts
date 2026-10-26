@@ -21,7 +21,7 @@ const minute = 60_000;
 const hour = 60 * minute;
 const queues = { [deliverQueue]: { handler: deliverHandler, concurrency: 1 } };
 
-/** b.example answering deliveries as `answer` says, and what it was sent. */
+/** b.example answering deliveries as `answer` says, and recording what it received. */
 const open = async (settings: Partial<Settings> = {}) => {
     const test = await createTestContext({ settings });
     await createInstance(test.ctx, "b.example");
@@ -49,7 +49,7 @@ const open = async (settings: Partial<Settings> = {}) => {
     const job = (id: string) =>
         test.ctx.db.selectFrom("jobs").selectAll().where("id", "=", id).executeTakeFirst();
 
-    /** Delivers once, with b.example answering `status` and `headers`, and returns the job. */
+    /** Delivers once, with b.example answering with `status` and `headers`, and returns the job. */
     const deliver = async (status: number, headers: HeadersInit = {}) => {
         answer = () => new Response(null, { status, headers });
         const id = await queue();
@@ -149,7 +149,7 @@ Deno.test("an instance that asks to wait gets no deliveries until then", async (
     await test.deliver(202);
     assertEquals(test.received.length, 1);
 
-    // Its rate limit says the same, even when it takes the delivery, the first that was made.
+    // Its rate limit says the same, even when it accepts the delivery, the first one made.
     test.clock.advance(120_000);
     await test.deliver(202, { "ratelimit-remaining": "0", "ratelimit-reset": "60" });
     assertEquals(test.received.length, 2);
@@ -158,7 +158,7 @@ Deno.test("an instance that asks to wait gets no deliveries until then", async (
 
     test.clock.advance(60_000);
     await test.deliver(202, { "ratelimit-remaining": "1", "ratelimit-reset": "60" });
-    // The four put off, and this one.
+    // The four postponed, and this one.
     assertEquals(test.received.length, 7);
     assertEquals(await test.job(job?.id ?? ""), undefined);
 });
@@ -170,18 +170,18 @@ Deno.test("an instance that can't be reached is left alone, but for a probe", as
     for (let n = 0; n < 6; n++) ids.push(await test.queue());
     const sent = () => test.transport.sent.length;
 
-    // Five failures park it, and the sixth delivery waits, without being tried.
+    // Five failures park the instance, and the sixth delivery waits without being tried.
     await drain(test.ctx, queues);
     assertEquals(sent(), 5);
     assertEquals((await test.job(ids[5]))?.last_error, null);
 
-    // Ones queued meanwhile wait too, without being tried.
+    // Deliveries queued in the meantime wait too, without being tried.
     ids.push(await test.queue(), await test.queue());
     await drain(test.ctx, queues);
     assertEquals(sent(), 5);
     assertEquals((await test.job(ids[6]))?.last_error, null);
 
-    // After a minute, one probe, which fails, so it waits two.
+    // After a minute, one probe, which fails, so the next wait is two minutes.
     test.clock.advance(minute);
     await drain(test.ctx, queues);
     assertEquals(sent(), 6);

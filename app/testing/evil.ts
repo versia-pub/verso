@@ -20,7 +20,9 @@ export type EvilInstance = {
     readonly domain: string;
     /** Sends a request signed with its own key, to `url` on any instance. */
     readonly send: (url: string, request?: EvilRequest) => Promise<Response>;
-    /** Answers GETs to `path` with `body` as JSON, signed by itself unless `signed` is false. */
+    /**
+     * Responds to GETs to `path` with `body` as JSON, signed by itself unless `signed` is false.
+     */
     readonly serve: (path: string, body: unknown, options?: { signed?: boolean }) => void;
     /** Replaces its key pair, as an instance whose key leaked would. */
     readonly rotateKey: () => Promise<void>;

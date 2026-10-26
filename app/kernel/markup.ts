@@ -1,5 +1,5 @@
 /**
- * What users write, in plain text or Markdown: the mentions, hashtags and custom emoji in it, and
+ * What users write, in plain text or Markdown: the mentions, hashtags and custom emojis in it, and
  * its HTML. Both formats go through one parser, so they find the same things, and never in code or
  * links.
  * @see https://markdown-it.github.io/markdown-it/
@@ -9,14 +9,14 @@ import markdownIt, { type Env, type MarkdownIt, type StateCore, type Token } fro
 
 export type MarkupFormat = "text/plain" | "text/markdown";
 
-/** A mention as written: `@username`, or `@username@domain` for another instance's user. */
+/** A mention as written: `@username`, or `@username@domain` for a remote user. */
 export type Mention = { readonly username: string; readonly domain: string | null };
 
 /** What a text mentions, tags and uses, each once, in the order first written. */
 export type Found = {
     readonly mentions: readonly Mention[];
     readonly hashtags: readonly string[];
-    /** Custom emoji, by shortcode, without the colons. */
+    /** Custom emojis, by shortcode, without the colons. */
     readonly shortcodes: readonly string[];
 };
 
@@ -29,7 +29,7 @@ export type Links = {
 
 /**
  * Mentions, hashtags and shortcodes, as Mastodon finds them: none straight after a letter or a
- * slash, so addresses and links aren't taken for them, and hashtags not all digits.
+ * slash, so addresses and links aren't mistaken for them, and hashtags not all digits.
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/account.rb
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/tag.rb
  */
@@ -136,7 +136,7 @@ const configure = (md: MarkdownIt) => {
             `#<span>${escape(tag)}</span></a>`;
     };
 
-    // Custom emoji are shown by clients, from the shortcodes in the text.
+    // Custom emojis are displayed by clients, from the shortcodes in the text.
     md.renderer.rules.shortcode = (tokens, idx) => escape(tokens[idx].content);
 
     // Paragraphs and line breaks with nothing between them, as Mastodon writes them.
@@ -153,7 +153,7 @@ const parsers: Record<MarkupFormat, MarkdownIt> = {
     "text/plain": configure(
         markdownIt("zero", { breaks: true, linkify: true }).enable(["newline", "linkify"]),
     ),
-    // Markdown, but not HTML, which is shown as written, or pictures, which would load from
+    // Markdown, but not HTML, which is displayed as written, or images, which would load from
     // wherever the writer chose.
     "text/markdown": configure(
         markdownIt("default", { html: false, breaks: true, linkify: true }).disable("image"),
@@ -201,8 +201,8 @@ export const charactersPerLink = 23;
 
 /**
  * How long `text` is, as Mastodon counts statuses: by what readers see as one character, with each
- * web address counting as {@link charactersPerLink}, and mentions of other instances' users as
- * just `@username`.
+ * web address counting as {@link charactersPerLink}, and mentions of remote users as just
+ * `@username`.
  * @see https://github.com/mastodon/mastodon/blob/main/app/validators/status_length_validator.rb
  */
 export const countText = (text: string): number => {

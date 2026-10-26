@@ -16,7 +16,7 @@ import { findMedia, saveRemoteMedia } from "./media_queries.ts";
 import { finishUpload } from "./upload_queries.ts";
 import { deleteFileIfUnused, mediaQueue, processingFailed, upload } from "./uploads.ts";
 
-/** A `width`×`height` PNG, all red. */
+/** A `width`×`height` PNG, entirely red. */
 const png = (width: number, height: number) =>
     new Uint8Array(encode({
         width,
@@ -25,7 +25,9 @@ const png = (width: number, height: number) =>
         channels: 4,
     }));
 
-/** A 3×2 JPEG, saved by a camera held on its side, with where it was taken in its EXIF. */
+/**
+ * A 3×2 JPEG, taken by a camera held on its side, with the location where it was taken in its EXIF.
+ */
 const sidewaysJpeg = Uint8Array.fromBase64(
     "/9j/4QB8RXhpZgAATU0AKgAAAAgAAwESAAMAAAABAAYAAAITAAMAAAABAAEAAIglAAQAAAABAAAAMgAAAAAAAwAAAAEAAAAE" +
         "AgMAAAABAAIAAAACTgAAAAACAAUAAAADAAAAXAAAAAAAAAAwAAAAAQAAADMAAAABAAAAAAAAAAH/2wBDABALDA4MChAO" +
@@ -48,7 +50,7 @@ const open = async (options: TestContextOptions = {}) => {
     const test = await createTestContext(options);
     await createLocalAccount(test.ctx, "alice");
 
-    /** The file kept under `key`, or `undefined` if there is none. */
+    /** The file stored under `key`, or `undefined` if there is none. */
     const file = async (key: string | null) => {
         const stream = key === null ? undefined : await test.ctx.files.get(key);
         return stream && await new Response(stream).bytes();
@@ -62,7 +64,7 @@ const open = async (options: TestContextOptions = {}) => {
     return { ...test, file, jobs };
 };
 
-/** Whether `bytes` have EXIF metadata, as a JPEG keeps it. */
+/** Whether `bytes` contain EXIF metadata, as a JPEG stores it. */
 const hasExif = (bytes: Uint8Array) => new TextDecoder("latin1").decode(bytes).includes("Exif\0\0");
 
 const sha256Of = async (bytes: Uint8Array<ArrayBuffer>) =>
@@ -169,7 +171,7 @@ Deno.test("a picture is processed by a job, which keeps it without its metadata"
     assertEquals(processed.size, kept.length);
     assertEquals(processed.sha256, await sha256Of(kept));
     assert(await test.file(processed.preview_sha256));
-    // What was uploaded, with where it was taken, is gone.
+    // The original upload, including the location where it was taken, is gone.
     assertEquals(await test.file(row.upload_sha256), undefined);
 });
 
@@ -226,7 +228,7 @@ Deno.test("uploading a picture as Verso keeps it doesn't remove the one kept", a
     assertEquals(again.upload_sha256, kept);
     assertEquals(await test.file(kept), bytes);
 
-    // Nor uploading its preview.
+    // Nor does uploading its preview.
     const preview = (await findMedia(test.ctx, first.id))?.preview_sha256 ?? null;
     const small = await test.file(preview);
     assert(small);
@@ -317,7 +319,7 @@ Deno.test("what was uploaded is removed when a run stopped after processing it",
         file: new Blob([sidewaysJpeg]),
         mediaType: "image/jpeg",
     });
-    // As if a run kept the picture, then stopped before removing what was uploaded.
+    // Simulates a run that stored the image and stopped before removing the original upload.
     const kept = await test.ctx.files.put(await bytesSource(png(4, 4)), "image/png");
     await finishUpload(test.ctx, row.id, { sha256: kept });
 
@@ -398,8 +400,7 @@ Deno.test("a file is removed only once nothing uses it", async () => {
     await deleteFileIfUnused(test.ctx, row.sha256 ?? "");
     assertEquals(await test.file(row.sha256), zip);
 
-    // Neither another upload being processed nor another instance's file of the same SHA-256
-    // uses it.
+    // Neither another upload being processed nor a remote media row with the same SHA-256 uses it.
     await upload(test.ctx, "alice", { file: new Blob([png(4, 4)]), mediaType: "image/png" });
     await createInstance(test.ctx, "b.example");
     await saveRemoteMedia(test.ctx, "b.example", null, {
@@ -412,7 +413,7 @@ Deno.test("a file is removed only once nothing uses it", async () => {
     assertEquals(await test.file(row.sha256), undefined);
 });
 
-/** A store that waits, when it is asked to remove a file, until `release` is called. */
+/** A file store that waits, when asked to remove a file, until `release` is called. */
 const pausingFiles = () => {
     const inner = memoryFiles();
     let release = () => {};
@@ -437,7 +438,7 @@ Deno.test("a file uploaded while it is removed as unused is kept", async () => {
     await using test = await open({ files: store.files });
     const key = await store.inner.put(await bytesSource(zip), "application/octet-stream");
 
-    // The removal finds it unused, then waits to remove it.
+    // The removal finds the file unused, then waits before removing it.
     const removing = deleteFileIfUnused(test.ctx, key);
     await store.asked;
     const uploading = upload(test.ctx, "alice", { file: new Blob([zip]), mediaType: "a zip" });
@@ -454,7 +455,7 @@ Deno.test("a file removed after it was uploaded, but before its row was added, i
     let removed = false;
     const files: FileStore = {
         ...inner,
-        // As if an unused upload's removal took it just then.
+        // Simulates the removal of an unused upload deleting it at that moment.
         put: async (file, type) => {
             const key = await inner.put(file, type);
             if (!removed) {
@@ -479,7 +480,7 @@ Deno.test("a picture uploaded again is processed anew if what was kept of it is 
     });
     await drain(test.ctx, queues);
     const kept = await findMedia(test.ctx, first.id);
-    // As if it were being removed, with its files.
+    // Simulates it being removed, along with its files.
     await test.ctx.files.delete(kept?.sha256 ?? "");
 
     const again = await upload(test.ctx, "alice", {
@@ -498,8 +499,8 @@ Deno.test("what processing keeps is kept again, if it was removed before it was 
     const puts = new Map<string, number>();
     const files: FileStore = {
         ...inner,
-        // As if an unused upload's removal took each just then, the first time it was kept: the
-        // second PNG, which is the one kept, and the preview.
+        // Simulates the removal of an unused upload deleting each file at that moment, the first
+        // time it was stored: the second PNG, which is the one stored, and the preview.
         put: async (file, type) => {
             const key = await inner.put(file, type);
             const n = (puts.get(type) ?? 0) + 1;

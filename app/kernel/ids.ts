@@ -7,9 +7,9 @@ export type IdGenerator = () => string;
 export type RandomSource = (bytes: Uint8Array) => void;
 
 /**
- * Makes UUIDv7 ids (RFC 9562): the first 48 bits are the clock's time in milliseconds, so ids sort
- * by creation time and can be used as pagination cursors. The rest is random. Ids made in the same
- * millisecond sort in random order.
+ * Generates UUIDv7 ids (RFC 9562): the first 48 bits are the clock's time in milliseconds, so ids
+ * sort by creation time and can be used as pagination cursors. The rest is random. Ids generated in
+ * the same millisecond sort in random order.
  */
 export const idGenerator = (
     clock: Clock,
@@ -35,7 +35,9 @@ export const idGenerator = (
     }`;
 };
 
-/** A random source for tests that counts up, so the ids it helps make are the same on every run. */
+/**
+ * A random source for tests that counts up, so the ids it helps generate are the same on every run.
+ */
 export const countingRandom = (): RandomSource => {
     let count = 0;
 

@@ -1,6 +1,6 @@
 import type { Context } from "../kernel/context.ts";
 
-/** Sets what an account notes about another, or, given nothing, removes it. */
+/** Sets what an account notes about another account, or removes the note if given nothing. */
 export const setAccountNote = async (
     ctx: Context,
     accountId: string,
@@ -24,7 +24,7 @@ export const setAccountNote = async (
         .execute();
 };
 
-/** What `accountId` notes about each of `otherIds` it notes anything about, by the other. */
+/** What `accountId` notes about each of `otherIds` that it has a note on, by the other account. */
 export const accountNotesOn = async (
     ctx: Context,
     accountId: string,

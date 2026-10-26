@@ -140,7 +140,7 @@ Deno.test("a long username is cut to 30 characters, with room for its number", a
 
 Deno.test({
     name: "a login that another request links meanwhile gets that request's account",
-    // Only Postgres runs transactions side by side; PGlite and SQLite take them one at a time.
+    // Only Postgres runs transactions concurrently; PGlite and SQLite run them one at a time.
     ignore: testDatabaseKind === "pglite" || testDatabaseKind === "sqlite",
     fn: async () => {
         await using test = await open();

@@ -38,7 +38,7 @@ Deno.test("an instance has one emoji by each name, its picture the latest given"
         2,
     );
 
-    // Another instance's emoji by the same name is another emoji.
+    // A remote instance's emoji with the same name is a different emoji.
     const [theirs] = await keepRemoteEmojis(test.ctx, "c.example", [
         emoji("blob", "https://c.example/blob.png"),
     ]);

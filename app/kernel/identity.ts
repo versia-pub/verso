@@ -9,7 +9,7 @@ export type Issuer = Pick<
     "name" | "url" | "username_claim" | "registration" | "roles"
 >;
 
-/** The claims of a verified ID token. */
+/** The claims of a validated ID token. */
 export type Claims = { readonly sub: string } & Readonly<Record<string, unknown>>;
 
 /** What a login needs to remember between sending the browser away and its return. */
@@ -24,8 +24,10 @@ export type LoginFlow = {
 export type IdentityProvider = {
     /** The issuer's name, and who may register through it. */
     readonly issuer: Issuer;
-    /** Where to send the browser, and the flow to keep until it comes back to `redirectUri`. */
+    /** Where to send the browser, and the flow to store until it comes back to `redirectUri`. */
     beginLogin(redirectUri: string): Promise<{ url: URL; flow: LoginFlow }>;
-    /** Checks the browser's return to `redirectUri` and returns the verified ID token's claims. */
+    /**
+     * Validates the browser's return to `redirectUri` and returns the validated ID token's claims.
+     */
     completeLogin(callback: URL, flow: LoginFlow): Promise<Claims>;
 };

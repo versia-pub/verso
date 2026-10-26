@@ -1,6 +1,6 @@
 /**
- * Who follows whom, as Versia shows it: local users' followers and follows, as collections other
- * instances fetch, and follows between local users and other instances' ones, sent and received.
+ * Who follows whom, as Versia renders it: local users' followers and follows, as collections remote
+ * instances fetch, and follows between local users and remote users, sent and received.
  * @see https://versia.pub/entities/follow
  * @module
  */
@@ -17,8 +17,8 @@ import { countFollows, followIdsFrom, followsFrom, type FollowSide } from "./fol
 import { acceptFollow, follow, followerInstances, rejectFollow, unfollow } from "./follows.ts";
 
 /**
- * A local user's followers or follows, oldest first, so pages stay put as more arrive. A user who
- * hides them shows only how many there are.
+ * A local user's followers or follows, oldest first, so pages stay stable as more arrive. A user
+ * who hides them shows only how many there are.
  */
 const followCollection = (side: FollowSide): CollectionProvider => async (ctx, id, page) => {
     const owner = await findAccount(ctx, id);
@@ -37,7 +37,7 @@ export const followCollections: Readonly<Record<FollowSide, CollectionProvider>>
     following: followCollection("following"),
 };
 
-/** Sends a follower's Follow or Unfollow to their followee's instance, if it is another. */
+/** Sends a follower's Follow or Unfollow to their followee's instance, if it is remote. */
 const sendToFollowee = async (
     ctx: Context,
     type: "Follow" | "Unfollow",
@@ -56,7 +56,7 @@ const sendToFollowee = async (
     await queueDeliveries(ctx, entity, [followeeId]);
 };
 
-/** Sends a followee's answer to their follower's instance, if it is another. */
+/** Sends a followee's response to their follower's instance, if it is remote. */
 const sendToFollower = async (
     ctx: Context,
     type: "FollowAccept" | "FollowReject",
@@ -76,8 +76,8 @@ const sendToFollower = async (
 };
 
 /**
- * Sends other instances what happened to follows between their users and local ones: a local
- * user's follows and unfollows, to the followee's instance, and a local user's answers, to the
+ * Sends remote instances what happened to follows between their users and local ones: a local
+ * user's follows and unfollows, to the followee's instance, and a local user's responses, to the
  * follower's. A follow between local users needs nothing sent.
  */
 export const followDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
@@ -111,8 +111,8 @@ const authorOf = (entity: { author: string }, origin: string) =>
     parseReference(entity.author, origin)?.host;
 
 /**
- * The two users an entity `sender` sent about a follow names: `local`, which must be a user here,
- * and its author, on the sender. Either is `undefined` if Verso doesn't have it.
+ * The two users named by a follow entity sent by `sender`: `local`, which must be a local user, and
+ * its author, on the sender. Either is `undefined` if Verso doesn't have it.
  */
 const partiesOf = async (ctx: Context, local: string, author: string, sender: Sender) => {
     const localUser = parseReference(local, sender.domain);
@@ -130,8 +130,8 @@ const partiesOf = async (ctx: Context, local: string, author: string, sender: Se
 };
 
 /**
- * A user asking to follow a local one, who accepts at once unless they are locked. A follower
- * asking again is accepted again, in case their instance missed it.
+ * A user requesting to follow a local one, who is accepted at once unless they are locked. A
+ * follower requesting again is accepted again, in case their instance missed it.
  */
 const followType: EntityType<v0_6.Follow> = {
     type: "Follow",
@@ -152,7 +152,7 @@ const followType: EntityType<v0_6.Follow> = {
     },
 };
 
-/** A user no longer following a local one, or no longer asking to. */
+/** A user who no longer follows a local one, or no longer requests to. */
 const unfollowType: EntityType<v0_6.Unfollow> = {
     type: "Unfollow",
     schema: v0_6.Unfollow,
@@ -165,7 +165,7 @@ const unfollowType: EntityType<v0_6.Unfollow> = {
     },
 };
 
-/** A user accepting a local user's request to follow them. */
+/** A user accepting a local user's follow request. */
 const followAcceptType: EntityType<v0_6.FollowAccept> = {
     type: "FollowAccept",
     schema: v0_6.FollowAccept,
@@ -178,7 +178,7 @@ const followAcceptType: EntityType<v0_6.FollowAccept> = {
     },
 };
 
-/** A user rejecting a local user's request to follow them, or removing them as a follower. */
+/** A user rejecting a local user's follow request, or removing them as a follower. */
 const followRejectType: EntityType<v0_6.FollowReject> = {
     type: "FollowReject",
     schema: v0_6.FollowReject,
@@ -191,7 +191,7 @@ const followRejectType: EntityType<v0_6.FollowReject> = {
     },
 };
 
-/** The transient entities follows are sent as. */
+/** The transient entities that follows are sent as. */
 export const followTypes: readonly EntityType[] = [
     followType,
     unfollowType,

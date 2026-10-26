@@ -28,7 +28,7 @@ const open = async (options: TestContextOptions = {}) => {
     return test;
 };
 
-/** Each account's following and followers counts. */
+/** Each account's following and follower counts. */
 const counts = async (ctx: Context) =>
     Object.fromEntries(
         (await ctx.db.selectFrom("accounts")
@@ -226,7 +226,7 @@ Deno.test("an account's followers are found by their other instances, once each"
     await createInstance(test.ctx, "d.example");
     await createRemoteAccount(test.ctx, "gus", "d.example");
     for (const id of ["bob", "carol", "dan", "erin"]) await follow(test.ctx, id, "alice");
-    // Gus only asked, once alice was locked.
+    // Gus only requested to follow, once alice was locked.
     await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")
         .execute();
     await follow(test.ctx, "gus", "alice");

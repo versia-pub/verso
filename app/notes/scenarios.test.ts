@@ -1,5 +1,5 @@
 /**
- * Following and notes end to end, between complete instances, through the client API: who is
+ * Following and statuses end to end, between complete instances, through the client API: who is
  * sent what, who may fetch it, and edits reaching everyone who has it.
  * @module
  */
@@ -45,7 +45,7 @@ const open = async () => {
         return { id: posted.body.id as string, sent: await deliveries(network, "Note", from) };
     };
 
-    /** The status `user` sees on their own instance for alice's note `id`, found by its URI. */
+    /** The status `user` sees on their own instance for alice's status `id`, found by its URI. */
     const seen = async (user: string, id: string) => {
         const statuses = await users[user]("GET", "/api/v1/timelines/home");
         return statuses.body.find((status: { uri: string }) =>
@@ -123,7 +123,7 @@ Deno.test("a note reaches each instance it is shown on once, and no other", asyn
     const direct = await test.post("Psst @erin@e.test", "direct");
     assertEquals(direct.sent, { "e.test": 1 });
     assertEquals(await test.seen("bob", direct.id), undefined);
-    // Erin's instance keeps it, though she doesn't follow alice, so it isn't on her home.
+    // Erin's instance stores it, though she doesn't follow alice, so it isn't on her home timeline.
     const kept = await findRemoteNoteAt(test.network.instances["e.test"].ctx, "a.test", direct.id);
     assertEquals(kept?.visibility, "direct");
     assertEquals((await test.users.erin("GET", "/api/v1/timelines/home")).body, []);

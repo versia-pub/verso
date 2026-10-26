@@ -4,7 +4,7 @@ import { createTestContext } from "../testing/context.ts";
 import { findMedia, type RemoteMedia, saveRemoteMedia } from "./media_queries.ts";
 import { renderAttachment } from "./render.ts";
 
-/** Another instance's file, as Mastodon's API describes it. */
+/** Remote media, as Mastodon's API renders it. */
 const rendered = async (media: RemoteMedia) => {
     await using test = await createTestContext();
     await createInstance(test.ctx, "b.example");

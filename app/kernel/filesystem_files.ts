@@ -1,16 +1,18 @@
 import { checkFileKey, type FileStore } from "./files.ts";
 
-/** Where in `root` the file kept under `key` is: in a directory named for its first two digits. */
+/**
+ * Where in `root` the file stored under `key` is: in a directory named for its first two digits.
+ */
 const pathOf = (root: string, key: string) => `${root}/${key.slice(0, 2)}/${key}`;
 
 /** Where in `root` files are written before they are moved into place. */
 const tempOf = (root: string) => `${root}/tmp`;
 
-/** Whether `path` is there. If Verso can't tell, writing it will fail and say why. */
+/** Whether `path` exists. If Verso can't tell, writing it will fail and say why. */
 const exists = (path: string) => Deno.stat(path).then(() => true, () => false);
 
 /**
- * Keeps files in the directory `root`. Each is written to a file of its own inside it, then moved
+ * Stores files in the directory `root`. Each is written to a file of its own inside it, then moved
  * into place, so a file is either all there or not there at all. Moving it within `root` keeps it
  * on one filesystem, which moving it from the system's temporary directory might not.
  */
@@ -56,7 +58,7 @@ export const filesystemFiles = (root: string): FileStore => ({
             if (!(error instanceof Deno.errors.NotFound)) throw error;
         }
     },
-    // Makes `root` if it isn't there, and writes a file to it.
+    // Creates `root` if it doesn't exist, and writes a file to it.
     check: async () => {
         await Deno.mkdir(tempOf(root), { recursive: true });
         await Deno.remove(await Deno.makeTempFile({ dir: tempOf(root) }));

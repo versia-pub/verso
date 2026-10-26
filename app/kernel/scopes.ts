@@ -62,7 +62,7 @@ export const ScopeList = z.string()
     .pipe(z.array(z.enum(scopes, { error: "Unknown scope" })));
 
 /**
- * The scopes a client asks for, as a space-separated list, or `read` if it names none. Returns
+ * The scopes a client requests, as a space-separated list, or `read` if it names none. Returns
  * nothing if any is unknown, or isn't one the app registered.
  */
 export const requestedScopes = (

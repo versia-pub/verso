@@ -4,7 +4,7 @@ import type { EmojisTable } from "./tables.ts";
 
 export type EmojiRow = Selectable<EmojisTable>;
 
-/** The emoji named `shortcode` on the instance `instanceId`, if Verso has it. */
+/** The custom emoji named `shortcode` on the instance `instanceId`, if Verso has it. */
 export const findRemoteEmoji = async (
     ctx: Context,
     instanceId: string,
@@ -15,7 +15,7 @@ export const findRemoteEmoji = async (
         .where("shortcode", "=", shortcode)
         .executeTakeFirst();
 
-/** The ids of this instance's emojis named any of `shortcodes`. */
+/** The ids of the local instance's custom emojis named any of `shortcodes`. */
 export const localEmojiIds = async (
     ctx: Context,
     shortcodes: readonly string[],
@@ -34,7 +34,7 @@ export const insertEmoji = async (ctx: Context, emoji: Insertable<EmojisTable>):
     await ctx.db.insertInto("emojis").values(emoji).execute();
 };
 
-/** Replaces the emojis a note uses. */
+/** Replaces the custom emojis a status uses. */
 export const setNoteEmojis = async (
     ctx: Context,
     noteId: string,
@@ -48,7 +48,7 @@ export const setNoteEmojis = async (
         .execute();
 };
 
-/** Replaces the emojis an account uses. */
+/** Replaces the custom emojis an account uses. */
 export const setAccountEmojis = async (
     ctx: Context,
     accountId: string,
@@ -62,19 +62,19 @@ export const setAccountEmojis = async (
         .execute();
 };
 
-/** An emoji, with its picture. */
+/** A custom emoji, with its picture. */
 export type ShownEmoji = {
     readonly shortcode: string;
-    /** The instance it is from, or `null` for this one. */
+    /** The instance it is from, or `null` for the local instance. */
     readonly instance_id: string | null;
-    /** Where its picture is, or `null` if Verso keeps it, which it can't serve yet. */
+    /** Where its picture is, or `null` if Verso stores it, which it can't serve yet. */
     readonly url: string | null;
     readonly media_type: string;
 };
 
-/** An emoji something uses. */
+/** A custom emoji used by something. */
 export type UsedEmoji = ShownEmoji & {
-    /** The note or account that uses it. */
+    /** The status or account that uses it. */
     readonly user_id: string;
 };
 
@@ -87,8 +87,8 @@ const shownColumns = [
 ] as const;
 
 /**
- * This instance's emojis, by shortcode. It reads the `media` table rather than asking its module,
- * so that it is one query.
+ * The local instance's custom emojis, by shortcode. It reads the `media` table directly rather than
+ * going through its module, so that it takes one query.
  */
 export const localEmojis = async (ctx: Context): Promise<ShownEmoji[]> =>
     await ctx.db.selectFrom("emojis")
@@ -107,8 +107,8 @@ const byUser = (rows: readonly UsedEmoji[]) => {
 };
 
 /**
- * The emojis each of `noteIds` uses, by note. It reads the `media` table rather than asking its
- * module, so that it is one query.
+ * The custom emojis each of `noteIds` uses, by status. It reads the `media` table directly rather
+ * than going through its module, so that it takes one query.
  */
 export const emojisOfNotes = async (
     ctx: Context,
@@ -128,8 +128,8 @@ export const emojisOfNotes = async (
 };
 
 /**
- * The emojis each of `accountIds` uses, by account. It reads the `media` table rather than asking
- * its module, so that it is one query.
+ * The custom emojis each of `accountIds` uses, by account. It reads the `media` table directly
+ * rather than going through its module, so that it takes one query.
  */
 export const emojisOfAccounts = async (
     ctx: Context,

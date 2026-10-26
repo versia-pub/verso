@@ -7,7 +7,7 @@ import { s3Files } from "./s3_files.ts";
 
 const bytes = new TextEncoder().encode("Hello");
 
-/** A store in the fake bucket, as of 2026-01-01, with `bucket` changing what it is told. */
+/** A store in the fake bucket, as of 2026-01-01, with `bucket` changing how the server responds. */
 const open = (bucket: Partial<typeof fakeBucket> = {}) => {
     const s3 = fakeS3();
     const transport = fakeTransport({ "s3.test": s3 });
@@ -102,12 +102,12 @@ Deno.test("what the server refuses is an error saying what it answered", async (
     await assertRejects(() => store.delete(key), Error, "S3 answered 403 to DELETE");
     assertEquals(s3.objects.size, 0);
 
-    // A server that answers a missing object's removal with 404 has still removed it.
+    // A server that responds to the removal of a missing object with 404 has still removed it.
     const { store: other, transport } = open();
     transport.servers.set("s3.test", () => new Response("Not here", { status: 404 }));
     await other.delete(key);
 
-    // Only so much of what a server says is kept, in case it's a whole page.
+    // Only so much of what a server says is retained, in case it's a whole page.
     transport.servers.set("s3.test", () => new Response("a".repeat(600), { status: 502 }));
     const long = await assertRejects(() => other.get(key), Error);
     assertEquals(long.message, `S3 answered 502 to GET ${key}: ${"a".repeat(500)}`);

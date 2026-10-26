@@ -23,7 +23,7 @@ import {
 
 const logger = getLogger(["verso", "accounts"]);
 
-/** What an account may do: what every user may, and what each of its roles allows. */
+/** What an account may do: what every user may do, and what each of its roles allows. */
 export const accountPermissions = async (
     ctx: Context,
     accountId: string,
@@ -34,9 +34,9 @@ export const accountPermissions = async (
 };
 
 /**
- * Gives an account the roles the issuer's rules match in a login's claims, and takes away the ones
- * the issuer gave before that no longer match. Roles given by an admin or another issuer stay.
- * Rules naming a role that doesn't exist are skipped, with a warning.
+ * Grants an account the roles that the issuer's rules match in a login's claims, and revokes the
+ * ones the issuer granted before that no longer match. Roles granted by an admin or another issuer
+ * stay. Rules naming a role that doesn't exist are skipped, with a warning.
  */
 export const syncClaimedRoles = async (
     ctx: Context,
@@ -65,7 +65,7 @@ export const syncClaimedRoles = async (
 
 /**
  * What an account may do to roles through the API: change only those below its highest role, and
- * give them only permissions it has itself. Without roles, it may change none.
+ * grant them only permissions it has itself. Without roles, it may change none.
  */
 export type RoleManager = {
     readonly accountId: string;
@@ -83,7 +83,7 @@ export const roleManager = async (
     permissions,
 });
 
-/** Why `manager` may not make a role with this priority and these permissions, if it may not. */
+/** Why `manager` may not create a role with this priority and these permissions, if it may not. */
 export const refusal = (
     manager: RoleManager,
     role: { readonly priority?: number; readonly permissions?: readonly Permission[] },
@@ -100,7 +100,7 @@ export const refusal = (
     return undefined;
 };
 
-/** What a manager's change to roles did, or why it was refused. */
+/** The outcome of a manager's change to roles, or why it was rejected. */
 export type Managed<T> =
     | { readonly ok: true; readonly value: T }
     | { readonly ok: false; readonly reason: "not-found" | "name-taken" }
@@ -129,7 +129,7 @@ const managedRole = async (
     return refused === undefined ? { ok: true, value: role } : notPermitted(refused);
 };
 
-/** Creates a role, if it is below the manager's highest and gives only what they have. */
+/** Creates a role, if it is below the manager's highest and grants only permissions they have. */
 export const createManagedRole = async (
     ctx: Context,
     manager: RoleManager,
@@ -143,8 +143,8 @@ export const createManagedRole = async (
 };
 
 /**
- * Changes a role below the manager's highest, keeping it there. Permissions the role has already
- * may stay, even ones the manager lacks; only the ones added must be theirs.
+ * Updates a role below the manager's highest, keeping it there. Permissions the role already has
+ * may stay, even ones the manager lacks; only the added ones must be the manager's.
  */
 export const updateManagedRole = async (
     ctx: Context,
@@ -179,7 +179,7 @@ export const updateManagedRole = async (
     return updated ? { ok: true, value: updated } : notFound;
 };
 
-/** Deletes a role below the manager's highest, taking it from everyone who has it. */
+/** Deletes a role below the manager's highest, removing it from everyone who has it. */
 export const deleteManagedRole = async (
     ctx: Context,
     manager: RoleManager,
@@ -193,11 +193,11 @@ export const deleteManagedRole = async (
 };
 
 /**
- * Gives an account a role, or takes away one an admin gave, if the role is below the manager's
- * highest, and the account is their own or ranks below them; or a manager could take roles from
- * their admins. Giving one also needs its permissions to be the manager's, or anyone with a lower
- * role could give themselves permissions they lack. Roles from an issuer's claims stay, since the
- * next login would give them back.
+ * Grants an account a role, or revokes one that an admin granted, if the role is below the
+ * manager's highest and the account is their own or ranks below them; otherwise a manager could
+ * take roles from their admins. Granting a role also requires its permissions to be the manager's,
+ * or anyone with a lower role could grant themselves permissions they lack. Roles from an issuer's
+ * claims stay, since the next login would grant them again.
  */
 export const changeManagedRole = async (
     ctx: Context,

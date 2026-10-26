@@ -45,7 +45,7 @@ Deno.test("blocks made here apply at once, and ones made elsewhere within a minu
     await blockDomain(test.ctx, "evil.example");
     assertEquals(await isBlocked("evil.example"), true);
 
-    // As the CLI blocks one, from a process of its own.
+    // As the CLI blocks one, from its own process.
     await test.ctx.db.insertInto("domain_blocks")
         .values({ domain: "bad.example", reason: "", created_at: test.clock.now() })
         .execute();

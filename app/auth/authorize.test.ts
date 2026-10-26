@@ -24,7 +24,7 @@ const open = async (providers: IdentityProvider[] = [issuerA]) => {
 
     const { app } = await registerTestApp(test.ctx);
 
-    /** Opens `/oauth/authorize` with a valid request, changed by `changes`. */
+    /** Opens `/oauth/authorize` with a valid request, modified by `changes`. */
     const authorize = (changes: Record<string, string | undefined> = {}) => {
         const params = {
             client_id: app.client_id,

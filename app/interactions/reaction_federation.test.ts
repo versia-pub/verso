@@ -16,8 +16,8 @@ import { reactionType } from "./reaction_federation.ts";
 import { react, unreact } from "./reactions.ts";
 
 /**
- * alice and bob here, with this instance's blob, carol on b.example, erin on c.example, who
- * follows alice, and frank on d.example.
+ * alice and bob are local, with the local instance's blob, carol is on b.example, erin on
+ * c.example, who follows alice, and frank on d.example.
  */
 const open = async () => {
     const test = await createTestContext();
@@ -35,7 +35,7 @@ const open = async () => {
         return reactionType.find(test.ctx, id, requester);
     };
 
-    /** A page of a local note's reactions, as `requester` may see them. */
+    /** A page of a local status's reactions, as `requester` may see them. */
     const reactions = (id: string, requester: string, page = { offset: 0, limit: 40 }) =>
         registry.types.get("Note")?.collections?.["pub.versia:reactions/Reactions"]?.(
             test.ctx,
@@ -156,7 +156,7 @@ Deno.test("a local reaction is fetched by instances that may see its note, or wh
     assertEquals((await test.find(followed, "c.example"))?.created_at, madeAt);
     assertEquals(await test.find(followed, "d.example"), undefined);
 
-    // Neither another instance's reaction, nor a note, is fetched as a reaction.
+    // Neither a remote instance's reaction, nor a status, is fetched as a reaction.
     await test.ctx.db.insertInto("reactions")
         .values({
             id: "r1",
@@ -201,7 +201,7 @@ Deno.test("a local note lists its reactions, for instances that may see it", asy
     assertEquals((await test.reactions(hidden.id, "c.example"))?.total, 1);
     assertEquals(await test.reactions(hidden.id, "d.example"), undefined);
     assertEquals(await test.reactions(first, "d.example"), undefined);
-    // Other instances list their own notes' reactions, and shares have none.
+    // Remote instances list the reactions of their own statuses, and boosts have none.
     assertEquals(await test.reactions(theirs.id, "b.example"), undefined);
     assertEquals(await test.reactions(share.id, "d.example"), undefined);
 });

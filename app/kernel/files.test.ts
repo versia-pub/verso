@@ -60,7 +60,7 @@ const contract = (name: string, open: () => Promise<FileStore & AsyncDisposable>
         const key = await store.put(await bytesSource(changing), "text/plain");
         changing[0] = 0;
 
-        // Whoever reads it gets bytes of their own.
+        // Whoever reads it gets their own copy of the bytes.
         const chunk = (await (await store.get(key))?.getReader().read())?.value;
         assertEquals(chunk, bytes);
         if (chunk) chunk[0] = 0;
@@ -171,7 +171,7 @@ Deno.test("checking a directory makes it, and fails if Verso can't write to it",
     await Deno.writeFile(`${test.root}/file`, bytes);
     await assertRejects(() => filesystemFiles(`${test.root}/file`).check());
 
-    // One that is there already is still checked.
+    // One that is already there is still checked.
     await Deno.chmod(`${root}/tmp`, 0o555);
     await assertRejects(() => filesystemFiles(root).check(), Deno.errors.PermissionDenied);
     await Deno.chmod(`${root}/tmp`, 0o755);

@@ -71,7 +71,7 @@ Deno.test("pictures aren't rate limited, unlike the API", async () => {
     assertEquals(await status("/api/v1/ping"), 429);
 });
 
-/** The API, without rate limits, with alice on this instance and bob on another. */
+/** The API, without rate limits, with alice on the local instance and bob on a remote one. */
 const openApi = async (limits: Limits = Limits.parse({})) => {
     const test = await createTestContext();
     const app = createTestApp(test.ctx, accountRoutes(limits), { checkResponses: true });
@@ -188,7 +188,7 @@ Deno.test("only users make Verso look for accounts it doesn't know", async () =>
     assertEquals((await test.get(path, await tokenFor(test.ctx, null))).status, 404);
     assertEquals(test.transport.sent, []);
 
-    // c.example can't be reached, which is the same as carol not being there.
+    // c.example can't be reached, which is the same as carol not existing.
     assertEquals((await test.get(path, await tokenFor(test.ctx, "alice"))).status, 404);
     assertEquals(test.transport.sent.map((request) => new URL(request.url).host), ["c.example"]);
 });
@@ -350,7 +350,7 @@ Deno.test("viewing accounts and changing one's own follow what config permits", 
         assertEquals(await status(path, asAlice), 200, path);
     }
 
-    // Other instances find users with WebFinger, whatever clients may view.
+    // Remote instances find users with WebFinger, whatever clients may view.
     assertEquals(await status("/.well-known/webfinger?resource=acct:alice@social.example"), 200);
 
     const update = {

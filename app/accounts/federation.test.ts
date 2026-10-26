@@ -9,7 +9,7 @@ import { updateProfile } from "./profile.ts";
 import { createLocalAccount } from "./testing.ts";
 
 /**
- * Fetches `path` from `to` as `from` would, signing the request, and checks that the reply is
+ * Fetches `path` from `to` as `from` would, signing the request, and checks that the response is
  * signed by `to`.
  */
 const fetchSigned = async (from: Context, to: Context, path: string) => {

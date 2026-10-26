@@ -1,6 +1,6 @@
 /**
- * Instances Verso doesn't federate with: it drops what they send and sends them nothing. Blocking
- * a domain blocks its subdomains too, so a blocked operator can't get around it with new ones.
+ * Instances Verso doesn't federate with: it drops what they send and sends them nothing. Blocking a
+ * domain blocks its subdomains too, so a blocked operator can't get around it with new ones.
  * @module
  */
 import type { Context } from "../kernel/context.ts";
@@ -11,8 +11,8 @@ const domainAndParents = (domain: string) =>
     domain.split(".").map((_, index, labels) => labels.slice(index).join("."));
 
 /**
- * Blocks a domain, saying why, unless it is already. Returns whether it wasn't; one that was keeps
- * its reason. Other processes apply it within a minute.
+ * Blocks a domain, saying why, unless it is already blocked. Returns whether it wasn't; an existing
+ * block keeps its reason. Other processes apply it within a minute.
  */
 export const blockDomain = async (
     ctx: Context,
@@ -26,8 +26,8 @@ export const blockDomain = async (
 };
 
 /**
- * Unblocks a domain blocked with `blockDomain`. Returns whether it was. Other processes apply it
- * within a minute.
+ * Unblocks a domain blocked with `blockDomain`. Returns whether it was blocked. Other processes
+ * apply it within a minute.
  */
 export const unblockDomain = async (ctx: Context, domain: string): Promise<boolean> => {
     const deleted = await deleteDomainBlock(ctx, domain);
@@ -36,7 +36,7 @@ export const unblockDomain = async (ctx: Context, domain: string): Promise<boole
     return deleted;
 };
 
-/** Whether config blocks an instance, by its domain or one it is under. */
+/** Whether config blocks an instance, by its domain or a domain it is under. */
 export const blockedByConfig = (configured: readonly string[], domain: string): boolean =>
     domainAndParents(domain.toLowerCase()).some((candidate) => configured.includes(candidate));
 
@@ -44,7 +44,7 @@ export const blockedByConfig = (configured: readonly string[], domain: string): 
 export type IsBlocked = (ctx: Context, domain: string) => Promise<boolean>;
 
 /**
- * Checks domains against the ones config blocks, and the ones admins blocked, as `blocked` gives
+ * Checks domains against the ones config blocks, and the ones admins blocked, as `blocked` returns
  * them.
  */
 export const domainBlocks = (

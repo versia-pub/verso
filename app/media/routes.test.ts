@@ -13,7 +13,7 @@ import { createInstance } from "../instances/testing.ts";
 import { findMedia, saveRemoteMedia } from "./media_queries.ts";
 import { mediaRoutes } from "./routes.ts";
 
-/** A `width`×`height` PNG, all red. */
+/** A `width`×`height` PNG, entirely red. */
 const png = (width: number, height: number) =>
     new Uint8Array(encode({
         width,
@@ -53,7 +53,7 @@ const open = async (
         return { status: response.status, body: await response.json() };
     };
 
-    /** Uploads `bytes`, as a file of `type`, with any other fields. */
+    /** Uploads `bytes` as a file of `type`, with any other form fields. */
     const upload = (bytes: Uint8Array<ArrayBuffer>, type: string, fields = {}, as?: string) => {
         const form = new FormData();
         form.append("file", new File([bytes], "upload", { type }));
@@ -62,7 +62,7 @@ const open = async (
         return request("POST", "/api/v2/media", { form, as });
     };
 
-    /** The file at `url`, as served, with the headers that say how. */
+    /** The file at `url` as served, with the headers that describe how it is served. */
     const download = async (url: string) => {
         const response = await app.request(new URL(url).pathname);
 
@@ -144,7 +144,7 @@ Deno.test("an upload's description and focus can be changed by whoever uploaded 
     assertEquals([cleared.body.description, cleared.body.meta], [null, { focus: { x: 0, y: 1 } }]);
     assertEquals((await test.request("PUT", path, { json: {} })).body, cleared.body);
 
-    // No one else can see or change it.
+    // No other account can see or change it.
     assertEquals((await test.request("GET", path, { as: "bob" })).status, 404);
     assertEquals((await test.request("PUT", path, { as: "bob", json: {} })).status, 404);
     assertEquals((await test.request("GET", "/api/v1/media/nope")).status, 404);
@@ -192,7 +192,7 @@ Deno.test("what is uploaded is checked", async () => {
     assertEquals(await refused({ thumbnail: "x" }), 422);
     assertEquals((await test.request("POST", "/api/v2/media", { json: {} })).status, 422);
 
-    // A file over the limit is refused, and a body far over it isn't even read.
+    // A file over the limit is rejected, and a body far over it isn't even read.
     assertEquals((await test.upload(new Uint8Array(100), "application/zip")).status, 200);
     assertEquals((await test.upload(new Uint8Array(101), "application/zip")).status, 422);
     assertEquals((await test.upload(new Uint8Array(100 + 65 * 1024), "a/b")).status, 413);
@@ -267,7 +267,7 @@ Deno.test("a picture is served once it is processed, with its preview", async ()
     const { body } = await test.upload(picture, "image/png");
     const raw = `https://social.example/media/${await sha256Of(picture)}`;
 
-    // What was uploaded may hold metadata, so it isn't served while it is processed.
+    // The original upload may hold metadata, so it isn't served while it is being processed.
     assertEquals((await test.download(raw)).status, 404);
 
     await drain(test.ctx, queues);

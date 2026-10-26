@@ -1,5 +1,5 @@
 /**
- * Other instances' public keys, which their signatures are checked with.
+ * Remote instances' public keys, which their signatures are validated with.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
@@ -14,11 +14,11 @@ import { findStoredKey, saveInstanceMetadata } from "./instance_queries.ts";
 
 const logger = getLogger(["verso", "instances"]);
 
-/** Where an instance's keys come from, with the ones already found kept in memory. */
+/** Where an instance's keys come from, with the ones already found cached in memory. */
 export type RemoteKeys = {
     /**
-     * The key of the instance at `domain`: remembered, stored, or else fetched from it, once
-     * `beforeFetch` has run, as a rate limit that may refuse the fetch.
+     * The key of the instance at `domain`: from memory, from storage, or else fetched from it, once
+     * `beforeFetch` has run, as a rate limit that may reject the fetch.
      */
     readonly get: (
         ctx: Context,
@@ -26,12 +26,12 @@ export type RemoteKeys = {
         beforeFetch?: () => Promise<void>,
     ) => Promise<CryptoKey | undefined>;
     /**
-     * Fetches the key again, as after a signature fails to verify, in case the instance rotated
-     * it. At most once per `refetchAfterMs` for each instance, so bad signatures can't make Verso
-     * fetch over and over; within that, the key it has is given.
+     * Fetches the key again, as after a signature fails to verify, in case the instance rotated it.
+     * At most once per `refetchAfterMs` for each instance, so bad signatures can't make Verso fetch
+     * over and over; within that, the key it has is returned.
      *
-     * Either way, an instance whose key couldn't be had isn't asked again for `refetchAfterMs`, so
-     * requests naming it can't make Verso send a request each.
+     * Either way, an instance whose key couldn't be fetched isn't requested again for
+     * `refetchAfterMs`, so requests naming it can't make Verso send a request each.
      */
     readonly refresh: (ctx: Context, domain: string) => Promise<CryptoKey | undefined>;
 };
@@ -44,7 +44,7 @@ export type RemoteKeysOptions = {
     readonly concurrency?: number;
 };
 
-/** What Verso keeps of an instance's metadata. */
+/** What Verso stores of an instance's metadata. */
 type Metadata = {
     /** SPKI, in base64. */
     readonly key: string;
@@ -53,7 +53,7 @@ type Metadata = {
 
 /**
  * Fetches the metadata of the instance at `domain`, and returns its public key, and whether it
- * takes instance messages, if the metadata says it is that instance.
+ * accepts instance messages, if the metadata says it is that instance.
  * @see https://versia.pub/api/endpoints
  */
 const fetchMetadata = async (ctx: Context, domain: string): Promise<Metadata | undefined> => {
@@ -78,7 +78,7 @@ const fetchMetadata = async (ctx: Context, domain: string): Promise<Metadata | u
     }
 };
 
-/** Keeps the fetched metadata, in the instance's row, which it creates if there is none yet. */
+/** Stores the fetched metadata in the instance's row, which it creates if there is none yet. */
 const storeMetadata = (ctx: Context, domain: string, metadata: Metadata) =>
     saveInstanceMetadata(ctx, domain, {
         public_key: metadata.key,
@@ -94,9 +94,9 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
 
     /** Keys by domain, least recently used first. */
     const remembered = new Map<string, CryptoKey>();
-    /** Fetches under way, so requests arriving together fetch once. */
+    /** Fetches in progress, so requests arriving together fetch once. */
     const fetching = new Map<string, Promise<CryptoKey | undefined>>();
-    /** When each instance whose key couldn't be had may be asked again. */
+    /** When each instance whose key couldn't be fetched may be requested again. */
     const failed = lru<string, number>(capacity);
 
     const remember = (domain: string, key: CryptoKey) => {
@@ -146,7 +146,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
             const key = row?.public_key ? await importPublicKey(row.public_key) : undefined;
             if (!key) {
                 await beforeFetch?.();
-                // A fetch may have finished while this looked, and it is remembered before it ends.
+                // A fetch may have finished while this looked, and it is cached before it ends.
                 return remembered.get(domain) ?? await fetchAndStore(ctx, domain);
             }
 
@@ -158,7 +158,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
             const fetchedAt = row?.key_fetched_at?.getTime() ?? -Infinity;
             const recent = ctx.clock.now().getTime() - fetchedAt < refetchAfterMs;
 
-            // Another node may have stored a newer key than the one remembered here.
+            // Another node may have stored a newer key than the one in memory here.
             const key = recent && row?.public_key
                 ? await importPublicKey(row.public_key)
                 : undefined;

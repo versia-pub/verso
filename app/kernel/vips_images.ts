@@ -10,16 +10,16 @@ import {
 } from "./images.ts";
 
 export type VipsOptions = {
-    /** How many pixels a kept picture may have in each frame. Larger ones are scaled down. */
+    /** How many pixels a stored image may have in each frame. Larger ones are scaled down. */
     readonly maxPixels: number;
     /**
      * How many pixels an upload may have in all its frames, to be read at all. Reading one takes
-     * memory in proportion, so a small file can't make vips take it all. Defaults to 100 million.
+     * memory in proportion, so a small file can't make vips use it all. Defaults to 100 million.
      */
     readonly maxInputPixels?: number;
     /** How long each vips command may take, in milliseconds. Defaults to a minute. */
     readonly timeoutMs?: number;
-    /** Where files are kept while they are processed. Defaults to the temporary directory. */
+    /** Where files are stored while they are processed. Defaults to the temporary directory. */
     readonly directory?: string;
 };
 
@@ -44,8 +44,8 @@ const animated: ReadonlySet<ImageFormat> = new Set(["gif", "webp"]);
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
 
 /**
- * The longest side a `width`×`height` picture can be scaled to so that it has at most `pixels`. It
- * may be longer than the picture's: vips is told not to make pictures larger.
+ * The longest side a `width`×`height` image can be scaled to so that it has at most `pixels`. It
+ * may be longer than the image's: vips is told not to enlarge images.
  */
 const longestSide = (width: number, height: number, pixels: number) => {
     const longest = Math.max(width, height);
@@ -58,9 +58,8 @@ const longestSide = (width: number, height: number, pixels: number) => {
 };
 
 /**
- * What vipsheader's one-line summaries say of each picture: its size, of one frame, and the loader
- * that read it. Other fields can come from the file, so it could make up lines that look like
- * them.
+ * What vipsheader's one-line summaries say of each image: its size, of one frame, and the loader
+ * that read it. Other fields can come from the file, so it could fake lines that look like them.
  */
 const summariesOf = (stdout: Uint8Array) =>
     new TextDecoder().decode(stdout).split("\n").flatMap((line) => {
@@ -85,7 +84,9 @@ const headOf = async (path: string) => {
     return head.subarray(0, read);
 };
 
-/** A PNG's pixels as RGBA. vips makes it 8-bit sRGB, so it has three channels, or four with alpha. */
+/**
+ * A PNG's pixels as RGBA. vips makes it 8-bit sRGB, so it has three channels, or four with alpha.
+ */
 const pixelsOf = (png: Uint8Array): Pixels => {
     const { width, height, data, channels } = decode(png);
     const rgba = new Uint8Array(width * height * 4).fill(255);
@@ -97,9 +98,9 @@ const pixelsOf = (png: Uint8Array): Pixels => {
 };
 
 /**
- * Processes pictures with the vips command-line tools, which must be on the PATH. Uploads are
- * checked to be what they start like, and vips reads them only with the loaders for that format,
- * never with its untrusted loaders, such as ImageMagick's.
+ * Processes images with the vips command-line tools, which must be on the PATH. Uploads are checked
+ * to be what they start like, and vips reads them only with the loaders for that format, never with
+ * its untrusted loaders, such as ImageMagick's.
  * @see https://www.libvips.org/API/current/using-from-cli.html
  */
 export const vipsImages = (options: VipsOptions): ImageProcessor => {
@@ -133,8 +134,8 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
 
     /**
      * Saves `input` as `output`, upright, in sRGB and scaled to fit a `side`-pixel square. What
-     * there is of a picture cut short is saved, with grey for the rest, so that its metadata can
-     * still be left out: vips can't leave it out without reading the picture.
+     * there is of a truncated image is saved, with grey for the rest, so that its metadata can
+     * still be removed: vips can't remove it without reading the image.
      */
     const thumbnail = (input: string, output: string, side: number) =>
         run("vips", [
@@ -150,7 +151,7 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
             "srgb",
         ]);
 
-    /** The size of a picture Verso made, which vips must be able to read. */
+    /** The size of an image Verso produced, which vips must be able to read. */
     const sizeOf = async (path: string) => {
         const output = await run("vipsheader", [path]);
         const [summary] = summariesOf(output.stdout);
@@ -161,7 +162,7 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
         return summary;
     };
 
-    /** How many frames the animation at `path` has. vips leaves out the field for just one. */
+    /** How many frames the animation at `path` has. vips omits the field for just one. */
     const framesOf = async (path: string) => {
         const output = await run("vipsheader", ["-f", "n-pages", path]);
         return output.success ? Number(new TextDecoder().decode(output.stdout)) : 1;
@@ -169,7 +170,7 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
 
     const refuse = (reason: ImageRefusal) => ({ ok: false, reason }) as const;
 
-    /** Processes the picture at `input`, of `format`, with its files in `dir`. */
+    /** Processes the image at `input`, of `format`, with its files in `dir`. */
     const processIn = async (dir: string, input: string, format: ImageFormat) => {
         const [summary] = summariesOf((await run("vipsheader", [input])).stdout);
         if (summary === undefined) return refuse("broken");
@@ -191,8 +192,8 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
         );
         if (!kept.success) return refuse("broken");
 
-        // The rest are made from what is kept, which is upright, sRGB and small enough, so the
-        // upload is read only once.
+        // The rest are produced from what is stored, which is upright, sRGB and small enough, so
+        // the upload is read only once.
         const size = await sizeOf(original);
         const preview = `${dir}/preview.webp`;
         const hashed = `${dir}/hashed.png`;

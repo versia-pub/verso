@@ -17,8 +17,8 @@ import { accountStatusesRoute } from "./account_status_routes.ts";
 import { pinRoute, unpinRoute } from "./pin_routes.ts";
 
 /**
- * What Verso can't post yet. Given empty, or not at all, it is taken; given with anything in it, it
- * is refused, rather than left out without the client knowing.
+ * Features Verso can't post yet. If empty or omitted they are accepted; if given a value they are
+ * rejected, rather than silently ignored without the client knowing.
  */
 const NotYet = (what: string) =>
     z.unknown().refine(
@@ -39,7 +39,7 @@ const text = {
 /** The uploads attached to a status, in order, at most `limits.attachments` of them. */
 const MediaIds = (limits: Limits) =>
     z.union([
-        // As forms send one, or a field left empty.
+        // As forms send one id, or a field left empty.
         z.string().transform((id) => id === "" ? [] : [id]),
         z.array(z.string()),
         z.null().transform(() => []),
@@ -50,7 +50,7 @@ const MediaIds = (limits: Limits) =>
             }),
         );
 
-/** A change to how a file attached to a status is described. */
+/** A change to the description of media attached to a status. */
 const MediaAttribute = (limits: Limits) =>
     z.object({
         id: z.string(),
@@ -58,14 +58,14 @@ const MediaAttribute = (limits: Limits) =>
         focus: FocusPoint.optional(),
     });
 
-/** Text may be blank, if files are attached. */
+/** Text may be blank if media is attached. */
 const notBlank = {
     check: (body: { status: string; media_ids?: string[] }) =>
         body.status.trim() !== "" || (body.media_ids ?? []).length > 0,
     error: { error: "Can't be blank without attachments", path: ["status"] },
 };
 
-/** Holds a status and its content warning to at most `limits.status` long together. */
+/** Limits the status text and content warning together to at most `limits.status` characters. */
 const limited = (limits: Limits) => ({
     check: (body: { status: string; spoiler_text?: string }) =>
         countText(body.status) + countText(body.spoiler_text ?? "") <= limits.status,
@@ -73,8 +73,8 @@ const limited = (limits: Limits) => ({
 });
 
 /**
- * What a new status may say. It is written in plain text, unless `content_type` says Markdown, as
- * on Pleroma. Quote policies are left out; Verso doesn't restrict quotes.
+ * What a new status may say. It is plain text, unless `content_type` says Markdown, as on Pleroma.
+ * Quote policies are omitted; Verso doesn't restrict quotes.
  * @see https://docs.joinmastodon.org/methods/statuses/#create
  */
 const draft = (limits: Limits) =>
@@ -92,15 +92,15 @@ const draft = (limits: Limits) =>
         .refine(limited(limits).check, limited(limits).error);
 
 /**
- * What an edited status may say. What is left out stays as it was, including how it is written. A
- * content warning kept as it was isn't counted toward the limit.
+ * What an edited status may say. Omitted fields stay as they were, including the text format. A
+ * content warning left unchanged isn't counted toward the limit.
  * @see https://docs.joinmastodon.org/methods/statuses/#edit
  */
 const edit = (limits: Limits) =>
     z.object({
         ...text,
         status: z.string(),
-        /** In place of the status's files. Left out, they stay as they were. */
+        /** Replaces the status's media. If omitted, the media stays as it was. */
         media_ids: MediaIds(limits).optional(),
         media_attributes: z.array(MediaAttribute(limits)).default([]),
         content_type: z.enum(["text/plain", "text/markdown"]).optional(),
@@ -110,8 +110,8 @@ const edit = (limits: Limits) =>
         .refine(limited(limits).check, limited(limits).error);
 
 /**
- * Statuses: posting, viewing, editing and deleting them, with what is posted held to `limits`, and
- * the threads and accounts they are in.
+ * Statuses: posting, viewing, editing and deleting them, with posted content limited by `limits`,
+ * and the threads and accounts they belong to.
  */
 export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
@@ -133,7 +133,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 inReplyToId: body.in_reply_to_id ?? undefined,
                 mediaIds: body.media_ids,
             });
-            // As Mastodon answers when the status replied to can't be seen.
+            // As Mastodon responds when the status replied to can't be seen.
             if (note === undefined) throw new NotFound("The status replied to doesn't exist");
 
             const [status] = await renderStatuses(ctx, [note], viewer.accountId);
@@ -262,7 +262,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             if (note?.account_id !== viewer.accountId) throw new NotFound();
 
             const [status] = await renderStatuses(ctx, [note], viewer.accountId, { source: true });
-            // A share is undone, as unsharing does, rather than deleted as a note.
+            // A boost is undone, as unboosting does, rather than deleted as a status.
             const removed = note.reblog_of_id === null
                 ? await removeNote(ctx, note.id)
                 : await unshare(ctx, viewer.accountId, note.reblog_of_id) !== undefined;

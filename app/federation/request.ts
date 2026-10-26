@@ -1,5 +1,5 @@
 /**
- * Requests to other instances, signed as this one.
+ * Requests to remote instances, signed as this instance.
  * @see https://versia.pub/signatures
  * @module
  */
@@ -10,35 +10,35 @@ import type { Context } from "../kernel/context.ts";
 import { checkSignature } from "../kernel/signatures.ts";
 
 /**
- * The largest reply read from another instance: the largest body Verso takes in, so a fetched
- * entity is no larger than one sent to it, and showing it costs no more.
+ * The largest response read from a remote instance: the largest body Verso accepts, so a fetched
+ * entity is no larger than one sent to it, and displaying it costs no more.
  */
 const maxReplyBytes = 256 * 1024;
 
-/** How long another instance has to answer, so a slow one can't hold a worker. */
+/** How long a remote instance has to respond, so a slow one can't hold a worker. */
 const timeoutMs = 30_000;
 
-/** A reply from another instance, with its body read. */
+/** A response from a remote instance, with its body read. */
 export type FederationReply = {
     readonly status: number;
     readonly headers: Headers;
     readonly body: Uint8Array<ArrayBuffer>;
 };
 
-/** Another instance's reply that can't be used: too large, or not signed by it. */
+/** A response from a remote instance that can't be used: too large, or not signed by it. */
 export class BadReply extends Error {
     override readonly name = "BadReply";
 }
 
 /**
- * Another instance couldn't be reached, or didn't answer in time. Only failures of the request
+ * A remote instance couldn't be reached, or didn't respond in time. Only failures of the request
  * itself become this, so a bug in Verso can't pass for an instance being down.
  */
 export class Unreachable extends Error {
     override readonly name = "Unreachable";
 }
 
-/** Reads a body, stopping as soon as it passes `maxReplyBytes`. */
+/** Reads a body, stopping as soon as it exceeds `maxReplyBytes`. */
 const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> => {
     const chunks: Uint8Array[] = [];
     let size = 0;
@@ -65,9 +65,9 @@ const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> 
 };
 
 /**
- * Sends a request to another instance and reads the reply, giving it `timeoutMs` in all, or less
- * if `ctx.signal` aborts first. It rejects with `Unreachable` when the instance can't be reached or
- * takes too long, and with `BadReply` when the reply is too large.
+ * Sends a request to a remote instance and reads the response, allowing `timeoutMs` in total, or
+ * less if `ctx.signal` aborts first. It rejects with `Unreachable` when the instance can't be
+ * reached or takes too long, and with `BadReply` when the response is too large.
  */
 const send = async (
     ctx: Context,
@@ -98,7 +98,10 @@ const send = async (
     }
 };
 
-/** Sends a request to another instance, signed as this one, and reads the reply, as `send` does. */
+/**
+ * Sends a request to a remote instance, signed as this instance, and reads the response, as `send`
+ * does.
+ */
 export const sendSigned = async (
     ctx: Context,
     method: "GET" | "POST",
@@ -124,15 +127,15 @@ export const sendSigned = async (
 };
 
 /**
- * Fetches from another instance without signing, for what any server may ask, such as its
- * metadata or WebFinger, and reads the reply, as `send` does.
+ * Fetches from a remote instance without signing, for what any server may request, such as its
+ * metadata or WebFinger, and reads the response, as `send` does.
  */
 export const fetchUnsigned = (ctx: Context, url: URL, accept: string): Promise<FederationReply> =>
     send(ctx, url, { method: "GET", headers: { accept } });
 
 /**
- * Posts plain text to another instance without signing, for what Versia doesn't sign, such as
- * instance messages, and reads the reply, as `send` does.
+ * Posts plain text to a remote instance without signing, for what Versia doesn't sign, such as
+ * instance messages, and reads the response, as `send` does.
  */
 export const postUnsigned = (ctx: Context, url: URL, text: string): Promise<FederationReply> =>
     send(ctx, url, {
@@ -142,8 +145,8 @@ export const postUnsigned = (ctx: Context, url: URL, text: string): Promise<Fede
     });
 
 /**
- * Fetches from another instance with a signed GET. A successful reply is only given if the
- * instance asked signed it, so nobody in between, nor another instance, can answer for it.
+ * Fetches from a remote instance with a signed GET. A successful response is only returned if the
+ * instance that was asked signed it, so nobody in between, nor another instance, can answer for it.
  */
 export const fetchSigned = async (
     ctx: Context,

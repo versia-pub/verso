@@ -1,6 +1,6 @@
 import type { Transport } from "./transport.ts";
 
-/** Answers the requests sent to one host, like an app's `fetch`. */
+/** Responds to the requests sent to one host, like an app's `fetch`. */
 export type Server = (request: Request) => Response | Promise<Response>;
 
 /** A network in memory, for tests. */

@@ -15,7 +15,10 @@ export const Field = z.object({
 });
 export type Field = z.infer<typeof Field>;
 
-/** Who sees a status: everyone, everyone but not in public timelines, followers, or mentions. */
+/**
+ * Who can see a status: everyone; everyone but not in public timelines; followers; or mentioned
+ * users.
+ */
 export const Visibility = z.enum(["public", "unlisted", "private", "direct"]);
 export type Visibility = z.infer<typeof Visibility>;
 
@@ -39,7 +42,7 @@ export const FeatureApproval = z.object({
 export type FeatureApproval = z.infer<typeof FeatureApproval>;
 
 /**
- * A user, on this instance or another, as anyone sees them.
+ * A local or remote user, as anyone sees them.
  * @see https://docs.joinmastodon.org/entities/Account/
  */
 export const Account = z.object({
@@ -65,7 +68,7 @@ export const Account = z.object({
     /** Whether follow requests wait for approval. */
     locked: z.boolean(),
     fields: z.array(Field),
-    /** The emojis used in the display name, bio and fields. */
+    /** The custom emojis used in the display name, bio and fields. */
     emojis: z.array(CustomEmoji),
     bot: z.boolean(),
     group: z.boolean(),
@@ -92,18 +95,18 @@ export const Account = z.object({
     statuses_count: z.int().min(0),
     followers_count: z.int().min(0),
     following_count: z.int().min(0),
-    /** Whether its followers and follows are hidden from others. */
+    /** Whether its followers and following are hidden from others. */
     hide_collections: z.boolean().nullable(),
-    /** Whether its profile has a tab of media. */
+    /** Whether its profile has a media tab. */
     show_media: z.boolean(),
     /** Whether that tab includes replies. */
     show_media_replies: z.boolean(),
     /** Whether its profile has a tab of featured accounts and hashtags. */
     show_featured: z.boolean(),
-    /** The roles shown on its profile, or `null` for remote accounts. */
+    /** The roles displayed on its profile, or `null` for remote accounts. */
     roles: z.array(AccountRole).nullable(),
     feature_approval: FeatureApproval,
-    /** Present, and `true`, when its `acct` can't be checked, so may not work elsewhere. */
+    /** Present, and `true`, when its `acct` can't be validated, so may not work elsewhere. */
     invalid_handle: z.literal(true).optional(),
 });
 export type Account = z.infer<typeof Account>;

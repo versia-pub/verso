@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** The size of a picture or video, or of its preview. */
+/** The size of an image or video, or of its preview. */
 const Dimensions = z.object({
     width: z.int().min(0),
     height: z.int().min(0),
@@ -11,7 +11,7 @@ const Dimensions = z.object({
 });
 
 /**
- * A file attached to a status, such as a picture.
+ * A media file attached to a status, such as an image.
  * @see https://docs.joinmastodon.org/entities/MediaAttachment/
  */
 export const MediaAttachment = z.object({
@@ -32,7 +32,7 @@ export const MediaAttachment = z.object({
     }).nullable(),
     /** Alt text, or `null` if there is none. */
     description: z.string().nullable(),
-    /** A placeholder to show while the file loads, or `null` if there is none. */
+    /** A placeholder to display while the file loads, or `null` if there is none. */
     blurhash: z.string().nullable(),
 });
 export type MediaAttachment = z.infer<typeof MediaAttachment>;

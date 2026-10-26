@@ -15,7 +15,7 @@ export type UrlBuilder = {
 };
 
 /**
- * Makes the builder for `domain`, which must be a bare hostname such as `config.domain`. In
+ * Builds the URL builder for `domain`, which must be a bare hostname such as `config.domain`. In
  * development, `origin` can replace `https://<domain>`, such as with `http://localhost:8080`.
  */
 export const urlBuilder = (domain: string, origin = `https://${domain}`): UrlBuilder => {
@@ -44,7 +44,7 @@ export const urlBuilder = (domain: string, origin = `https://${domain}`): UrlBui
 };
 
 /**
- * A URL on another Versia instance, at `domain`: `path` under its `/.versia/v0.6`, such as
+ * A URL on a remote Versia instance, at `domain`: `path` under its `/.versia/v0.6`, such as
  * `/inbox`. The path is Verso's own, so it is used as it is.
  * @see https://versia.pub/api/endpoints
  */
@@ -52,7 +52,7 @@ export const versiaUrl = (domain: string, path: string): URL =>
     new URL(`/.versia/v0.6${path}`, `https://${domain}`);
 
 /**
- * Where an entity of `type` on another Versia instance, at `domain`, is fetched. Its type and id
+ * Where an entity of `type` on a remote Versia instance, at `domain`, is fetched. Its type and id
  * are encoded, so each stays one segment, even an extension's type, such as
  * `pub.versia:likes/Like`.
  * @see https://versia.pub/api/endpoints

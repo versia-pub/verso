@@ -23,7 +23,7 @@ import { listBlockedDomains } from "../moderation/domain_block_queries.ts";
 
 /** What admin commands need from whoever runs them. */
 export type AdminIo = {
-    /** Runs `work` with the context of the instance the config file at `path` describes. */
+    /** Runs `work` with the context of the instance described by the config file at `path`. */
     readonly withContext: <T>(
         path: string,
         work: (ctx: Context, config: Config) => Promise<T>,
@@ -35,7 +35,7 @@ export type AdminIo = {
 /** Why a command, used correctly, failed. The caller prints it and exits with 1. */
 export class AdminError extends Error {}
 
-/** A local account and a role, both by name, or an error saying which doesn't exist. */
+/** A local account and a role, both by name, or an error saying which one doesn't exist. */
 const accountAndRole = async (ctx: Context, username: string, roleName: string) => {
     const account = await findLocalAccount(ctx, username);
     if (!account) throw new AdminError(`There is no local account named ${username}`);
@@ -53,7 +53,7 @@ const domainArgument = (domain: string) => {
     return canonical;
 };
 
-/** Refuses a command run without one of its subcommands, as a usage error. */
+/** Rejects a command run without one of its subcommands, as a usage error. */
 export const missingCommand = (): never => {
     throw new ValidationError("Missing command");
 };
@@ -90,7 +90,7 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
                     const result = await io.withContext(config, async (ctx, settings) => ({
                         domain: name,
                         changed: await unblockDomain(ctx, name),
-                        // Still blocked, until it is taken out of the config file.
+                        // Still blocked, until it is removed from the config file.
                         by_config: blockedByConfig(settings.federation.blocked_domains, name),
                     }));
                     io.print(JSON.stringify(result));
@@ -135,7 +135,7 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
                     default: 0,
                 })
                 .action(async ({ config, permissions, priority }, name) => {
-                    // The same rules as the API's, so a role made here can be changed there.
+                    // The same rules as the API's, so a role created here can be changed there.
                     const checked = RoleName.safeParse(name);
                     if (!checked.success) {
                         throw new ValidationError(

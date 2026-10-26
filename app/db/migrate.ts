@@ -8,12 +8,12 @@ export type MigrateResult =
     | { readonly ok: false; readonly error: unknown };
 
 /**
- * Brings the database up to date. Migrations only go forward and run in name order. All the
- * pending ones run in one transaction, so if one fails, none are applied. Running it again with
- * nothing new to apply does nothing.
+ * Brings the database up to date. Migrations only go forward and run in name order. All the pending
+ * ones run in one transaction, so if one fails, none are applied. Running it again with nothing new
+ * to apply does nothing.
  *
  * SQLite changes most things about a table by rebuilding it, and dropping the old table runs the
- * `ON DELETE` actions of foreign keys that refer to it, deleting their rows. So foreign keys are
+ * `ON DELETE` actions of foreign keys that reference it, deleting their rows. So foreign keys are
  * off while migrating there, and a migration that rebuilds a table calls `checkForeignKeys`.
  */
 export const migrate = async <DB>(

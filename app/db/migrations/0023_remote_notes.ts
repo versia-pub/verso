@@ -3,8 +3,8 @@ import type { Migration } from "kysely/migration";
 import { columnTypes } from "../columns.ts";
 
 /**
- * What Verso keeps of other instances' notes: when each was last fetched or sent, so it is fetched
- * again once it is old, and the note each quotes.
+ * What Verso stores about remote statuses: when each was last fetched or sent, so it is fetched
+ * again once it is old, and the status each quotes.
  */
 export const remoteNotes: Migration = {
     up: async (db: Kysely<unknown>) => {
