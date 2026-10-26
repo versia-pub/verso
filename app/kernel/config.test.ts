@@ -20,6 +20,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 storage: { filesystem: "media" },
                 max_pixels: 8_294_400,
                 max_upload_bytes: 16_777_216,
+                unattached_hours: 24,
             },
             http: {
                 port: 8080,
@@ -32,6 +33,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 blocked_domains: [],
                 silent_blocks: false,
                 unreachable_days: 7,
+                delivery_hours: 48,
                 rate_limit: { limit: 3000, window_seconds: 300 },
                 fetch_limit: { limit: 600, window_seconds: 300 },
             },
@@ -45,6 +47,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 status: 10_000,
                 attachments: 16,
                 mentions: 100,
+                media_description: 4000,
             },
             permissions: {
                 anonymous: [
@@ -91,6 +94,7 @@ statement_timeout_seconds = 0
 [media]
 storage = { filesystem = "/var/lib/verso/media" }
 max_pixels = 1000000
+unattached_hours = 12
 max_upload_bytes = 1000
 
 [http]
@@ -135,6 +139,7 @@ hint = " Ads included "
 note = 500
 fields = 4
 mentions = 20
+media_description = 1500
 
 [permissions]
 anonymous = []
@@ -142,6 +147,7 @@ default = ["owner:account"]
 
 [federation]
 unreachable_days = 3
+delivery_hours = 24
 
 [jobs]
 dead_letter_days = 14
@@ -165,6 +171,7 @@ level = "debug"
                 storage: { filesystem: "/var/lib/verso/media" },
                 max_pixels: 1_000_000,
                 max_upload_bytes: 1000,
+                unattached_hours: 12,
             },
             http: {
                 port: 3000,
@@ -202,6 +209,7 @@ level = "debug"
                 blocked_domains: [],
                 silent_blocks: false,
                 unreachable_days: 3,
+                delivery_hours: 24,
                 rate_limit: { limit: 3000, window_seconds: 300 },
                 fetch_limit: { limit: 600, window_seconds: 300 },
             },
@@ -225,6 +233,7 @@ level = "debug"
                 status: 10_000,
                 attachments: 16,
                 mentions: 20,
+                media_description: 1500,
             },
             permissions: { anonymous: [], default: ["owner:account"] },
             jobs: { dead_letter_days: 14 },

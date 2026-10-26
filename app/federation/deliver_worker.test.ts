@@ -6,6 +6,7 @@ import { enqueue } from "../jobs/job_queries.ts";
 import { drain } from "../jobs/worker.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { registry } from "../registry.ts";
+import type { Settings } from "../kernel/settings.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { type DeliverJob, deliverQueue } from "./deliver.ts";
@@ -21,8 +22,8 @@ const hour = 60 * minute;
 const queues = { [deliverQueue]: { handler: deliverHandler, concurrency: 1 } };
 
 /** b.example answering deliveries as `answer` says, and what it was sent. */
-const open = async () => {
-    const test = await createTestContext();
+const open = async (settings: Partial<Settings> = {}) => {
+    const test = await createTestContext({ settings });
     await createInstance(test.ctx, "b.example");
     let answer = () => new Response(null, { status: 202 });
     const received: Request[] = [];
@@ -236,6 +237,20 @@ Deno.test("a delivery is given up on after 48 hours", async () => {
     test.transport.down.delete("b.example");
     const waited = await test.deliver(503, { "retry-after": String(48 * 60 * 60) });
     assertEquals(test.outcome(waited), "given up");
+});
+
+Deno.test("a delivery is given up on after as long as settings say", async () => {
+    await using test = await open({ deliveryMs: 2 * hour });
+    test.transport.down.add("b.example");
+    const id = await test.queue();
+    await drain(test.ctx, queues);
+
+    test.clock.advance(2 * hour);
+    await drain(test.ctx, queues);
+
+    const job = await test.job(id);
+    assertEquals(test.outcome(job), "given up");
+    assertEquals(job?.last_error?.includes("couldn't be reached in 2 hours"), true);
 });
 
 Deno.test("a delivery to an instance blocked since it was queued is dropped", async () => {

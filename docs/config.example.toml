@@ -25,6 +25,8 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # max_pixels = 8294400
 # How many bytes an uploaded file may have: 16 MiB by default, as Mastodon allows pictures.
 # max_upload_bytes = 16777216
+# How many hours an upload no status was given is kept before it is removed.
+# unattached_hours = 24
 
 # Where uploaded files are kept. Exactly one of these: the path of a directory, which Verso makes
 # if it isn't there, or a bucket on a server that speaks S3, such as AWS, Garage or MinIO.
@@ -94,6 +96,8 @@ roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
 # How many days an instance can go unreached before Verso stops sending it anything, until it
 # hears from it again.
 # unreachable_days = 7
+# For how many hours a delivery to an instance is tried before it is given up on, at most 720.
+# delivery_hours = 48
 
 [federation.fetch_limit]
 # How many fetches each process makes from one instance in a window, so that what others send
@@ -138,6 +142,8 @@ updated = 2026-10-01
 # attachments = 16
 # How many accounts a status may mention. Mentions past them are left as text.
 # mentions = 100
+# A file's description, its alt text.
+# media_description = 4000
 
 [permissions]
 # What everyone may do, before roles add more: logged-out visitors, and every user.

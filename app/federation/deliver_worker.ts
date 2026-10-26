@@ -16,9 +16,6 @@ import { type FederationReply, sendSigned, Unreachable } from "./request.ts";
 
 const logger = getLogger(["verso", "federation"]);
 
-/** How long a delivery is tried for, counted from when it was queued. */
-export const deliveryMaxAgeMs = 48 * 60 * 60_000;
-
 /** When `Retry-After` says to try again, in seconds or as a date, if it says. */
 export const retryAfter = (headers: Headers, now: Date): Date | undefined => {
     const value = headers.get("retry-after");
@@ -52,7 +49,7 @@ export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload
 /**
  * Runs delivery jobs: signs each entity and posts it to its instance's inbox. An instance that
  * refuses it, with a 4xx other than 408 and 429, is given up on; any other failure is retried, when
- * the instance asks if it does, for up to 48 hours. One to an instance blocked since is dropped.
+ * the instance asks if it does, for as long as settings say: two days by default. One to an instance blocked since is dropped.
  * An instance that asks to wait, or has no requests left, isn't sent any delivery until then, and
  * nor is one that couldn't be reached too often in a row, but for a probe now and then.
  */
@@ -67,8 +64,9 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
     }
 
     const now = ctx.clock.now();
-    const giveUpAt = new Date(job.created_at.getTime() + deliveryMaxAgeMs);
-    if (now >= giveUpAt) throw new PermanentFailure(`${domain} couldn't be reached in 48 hours`);
+    const giveUpAt = new Date(job.created_at.getTime() + ctx.settings.deliveryMs);
+    const tried = `${ctx.settings.deliveryMs / 3_600_000} hours`;
+    if (now >= giveUpAt) throw new PermanentFailure(`${domain} couldn't be reached in ${tried}`);
 
     const parked = await parkedUntil(ctx, domain);
     if (parked) {
@@ -104,7 +102,7 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
     if (status === 429 || status === 503) {
         const runAt = retryAfter(reply.headers, now);
         if (runAt && runAt >= giveUpAt) {
-            throw new PermanentFailure(`${domain} asked to wait past 48 hours`);
+            throw new PermanentFailure(`${domain} asked to wait past ${tried}`);
         }
         if (runAt && runAt > now) {
             await postponeGroup(ctx, deliverQueue, domain, runAt);

@@ -73,6 +73,8 @@ export const Limits = z.strictObject({
      * and perhaps a fetch, so the rest are left as text.
      */
     mentions: z.int().min(0).default(100),
+    /** A file's description, its alt text. Mastodon's limit by default. */
+    media_description: z.int().min(1).default(4000),
 }).prefault({});
 
 export type Limits = z.infer<typeof Limits>;

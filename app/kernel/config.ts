@@ -119,6 +119,11 @@ export const Config = z.strictObject({
          */
         unreachable_days: z.int().min(1).default(7),
         /**
+         * For how many hours a delivery to an instance is tried before it is given up on. Two days
+         * by default; at most 30 days.
+         */
+        delivery_hours: z.int().min(1).max(720).default(48),
+        /**
          * How many requests each instance may send in a window of time, counted by who signed
          * them, apart from clients' limit. Requests that aren't validly signed count against their
          * client instead.
@@ -139,6 +144,11 @@ export const Config = z.strictObject({
     media: MediaLimits.extend({
         /** Where uploaded files are kept. */
         storage: FileStorage,
+        /**
+         * How many hours an upload no status was given is kept before it is removed. A day by
+         * default, as on Mastodon.
+         */
+        unattached_hours: z.int().min(1).default(24),
     }),
     instance: Instance,
     limits: Limits,

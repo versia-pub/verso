@@ -21,8 +21,11 @@ export const DeliverJob = z.object({
 });
 export type DeliverJob = z.infer<typeof DeliverJob>;
 
-/** More than are ever made: deliveries are given up on by age, after 48 hours. */
-const maxAttempts = 100;
+/**
+ * More than are ever made: deliveries are given up on by age, after as long as settings say, at
+ * most 30 days, with at most six hours between attempts.
+ */
+const maxAttempts = 1000;
 
 /**
  * Queues `entity` for each of `instanceIds` that is a Versia instance, grouped by instance so each

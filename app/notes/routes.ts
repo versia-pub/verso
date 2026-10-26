@@ -51,11 +51,12 @@ const MediaIds = (limits: Limits) =>
         );
 
 /** A change to how a file attached to a status is described. */
-const MediaAttribute = z.object({
-    id: z.string(),
-    description: MediaDescription.optional(),
-    focus: FocusPoint.optional(),
-});
+const MediaAttribute = (limits: Limits) =>
+    z.object({
+        id: z.string(),
+        description: MediaDescription(limits).optional(),
+        focus: FocusPoint.optional(),
+    });
 
 /** Text may be blank, if files are attached. */
 const notBlank = {
@@ -101,7 +102,7 @@ const edit = (limits: Limits) =>
         status: z.string(),
         /** In place of the status's files. Left out, they stay as they were. */
         media_ids: MediaIds(limits).optional(),
-        media_attributes: z.array(MediaAttribute).default([]),
+        media_attributes: z.array(MediaAttribute(limits)).default([]),
         content_type: z.enum(["text/plain", "text/markdown"]).optional(),
         spoiler_text: z.string().optional(),
     })

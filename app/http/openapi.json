@@ -1420,88 +1420,6 @@
                 }
             }
         },
-        "/api/v1/accounts/{id}/note": {
-            "post": {
-                "summary": "Set private note on profile",
-                "description": "Sets a private note on a user.\n\nAs on Mastodon, a note is at most 2000 characters.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
-                "externalDocs": {
-                    "url": "https://docs.joinmastodon.org/methods/accounts/#note"
-                },
-                "tags": [
-                    "accounts"
-                ],
-                "security": [
-                    {
-                        "OAuth2": [
-                            "write:accounts"
-                        ]
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "comment": {
-                                        "default": "",
-                                        "type": "string",
-                                        "description": "The comment to be set on that user. Provide an empty string or leave out this parameter to clear the currently set note."
-                                    }
-                                }
-                            }
-                        },
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "comment": {
-                                        "default": "",
-                                        "type": "string",
-                                        "description": "The comment to be set on that user. Provide an empty string or leave out this parameter to clear the currently set note."
-                                    }
-                                }
-                            }
-                        },
-                        "multipart/form-data": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "comment": {
-                                        "default": "",
-                                        "type": "string",
-                                        "description": "The comment to be set on that user. Provide an empty string or leave out this parameter to clear the currently set note."
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "A JSON body",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Relationship"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/domain_blocks": {
             "post": {
                 "summary": "Block a domain",
@@ -1910,6 +1828,88 @@
                                     "items": {
                                         "$ref": "#/components/schemas/Account"
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}/note": {
+            "post": {
+                "summary": "Set private note on profile",
+                "description": "Sets a private note on a user.\n\nAs on Mastodon, a note is at most 2000 characters.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#note"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "comment": {
+                                        "default": "",
+                                        "type": "string",
+                                        "description": "The comment to be set on that user. Provide an empty string or leave out this parameter to clear the currently set note."
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "comment": {
+                                        "default": "",
+                                        "type": "string",
+                                        "description": "The comment to be set on that user. Provide an empty string or leave out this parameter to clear the currently set note."
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "comment": {
+                                        "default": "",
+                                        "type": "string",
+                                        "description": "The comment to be set on that user. Provide an empty string or leave out this parameter to clear the currently set note."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Relationship"
                                 }
                             }
                         }

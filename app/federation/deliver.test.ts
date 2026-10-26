@@ -78,8 +78,8 @@ Deno.test("an entity is queued once for each instance its recipients are on", as
     const rows = await test.ctx.db.selectFrom("jobs").select(["group_key", "max_attempts"])
         .orderBy("group_key").execute();
     assertEquals(rows, [
-        { group_key: "b.example", max_attempts: 100 },
-        { group_key: "c.example", max_attempts: 100 },
+        { group_key: "b.example", max_attempts: 1000 },
+        { group_key: "c.example", max_attempts: 1000 },
     ]);
 });
 

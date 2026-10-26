@@ -8,6 +8,7 @@ import { drain } from "../jobs/worker.ts";
 import { bytesSource } from "../kernel/files.ts";
 import { postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
+import type { Settings } from "../kernel/settings.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
 import { findMedia, saveRemoteMedia } from "./media_queries.ts";
@@ -24,8 +25,8 @@ const png = new Uint8Array(encode({
     channels: 4,
 }));
 
-const open = async () => {
-    const test = await createTestContext();
+const open = async (settings: Partial<Settings> = {}) => {
+    const test = await createTestContext({ settings });
     await createLocalAccount(test.ctx, "alice");
 
     /** The id of a file alice uploads. */
@@ -94,6 +95,15 @@ Deno.test("uploads no one attached are removed a day on, with files no others us
 
     await test.later(12 * hour);
     assertEquals([await findMedia(test.ctx, again), await test.kept(key)], [undefined, false]);
+});
+
+Deno.test("uploads are kept as long as settings say", async () => {
+    await using test = await open({ unattachedMs: hour });
+    const file = await test.uploaded(zip(1));
+
+    await test.later(hour);
+
+    assertEquals(await findMedia(test.ctx, file), undefined);
 });
 
 Deno.test("a deleted note's files can be attached again, until they are removed", async () => {

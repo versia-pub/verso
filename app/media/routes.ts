@@ -3,7 +3,7 @@ import { z } from "zod";
 import { NotFound, Unprocessable } from "../http/errors.ts";
 import { Binary, defineRoute, Redirect, type Route } from "../http/route.ts";
 import { Text } from "../http/schemas.ts";
-import type { MediaLimits } from "../kernel/config_sections.ts";
+import type { Limits, MediaLimits } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import type { MediaRow } from "./media_queries.ts";
 import { renderAttachment } from "./render.ts";
@@ -11,16 +11,14 @@ import { serveFile } from "./serving.ts";
 import { findUpload } from "./upload_queries.ts";
 import { describeUpload, processingFailed, upload } from "./uploads.ts";
 
-/** How long alt text may be, as on Mastodon. */
-const descriptionLimit = 4000;
-
 /** Room for a form's other fields, and its boundaries, beside the file. */
 const formBytes = 64 * 1024;
 
-/** A file's alt text, as Mastodon takes it. */
-export const MediaDescription: z.ZodType<string, string> = Text(descriptionLimit).meta({
-    description: "A plain-text description of the media, for accessibility purposes.",
-});
+/** A file's alt text, as Mastodon takes it, at most as long as `limits` allow. */
+export const MediaDescription = (limits: Limits): z.ZodType<string, string> =>
+    Text(limits.media_description).meta({
+        description: "A plain-text description of the media, for accessibility purposes.",
+    });
 
 /** A point as Mastodon writes it, such as `0.5,-0.25`, from -1 to 1 on each axis. */
 export const FocusPoint = z.string()
@@ -39,25 +37,26 @@ export const FocusPoint = z.string()
  * aren't taken yet.
  * @see https://docs.joinmastodon.org/methods/media/#v2
  */
-const UploadBody = (limits: MediaLimits) =>
+const UploadBody = (media: MediaLimits, limits: Limits) =>
     z.object({
-        file: z.file().max(limits.max_upload_bytes, {
-            error: `Must be at most ${limits.max_upload_bytes} bytes`,
+        file: z.file().max(media.max_upload_bytes, {
+            error: `Must be at most ${media.max_upload_bytes} bytes`,
         }).meta({ description: "The file to be attached." }),
         thumbnail: z.unknown()
             .refine((value) => value === undefined || value === "", {
                 error: "Thumbnails aren't supported yet",
             })
             .optional(),
-        description: MediaDescription.optional(),
+        description: MediaDescription(limits).optional(),
         focus: FocusPoint.optional(),
     });
 
 /** @see https://docs.joinmastodon.org/methods/media/#update */
-const DescriptionBody = z.object({
-    description: MediaDescription.optional(),
-    focus: FocusPoint.optional(),
-});
+const DescriptionBody = (limits: Limits) =>
+    z.object({
+        description: MediaDescription(limits).optional(),
+        focus: FocusPoint.optional(),
+    });
 
 const MediaId = z.object({ id: z.string() });
 
@@ -75,8 +74,11 @@ const progressOf = (ctx: Context, row: MediaRow) => {
         : { status: 200 as const, body: renderAttachment(ctx, row) };
 };
 
-/** Uploading files, with what is uploaded held to `limits`, and describing them. */
-export const mediaRoutes = (limits: MediaLimits): readonly Route[] => [
+/**
+ * Uploading files, with what is uploaded held to `media`, and describing them, as long as `limits`
+ * allow.
+ */
+export const mediaRoutes = (media: MediaLimits, limits: Limits): readonly Route[] => [
     defineRoute({
         method: "POST",
         path: "/api/v2/media",
@@ -86,12 +88,12 @@ export const mediaRoutes = (limits: MediaLimits): readonly Route[] => [
             "Pictures are processed, and answered with 202 until they are; any other file is " +
             "kept as it is, as a file of type `unknown`. A picture that can't be processed is " +
             "removed, as it may hold metadata, and then answered with 422. Files are at most " +
-            `${limits.max_upload_bytes} bytes.`,
+            `${media.max_upload_bytes} bytes.`,
         docs: "https://docs.joinmastodon.org/methods/media/#v2",
         tags: ["media"],
         auth: { require: "user", scope: "write:media", permission: "owner:media" },
-        maxBodyBytes: limits.max_upload_bytes + formBytes,
-        body: UploadBody(limits),
+        maxBodyBytes: media.max_upload_bytes + formBytes,
+        body: UploadBody(media, limits),
         responses: { 200: MediaAttachment, 202: MediaAttachment },
         handler: async (ctx, { body, viewer }) => {
             const row = await upload(ctx, viewer.accountId, {
@@ -136,7 +138,7 @@ export const mediaRoutes = (limits: MediaLimits): readonly Route[] => [
         tags: ["media"],
         auth: { require: "user", scope: "write:media", permission: "owner:media" },
         params: MediaId,
-        body: DescriptionBody,
+        body: DescriptionBody(limits),
         responses: { 200: MediaAttachment, 206: MediaAttachment },
         handler: async (ctx, { params, body, viewer }) => {
             const row = await describeUpload(ctx, viewer.accountId, params.id, body);

@@ -4,7 +4,7 @@ import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
-import { MediaLimits } from "../kernel/config_sections.ts";
+import { Limits, MediaLimits } from "../kernel/config_sections.ts";
 import { bytesSource, type FileStore, memoryFiles } from "../kernel/files.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
@@ -24,9 +24,13 @@ const png = (width: number, height: number) =>
 
 const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]);
 
-const open = async (limits = MediaLimits.parse({}), files?: FileStore) => {
+const open = async (
+    limits = MediaLimits.parse({}),
+    files?: FileStore,
+    textLimits = Limits.parse({}),
+) => {
     const test = await createTestContext({ files });
-    const app = createTestApp(test.ctx, mediaRoutes(limits), { checkResponses: true });
+    const app = createTestApp(test.ctx, mediaRoutes(limits, textLimits), { checkResponses: true });
     await createLocalAccount(test.ctx, "alice");
     await createLocalAccount(test.ctx, "bob");
 
@@ -192,6 +196,19 @@ Deno.test("what is uploaded is checked", async () => {
     assertEquals((await test.upload(new Uint8Array(100), "application/zip")).status, 200);
     assertEquals((await test.upload(new Uint8Array(101), "application/zip")).status, 422);
     assertEquals((await test.upload(new Uint8Array(100 + 65 * 1024), "a/b")).status, 413);
+});
+
+Deno.test("a description is at most as long as config allows", async () => {
+    await using test = await open(
+        MediaLimits.parse({}),
+        undefined,
+        Limits.parse({ media_description: 10 }),
+    );
+    const described = async (description: string) =>
+        (await test.upload(zip, "application/zip", { description })).status;
+
+    assertEquals(await described("x".repeat(10)), 200);
+    assertEquals(await described("x".repeat(11)), 422);
 });
 
 Deno.test("uploading needs the write:media scope", async () => {

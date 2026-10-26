@@ -40,9 +40,6 @@ export const mediaQueue = "media";
 /** The queue that removes uploads no one attached. */
 export const unusedUploadsQueue = "media-cleanup";
 
-/** How long an upload may wait to be attached before it is removed, as on Mastodon. */
-const unattachedMs = 24 * 60 * 60 * 1000;
-
 /** How many uploads are removed at once. */
 const removalBatch = 100;
 
@@ -285,16 +282,16 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
 };
 
 /**
- * Removes the uploads made a day ago or more that nothing uses, with their files, unless other
+ * Removes the uploads made as long ago as settings say, or longer, that nothing uses, with their files, unless other
  * uploads use them, up to `batches` batches in a run; the next run removes the rest.
- * The files of a note that is deleted can be attached again until a day after they were uploaded,
+ * The files of a note that is deleted can be attached again until then,
  * as Mastodon keeps them so that the note can be redrafted.
  */
 export const removeUnusedUploads = async (
     ctx: Context,
     batches = removalBatches,
 ): Promise<void> => {
-    const before = new Date(ctx.clock.now().getTime() - unattachedMs);
+    const before = new Date(ctx.clock.now().getTime() - ctx.settings.unattachedMs);
 
     let after: UploadCursor | undefined;
     for (let batch = 0; batch < batches; batch++) {
