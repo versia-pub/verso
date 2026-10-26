@@ -113,10 +113,40 @@ export const reattach = async (
 };
 
 /**
- * Attaches the media of a remote status `noteId`, storing it as Verso stores remote media. Only the
- * first N are attached, where N is the maximum a local status may have, and descriptions are
- * truncated to the maximum length of a local description, so a remote status can't make Verso store
- * unbounded data. Run it in the transaction that stores the status.
+ * Remote media as it is stored: at most as many as a local status may have, with descriptions cut
+ * to the local limit, so a remote status can't make Verso store unbounded data.
+ */
+const storedAs = (ctx: Context, files: readonly RemoteMedia[]): RemoteMedia[] =>
+    files.slice(0, ctx.settings.attachments).map((file) => ({
+        ...file,
+        description: file.description &&
+            Array.from(file.description).slice(0, ctx.settings.mediaDescription).join(""),
+    }));
+
+/**
+ * Whether attaching the remote media `files` in place of the attachments `current` changes which
+ * media are attached, their order, their types or their descriptions.
+ */
+export const changesRemoteAttachments = (
+    ctx: Context,
+    current: readonly MediaRow[],
+    files: readonly RemoteMedia[],
+): boolean => {
+    const stored = storedAs(ctx, files);
+
+    return stored.length !== current.length ||
+        stored.some((file, i) =>
+            file.url !== current[i].url ||
+            file.mediaType !== current[i].media_type ||
+            (file.description ?? null) !== current[i].description
+        );
+};
+
+/**
+ * Attaches the remote media `files` to the remote status `noteId` on `instanceId`, in place of the
+ * media it has, as {@link storedAs} limits them. Media at the same URL as one already attached
+ * keeps its row, updated, so the status's history still shows it. Run it in the transaction that
+ * stores the status.
  */
 export const attachRemote = async (
     ctx: Context,
@@ -124,12 +154,15 @@ export const attachRemote = async (
     noteId: string,
     files: readonly RemoteMedia[],
 ): Promise<void> => {
+    const unused = await attachedTo(ctx, noteId);
+
     const ids = [];
-    for (const file of files.slice(0, ctx.settings.attachments)) {
-        const description = file.description &&
-            Array.from(file.description).slice(0, ctx.settings.mediaDescription).join("");
-        ids.push(await saveRemoteMedia(ctx, instanceId, null, { ...file, description }));
+    for (const file of storedAs(ctx, files)) {
+        const index = unused.findIndex((row) => row.url === file.url);
+        const same = index === -1 ? null : unused.splice(index, 1)[0].id;
+        ids.push(await saveRemoteMedia(ctx, instanceId, same, file));
     }
 
+    await deleteAttachments(ctx, noteId);
     await insertAttachments(ctx, noteId, ids);
 };

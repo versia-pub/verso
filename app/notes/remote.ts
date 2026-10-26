@@ -14,7 +14,7 @@ import type { Known, Sender } from "../federation/registry.ts";
 import { isRemoteFailure } from "../federation/resolver.ts";
 import { hasFollowers } from "../graph/follows.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
-import { attachRemote } from "../media/attachments.ts";
+import { attachedTo, attachRemote, changesRemoteAttachments } from "../media/attachments.ts";
 import { remoteFile } from "../media/versia.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { textOfHtml } from "../kernel/html.ts";
@@ -199,13 +199,15 @@ export const receiveNote = async (
         sender.instanceId,
         remoteEmojisOf(note.extensions),
     );
+    const files = note.attachments.flatMap((formats) => remoteFile(formats) ?? []);
 
     if (existing) {
         const edited = changes.content !== existing.content ||
             changes.content_format !== existing.content_format ||
             changes.content_html !== existing.content_html ||
             changes.spoiler_text !== existing.spoiler_text ||
-            changes.sensitive !== existing.sensitive;
+            changes.sensitive !== existing.sensitive ||
+            changesRemoteAttachments(ctx, await attachedTo(ctx, existing.id), files);
         if (edited) await keepVersion(ctx, existing);
 
         // Its audience may change, and with it whether it is counted.
@@ -221,7 +223,8 @@ export const receiveNote = async (
             mentionIds,
             tags,
         );
-        return await setNoteEmojis(ctx, existing.id, emojiIds);
+        await setNoteEmojis(ctx, existing.id, emojiIds);
+        return await attachRemote(ctx, sender.instanceId, existing.id, files);
     }
 
     const row = await insertNote(
@@ -244,12 +247,7 @@ export const receiveNote = async (
         tags,
     );
     await setNoteEmojis(ctx, row.id, emojiIds);
-    await attachRemote(
-        ctx,
-        sender.instanceId,
-        row.id,
-        note.attachments.flatMap((formats) => remoteFile(formats) ?? []),
-    );
+    await attachRemote(ctx, sender.instanceId, row.id, files);
     await countPosted(ctx, row, 1);
     await fetchTotalsLater(ctx, row);
 };

@@ -11,6 +11,7 @@ import { createNote } from "./testing.ts";
 import type { Settings } from "../kernel/settings.ts";
 import type { Context } from "../kernel/context.ts";
 import { attachedTo } from "../media/attachments.ts";
+import { findMedia } from "../media/media_queries.ts";
 import type { NoteRow } from "./note_queries.ts";
 
 /** A user served by b.test. */
@@ -284,6 +285,84 @@ Deno.test("a note has as many files, described at as much length, as settings al
         ["https://b.test/1.png", "🎉🎉🎉"],
         ["https://b.test/2.png", "🎉🎉🎉"],
     ]);
+});
+
+Deno.test("a note's files sent again keep their rows, and a change to them is an edit", async () => {
+    await using test = await open();
+    const file = (name: string, fields: Record<string, unknown> = {}) => ({
+        "image/png": { content: `https://b.test/${name}.png`, remote: true, ...fields },
+    });
+    const send = (...attachments: object[]) =>
+        test.send(note("n1", { mentions: [`a.test:${test.alice}`], attachments }));
+    const state = async () => {
+        const kept = await test.kept("n1");
+        return {
+            edited: kept?.edited_at !== null,
+            versions: (await versionsOf(test.a, kept?.id ?? "")).map((version) => version.media),
+            files: (await attached(test, "n1")).map((row) => [row.id, row.url, row.description]),
+        };
+    };
+    const ids = async () => (await attached(test, "n1")).map((row) => row.id);
+
+    await send(file("a", { description: "A" }), file("b"), file("b"));
+    const [a, b1, b2] = await ids();
+    await send(file("a", { description: "A", width: 2 }), file("b"), file("b"));
+
+    // Only what it is stored as changed, so it isn't an edit.
+    assertEquals(await state(), {
+        edited: false,
+        versions: [],
+        files: [[a, "https://b.test/a.png", "A"], [b1, "https://b.test/b.png", null], [
+            b2,
+            "https://b.test/b.png",
+            null,
+        ]],
+    });
+    assertEquals((await findMedia(test.a, a))?.width, 2);
+
+    await send(file("b"), file("a", { description: "A, again" }), file("c"));
+    const [, , c] = await ids();
+
+    assertEquals(await state(), {
+        edited: true,
+        versions: [[{ id: a, description: "A" }, { id: b1, description: null }, {
+            id: b2,
+            description: null,
+        }]],
+        files: [
+            [b1, "https://b.test/b.png", null],
+            [a, "https://b.test/a.png", "A, again"],
+            [c, "https://b.test/c.png", null],
+        ],
+    });
+    // Taken off, but kept until nothing uses it.
+    assertEquals((await findMedia(test.a, b2))?.id, b2);
+});
+
+Deno.test("any one change to a note's files is an edit, but not to files past the limit", async () => {
+    const png = (name: string, description?: string) => ({
+        "image/png": { content: `https://b.test/${name}.png`, remote: true, description },
+    });
+    const sent: [string, object[], boolean][] = [
+        ["another file", [png("a"), png("c")], true],
+        ["another type", [png("a"), {
+            "image/webp": { content: "https://b.test/b.png", remote: true },
+        }], true],
+        ["another description", [png("a"), png("b", "B")], true],
+        ["one fewer", [png("a")], true],
+        ["another past the limit", [png("a"), png("b"), png("c")], false],
+    ];
+
+    for (const [change, attachments, edit] of sent) {
+        await using test = await open({ attachments: 2 });
+        const send = (attachments: object[]) =>
+            test.send(note("n1", { mentions: [`a.test:${test.alice}`], attachments }));
+        await send([png("a"), png("b"), png("d")]);
+
+        await send(attachments);
+
+        assertEquals((await test.kept("n1"))?.edited_at !== null, edit, change);
+    }
 });
 
 Deno.test("who a note is for, and its warning, are kept as Mastodon has them", async () => {
