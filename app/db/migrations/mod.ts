@@ -47,6 +47,7 @@ import { jobPauses } from "./0045_job_pauses.ts";
 import { unreachableSince } from "./0046_unreachable_since.ts";
 import { publicTimelines } from "./0047_public_timelines.ts";
 import { mediaFit } from "./0048_media_fit.ts";
+import { ownEmojis } from "./0049_own_emojis.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -101,4 +102,5 @@ export const migrations: Record<string, Migration> = {
     "0046_unreachable_since": unreachableSince,
     "0047_public_timelines": publicTimelines,
     "0048_media_fit": mediaFit,
+    "0049_own_emojis": ownEmojis,
 };

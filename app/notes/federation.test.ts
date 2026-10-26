@@ -125,7 +125,10 @@ Deno.test("a local note is a Versia Note, with who it mentions, what it replies 
                 emojis: [{
                     name: ":blob:",
                     content: {
-                        "image/png": { content: "https://pictures.example/blob.png", remote: true },
+                        "image/png": {
+                            content: "https://social.example/media/emoji-blob",
+                            remote: true,
+                        },
                     },
                 }],
             },

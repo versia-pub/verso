@@ -5,6 +5,7 @@ import { renderEmojis } from "./render.ts";
 
 const emoji: ShownEmoji = {
     shortcode: "blob",
+    category: "Blobs",
     instance_id: null,
     url: null,
     media_type: "image/gif",
@@ -13,7 +14,7 @@ const emoji: ShownEmoji = {
     processed_at: null,
 };
 
-Deno.test("an emoji Verso stores is shown once processed, with its preview as its still", async () => {
+Deno.test("an emoji Verso stores is shown once processed, with its preview as its still, in its group", async () => {
     await using test = await createTestContext();
     const processed_at = test.clock.now();
 
@@ -24,7 +25,7 @@ Deno.test("an emoji Verso stores is shown once processed, with its preview as it
             url: "https://social.example/media/ab",
             static_url: "https://social.example/media/cd",
             visible_in_picker: true,
-            category: null,
+            category: "Blobs",
         }],
     );
     assertEquals(

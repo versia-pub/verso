@@ -1,21 +1,19 @@
 import type { Context } from "../kernel/context.ts";
 
 /**
- * One of the local instance's emojis, with its picture at `url`, for tests until emojis can be
- * created. Returns its id.
+ * One of the local instance's emojis for everyone, with its picture processed and stored under the
+ * key `emoji-<shortcode>`, though no file is stored. Returns its id.
  */
-export const createLocalEmoji = async (
-    ctx: Context,
-    shortcode: string,
-    url = `https://pictures.example/${shortcode}.png`,
-): Promise<string> => {
+export const createLocalEmoji = async (ctx: Context, shortcode: string): Promise<string> => {
     const mediaId = ctx.ids();
     await ctx.db.insertInto("media")
         .values({
             id: mediaId,
             instance_id: null,
-            url,
+            url: null,
             media_type: "image/png",
+            sha256: `emoji-${shortcode}`,
+            processed_at: ctx.clock.now(),
             created_at: ctx.clock.now(),
         })
         .execute();

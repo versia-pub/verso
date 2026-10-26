@@ -56,6 +56,7 @@ Deno.test("emojis are sent by name, with their pictures, once ready", async () =
     await using test = await createTestContext();
     const emoji: ShownEmoji = {
         shortcode: "blob",
+        category: null,
         instance_id: null,
         url: null,
         media_type: "image/gif",

@@ -98,6 +98,7 @@ export type ReactionGroup = {
     readonly text: string | null;
     readonly emoji_id: string | null;
     readonly shortcode: string | null;
+    readonly category: string | null;
     /**
      * The custom emoji's instance, and its domain, or `null` if it is the local instance's, or
      * Unicode.
@@ -137,6 +138,7 @@ export const reactionsOf = async (
             "reactions.text",
             "reactions.emoji_id",
             "emojis.shortcode",
+            "emojis.category",
             "emojis.instance_id",
             "instances.domain",
             "media.url",
@@ -161,6 +163,7 @@ export const reactionsOf = async (
             "reactions.text",
             "reactions.emoji_id",
             "emojis.shortcode",
+            "emojis.category",
             "emojis.instance_id",
             "instances.domain",
             "media.url",

@@ -3,10 +3,17 @@ export type EmojisTable = {
     id: string;
     /** The instance it is from, in `instances`, or `null` for the local instance. */
     instance_id: string | null;
+    /**
+     * The local user it belongs to, who alone may use it, or `null` for an emoji everyone may use
+     * and for remote instances' emojis.
+     */
+    account_id: string | null;
     /** Its name, without the colons around it. */
     shortcode: string;
     /** Its picture, in `media`. */
     media_id: string;
+    /** The emoji picker's group for it, or `null` for none. */
+    category: string | null;
     created_at: Date;
 };
 

@@ -101,7 +101,10 @@ Deno.test("a reaction is sent to the note's author and the reactor's followers, 
                 emojis: [{
                     name: ":blob:",
                     content: {
-                        "image/png": { content: "https://pictures.example/blob.png", remote: true },
+                        "image/png": {
+                            content: "https://social.example/media/emoji-blob",
+                            remote: true,
+                        },
                     },
                 }],
             },

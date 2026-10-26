@@ -15,17 +15,27 @@ export const findRemoteEmoji = async (
         .where("shortcode", "=", shortcode)
         .executeTakeFirst();
 
-/** The ids of the local instance's custom emojis named any of `shortcodes`. */
+/**
+ * The ids of the local instance's custom emojis for everyone named any of `shortcodes`, of those
+ * whose pictures are ready, so that text never uses an emoji that can't be shown. It reads the
+ * `media` table directly rather than going through its module, so that it takes one query.
+ */
 export const localEmojiIds = async (
     ctx: Context,
     shortcodes: readonly string[],
 ): Promise<string[]> => {
     if (shortcodes.length === 0) return [];
 
-    const rows = await ctx.db.selectFrom("emojis").select("id")
-        .where("instance_id", "is", null)
-        .where("shortcode", "in", shortcodes)
-        .orderBy("shortcode")
+    const rows = await ctx.db.selectFrom("emojis")
+        .innerJoin("media", "media.id", "emojis.media_id")
+        .select("emojis.id")
+        .where("emojis.instance_id", "is", null)
+        .where("emojis.account_id", "is", null)
+        .where("emojis.shortcode", "in", shortcodes)
+        // Processed and stored, as the local instance stores its emojis' pictures.
+        .where("media.processed_at", "is not", null)
+        .where("media.sha256", "is not", null)
+        .orderBy("emojis.shortcode")
         .execute();
     return rows.map((row) => row.id);
 };
@@ -77,6 +87,8 @@ export type EmojiPicture = {
 /** A custom emoji, with its picture. */
 export type ShownEmoji = EmojiPicture & {
     readonly shortcode: string;
+    /** The emoji picker's group for it, or `null` for none. */
+    readonly category: string | null;
     /** The instance it is from, or `null` for the local instance. */
     readonly instance_id: string | null;
 };
@@ -90,6 +102,7 @@ export type UsedEmoji = ShownEmoji & {
 /** The columns of {@link ShownEmoji}, from `emojis` joined with `media`. */
 const shownColumns = [
     "emojis.shortcode",
+    "emojis.category",
     "emojis.instance_id",
     "media.url",
     "media.media_type",
@@ -99,7 +112,7 @@ const shownColumns = [
 ] as const;
 
 /**
- * The local instance's custom emojis, by shortcode. It reads the `media` table directly rather than
+ * The local instance's custom emojis for everyone, by shortcode. It reads the `media` table directly rather than
  * going through its module, so that it takes one query.
  */
 export const localEmojis = async (ctx: Context): Promise<ShownEmoji[]> =>
@@ -107,6 +120,7 @@ export const localEmojis = async (ctx: Context): Promise<ShownEmoji[]> =>
         .innerJoin("media", "media.id", "emojis.media_id")
         .select(shownColumns)
         .where("emojis.instance_id", "is", null)
+        .where("emojis.account_id", "is", null)
         .orderBy("emojis.shortcode")
         .execute();
 

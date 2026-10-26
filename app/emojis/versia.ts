@@ -6,7 +6,7 @@
 import { v0_6 } from "@versia/protocol";
 import type { Context } from "../kernel/context.ts";
 import { remotePicture } from "../media/versia.ts";
-import type { ShownEmoji } from "./emoji_queries.ts";
+import type { EmojiPicture } from "./emoji_queries.ts";
 import type { RemoteEmoji } from "./emojis.ts";
 import { emojiPicture } from "./render.ts";
 
@@ -47,7 +47,7 @@ export const remoteEmojisOf = (
  */
 export const emojiExtensions = (
     ctx: Context,
-    emojis: readonly ShownEmoji[],
+    emojis: readonly (EmojiPicture & { readonly shortcode: string })[],
 ): v0_6.Entity["extensions"] => {
     const shown = emojis.flatMap((emoji): v0_6.CustomEmoji[] => {
         const picture = emojiPicture(ctx, emoji);

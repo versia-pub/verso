@@ -40,6 +40,6 @@ export const renderEmojis = (ctx: Context, emojis: readonly ShownEmoji[]): Custo
             url: picture.url,
             static_url: picture.still,
             visible_in_picker: emoji.instance_id === null,
-            category: null,
+            category: emoji.category,
         }];
     });

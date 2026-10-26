@@ -103,6 +103,9 @@ Deno.test("only a note the reactor may see can be reacted to, but a reaction can
 
 Deno.test("a status shows its reactions, and the custom emojis they use among its emojis", async () => {
     await using test = await open();
+    await test.ctx.db.updateTable("emojis").set({ category: "Blobs" })
+        .where("shortcode", "=", "blob")
+        .execute();
     const note = await createNote(test.ctx, "alice");
     await react(test.ctx, "bob", note.id, ":blob:");
     await react(test.ctx, "dave", note.id, "🎉");
@@ -124,10 +127,10 @@ Deno.test("a status shows its reactions, and the custom emojis they use among it
         { name: "🎉", count: 1, remote: false, me: false },
         { name: ":dog@b.example:", count: 1, remote: true, me: false },
     ]);
-    assertEquals(status?.emojis.map((emoji) => [emoji.shortcode, emoji.visible_in_picker]), [
-        ["blob", true],
-        ["dog@b.example", false],
-    ]);
+    assertEquals(
+        status?.emojis.map((emoji) => [emoji.shortcode, emoji.visible_in_picker, emoji.category]),
+        [["blob", true, "Blobs"], ["dog@b.example", false, null]],
+    );
 
     // Without a viewer, no one's reactions are their own.
     const [anyone] = await renderStatuses(test.ctx, [note], null);

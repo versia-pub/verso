@@ -36,6 +36,7 @@ export const reactionEmojis = (groups: readonly ReactionGroup[]): ShownEmoji[] =
     groups.flatMap((group) =>
         group.shortcode === null || group.media_type === null ? [] : [{
             shortcode: shortcodeOf(group),
+            category: group.category,
             instance_id: group.instance_id,
             url: group.url,
             media_type: group.media_type,
