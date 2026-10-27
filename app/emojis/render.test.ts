@@ -48,7 +48,13 @@ Deno.test("a remote emoji is shown at its URL, which is its still too, and not i
 
 Deno.test("a local emoji is shown with whose it is and its alt text, and no URLs until processed", async () => {
     await using test = await createTestContext();
-    const local: LocalEmoji = { ...emoji, id: "e", account_id: "alice", description: "A blob" };
+    const local: LocalEmoji = {
+        ...emoji,
+        id: "e",
+        account_id: "alice",
+        media_id: "m",
+        description: "A blob",
+    };
 
     assertEquals(renderVersiaEmoji(test.ctx, local), {
         id: "e",

@@ -96,6 +96,18 @@ export const updateUpload = async (
         .execute();
 };
 
+/** Changes the description of the media `id`, whoever uploaded it. */
+export const updateDescription = async (
+    ctx: Context,
+    id: string,
+    description: string | null,
+): Promise<void> => {
+    await ctx.db.updateTable("media")
+        .set({ description })
+        .where("id", "=", id)
+        .execute();
+};
+
 /**
  * An upload stored under `key` once processed, or having it as its preview. Only local media
  * qualifies.

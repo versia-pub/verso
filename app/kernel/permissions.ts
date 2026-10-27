@@ -36,8 +36,10 @@ export const permissions = [
     "owner:note",
     /** Upload media, and describe one's own. */
     "owner:media",
-    /** Add one's own custom emojis. */
+    /** Add one's own custom emojis, and change them. */
     "owner:emoji",
+    /** View global custom emojis and one's own. */
+    "read:emoji",
     /**
      * See who blocks each account, which is otherwise only the blocker's to know, as moderators may
      * need to.

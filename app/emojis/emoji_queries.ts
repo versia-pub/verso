@@ -1,4 +1,4 @@
-import type { Insertable, Selectable } from "kysely";
+import type { Insertable, Selectable, Updateable } from "kysely";
 import type { Context } from "../kernel/context.ts";
 import type { EmojisTable } from "./tables.ts";
 
@@ -46,19 +46,21 @@ export const insertEmoji = async (ctx: Context, emoji: Insertable<EmojisTable>):
 
 /**
  * Whether the local user `accountId` may already use an emoji named `shortcode`: their own, or a
- * global one.
+ * global one, other than the emoji `except`.
  */
 export const hasUsableEmoji = async (
     ctx: Context,
     accountId: string,
     shortcode: string,
+    except?: string,
 ): Promise<boolean> => {
-    const row = await ctx.db.selectFrom("emojis").select("id")
+    let query = ctx.db.selectFrom("emojis").select("id")
         .where("instance_id", "is", null)
         .where("shortcode", "=", shortcode)
-        .where((eb) => eb.or([eb("account_id", "=", accountId), eb("account_id", "is", null)]))
-        .executeTakeFirst();
-    return row !== undefined;
+        .where((eb) => eb.or([eb("account_id", "=", accountId), eb("account_id", "is", null)]));
+    if (except !== undefined) query = query.where("id", "!=", except);
+
+    return await query.executeTakeFirst() !== undefined;
 };
 
 /**
@@ -74,6 +76,18 @@ export const insertLocalEmoji = async (
         .returning("id")
         .executeTakeFirst();
     return added !== undefined;
+};
+
+/** Changes one of the local instance's emojis. */
+export const updateLocalEmoji = async (
+    ctx: Context,
+    id: string,
+    changes: Pick<Updateable<EmojisTable>, "account_id" | "shortcode" | "media_id" | "category">,
+): Promise<void> => {
+    await ctx.db.updateTable("emojis").set(changes)
+        .where("id", "=", id)
+        .where("instance_id", "is", null)
+        .execute();
 };
 
 /** Replaces the custom emojis a status uses. */
@@ -161,6 +175,7 @@ export type LocalEmoji = ShownEmoji & {
     readonly id: string;
     /** The user it belongs to, or `null` if it is global. */
     readonly account_id: string | null;
+    readonly media_id: string;
     readonly description: string | null;
 };
 
@@ -171,7 +186,13 @@ export type LocalEmoji = ShownEmoji & {
 export const findLocalEmoji = async (ctx: Context, id: string): Promise<LocalEmoji | undefined> =>
     await ctx.db.selectFrom("emojis")
         .innerJoin("media", "media.id", "emojis.media_id")
-        .select(["emojis.id", "emojis.account_id", "media.description", ...shownColumns])
+        .select([
+            "emojis.id",
+            "emojis.account_id",
+            "emojis.media_id",
+            "media.description",
+            ...shownColumns,
+        ])
         .where("emojis.id", "=", id)
         .where("emojis.instance_id", "is", null)
         .executeTakeFirst();

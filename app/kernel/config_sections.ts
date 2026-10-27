@@ -135,6 +135,7 @@ export const Permissions = z.strictObject({
         "read:note_likes",
         "read:note_boosts",
         "read:reaction",
+        "read:emoji",
         "owner:account",
         "owner:block",
         "owner:boost",
