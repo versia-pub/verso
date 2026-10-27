@@ -16,6 +16,25 @@ export const insertNotifications = async (
     }
 };
 
+/**
+ * The key of the latest group of `accountId`'s notifications whose keys start with `prefix` and a
+ * dash, if there is one. Keys end in an hour count, which has as many digits until 2084, so the
+ * latest sorts last.
+ */
+export const latestGroupKey = async (
+    ctx: Context,
+    accountId: string,
+    prefix: string,
+): Promise<string | undefined> =>
+    (await ctx.db.selectFrom("notifications").select("group_key")
+        .where("account_id", "=", accountId)
+        // After the dash comes the hour; `.` sorts just after `-`.
+        .where("group_key", ">", `${prefix}-`)
+        .where("group_key", "<", `${prefix}.`)
+        .orderBy("group_key", "desc")
+        .limit(1)
+        .executeTakeFirst())?.group_key ?? undefined;
+
 /** Deletes the notifications of the follow `followId`. Returns whether there were any. */
 export const deleteFollowNotifications = async (
     ctx: Context,

@@ -20,6 +20,7 @@ import { localSharerIds } from "../notes/share_queries.ts";
 import {
     deleteFollowNotifications,
     insertNotifications,
+    latestGroupKey,
     mentionNotifiedIds,
 } from "./notification_queries.ts";
 import type { NotificationType } from "./tables.ts";
@@ -33,6 +34,42 @@ type Links = {
     readonly followId?: string;
 };
 
+/** The types of notifications that are grouped: Mastodon's, and reactions. */
+export const groupedTypes: ReadonlySet<NotificationType> = new Set([
+    "favourite",
+    "reblog",
+    "follow",
+    "reaction",
+]);
+
+/** How long a group may span, as on Mastodon. */
+const groupSpanHours = 12;
+
+const hourMs = 60 * 60 * 1000;
+
+/**
+ * The group a new notification of `accountId` goes in, as on Mastodon: one of its type and status,
+ * keyed by the hour it started, which notifications join for 12 hours from then. Types that aren't
+ * grouped have none.
+ * @see https://github.com/mastodon/mastodon/blob/main/app/services/notify_service.rb
+ */
+const groupOf = async (
+    ctx: Context,
+    accountId: string,
+    type: NotificationType,
+    noteId: string | undefined,
+    now: Date,
+) => {
+    if (!groupedTypes.has(type)) return null;
+
+    const prefix = `${type}-${noteId ?? ""}`;
+    const hour = Math.floor(now.getTime() / hourMs);
+    const latest = await latestGroupKey(ctx, accountId, prefix);
+    const started = latest === undefined ? undefined : Number(latest.slice(prefix.length + 1));
+
+    return `${prefix}-${started !== undefined && hour < started + groupSpanHours ? started : hour}`;
+};
+
 /** Notifies each of `accountIds`, local users, of what `fromId` did, unless it is themselves. */
 const notifyAll = async (
     ctx: Context,
@@ -42,18 +79,22 @@ const notifyAll = async (
     links: Links,
 ) => {
     const now = ctx.clock.now();
-    const rows = accountIds.filter((id) => id !== fromId).map((accountId) => ({
-        id: ctx.ids(),
-        account_id: accountId,
-        type,
-        from_account_id: fromId,
-        note_id: links.noteId ?? null,
-        share_id: links.shareId ?? null,
-        like_id: links.likeId ?? null,
-        reaction_id: links.reactionId ?? null,
-        follow_id: links.followId ?? null,
-        created_at: now,
-    }));
+    const rows = [];
+    for (const accountId of accountIds.filter((id) => id !== fromId)) {
+        rows.push({
+            id: ctx.ids(),
+            account_id: accountId,
+            type,
+            from_account_id: fromId,
+            note_id: links.noteId ?? null,
+            share_id: links.shareId ?? null,
+            like_id: links.likeId ?? null,
+            reaction_id: links.reactionId ?? null,
+            follow_id: links.followId ?? null,
+            group_key: await groupOf(ctx, accountId, type, links.noteId, now),
+            created_at: now,
+        });
+    }
 
     await insertNotifications(ctx, rows);
 };

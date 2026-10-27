@@ -87,10 +87,12 @@ Deno.test("notifications are listed newest first, with who caused them and the s
         `mention bob ${mention.id}`,
     ]);
 
-    const { body } = await test.request("GET", "/api/v1/notifications?limit=1");
-    const [first] = body as Shown[];
-    assertEquals(first?.group_key, `ungrouped-${first?.id}`);
-    assertEquals(first?.status, undefined);
+    const { body } = await test.request("GET", "/api/v1/notifications");
+    const [followed, , mentioned] = body as Shown[];
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+    assertEquals(followed?.group_key, `follow--${hour}`);
+    assertEquals(followed?.status, undefined);
+    assertEquals(mentioned?.group_key, `ungrouped-${mentioned?.id}`);
 });
 
 Deno.test("reaction notifications have the emoji, and a custom one's picture", async () => {

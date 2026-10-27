@@ -49,6 +49,7 @@ import { publicTimelines } from "./0047_public_timelines.ts";
 import { mediaFit } from "./0048_media_fit.ts";
 import { ownEmojis } from "./0049_own_emojis.ts";
 import { notifications } from "./0050_notifications.ts";
+import { notificationGroups } from "./0051_notification_groups.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -105,4 +106,5 @@ export const migrations: Record<string, Migration> = {
     "0048_media_fit": mediaFit,
     "0049_own_emojis": ownEmojis,
     "0050_notifications": notifications,
+    "0051_notification_groups": notificationGroups,
 };

@@ -11,7 +11,7 @@ import { removeNote } from "../notes/removal.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { notifyOf } from "./notifications.ts";
-import { notificationsOf } from "./testing.ts";
+import { groupKeysOf, notificationsOf } from "./testing.ts";
 
 const open = async () => {
     const test = await createTestContext();
@@ -207,4 +207,62 @@ Deno.test("remote followees aren't notified", async () => {
 
     assertEquals(await test.of("dave"), []);
     assertEquals(await test.of("alice"), []);
+});
+
+Deno.test("likes, boosts, reactions and follows are grouped by status for 12 hours", async () => {
+    await using test = await open();
+    const note = await test.post("alice", "Hi");
+    const other = await test.post("alice", "Hello");
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+
+    await like(test.ctx, "bob", note.id);
+    await share(test.ctx, "bob", note.id);
+    await react(test.ctx, "bob", note.id, "👍");
+    await follow(test.ctx, "bob", "alice");
+    test.clock.advance(11 * 3_600_000);
+    await like(test.ctx, "carol", note.id);
+    await like(test.ctx, "carol", other.id);
+    await react(test.ctx, "carol", note.id, "🎉");
+    await follow(test.ctx, "carol", "alice");
+    await test.post("bob", "Hi @alice");
+
+    assertEquals(await groupKeysOf(test.ctx, "alice"), [
+        "-",
+        `follow--${hour}`,
+        `reaction-${note.id}-${hour}`,
+        `favourite-${other.id}-${hour + 11}`,
+        `favourite-${note.id}-${hour}`,
+        `follow--${hour}`,
+        `reaction-${note.id}-${hour}`,
+        `reblog-${note.id}-${hour}`,
+        `favourite-${note.id}-${hour}`,
+    ]);
+});
+
+Deno.test("a group takes notifications until 12 hours after it started", async () => {
+    await using test = await open();
+    for (const id of ["erin", "frank"]) await createLocalAccount(test.ctx, id);
+    const note = await test.post("alice", "Hi");
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+
+    await like(test.ctx, "bob", note.id);
+    await follow(test.ctx, "bob", "alice");
+    test.clock.advance(11 * 3_600_000);
+    await like(test.ctx, "carol", note.id);
+    test.clock.advance(3_600_000);
+    await like(test.ctx, "erin", note.id);
+    // Another user's group of follows, started since, is theirs alone.
+    await follow(test.ctx, "carol", "erin");
+    test.clock.advance(3_600_000);
+    await like(test.ctx, "frank", note.id);
+    await follow(test.ctx, "carol", "alice");
+
+    assertEquals(await groupKeysOf(test.ctx, "alice"), [
+        `follow--${hour + 13}`,
+        `favourite-${note.id}-${hour + 12}`,
+        `favourite-${note.id}-${hour + 12}`,
+        `favourite-${note.id}-${hour}`,
+        `follow--${hour}`,
+        `favourite-${note.id}-${hour}`,
+    ]);
 });

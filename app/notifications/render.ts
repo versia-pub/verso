@@ -28,7 +28,7 @@ export const shownTo = (ctx: Context, accountId: string): Shown => ({
 /**
  * The notifications `rows` of `viewerId`, in order, with the accounts that caused them and the
  * statuses they are about, as the viewer sees those, which they must be able to see, as
- * {@link shownTo} ensures. They aren't grouped yet, so each has a group of its own.
+ * {@link shownTo} ensures. Those of types that aren't grouped each have a group of their own.
  */
 export const renderNotifications = async (
     ctx: Context,
@@ -53,7 +53,7 @@ export const renderNotifications = async (
         return [{
             id: row.id,
             type: row.type,
-            group_key: `ungrouped-${row.id}`,
+            group_key: row.group_key ?? `ungrouped-${row.id}`,
             created_at: row.created_at.toISOString(),
             account,
             ...(status && { status }),

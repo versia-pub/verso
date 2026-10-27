@@ -42,6 +42,11 @@ export type NotificationsTable = {
     reaction_id: string | null;
     /** The follow or follow request, for a `follow` or `follow_request`. */
     follow_id: string | null;
+    /**
+     * The group it is in, for the types that are grouped: `<type>-<status id>-<hour>`, with no
+     * status id for follows, as on Mastodon. `null` for the others.
+     */
+    group_key: string | null;
     created_at: Date;
 };
 

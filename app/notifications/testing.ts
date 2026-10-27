@@ -10,3 +10,11 @@ export const notificationsOf = async (
         .orderBy("id", "desc")
         .execute())
         .map((row) => [row.type, row.from_account_id, row.note_id ?? ""].join(" ").trim());
+
+/** The group keys of `accountId`'s notifications, newest first, with `-` for none. */
+export const groupKeysOf = async (ctx: Context, accountId: string): Promise<string[]> =>
+    (await ctx.db.selectFrom("notifications").select("group_key")
+        .where("account_id", "=", accountId)
+        .orderBy("id", "desc")
+        .execute())
+        .map((row) => row.group_key ?? "-");
