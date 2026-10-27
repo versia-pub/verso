@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
+import { deleteEmoji } from "../emojis/emojis.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
 import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
 import { fetchSigned } from "../federation/request.ts";
@@ -13,7 +14,7 @@ import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { findLocalReaction } from "./reaction_queries.ts";
 import { reactionType } from "./reaction_federation.ts";
-import { react, unreact } from "./reactions.ts";
+import { keepRemoteReaction, react, unreact } from "./reactions.ts";
 
 /**
  * alice and bob are local, with the local instance's blob, carol is on b.example, erin on
@@ -235,4 +236,44 @@ Deno.test("reactions and their collection are served at encoded URLs", async () 
 
 Deno.test("Verso says it supports reactions", () => {
     assertEquals(registry.extensions.includes("pub.versia:reactions"), true);
+});
+
+Deno.test("local users' reactions with a deleted emoji are undone, and remote instances told", async () => {
+    await using test = await open();
+    const theirs = await createNote(test.ctx, "carol", {
+        instance_id: "b.example",
+        remote_id: "n1",
+    });
+    const blob = await test.reacted("alice", theirs.id, ":blob:");
+    const party = await test.reacted("alice", theirs.id, "🎉");
+    // carol's reaction with b.example's own blob stays.
+    await keepRemoteReaction(test.ctx, {
+        accountId: "carol",
+        noteId: theirs.id,
+        emoji: {
+            shortcode: "blob",
+            picture: { url: "https://b.example/blob.png", mediaType: "image/png" },
+        },
+        instanceId: "b.example",
+        remoteId: "r1",
+        createdAt: test.ctx.clock.now(),
+    });
+    const before = (await sent(test.ctx)).length;
+
+    const emojiId = await test.ctx.db.selectFrom("emojis").select("id")
+        .where("instance_id", "is", null)
+        .executeTakeFirstOrThrow();
+    assertEquals(
+        await deleteEmoji(test.ctx, { accountId: "admin", managesEmojis: true }, emojiId.id),
+        true,
+    );
+
+    const deletes = (await sent(test.ctx)).slice(before);
+    assertEquals(deletes.map(([domain, each]) => [domain, each.type, each.deleted]), [
+        ["b.example", "Delete", blob],
+        ["c.example", "Delete", blob],
+    ]);
+    const left = await test.ctx.db.selectFrom("reactions").select("id").orderBy("id").execute();
+    assertEquals(left.length, 2);
+    assertEquals(left.some((row) => row.id === party), true);
 });

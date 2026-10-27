@@ -1,5 +1,8 @@
 import { assertEquals } from "@std/assert";
 import { encode } from "fast-png";
+import { findAccount } from "../accounts/account_queries.ts";
+import { updateProfile } from "../accounts/profile.ts";
+import { publicAccount } from "../accounts/public.ts";
 import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -342,4 +345,44 @@ Deno.test("an emoji's new picture is processed before the emoji is shown again",
         element: new TextEncoder().encode("Not a picture"),
     });
     assertEquals(text.status, 422);
+});
+
+Deno.test("users delete their own emojis, and those who manage emojis any", async () => {
+    await using test = await open();
+    const mine = await test.added("alice", "mine");
+    const fox = await test.added("alice", "fox");
+    const blob = await test.added("global", "blob");
+
+    /** The status of `accountId` deleting the emoji `id`. */
+    const deleted = async (accountId: string, id: string) =>
+        (await test.request(accountId, "DELETE", `/api/v1/emojis/${id}`)).status;
+    assertEquals(await deleted("bob", mine), 404);
+    assertEquals(await deleted("alice", blob), 403);
+    assertEquals(await deleted("alice", mine), 200);
+    assertEquals(await deleted("alice", mine), 404);
+    assertEquals(await deleted("admin", fox), 200);
+    assertEquals(await deleted("admin", blob), 200);
+    assertEquals(await deleted("admin", "nope"), 404);
+
+    // Their names are free again.
+    assertEquals((await test.add("alice", { shortcode: "mine" })).status, 202);
+});
+
+Deno.test("statuses and profiles that used a deleted emoji no longer do", async () => {
+    await using test = await open();
+    const blob = await test.added("global", "blob");
+    await drain(test.ctx, queues);
+    const posted = await postNote(test.ctx, "alice", {
+        text: ":blob:",
+        format: "text/plain",
+        spoilerText: "",
+    });
+    await updateProfile(test.ctx, "alice", { displayName: "Alice :blob:" });
+
+    await test.request("admin", "DELETE", `/api/v1/emojis/${blob}`);
+    const note = await findNote(test.ctx, posted?.id ?? "");
+    const [status] = note ? await renderStatuses(test.ctx, [note], null) : [];
+    assertEquals(status?.emojis, []);
+    const account = await findAccount(test.ctx, "alice");
+    assertEquals(account && (await publicAccount(test.ctx, account)).emojis, []);
 });

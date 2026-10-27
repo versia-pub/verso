@@ -92,6 +92,19 @@ export const deleteReaction = async (
         .executeTakeFirst();
 };
 
+/**
+ * Deletes the reactions with the custom emoji `emojiId`, and returns them. Only local users react
+ * with the local instance's emojis; remote users react with their instances' own.
+ */
+export const deleteReactionsWith = async (
+    ctx: Context,
+    emojiId: string,
+): Promise<ReactionRow[]> =>
+    await ctx.db.deleteFrom("reactions")
+        .where("emoji_id", "=", emojiId)
+        .returningAll()
+        .execute();
+
 /** The reactions to a status with one emoji, and the custom emoji's picture, if it is one. */
 export type ReactionGroup = {
     readonly note_id: string;

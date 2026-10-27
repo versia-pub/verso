@@ -9,6 +9,7 @@ import { instanceKey } from "./instances/keys.ts";
 import { likeDeliveries } from "./interactions/federation.ts";
 import { uncountLikesOf } from "./interactions/likes.ts";
 import { reactionDeliveries } from "./interactions/reaction_federation.ts";
+import { undoReactionsWithDeletedEmoji } from "./interactions/reactions.ts";
 import { shareDeliveries } from "./interactions/share_federation.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
 import { cached } from "./kernel/cache.ts";
@@ -36,6 +37,7 @@ export const subscribers: readonly Subscriber[] = [
     likeDeliveries,
     shareDeliveries,
     reactionDeliveries,
+    undoReactionsWithDeletedEmoji,
     uncountFollowsOf,
     uncountNotesOf,
     uncountLikesOf,

@@ -7,7 +7,8 @@
  */
 import { localEmojiIds } from "../emojis/emoji_queries.ts";
 import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
-import type { Context } from "../kernel/context.ts";
+import { isEmojiDeleted } from "../emojis/events.ts";
+import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { visibleNote, visibleOriginal } from "../notes/visibility.ts";
@@ -15,6 +16,7 @@ import type { ReactionEvent } from "./events.ts";
 import {
     deleteReaction,
     deleteReactionById,
+    deleteReactionsWith,
     findRemoteReaction,
     insertReaction,
     insertRemoteReaction,
@@ -112,6 +114,27 @@ export const unreact = (
 
         return await findNote(tx, reacted) ?? "missing";
     });
+
+/**
+ * Undoes local users' reactions with a local emoji that is being deleted, as if they had undone
+ * them, so remote instances are sent Deletes.
+ */
+export const undoReactionsWithDeletedEmoji = async (
+    ctx: Context,
+    event: DomainEvent,
+): Promise<void> => {
+    if (!isEmojiDeleted(event)) return;
+
+    for (const reaction of await deleteReactionsWith(ctx, event.emojiId)) {
+        const undone: ReactionEvent = {
+            type: "interactions.unreacted",
+            reactionId: reaction.id,
+            accountId: reaction.account_id,
+            noteId: reaction.note_id,
+        };
+        await emit(ctx, undone);
+    }
+};
 
 /** A remote reaction, as Verso stores it. */
 export type RemoteReaction = {

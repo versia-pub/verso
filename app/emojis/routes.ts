@@ -11,7 +11,7 @@ import type { Limits, MediaLimits } from "../kernel/config_sections.ts";
 import { shortcodePattern } from "../kernel/markup.ts";
 import { MediaDescription } from "../media/routes.ts";
 import { findLocalEmoji, localEmojis } from "./emoji_queries.ts";
-import { addEmoji, changeEmoji, findEmojiFor } from "./emojis.ts";
+import { addEmoji, changeEmoji, deleteEmoji, findEmojiFor } from "./emojis.ts";
 import { renderEmojis, renderVersiaEmoji } from "./render.ts";
 
 /** Room for the form's other fields and boundaries, besides the picture. */
@@ -132,6 +132,25 @@ export const emojiRoutes = (media: MediaLimits, limits: Limits): readonly Route[
             if (emoji === undefined) throw new NotFound();
 
             return { status: 200, body: renderVersiaEmoji(ctx, emoji) };
+        },
+    }),
+    defineRoute({
+        method: "DELETE",
+        path: "/api/v1/emojis/:id",
+        summary: "Delete emoji",
+        description: "Delete a custom emoji from the database.\n\n" +
+            "Users delete their own emojis; those with the `emojis` permission delete any. " +
+            "Statuses and profiles that used it no longer do, and local users' reactions with " +
+            "it are undone. Answered with an empty object, as Verso's other deletions are.",
+        docs: versiaServerEmojis,
+        tags: ["emojis"],
+        auth: { require: "user", scope: "write:media", permission: "owner:emoji" },
+        params: EmojiId,
+        responses: { 200: z.strictObject({}) },
+        handler: async (ctx, { params, viewer }) => {
+            if (!await deleteEmoji(ctx, await editorOf(viewer), params.id)) throw new NotFound();
+
+            return { status: 200, body: {} };
         },
     }),
 ];

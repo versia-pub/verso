@@ -7,19 +7,22 @@
  */
 import { NotPermitted, Unprocessable } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
+import { emit } from "../kernel/events.ts";
 import type { Fit } from "../kernel/images.ts";
 import { type RemoteMedia, saveRemoteMedia } from "../media/media_queries.ts";
 import { updateDescription } from "../media/upload_queries.ts";
 import { uploadPicture } from "../media/uploads.ts";
 import {
+    deleteEmojiById,
     findLocalEmoji,
     findRemoteEmoji,
     hasUsableEmoji,
     insertEmoji,
     insertLocalEmoji,
     type LocalEmoji,
-    updateLocalEmoji,
+    updateEmojiById,
 } from "./emoji_queries.ts";
+import type { EmojiDeleted } from "./events.ts";
 
 /** A remote instance's custom emoji, as it names it. */
 export type RemoteEmoji = {
@@ -167,6 +170,18 @@ export const findEmojiFor = async (
 };
 
 /**
+ * The local emoji `id`, if `editor` may see it. A global one is refused unless they manage emojis,
+ * as only those who do may `what`. Any other they see is theirs to change, as only those who manage
+ * emojis see other users' own emojis.
+ */
+const changeableEmoji = async (ctx: Context, editor: EmojiEditor, id: string, what: string) => {
+    const emoji = await findEmojiFor(ctx, editor, id);
+    if (emoji?.account_id === null && !editor.managesEmojis) throw notManager(what);
+
+    return emoji;
+};
+
+/**
  * Changes the local emoji `id` as `editor` asks, and returns it, or `undefined` if they may not
  * see it. Users change their own emojis; those who manage emojis change any. A global emoji made a
  * user's own becomes the editor's. Renames are held to the same names as new emojis, and statuses
@@ -179,11 +194,8 @@ export const changeEmoji = async (
     id: string,
     changes: EmojiChanges,
 ): Promise<LocalEmoji | undefined> => {
-    const emoji = await findEmojiFor(ctx, editor, id);
+    const emoji = await changeableEmoji(ctx, editor, id, "change global emojis");
     if (emoji === undefined) return undefined;
-    if (emoji.account_id !== editor.accountId && !editor.managesEmojis) {
-        throw notManager("change global emojis");
-    }
     if (changes.global && !editor.managesEmojis) throw notManager("make emojis global");
 
     const owner = changes.global === undefined
@@ -204,7 +216,7 @@ export const changeEmoji = async (
         await updateDescription(ctx, emoji.media_id, changes.description || null);
     }
 
-    await updateLocalEmoji(ctx, id, {
+    await updateEmojiById(ctx, id, {
         account_id: owner,
         shortcode,
         media_id: picture?.id ?? emoji.media_id,
@@ -212,4 +224,26 @@ export const changeEmoji = async (
     });
 
     return await findLocalEmoji(ctx, id);
+};
+
+/**
+ * Deletes the local emoji `id` as `editor` asks, and returns whether they may see it. Users delete
+ * their own emojis; those who manage emojis delete any. Statuses and accounts that used it no
+ * longer do, and local users' reactions with it are undone. Its picture is removed once unused, as
+ * other unused media is.
+ */
+export const deleteEmoji = async (
+    ctx: Context,
+    editor: EmojiEditor,
+    id: string,
+): Promise<boolean> => {
+    const emoji = await changeableEmoji(ctx, editor, id, "delete global emojis");
+    if (emoji === undefined) return false;
+
+    await ctx.transaction(async (tx) => {
+        const event: EmojiDeleted = { type: "emojis.deleted", emojiId: id };
+        await emit(tx, event);
+        await deleteEmojiById(tx, id);
+    });
+    return true;
 };

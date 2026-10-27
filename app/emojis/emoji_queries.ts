@@ -78,16 +78,18 @@ export const insertLocalEmoji = async (
     return added !== undefined;
 };
 
-/** Changes one of the local instance's emojis. */
-export const updateLocalEmoji = async (
+/** Changes the emoji `id`. */
+export const updateEmojiById = async (
     ctx: Context,
     id: string,
     changes: Pick<Updateable<EmojisTable>, "account_id" | "shortcode" | "media_id" | "category">,
 ): Promise<void> => {
-    await ctx.db.updateTable("emojis").set(changes)
-        .where("id", "=", id)
-        .where("instance_id", "is", null)
-        .execute();
+    await ctx.db.updateTable("emojis").set(changes).where("id", "=", id).execute();
+};
+
+/** Deletes the emoji `id`. */
+export const deleteEmojiById = async (ctx: Context, id: string): Promise<void> => {
+    await ctx.db.deleteFrom("emojis").where("id", "=", id).execute();
 };
 
 /** Replaces the custom emojis a status uses. */

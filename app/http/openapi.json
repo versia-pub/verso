@@ -5398,6 +5398,47 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "summary": "Delete emoji",
+                "description": "Delete a custom emoji from the database.\n\nUsers delete their own emojis; those with the `emojis` permission delete any. Statuses and profiles that used it no longer do, and local users' reactions with it are undone. Answered with an empty object, as Verso's other deletions are.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:emoji` permission.",
+                "externalDocs": {
+                    "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/emojis"
+                },
+                "tags": [
+                    "emojis"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:media"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/roles": {
