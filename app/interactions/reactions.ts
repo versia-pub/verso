@@ -5,7 +5,7 @@
  * @see https://versia.pub/extensions/reactions
  * @module
  */
-import { localEmojiIds } from "../emojis/emoji_queries.ts";
+import { usableEmojiIds } from "../emojis/emoji_queries.ts";
 import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
 import { isEmojiDeleted } from "../emojis/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
@@ -36,7 +36,8 @@ export const reactionEmoji = async (
 ): Promise<ReactionEmoji | undefined> => {
     const shortcode = /^:([A-Za-z0-9_-]+):$/u.exec(name)?.[1];
     if (shortcode !== undefined) {
-        const [id] = await localEmojiIds(ctx, [shortcode]);
+        // Only global ones, so that each reaction's name is one emoji.
+        const [id] = await usableEmojiIds(ctx, null, [shortcode]);
         return id === undefined ? undefined : { text: null, emoji_id: id };
     }
 

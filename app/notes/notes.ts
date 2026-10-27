@@ -7,7 +7,7 @@ import { countNote } from "../accounts/count_queries.ts";
 import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import { userUri } from "../accounts/render.ts";
 import type { TextFormat, Visibility } from "../accounts/tables.ts";
-import { localEmojiIds, setNoteEmojis } from "../emojis/emoji_queries.ts";
+import { setNoteEmojis, usableEmojiIds } from "../emojis/emoji_queries.ts";
 import { fetchBudget } from "../federation/resolver.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
@@ -114,15 +114,15 @@ const renderDraft = (
 });
 
 /**
- * Links the local instance's custom emojis named in a local status's text and content warning, as
- * `found`, replacing the ones it linked before.
+ * Links the custom emojis named in a local status's text and content warning, as `found`, that its
+ * author may use, replacing the ones it linked before.
  */
-const useEmojis = async (ctx: Context, noteId: string, found: Found, spoilerText: string) => {
+const useEmojis = async (ctx: Context, note: NoteRow, found: Found, spoilerText: string) => {
     const shortcodes = new Set([
         ...found.shortcodes,
         ...scanText(spoilerText, "text/plain").shortcodes,
     ]);
-    await setNoteEmojis(ctx, noteId, await localEmojiIds(ctx, [...shortcodes]));
+    await setNoteEmojis(ctx, note.id, await usableEmojiIds(ctx, note.account_id, [...shortcodes]));
 };
 
 /**
@@ -172,7 +172,7 @@ export const postNote = async (
             [...accounts.values()].map((row) => row.id),
             found.hashtags,
         );
-        await useEmojis(tx, note.id, found, draft.spoilerText);
+        await useEmojis(tx, note, found, draft.spoilerText);
         await attach(tx, accountId, note.id, draft.mediaIds ?? []);
 
         await countPosted(tx, note, 1);
@@ -257,7 +257,7 @@ export const editNote = async (
             [...accounts.values()].map((row) => row.id),
             found.hashtags,
         );
-        await useEmojis(tx, note.id, found, spoilerText);
+        await useEmojis(tx, note, found, spoilerText);
         await reattach(tx, accountId, note.id, edit.mediaIds, mediaChanges);
 
         const event: NoteEdited = { type: "notes.edited", noteId: note.id };

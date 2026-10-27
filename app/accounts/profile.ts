@@ -1,4 +1,4 @@
-import { localEmojiIds, setAccountEmojis } from "../emojis/emoji_queries.ts";
+import { setAccountEmojis, usableEmojiIds } from "../emojis/emoji_queries.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { Unprocessable } from "../http/errors.ts";
@@ -60,8 +60,8 @@ const plainField = (name: string, value: string): ProfileField => ({
 });
 
 /**
- * Links the local instance's custom emojis used in a local account's display name, bio and field
- * names, replacing the ones it linked before.
+ * Links the custom emojis used in a local account's display name, bio and fields that it may use,
+ * replacing the ones it linked before.
  */
 const useEmojis = async (ctx: Context, row: AccountRow) => {
     const shortcodes = new Set([
@@ -72,7 +72,7 @@ const useEmojis = async (ctx: Context, row: AccountRow) => {
             ...scanText(field.value, field.format).shortcodes,
         ]),
     ]);
-    await setAccountEmojis(ctx, row.id, await localEmojiIds(ctx, [...shortcodes]));
+    await setAccountEmojis(ctx, row.id, await usableEmojiIds(ctx, row.id, [...shortcodes]));
 };
 
 /**

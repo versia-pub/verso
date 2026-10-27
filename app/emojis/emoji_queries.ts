@@ -1,4 +1,5 @@
-import type { Insertable, Selectable, Updateable } from "kysely";
+import type { ExpressionBuilder, Insertable, Selectable, Updateable } from "kysely";
+import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 import type { EmojisTable } from "./tables.ts";
 
@@ -16,28 +17,54 @@ export const findRemoteEmoji = async (
         .executeTakeFirst();
 
 /**
- * The ids of the local instance's global custom emojis named any of `shortcodes`, of those
- * whose pictures are ready, so that text never uses an emoji that can't be shown. It reads the
- * `media` table directly rather than going through its module, so that it takes one query.
+ * Of emojis in shortcode order, each global one or `accountId`'s own, one per shortcode: the user's
+ * own where both have it.
  */
-export const localEmojiIds = async (
+const ownFirst = <E extends { readonly shortcode: string; readonly account_id: string | null }>(
+    emojis: readonly E[],
+): E[] => {
+    const named = new Map<string, E>();
+    for (const emoji of emojis) {
+        if (!named.has(emoji.shortcode) || emoji.account_id !== null) {
+            named.set(emoji.shortcode, emoji);
+        }
+    }
+
+    return [...named.values()];
+};
+
+/** Only global emojis, or those and the local user `accountId`'s own. */
+const usableBy = (accountId: string | null) => (eb: ExpressionBuilder<Database, "emojis">) =>
+    accountId === null
+        ? eb("emojis.account_id", "is", null)
+        : eb.or([eb("emojis.account_id", "is", null), eb("emojis.account_id", "=", accountId)]);
+
+/**
+ * The ids of the local instance's custom emojis named any of `shortcodes` that the local user
+ * `accountId` may use, by shortcode: global ones and their own, their own where both have a name,
+ * or only global ones if `accountId` is `null`. Only those whose pictures are ready are, so that
+ * text never uses an emoji that can't be shown. It reads the `media` table directly rather than
+ * going through its module, so that it takes one query.
+ */
+export const usableEmojiIds = async (
     ctx: Context,
+    accountId: string | null,
     shortcodes: readonly string[],
 ): Promise<string[]> => {
     if (shortcodes.length === 0) return [];
 
     const rows = await ctx.db.selectFrom("emojis")
         .innerJoin("media", "media.id", "emojis.media_id")
-        .select("emojis.id")
+        .select(["emojis.id", "emojis.shortcode", "emojis.account_id"])
         .where("emojis.instance_id", "is", null)
-        .where("emojis.account_id", "is", null)
+        .where(usableBy(accountId))
         .where("emojis.shortcode", "in", shortcodes)
         // Processed and stored, as the local instance stores its emojis' pictures.
         .where("media.processed_at", "is not", null)
         .where("media.sha256", "is not", null)
         .orderBy("emojis.shortcode")
         .execute();
-    return rows.map((row) => row.id);
+    return ownFirst(rows).map((row) => row.id);
 };
 
 export const insertEmoji = async (ctx: Context, emoji: Insertable<EmojisTable>): Promise<void> => {
@@ -160,17 +187,24 @@ const shownColumns = [
 ] as const;
 
 /**
- * The local instance's global custom emojis, by shortcode. It reads the `media` table directly
- * rather than going through its module, so that it takes one query.
+ * The local instance's custom emojis that the local user `accountId` may use, by shortcode: global
+ * ones and their own, their own where both have a name, or only global ones if `accountId` is
+ * `null`. It reads the `media` table directly rather than going through its module, so that it
+ * takes one query.
  */
-export const localEmojis = async (ctx: Context): Promise<ShownEmoji[]> =>
-    await ctx.db.selectFrom("emojis")
-        .innerJoin("media", "media.id", "emojis.media_id")
-        .select(shownColumns)
-        .where("emojis.instance_id", "is", null)
-        .where("emojis.account_id", "is", null)
-        .orderBy("emojis.shortcode")
-        .execute();
+export const usableEmojis = async (
+    ctx: Context,
+    accountId: string | null,
+): Promise<ShownEmoji[]> =>
+    ownFirst(
+        await ctx.db.selectFrom("emojis")
+            .innerJoin("media", "media.id", "emojis.media_id")
+            .select(["emojis.account_id", ...shownColumns])
+            .where("emojis.instance_id", "is", null)
+            .where(usableBy(accountId))
+            .orderBy("emojis.shortcode")
+            .execute(),
+    );
 
 /** One of the local instance's emojis, with its owner and its picture's alt text. */
 export type LocalEmoji = ShownEmoji & {

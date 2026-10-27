@@ -10,7 +10,7 @@ import { Flag, Text } from "../http/schemas.ts";
 import type { Limits, MediaLimits } from "../kernel/config_sections.ts";
 import { shortcodePattern } from "../kernel/markup.ts";
 import { MediaDescription } from "../media/routes.ts";
-import { findLocalEmoji, localEmojis } from "./emoji_queries.ts";
+import { findLocalEmoji, usableEmojis } from "./emoji_queries.ts";
 import { addEmoji, changeEmoji, deleteEmoji, findEmojiFor } from "./emojis.ts";
 import { renderEmojis, renderVersiaEmoji } from "./render.ts";
 
@@ -51,10 +51,17 @@ export const emojiRoutes = (media: MediaLimits, limits: Limits): readonly Route[
     defineRoute({
         method: "GET",
         path: "/api/v1/custom_emojis",
-        summary: "This instance's custom emojis, for the picker",
+        summary: "View all custom emoji",
+        description: "Returns custom emojis that are available on the server.\n\n" +
+            "Global emojis, and the viewer's own, which replace global ones of the same name.",
+        docs: "https://docs.joinmastodon.org/methods/custom_emojis/#get",
         tags: ["emojis"],
+        auth: { require: "optional" },
         responses: { 200: z.array(CustomEmoji) },
-        handler: async (ctx) => ({ status: 200, body: renderEmojis(ctx, await localEmojis(ctx)) }),
+        handler: async (ctx, { viewer }) => {
+            const emojis = await usableEmojis(ctx, viewer?.accountId ?? null);
+            return { status: 200, body: renderEmojis(ctx, emojis) };
+        },
     }),
     defineRoute({
         method: "POST",

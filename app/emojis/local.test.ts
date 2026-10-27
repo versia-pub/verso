@@ -11,6 +11,7 @@ import { createInstance } from "../instances/testing.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { renderStatuses } from "../notes/render.ts";
+import { react } from "../interactions/reactions.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { keepRemoteEmojis } from "./emojis.ts";
@@ -133,10 +134,11 @@ Deno.test("a local account uses this instance's emojis its name, bio and fields 
     assertEquals((await localVersiaUser(test.ctx, "alice"))?.extensions, undefined);
 });
 
-Deno.test("text uses only global emojis whose pictures are ready", async () => {
+Deno.test("text uses only emojis its author may use whose pictures are ready", async () => {
     await using test = await open();
-    const own = await createLocalEmoji(test.ctx, "mine");
-    await test.ctx.db.updateTable("emojis").set({ account_id: "alice" }).where("id", "=", own)
+    await createLocalAccount(test.ctx, "bob");
+    const bobs = await createLocalEmoji(test.ctx, "mine");
+    await test.ctx.db.updateTable("emojis").set({ account_id: "bob" }).where("id", "=", bobs)
         .execute();
     for (
         const [shortcode, change] of [["waiting", { processed_at: null }], ["broken", {
@@ -183,4 +185,86 @@ Deno.test("global emojis have one per name, and so do each user's own", async ()
     await add("cat", "alice");
     await assertRejects(() => add("blob", "alice"));
     await assertRejects(() => add("cat", null));
+});
+
+Deno.test("a user's own emojis are theirs to use, over global ones of the same name", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "bob");
+    for (const shortcode of ["blob", "mine"]) {
+        const id = await createLocalEmoji(test.ctx, `${shortcode}_alice`);
+        await test.ctx.db.updateTable("emojis").set({ shortcode, account_id: "alice" })
+            .where("id", "=", id)
+            .execute();
+    }
+    // A global one added after the user's own of its name.
+    await createLocalEmoji(test.ctx, "mine");
+    const app = createTestApp(
+        test.ctx,
+        emojiRoutes(MediaLimits.parse({}), Limits.parse({})),
+        { checkResponses: true },
+    );
+    const own = (shortcode: string) => `https://social.example/media/emoji-${shortcode}_alice`;
+    const global = (shortcode: string) => `https://social.example/media/emoji-${shortcode}`;
+
+    /** The shortcodes and URLs of the emojis `emojis` has. */
+    const urls = (emojis: readonly { shortcode: string; url: string }[] | undefined) =>
+        emojis?.map((emoji) => [emoji.shortcode, emoji.url]);
+
+    /** The emojis a status by `accountId` with `text` uses. */
+    const used = async (accountId: string, text: string) => {
+        const posted = await postNote(test.ctx, accountId, {
+            text,
+            format: "text/plain",
+            spoilerText: "",
+        });
+        const note = await findNote(test.ctx, posted?.id ?? "");
+        const [status] = note ? await renderStatuses(test.ctx, [note], null) : [];
+        return urls(status?.emojis);
+    };
+    assertEquals(await used("alice", ":blob: :cat: :mine:"), [
+        ["blob", own("blob")],
+        ["cat", global("cat")],
+        ["mine", own("mine")],
+    ]);
+    assertEquals(await used("bob", ":blob: :mine:"), [
+        ["blob", global("blob")],
+        ["mine", global("mine")],
+    ]);
+
+    await updateProfile(test.ctx, "alice", { displayName: "Alice :blob:" });
+    const row = await findAccount(test.ctx, "alice");
+    assertEquals(row && urls((await publicAccount(test.ctx, row)).emojis), [
+        ["blob", own("blob")],
+    ]);
+
+    /** The emojis listed for the picker, for `accountId` or for anyone. */
+    const listed = async (accountId?: string) => {
+        const headers: Record<string, string> = accountId
+            ? { authorization: `Bearer ${await tokenFor(test.ctx, accountId)}` }
+            : {};
+        return urls(await (await app.request("/api/v1/custom_emojis", { headers })).json());
+    };
+    assertEquals(await listed("alice"), [
+        ["blob", own("blob")],
+        ["cat", global("cat")],
+        ["mine", own("mine")],
+    ]);
+    assertEquals(await listed("bob"), [
+        ["blob", global("blob")],
+        ["cat", global("cat")],
+        ["mine", global("mine")],
+    ]);
+    assertEquals(await listed(), await listed("bob"));
+
+    // Reactions are only with global ones, so a reaction's name is one emoji.
+    const note = await postNote(test.ctx, "bob", {
+        text: "Hi",
+        format: "text/plain",
+        spoilerText: "",
+    });
+    await react(test.ctx, "alice", note?.id ?? "", ":blob:");
+    await react(test.ctx, "alice", note?.id ?? "", ":mine:");
+    const reacted = await findNote(test.ctx, note?.id ?? "");
+    const [status] = reacted ? await renderStatuses(test.ctx, [reacted], null) : [];
+    assertEquals(urls(status?.emojis), [["blob", global("blob")], ["mine", global("mine")]]);
 });

@@ -5054,9 +5054,19 @@
         },
         "/api/v1/custom_emojis": {
             "get": {
-                "summary": "This instance's custom emojis, for the picker",
+                "summary": "View all custom emoji",
+                "description": "Returns custom emojis that are available on the server.\n\nGlobal emojis, and the viewer's own, which replace global ones of the same name.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/custom_emojis/#get"
+                },
                 "tags": [
                     "emojis"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": []
+                    }
                 ],
                 "responses": {
                     "200": {
