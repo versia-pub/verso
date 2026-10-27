@@ -5745,6 +5745,66 @@
                 }
             }
         },
+        "/api/v1/streaming/health": {
+            "get": {
+                "summary": "Check if the server is alive",
+                "description": "Verify that the streaming service is alive before connecting to it",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/streaming/#health"
+                },
+                "tags": [
+                    "streaming"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A file",
+                        "content": {
+                            "text/plain": {}
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/streaming": {
+            "get": {
+                "summary": "Establishing a WebSocket connection",
+                "description": "Open a multiplexed WebSocket connection to receive events. A request that isn't for a WebSocket finds nothing, as on Mastodon, where that means streaming is on the same host.\n\nNeeds a token for a user, not one an app got for itself. The token may also be sent as `Sec-WebSocket-Protocol`, or as the `access_token` query parameter.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/streaming/#websocket"
+                },
+                "tags": [
+                    "streaming"
+                ],
+                "security": [
+                    {
+                        "OAuth2": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "upgrade",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sec-websocket-protocol",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "The connection, as a WebSocket"
+                    }
+                }
+            }
+        },
         "/api/v2/media": {
             "post": {
                 "summary": "Upload media as an attachment (async)",

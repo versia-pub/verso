@@ -165,6 +165,8 @@ const response = (
             };
         case "none":
             return { description: "No body" };
+        case "upgrade":
+            return { description: "The connection, as a WebSocket" };
     }
 };
 
@@ -184,6 +186,10 @@ const restrictions = (route: Route) =>
             ? "Needs a token for a user, not one an app got for itself."
             : "",
         route.auth?.permission ? `Needs the \`${route.auth.permission}\` permission.` : "",
+        route.tokenElsewhere
+            ? "The token may also be sent as `Sec-WebSocket-Protocol`, or as the " +
+                "`access_token` query parameter."
+            : "",
     ].filter((line) => line !== "").join(" ");
 
 const operation = (route: Route, names: Naming): Operation => {

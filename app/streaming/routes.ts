@@ -1,0 +1,46 @@
+import { z } from "zod";
+import { NotFound } from "../http/errors.ts";
+import { Binary, defineRoute, type Route, Upgrade } from "../http/route.ts";
+
+const docs = "https://docs.joinmastodon.org/methods/streaming";
+
+/** Streaming: events as they happen, over a WebSocket. */
+export const streamingRoutes: readonly Route[] = [
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/streaming/health",
+        summary: "Check if the server is alive",
+        description: "Verify that the streaming service is alive before connecting to it",
+        docs: `${docs}/#health`,
+        tags: ["streaming"],
+        responses: { 200: Binary("text/plain") },
+        handler: () => Promise.resolve({ status: 200, file: new TextEncoder().encode("OK") }),
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/streaming",
+        summary: "Establishing a WebSocket connection",
+        description: "Open a multiplexed WebSocket connection to receive events. A request that " +
+            "isn't for a WebSocket finds nothing, as on Mastodon, where that means streaming " +
+            "is on the same host.",
+        docs: `${docs}/#websocket`,
+        tags: ["streaming"],
+        auth: { require: "user" },
+        tokenElsewhere: true,
+        headers: z.object({
+            upgrade: z.string().optional(),
+            "sec-websocket-protocol": z.string().optional(),
+        }),
+        responses: { 101: Upgrade },
+        handler: (_ctx, { headers }) => {
+            if (headers.upgrade?.toLowerCase() !== "websocket") throw new NotFound();
+
+            return Promise.resolve({
+                status: 101,
+                // A browser sends the token as the protocol, and wants it accepted.
+                protocol: headers["sec-websocket-protocol"]?.split(",")[0]?.trim(),
+                socket: () => {},
+            });
+        },
+    }),
+];

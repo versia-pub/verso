@@ -37,7 +37,7 @@ in
     setup = "export VERSO_TEST_DATABASE=sqlite";
   };
   # A throwaway PostgreSQL in $TMPDIR, reached over loopback, the only network in the sandbox.
-  test-postgres = denoTaskWith "test-postgres" "test --allow-net=127.0.0.1" {
+  test-postgres = denoTaskWith "test-postgres" "test" {
     packages = [
       pkgs.postgresql_18
       pkgs.vips

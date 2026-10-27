@@ -17,6 +17,7 @@ import type { AboutSettings } from "../instances/render.ts";
 import { instanceRoutes } from "../instances/routes.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
 import { registry } from "../registry.ts";
+import { streamingRoutes } from "../streaming/routes.ts";
 import { docsRoute } from "./docs.ts";
 import { openApiRoute } from "./openapi.ts";
 import type { Route } from "./route.ts";
@@ -38,6 +39,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...timelineRoutes,
         ...notificationRoutes,
         ...markerRoutes,
+        ...streamingRoutes,
         ...mediaRoutes(settings.media, settings.limits),
         ...emojiRoutes(settings.media, settings.limits),
         ...roleRoutes,

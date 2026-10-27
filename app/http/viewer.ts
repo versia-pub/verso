@@ -29,7 +29,7 @@ export const viewerOf = async (
         return undefined;
     }
 
-    const viewer = await bearerOf(ctx, c, services);
+    const viewer = await bearerOf(ctx, c, services, route.tokenElsewhere ?? false);
 
     if (!viewer) throw new Unauthorized();
     if (route.auth.require === "user" && viewer.accountId === null) throw new UserRequired();
@@ -76,11 +76,20 @@ export const checkPermission = async (
 };
 
 /**
- * The viewer the request's bearer token stands for, if it is valid. It is looked up once, though
- * both the rate limit and the route ask.
+ * The viewer the request's bearer token stands for, if it is valid, or, `elsewhere`, the token its
+ * `Sec-WebSocket-Protocol` or `access_token` holds, without a bearer token. It is looked up once,
+ * though both the rate limit and the route ask.
  */
-const bearerOf = (ctx: Context, c: HonoContext<AppEnv>, services: AppServices) => {
-    const token = /^Bearer\s+(\S+)$/i.exec(c.req.header("authorization") ?? "")?.[1];
+const bearerOf = (
+    ctx: Context,
+    c: HonoContext<AppEnv>,
+    services: AppServices,
+    elsewhere = false,
+) => {
+    const token = /^Bearer\s+(\S+)$/i.exec(c.req.header("authorization") ?? "")?.[1] ??
+        (elsewhere
+            ? c.req.query("access_token") ?? c.req.header("sec-websocket-protocol")
+            : undefined);
     if (token === undefined) return Promise.resolve(undefined);
 
     const bearer = c.get("bearer") ?? services.authenticate(ctx, token);

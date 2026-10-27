@@ -23,6 +23,9 @@ export const Redirect = { kind: "redirect" } as const;
 /** Declares a response with no body, such as a 202 for work that is done later. */
 export const NoBody = { kind: "none" } as const;
 
+/** Declares a response that turns the connection into a WebSocket, as status 101. */
+export const Upgrade = { kind: "upgrade" } as const;
+
 /** Declares a response that is a file, such as a picture, of this media type. */
 export const Binary = <T extends string>(
     type: T,
@@ -57,14 +60,24 @@ type Linked = ReturnType<typeof Linked>;
 /** Where the pages around a page of a list start, if there are any. */
 export type Cursors = { readonly newer?: string; readonly older?: string };
 
+/** A status a route may respond with: one with a body, or 101 for a WebSocket. */
+type Status = ContentfulStatusCode | 101;
+
 /**
- * A JSON body's schema, or a page, a redirect, a file, a list, a list in a shape of its own or
- * nothing, for each status.
+ * A JSON body's schema, or a page, a redirect, a file, a list, a list in a shape of its own,
+ * nothing or a WebSocket, for each status.
  */
 export type Responses = Partial<
     Record<
-        ContentfulStatusCode,
-        Schema | typeof Page | typeof Redirect | Binary | Paged | Linked | typeof NoBody
+        Status,
+        | Schema
+        | typeof Page
+        | typeof Redirect
+        | Binary
+        | Paged
+        | Linked
+        | typeof NoBody
+        | typeof Upgrade
     >
 >;
 
@@ -84,6 +97,13 @@ type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
     : R extends Paged ? { status: S; body: z.input<R["item"]>[]; cursors: Cursors }
     : R extends Linked ? { status: S; body: z.input<R["body"]>; cursors: Cursors }
     : R extends typeof NoBody ? { status: S }
+    : R extends typeof Upgrade ? {
+            status: S;
+            /** Called with the WebSocket once the connection is one. */
+            socket: (socket: WebSocket) => void;
+            /** The subprotocol to accept, of those the client asked for. */
+            protocol?: string;
+        }
     : R extends Schema ? { status: S; body: z.input<R> }
     : never;
 
@@ -95,10 +115,10 @@ export type CookieChanges = Readonly<Record<string, string | null>>;
 
 /** One of the responses a route declares: a body its schema accepts, a page, or a redirect. */
 export type Reply<R extends Responses> = {
-    [S in keyof R & ContentfulStatusCode]: ReplyFor<S, NonNullable<R[S]>> & {
+    [S in keyof R & Status]: ReplyFor<S, NonNullable<R[S]>> & {
         cookies?: CookieChanges;
     };
-}[keyof R & ContentfulStatusCode];
+}[keyof R & Status];
 
 /** Who may call a route, by the access token in its `Authorization: Bearer` header. */
 export type Auth = {
@@ -212,6 +232,12 @@ export type RouteDefinition<
     readonly rateLimit?: false | { readonly bucket: string; readonly times: number };
     /** Without it, anyone may call the route, and tokens are ignored. */
     readonly auth?: A;
+    /**
+     * The access token may also be sent as `Sec-WebSocket-Protocol`, or as the `access_token` query
+     * parameter, as Mastodon's streaming API allows, since browsers can't send headers when they
+     * open a WebSocket. Only for such routes, since query parameters end up in logs.
+     */
+    readonly tokenElsewhere?: true;
     /**
      * Only remote instances may call the route: the request must carry a valid Versia signature,
      * which is validated before anything else. The handler gets the signer's domain as `signedBy`,

@@ -54,6 +54,8 @@ const replyProblem = (route: Route, reply: Reply<Responses>) => {
             return bodyProblem(reply, z.array(declared.item), true);
         case "linked":
             return bodyProblem(reply, declared.body, true);
+        case "upgrade":
+            return "socket" in reply ? undefined : "it isn't a WebSocket";
         case "none": {
             const empty = Object.keys(reply).every((key) => key === "status" || key === "cookies");
             return empty ? undefined : "it has a body";
@@ -109,6 +111,19 @@ export const send = (
             `public, max-age=${maxAge}${route.immutable ? ", immutable" : ""}`,
         );
     }
+
+    if ("socket" in reply) {
+        // Deno pings every half a minute, and closes connections that stop answering.
+        const { socket, response } = Deno.upgradeWebSocket(c.req.raw, {
+            protocol: reply.protocol,
+            idleTimeout: 30,
+        });
+        reply.socket(socket);
+        return response;
+    }
+
+    // So that the status is one with a body, as only a WebSocket's can't have one.
+    if (reply.status === 101) throw new Error(`${route.path} switched protocols without a socket`);
 
     if ("location" in reply) return c.redirect(reply.location, reply.status);
     if ("page" in reply) return c.html(reply.page, reply.status, pageHeaders(route));
