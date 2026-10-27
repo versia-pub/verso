@@ -8,6 +8,7 @@ import { oidcProviders } from "./auth/oidc.ts";
 import { type Database, openDatabase } from "./db/database.ts";
 import { postgresPubSub } from "./db/postgres_pubsub.ts";
 import { migrate } from "./db/migrate.ts";
+import { forgetWhenTold } from "./federation/caches.ts";
 import { createApp } from "./http/app.ts";
 import { memoryRateLimitStore } from "./http/rate_limits.ts";
 import { databaseRateLimitStore } from "./http/rate_limit_queries.ts";
@@ -174,6 +175,9 @@ const run = async (role: string, config: Config): Promise<number> => {
     const stop = () => stopping.abort();
     const signals = ["SIGINT", "SIGTERM"] as const;
     for (const signal of signals) Deno.addSignalListener(signal, stop);
+
+    // Every process caches the instance's key and blocked domains, so must hear when they change.
+    forgetWhenTold(ctx);
 
     const worker = ctx.ids();
 

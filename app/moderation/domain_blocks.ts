@@ -3,6 +3,7 @@
  * domain blocks its subdomains too, so a blocked operator can't get around it with new ones.
  * @module
  */
+import { forgetEverywhere } from "../federation/caches.ts";
 import type { Context } from "../kernel/context.ts";
 import { deleteDomainBlock, insertDomainBlock } from "./domain_block_queries.ts";
 
@@ -12,7 +13,7 @@ const domainAndParents = (domain: string) =>
 
 /**
  * Blocks a domain, saying why, unless it is already blocked. Returns whether it wasn't; an existing
- * block keeps its reason. Other processes apply it within a minute.
+ * block keeps its reason. Every process applies it once it commits.
  */
 export const blockDomain = async (
     ctx: Context,
@@ -20,18 +21,18 @@ export const blockDomain = async (
     reason = "",
 ): Promise<boolean> => {
     const inserted = await insertDomainBlock(ctx, domain, reason);
-    ctx.federation.forget();
+    await forgetEverywhere(ctx);
 
     return inserted;
 };
 
 /**
- * Unblocks a domain blocked with `blockDomain`. Returns whether it was blocked. Other processes
- * apply it within a minute.
+ * Unblocks a domain blocked with `blockDomain`. Returns whether it was blocked. Every process
+ * applies it once it commits.
  */
 export const unblockDomain = async (ctx: Context, domain: string): Promise<boolean> => {
     const deleted = await deleteDomainBlock(ctx, domain);
-    ctx.federation.forget();
+    await forgetEverywhere(ctx);
 
     return deleted;
 };

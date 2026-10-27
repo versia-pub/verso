@@ -59,12 +59,12 @@ export type Federation = {
     readonly remoteKeys: KeyStore;
     /**
      * Whether Verso doesn't federate with an instance, by its domain. The blocks are cached for a
-     * minute at most, so one made by another process, such as the CLI, applies within a minute.
+     * minute at most, or until a process that changes them says so.
      */
     readonly isBlocked: (ctx: Context, domain: string) => Promise<boolean>;
     /** One for the whole process, so fetches in progress are shared. */
     readonly resolve: Resolver;
-    /** Clears the cached key and blocks, after this process changed them. */
+    /** Clears the cached key and blocks, such as after a process changed them. */
     readonly forget: () => void;
 };
 

@@ -37,7 +37,7 @@ Deno.test("a domain is blocked once, with its first reason, and unblocked once",
     assertEquals(await domains(), [["bad.example", ""]]);
 });
 
-Deno.test("blocks made here apply at once, and ones made elsewhere within a minute", async () => {
+Deno.test("blocks made here apply at once, and ones made elsewhere unannounced within a minute", async () => {
     await using test = await createTestContext();
     const isBlocked = (domain: string) => test.ctx.federation.isBlocked(test.ctx, domain);
     assertEquals(await isBlocked("evil.example"), false);
@@ -45,7 +45,7 @@ Deno.test("blocks made here apply at once, and ones made elsewhere within a minu
     await blockDomain(test.ctx, "evil.example");
     assertEquals(await isBlocked("evil.example"), true);
 
-    // As the CLI blocks one, from its own process.
+    // As a process that can't tell this one does.
     await test.ctx.db.insertInto("domain_blocks")
         .values({ domain: "bad.example", reason: "", created_at: test.clock.now() })
         .execute();

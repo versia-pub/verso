@@ -4,6 +4,7 @@
  * @see https://versia.pub/signatures
  * @module
  */
+import { forgetEverywhere } from "../federation/caches.ts";
 import type { Context, InstanceKey } from "../kernel/context.ts";
 import { deleteKeysBut, hasKeyRow, insertKeyRow, newestKeyRow } from "./key_queries.ts";
 
@@ -55,16 +56,13 @@ export const createInstanceKey = async (
  * the new public key when a signature from this one stops verifying.
  */
 export const rotateInstanceKey = async (ctx: Context): Promise<string> => {
-    const publicKey = await ctx.transaction(async (tx) => {
+    return await ctx.transaction(async (tx) => {
         const id = await createInstanceKey(tx);
         await deleteKeysBut(tx, id);
+        await forgetEverywhere(tx);
 
         return (await instanceKey(tx)).publicKey;
     });
-    // Once it is committed, so the old key isn't read again in the meantime.
-    ctx.federation.forget();
-
-    return publicKey;
 };
 
 /** Generates the instance's first key pair, unless it has one. Returns whether it generated one. */

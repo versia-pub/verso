@@ -62,7 +62,7 @@ Deno.test("the key is kept for a minute, but a rotation here applies at once", a
     const kept = () => test.ctx.federation.instanceKey(test.ctx);
     const first = await kept();
 
-    // As the CLI rotates it, from its own process.
+    // As a process that can't tell this one does.
     test.clock.advance(1000);
     await createInstanceKey(test.ctx);
     test.clock.advance(60_000 - 1000 - 1);
