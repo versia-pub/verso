@@ -102,3 +102,54 @@ Deno.test("a nested transaction joins the outer one", async () => {
 
     assertEquals(await noteIds(test.db), []);
 });
+
+Deno.test("work after a commit runs in order once it commits, before the transaction resolves", async () => {
+    await using test = await open();
+    const seen: string[] = [];
+    const see = (name: string) => async () =>
+        void seen.push(`${name}: ${(await noteIds(test.db)).length}`);
+
+    await test.ctx.transaction(async (tx) => {
+        await addNote(tx);
+        await tx.afterCommit(see("outer"));
+        await tx.transaction(async (inner) => {
+            await addNote(inner);
+            await inner.afterCommit(see("inner"));
+        });
+
+        assertEquals(seen, []);
+    });
+
+    // Both notes committed, which outside the transaction it can see.
+    assertEquals(seen, ["outer: 2", "inner: 2"]);
+});
+
+Deno.test("work after a commit doesn't run if it rolls back, and runs at once outside one", async () => {
+    await using test = await open();
+    const ran: string[] = [];
+
+    await assertRejects(() =>
+        test.ctx.transaction(async (tx) => {
+            await tx.afterCommit(() => Promise.resolve(void ran.push("rolled back")));
+            throw new Error("oops");
+        })
+    );
+    await test.ctx.afterCommit(() => Promise.resolve(void ran.push("outside")));
+
+    assertEquals(ran, ["outside"]);
+});
+
+Deno.test("work after a commit that fails doesn't fail what committed, or later work", async () => {
+    await using test = await open();
+    const ran: string[] = [];
+
+    const id = await test.ctx.transaction(async (tx) => {
+        await tx.afterCommit(() => Promise.reject(new Error("oops")));
+        await tx.afterCommit(() => Promise.resolve(void ran.push("later")));
+        return await addNote(tx);
+    });
+    await test.ctx.afterCommit(() => Promise.reject(new Error("oops")));
+
+    assertEquals(await noteIds(test.db), [id]);
+    assertEquals(ran, ["later"]);
+});

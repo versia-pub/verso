@@ -1,3 +1,4 @@
+import { getLogger } from "@logtape/logtape";
 import type { Reference } from "@versia/protocol";
 import type { Kysely } from "kysely";
 import type { Database } from "../db/database.ts";
@@ -117,18 +118,49 @@ export type Context<DB = Database> = {
      * than starting its own, so one failure undoes the whole unit.
      */
     transaction<T>(work: (tx: Context<DB>) => Promise<T>): Promise<T>;
+    /**
+     * Runs `work` once the current transaction commits, before `transaction` resolves, or at once
+     * outside one. It isn't run if the transaction rolls back. It is for telling what committed,
+     * such as to other processes, so a failure is logged rather than failing what committed.
+     */
+    afterCommit(work: () => Promise<void>): Promise<void>;
 };
 
-export const createContext = <DB = Database>(
-    parts: Omit<Context<DB>, "transaction">,
+/** Runs `work`, logging rather than throwing if it fails. */
+const runCommitted = async (work: () => Promise<void>) => {
+    try {
+        await work();
+    } catch (error) {
+        getLogger(["verso", "kernel"]).error("Failed after a commit: {error}", { error });
+    }
+};
+
+/** A context whose `afterCommit` queues work in `committed`, if it is in a transaction. */
+const contextIn = <DB>(
+    parts: Omit<Context<DB>, "transaction" | "afterCommit">,
+    committed: (() => Promise<void>)[] | undefined,
 ): Context<DB> => {
     const context: Context<DB> = {
         ...parts,
-        transaction: (work) =>
-            parts.db.isTransaction
-                ? work(context)
-                : parts.db.transaction().execute((db) => work(createContext({ ...parts, db }))),
+        transaction: async (work) => {
+            if (parts.db.isTransaction) return await work(context);
+
+            const queued: (() => Promise<void>)[] = [];
+            const result = await parts.db.transaction()
+                .execute((db) => work(contextIn({ ...parts, db }, queued)));
+            for (const each of queued) await runCommitted(each);
+
+            return result;
+        },
+        afterCommit: async (work) => {
+            if (committed === undefined) await runCommitted(work);
+            else committed.push(work);
+        },
     };
 
     return context;
 };
+
+export const createContext = <DB = Database>(
+    parts: Omit<Context<DB>, "transaction" | "afterCommit">,
+): Context<DB> => contextIn(parts, undefined);
