@@ -24,12 +24,15 @@ const yearSeconds = 365 * 24 * 60 * 60;
 const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType =>
     declared instanceof z.ZodType;
 
-/** Why a response's body doesn't match `schema`, or a page of a list of it, if it doesn't. */
+/**
+ * Why a response's body doesn't match `schema`, or doesn't have cursors if it is a page of a list,
+ * if it doesn't.
+ */
 const bodyProblem = (reply: Reply<Responses>, schema: z.ZodType, paged: boolean) => {
     if (!("body" in reply)) return "it has no body";
     if (paged !== "cursors" in reply) return paged ? "it has no cursors" : "it has cursors";
 
-    const result = (paged ? z.array(schema) : schema).safeParse(reply.body);
+    const result = schema.safeParse(reply.body);
     return result.success ? undefined : z.prettifyError(result.error);
 };
 
@@ -48,7 +51,9 @@ const replyProblem = (route: Route, reply: Reply<Responses>) => {
         case "binary":
             return "file" in reply ? undefined : "it isn't a file";
         case "paged":
-            return bodyProblem(reply, declared.item, true);
+            return bodyProblem(reply, z.array(declared.item), true);
+        case "linked":
+            return bodyProblem(reply, declared.body, true);
         case "none": {
             const empty = Object.keys(reply).every((key) => key === "status" || key === "cookies");
             return empty ? undefined : "it has a body";

@@ -112,6 +112,15 @@ const parameters = (
     }));
 };
 
+/** The `Link` header of a page of a list. */
+const pageLinks: Response["headers"] = {
+    link: {
+        required: false,
+        description: "The older page, as `next`, and the newer one, as `prev`",
+        schema: { type: "string" },
+    },
+};
+
 const response = (
     route: Route,
     declared: NonNullable<Responses[200]>,
@@ -141,18 +150,18 @@ const response = (
         case "paged":
             return {
                 description: "A page of a list, newest first",
-                headers: {
-                    link: {
-                        required: false,
-                        description: "The older page, as `next`, and the newer one, as `prev`",
-                        schema: { type: "string" },
-                    },
-                },
+                headers: pageLinks,
                 content: {
                     "application/json": {
                         schema: { type: "array", items: jsonSchema(declared.item, names) },
                     },
                 },
+            };
+        case "linked":
+            return {
+                description: "A page of a list",
+                headers: pageLinks,
+                content: { "application/json": { schema: jsonSchema(declared.body, names) } },
             };
         case "none":
             return { description: "No body" };

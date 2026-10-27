@@ -6,7 +6,7 @@ import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
 import { layout } from "./page.ts";
 import { cursorsOf, PageQuery } from "./paging.ts";
-import { Binary, defineRoute, NoBody, Page, Paged, Redirect } from "./route.ts";
+import { Binary, defineRoute, Linked, NoBody, Page, Paged, Redirect } from "./route.ts";
 
 const rename = defineRoute({
     method: "POST",
@@ -203,6 +203,35 @@ const numbers = defineRoute({
     },
 });
 
+/** Counts down from 5 like {@link numbers}, but as the list in an object. */
+const counted = defineRoute({
+    method: "GET",
+    path: "/counted",
+    summary: "Counts down from 5, a page at a time, in an object",
+    query: PageQuery({ default: 2, max: 3 }),
+    responses: { 200: Linked(z.object({ numbers: z.array(z.number()) })) },
+    handler: (_, { query }) => {
+        const numbers = [5, 4, 3, 2, 1]
+            .filter((n) => query.max_id === undefined || n < Number(query.max_id))
+            .slice(0, query.limit);
+
+        return Promise.resolve({
+            status: 200,
+            body: { numbers },
+            cursors: cursorsOf(numbers, query, String),
+        });
+    },
+});
+
+/** Declares a page of a list in an object, and, typed loosely, sends no cursors. */
+const uncountedObject = defineRoute({
+    method: "GET",
+    path: "/uncounted-object",
+    summary: "Sends a list in an object without its cursors",
+    responses: { 200: Linked(z.object({})) },
+    handler: () => Promise.resolve(JSON.parse('{"status":200,"body":{}}')),
+});
+
 /**
  * Declares pages of a list, and, typed loosely as data from elsewhere might be, sends no cursors.
  */
@@ -242,7 +271,9 @@ const open = async () => {
         later,
         notEmpty,
         numbers,
+        counted,
         uncounted,
+        uncountedObject,
         overcounted,
     ], {
         checkResponses: true,
@@ -586,10 +617,23 @@ Deno.test("a page of a list links to the pages around it, at the instance's own 
     assertEquals([await none.json(), none.headers.get("link")], [[], null]);
 });
 
+Deno.test("a page of a list in an object links to the pages around it too", async () => {
+    await using test = await open();
+
+    const first = await test.app.request("/counted?limit=2");
+    assertEquals(await first.json(), { numbers: [5, 4] });
+    assertEquals(
+        first.headers.get("link"),
+        '<https://social.example/counted?limit=2&max_id=4>; rel="next", ' +
+            '<https://social.example/counted?limit=2&min_id=5>; rel="prev"',
+    );
+});
+
 Deno.test("with checks on, a list without cursors, or cursors without a list, is a 500", async () => {
     await using test = await open();
 
     assertEquals((await test.app.request("/uncounted")).status, 500);
+    assertEquals((await test.app.request("/uncounted-object")).status, 500);
     assertEquals((await test.app.request("/overcounted")).status, 500);
 });
 

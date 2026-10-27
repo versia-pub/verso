@@ -3,7 +3,7 @@ import { Account, CredentialAccount } from "@versia/client-api";
 import { z } from "zod";
 import { scopes } from "../kernel/scopes.ts";
 import { openApiDocument } from "./openapi.ts";
-import { Binary, defineRoute, NoBody, Page, Paged, Redirect, type Route } from "./route.ts";
+import { Binary, defineRoute, Linked, NoBody, Page, Paged, Redirect, type Route } from "./route.ts";
 
 const info = { title: "social.example", version: "0.0.0" };
 const origin = "https://social.example";
@@ -167,6 +167,28 @@ Deno.test("a page of a list is an array of its items, with a link to the pages a
                 schema: { type: "array", items: { $ref: "#/components/schemas/Account" } },
             },
         },
+    });
+});
+
+Deno.test("a page of a list in an object is that object, with a link to the pages around", () => {
+    const route = defineRoute({
+        method: "GET",
+        path: "/api/v2/groups",
+        summary: "Some groups",
+        responses: { 200: Linked(z.object({ accounts: z.array(Account) })) },
+        handler: unused,
+    });
+    const document = openApiDocument([route], info, origin);
+    const described = document.paths["/api/v2/groups"]?.get?.responses[200];
+
+    assertEquals(described?.description, "A page of a list");
+    assertEquals(described?.headers?.link?.required, false);
+    assertEquals(described?.content?.["application/json"]?.schema, {
+        type: "object",
+        properties: {
+            accounts: { type: "array", items: { $ref: "#/components/schemas/Account" } },
+        },
+        required: ["accounts"],
     });
 });
 

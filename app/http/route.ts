@@ -42,14 +42,29 @@ export const Paged = <T extends Schema>(item: T): { readonly kind: "paged"; read
 });
 type Paged = ReturnType<typeof Paged>;
 
+/**
+ * Declares a response that is a page of a list in a shape of its own, `body`, such as notifications
+ * in groups, with the cursors of the pages around it in its `Link` header.
+ */
+export const Linked = <T extends Schema>(
+    body: T,
+): { readonly kind: "linked"; readonly body: T } => ({
+    kind: "linked",
+    body,
+});
+type Linked = ReturnType<typeof Linked>;
+
 /** Where the pages around a page of a list start, if there are any. */
 export type Cursors = { readonly newer?: string; readonly older?: string };
 
-/** A JSON body's schema, or a page, a redirect, a file, a list or nothing, for each status. */
+/**
+ * A JSON body's schema, or a page, a redirect, a file, a list, a list in a shape of its own or
+ * nothing, for each status.
+ */
 export type Responses = Partial<
     Record<
         ContentfulStatusCode,
-        Schema | typeof Page | typeof Redirect | Binary | Paged | typeof NoBody
+        Schema | typeof Page | typeof Redirect | Binary | Paged | Linked | typeof NoBody
     >
 >;
 
@@ -67,6 +82,7 @@ type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
             download?: true;
         }
     : R extends Paged ? { status: S; body: z.input<R["item"]>[]; cursors: Cursors }
+    : R extends Linked ? { status: S; body: z.input<R["body"]>; cursors: Cursors }
     : R extends typeof NoBody ? { status: S }
     : R extends Schema ? { status: S; body: z.input<R> }
     : never;
