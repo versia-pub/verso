@@ -12,7 +12,7 @@ import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { visibleNote, visibleOriginal } from "../notes/visibility.ts";
-import type { ReactionEvent } from "./events.ts";
+import type { InteractionReceived, ReactionEvent } from "./events.ts";
 import {
     deleteReaction,
     deleteReactionById,
@@ -149,8 +149,8 @@ export type RemoteReaction = {
 };
 
 /**
- * Stores a remote reaction, with its custom emoji, unless Verso has it, or the account already
- * reacts to the status with that emoji.
+ * Stores a remote reaction, with its custom emoji, and emits it, unless Verso has it, or the account
+ * already reacts to the status with that emoji.
  */
 export const keepRemoteReaction = async (ctx: Context, reaction: RemoteReaction): Promise<void> => {
     const { emoji } = reaction;
@@ -158,8 +158,9 @@ export const keepRemoteReaction = async (ctx: Context, reaction: RemoteReaction)
         ? []
         : await keepRemoteEmojis(ctx, reaction.instanceId, [emoji]);
 
-    await insertRemoteReaction(ctx, {
-        id: ctx.ids(),
+    const id = ctx.ids();
+    const added = await insertRemoteReaction(ctx, {
+        id,
         account_id: reaction.accountId,
         note_id: reaction.noteId,
         text: typeof emoji === "string" ? emoji : null,
@@ -168,6 +169,16 @@ export const keepRemoteReaction = async (ctx: Context, reaction: RemoteReaction)
         remote_id: reaction.remoteId,
         created_at: reaction.createdAt,
     });
+    if (!added) return;
+
+    const event: InteractionReceived = {
+        type: "interactions.received",
+        kind: "reaction",
+        id,
+        accountId: reaction.accountId,
+        noteId: reaction.noteId,
+    };
+    await emit(ctx, event);
 };
 
 /** Undoes a remote reaction, which a Delete said is gone, if Verso has it. */

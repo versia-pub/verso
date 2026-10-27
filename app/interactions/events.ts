@@ -1,6 +1,6 @@
 /**
  * Events about interactions for the rest of Verso: likes, boosts and reactions made and undone by
- * local users.
+ * local users, and those remote instances send.
  * @module
  */
 import type { DomainEvent } from "../kernel/context.ts";
@@ -37,3 +37,19 @@ export type ReactionEvent = {
 
 export const isReactionEvent = (event: DomainEvent): event is ReactionEvent =>
     event.type === "interactions.reacted" || event.type === "interactions.unreacted";
+
+/**
+ * A remote user liked, boosted or reacted to a status, as their instance sent it. It has its own
+ * type, so that what reacts to local users' interactions, such as sending them, never sees it.
+ */
+export type InteractionReceived = {
+    readonly type: "interactions.received";
+    readonly kind: "like" | "share" | "reaction";
+    /** The like, the boost or the reaction. */
+    readonly id: string;
+    readonly accountId: string;
+    readonly noteId: string;
+};
+
+export const isInteractionReceived = (event: DomainEvent): event is InteractionReceived =>
+    event.type === "interactions.received";

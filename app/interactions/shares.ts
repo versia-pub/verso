@@ -15,7 +15,7 @@ import { deleteShare, findShare } from "../notes/share_queries.ts";
 import { countPosted } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { visibleNote, visibleOriginal } from "../notes/visibility.ts";
-import type { ShareEvent } from "./events.ts";
+import type { InteractionReceived, ShareEvent } from "./events.ts";
 
 /** The result of boosting a status: the boost, or why there is none. */
 export type ShareResult =
@@ -128,7 +128,7 @@ export type RemoteShare = {
 /**
  * Stores a remote boost, and counts it, replacing the account's other boost of the status if it has
  * one, as an account boosts a status once. Versia doesn't say who a Share is for, so it is for
- * whoever the status is. One Verso already has is left unchanged.
+ * whoever the status is. One Verso already has is left unchanged, and isn't emitted again.
  */
 export const keepRemoteShare = async (ctx: Context, share: RemoteShare): Promise<void> => {
     const existing = await findRemoteNote(ctx, share.instanceId, share.remoteId);
@@ -163,6 +163,15 @@ export const keepRemoteShare = async (ctx: Context, share: RemoteShare): Promise
         [],
     );
     await countPosted(ctx, row, 1);
+
+    const event: InteractionReceived = {
+        type: "interactions.received",
+        kind: "share",
+        id: row.id,
+        accountId: share.accountId,
+        noteId: share.note.id,
+    };
+    await emit(ctx, event);
 };
 
 /** Undoes a remote boost, which a Delete said is gone, if Verso has it. */

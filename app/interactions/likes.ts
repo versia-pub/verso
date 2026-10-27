@@ -16,7 +16,7 @@ import {
     uncountLikesBy,
 } from "./like_queries.ts";
 import { countLike, findNote, type NoteRow } from "../notes/note_queries.ts";
-import type { LikeEvent } from "./events.ts";
+import type { InteractionReceived, LikeEvent } from "./events.ts";
 import type { LikeKind } from "./tables.ts";
 
 /**
@@ -91,8 +91,8 @@ export type RemoteLike = {
 
 /**
  * Stores a remote like or dislike, replacing the account's other one of the status if it has one,
- * as an account can't like and dislike a status at once. Only likes are counted. One Verso already
- * has is left unchanged.
+ * as an account can't like and dislike a status at once. Only likes are counted, and only they are
+ * emitted. One Verso already has is left unchanged.
  */
 export const keepRemoteLike = async (ctx: Context, like: RemoteLike): Promise<void> => {
     if (await findRemoteLike(ctx, like.instanceId, like.remoteId)) return;
@@ -100,8 +100,9 @@ export const keepRemoteLike = async (ctx: Context, like: RemoteLike): Promise<vo
     const replaced = await deleteLike(ctx, like.accountId, like.noteId);
     if (replaced?.kind === "like") await countLike(ctx, like.noteId, -1);
 
+    const id = ctx.ids();
     await insertRemoteLike(ctx, {
-        id: ctx.ids(),
+        id,
         account_id: like.accountId,
         note_id: like.noteId,
         kind: like.kind,
@@ -109,7 +110,18 @@ export const keepRemoteLike = async (ctx: Context, like: RemoteLike): Promise<vo
         remote_id: like.remoteId,
         created_at: like.createdAt,
     });
-    if (like.kind === "like") await countLike(ctx, like.noteId, 1);
+    if (like.kind !== "like") return;
+
+    await countLike(ctx, like.noteId, 1);
+
+    const event: InteractionReceived = {
+        type: "interactions.received",
+        kind: "like",
+        id,
+        accountId: like.accountId,
+        noteId: like.noteId,
+    };
+    await emit(ctx, event);
 };
 
 /** Undoes a remote like or dislike, which a Delete said is gone, if Verso has it. */

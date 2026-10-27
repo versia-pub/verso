@@ -7,9 +7,14 @@
 import { findAccount, findAccounts } from "../accounts/account_queries.ts";
 import { followsFrom, notifiedFollowerIds } from "../graph/follow_queries.ts";
 import { type FollowEvent, isFollowEvent } from "../graph/events.ts";
-import { isLikeEvent, isReactionEvent, isShareEvent } from "../interactions/events.ts";
+import {
+    isInteractionReceived,
+    isLikeEvent,
+    isReactionEvent,
+    isShareEvent,
+} from "../interactions/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
-import { isNoteEdited, isNotePosted } from "../notes/events.ts";
+import { isNoteEdited, isNotePosted, isNoteReceived } from "../notes/events.ts";
 import { findNote, mentionsOf, type NoteRow } from "../notes/note_queries.ts";
 import { localSharerIds } from "../notes/share_queries.ts";
 import {
@@ -127,9 +132,32 @@ const notifyFollow = async (ctx: Context, event: FollowEvent) => {
     await notifyAll(ctx, [followee.id], "follow", event.followerId, { followId: follow.id });
 };
 
-/** Notifies local users of what others did. */
+/** Notifies of a new status, or of an edit. */
+const notifyOfNote = async (ctx: Context, noteId: string, edited: boolean) => {
+    const note = await findNote(ctx, noteId);
+    if (note === undefined) return;
+
+    await (edited ? notifyEdited(ctx, note) : notifyPosted(ctx, note));
+};
+
+/** What notifies of a remote interaction, and what it links, by its kind. */
+const received = {
+    like: (id: string) => ["favourite", { likeId: id }],
+    share: (id: string) => ["reblog", { shareId: id }],
+    reaction: (id: string) => ["reaction", { reactionId: id }],
+} as const satisfies Record<string, (id: string) => readonly [NotificationType, Links]>;
+
+/**
+ * Notifies local users of what others did, local or remote. Remote statuses Verso fetched notify no
+ * one, since they are often old, and their instances didn't send them to Verso's users.
+ */
 export const notifyOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (isFollowEvent(event)) return await notifyFollow(ctx, event);
+
+    if (isInteractionReceived(event)) {
+        const [type, links] = received[event.kind](event.id);
+        return await notifyAuthor(ctx, event.noteId, type, event.accountId, links);
+    }
 
     if (isLikeEvent(event) && event.type === "interactions.liked") {
         const links = { likeId: event.likeId };
@@ -144,9 +172,10 @@ export const notifyOf = async (ctx: Context, event: DomainEvent): Promise<void> 
         return await notifyAuthor(ctx, event.noteId, "reaction", event.accountId, links);
     }
 
-    if (!isNotePosted(event) && !isNoteEdited(event)) return;
-    const note = await findNote(ctx, event.noteId);
-    if (note === undefined) return;
-
-    await (isNotePosted(event) ? notifyPosted(ctx, note) : notifyEdited(ctx, note));
+    if (isNotePosted(event) || isNoteEdited(event)) {
+        return await notifyOfNote(ctx, event.noteId, isNoteEdited(event));
+    }
+    if (isNoteReceived(event) && !event.fetched) {
+        return await notifyOfNote(ctx, event.noteId, event.edited);
+    }
 };

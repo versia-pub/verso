@@ -1,5 +1,6 @@
 /**
- * Events about statuses for the rest of Verso: statuses posted, edited and deleted.
+ * Events about statuses for the rest of Verso: statuses posted, edited and deleted, and remote ones
+ * received.
  * @module
  */
 import type { Visibility } from "../accounts/tables.ts";
@@ -30,6 +31,19 @@ export type NoteDeleted = {
     readonly inReplyToAccountId: string | null;
 };
 
+/**
+ * A remote status was received, new or edited. It has its own type, so that what reacts to local
+ * users' statuses, such as sending them, never sees it.
+ */
+export type NoteReceived = {
+    readonly type: "notes.received";
+    readonly noteId: string;
+    /** Whether it was edited, rather than new. */
+    readonly edited: boolean;
+    /** Whether Verso fetched it, rather than its instance sending it unsolicited. */
+    readonly fetched: boolean;
+};
+
 export const isNotePosted = (event: DomainEvent): event is NotePosted =>
     event.type === "notes.posted";
 
@@ -38,3 +52,6 @@ export const isNoteEdited = (event: DomainEvent): event is NoteEdited =>
 
 export const isNoteDeleted = (event: DomainEvent): event is NoteDeleted =>
     event.type === "notes.deleted";
+
+export const isNoteReceived = (event: DomainEvent): event is NoteReceived =>
+    event.type === "notes.received";

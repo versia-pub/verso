@@ -17,6 +17,7 @@ import { PermanentFailure } from "../jobs/worker.ts";
 import { attachedTo, attachRemote, changesRemoteAttachments } from "../media/attachments.ts";
 import { remoteFile } from "../media/versia.ts";
 import type { Budget, Context } from "../kernel/context.ts";
+import { emit } from "../kernel/events.ts";
 import { textOfHtml } from "../kernel/html.ts";
 import { renderText, scanText } from "../kernel/markup.ts";
 import {
@@ -28,6 +29,7 @@ import {
     type NoteRow,
     updateNote,
 } from "./note_queries.ts";
+import type { NoteReceived } from "./events.ts";
 import { countPosted } from "./notes.ts";
 import { fetchTotalsLater } from "./totals.ts";
 
@@ -147,7 +149,7 @@ export const knownNoteRow = async (
  * A new status is counted, and its totals are fetched later. What it replies to and quotes is never
  * changed by a newer version. A newer version with different content is marked as edited at the
  * time it is received, since Versia doesn't say when, and the previous content is saved in its edit
- * history.
+ * history. A new status, or an edited one, is emitted.
  */
 export const receiveNote = async (
     ctx: Context,
@@ -224,7 +226,16 @@ export const receiveNote = async (
             tags,
         );
         await setNoteEmojis(ctx, existing.id, emojiIds);
-        return await attachRemote(ctx, sender.instanceId, existing.id, files);
+        await attachRemote(ctx, sender.instanceId, existing.id, files);
+        if (!edited) return;
+
+        const event: NoteReceived = {
+            type: "notes.received",
+            noteId: existing.id,
+            edited,
+            fetched: sender.fetched,
+        };
+        return await emit(ctx, event);
     }
 
     const row = await insertNote(
@@ -250,6 +261,14 @@ export const receiveNote = async (
     await attachRemote(ctx, sender.instanceId, row.id, files);
     await countPosted(ctx, row, 1);
     await fetchTotalsLater(ctx, row);
+
+    const event: NoteReceived = {
+        type: "notes.received",
+        noteId: row.id,
+        edited: false,
+        fetched: sender.fetched,
+    };
+    await emit(ctx, event);
 };
 
 /**

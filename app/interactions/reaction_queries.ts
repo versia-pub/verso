@@ -46,17 +46,20 @@ export const insertReaction = async (
         .returningAll()
         .executeTakeFirst();
 
-/** Adds a remote reaction, unless it, or the same one under another id, already exists. */
+/**
+ * Adds a remote reaction, unless it, or the same one under another id, already exists. Returns
+ * whether it was added.
+ */
 export const insertRemoteReaction = async (
     ctx: Context,
     reaction: Insertable<ReactionsTable>,
-): Promise<void> => {
+): Promise<boolean> =>
     await ctx.db.insertInto("reactions")
         .values(reaction)
         // Any index: by its remote id, or of one reaction with each emoji.
         .onConflict((conflict) => conflict.doNothing())
-        .execute();
-};
+        .returning("id")
+        .executeTakeFirst() !== undefined;
 
 /** The reaction with the id `remoteId` on the instance `instanceId`, if Verso has it. */
 export const findRemoteReaction = async (

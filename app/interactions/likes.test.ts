@@ -64,14 +64,16 @@ Deno.test("a remote account deleted is uncounted from the notes it liked", async
     const other = await createNote(test.ctx, "alice");
     for (const by of ["carol", "bob"]) await like(test.ctx, by, liked.id);
     await like(test.ctx, "bob", other.id);
-    await keepRemoteLike(test.ctx, {
-        accountId: "carol",
-        noteId: other.id,
-        kind: "dislike",
-        instanceId: "b.example",
-        remoteId: "d1",
-        createdAt: test.ctx.clock.now(),
-    });
+    await test.ctx.transaction((tx) =>
+        keepRemoteLike(tx, {
+            accountId: "carol",
+            noteId: other.id,
+            kind: "dislike",
+            instanceId: "b.example",
+            remoteId: "d1",
+            createdAt: tx.clock.now(),
+        })
+    );
 
     await deleteRemoteAccount(test.ctx, "b.example", "carol");
 

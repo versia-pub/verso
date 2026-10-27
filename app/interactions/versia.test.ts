@@ -105,14 +105,16 @@ Deno.test("a local note lists its likes and dislikes, for instances that may see
     const hidden = await createNote(test.ctx, "alice", { visibility: "private" });
     await like(test.ctx, "bob", note.id);
     const remote = (accountId: string, kind: "like" | "dislike", remoteId: string) =>
-        keepRemoteLike(test.ctx, {
-            accountId,
-            noteId: note.id,
-            kind,
-            instanceId: accountId === "carol" ? "b.example" : "c.example",
-            remoteId,
-            createdAt: test.ctx.clock.now(),
-        });
+        test.ctx.transaction((tx) =>
+            keepRemoteLike(tx, {
+                accountId,
+                noteId: note.id,
+                kind,
+                instanceId: accountId === "carol" ? "b.example" : "c.example",
+                remoteId,
+                createdAt: tx.clock.now(),
+            })
+        );
     await remote("carol", "like", "l1");
     await remote("erin", "dislike", "d1");
     const bob = await findLike(test.ctx, "bob", note.id);

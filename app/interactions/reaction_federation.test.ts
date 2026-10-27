@@ -247,17 +247,19 @@ Deno.test("local users' reactions with a deleted emoji are undone, and remote in
     const blob = await test.reacted("alice", theirs.id, ":blob:");
     const party = await test.reacted("alice", theirs.id, "🎉");
     // carol's reaction with b.example's own blob stays.
-    await keepRemoteReaction(test.ctx, {
-        accountId: "carol",
-        noteId: theirs.id,
-        emoji: {
-            shortcode: "blob",
-            picture: { url: "https://b.example/blob.png", mediaType: "image/png" },
-        },
-        instanceId: "b.example",
-        remoteId: "r1",
-        createdAt: test.ctx.clock.now(),
-    });
+    await test.ctx.transaction((tx) =>
+        keepRemoteReaction(tx, {
+            accountId: "carol",
+            noteId: theirs.id,
+            emoji: {
+                shortcode: "blob",
+                picture: { url: "https://b.example/blob.png", mediaType: "image/png" },
+            },
+            instanceId: "b.example",
+            remoteId: "r1",
+            createdAt: tx.clock.now(),
+        })
+    );
     const before = (await sent(test.ctx)).length;
 
     const emojiId = await test.ctx.db.selectFrom("emojis").select("id")
