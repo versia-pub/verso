@@ -79,7 +79,7 @@ export type NotificationFilter = {
  * no status, or one they may see.
  */
 const shownTo = (ctx: Context, accountId: string, shown: Shown) =>
-    ctx.db.selectFrom("notifications").selectAll()
+    ctx.db.selectFrom("notifications")
         .where("account_id", "=", accountId)
         .where(notExcluded(shown.hidden, "notifications.from_account_id"))
         .where((eb) =>
@@ -88,6 +88,16 @@ const shownTo = (ctx: Context, accountId: string, shown: Shown) =>
                 shown.seen("notifications.note_id")(eb),
             ])
         );
+
+/** The notifications of `accountId` that {@link shownTo} and `filter` allow. */
+const filtered = (ctx: Context, accountId: string, shown: Shown, filter: NotificationFilter) => {
+    let query = shownTo(ctx, accountId, shown).selectAll();
+    if (filter.types) query = query.where("type", "in", filter.types);
+    if (filter.excludeTypes?.length) query = query.where("type", "not in", filter.excludeTypes);
+    if (filter.fromId !== undefined) query = query.where("from_account_id", "=", filter.fromId);
+
+    return query;
+};
 
 /**
  * A page of the notifications of `accountId`, newest first, as {@link shownTo} and `filter` allow.
@@ -100,13 +110,179 @@ export const notificationPage = async (
     page: PageBounds,
 ): Promise<NotificationRow[]> => {
     if (filter.types?.length === 0) return [];
+    return await readPage(filtered(ctx, accountId, shown, filter), "notifications.id", page);
+};
 
-    let query = shownTo(ctx, accountId, shown);
-    if (filter.types) query = query.where("type", "in", filter.types);
-    if (filter.excludeTypes?.length) query = query.where("type", "not in", filter.excludeTypes);
-    if (filter.fromId !== undefined) query = query.where("from_account_id", "=", filter.fromId);
+/**
+ * The group a notification is in when only the types `grouped` are grouped: its stored one, or
+ * else a group of its own.
+ */
+export const groupKeyOf = (row: NotificationRow, grouped: readonly NotificationType[]): string =>
+    row.group_key !== null && grouped.includes(row.type) ? row.group_key : `ungrouped-${row.id}`;
 
-    return await readPage(query, "notifications.id", page);
+/**
+ * A page of the groups of the notifications of `accountId`, newest first, as {@link shownTo} and
+ * `filter` allow, as one notification of each: the newest in the page, or the oldest after
+ * `min_id`. `page.limit` counts groups, and only the types `grouped` are grouped.
+ *
+ * Mastodon finds them in one recursive query; Verso reads the page a part at a time, leaving out
+ * the groups it has found, so that it works on SQLite too. Each part finds a group at least.
+ * @see https://github.com/mastodon/mastodon/blob/v4.3.0/app/models/notification.rb
+ */
+export const notificationGroupPage = async (
+    ctx: Context,
+    accountId: string,
+    shown: Shown,
+    filter: NotificationFilter,
+    grouped: readonly NotificationType[],
+    page: PageBounds,
+): Promise<NotificationRow[]> => {
+    if (filter.types?.length === 0) return [];
+
+    const oldestFirst = page.min_id !== undefined;
+    const found = new Map<string, NotificationRow>();
+    let bounds = page;
+
+    while (found.size < page.limit) {
+        let query = filtered(ctx, accountId, shown, filter);
+        if (found.size > 0) {
+            // A key has its type in it, so this leaves in those of types that aren't grouped.
+            const seen = [...found.keys()];
+            query = query.where((eb) =>
+                eb.or([eb("group_key", "is", null), eb("group_key", "not in", seen)])
+            );
+        }
+
+        const wanted = page.limit - found.size;
+        const part = await readPage(query, "notifications.id", { ...bounds, limit: wanted });
+        // Read in the order the page goes, which is oldest first after `min_id`.
+        const read = oldestFirst ? part.toReversed() : part;
+        for (const row of read) {
+            const key = groupKeyOf(row, grouped);
+            if (!found.has(key)) found.set(key, row);
+        }
+
+        const last = read.at(-1);
+        if (last === undefined || part.length < wanted) break;
+        bounds = oldestFirst ? { ...bounds, min_id: last.id } : { ...bounds, max_id: last.id };
+    }
+
+    const rows = [...found.values()];
+    return oldestFirst ? rows.toReversed() : rows;
+};
+
+/** What a page shows of a group of notifications. */
+export type GroupStats = {
+    /** How many notifications it has, up to the newest of the page. */
+    readonly count: number;
+    /** Its oldest notification in the page. */
+    readonly pageMinId: string;
+    /**
+     * Its newest notification from each of up to 8 accounts, newest first, up to the newest of the
+     * page.
+     */
+    readonly samples: readonly Pick<NotificationRow, "id" | "from_account_id" | "created_at">[];
+    /** The reactions of its 8 newest notifications, up to the newest of the page. */
+    readonly reactionIds: readonly string[];
+};
+
+/** How many accounts, and reactions, a group's {@link GroupStats} has, as on Mastodon. */
+const sampleSize = 8;
+
+/**
+ * The {@link GroupStats} of the groups `keys` of `accountId`'s notifications, in a page from
+ * `oldest` to `newest`, counting only the notifications {@link shownTo} allows.
+ */
+export const groupStatsOf = async (
+    ctx: Context,
+    accountId: string,
+    shown: Shown,
+    keys: readonly string[],
+    page: { readonly oldest: string; readonly newest: string },
+): Promise<Map<string, GroupStats>> => {
+    if (keys.length === 0) return new Map();
+
+    const inGroups = () =>
+        shownTo(ctx, accountId, shown)
+            .where("group_key", "in", keys)
+            .where("notifications.id", "<=", page.newest);
+
+    const totals = await inGroups()
+        .select((eb) => [
+            "group_key",
+            eb.fn.countAll<number | string | bigint>().as("count"),
+            eb.fn.min(
+                eb.case().when("notifications.id", ">=", page.oldest)
+                    .then(eb.ref("notifications.id")).end(),
+            ).as("page_min_id"),
+        ])
+        .groupBy("group_key")
+        .execute();
+
+    // Each account's newest, then the newest of those.
+    const byAccount = inGroups()
+        .select((eb) => [
+            "notifications.id",
+            "group_key",
+            "from_account_id",
+            "created_at",
+            eb.fn.agg<number>("row_number")
+                .over((ob) =>
+                    ob.partitionBy(["group_key", "from_account_id"]).orderBy("id", "desc")
+                )
+                .as("rank"),
+        ])
+        .as("by_account");
+    const samples = await ctx.db.selectFrom(
+        ctx.db.selectFrom(byAccount)
+            .select((eb) => [
+                "id",
+                "group_key",
+                "from_account_id",
+                "created_at",
+                eb.fn.agg<number>("row_number")
+                    .over((ob) => ob.partitionBy("group_key").orderBy("id", "desc"))
+                    .as("sample"),
+            ])
+            .where("rank", "=", 1)
+            .as("latest"),
+    )
+        .select(["id", "group_key", "from_account_id", "created_at"])
+        .where("sample", "<=", sampleSize)
+        .orderBy("id", "desc")
+        .execute();
+
+    const reactions = await ctx.db.selectFrom(
+        inGroups()
+            .select((eb) => [
+                "notifications.id",
+                "group_key",
+                "reaction_id",
+                eb.fn.agg<number>("row_number")
+                    .over((ob) => ob.partitionBy("group_key").orderBy("id", "desc"))
+                    .as("rank"),
+            ])
+            .as("ranked"),
+    )
+        .select(["group_key", "reaction_id"])
+        .where("rank", "<=", sampleSize)
+        .orderBy("id", "desc")
+        .execute();
+
+    return new Map(
+        totals.flatMap((total): [string, GroupStats][] =>
+            total.group_key === null || total.page_min_id === null ? [] : [[total.group_key, {
+                count: Number(total.count),
+                pageMinId: total.page_min_id,
+                samples: samples.filter((sample) => sample.group_key === total.group_key),
+                reactionIds: reactions.flatMap((reaction) =>
+                    reaction.group_key === total.group_key && reaction.reaction_id !== null
+                        ? [reaction.reaction_id]
+                        : []
+                ),
+            }]]
+        ),
+    );
 };
 
 /** The notification `id` of `accountId`, if {@link shownTo} allows it. */
@@ -116,7 +292,7 @@ export const findNotification = async (
     id: string,
     shown: Shown,
 ): Promise<NotificationRow | undefined> =>
-    await shownTo(ctx, accountId, shown).where("id", "=", id).executeTakeFirst();
+    await shownTo(ctx, accountId, shown).selectAll().where("id", "=", id).executeTakeFirst();
 
 /** Deletes the notification `id` of `accountId`. Returns whether there was one. */
 export const deleteNotification = async (
