@@ -16,9 +16,11 @@ export type Channel<T> = {
 };
 
 /** The subscribers of each channel, as adapters keep them. */
-export type Routes = Pick<PubSub, "subscribe"> & {
+export type Routes = Pick<PubSub, "subscribe" | "onMissed"> & {
     /** Gives `payload` to each subscriber of `channel`, logging rather than throwing if any fails. */
     readonly deliver: (channel: string, payload: string) => Promise<void>;
+    /** Runs every `onMissed` handler, logging rather than throwing if any fails. */
+    readonly missed: () => Promise<void>;
 };
 
 const logger = getLogger(["verso", "pubsub"]);
@@ -26,6 +28,7 @@ const logger = getLogger(["verso", "pubsub"]);
 /** No subscribers yet, for an adapter to give what it hears to. */
 export const routes = (): Routes => {
     const handlers = new Map<string, Set<Handler>>();
+    const missing = new Set<() => Promise<void>>();
 
     return {
         subscribe: (channel, handler) => {
@@ -47,16 +50,35 @@ export const routes = (): Routes => {
                 }
             }));
         },
+        onMissed: (handler) => {
+            missing.add(handler);
+            return () => {
+                missing.delete(handler);
+            };
+        },
+        missed: async () => {
+            await Promise.all([...missing].map(async (handler) => {
+                try {
+                    await handler();
+                } catch (error) {
+                    logger.error("Failed after missing messages: {error}", { error });
+                }
+            }));
+        },
     };
 };
 
 /**
  * Sends messages to this process only, for tests and SQLite, which only one process can use well.
- * Sending resolves once every subscriber has handled the message.
+ * Sending resolves once every subscriber has handled the message, and none is ever missed.
  */
 export const memoryPubSub = (): PubSub => {
     const subscribed = routes();
-    return { send: subscribed.deliver, subscribe: subscribed.subscribe };
+    return {
+        send: subscribed.deliver,
+        subscribe: subscribed.subscribe,
+        onMissed: subscribed.onMissed,
+    };
 };
 
 /**

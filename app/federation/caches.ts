@@ -24,6 +24,17 @@ export const forgetEverywhere = async (ctx: Context): Promise<void> => {
     await publish(ctx, changed, {});
 };
 
-/** Clears this process's caches whenever any process changes what they hold, until called. */
-export const forgetWhenTold = (ctx: Context): () => void =>
-    subscribe(ctx, changed, () => Promise.resolve(ctx.federation.forget()));
+/**
+ * Clears this process's caches whenever any process changes what they hold, or it may have missed
+ * being told, until called.
+ */
+export const forgetWhenTold = (ctx: Context): () => void => {
+    const forget = () => Promise.resolve(ctx.federation.forget());
+    const unsubscribe = subscribe(ctx, changed, forget);
+    const unwatch = ctx.pubsub.onMissed(forget);
+
+    return () => {
+        unsubscribe();
+        unwatch();
+    };
+};

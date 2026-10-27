@@ -2,7 +2,7 @@ import { assertEquals, assertNotEquals } from "@std/assert";
 import { testDatabaseKind } from "../db/testing.ts";
 import { rotateInstanceKey } from "../instances/keys.ts";
 import type { Context } from "../kernel/context.ts";
-import { memoryPubSub } from "../kernel/pubsub.ts";
+import { memoryPubSub, routes } from "../kernel/pubsub.ts";
 import { blockDomain, unblockDomain } from "../moderation/domain_blocks.ts";
 import { federation } from "../services.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -67,4 +67,28 @@ Deno.test("a new key is signed with at once in every process told of it", async 
     const rotated = await rotateInstanceKey(test.ctx);
     assertNotEquals(rotated, first);
     assertEquals(await keys(), [rotated, rotated, first]);
+});
+
+Deno.test("a process told of changes forgets what it cached when it may have missed some", async () => {
+    const heard = routes();
+    await using test = await createTestContext({
+        pubsub: { send: heard.deliver, subscribe: heard.subscribe, onMissed: heard.onMissed },
+    });
+    const blocked = () => test.ctx.federation.isBlocked(test.ctx, "evil.example");
+    const stop = forgetWhenTold(test.ctx);
+    assertEquals(await blocked(), false);
+
+    // As a process that can't tell this one does.
+    await test.ctx.db.insertInto("domain_blocks")
+        .values({ domain: "evil.example", reason: "", created_at: test.clock.now() })
+        .execute();
+    assertEquals(await blocked(), false);
+
+    await heard.missed();
+    assertEquals(await blocked(), true);
+
+    stop();
+    await test.ctx.db.deleteFrom("domain_blocks").execute();
+    await heard.missed();
+    assertEquals(await blocked(), true);
 });

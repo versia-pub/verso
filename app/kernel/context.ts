@@ -106,6 +106,11 @@ export type PubSub = {
      * Subscribing a handler that is already subscribed does nothing.
      */
     readonly subscribe: (channel: string, handler: Handler) => () => void;
+    /**
+     * Runs `handler` whenever messages may have been missed, such as once Verso hears them again
+     * after its connection dropped, until the function returned is called.
+     */
+    readonly onMissed: (handler: () => Promise<void>) => () => void;
 };
 
 /** What every service gets as its first argument. Ports join it as they are added. */

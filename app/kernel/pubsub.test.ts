@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { z } from "zod";
 import { createTestContext } from "../testing/context.ts";
-import { type Channel, publish, subscribe } from "./pubsub.ts";
+import { type Channel, publish, routes, subscribe } from "./pubsub.ts";
 
 const said: Channel<{ readonly text: string }> = {
     name: "said",
@@ -67,4 +67,17 @@ Deno.test("messages that aren't the channel's are skipped, and a failing subscri
     await test.ctx.pubsub.send("said", JSON.stringify({ text: "heard" }));
 
     assertEquals(heard, ["heard"]);
+});
+
+Deno.test("what may have missed messages is told so, until it stops watching, and fails alone", async () => {
+    const watched = routes();
+    const told: string[] = [];
+    watched.onMissed(() => Promise.reject(new Error("Failed")));
+    const stop = watched.onMissed(() => Promise.resolve(void told.push("missed")));
+
+    await watched.missed();
+    stop();
+    await watched.missed();
+
+    assertEquals(told, ["missed"]);
 });

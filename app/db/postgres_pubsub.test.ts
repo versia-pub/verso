@@ -107,6 +107,105 @@ Deno.test({
 
         await until(async () => await listeners() === 0);
         assertEquals(await listeners(), 0);
+
+        // Disposed while it connects.
+        const quitting = postgresPubSub(db, url);
+        const listened = quitting.listen();
+        await quitting[Symbol.asyncDispose]();
+        assertEquals(await listened, true);
+
+        await until(async () => await listeners() === 0);
+        await delay(100);
+        assertEquals(await listeners(), 0);
+    },
+});
+
+Deno.test({
+    name:
+        "on Postgres, a process whose connection drops listens again, saying it may have missed some",
+    ignore: testDatabaseKind === "pglite" || testDatabaseKind === "sqlite",
+    fn: async () => {
+        const opened = await postgres();
+        if (!opened) return;
+
+        const { url, db } = opened;
+        await using pubsub = postgresPubSub(db, url, { firstRetryMs: 10 });
+        await using test = await createTestContext({ db, pubsub });
+
+        const heard: string[] = [];
+        let missed = 0;
+        subscribe(test.ctx, said, (text) => Promise.resolve(void heard.push(text)));
+        pubsub.onMissed(() => Promise.resolve(void (missed += 1)));
+        assertEquals(await pubsub.listen(), true);
+
+        for (const round of [1, 2]) {
+            await sql`
+                select pg_terminate_backend(pid) from pg_stat_activity
+                where datname = current_database() and query = ${`listen ${messagesChannel}`}
+            `.execute(db);
+            await until(() => missed === round);
+            assertEquals(missed, round);
+        }
+
+        await publish(test.ctx, said, "again");
+        await until(() => heard.length > 0);
+        assertEquals(heard, ["again"]);
+    },
+});
+
+Deno.test({
+    name: "on Postgres, a process that can't listen tries again until it does, or is disposed",
+    ignore: testDatabaseKind === "pglite" || testDatabaseKind === "sqlite",
+    fn: async () => {
+        const opened = await postgres();
+        if (!opened) return;
+
+        await using test = await createTestContext({ db: opened.db });
+        const later = (name: string) => {
+            const url = new URL(opened.url);
+            url.pathname = `/${name}`;
+            return url.href;
+        };
+        const listeners = async (name: string) => {
+            const { rows } = await sql<{ count: number }>`
+                select count(*)::int as count from pg_stat_activity
+                where datname = ${name} and query = ${`listen ${messagesChannel}`}
+            `.execute(test.ctx.db);
+            return rows[0]?.count;
+        };
+
+        // Each with a database that doesn't exist yet, made once each has failed to listen.
+        const [waitingFor = "", goneFrom = "", quitFrom = ""] = ["late_a", "late_b", "late_c"].map((
+            name,
+        ) => `${name}_${crypto.randomUUID()}`.replaceAll("-", ""));
+        await using waiting = postgresPubSub(test.ctx.db, later(waitingFor), { firstRetryMs: 10 });
+        let missed = 0;
+        waiting.onMissed(() => Promise.resolve(void (missed += 1)));
+
+        // Disposed while waiting to try again, and while trying.
+        const options = { firstRetryMs: 500 };
+        const gone = postgresPubSub(test.ctx.db, later(goneFrom), options);
+        const quitting = postgresPubSub(test.ctx.db, later(quitFrom), options);
+
+        assertEquals([await waiting.listen(), await gone.listen()], [false, false]);
+        await gone[Symbol.asyncDispose]();
+        const listened = quitting.listen();
+        await quitting[Symbol.asyncDispose]();
+        assertEquals(await listened, false);
+        // So that the first waits to try again, after failing again.
+        await delay(50);
+
+        for (const name of [waitingFor, goneFrom, quitFrom]) {
+            await sql`create database ${sql.id(name)}`.execute(test.ctx.db);
+        }
+        await until(() => missed === 1);
+        await delay(700);
+
+        assertEquals(missed, 1);
+        assertEquals(
+            [await listeners(waitingFor), await listeners(goneFrom), await listeners(quitFrom)],
+            [1, 0, 0],
+        );
     },
 });
 
