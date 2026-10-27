@@ -88,6 +88,26 @@ export type DomainEvent = { readonly type: string };
  */
 export type Subscriber = (ctx: Context, event: DomainEvent) => Promise<void>;
 
+/** Hears what is sent on one channel. */
+export type Handler = (payload: string) => Promise<void>;
+
+/**
+ * Sends messages to every process, and hears them. Use `publish` and `subscribe`, which send once
+ * the transaction commits, and check what is heard.
+ */
+export type PubSub = {
+    /**
+     * Sends `payload`, a message as JSON, to the subscribers of `channel`. It may be at most
+     * 7,000 bytes, so that it fits in a Postgres notification, of 8,000, with the channel's name.
+     */
+    readonly send: (channel: string, payload: string) => Promise<void>;
+    /**
+     * Gives `handler` what is sent on `channel` from now on, until the function returned is called.
+     * Subscribing a handler that is already subscribed does nothing.
+     */
+    readonly subscribe: (channel: string, handler: Handler) => () => void;
+};
+
 /** What every service gets as its first argument. Ports join it as they are added. */
 export type Context<DB = Database> = {
     readonly clock: Clock;
@@ -105,6 +125,8 @@ export type Context<DB = Database> = {
     readonly settings: Settings;
     /** Every subscriber, each notified of every event, such as one for each protocol. */
     readonly subscribers: readonly Subscriber[];
+    /** Sends messages to every process, through `publish` and `subscribe`. */
+    readonly pubsub: PubSub;
     /**
      * Aborts the requests to remote instances made with this context when it aborts, such as when a
      * client's request has waited long enough.

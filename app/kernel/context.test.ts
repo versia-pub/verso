@@ -6,6 +6,7 @@ import { type Context, createContext } from "./context.ts";
 import { fakeTransport } from "./fake_transport.ts";
 import { memoryFiles } from "./files.ts";
 import { countingRandom, idGenerator } from "./ids.ts";
+import { memoryPubSub } from "./pubsub.ts";
 import { defaultSettings } from "./settings.ts";
 import { urlBuilder } from "./urls.ts";
 import { vipsImages } from "./vips_images.ts";
@@ -40,6 +41,7 @@ const open = async () => {
             forget: () => {},
         },
         subscribers: [],
+        pubsub: memoryPubSub(),
         db,
     });
 

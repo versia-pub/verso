@@ -24,6 +24,7 @@ import { settingsOf } from "./kernel/settings.ts";
 import { type Context, createContext } from "./kernel/context.ts";
 import { filesFor } from "./kernel/file_stores.ts";
 import { idGenerator } from "./kernel/ids.ts";
+import { memoryPubSub } from "./kernel/pubsub.ts";
 import { setUpLogging } from "./kernel/logging.ts";
 import { federationTransport, fetchTransport, timedTransport } from "./kernel/transport.ts";
 import { urlBuilder } from "./kernel/urls.ts";
@@ -115,6 +116,8 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
         }),
         settings: settingsOf(config),
         subscribers,
+        // Only this process hears its messages until Postgres sends them to the others.
+        pubsub: memoryPubSub(),
         db,
     });
 

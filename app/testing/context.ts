@@ -9,9 +9,11 @@ import {
     type Context,
     createContext,
     type Federation,
+    type PubSub,
     type Subscriber,
 } from "../kernel/context.ts";
 import { type FileStore, memoryFiles } from "../kernel/files.ts";
+import { memoryPubSub } from "../kernel/pubsub.ts";
 import type { ImageProcessor } from "../kernel/images.ts";
 import type { IdentityProvider } from "../kernel/identity.ts";
 import { type FakeTransport, fakeTransport } from "../kernel/fake_transport.ts";
@@ -39,6 +41,8 @@ export type TestContextOptions = {
     readonly federation?: Partial<Federation>;
     /** Defaults to Verso's own. */
     readonly subscribers?: readonly Subscriber[];
+    /** Defaults to a new one in memory. */
+    readonly pubsub?: PubSub;
     /** Defaults to those of a config that leaves them out. */
     readonly settings?: Partial<Settings>;
 };
@@ -82,6 +86,7 @@ export const createTestContext = async (
         federation: { ...federation(), ...options.federation },
         settings: { ...defaultSettings, ...options.settings },
         subscribers: options.subscribers ?? subscribers,
+        pubsub: options.pubsub ?? memoryPubSub(),
         db,
     });
 
