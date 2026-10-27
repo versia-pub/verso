@@ -145,6 +145,7 @@ export const Permissions = z.strictObject({
         "owner:media",
         "owner:mute",
         "owner:note",
+        "owner:notification",
         "owner:reaction",
     ]),
 }).prefault({});

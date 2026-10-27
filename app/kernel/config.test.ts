@@ -76,6 +76,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                     "owner:media",
                     "owner:mute",
                     "owner:note",
+                    "owner:notification",
                     "owner:reaction",
                 ],
             },

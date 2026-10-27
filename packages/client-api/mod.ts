@@ -3,6 +3,7 @@ export * from "./application.ts";
 export * from "./custom_emoji.ts";
 export * from "./instance.ts";
 export * from "./media_attachment.ts";
+export * from "./notification.ts";
 export * from "./oauth_metadata.ts";
 export * from "./preview_card.ts";
 export * from "./relationship.ts";

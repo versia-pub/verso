@@ -4734,6 +4734,255 @@
                 }
             }
         },
+        "/api/v1/notifications": {
+            "get": {
+                "summary": "Get all notifications",
+                "description": "Notifications concerning the user. This API returns Link headers containing links to the next/previous page. However, the links can also be constructed dynamically using query params and `id` values.\n\nNotifications from accounts the user blocks, or mutes with their notifications, and about statuses they may no longer see, are left out. A `reaction` notification has the emoji, as Pleroma has it.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#get"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types to include in the result."
+                        }
+                    },
+                    {
+                        "name": "exclude_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types to exclude from the results."
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only notifications received from the specified account."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Notification"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/clear": {
+            "post": {
+                "summary": "Dismiss all notifications",
+                "description": "Clear all notifications from the server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#clear"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/{id}": {
+            "get": {
+                "summary": "Get a single notification",
+                "description": "View information about a notification with a given ID.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#get-one"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notification"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/{id}/dismiss": {
+            "post": {
+                "summary": "Dismiss a single notification",
+                "description": "Dismiss a single notification from the server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#dismiss"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/media": {
             "post": {
                 "summary": "Upload media as an attachment (async)",
@@ -5526,6 +5775,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "owner:notification",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -5612,6 +5862,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "owner:notification",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -5698,6 +5949,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "owner:notification",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -5863,6 +6115,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "owner:notification",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -5946,6 +6199,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "owner:notification",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -6029,6 +6283,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "owner:notification",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -10363,6 +10618,72 @@
                     "roles",
                     "feature_approval",
                     "mute_expires_at"
+                ]
+            },
+            "Notification": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/NotificationType"
+                    },
+                    "group_key": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "account": {
+                        "$ref": "#/components/schemas/Account"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/Status"
+                    },
+                    "emoji": {
+                        "type": "string"
+                    },
+                    "emoji_url": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "type",
+                    "group_key",
+                    "created_at",
+                    "account"
+                ]
+            },
+            "NotificationType": {
+                "type": "string",
+                "enum": [
+                    "mention",
+                    "status",
+                    "reblog",
+                    "follow",
+                    "follow_request",
+                    "favourite",
+                    "poll",
+                    "update",
+                    "admin.sign_up",
+                    "admin.report",
+                    "severed_relationships",
+                    "moderation_warning",
+                    "quote",
+                    "quoted_update",
+                    "reaction"
                 ]
             },
             "OAuthServerMetadata": {

@@ -44,3 +44,20 @@ export type NotificationsTable = {
     follow_id: string | null;
     created_at: Date;
 };
+
+/** Every type of notification, which the type's own checks keep complete. */
+const typeNames = {
+    mention: true,
+    status: true,
+    reblog: true,
+    follow: true,
+    follow_request: true,
+    favourite: true,
+    reaction: true,
+    update: true,
+} as const satisfies Record<NotificationType, true>;
+
+const types: ReadonlySet<string> = new Set(Object.keys(typeNames));
+
+/** Whether `type` is a type of notification Verso has. */
+export const isNotificationType = (type: string): type is NotificationType => types.has(type);

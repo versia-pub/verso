@@ -200,6 +200,44 @@ export const reactionsOf = async (
     return groups;
 };
 
+/** A reaction's emoji, and the custom emoji's picture, if it is one. */
+export type ReactionWithEmoji = Omit<ReactionGroup, "note_id" | "count" | "me"> & {
+    readonly id: string;
+};
+
+/**
+ * The emojis of the reactions `ids`, by reaction. It reads the `emojis`, `instances` and `media`
+ * tables directly rather than going through their modules, so that it takes one query.
+ */
+export const emojisOfReactions = async (
+    ctx: Context,
+    ids: readonly string[],
+): Promise<Map<string, ReactionWithEmoji>> => {
+    if (ids.length === 0) return new Map();
+
+    const rows = await ctx.db.selectFrom("reactions")
+        .leftJoin("emojis", "emojis.id", "reactions.emoji_id")
+        .leftJoin("media", "media.id", "emojis.media_id")
+        .leftJoin("instances", "instances.id", "emojis.instance_id")
+        .select([
+            "reactions.id",
+            "reactions.text",
+            "reactions.emoji_id",
+            "emojis.shortcode",
+            "emojis.category",
+            "emojis.instance_id",
+            "instances.domain",
+            "media.url",
+            "media.media_type",
+            "media.sha256",
+            "media.preview_sha256",
+            "media.processed_at",
+        ])
+        .where("reactions.id", "in", ids)
+        .execute();
+    return new Map(rows.map((row) => [row.id, row]));
+};
+
 /**
  * A page of the reactions to a status with one emoji, newest first, excluding those by the accounts
  * `blocked`.

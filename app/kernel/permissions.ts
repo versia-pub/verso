@@ -40,6 +40,8 @@ export const permissions = [
     "owner:emoji",
     /** View global custom emojis and one's own. */
     "read:emoji",
+    /** View and dismiss one's own notifications. */
+    "owner:notification",
     /**
      * See who blocks each account, which is otherwise only the blocker's to know, as moderators may
      * need to.

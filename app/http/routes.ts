@@ -10,6 +10,7 @@ import { mediaRoutes } from "../media/routes.ts";
 import { entityRoutes } from "../federation/registry.ts";
 import { graphRoutes } from "../graph/routes.ts";
 import { noteRoutes } from "../notes/routes.ts";
+import { notificationRoutes } from "../notifications/routes.ts";
 import { timelineRoutes } from "../notes/timeline_routes.ts";
 import type { AboutSettings } from "../instances/render.ts";
 import { instanceRoutes } from "../instances/routes.ts";
@@ -34,6 +35,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...noteRoutes(settings.limits),
         ...interactionRoutes,
         ...timelineRoutes,
+        ...notificationRoutes,
         ...mediaRoutes(settings.media, settings.limits),
         ...emojiRoutes(settings.media, settings.limits),
         ...roleRoutes,

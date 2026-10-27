@@ -4,7 +4,8 @@ import type { Database } from "../db/database.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
-import type { ExpressionBuilder } from "kysely";
+import { type ExpressionBuilder, sql } from "kysely";
+import type { Filter } from "../graph/excluded_queries.ts";
 
 /** Someone viewing statuses, with the accounts they follow, or `null` for anyone. */
 export type Onlooker = { readonly id: string; readonly followed: AccountIdQuery } | null;
@@ -32,6 +33,17 @@ const seenBy = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">
         ),
     ]);
 };
+
+/**
+ * Whether the status whose id is in `column`, such as `notifications.note_id`, is one `onlooker`
+ * may see, for another module's query.
+ */
+export const isSeenBy = (ctx: Context, onlooker: Onlooker, column: string): Filter => (eb) =>
+    eb.exists(
+        ctx.db.selectFrom("notes").select("notes.id")
+            .where("notes.id", "=", sql.ref<string>(column))
+            .where(seenBy(onlooker)),
+    );
 
 /** Which of `ids` are statuses `onlooker` may see, in no particular order. */
 export const notesSeenBy = async (

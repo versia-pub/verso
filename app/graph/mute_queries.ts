@@ -99,3 +99,7 @@ export const mutedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =
         .select("target_id as account_id")
         .where("account_id", "=", accountId)
         .where(ongoing(ctx.clock.now()));
+
+/** The accounts `accountId` currently mutes with their notifications, as a subquery. */
+export const notificationMutedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
+    mutedIdsQuery(ctx, accountId).where("notifications", "=", true);

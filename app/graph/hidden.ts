@@ -1,6 +1,6 @@
 /**
  * What doesn't reach an account: the statuses and boosts of the accounts it blocks, individually or
- * by their domain, and of those it currently mutes.
+ * by their domain, and of those it currently mutes, and their notifications.
  * @module
  */
 import type { Context } from "../kernel/context.ts";
@@ -8,12 +8,24 @@ import { blocksBetween } from "./block_queries.ts";
 import { blockedByAccount } from "./blocks.ts";
 import { domainBlockedAmong } from "./domain_block_queries.ts";
 import type { Excluded } from "./excluded_queries.ts";
-import { mutedIdsQuery, mutesOf } from "./mute_queries.ts";
+import { mutedIdsQuery, mutesOf, notificationMutedIdsQuery } from "./mute_queries.ts";
 
 /** The accounts `accountId` blocks, individually or by their domain, or currently mutes. */
 export const hiddenFrom = (ctx: Context, accountId: string): Excluded => {
     const blocked = blockedByAccount(ctx, accountId);
     return { ...blocked, accounts: blocked.accounts.union(mutedIdsQuery(ctx, accountId)) };
+};
+
+/**
+ * The accounts whose notifications don't reach `accountId`: those it blocks, individually or by
+ * their domain, and those it currently mutes with their notifications, as on Mastodon.
+ */
+export const notificationsHiddenFrom = (ctx: Context, accountId: string): Excluded => {
+    const blocked = blockedByAccount(ctx, accountId);
+    return {
+        ...blocked,
+        accounts: blocked.accounts.union(notificationMutedIdsQuery(ctx, accountId)),
+    };
 };
 
 /**
