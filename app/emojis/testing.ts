@@ -1,7 +1,7 @@
 import type { Context } from "../kernel/context.ts";
 
 /**
- * One of the local instance's emojis for everyone, with its picture processed and stored under the
+ * A global emoji of the local instance, with its picture processed and stored under the
  * key `emoji-<shortcode>`, though no file is stored. Returns its id.
  */
 export const createLocalEmoji = async (ctx: Context, shortcode: string): Promise<string> => {

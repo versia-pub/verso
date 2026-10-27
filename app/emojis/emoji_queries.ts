@@ -16,7 +16,7 @@ export const findRemoteEmoji = async (
         .executeTakeFirst();
 
 /**
- * The ids of the local instance's custom emojis for everyone named any of `shortcodes`, of those
+ * The ids of the local instance's global custom emojis named any of `shortcodes`, of those
  * whose pictures are ready, so that text never uses an emoji that can't be shown. It reads the
  * `media` table directly rather than going through its module, so that it takes one query.
  */
@@ -42,6 +42,38 @@ export const localEmojiIds = async (
 
 export const insertEmoji = async (ctx: Context, emoji: Insertable<EmojisTable>): Promise<void> => {
     await ctx.db.insertInto("emojis").values(emoji).execute();
+};
+
+/**
+ * Whether the local user `accountId` may already use an emoji named `shortcode`: their own, or a
+ * global one.
+ */
+export const hasUsableEmoji = async (
+    ctx: Context,
+    accountId: string,
+    shortcode: string,
+): Promise<boolean> => {
+    const row = await ctx.db.selectFrom("emojis").select("id")
+        .where("instance_id", "is", null)
+        .where("shortcode", "=", shortcode)
+        .where((eb) => eb.or([eb("account_id", "=", accountId), eb("account_id", "is", null)]))
+        .executeTakeFirst();
+    return row !== undefined;
+};
+
+/**
+ * Adds one of the local instance's emojis, and returns whether it was added, which it isn't if its
+ * owner has one of that name, or, if it is global, a global one does.
+ */
+export const insertLocalEmoji = async (
+    ctx: Context,
+    emoji: Insertable<EmojisTable> & { readonly instance_id: null },
+): Promise<boolean> => {
+    const added = await ctx.db.insertInto("emojis").values(emoji)
+        .onConflict((conflict) => conflict.doNothing())
+        .returning("id")
+        .executeTakeFirst();
+    return added !== undefined;
 };
 
 /** Replaces the custom emojis a status uses. */
@@ -112,8 +144,8 @@ const shownColumns = [
 ] as const;
 
 /**
- * The local instance's custom emojis for everyone, by shortcode. It reads the `media` table directly rather than
- * going through its module, so that it takes one query.
+ * The local instance's global custom emojis, by shortcode. It reads the `media` table directly
+ * rather than going through its module, so that it takes one query.
  */
 export const localEmojis = async (ctx: Context): Promise<ShownEmoji[]> =>
     await ctx.db.selectFrom("emojis")
@@ -123,6 +155,26 @@ export const localEmojis = async (ctx: Context): Promise<ShownEmoji[]> =>
         .where("emojis.account_id", "is", null)
         .orderBy("emojis.shortcode")
         .execute();
+
+/** One of the local instance's emojis, with its owner and its picture's alt text. */
+export type LocalEmoji = ShownEmoji & {
+    readonly id: string;
+    /** The user it belongs to, or `null` if it is global. */
+    readonly account_id: string | null;
+    readonly description: string | null;
+};
+
+/**
+ * One of the local instance's emojis, if there is one with this id. It reads the `media` table
+ * directly rather than going through its module, so that it takes one query.
+ */
+export const findLocalEmoji = async (ctx: Context, id: string): Promise<LocalEmoji | undefined> =>
+    await ctx.db.selectFrom("emojis")
+        .innerJoin("media", "media.id", "emojis.media_id")
+        .select(["emojis.id", "emojis.account_id", "media.description", ...shownColumns])
+        .where("emojis.id", "=", id)
+        .where("emojis.instance_id", "is", null)
+        .executeTakeFirst();
 
 /** Groups emojis by what uses them, in shortcode order. */
 const byUser = (rows: readonly UsedEmoji[]) => {

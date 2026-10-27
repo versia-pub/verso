@@ -45,13 +45,17 @@ Deno.test("this instance's emojis are listed for the picker, by shortcode", asyn
     await test.ctx.db.updateTable("media").set({ processed_at: null })
         .where("id", "in", (eb) => eb.selectFrom("emojis").select("media_id").where("id", "=", id))
         .execute();
-    // One that belongs to a user isn't for everyone.
+    // A user's own emoji isn't global.
     const own = await createLocalEmoji(test.ctx, "mine");
     await test.ctx.db.updateTable("emojis").set({ account_id: "alice" }).where("id", "=", own)
         .execute();
     await test.ctx.db.updateTable("emojis").set({ category: "Cats" }).where("shortcode", "=", "cat")
         .execute();
-    const app = createTestApp(test.ctx, emojiRoutes, { checkResponses: true });
+    const app = createTestApp(
+        test.ctx,
+        emojiRoutes(MediaLimits.parse({}), Limits.parse({})),
+        { checkResponses: true },
+    );
 
     const response = await app.request("/api/v1/custom_emojis");
     assertEquals(
@@ -129,7 +133,7 @@ Deno.test("a local account uses this instance's emojis its name, bio and fields 
     assertEquals((await localVersiaUser(test.ctx, "alice"))?.extensions, undefined);
 });
 
-Deno.test("text uses only emojis for everyone whose pictures are ready", async () => {
+Deno.test("text uses only global emojis whose pictures are ready", async () => {
     await using test = await open();
     const own = await createLocalEmoji(test.ctx, "mine");
     await test.ctx.db.updateTable("emojis").set({ account_id: "alice" }).where("id", "=", own)
@@ -162,10 +166,10 @@ Deno.test("text uses only emojis for everyone whose pictures are ready", async (
     assertEquals(await test.shown(note?.id ?? ""), ["blob"]);
 });
 
-Deno.test("everyone's emojis have one per name, and so do each user's", async () => {
+Deno.test("global emojis have one per name, and so do each user's own", async () => {
     await using test = await open();
     await createLocalAccount(test.ctx, "bob");
-    /** Gives alice's or bob's emoji `shortcode`, or everyone's if `accountId` is `null`. */
+    /** Gives alice's or bob's emoji `shortcode`, or a global one if `accountId` is `null`. */
     const add = async (shortcode: string, accountId: string | null) => {
         const id = await createLocalEmoji(test.ctx, `${shortcode}-${test.ctx.ids()}`);
         await test.ctx.db.updateTable("emojis").set({ shortcode, account_id: accountId })
@@ -173,7 +177,7 @@ Deno.test("everyone's emojis have one per name, and so do each user's", async ()
             .execute();
     };
 
-    // Users may each have one named as everyone's is, or as each other's, and several of their own.
+    // Each user may have one named as a global one or another user's, and several of their own.
     await add("blob", "alice");
     await add("blob", "bob");
     await add("cat", "alice");

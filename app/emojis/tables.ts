@@ -4,8 +4,8 @@ export type EmojisTable = {
     /** The instance it is from, in `instances`, or `null` for the local instance. */
     instance_id: string | null;
     /**
-     * The local user it belongs to, who alone may use it, or `null` for an emoji everyone may use
-     * and for remote instances' emojis.
+     * The local user it belongs to, who alone may use it, or `null` for a global emoji and for
+     * remote instances' emojis.
      */
     account_id: string | null;
     /** Its name, without the colons around it. */

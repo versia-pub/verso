@@ -9,4 +9,5 @@ export * from "./relationship.ts";
 export * from "./role.ts";
 export * from "./status.ts";
 export * from "./token.ts";
+export * from "./versia_emoji.ts";
 export * from "./versia_role.ts";

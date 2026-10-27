@@ -25,6 +25,8 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # max_pixels = 8294400
 # How many bytes an uploaded file may have: 16 MiB by default, as Mastodon allows for images.
 # max_upload_bytes = 16777216
+# How many bytes a custom emoji's picture may have: 256 KiB by default.
+# max_emoji_bytes = 262144
 # How many hours an upload that hasn't been attached to a status is retained before it is deleted:
 # 24 by default, as Mastodon does. Also applies to unused remote media.
 # unattached_hours = 24

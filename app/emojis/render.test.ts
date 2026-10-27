@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
-import type { ShownEmoji } from "./emoji_queries.ts";
-import { renderEmojis } from "./render.ts";
+import type { LocalEmoji, ShownEmoji } from "./emoji_queries.ts";
+import { renderEmojis, renderVersiaEmoji } from "./render.ts";
 
 const emoji: ShownEmoji = {
     shortcode: "blob",
@@ -44,4 +44,33 @@ Deno.test("a remote emoji is shown at its URL, which is its still too, and not i
 
     const [shown] = renderEmojis(test.ctx, [{ ...emoji, instance_id: "b", url, sha256: "ab" }]);
     assertEquals([shown?.url, shown?.static_url, shown?.visible_in_picker], [url, url, false]);
+});
+
+Deno.test("a local emoji is shown with whose it is and its alt text, and no URLs until processed", async () => {
+    await using test = await createTestContext();
+    const local: LocalEmoji = { ...emoji, id: "e", account_id: "alice", description: "A blob" };
+
+    assertEquals(renderVersiaEmoji(test.ctx, local), {
+        id: "e",
+        shortcode: "blob",
+        url: null,
+        static_url: null,
+        visible_in_picker: true,
+        category: "Blobs",
+        global: false,
+        description: "A blob",
+    });
+
+    const processed = {
+        ...local,
+        sha256: "ab",
+        preview_sha256: "cd",
+        processed_at: test.clock.now(),
+    };
+    const shown = renderVersiaEmoji(test.ctx, { ...processed, account_id: null });
+    assertEquals([shown.url, shown.static_url, shown.global], [
+        "https://social.example/media/ab",
+        "https://social.example/media/cd",
+        true,
+    ]);
 });

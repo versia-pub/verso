@@ -20,6 +20,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 storage: { filesystem: "media" },
                 max_pixels: 8_294_400,
                 max_upload_bytes: 16_777_216,
+                max_emoji_bytes: 262_144,
                 unattached_hours: 24,
             },
             http: {
@@ -68,6 +69,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                     "owner:account",
                     "owner:block",
                     "owner:boost",
+                    "owner:emoji",
                     "owner:follow",
                     "owner:like",
                     "owner:media",
@@ -96,6 +98,7 @@ storage = { filesystem = "/var/lib/verso/media" }
 max_pixels = 1000000
 unattached_hours = 12
 max_upload_bytes = 1000
+max_emoji_bytes = 100
 
 [http]
 port = 3000
@@ -171,6 +174,7 @@ level = "debug"
                 storage: { filesystem: "/var/lib/verso/media" },
                 max_pixels: 1_000_000,
                 max_upload_bytes: 1000,
+                max_emoji_bytes: 100,
                 unattached_hours: 12,
             },
             http: {

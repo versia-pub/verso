@@ -2,9 +2,9 @@ import { type Kysely, sql } from "kysely";
 import type { Migration } from "kysely/migration";
 
 /**
- * Local emojis that belong to a user rather than to everyone, and the picker's group of each.
- * Everyone's have one per name, and each user's have one per name, but a user's may share a name
- * with another user's or with everyone's.
+ * Local emojis that belong to a user rather than being global, and the picker's group of each.
+ * Global emojis have one per name, and so do each user's own, but a user's may share a name with
+ * another user's or with a global one.
  */
 export const ownEmojis: Migration = {
     up: async (db: Kysely<unknown>) => {

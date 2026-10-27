@@ -138,6 +138,7 @@ export const Permissions = z.strictObject({
         "owner:account",
         "owner:block",
         "owner:boost",
+        "owner:emoji",
         "owner:follow",
         "owner:like",
         "owner:media",
@@ -213,6 +214,8 @@ export const MediaLimits = z.strictObject({
      * How many bytes an uploaded file may have. Mastodon's limit for images, 16 MiB, by default.
      */
     max_upload_bytes: z.int().min(1).default(16 * 1024 * 1024),
+    /** How many bytes a custom emoji's uploaded picture may have. 256 KiB by default. */
+    max_emoji_bytes: z.int().min(1).default(256 * 1024),
 });
 
 export type MediaLimits = z.infer<typeof MediaLimits>;

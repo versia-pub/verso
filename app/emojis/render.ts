@@ -2,10 +2,10 @@
  * Renders custom emojis as the client API's entities.
  * @module
  */
-import type { CustomEmoji } from "@versia/client-api";
+import type { CustomEmoji, VersiaEmoji } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import { fileUrl } from "../media/render.ts";
-import type { EmojiPicture, ShownEmoji } from "./emoji_queries.ts";
+import type { EmojiPicture, LocalEmoji, ShownEmoji } from "./emoji_queries.ts";
 
 /**
  * The URLs of an emoji's picture and of a still version of it: a remote emoji's own at its URL,
@@ -43,3 +43,22 @@ export const renderEmojis = (ctx: Context, emojis: readonly ShownEmoji[]): Custo
             category: emoji.category,
         }];
     });
+
+/**
+ * One of the local instance's emojis as Versia's emoji endpoints render it, with its picture's URLs
+ * `null` until it is processed.
+ */
+export const renderVersiaEmoji = (ctx: Context, emoji: LocalEmoji): VersiaEmoji => {
+    const picture = emojiPicture(ctx, emoji);
+
+    return {
+        id: emoji.id,
+        shortcode: emoji.shortcode,
+        url: picture?.url ?? null,
+        static_url: picture?.still ?? null,
+        visible_in_picker: true,
+        category: emoji.category,
+        global: emoji.account_id === null,
+        description: emoji.description,
+    };
+};

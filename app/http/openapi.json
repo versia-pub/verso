@@ -5075,6 +5075,150 @@
                 }
             }
         },
+        "/api/v1/emojis": {
+            "post": {
+                "summary": "Upload emoji",
+                "description": "Upload a new emoji to the server.\n\nThe emoji is the user's own unless `global`, which needs the `emojis` permission. Its picture is processed after the response, which is 202, without URLs; text doesn't use the emoji until then. Pictures are at most 262144 bytes. A shortcode the user may already use, for their own emoji or a global one, is answered with 422.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:emoji` permission.",
+                "externalDocs": {
+                    "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/emojis"
+                },
+                "tags": [
+                    "emojis"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:media"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "shortcode": {
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "pattern": "^[a-zA-Z0-9_]{2,}$"
+                                    },
+                                    "element": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 262144,
+                                        "description": "The emoji's picture."
+                                    },
+                                    "category": {
+                                        "type": "string"
+                                    },
+                                    "alt": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "global": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "shortcode",
+                                    "element"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "shortcode": {
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "pattern": "^[a-zA-Z0-9_]{2,}$"
+                                    },
+                                    "element": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 262144,
+                                        "description": "The emoji's picture."
+                                    },
+                                    "category": {
+                                        "type": "string"
+                                    },
+                                    "alt": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "global": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "shortcode",
+                                    "element"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "shortcode": {
+                                        "type": "string",
+                                        "maxLength": 100,
+                                        "pattern": "^[a-zA-Z0-9_]{2,}$"
+                                    },
+                                    "element": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 262144,
+                                        "description": "The emoji's picture."
+                                    },
+                                    "category": {
+                                        "type": "string"
+                                    },
+                                    "alt": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "global": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "shortcode",
+                                    "element"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VersiaEmoji"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/roles": {
             "get": {
                 "summary": "Every role, highest priority first",
@@ -5148,7 +5292,9 @@
                                                 "owner:reaction",
                                                 "owner:note",
                                                 "owner:media",
+                                                "owner:emoji",
                                                 "blocks",
+                                                "emojis",
                                                 "roles"
                                             ]
                                         }
@@ -5231,7 +5377,9 @@
                                                 "owner:reaction",
                                                 "owner:note",
                                                 "owner:media",
+                                                "owner:emoji",
                                                 "blocks",
+                                                "emojis",
                                                 "roles"
                                             ]
                                         }
@@ -5314,7 +5462,9 @@
                                                 "owner:reaction",
                                                 "owner:note",
                                                 "owner:media",
+                                                "owner:emoji",
                                                 "blocks",
+                                                "emojis",
                                                 "roles"
                                             ]
                                         }
@@ -5476,7 +5626,9 @@
                                                 "owner:reaction",
                                                 "owner:note",
                                                 "owner:media",
+                                                "owner:emoji",
                                                 "blocks",
+                                                "emojis",
                                                 "roles"
                                             ]
                                         }
@@ -5556,7 +5708,9 @@
                                                 "owner:reaction",
                                                 "owner:note",
                                                 "owner:media",
+                                                "owner:emoji",
                                                 "blocks",
+                                                "emojis",
                                                 "roles"
                                             ]
                                         }
@@ -5636,7 +5790,9 @@
                                                 "owner:reaction",
                                                 "owner:note",
                                                 "owner:media",
+                                                "owner:emoji",
                                                 "blocks",
+                                                "emojis",
                                                 "roles"
                                             ]
                                         }
@@ -11087,6 +11243,67 @@
                     "configuration",
                     "contact_account",
                     "rules"
+                ]
+            },
+            "VersiaEmoji": {
+                "type": "object",
+                "properties": {
+                    "shortcode": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "static_url": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "visible_in_picker": {
+                        "type": "boolean"
+                    },
+                    "category": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "global": {
+                        "type": "boolean"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "shortcode",
+                    "url",
+                    "static_url",
+                    "visible_in_picker",
+                    "category",
+                    "id",
+                    "global",
+                    "description"
                 ]
             },
             "VersiaRole": {
