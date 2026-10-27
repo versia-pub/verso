@@ -6,6 +6,7 @@ import { adminCommand, AdminError, missingCommand } from "./admin/cli.ts";
 import { devLogin } from "./auth/dev_login.ts";
 import { oidcProviders } from "./auth/oidc.ts";
 import { type Database, openDatabase } from "./db/database.ts";
+import { postgresPubSub } from "./db/postgres_pubsub.ts";
 import { migrate } from "./db/migrate.ts";
 import { createApp } from "./http/app.ts";
 import { memoryRateLimitStore } from "./http/rate_limits.ts";
@@ -21,7 +22,7 @@ import { work } from "./jobs/worker.ts";
 import { systemClock } from "./kernel/clock.ts";
 import { type Config, readConfig } from "./kernel/config.ts";
 import { settingsOf } from "./kernel/settings.ts";
-import { type Context, createContext } from "./kernel/context.ts";
+import { type Context, createContext, type PubSub } from "./kernel/context.ts";
 import { filesFor } from "./kernel/file_stores.ts";
 import { idGenerator } from "./kernel/ids.ts";
 import { memoryPubSub } from "./kernel/pubsub.ts";
@@ -86,8 +87,17 @@ const serve = (
     return server.finished;
 };
 
+/**
+ * Sends messages to other processes through Postgres. SQLite has no notifications, so there only
+ * this process hears them.
+ */
+const pubSubFor = (config: Config, db: Kysely<Database>): PubSub & AsyncDisposable =>
+    "postgres" in config.database
+        ? postgresPubSub(db, config.database.postgres)
+        : { ...memoryPubSub(), [Symbol.asyncDispose]: () => Promise.resolve() };
+
 /** The context every command runs with, and the development login's routes if it is on. */
-const contextFor = (config: Config, db: Kysely<Database>) => {
+const contextFor = (config: Config, db: Kysely<Database>, pubsub: PubSub) => {
     const urls = urlBuilder(config.domain, config.http.origin);
     const dev = devLogin(config.auth.dev_login, urls);
     const identityProviders = {
@@ -116,8 +126,7 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
         }),
         settings: settingsOf(config),
         subscribers,
-        // Only this process hears its messages until Postgres sends them to the others.
-        pubsub: memoryPubSub(),
+        pubsub,
         db,
     });
 
@@ -130,7 +139,8 @@ const contextFor = (config: Config, db: Kysely<Database>) => {
  */
 const run = async (role: string, config: Config): Promise<number> => {
     await using db = openDatabase(config.database);
-    const { ctx, devRoutes } = contextFor(config, db);
+    await using pubsub = pubSubFor(config, db);
+    const { ctx, devRoutes } = contextFor(config, db, pubsub);
 
     const logger = getLogger(["verso"]);
 
@@ -240,7 +250,8 @@ const withContext = async <T>(
 ): Promise<T> => {
     const config = await setUp(path);
     await using db = openDatabase(config.database);
-    return await work(contextFor(config, db).ctx, config);
+    await using pubsub = pubSubFor(config, db);
+    return await work(contextFor(config, db, pubsub).ctx, config);
 };
 
 const version = `verso ${denoConfig.version}`;
