@@ -112,6 +112,22 @@ export const Account = z.object({
 export type Account = z.infer<typeof Account>;
 
 /**
+ * Enough of an account to show its avatar, as grouped notifications have the accounts beyond each
+ * group's first when asked for `partial_avatars`.
+ * @see https://docs.joinmastodon.org/entities/Account/#PartialAccountWithAvatar
+ */
+export const PartialAccountWithAvatar = Account.pick({
+    id: true,
+    acct: true,
+    url: true,
+    avatar: true,
+    avatar_static: true,
+    locked: true,
+    bot: true,
+});
+export type PartialAccountWithAvatar = z.infer<typeof PartialAccountWithAvatar>;
+
+/**
  * An account's settings as its owner wrote them, which they read and change through the API.
  * @see https://docs.joinmastodon.org/entities/Account/#source
  */

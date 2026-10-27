@@ -4868,6 +4868,170 @@
                 }
             }
         },
+        "/api/v2/notifications": {
+            "get": {
+                "summary": "Get all grouped notifications",
+                "description": "Return grouped notifications concerning the user. This API returns Link headers containing links to the next/previous page. However, the links can also be constructed dynamically using query params and `id` values.\n\nNotifications from accounts the user blocks, or mutes with their notifications, and about statuses they may no longer see, are left out, and not counted. `reaction` notifications are grouped by status too, when `grouped_types` has `reaction`, and a `reaction` group has its emojis.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/grouped_notifications/#get-grouped"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types to include in the result."
+                        }
+                    },
+                    {
+                        "name": "exclude_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types to exclude from the results."
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only notifications received from the specified account."
+                        }
+                    },
+                    {
+                        "name": "expand_accounts",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": "full",
+                            "type": "string",
+                            "enum": [
+                                "full",
+                                "partial_avatars"
+                            ],
+                            "description": "When `partial_avatars`, the accounts of each group but its most recent are in `partial_accounts`, stripped down."
+                        }
+                    },
+                    {
+                        "name": "grouped_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Restrict which notification types can be grouped."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GroupedNotificationsResults"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/notifications/clear": {
             "post": {
                 "summary": "Dismiss all notifications",
@@ -9705,6 +9869,40 @@
                     "verified_at"
                 ]
             },
+            "GroupedNotificationsResults": {
+                "type": "object",
+                "properties": {
+                    "accounts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Account"
+                        }
+                    },
+                    "partial_accounts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PartialAccountWithAvatar"
+                        }
+                    },
+                    "statuses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Status"
+                        }
+                    },
+                    "notification_groups": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/NotificationGroup"
+                        }
+                    }
+                },
+                "required": [
+                    "accounts",
+                    "statuses",
+                    "notification_groups"
+                ]
+            },
             "Instance": {
                 "type": "object",
                 "properties": {
@@ -10666,6 +10864,58 @@
                     "account"
                 ]
             },
+            "NotificationGroup": {
+                "type": "object",
+                "properties": {
+                    "group_key": {
+                        "type": "string"
+                    },
+                    "notifications_count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/NotificationType"
+                    },
+                    "most_recent_notification_id": {
+                        "type": "string"
+                    },
+                    "page_min_id": {
+                        "type": "string"
+                    },
+                    "page_max_id": {
+                        "type": "string"
+                    },
+                    "latest_page_notification_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "sample_account_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "status_id": {
+                        "type": "string"
+                    },
+                    "emojis": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ReactionEmoji"
+                        }
+                    }
+                },
+                "required": [
+                    "group_key",
+                    "notifications_count",
+                    "type",
+                    "most_recent_notification_id",
+                    "sample_account_ids"
+                ]
+            },
             "NotificationType": {
                 "type": "string",
                 "enum": [
@@ -10758,6 +11008,51 @@
                     "grant_types_supported",
                     "token_endpoint_auth_methods_supported",
                     "code_challenge_methods_supported"
+                ]
+            },
+            "PartialAccountWithAvatar": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "acct": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "avatar": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "avatar_static": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "locked": {
+                        "type": "boolean"
+                    },
+                    "bot": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "acct",
+                    "url",
+                    "avatar",
+                    "avatar_static",
+                    "locked",
+                    "bot"
                 ]
             },
             "PreviewCard": {
@@ -10935,6 +11230,29 @@
                     "automatic",
                     "manual",
                     "current_user"
+                ]
+            },
+            "ReactionEmoji": {
+                "type": "object",
+                "properties": {
+                    "emoji": {
+                        "type": "string"
+                    },
+                    "emoji_url": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "emoji",
+                    "emoji_url"
                 ]
             },
             "Relationship": {

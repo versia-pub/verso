@@ -1,16 +1,17 @@
-import { Notification } from "@versia/client-api";
+import { GroupedNotificationsResults, Notification } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
-import { defineRoute, Paged, type Route } from "../http/route.ts";
+import { defineRoute, Linked, Paged, type Route } from "../http/route.ts";
 import {
     deleteNotification,
     deleteNotificationsOf,
     findNotification,
+    notificationGroupPage,
     notificationPage,
 } from "./notification_queries.ts";
-import { renderNotifications, shownTo } from "./render.ts";
-import { isNotificationType } from "./tables.ts";
+import { renderNotificationGroups, renderNotifications, shownTo } from "./render.ts";
+import { isNotificationType, type NotificationType } from "./tables.ts";
 
 /** `types[]=a&types[]=b`, or a single `types=a`. */
 const Strings = z.union([z.string().transform((one) => [one]), z.array(z.string())]);
@@ -23,7 +24,19 @@ const Types = (description: string) =>
     Strings.transform((types) => types.filter(isNotificationType)).optional()
         .meta({ description });
 
+/** Mastodon's: reactions are grouped only when a client asks. */
+const groupedByDefault: readonly NotificationType[] = ["favourite", "follow", "reblog"];
+
+/**
+ * The types to group, or Mastodon's by default. Types Verso doesn't group, such as `mention`, have
+ * no groups anyway, and those it doesn't have, such as `poll`, are left out, so asking for only
+ * `poll` groups none, as on Mastodon.
+ */
+const GroupedTypes = Types("Restrict which notification types can be grouped.")
+    .transform((types): readonly NotificationType[] => types ?? groupedByDefault);
+
 const docs = "https://docs.joinmastodon.org/methods/notifications";
+const groupedDocs = "https://docs.joinmastodon.org/methods/grouped_notifications";
 
 export const notificationRoutes: readonly Route[] = [
     defineRoute({
@@ -59,6 +72,56 @@ export const notificationRoutes: readonly Route[] = [
             return {
                 status: 200,
                 body: await renderNotifications(ctx, rows, viewer.accountId),
+                cursors: cursorsOf(rows, query, (row) => row.id),
+            };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v2/notifications",
+        summary: "Get all grouped notifications",
+        description: "Return grouped notifications concerning the user. This API returns Link " +
+            "headers containing links to the next/previous page. However, the links can also " +
+            "be constructed dynamically using query params and `id` values.\n\nNotifications " +
+            "from accounts the user blocks, or mutes with their notifications, and about " +
+            "statuses they may no longer see, are left out, and not counted. `reaction` " +
+            "notifications are grouped by status too, when `grouped_types` has `reaction`, and " +
+            "a `reaction` group has its emojis.",
+        docs: `${groupedDocs}/#get-grouped`,
+        tags: ["notifications"],
+        auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },
+        query: PageQuery({ default: 40, max: 80 }).extend({
+            types: Types("Types to include in the result."),
+            exclude_types: Types("Types to exclude from the results."),
+            account_id: z.string().optional().meta({
+                description: "Return only notifications received from the specified account.",
+            }),
+            expand_accounts: z.enum(["full", "partial_avatars"]).default("full").meta({
+                description: "When `partial_avatars`, the accounts of each group but its most " +
+                    "recent are in `partial_accounts`, stripped down.",
+            }),
+            grouped_types: GroupedTypes,
+        }),
+        responses: { 200: Linked(GroupedNotificationsResults) },
+        handler: async (ctx, { query, viewer }) => {
+            const rows = await notificationGroupPage(
+                ctx,
+                viewer.accountId,
+                shownTo(ctx, viewer.accountId),
+                { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
+                query.grouped_types,
+                query,
+            );
+
+            return {
+                status: 200,
+                body: await renderNotificationGroups(
+                    ctx,
+                    rows,
+                    query.grouped_types,
+                    viewer.accountId,
+                    query.expand_accounts === "partial_avatars",
+                ),
                 cursors: cursorsOf(rows, query, (row) => row.id),
             };
         },

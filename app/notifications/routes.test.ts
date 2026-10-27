@@ -25,6 +25,26 @@ type Shown = {
     emoji_url?: string | null;
 };
 
+type Group = {
+    group_key: string;
+    notifications_count: number;
+    type: string;
+    most_recent_notification_id: string;
+    page_min_id: string;
+    page_max_id: string;
+    latest_page_notification_at: string;
+    sample_account_ids: string[];
+    status_id?: string;
+    emojis?: { emoji: string; emoji_url: string | null }[];
+};
+
+type Grouped = {
+    accounts: { id: string }[];
+    partial_accounts?: Record<string, unknown>[];
+    statuses: { id: string }[];
+    notification_groups: Group[];
+};
+
 const open = async () => {
     const test = await createTestContext();
     const app = createTestApp(test.ctx, notificationRoutes, { checkResponses: true });
@@ -71,7 +91,22 @@ const open = async () => {
         return note;
     };
 
-    return { ...test, request, list, post };
+    /** alice's notification groups at `query`, each as its key, count and sampled accounts. */
+    const groups = async (query = "") => {
+        const { status, body } = await request("GET", `/api/v2/notifications${query}`);
+        assertEquals(status, 200);
+
+        return (body as Grouped).notification_groups.map((group) =>
+            [group.group_key, group.notifications_count, group.sample_account_ids.join(",")]
+                .join(" ")
+        );
+    };
+
+    /** The ids of alice's notifications, newest first. */
+    const ids = async () =>
+        ((await request("GET", "/api/v1/notifications")).body as Shown[]).map((each) => each.id);
+
+    return { ...test, request, list, post, groups, ids };
 };
 
 Deno.test("notifications are listed newest first, with who caused them and the status", async () => {
@@ -220,4 +255,182 @@ Deno.test("reading notifications takes read:notifications, and dismissing them w
         (await test.request("POST", "/api/v1/notifications/clear", writing)).status,
         403,
     );
+});
+
+Deno.test("grouped notifications have a group each, with its accounts and status", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    await like(test.ctx, "bob", own.id);
+    await like(test.ctx, "carol", own.id);
+    await follow(test.ctx, "dave", "alice");
+    const mention = await test.post("bob", "Hi @alice");
+    const [mentioned, followed, carolLiked] = await test.ids();
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+
+    const { body } = await test.request("GET", "/api/v2/notifications");
+    const grouped = body as Grouped;
+    assertEquals(grouped.notification_groups, [
+        {
+            group_key: `ungrouped-${mentioned}`,
+            notifications_count: 1,
+            type: "mention",
+            most_recent_notification_id: mentioned ?? "",
+            page_min_id: mentioned ?? "",
+            page_max_id: mentioned ?? "",
+            latest_page_notification_at: test.clock.now().toISOString(),
+            sample_account_ids: ["bob"],
+            status_id: mention.id,
+        },
+        {
+            group_key: `follow--${hour}`,
+            notifications_count: 1,
+            type: "follow",
+            most_recent_notification_id: followed ?? "",
+            page_min_id: followed ?? "",
+            page_max_id: followed ?? "",
+            latest_page_notification_at: test.clock.now().toISOString(),
+            sample_account_ids: ["dave"],
+        },
+        {
+            group_key: `favourite-${own.id}-${hour}`,
+            notifications_count: 2,
+            type: "favourite",
+            most_recent_notification_id: carolLiked ?? "",
+            // bob's is older than the page, which ends at the newest of its last group.
+            page_min_id: carolLiked ?? "",
+            page_max_id: carolLiked ?? "",
+            latest_page_notification_at: test.clock.now().toISOString(),
+            sample_account_ids: ["carol", "bob"],
+            status_id: own.id,
+        },
+    ]);
+    assertEquals(grouped.accounts.map((account) => account.id), ["bob", "dave", "carol"]);
+    assertEquals(grouped.statuses.map((status) => status.id), [mention.id, own.id]);
+    assertEquals(grouped.partial_accounts, undefined);
+});
+
+Deno.test("with partial_avatars, only each group's newest account is in full", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    await like(test.ctx, "bob", own.id);
+    await like(test.ctx, "carol", own.id);
+    await follow(test.ctx, "dave", "alice");
+
+    const { body } = await test.request(
+        "GET",
+        "/api/v2/notifications?expand_accounts=partial_avatars",
+    );
+    const grouped = body as Grouped;
+    assertEquals(grouped.accounts.map((account) => account.id), ["dave", "carol"]);
+    assertEquals(grouped.partial_accounts?.map((account) => Object.keys(account).sort()), [
+        ["acct", "avatar", "avatar_static", "bot", "id", "locked", "url"],
+    ]);
+    assertEquals(grouped.partial_accounts?.[0]?.id, "bob");
+
+    const full = (await test.request("GET", "/api/v2/notifications")).body as Grouped;
+    assertEquals(full.accounts.map((account) => account.id), ["dave", "carol", "bob"]);
+
+    const asked = await test.request("GET", "/api/v2/notifications?expand_accounts=some");
+    assertEquals(asked.status, 422);
+});
+
+Deno.test("only the types in grouped_types are grouped, and reactions only when asked", async () => {
+    await using test = await open();
+    await createLocalEmoji(test.ctx, "blob");
+    const own = await test.post("alice", "Hi");
+    await like(test.ctx, "bob", own.id);
+    await like(test.ctx, "carol", own.id);
+    await react(test.ctx, "bob", own.id, "🎉");
+    await react(test.ctx, "bob", own.id, ":blob:");
+    await react(test.ctx, "carol", own.id, "🎉");
+    const [carolReacted, blobbed, bobReacted, carolLiked, bobLiked] = await test.ids();
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+    const liked = `favourite-${own.id}-${hour} 2 carol,bob`;
+
+    assertEquals(await test.groups(), [
+        `ungrouped-${carolReacted} 1 carol`,
+        `ungrouped-${blobbed} 1 bob`,
+        `ungrouped-${bobReacted} 1 bob`,
+        liked,
+    ]);
+    assertEquals(await test.groups("?grouped_types[]=favourite&grouped_types[]=reaction"), [
+        `reaction-${own.id}-${hour} 3 carol,bob`,
+        liked,
+    ]);
+
+    const ungrouped = [`ungrouped-${carolLiked} 1 carol`, `ungrouped-${bobLiked} 1 bob`];
+    assertEquals((await test.groups("?grouped_types[]=reaction")).slice(1), ungrouped);
+    assertEquals((await test.groups("?grouped_types[]=poll")).slice(3), ungrouped);
+
+    const { body } = await test.request("GET", "/api/v2/notifications?grouped_types[]=reaction");
+    const [reacted] = (body as Grouped).notification_groups;
+    assertEquals(reacted?.status_id, own.id);
+    assertEquals((body as Grouped).statuses.map((status) => status.id), [own.id]);
+    assertEquals(reacted?.emojis, [
+        { emoji: "🎉", emoji_url: null },
+        { emoji: ":blob:", emoji_url: "https://social.example/media/emoji-blob" },
+    ]);
+
+    const each = (await test.request("GET", "/api/v2/notifications")).body as Grouped;
+    assertEquals(each.notification_groups[1]?.emojis, [
+        { emoji: ":blob:", emoji_url: "https://social.example/media/emoji-blob" },
+    ]);
+    assertEquals(each.notification_groups[3]?.emojis, undefined);
+});
+
+Deno.test("grouped notifications are paged by group, filtered, and leave out hidden accounts", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    for (const id of ["bob", "carol", "dave"]) {
+        await like(test.ctx, id, own.id);
+        test.clock.advance(1000);
+    }
+    await follow(test.ctx, "bob", "alice");
+    const [followed, daveLiked, , bobLiked] = await test.ids();
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+    const liked = `favourite-${own.id}-${hour}`;
+
+    const first = await test.request("GET", "/api/v2/notifications?limit=1");
+    assertStringIncludes(first.link ?? "", `max_id=${followed}>; rel="next"`);
+    assertStringIncludes(first.link ?? "", `min_id=${followed}>; rel="prev"`);
+    assertEquals(await test.groups(`?max_id=${followed}`), [`${liked} 3 dave,carol,bob`]);
+    assertEquals(await test.groups(`?max_id=${daveLiked}`), [`${liked} 2 carol,bob`]);
+
+    // Counted up to the page's newest, but from its oldest in the page.
+    const { body } = await test.request("GET", `/api/v2/notifications?since_id=${bobLiked}`);
+    const [, group] = (body as Grouped).notification_groups;
+    assertEquals([group?.notifications_count, group?.page_min_id], [3, daveLiked]);
+
+    // After min_id, a group is found as its oldest, but shows its newest up to the page's.
+    const after = await test.request("GET", "/api/v2/notifications?min_id=0&limit=2");
+    const [, oldest] = (after.body as Grouped).notification_groups;
+    assertEquals(
+        [oldest?.most_recent_notification_id, oldest?.page_max_id, oldest?.page_min_id],
+        [daveLiked, daveLiked, bobLiked],
+    );
+    assertEquals(
+        oldest?.latest_page_notification_at,
+        new Date(test.clock.now().getTime() - 1000).toISOString(),
+    );
+
+    assertEquals(await test.groups("?types[]=follow"), [`follow--${hour} 1 bob`]);
+    // Counted up to carol's, the page's newest.
+    assertEquals(await test.groups("?exclude_types[]=follow&account_id=carol"), [
+        `${liked} 2 carol,bob`,
+    ]);
+
+    await block(test.ctx, "alice", "carol");
+    assertEquals(await test.groups("?types[]=favourite"), [`${liked} 2 dave,bob`]);
+});
+
+Deno.test("grouped notifications take read:notifications", async () => {
+    await using test = await open();
+    const reading = { scopes: ["read:statuses" as const] };
+
+    assertEquals((await test.request("GET", "/api/v2/notifications", reading)).status, 403);
+    assertEquals((await test.request("GET", "/api/v2/notifications")).body, {
+        accounts: [],
+        statuses: [],
+        notification_groups: [],
+    });
 });
