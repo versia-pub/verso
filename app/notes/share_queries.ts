@@ -53,6 +53,14 @@ export const uncountSharersOfAmong = (ctx: Context, notes: NoteIdQuery): Promise
             .where("notes.visibility", "!=", "direct"),
     );
 
+/** The local users who boosted `noteId`. */
+export const localSharerIds = async (ctx: Context, noteId: string): Promise<string[]> =>
+    (await ctx.db.selectFrom("notes").select("account_id")
+        .where("reblog_of_id", "=", noteId)
+        .where("instance_id", "is", null)
+        .execute())
+        .map((row) => row.account_id);
+
 /** An account's boost of a status, if it boosts it. */
 export const findShare = async (
     ctx: Context,

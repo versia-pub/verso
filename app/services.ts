@@ -17,6 +17,7 @@ import type { Federation, Subscriber } from "./kernel/context.ts";
 import { domainBlocks } from "./moderation/domain_blocks.ts";
 import { blockedDomainNames } from "./moderation/domain_block_queries.ts";
 import { noteDeliveries } from "./notes/federation.ts";
+import { notifyOf } from "./notifications/notifications.ts";
 import { uncountNotesOf } from "./notes/removal.ts";
 import { registry } from "./registry.ts";
 
@@ -38,6 +39,7 @@ export const subscribers: readonly Subscriber[] = [
     shareDeliveries,
     reactionDeliveries,
     undoReactionsWithDeletedEmoji,
+    notifyOf,
     uncountFollowsOf,
     uncountNotesOf,
     uncountLikesOf,

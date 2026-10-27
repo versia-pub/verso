@@ -31,6 +31,7 @@ import type {
     RemoteNoteTotalsTable,
 } from "../notes/tables.ts";
 import type { DomainBlocksTable } from "../moderation/tables.ts";
+import type { NotificationsTable } from "../notifications/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
 import { sqliteDialect } from "./sqlite.ts";
@@ -63,6 +64,7 @@ export type Database = {
     note_tags: NoteTagsTable;
     note_versions: NoteVersionsTable;
     notes: NotesTable;
+    notifications: NotificationsTable;
     oauth_flows: OAuthFlowsTable;
     rate_limits: RateLimitsTable;
     reactions: ReactionsTable;

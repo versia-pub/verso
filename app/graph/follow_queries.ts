@@ -198,6 +198,16 @@ export const anyListed = async (
     await listed(ctx, list, accountId).select("id").limit(1).executeTakeFirst() !== undefined;
 
 /**
+ * The followers of `accountId` who are notified when it posts. Only local users can ask to be, so
+ * they are all local.
+ */
+export const notifiedFollowerIds = async (ctx: Context, accountId: string): Promise<string[]> =>
+    (await listed(ctx, "followers", accountId).select("follower_id")
+        .where("notify", "=", true)
+        .execute())
+        .map((row) => row.follower_id);
+
+/**
  * The remote instances an account's followers are on. This is the one query here that reads another
  * module's table: an account can have more followers than a query can name, so their instances are
  * found by joining their accounts, rather than by listing them.
