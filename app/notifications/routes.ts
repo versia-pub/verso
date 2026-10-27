@@ -5,7 +5,10 @@ import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Linked, Paged, type Route } from "../http/route.ts";
 import { Strings } from "../http/schemas.ts";
+import type { Context } from "../kernel/context.ts";
+import { markersOf } from "../markers/marker_queries.ts";
 import {
+    countNotifications,
     deleteGroup,
     deleteNotification,
     deleteNotificationsOf,
@@ -36,6 +39,33 @@ const groupedByDefault: readonly NotificationType[] = ["favourite", "follow", "r
  */
 const GroupedTypes = Types("Restrict which notification types can be grouped.")
     .transform((types): readonly NotificationType[] => types ?? groupedByDefault);
+
+/** How many unread notifications to count up to, as on Mastodon. */
+const CountQuery = PageQuery({ default: 100, max: 1000 }).pick({ limit: true });
+
+/** Which unread notifications to count. */
+const countFilters = {
+    types: Types("Types of notifications that should count towards unread notifications."),
+    exclude_types: Types(
+        "Types of notifications that should not count towards unread notifications.",
+    ),
+    account_id: z.string().optional().meta({
+        description: "Only count unread notifications received from the specified account.",
+    }),
+};
+
+/** What `accountId` last read of their notifications, if they saved where. */
+const lastReadOf = async (ctx: Context, accountId: string) =>
+    (await markersOf(ctx, accountId, ["notifications"])).at(0)?.last_read_id;
+
+/** A count of unread notifications, or groups. */
+const Count = z.object({ count: z.int() });
+
+const unreadDescription = "A notification is considered unread if it is more recent than the " +
+    "notifications read marker.\n\nBecause the count is dependent on the parameters, it is " +
+    "computed every time and is thus a relatively slow operation (although faster than getting " +
+    "the full corresponding notifications), therefore the number of returned notifications is " +
+    "capped.";
 
 const docs = "https://docs.joinmastodon.org/methods/notifications";
 const groupedDocs = "https://docs.joinmastodon.org/methods/grouped_notifications";
@@ -130,6 +160,30 @@ export const notificationRoutes: readonly Route[] = [
     }),
     defineRoute({
         method: "GET",
+        path: "/api/v2/notifications/unread_count",
+        summary: "Get the number of unread notifications",
+        description: "Get the (capped) number of unread notification groups for the current " +
+            `user.\n\n${unreadDescription}`,
+        docs: `${groupedDocs}/#unread-group-count`,
+        tags: ["notifications"],
+        auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },
+        query: CountQuery.extend({ ...countFilters, grouped_types: GroupedTypes }),
+        responses: { 200: Count },
+        handler: async (ctx, { query, viewer }) => {
+            const groups = await notificationGroupPage(
+                ctx,
+                viewer.accountId,
+                shownTo(ctx, viewer.accountId),
+                { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
+                query.grouped_types,
+                { min_id: await lastReadOf(ctx, viewer.accountId), limit: query.limit },
+            );
+
+            return { status: 200, body: { count: groups.length } };
+        },
+    }),
+    defineRoute({
+        method: "GET",
         path: "/api/v2/notifications/:group_key",
         summary: "Get a single notification group",
         description: "View information about a specific notification group with a given group " +
@@ -213,6 +267,30 @@ export const notificationRoutes: readonly Route[] = [
         handler: async (ctx, { viewer }) => {
             await deleteNotificationsOf(ctx, viewer.accountId);
             return { status: 200, body: {} };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/notifications/unread_count",
+        summary: "Get the number of unread notifications",
+        description:
+            `Get the (capped) number of unread notifications for the current user.\n\n${unreadDescription}`,
+        docs: `${docs}/#unread-count`,
+        tags: ["notifications"],
+        auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },
+        query: CountQuery.extend(countFilters),
+        responses: { 200: Count },
+        handler: async (ctx, { query, viewer }) => {
+            const count = await countNotifications(
+                ctx,
+                viewer.accountId,
+                shownTo(ctx, viewer.accountId),
+                { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
+                await lastReadOf(ctx, viewer.accountId),
+                query.limit,
+            );
+
+            return { status: 200, body: { count } };
         },
     }),
     defineRoute({

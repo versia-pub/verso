@@ -115,6 +115,29 @@ export const notificationPage = async (
 };
 
 /**
+ * How many of the notifications of `accountId` that {@link shownTo} and `filter` allow are newer
+ * than `after`, if given, counting up to `limit`.
+ */
+export const countNotifications = async (
+    ctx: Context,
+    accountId: string,
+    shown: Shown,
+    filter: NotificationFilter,
+    after: string | undefined,
+    limit: number,
+): Promise<number> => {
+    if (filter.types?.length === 0) return 0;
+
+    let query = filtered(ctx, accountId, shown, filter);
+    if (after !== undefined) query = query.where("notifications.id", ">", after);
+
+    const { count } = await ctx.db.selectFrom(query.limit(limit).as("counted"))
+        .select((eb) => eb.fn.countAll<number | string | bigint>().as("count"))
+        .executeTakeFirstOrThrow();
+    return Number(count);
+};
+
+/**
  * The group a notification is in when only the types `grouped` are grouped: its stored one, or
  * else a group of its own.
  */

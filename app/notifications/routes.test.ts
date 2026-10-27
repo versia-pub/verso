@@ -10,6 +10,7 @@ import { createInstance } from "../instances/testing.ts";
 import { like } from "../interactions/likes.ts";
 import { react } from "../interactions/reactions.ts";
 import type { Scope } from "../kernel/scopes.ts";
+import { setMarker } from "../markers/marker_queries.ts";
 import { postNote } from "../notes/notes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -588,4 +589,69 @@ Deno.test("dismissing a group deletes its notifications, and no one else's", asy
     assertEquals(await test.list(), []);
     assertEquals((await test.request("GET", "/api/v1/notifications", { as: "bob" })).body, []);
     assertEquals((await dismiss("nothing")).status, 200);
+});
+
+Deno.test("unread notifications, or groups, are those newer than the notifications marker", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    await like(test.ctx, "bob", own.id);
+    await like(test.ctx, "carol", own.id);
+    await follow(test.ctx, "dave", "alice");
+    await test.post("bob", "Hi @alice");
+    const [mentioned, followed, , bobLiked] = await test.ids();
+    const counts = async (query = "") =>
+        await Promise.all(["v1", "v2"].map(async (version) => {
+            const path = `/api/${version}/notifications/unread_count${query}`;
+            const { status, body } = await test.request("GET", path);
+            assertEquals(status, 200);
+            return body.count;
+        }));
+
+    assertEquals(await counts(), [4, 3]);
+    assertEquals(await counts("?limit=2"), [2, 2]);
+
+    await setMarker(test.ctx, "alice", "notifications", bobLiked ?? "");
+    assertEquals(await counts(), [3, 3]);
+    await setMarker(test.ctx, "alice", "notifications", followed ?? "");
+    assertEquals(await counts(), [1, 1]);
+    await setMarker(test.ctx, "alice", "home", mentioned ?? "");
+    assertEquals(await counts(), [1, 1]);
+    await setMarker(test.ctx, "bob", "notifications", mentioned ?? "");
+    assertEquals(await counts(), [1, 1]);
+});
+
+Deno.test("unread notifications are counted as filtered, leaving out hidden accounts", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    await like(test.ctx, "bob", own.id);
+    await like(test.ctx, "carol", own.id);
+    await follow(test.ctx, "dave", "alice");
+    await test.post("bob", "Hi @alice");
+    const counts = async (query: string) =>
+        await Promise.all(
+            ["v1", "v2"].map(async (version) =>
+                (await test.request("GET", `/api/${version}/notifications/unread_count${query}`))
+                    .body.count
+            ),
+        );
+
+    assertEquals(await counts("?types[]=favourite"), [2, 1]);
+    assertEquals(await counts("?types[]=poll"), [0, 0]);
+    assertEquals(await counts("?exclude_types[]=favourite"), [2, 2]);
+    assertEquals(await counts("?account_id=bob"), [2, 2]);
+    assertEquals(await counts("?grouped_types[]=follow"), [4, 4]);
+
+    await block(test.ctx, "alice", "bob");
+    assertEquals(await counts("?limit=1000"), [2, 2]);
+});
+
+Deno.test("counting unread notifications takes read:notifications", async () => {
+    await using test = await open();
+    const reading = { scopes: ["read:statuses" as const] };
+
+    for (const version of ["v1", "v2"]) {
+        const path = `/api/${version}/notifications/unread_count`;
+        assertEquals((await test.request("GET", path, reading)).status, 403);
+        assertEquals((await test.request("GET", path)).body, { count: 0 });
+    }
 });

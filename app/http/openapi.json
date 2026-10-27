@@ -5032,6 +5032,133 @@
                 }
             }
         },
+        "/api/v2/notifications/unread_count": {
+            "get": {
+                "summary": "Get the number of unread notifications",
+                "description": "Get the (capped) number of unread notification groups for the current user.\n\nA notification is considered unread if it is more recent than the notifications read marker.\n\nBecause the count is dependent on the parameters, it is computed every time and is thus a relatively slow operation (although faster than getting the full corresponding notifications), therefore the number of returned notifications is capped.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/grouped_notifications/#unread-group-count"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that should count towards unread notifications."
+                        }
+                    },
+                    {
+                        "name": "exclude_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that should not count towards unread notifications."
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Only count unread notifications received from the specified account."
+                        }
+                    },
+                    {
+                        "name": "grouped_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Restrict which notification types can be grouped."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "count": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                        }
+                                    },
+                                    "required": [
+                                        "count"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/notifications/{group_key}": {
             "get": {
                 "summary": "Get a single notification group",
@@ -5235,6 +5362,114 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/unread_count": {
+            "get": {
+                "summary": "Get the number of unread notifications",
+                "description": "Get the (capped) number of unread notifications for the current user.\n\nA notification is considered unread if it is more recent than the notifications read marker.\n\nBecause the count is dependent on the parameters, it is computed every time and is thus a relatively slow operation (although faster than getting the full corresponding notifications), therefore the number of returned notifications is capped.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#unread-count"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that should count towards unread notifications."
+                        }
+                    },
+                    {
+                        "name": "exclude_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that should not count towards unread notifications."
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Only count unread notifications received from the specified account."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "count": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                        }
+                                    },
+                                    "required": [
+                                        "count"
+                                    ]
                                 }
                             }
                         }
