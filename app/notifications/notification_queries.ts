@@ -1,5 +1,6 @@
-import type { Insertable, Selectable } from "kysely";
+import type { ExpressionBuilder, Insertable, Selectable } from "kysely";
 import { batchesOf } from "../db/batches.ts";
+import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, type Filter, notExcluded } from "../graph/excluded_queries.ts";
 import type { Context } from "../kernel/context.ts";
@@ -283,6 +284,70 @@ export const groupStatsOf = async (
             }]]
         ),
     );
+};
+
+/** Where a group's key is `ungrouped-<id>`, for a notification on its own. */
+const ungrouped = "ungrouped-";
+
+/**
+ * Whether a notification is in the group `key`: has it as its stored key, or is the notification
+ * that `ungrouped-<id>` names, even if it has a key, as when its type wasn't asked to be grouped.
+ */
+const inGroup = (key: string) => (eb: ExpressionBuilder<Database, "notifications">) =>
+    key.startsWith(ungrouped)
+        ? eb("notifications.id", "=", key.slice(ungrouped.length))
+        : eb("notifications.group_key", "=", key);
+
+/** The newest notification of `accountId`'s group `key` that {@link shownTo} allows, if any. */
+export const findGroupNotification = async (
+    ctx: Context,
+    accountId: string,
+    key: string,
+    shown: Shown,
+): Promise<NotificationRow | undefined> =>
+    await shownTo(ctx, accountId, shown).selectAll()
+        .where(inGroup(key))
+        .orderBy("notifications.id", "desc")
+        .limit(1)
+        .executeTakeFirst();
+
+/**
+ * A page of the notifications of `accountId`'s group `key` that {@link shownTo} allows, newest
+ * first, as the newest of each account's, so that each account is on one page once.
+ */
+export const groupAccountPage = async (
+    ctx: Context,
+    accountId: string,
+    key: string,
+    shown: Shown,
+    page: PageBounds,
+): Promise<Pick<NotificationRow, "id" | "from_account_id">[]> => {
+    let query = shownTo(ctx, accountId, shown)
+        .select(["notifications.id", "notifications.from_account_id"])
+        .where(inGroup(key));
+
+    // A notification on its own is the only one of its group.
+    if (!key.startsWith(ungrouped)) {
+        query = query.where((eb) =>
+            eb.not(eb.exists(
+                eb.selectFrom("notifications as newer").select("newer.id")
+                    .where("newer.account_id", "=", accountId)
+                    .where("newer.group_key", "=", key)
+                    .where("newer.from_account_id", "=", eb.ref("notifications.from_account_id"))
+                    .where("newer.id", ">", eb.ref("notifications.id")),
+            ))
+        );
+    }
+
+    return await readPage(query, "notifications.id", page);
+};
+
+/** Deletes the notifications of `accountId`'s group `key`. */
+export const deleteGroup = async (ctx: Context, accountId: string, key: string): Promise<void> => {
+    await ctx.db.deleteFrom("notifications")
+        .where("account_id", "=", accountId)
+        .where(inGroup(key))
+        .execute();
 };
 
 /** The notification `id` of `accountId`, if {@link shownTo} allows it. */

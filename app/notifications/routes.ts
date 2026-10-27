@@ -1,12 +1,16 @@
-import { GroupedNotificationsResults, Notification } from "@versia/client-api";
+import { Account, GroupedNotificationsResults, Notification } from "@versia/client-api";
 import { z } from "zod";
+import { publicAccounts } from "../accounts/public.ts";
 import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Linked, Paged, type Route } from "../http/route.ts";
 import {
+    deleteGroup,
     deleteNotification,
     deleteNotificationsOf,
+    findGroupNotification,
     findNotification,
+    groupAccountPage,
     notificationGroupPage,
     notificationPage,
 } from "./notification_queries.ts";
@@ -120,10 +124,83 @@ export const notificationRoutes: readonly Route[] = [
                     rows,
                     query.grouped_types,
                     viewer.accountId,
-                    query.expand_accounts === "partial_avatars",
+                    { partial: query.expand_accounts === "partial_avatars", paged: true },
                 ),
                 cursors: cursorsOf(rows, query, (row) => row.id),
             };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v2/notifications/:group_key",
+        summary: "Get a single notification group",
+        description: "View information about a specific notification group with a given group " +
+            "key.\n\nIt is counted and sampled as a whole, leaving out notifications from " +
+            "accounts the user blocks, or mutes with their notifications.",
+        docs: `${groupedDocs}/#get-notification-group`,
+        tags: ["notifications"],
+        auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },
+        params: z.object({ group_key: z.string() }),
+        responses: { 200: GroupedNotificationsResults },
+        handler: async (ctx, { params, viewer }) => {
+            const key = params.group_key;
+            const shown = shownTo(ctx, viewer.accountId);
+            const row = await findGroupNotification(ctx, viewer.accountId, key, shown);
+            if (row === undefined) throw new NotFound();
+
+            // Grouped whatever its type, unless the key names it on its own.
+            const grouped = row.group_key === key ? [row.type] : [];
+            return {
+                status: 200,
+                body: await renderNotificationGroups(ctx, [row], grouped, viewer.accountId, {
+                    partial: false,
+                    paged: false,
+                }),
+            };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v2/notifications/:group_key/accounts",
+        summary: "Get accounts of all notifications in a notification group",
+        description: "The accounts that caused the notifications of a group, newest first, " +
+            "each once.",
+        docs: `${groupedDocs}/#get-group-accounts`,
+        tags: ["notifications"],
+        auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },
+        params: z.object({ group_key: z.string() }),
+        query: PageQuery({ default: 40, max: 80 }),
+        responses: { 200: Paged(Account) },
+        handler: async (ctx, { params, query, viewer }) => {
+            const shown = shownTo(ctx, viewer.accountId);
+            const rows = await groupAccountPage(
+                ctx,
+                viewer.accountId,
+                params.group_key,
+                shown,
+                query,
+            );
+
+            return {
+                status: 200,
+                body: await publicAccounts(ctx, rows.map((row) => row.from_account_id)),
+                cursors: cursorsOf(rows, query, (row) => row.id),
+            };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v2/notifications/:group_key/dismiss",
+        summary: "Dismiss a single notification group",
+        description: "Dismiss a single notification group from the server.",
+        docs: `${groupedDocs}/#dismiss-group`,
+        tags: ["notifications"],
+        auth: { require: "user", scope: "write:notifications", permission: "owner:notification" },
+        params: z.object({ group_key: z.string() }),
+        responses: { 200: z.object({}) },
+        handler: async (ctx, { params, viewer }) => {
+            await deleteGroup(ctx, viewer.accountId, params.group_key);
+            return { status: 200, body: {} };
         },
     }),
     defineRoute({

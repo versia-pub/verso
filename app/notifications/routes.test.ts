@@ -30,9 +30,9 @@ type Group = {
     notifications_count: number;
     type: string;
     most_recent_notification_id: string;
-    page_min_id: string;
-    page_max_id: string;
-    latest_page_notification_at: string;
+    page_min_id?: string;
+    page_max_id?: string;
+    latest_page_notification_at?: string;
     sample_account_ids: string[];
     status_id?: string;
     emojis?: { emoji: string; emoji_url: string | null }[];
@@ -255,6 +255,15 @@ Deno.test("reading notifications takes read:notifications, and dismissing them w
         (await test.request("POST", "/api/v1/notifications/clear", writing)).status,
         403,
     );
+    assertEquals(
+        (await test.request("POST", "/api/v2/notifications/a/dismiss", writing)).status,
+        403,
+    );
+    assertEquals((await test.request("GET", "/api/v2/notifications/a", reading)).status, 403);
+    assertEquals(
+        (await test.request("GET", "/api/v2/notifications/a/accounts", reading)).status,
+        403,
+    );
 });
 
 Deno.test("grouped notifications have a group each, with its accounts and status", async () => {
@@ -433,4 +442,150 @@ Deno.test("grouped notifications take read:notifications", async () => {
         statuses: [],
         notification_groups: [],
     });
+});
+
+Deno.test("a notification group is shown whole, without a page's ids", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    await like(test.ctx, "bob", own.id);
+    await like(test.ctx, "carol", own.id);
+    await react(test.ctx, "bob", own.id, "🎉");
+    const mention = await test.post("bob", "Hi @alice");
+    const [mentioned, reacted, carolLiked] = await test.ids();
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+    const show = (key: string) => test.request("GET", `/api/v2/notifications/${key}`);
+
+    const liked = await show(`favourite-${own.id}-${hour}`);
+    assertEquals(liked.status, 200);
+    const grouped = liked.body as Grouped;
+    assertEquals(grouped.accounts.map((account) => account.id), ["carol", "bob"]);
+    assertEquals(grouped.statuses.map((status) => status.id), [own.id]);
+    assertEquals(grouped, {
+        ...grouped,
+        notification_groups: [{
+            group_key: `favourite-${own.id}-${hour}`,
+            notifications_count: 2,
+            type: "favourite",
+            most_recent_notification_id: carolLiked,
+            sample_account_ids: ["carol", "bob"],
+            status_id: own.id,
+        }],
+    });
+
+    // Grouped, though reactions aren't unless asked, when it's the key that is asked for.
+    const [reaction] = (await show(`reaction-${own.id}-${hour}`)).body.notification_groups;
+    assertEquals([reaction.notifications_count, reaction.emojis], [1, [
+        { emoji: "🎉", emoji_url: null },
+    ]]);
+
+    const one = async (key: string) => {
+        const [group] = (await show(key)).body.notification_groups as Group[];
+        return [group?.group_key, group?.type, group?.notifications_count, group?.status_id];
+    };
+    assertEquals(await one(`ungrouped-${mentioned}`), [
+        `ungrouped-${mentioned}`,
+        "mention",
+        1,
+        mention.id,
+    ]);
+    assertEquals(await one(`ungrouped-${carolLiked}`), [
+        `ungrouped-${carolLiked}`,
+        "favourite",
+        1,
+        own.id,
+    ]);
+    assertEquals(await one(`ungrouped-${reacted}`), [
+        `ungrouped-${reacted}`,
+        "reaction",
+        1,
+        own.id,
+    ]);
+});
+
+Deno.test("a notification group is not found if it isn't the user's, or they're shown none of it", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    await like(test.ctx, "bob", own.id);
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+    const key = `favourite-${own.id}-${hour}`;
+    const [liked] = await test.ids();
+
+    assertEquals((await test.request("GET", "/api/v2/notifications/nothing")).status, 404);
+    assertEquals(
+        (await test.request("GET", `/api/v2/notifications/${key}`, { as: "bob" })).status,
+        404,
+    );
+    assertEquals(
+        (await test.request("GET", `/api/v2/notifications/ungrouped-${liked}`, { as: "bob" }))
+            .status,
+        404,
+    );
+
+    await block(test.ctx, "alice", "bob");
+    assertEquals((await test.request("GET", `/api/v2/notifications/${key}`)).status, 404);
+});
+
+Deno.test("a group's accounts are listed newest first, each once, a page at a time", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    await react(test.ctx, "bob", own.id, "🎉");
+    await react(test.ctx, "carol", own.id, "🎉");
+    await react(test.ctx, "dave", own.id, "🎉");
+    await react(test.ctx, "bob", own.id, "👍");
+    // Newer, but in another group.
+    await like(test.ctx, "bob", own.id);
+    const [, bobReacted, daveReacted] = await test.ids();
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+    const path = `/api/v2/notifications/reaction-${own.id}-${hour}/accounts`;
+    const ids = async (query = "") =>
+        ((await test.request("GET", `${path}${query}`)).body as { id: string }[])
+            .map((account) => account.id);
+
+    assertEquals(await ids(), ["bob", "dave", "carol"]);
+
+    const first = await test.request("GET", `${path}?limit=1`);
+    assertEquals(first.body.map((account: { id: string }) => account.id), ["bob"]);
+    assertStringIncludes(first.link ?? "", `max_id=${bobReacted}>; rel="next"`);
+    assertEquals(await ids(`?max_id=${daveReacted}`), ["carol"]);
+
+    await block(test.ctx, "alice", "dave");
+    assertEquals(await ids(), ["bob", "carol"]);
+
+    const one = `/api/v2/notifications/ungrouped-${bobReacted}/accounts`;
+    assertEquals((await test.request("GET", one)).body.map((a: { id: string }) => a.id), ["bob"]);
+    assertEquals((await test.request("GET", path, { as: "bob" })).body, []);
+
+    // carol's follow of bob is newer, and has the same key, but is bob's.
+    await follow(test.ctx, "carol", "alice");
+    await follow(test.ctx, "carol", "bob");
+    const followers = await test.request("GET", `/api/v2/notifications/follow--${hour}/accounts`);
+    assertEquals(followers.body.map((a: { id: string }) => a.id), ["carol"]);
+});
+
+Deno.test("dismissing a group deletes its notifications, and no one else's", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    await like(test.ctx, "bob", own.id);
+    await like(test.ctx, "carol", own.id);
+    await follow(test.ctx, "dave", "alice");
+    await follow(test.ctx, "dave", "bob");
+    const [followed] = await test.ids();
+    const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
+    const dismiss = (key: string, as?: string) =>
+        test.request("POST", `/api/v2/notifications/${key}/dismiss`, { as });
+
+    const dismissed = await dismiss(`favourite-${own.id}-${hour}`);
+    assertEquals([dismissed.status, dismissed.body], [200, {}]);
+    assertEquals(await test.list(), ["follow dave"]);
+
+    // bob's follow notification has the same key as alice's.
+    assertEquals((await dismiss(`ungrouped-${followed}`, "bob")).status, 200);
+    assertEquals(await test.list(), ["follow dave"]);
+    assertEquals((await dismiss(`follow--${hour}`, "bob")).status, 200);
+    assertEquals(await test.list(), ["follow dave"]);
+
+    assertEquals((await dismiss(`ungrouped-${followed}`)).status, 200);
+    assertEquals(await test.list(), []);
+    assertEquals((await test.request("GET", "/api/v1/notifications", { as: "bob" })).body, []);
+    assertEquals((await dismiss("nothing")).status, 200);
 });

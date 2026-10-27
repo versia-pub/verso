@@ -82,7 +82,8 @@ const partialAccount = (
  * The notification groups `rows`, a page of them as `notificationGroupPage` finds them, of
  * `viewerId`, in order, with the accounts that caused their notifications and the statuses they
  * are about. With `partial`, only each group's newest account is in full, and the others in part,
- * as Mastodon's `partial_avatars`.
+ * as Mastodon's `partial_avatars`. Without `paged`, they are whole groups rather than a page, so
+ * have no page's ids.
  * @see https://github.com/mastodon/mastodon/blob/v4.3.0/app/models/notification_group.rb
  */
 export const renderNotificationGroups = async (
@@ -90,8 +91,9 @@ export const renderNotificationGroups = async (
     rows: readonly NotificationRow[],
     grouped: readonly NotificationType[],
     viewerId: string,
-    partial: boolean,
+    options: { readonly partial: boolean; readonly paged: boolean },
 ): Promise<GroupedNotificationsResults> => {
+    const { partial, paged } = options;
     const newest = rows.at(0);
     const oldest = rows.at(-1);
     if (newest === undefined || oldest === undefined) {
@@ -150,9 +152,11 @@ export const renderNotificationGroups = async (
             notifications_count: group.count,
             type: group.row.type,
             most_recent_notification_id: latest.id,
-            page_min_id: group.pageMinId,
-            page_max_id: latest.id,
-            latest_page_notification_at: latest.created_at.toISOString(),
+            ...(paged && {
+                page_min_id: group.pageMinId,
+                page_max_id: latest.id,
+                latest_page_notification_at: latest.created_at.toISOString(),
+            }),
             sample_account_ids: group.samples.map((sample) => sample.from_account_id),
             ...(status && { status_id: status.id }),
             ...(group.row.type === "reaction" && { emojis: [...emojis.values()] }),
