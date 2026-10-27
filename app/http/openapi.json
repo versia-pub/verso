@@ -5325,6 +5325,191 @@
                 }
             }
         },
+        "/api/v1/markers": {
+            "get": {
+                "summary": "Get saved timeline positions",
+                "description": "Get current positions in timelines.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/markers/#get"
+                },
+                "tags": [
+                    "markers"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "timeline",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Specify the timeline(s) for which markers should be fetched. Possible values: `home`, `notifications`. If not provided, an empty object will be returned."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Markers"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Save your position in a timeline",
+                "description": "Save current position in timeline.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/markers/#create"
+                },
+                "tags": [
+                    "markers"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "home": {
+                                        "type": "object",
+                                        "properties": {
+                                            "last_read_id": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "description": "ID of the last status or notification read."
+                                            }
+                                        },
+                                        "required": [
+                                            "last_read_id"
+                                        ]
+                                    },
+                                    "notifications": {
+                                        "type": "object",
+                                        "properties": {
+                                            "last_read_id": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "description": "ID of the last status or notification read."
+                                            }
+                                        },
+                                        "required": [
+                                            "last_read_id"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "home": {
+                                        "type": "object",
+                                        "properties": {
+                                            "last_read_id": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "description": "ID of the last status or notification read."
+                                            }
+                                        },
+                                        "required": [
+                                            "last_read_id"
+                                        ]
+                                    },
+                                    "notifications": {
+                                        "type": "object",
+                                        "properties": {
+                                            "last_read_id": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "description": "ID of the last status or notification read."
+                                            }
+                                        },
+                                        "required": [
+                                            "last_read_id"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "home": {
+                                        "type": "object",
+                                        "properties": {
+                                            "last_read_id": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "description": "ID of the last status or notification read."
+                                            }
+                                        },
+                                        "required": [
+                                            "last_read_id"
+                                        ]
+                                    },
+                                    "notifications": {
+                                        "type": "object",
+                                        "properties": {
+                                            "last_read_id": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "description": "ID of the last status or notification read."
+                                            }
+                                        },
+                                        "required": [
+                                            "last_read_id"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Markers"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/media": {
             "post": {
                 "summary": "Upload media as an attachment (async)",
@@ -10625,6 +10810,40 @@
                     "contact",
                     "rules"
                 ]
+            },
+            "Marker": {
+                "type": "object",
+                "properties": {
+                    "last_read_id": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                },
+                "required": [
+                    "last_read_id",
+                    "version",
+                    "updated_at"
+                ]
+            },
+            "Markers": {
+                "type": "object",
+                "properties": {
+                    "home": {
+                        "$ref": "#/components/schemas/Marker"
+                    },
+                    "notifications": {
+                        "$ref": "#/components/schemas/Marker"
+                    }
+                }
             },
             "MediaAttachment": {
                 "type": "object",

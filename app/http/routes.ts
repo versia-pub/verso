@@ -6,6 +6,7 @@ import { emojiRoutes } from "../emojis/routes.ts";
 import { inboxRoute } from "../federation/inbox.ts";
 import { messagingRoute } from "../federation/messaging.ts";
 import { interactionRoutes } from "../interactions/routes.ts";
+import { markerRoutes } from "../markers/routes.ts";
 import { mediaRoutes } from "../media/routes.ts";
 import { entityRoutes } from "../federation/registry.ts";
 import { graphRoutes } from "../graph/routes.ts";
@@ -36,6 +37,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...interactionRoutes,
         ...timelineRoutes,
         ...notificationRoutes,
+        ...markerRoutes,
         ...mediaRoutes(settings.media, settings.limits),
         ...emojiRoutes(settings.media, settings.limits),
         ...roleRoutes,

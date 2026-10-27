@@ -4,6 +4,7 @@ import { publicAccounts } from "../accounts/public.ts";
 import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Linked, Paged, type Route } from "../http/route.ts";
+import { Strings } from "../http/schemas.ts";
 import {
     deleteGroup,
     deleteNotification,
@@ -16,9 +17,6 @@ import {
 } from "./notification_queries.ts";
 import { renderNotificationGroups, renderNotifications, shownTo } from "./render.ts";
 import { isNotificationType, type NotificationType } from "./tables.ts";
-
-/** `types[]=a&types[]=b`, or a single `types=a`. */
-const Strings = z.union([z.string().transform((one) => [one]), z.array(z.string())]);
 
 /**
  * Types of notifications, as clients name them. Those Verso doesn't have, such as `poll`, are left

@@ -19,3 +19,9 @@ export const Integer: z.ZodType<number, number | string> = z.union([
         z.int(),
     ),
 ]);
+
+/** A query's list, as `types[]=a&types[]=b`, or a single `types=a`. */
+export const Strings: z.ZodType<string[], string | string[]> = z.union([
+    z.string().transform((one) => [one]),
+    z.array(z.string()),
+]);

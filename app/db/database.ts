@@ -31,6 +31,7 @@ import type {
     RemoteNoteTotalsTable,
 } from "../notes/tables.ts";
 import type { DomainBlocksTable } from "../moderation/tables.ts";
+import type { MarkersTable } from "../markers/tables.ts";
 import type { NotificationsTable } from "../notifications/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
@@ -56,6 +57,7 @@ export type Database = {
     jobs: JobsTable;
     job_pauses: JobPausesTable;
     likes: LikesTable;
+    markers: MarkersTable;
     media: MediaTable;
     note_emojis: NoteEmojisTable;
     note_media: NoteMediaTable;
