@@ -1,9 +1,8 @@
 import type { Kysely } from "kysely";
 import type { Database } from "../db/database.ts";
-import { migrate } from "../db/migrate.ts";
 import { ensureInstanceKey } from "../instances/keys.ts";
 import { ensureVapidKey } from "../push/keys.ts";
-import { testDatabase } from "../db/testing.ts";
+import { migrated, migratedTestDatabase } from "../db/testing.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
 import { defaultSettings, type Settings } from "../kernel/settings.ts";
 import {
@@ -34,7 +33,7 @@ export type TestContextOptions = {
     readonly files?: FileStore;
     /** Defaults to vips, with Mastodon's limit on pixels. */
     readonly images?: ImageProcessor;
-    /** Defaults to a new, empty test database. It is migrated, and closed on disposal. */
+    /** Defaults to a new test database. It is migrated, and closed on disposal. */
     readonly db?: Kysely<Database>;
     /** Defaults to none. */
     readonly identityProviders?: Readonly<Record<string, IdentityProvider>>;
@@ -62,13 +61,7 @@ export type TestContext = AsyncDisposable & {
 export const createTestContext = async (
     options: TestContextOptions = {},
 ): Promise<TestContext> => {
-    const db = options.db ?? await testDatabase<Database>();
-
-    const migrated = await migrate(db);
-    if (!migrated.ok) {
-        await db.destroy();
-        throw migrated.error;
-    }
+    const db = options.db ? await migrated(options.db) : await migratedTestDatabase<Database>();
 
     const clock = options.clock ?? fakeClock();
 

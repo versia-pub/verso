@@ -32,8 +32,12 @@ in
   fmt = denoTask "fmt" "fmt --check";
   lint = denoTask "lint" "lint";
   typecheck = denoTask "typecheck" "check";
-  # Tests process pictures with vips, as Verso does.
-  test-pglite = denoTaskWith "test-pglite" "test" { packages = [ pkgs.vips ]; };
+  # Tests process pictures with vips, as Verso does. Each PGlite takes most of a gigabyte until it
+  # is collected, so fewer tests run at once, which takes barely longer than one per core.
+  test-pglite = denoTaskWith "test-pglite" "test" {
+    packages = [ pkgs.vips ];
+    setup = "export DENO_JOBS=6";
+  };
   test-sqlite = denoTaskWith "test-sqlite" "test" {
     packages = [ pkgs.vips ];
     setup = "export VERSO_TEST_DATABASE=sqlite";
