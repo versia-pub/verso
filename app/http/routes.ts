@@ -18,6 +18,7 @@ import type { AboutSettings } from "../instances/render.ts";
 import { instanceRoutes } from "../instances/routes.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
 import { registry } from "../registry.ts";
+import { searchRoutes } from "../search/routes.ts";
 import { streamingRoutes } from "../streaming/routes.ts";
 import { docsRoute } from "./docs.ts";
 import { openApiRoute } from "./openapi.ts";
@@ -34,6 +35,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         // Before the account routes, whose `/api/v1/accounts/:id` would otherwise match their
         // paths.
         ...graphRoutes,
+        ...searchRoutes,
         ...accountRoutes(settings.media, settings.limits),
         ...noteRoutes(settings.limits),
         ...interactionRoutes,

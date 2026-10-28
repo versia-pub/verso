@@ -2165,6 +2165,113 @@
                 }
             }
         },
+        "/api/v1/accounts/search": {
+            "get": {
+                "summary": "Search for matching accounts",
+                "description": "Search for matching accounts by username or display name.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#search"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Search query for accounts."
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Maximum number of results. Defaults to 40 accounts. Max 80 accounts."
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Skip the first n results."
+                        }
+                    },
+                    {
+                        "name": "resolve",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Attempt WebFinger lookup. Defaults to false. Use this when `q` is an exact address.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "following",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Limit the search to users you are following. Defaults to false.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/verify_credentials": {
             "get": {
                 "summary": "The viewer's own account, with their settings",
