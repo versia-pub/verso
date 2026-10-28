@@ -111,6 +111,22 @@ Deno.test("boosts aren't found, only the statuses they boost", async () => {
     for (const [query, found] of cases) assertEquals(await test.find(query), found, query);
 });
 
+Deno.test("a word of one letter is found whole, and longer ones as the start of words", async () => {
+    await using test = await open();
+    const plan = await test.post("bob", "Plan B");
+    const both = await test.post("bob", "Bees and plans");
+
+    assertEquals(await test.find("b"), [plan]);
+    assertEquals(await test.find("be"), [both]);
+    assertEquals(await test.find("pl"), [both, plan]);
+    assertEquals(await test.find("p"), []);
+
+    // In characters, as Verso counts them.
+    const wide = await test.post("bob", "𠀀𠀁");
+    assertEquals(await test.find("𠀀"), []);
+    assertEquals(await test.find("𠀀𠀁"), [wide]);
+});
+
 Deno.test("a status the viewer may no longer see isn't found", async () => {
     await using test = await open();
     await follow(test.ctx, "alice", "carol");
@@ -159,11 +175,14 @@ Deno.test("statuses are found by phrases and hashtags, and without what a query 
     // A phrase's words are whole.
     assertEquals(await test.find('"quick bro"'), []);
     assertEquals(await test.find("brown -dog"), [fox]);
-    assertEquals(await test.find('-"quick brown" -rust'), [linux, dog]);
+    assertEquals(await test.find('-"quick brown" -rust linux'), [linux]);
+    // What a search excludes alone narrows nothing down, so finds nothing.
+    assertEquals(await test.find('-"quick brown" -rust'), []);
 
     assertEquals(await test.find("#nix"), [nix]);
     assertEquals(await test.find("#rust"), []);
-    assertEquals(await test.find("-#nix"), [linux, dog, fox]);
+    assertEquals(await test.find("-#nix"), []);
+    assertEquals(await test.find("-#nix linux"), [linux]);
     assertEquals(await test.find("-#nix rust"), []);
     assertEquals(await test.find("fox:quick"), [fox]);
 });
@@ -205,17 +224,17 @@ Deno.test("statuses are found by Mastodon's prefixes: author, properties, langua
         ["fox from:dan", []],
         ["fox from:nobody", []],
         ["fox -from:nobody", all],
-        ["has:media", [three]],
-        ["has:image", [three]],
+        ["fox has:media", [three]],
+        ["fox has:image", [three]],
         ["fox -has:media", [four, two, one]],
-        ["has:Media", []],
+        ["fox has:Media", []],
         ["fox has:poll", []],
         ["fox -has:poll", all],
-        ["is:sensitive", [one]],
-        ["is:reply", [two]],
+        ["fox is:sensitive", [one]],
+        ["fox is:reply", [two]],
         ["fox -is:reply", [four, three, one]],
-        ["language:en", [one]],
-        ["language:EN-gb", [one]],
+        ["fox language:en", [one]],
+        ["fox language:EN-gb", [one]],
         ["fox -language:en", [four, three, two]],
         ["fox before:2024-02-29", [one]],
         ["fox after:2024-02-28", [four, three, two]],
@@ -228,7 +247,19 @@ Deno.test("statuses are found by Mastodon's prefixes: author, properties, langua
         ["fox in:public", [two, one]],
         ["fox in:all", all],
         ["in:library", [four, three]],
+        ["in:library has:media", [three]],
         ["fox -in:public from:bob", [two, one]],
+        ["from:bob is:reply", [two]],
+        // Narrowed down by nothing an index has.
+        ["has:media", []],
+        ["is:sensitive", []],
+        ["language:en", []],
+        ["-from:me", []],
+        ["in:public", []],
+        ["in:all", []],
     ];
     for (const [query, found] of cases) assertEquals(await test.find(query), found, query);
+
+    // An author asked for narrows it down too.
+    assertEquals(await test.find("is:reply", { accountId: "bob" }), [two]);
 });

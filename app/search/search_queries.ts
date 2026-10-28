@@ -61,9 +61,16 @@ export const indexAccount = (
 ): Promise<void> => indexWords(ctx, accounts, accountId, words);
 
 /**
+ * The shortest word matched as the start of words. A shorter one is matched only as a whole word,
+ * since one letter starts most of them.
+ */
+const minPrefixLength = 2;
+
+/**
  * Whether the id in `column` is of something in `index` with words that start with each of
- * `words`, which there must be some of, or with `phrase`, that are `words` one after another.
- * Words are only letters and digits, so they never carry query syntax.
+ * `words`, or are those that are too short to be prefixes, which there must be some of, or with
+ * `phrase`, that are `words` one after another. Words are only letters and digits, so they never
+ * carry query syntax.
  */
 const matching = (
     ctx: Pick<Context, "db">,
@@ -75,15 +82,21 @@ const matching = (
     const table = sql.table(index.table);
     const key = sql.ref(index.key);
 
+    const isPrefix = (word: string) => Array.from(word).length >= minPrefixLength;
+
     if (!usesSqlite(ctx.db)) {
-        const query = phrase ? words.join(" <-> ") : words.map((word) => `${word}:*`).join(" & ");
+        const query = phrase
+            ? words.join(" <-> ")
+            : words.map((word) => isPrefix(word) ? `${word}:*` : word).join(" & ");
         return sql<SqlBool>`${sql.ref(column)} IN (
             SELECT ${key} FROM ${table} WHERE document @@ to_tsquery('simple', ${query})
         )`;
     }
 
     const kept = sql.table(index.text);
-    const query = phrase ? `"${words.join(" ")}"` : words.map((word) => `"${word}"*`).join(" ");
+    const query = phrase
+        ? `"${words.join(" ")}"`
+        : words.map((word) => isPrefix(word) ? `"${word}"*` : `"${word}"`).join(" ");
     return sql<SqlBool>`${sql.ref(column)} IN (
         SELECT ${key} FROM ${table} WHERE id IN (SELECT rowid FROM ${kept} WHERE ${kept} MATCH ${query})
     )`;
@@ -210,27 +223,33 @@ const findable = (eb: ExpressionBuilder<Database, "notes">) =>
         ),
     ]);
 
-/** Whether `viewerId` wrote a status, was mentioned in it, liked it or boosted it. */
+/**
+ * Whether `viewerId` wrote a status, was mentioned in it, liked it or boosted it. Each is looked up
+ * by the viewer, through its index, so the statuses in their library are found without passing
+ * every other.
+ */
 const inLibraryOf = (viewerId: string) => (eb: ExpressionBuilder<Database, "notes">) =>
-    eb.or([
-        eb("notes.account_id", "=", viewerId),
-        eb.exists(
-            eb.selectFrom("note_mentions").select("note_mentions.note_id")
-                .whereRef("note_mentions.note_id", "=", "notes.id")
-                .where("note_mentions.account_id", "=", viewerId),
-        ),
-        eb.exists(
-            eb.selectFrom("likes").select("likes.id")
-                .whereRef("likes.note_id", "=", "notes.id")
+    eb(
+        "notes.id",
+        "in",
+        (eb) =>
+            eb.selectFrom("notes as own").select("own.id").where("own.account_id", "=", viewerId)
+                .union(
+                    eb.selectFrom("note_mentions").select("note_mentions.note_id as id")
+                        .where("note_mentions.account_id", "=", viewerId),
+                )
                 // Local users, who alone search, never dislike statuses.
-                .where("likes.account_id", "=", viewerId),
-        ),
-        eb.exists(
-            eb.selectFrom("notes as shares").select("shares.id")
-                .whereRef("shares.reblog_of_id", "=", "notes.id")
-                .where("shares.account_id", "=", viewerId),
-        ),
-    ]);
+                .union(
+                    eb.selectFrom("likes").select("likes.note_id as id")
+                        .where("likes.account_id", "=", viewerId),
+                )
+                .union(
+                    eb.selectFrom("notes as shares").select("shares.reblog_of_id as id")
+                        .where("shares.account_id", "=", viewerId)
+                        .where("shares.reblog_of_id", "is not", null)
+                        .$narrowType<{ id: string }>(),
+                ),
+    );
 
 /** What statuses to find, besides their words. */
 export type NoteMatch = {
@@ -254,7 +273,11 @@ export type NoteMatch = {
  * Statuses, newest first, with what each of `terms` says, of those Mastodon searches in `scope`:
  * public statuses whose authors are `indexable`, and those the viewer wrote, was mentioned in,
  * liked or boosted. Of those, only the ones the viewer may see, by authors they don't block or
- * mute, are found, and never boosts. No terms, without a scope, find nothing.
+ * mute, are found, and never boosts.
+ *
+ * Only what an index narrows down is searched: statuses with a word, phrase or hashtag, by an
+ * author, or in the viewer's library. Anything else, such as `is:sensitive` alone, finds nothing,
+ * rather than passing every status.
  * @see https://github.com/mastodon/mastodon/blob/main/app/services/statuses_search_service.rb
  */
 export const noteIdsMatching = async (
@@ -263,7 +286,12 @@ export const noteIdsMatching = async (
     match: NoteMatch,
 ): Promise<string[]> => {
     const viewerId = match.onlooker.id;
-    if (terms.length === 0 && match.scope === null) return [];
+    const narrowed = match.scope === "library" || match.accountId !== null ||
+        terms.some((term) =>
+            !term.negated && (term.kind === "words" || term.kind === "phrase" ||
+                term.kind === "hashtag" || term.kind === "author")
+        );
+    if (!narrowed) return [];
 
     let query = ctx.db.selectFrom("notes")
         .select("notes.id")

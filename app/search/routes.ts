@@ -143,7 +143,9 @@ export const searchRoutes: readonly Route[] = [
         summary: "Perform a search",
         description: "Perform a search for content in accounts, statuses and hashtags with the " +
             "given parameters.\n\nAs on Mastodon, only signed-in users search statuses, or use " +
-            "`resolve` or `offset`.",
+            "`resolve` or `offset`. Verso only searches statuses for a query with a word, a " +
+            "phrase, a hashtag, `from:` or `in:library`, or with `account_id`, and finds words " +
+            "of one letter only as whole words.",
         docs: "https://docs.joinmastodon.org/methods/search/#v2",
         tags: ["search"],
         auth: { require: "optional", scope: "read:search", permission: "search" },

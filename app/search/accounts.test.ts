@@ -122,7 +122,8 @@ Deno.test("accounts the viewer follows or is followed by come first, then those 
     assertEquals(await test.find("ann", "carol"), ["anna", "annie", "anne", "annette"]);
     assertEquals(await test.find("ann", "alice", { limit: 2, offset: 1 }), ["annette", "anna"]);
     assertEquals(await test.find("ann", "alice", { following: true }), ["annie"]);
-    assertEquals(await test.find("a", "alice", { following: true }), ["annie", "alice"]);
+    assertEquals(await test.find("a", "alice", { following: true }), []);
+    assertEquals(await test.find("al", "alice", { following: true }), ["alice"]);
     // Following alice counts as much as being followed by her, so more followers win.
     await follow(test.ctx, "carol", "annette");
     await follow(test.ctx, "dave", "annette");
