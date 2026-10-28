@@ -24,6 +24,7 @@ import type { MediaLimits } from "../kernel/config_sections.ts";
 import { imageFormats } from "../kernel/images.ts";
 import type { Context } from "../kernel/context.ts";
 import { charactersPerLink } from "../kernel/markup.ts";
+import { vapidPublicKey } from "../push/keys.ts";
 import { countInstances } from "./instance_queries.ts";
 
 /** What the instance's description is built from. */
@@ -76,15 +77,19 @@ export const renderRules = (instance: AboutSettings["instance"]): Rule[] =>
         hint: rule.hint,
     }));
 
-/** What clients may send, limited by the configured limits, and where they connect. */
+/**
+ * What clients may send, limited by the configured limits, and where they connect and subscribe to
+ * Web Push with.
+ */
 const configuration = (
     ctx: Context,
     limits: AboutSettings["limits"],
     media: MediaLimits,
+    vapidKey: string,
 ): Instance["configuration"] => ({
     urls: { streaming: ctx.urls.origin.replace(/^http/, "ws") },
-    // Push, featured tags and polls arrive in later steps.
-    vapid: { public_key: "" },
+    vapid: { public_key: vapidKey },
+    // Featured tags and polls arrive in later steps.
     accounts: {
         max_featured_tags: 0,
         max_pinned_statuses: 0,
@@ -157,7 +162,7 @@ export const renderInstance = async (
         thumbnail: { url: ctx.urls.url`/instance/thumbnail.png` },
         icon: [],
         languages: [],
-        configuration: configuration(ctx, limits, settings.media),
+        configuration: configuration(ctx, limits, settings.media, await vapidPublicKey(ctx)),
         // Accounts are created by logging in, never by a client's sign-up form.
         registrations: {
             enabled: false,

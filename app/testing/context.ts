@@ -2,6 +2,7 @@ import type { Kysely } from "kysely";
 import type { Database } from "../db/database.ts";
 import { migrate } from "../db/migrate.ts";
 import { ensureInstanceKey } from "../instances/keys.ts";
+import { ensureVapidKey } from "../push/keys.ts";
 import { testDatabase } from "../db/testing.ts";
 import { type FakeClock, fakeClock } from "../kernel/clock.ts";
 import { defaultSettings, type Settings } from "../kernel/settings.ts";
@@ -71,8 +72,9 @@ export const createTestContext = async (
 
     const clock = options.clock ?? fakeClock();
 
-    // Its own ids, so generating the key doesn't shift the ids tests expect.
+    // Their own ids, so generating the keys doesn't shift the ids tests expect.
     await ensureInstanceKey({ db, clock, ids: idGenerator(clock) });
+    await ensureVapidKey({ db, clock, ids: idGenerator(clock) });
 
     const transport = options.transport ?? fakeTransport();
     const ctx = createContext({

@@ -1,6 +1,7 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
+import { vapidPublicKey } from "../push/keys.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
 import { tokenFor } from "./testing.ts";
@@ -149,7 +150,9 @@ Deno.test("an app's token shows the app, without its secret", async () => {
         scopes: ["read"],
         redirect_uris: ["https://phanpy.example/"],
         redirect_uri: "https://phanpy.example/",
+        vapid_key: await vapidPublicKey(test.ctx),
     });
+    assertEquals(registered.vapid_key, verified.body.vapid_key);
     assertEquals(
         (await test.verify(`Bearer ${await tokenFor(test.ctx, null, ["write"])}`)).status,
         200,

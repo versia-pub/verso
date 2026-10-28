@@ -3,7 +3,9 @@ import { z } from "zod";
 import { defineRoute, type Route } from "../http/route.ts";
 import { registerApp } from "./apps.ts";
 import { getApp } from "./app_queries.ts";
+import type { Context } from "../kernel/context.ts";
 import { ScopeList } from "../kernel/scopes.ts";
+import { vapidPublicKey } from "../push/keys.ts";
 import type { AppsTable } from "./tables.ts";
 
 const scriptSchemes = ["data:", "javascript:", "vbscript:"];
@@ -33,13 +35,14 @@ const AppForm = z.object({
     website: z.union([z.literal(""), z.url({ protocol: /^https?$/ }).max(2000)]).optional(),
 });
 
-const applicationOf = (app: AppsTable): Application => ({
+const applicationOf = async (ctx: Context, app: AppsTable): Promise<Application> => ({
     id: app.id,
     name: app.name,
     website: app.website,
     scopes: app.scopes,
     redirect_uris: app.redirect_uris,
     redirect_uri: app.redirect_uris.join("\n"),
+    vapid_key: await vapidPublicKey(ctx),
 });
 
 const postApps = defineRoute({
@@ -59,7 +62,7 @@ const postApps = defineRoute({
         return {
             status: 200,
             body: {
-                ...applicationOf(app),
+                ...await applicationOf(ctx, app),
                 client_id: app.client_id,
                 client_secret: clientSecret,
                 client_secret_expires_at: 0 as const,
@@ -80,7 +83,7 @@ const verifyAppCredentials = defineRoute({
     responses: { 200: Application },
     handler: async (ctx, { viewer }) => ({
         status: 200,
-        body: applicationOf(await getApp(ctx, viewer.appId)),
+        body: await applicationOf(ctx, await getApp(ctx, viewer.appId)),
     }),
 });
 

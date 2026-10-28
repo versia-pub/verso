@@ -16,6 +16,7 @@ import type { Route } from "./http/route.ts";
 import { routes } from "./http/routes.ts";
 import { appServices, federation, subscribers } from "./services.ts";
 import { ensureInstanceKey, instanceKey } from "./instances/keys.ts";
+import { ensureVapidKey, vapidKey } from "./push/keys.ts";
 import { queues, tasks } from "./jobs/queues.ts";
 import { runScheduler } from "./jobs/scheduler.ts";
 import { listenForJobs } from "./jobs/wakeups.ts";
@@ -145,9 +146,10 @@ const run = async (role: string, config: Config): Promise<number> => {
 
     const logger = getLogger(["verso"]);
 
-    // Everything Verso sends is signed, so it can't do anything useful without a key.
+    // Everything Verso sends is signed, so it can't do anything useful without its keys.
     try {
         await instanceKey(ctx);
+        await vapidKey(ctx);
     } catch (error) {
         logger.fatal("{error}", { error: error instanceof Error ? error.message : error });
         return 1;
@@ -223,9 +225,9 @@ const runMigrations = async (config: Config): Promise<number> => {
 
     if (result.applied.length === 0) logger.info("The database is up to date");
 
-    if (await ensureInstanceKey({ db, clock: systemClock, ids: idGenerator(systemClock) })) {
-        logger.info("Made the instance's key pair");
-    }
+    const keyed = { db, clock: systemClock, ids: idGenerator(systemClock) };
+    if (await ensureInstanceKey(keyed)) logger.info("Made the instance's key pair");
+    if (await ensureVapidKey(keyed)) logger.info("Made the instance's key pair for Web Push");
 
     return 0;
 };

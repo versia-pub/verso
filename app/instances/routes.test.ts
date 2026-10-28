@@ -8,6 +8,7 @@ import { createTestApp } from "../testing/app.ts";
 import { parseConfig } from "../kernel/config.ts";
 import { createTestContext } from "../testing/context.ts";
 import { postNote } from "../notes/notes.ts";
+import { vapidPublicKey } from "../push/keys.ts";
 import { type AboutSettings, instanceStats } from "./render.ts";
 import { instanceRoutes } from "./routes.ts";
 import { createInstance, defaultSettings } from "./testing.ts";
@@ -50,7 +51,7 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
         languages: [],
         configuration: {
             urls: { streaming: "wss://social.example" },
-            vapid: { public_key: "" },
+            vapid: { public_key: await vapidPublicKey(test.ctx) },
             accounts: {
                 max_featured_tags: 0,
                 max_pinned_statuses: 0,

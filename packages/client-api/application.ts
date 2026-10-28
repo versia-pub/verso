@@ -19,6 +19,11 @@ export const Application = z.object({
      * @deprecated Since Mastodon 4.3. Use `redirect_uris`.
      */
     redirect_uri: z.string(),
+    /**
+     * The key to subscribe to Web Push with.
+     * @deprecated Since Mastodon 4.3. Use the instance's `configuration.vapid.public_key`.
+     */
+    vapid_key: z.string(),
 });
 export type Application = z.infer<typeof Application>;
 

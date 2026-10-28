@@ -10113,6 +10113,9 @@
                     },
                     "redirect_uri": {
                         "type": "string"
+                    },
+                    "vapid_key": {
+                        "type": "string"
                     }
                 },
                 "required": [
@@ -10121,7 +10124,8 @@
                     "website",
                     "scopes",
                     "redirect_uris",
-                    "redirect_uri"
+                    "redirect_uri",
+                    "vapid_key"
                 ]
             },
             "ApprovedAudiences": {
@@ -10410,6 +10414,9 @@
                     "redirect_uri": {
                         "type": "string"
                     },
+                    "vapid_key": {
+                        "type": "string"
+                    },
                     "client_id": {
                         "type": "string"
                     },
@@ -10428,6 +10435,7 @@
                     "scopes",
                     "redirect_uris",
                     "redirect_uri",
+                    "vapid_key",
                     "client_id",
                     "client_secret",
                     "client_secret_expires_at"
