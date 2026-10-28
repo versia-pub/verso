@@ -1,5 +1,5 @@
 import { hasAttachments } from "../media/attachment_queries.ts";
-import type { ExpressionBuilder } from "kysely";
+import type { ExpressionBuilder, SelectQueryBuilder } from "kysely";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
@@ -137,6 +137,20 @@ const publicQuery = (ctx: Context, hidden: Excluded | null) => {
     return hidden === null ? query : query.where(without(hidden));
 };
 
+/** `query`'s statuses from `origin`, and with `onlyMedia`, only those with media attached. */
+const fromOrigin = (
+    query: SelectQueryBuilder<Database, "notes", NoteRow>,
+    origin: Origin,
+    onlyMedia: boolean,
+) => {
+    let from = query;
+    if (origin === "local") from = from.where("instance_id", "is", null);
+    if (origin === "remote") from = from.where("instance_id", "is not", null);
+    if (onlyMedia) from = from.where(hasAttachments);
+
+    return from;
+};
+
 /**
  * A page of the public timeline, newest first, of the statuses {@link publicQuery} finds from
  * `origin`, and with `onlyMedia`, only those with media attached.
@@ -148,12 +162,11 @@ export const publicPage = async (
     page: PageBounds,
     onlyMedia = false,
 ): Promise<NoteRow[]> => {
-    let query = publicQuery(ctx, hidden);
-    if (origin === "local") query = query.where("instance_id", "is", null);
-    if (origin === "remote") query = query.where("instance_id", "is not", null);
-    if (onlyMedia) query = query.where(hasAttachments);
-
-    return await readPage(query, "notes.id", page);
+    return await readPage(
+        fromOrigin(publicQuery(ctx, hidden), origin, onlyMedia),
+        "notes.id",
+        page,
+    );
 };
 
 /** The status `noteId`, if it is on the public timeline, as {@link publicQuery} finds. */
@@ -163,3 +176,46 @@ export const findPublicNote = async (
     noteId: string,
 ): Promise<NoteRow | undefined> =>
     await publicQuery(ctx, hidden).where("notes.id", "=", noteId).executeTakeFirst();
+
+/**
+ * The hashtags the statuses on a hashtag's timeline use: at least one of `any`, which must have
+ * some, every one of `all`, and none of `none`.
+ */
+export type HashtagFilter = {
+    readonly any: readonly string[];
+    readonly all: readonly string[];
+    readonly none: readonly string[];
+};
+
+/** Whether a status uses any of `names`. */
+const usesAny = (names: readonly string[]) => (eb: ExpressionBuilder<Database, "notes">) =>
+    eb.exists(
+        eb.selectFrom("note_tags").select("note_tags.note_id")
+            .whereRef("note_tags.note_id", "=", "notes.id")
+            .where("note_tags.name", "in", names),
+    );
+
+/**
+ * A page of a hashtag's timeline, newest first, as Mastodon assembles it: public statuses, replies
+ * too, that use the hashtags `tags` asks for, from `origin`, and with `onlyMedia`, only those with
+ * media attached. If there is a viewer, the statuses of the accounts they block or mute, `hidden`,
+ * are omitted.
+ * @see https://github.com/mastodon/mastodon/blob/main/app/models/tag_feed.rb
+ */
+export const hashtagPage = async (
+    ctx: Context,
+    tags: HashtagFilter,
+    origin: Origin,
+    hidden: Excluded | null,
+    page: PageBounds,
+    onlyMedia: boolean,
+): Promise<NoteRow[]> => {
+    let query = ctx.db.selectFrom("notes").selectAll()
+        .where("visibility", "=", "public")
+        .where(usesAny(tags.any));
+    for (const name of tags.all) query = query.where(usesAny([name]));
+    if (tags.none.length > 0) query = query.where((eb) => eb.not(usesAny(tags.none)(eb)));
+    if (hidden !== null) query = query.where(without(hidden));
+
+    return await readPage(fromOrigin(query, origin, onlyMedia), "notes.id", page);
+};

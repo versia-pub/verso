@@ -47,7 +47,19 @@ const open = async () => {
         };
     };
 
-    return { ...test, home, everyone };
+    /** The ids on `hashtag`'s timeline, as anyone sees it, or as `as` sees it. */
+    const tagged = async (hashtag: string, query = "", as: string | null = null) => {
+        const headers: HeadersInit = as === null
+            ? {}
+            : { authorization: `Bearer ${await tokenFor(test.ctx, as)}` };
+        const response = await app.request(`/api/v1/timelines/tag/${hashtag}${query}`, { headers });
+        assertEquals(response.status, 200);
+
+        const body: { id: string; favourited?: boolean }[] = await response.json();
+        return { ids: body.map((status) => status.id), body, link: response.headers.get("link") };
+    };
+
+    return { ...test, home, everyone, tagged };
 };
 
 Deno.test("home gives the viewer's statuses and those they follow, a page at a time", async () => {
@@ -174,4 +186,84 @@ Deno.test("the public timeline is only for tokens and roles that may read status
         { headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice", ["write"])}` } },
     );
     assertEquals(response.status, 403);
+});
+
+Deno.test("a hashtag's timeline has the public statuses using it, replies too, for anyone", async () => {
+    await using test = await open();
+    const post = (
+        accountId: string,
+        tags: string[],
+        note: Parameters<typeof createNote>[2] = {},
+    ) => {
+        test.clock.advance(1);
+        return createNote(test.ctx, accountId, note, [], tags);
+    };
+    const first = await post("alice", ["verso"]);
+    const reply = await post("bob", ["verso", "nix"], {
+        in_reply_to_id: first.id,
+        in_reply_to_account_id: "alice",
+    });
+    await post("alice", ["verso"], { visibility: "unlisted" });
+    await post("alice", ["verso"], { visibility: "private" });
+    const other = await post("alice", ["other"]);
+    const both = [reply.id, first.id];
+
+    assertEquals((await test.tagged("verso")).ids, both);
+    assertEquals((await test.tagged("VERSO")).ids, both);
+    assertEquals((await test.tagged("nothing")).ids, []);
+    assertEquals((await test.tagged("verso", "?any[]=%23Other")).ids, [other.id, ...both]);
+    assertEquals((await test.tagged("verso", "?all[]=nix")).ids, [reply.id]);
+    assertEquals((await test.tagged("verso", "?all[]=nix&all[]=other")).ids, []);
+    assertEquals((await test.tagged("verso", "?none[]=nix")).ids, [first.id]);
+
+    // At most four of each, with the hashtag itself first of `any`.
+    assertEquals(
+        (await test.tagged("verso", "?any[]=a&any[]=b&any[]=c&any[]=other")).ids,
+        both,
+    );
+    assertEquals(
+        (await test.tagged("verso", "?any[]=verso&any[]=a&any[]=b&any[]=other")).ids,
+        [other.id, ...both],
+    );
+    assertEquals(
+        (await test.tagged("verso", "?all[]=nix&all[]=nix&all[]=nix&all[]=nix&all[]=a")).ids,
+        [reply.id],
+    );
+    assertEquals(
+        (await test.tagged("verso", "?none[]=a&none[]=b&none[]=c&none[]=d&none[]=nix")).ids,
+        both,
+    );
+
+    const page = await test.tagged("verso", "?limit=1");
+    assertEquals(page.ids, [reply.id]);
+    assertStringIncludes(page.link ?? "", `max_id=${reply.id}>; rel="next"`);
+    assertEquals(page.body[0].favourited, undefined);
+    assertEquals((await test.tagged("verso", "", "alice")).body[0].favourited, false);
+});
+
+Deno.test("a hashtag's timeline is from here, elsewhere or both, and without what the viewer hides", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "carol", "b.example");
+    test.clock.advance(1);
+    const local = await createNote(test.ctx, "bob", {}, [], ["verso"]);
+    test.clock.advance(1);
+    const remote = await createNote(
+        test.ctx,
+        "carol",
+        {
+            instance_id: "b.example",
+            remote_id: "c1",
+        },
+        [],
+        ["verso"],
+    );
+
+    assertEquals((await test.tagged("verso", "?local=true")).ids, [local.id]);
+    assertEquals((await test.tagged("verso", "?remote=true")).ids, [remote.id]);
+    assertEquals((await test.tagged("verso", "?only_media=true")).ids, []);
+
+    await block(test.ctx, "alice", "bob");
+    assertEquals((await test.tagged("verso", "", "alice")).ids, [remote.id]);
+    assertEquals((await test.tagged("verso")).ids, [remote.id, local.id]);
 });
