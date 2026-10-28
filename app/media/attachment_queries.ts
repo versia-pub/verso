@@ -64,7 +64,7 @@ export const findMediaRows = async (ctx: Context, ids: readonly string[]): Promi
 
 /** The media attached to each of `noteIds`, in order, grouped by status. */
 export const attachmentsOf = async (
-    ctx: Context,
+    ctx: Pick<Context, "db">,
     noteIds: readonly string[],
 ): Promise<Map<string, MediaRow[]>> => {
     const attachments = new Map<string, MediaRow[]>();

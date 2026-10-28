@@ -53,6 +53,7 @@ import { notificationGroups } from "./0051_notification_groups.ts";
 import { markers } from "./0052_markers.ts";
 import { vapidKeys } from "./0053_vapid_keys.ts";
 import { pushSubscriptions } from "./0054_push_subscriptions.ts";
+import { noteSearch } from "./0055_note_search.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -113,4 +114,5 @@ export const migrations: Record<string, Migration> = {
     "0052_markers": markers,
     "0053_vapid_keys": vapidKeys,
     "0054_push_subscriptions": pushSubscriptions,
+    "0055_note_search": noteSearch,
 };

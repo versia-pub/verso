@@ -34,6 +34,7 @@ import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { MarkersTable } from "../markers/tables.ts";
 import type { NotificationsTable } from "../notifications/tables.ts";
 import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
+import type { NoteSearchTable } from "../search/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
 import { sqliteDialect } from "./sqlite.ts";
@@ -64,6 +65,7 @@ export type Database = {
     note_media: NoteMediaTable;
     note_mentions: NoteMentionsTable;
     note_pins: NotePinsTable;
+    note_search: NoteSearchTable;
     note_tags: NoteTagsTable;
     note_versions: NoteVersionsTable;
     notes: NotesTable;

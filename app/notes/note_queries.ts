@@ -89,7 +89,10 @@ export const findNote = async (ctx: Context, id: string): Promise<NoteRow | unde
     await ctx.db.selectFrom("notes").selectAll().where("id", "=", id).executeTakeFirst();
 
 /** The statuses in `ids` that exist, in no particular order. */
-export const findNotes = async (ctx: Context, ids: readonly string[]): Promise<NoteRow[]> =>
+export const findNotes = async (
+    ctx: Pick<Context, "db">,
+    ids: readonly string[],
+): Promise<NoteRow[]> =>
     ids.length === 0
         ? []
         : await ctx.db.selectFrom("notes").selectAll().where("id", "in", ids).execute();
