@@ -45,7 +45,9 @@ let
       data=.dev/postgres
       if [ ! -d "$data" ]; then
         mkdir -p .dev
-        initdb --pgdata="$data" --username=verso --auth=trust --no-instructions >/dev/null
+        # UTF-8, as real installs are, so that words of every script are words.
+        initdb --pgdata="$data" --username=verso --auth=trust --no-instructions \
+          --encoding=UTF8 --locale=C.UTF-8 >/dev/null
       fi
 
       postgres -D "$data" -p "$port" -k "$PWD/.dev" -c listen_addresses=localhost &

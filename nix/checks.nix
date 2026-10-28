@@ -49,7 +49,9 @@ in
       pkgs.vips
     ];
     setup = ''
-      initdb --pgdata="$TMPDIR/pg" --username=postgres --auth=trust >/dev/null
+      # UTF-8, as real installs are, so that words of every script are words.
+      initdb --pgdata="$TMPDIR/pg" --username=postgres --auth=trust --encoding=UTF8 \
+        --locale=C.UTF-8 >/dev/null
       pg_ctl --pgdata="$TMPDIR/pg" --log="$TMPDIR/pg.log" --wait start \
         --options="-c listen_addresses=127.0.0.1 -c unix_socket_directories=''' -c fsync=off"
       trap 'pg_ctl --pgdata="$TMPDIR/pg" --mode=immediate stop' EXIT
