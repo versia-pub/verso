@@ -153,9 +153,11 @@ export type RouteViewer = Viewer & {
     /**
      * What the caller may do: for a user, what config lets every user and their roles allow, and
      * for an app acting for itself, what it lets anonymous visitors. Looked up once, when first
-     * requested.
+     * requested, and again after {@link RouteViewer.forgetPermissions}.
      */
     readonly permissions: () => Promise<ReadonlySet<Permission>>;
+    /** Makes the next {@link RouteViewer.permissions} look them up again, as they changed. */
+    readonly forgetPermissions: () => void;
 };
 
 /** The viewer a route's handler sees, which its `auth` decides. */

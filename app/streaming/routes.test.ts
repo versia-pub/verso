@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
-import { createLocalAccount } from "../accounts/testing.ts";
+import { grantRoleTo } from "../accounts/roles.ts";
+import { createLocalAccount, createRole } from "../accounts/testing.ts";
 import { registerTestApp, tokenFor } from "../auth/testing.ts";
 import { issueToken, revokeToken } from "../auth/tokens.ts";
 import type { PubSub } from "../kernel/context.ts";
@@ -42,12 +43,13 @@ const countedPubSub = () => {
     return Object.assign(counting, { live: () => live.size });
 };
 
-const open = async () => {
+const open = async (permissions?: { anonymous: []; default: [] }) => {
     const pubsub = countedPubSub();
     const test = await createTestContext({ pubsub });
     await createLocalAccount(test.ctx, "alice");
     const app = createTestApp(test.ctx, [...streamingRoutes, ...markerRoutes], {
         checkResponses: true,
+        permissions,
     });
 
     return { ...test, app, pubsub, token: await tokenFor(test.ctx, "alice") };
@@ -202,17 +204,45 @@ Deno.test("a WebSocket closes once its token is revoked, and stops watching it o
 
     const kept = await connect(url, test.token);
     const revoked = await connect(url, issued.token);
-    // Watching each token, and streaming statuses to the user, public and hashtag streams, and
-    // notifications.
-    assertEquals(test.pubsub.live(), before + 12);
+    // Watching each token and its user's roles, and streaming statuses to the user, public and
+    // hashtag streams, and notifications.
+    assertEquals(test.pubsub.live(), before + 16);
 
     await revokeToken(test.ctx, app, issued.token);
     assertEquals(await revoked.closed(), [1000, "The access token was revoked"]);
-    await until(() => test.pubsub.live() === before + 6);
+    await until(() => test.pubsub.live() === before + 8);
 
     kept.socket.close();
     await kept.closed();
     await until(() => test.pubsub.live() === before);
+});
+
+Deno.test("a WebSocket streams what its user may read once their roles change, without reconnecting", async () => {
+    await using test = await open({ anonymous: [], default: [] });
+    await using server = listen(test.app);
+    const socket = new WebSocket(
+        `ws://127.0.0.1:${server.addr.port}/api/v1/streaming?stream=public`,
+        [test.token],
+    );
+    const heard: { payload?: string }[] = [];
+    socket.onmessage = ({ data }) => void heard.push(JSON.parse(data));
+    // Once the session is subscribed, which a message it answers shows.
+    await soon(new Promise((resolve) => socket.onopen = resolve));
+    socket.send(JSON.stringify({ type: "subscribe", stream: "nope" }));
+    await until(() => heard.length === 1);
+    const post = async () =>
+        (await postNote(test.ctx, "alice", { text: "Hi", format: "text/plain", spoilerText: "" }))
+            ?.id;
+
+    // Once its permissions were looked up, without read:note.
+    await post();
+    await createRole(test.ctx, "Reader", ["read:note"]);
+    await grantRoleTo(test.ctx, "alice", "Reader");
+    const shown = await post();
+    await until(() => heard.length === 2);
+
+    assertEquals(JSON.parse(heard[1].payload ?? "").id, shown);
+    socket.close();
 });
 
 Deno.test("WebSockets close, and stop watching their tokens, once Verso stops", async () => {

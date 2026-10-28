@@ -45,6 +45,7 @@ const open = async () => {
             appId: "app",
             accountId,
             scopes: ["read"] as const,
+            forgetPermissions: () => {},
             permissions: () =>
                 Promise.resolve(new Set<Permission>(options.permissions ?? ["read:note"])),
         };

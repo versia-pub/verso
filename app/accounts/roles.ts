@@ -4,6 +4,7 @@ import { Text } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Claims, Issuer } from "../kernel/identity.ts";
 import type { Permission } from "../kernel/permissions.ts";
+import { type Channel, publish, subscribe } from "../kernel/pubsub.ts";
 import { claimContains } from "./claims.ts";
 import {
     createRole,
@@ -22,6 +23,56 @@ import {
 } from "./role_queries.ts";
 
 const logger = getLogger(["verso", "accounts"]);
+
+/**
+ * Says an account's roles changed, or with no account, that a role did, so what anyone may do may
+ * have, and every process looks it up again for what it keeps open, such as streams.
+ */
+const rolesChanged: Channel<{ readonly accountId: string | null }> = {
+    name: "roles.changed",
+    schema: z.object({ accountId: z.string().nullable() }),
+};
+
+/**
+ * Calls `onChanged` once what `accountId` may do may have changed, until the function returned is
+ * called. A process that may have missed being told calls it too.
+ */
+export const watchRoles = (ctx: Context, accountId: string, onChanged: () => void): () => void => {
+    const unsubscribe = subscribe(ctx, rolesChanged, (message) => {
+        if (message.accountId === null || message.accountId === accountId) onChanged();
+        return Promise.resolve();
+    });
+    const unwatch = ctx.pubsub.onMissed(() => Promise.resolve(onChanged()));
+
+    return () => {
+        unsubscribe();
+        unwatch();
+    };
+};
+
+/** Gives an account a role, as an admin. Returns whether it didn't already have it from one. */
+export const grantRoleTo = async (
+    ctx: Context,
+    accountId: string,
+    roleId: string,
+): Promise<boolean> => {
+    const given = await grantRole(ctx, accountId, roleId);
+    if (given) await publish(ctx, rolesChanged, { accountId });
+
+    return given;
+};
+
+/** Takes away a role an admin gave an account. Returns whether it had it. */
+export const revokeRoleFrom = async (
+    ctx: Context,
+    accountId: string,
+    roleId: string,
+): Promise<boolean> => {
+    const taken = await revokeRole(ctx, accountId, roleId);
+    if (taken) await publish(ctx, rolesChanged, { accountId });
+
+    return taken;
+};
 
 /** What an account may do: what every user may do, and what each of its roles allows. */
 export const accountPermissions = async (
@@ -61,6 +112,7 @@ export const syncClaimedRoles = async (
     }
 
     await setClaimedRoles(ctx, accountId, issuer.url, found.map((role) => role.id));
+    await publish(ctx, rolesChanged, { accountId });
 };
 
 /**
@@ -176,7 +228,10 @@ export const updateManagedRole = async (
         if (await takenBy(changes.name)) return nameTaken;
         throw error;
     }
-    return updated ? { ok: true, value: updated } : notFound;
+    if (!updated) return notFound;
+
+    if (changes.permissions !== undefined) await publish(ctx, rolesChanged, { accountId: null });
+    return { ok: true, value: updated };
 };
 
 /** Deletes a role below the manager's highest, removing it from everyone who has it. */
@@ -189,6 +244,7 @@ export const deleteManagedRole = async (
     if (!found.ok) return found;
 
     await deleteRole(ctx, id);
+    await publish(ctx, rolesChanged, { accountId: null });
     return { ok: true, value: undefined };
 };
 
@@ -220,9 +276,9 @@ export const changeManagedRole = async (
         const refused = refusal(manager, { permissions: found.value.permissions });
         if (refused !== undefined) return notPermitted(refused);
 
-        await grantRole(ctx, change.accountId, change.roleId);
+        await grantRoleTo(ctx, change.accountId, change.roleId);
     } else {
-        await revokeRole(ctx, change.accountId, change.roleId);
+        await revokeRoleFrom(ctx, change.accountId, change.roleId);
     }
 
     return { ok: true, value: undefined };

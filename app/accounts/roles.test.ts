@@ -1,7 +1,19 @@
 import { assertEquals } from "@std/assert";
+import type { Issuer } from "../kernel/identity.ts";
 import { createTestContext } from "../testing/context.ts";
 import { rolesOf } from "./role_queries.ts";
-import { accountPermissions, refusal, roleManager, updateManagedRole } from "./roles.ts";
+import {
+    accountPermissions,
+    deleteManagedRole,
+    grantRoleTo,
+    refusal,
+    revokeRoleFrom,
+    type RoleManager,
+    roleManager,
+    syncClaimedRoles,
+    updateManagedRole,
+    watchRoles,
+} from "./roles.ts";
 import { createLocalAccount, createRole, giveRole } from "./testing.ts";
 
 Deno.test("an account may do what every user may, and what each of its roles allows", async () => {
@@ -76,4 +88,46 @@ Deno.test("an account manages only roles below its highest, giving permissions i
         refusal(bob, { priority: -1000 }),
         "Roles you manage must have a lower priority than your highest role",
     );
+});
+
+Deno.test("what an account may do is watched through changes to its roles, and to roles themselves", async () => {
+    await using test = await createTestContext();
+    for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
+    await createRole(test.ctx, "Mod", ["read:note"]);
+    await createRole(test.ctx, "Other", []);
+    const manager: RoleManager = {
+        accountId: "bob",
+        highest: Infinity,
+        permissions: new Set(["read:note"] as const),
+    };
+    const issuer: Issuer = {
+        name: "ID",
+        url: "https://id.example",
+        username_claim: "preferred_username",
+        registration: "closed",
+        roles: [],
+    };
+
+    let changes = 0;
+    const stop = watchRoles(test.ctx, "alice", () => changes++);
+    const counted: number[] = [];
+    const count = async (change: Promise<unknown>) => {
+        await change;
+        counted.push(changes);
+    };
+
+    await count(grantRoleTo(test.ctx, "alice", "Mod"));
+    // Which she already has.
+    await count(grantRoleTo(test.ctx, "alice", "Mod"));
+    await count(grantRoleTo(test.ctx, "bob", "Mod"));
+    await count(revokeRoleFrom(test.ctx, "alice", "Mod"));
+    await count(revokeRoleFrom(test.ctx, "alice", "Mod"));
+    await count(updateManagedRole(test.ctx, manager, "Mod", { name: "Moderator" }));
+    await count(updateManagedRole(test.ctx, manager, "Mod", { permissions: [] }));
+    await count(syncClaimedRoles(test.ctx, issuer, "alice", { sub: "alice" }));
+    await count(deleteManagedRole(test.ctx, manager, "Mod"));
+    stop();
+    await count(grantRoleTo(test.ctx, "alice", "Other"));
+
+    assertEquals(counted, [1, 1, 1, 2, 2, 2, 3, 4, 5, 5]);
 });

@@ -41,7 +41,7 @@ export const viewerOf = async (
 /**
  * The viewer, able to say what it may do: for a user, what every user may do and their roles allow,
  * and for anyone else, such as an app acting for itself, what anonymous visitors may do. That is
- * looked up once, the first time something asks.
+ * looked up the first time something asks, and kept until forgotten.
  */
 export const withPermissions = (
     ctx: Context,
@@ -57,6 +57,9 @@ export const withPermissions = (
             granted ??= viewer.accountId === null
                 ? Promise.resolve(new Set(permissions.anonymous))
                 : services.permissionsOf(ctx, viewer.accountId, permissions.default),
+        forgetPermissions: () => {
+            granted = undefined;
+        },
     };
 };
 

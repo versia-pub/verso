@@ -7,14 +7,8 @@ import { Command, EnumType, ValidationError } from "@cliffy/command";
 import { canonicalizeDomain } from "@versia/protocol";
 import { permissions } from "../kernel/permissions.ts";
 import { findLocalAccount } from "../accounts/account_queries.ts";
-import {
-    createRole,
-    findRole,
-    grantRole,
-    listRoles,
-    revokeRole,
-} from "../accounts/role_queries.ts";
-import { RoleName } from "../accounts/roles.ts";
+import { createRole, findRole, listRoles } from "../accounts/role_queries.ts";
+import { grantRoleTo, revokeRoleFrom, RoleName } from "../accounts/roles.ts";
 import { rotateInstanceKey } from "../instances/keys.ts";
 import type { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
@@ -165,7 +159,7 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
                 .action(async ({ config }, username, roleName) => {
                     const result = await io.withContext(config, async (ctx) => {
                         const { account, role } = await accountAndRole(ctx, username, roleName);
-                        const changed = await grantRole(ctx, account.id, role.id);
+                        const changed = await grantRoleTo(ctx, account.id, role.id);
                         return { username: account.username, role: role.name, changed };
                     });
                     io.print(JSON.stringify(result));
@@ -177,7 +171,7 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
                 .action(async ({ config }, username, roleName) => {
                     const result = await io.withContext(config, async (ctx) => {
                         const { account, role } = await accountAndRole(ctx, username, roleName);
-                        const changed = await revokeRole(ctx, account.id, role.id);
+                        const changed = await revokeRoleFrom(ctx, account.id, role.id);
                         return { username: account.username, role: role.name, changed };
                     });
                     io.print(JSON.stringify(result));
