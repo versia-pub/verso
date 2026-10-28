@@ -126,6 +126,7 @@ export const Permissions = z.strictObject({
         "read:note_likes",
         "read:note_boosts",
         "read:reaction",
+        "search",
     ]),
     /** For every user. */
     default: z.array(Permission).default([
@@ -136,6 +137,7 @@ export const Permissions = z.strictObject({
         "read:note_boosts",
         "read:reaction",
         "read:emoji",
+        "search",
         "owner:account",
         "owner:block",
         "owner:boost",

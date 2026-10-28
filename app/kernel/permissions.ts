@@ -40,6 +40,8 @@ export const permissions = [
     "owner:emoji",
     /** View global custom emojis and one's own. */
     "read:emoji",
+    /** Search accounts, statuses and hashtags. */
+    "search",
     /** View and dismiss one's own notifications. */
     "owner:notification",
     /**

@@ -9,6 +9,7 @@ export * from "./oauth_metadata.ts";
 export * from "./preview_card.ts";
 export * from "./relationship.ts";
 export * from "./role.ts";
+export * from "./search.ts";
 export * from "./status.ts";
 export * from "./tag.ts";
 export * from "./token.ts";

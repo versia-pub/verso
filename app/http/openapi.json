@@ -2168,7 +2168,7 @@
         "/api/v1/accounts/search": {
             "get": {
                 "summary": "Search for matching accounts",
-                "description": "Search for matching accounts by username or display name.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:account` permission.",
+                "description": "Search for matching accounts by username or display name.\n\nNeeds a token for a user, not one an app got for itself. Needs the `search` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/accounts/#search"
                 },
@@ -2265,6 +2265,164 @@
                                     "items": {
                                         "$ref": "#/components/schemas/Account"
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/search": {
+            "get": {
+                "summary": "Perform a search",
+                "description": "Perform a search for content in accounts, statuses and hashtags with the given parameters.\n\nAs on Mastodon, only signed-in users search statuses, or use `resolve` or `offset`.\n\nNeeds the `search` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/search/#v2"
+                },
+                "tags": [
+                    "search"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:search"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The search query."
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "accounts",
+                                "hashtags",
+                                "statuses"
+                            ],
+                            "description": "Specify whether to search for only `accounts`, `hashtags`, `statuses`."
+                        }
+                    },
+                    {
+                        "name": "resolve",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Attempt WebFinger lookup for a remote account that isn't known yet, when `q` is its address. Defaults to false. Verso doesn't resolve URLs yet.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "following",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Only include accounts that the user is following? Defaults to false.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "If provided, will only return statuses authored by this account."
+                        }
+                    },
+                    {
+                        "name": "exclude_unreviewed",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Filter out unreviewed tags? Verso doesn't review hashtags, so this changes nothing.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "All results returned will be lesser than this ID. In effect, sets an upper bound on results."
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Returns results immediately newer than this ID. In effect, sets a cursor at this ID and paginates forward."
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Maximum number of results to return, per type. Defaults to 20 results per category. Max 40 results per category."
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Skip the first n results. Only applies when `type` is also present."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Search"
                                 }
                             }
                         }
@@ -7521,6 +7679,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "search",
                                                 "owner:notification",
                                                 "blocks",
                                                 "emojis",
@@ -7608,6 +7767,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "search",
                                                 "owner:notification",
                                                 "blocks",
                                                 "emojis",
@@ -7695,6 +7855,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "search",
                                                 "owner:notification",
                                                 "blocks",
                                                 "emojis",
@@ -7861,6 +8022,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "search",
                                                 "owner:notification",
                                                 "blocks",
                                                 "emojis",
@@ -7945,6 +8107,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "search",
                                                 "owner:notification",
                                                 "blocks",
                                                 "emojis",
@@ -8029,6 +8192,7 @@
                                                 "owner:media",
                                                 "owner:emoji",
                                                 "read:emoji",
+                                                "search",
                                                 "owner:notification",
                                                 "blocks",
                                                 "emojis",
@@ -13092,6 +13256,34 @@
                     "id",
                     "text",
                     "hint"
+                ]
+            },
+            "Search": {
+                "type": "object",
+                "properties": {
+                    "accounts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Account"
+                        }
+                    },
+                    "statuses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Status"
+                        }
+                    },
+                    "hashtags": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Tag"
+                        }
+                    }
+                },
+                "required": [
+                    "accounts",
+                    "statuses",
+                    "hashtags"
                 ]
             },
             "ShallowQuote": {
