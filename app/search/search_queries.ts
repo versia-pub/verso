@@ -1,4 +1,5 @@
-import { type Expression, sql, type SqlBool } from "kysely";
+import { type Expression, type ExpressionBuilder, sql, type SqlBool } from "kysely";
+import type { Database } from "../db/database.ts";
 import { usesSqlite } from "../db/columns.ts";
 import { type Excluded, notExcluded } from "../graph/excluded_queries.ts";
 import type { Context } from "../kernel/context.ts";
@@ -60,27 +61,28 @@ export const indexAccount = (
 
 /**
  * Whether the id in `column` is of something in `index` with words that start with each of
- * `words`, which there must be some of. Words are only letters and digits, so they never carry
- * query syntax.
+ * `words`, which there must be some of, or with `phrase`, that are `words` one after another.
+ * Words are only letters and digits, so they never carry query syntax.
  */
 const matching = (
     ctx: Pick<Context, "db">,
     index: Index,
     column: string,
     words: readonly string[],
+    phrase = false,
 ): Expression<SqlBool> => {
     const table = sql.table(index.table);
     const key = sql.ref(index.key);
 
     if (!usesSqlite(ctx.db)) {
-        const query = words.map((word) => `${word}:*`).join(" & ");
+        const query = phrase ? words.join(" <-> ") : words.map((word) => `${word}:*`).join(" & ");
         return sql<SqlBool>`${sql.ref(column)} IN (
             SELECT ${key} FROM ${table} WHERE document @@ to_tsquery('simple', ${query})
         )`;
     }
 
     const kept = sql.table(index.text);
-    const query = words.map((word) => `"${word}"*`).join(" ");
+    const query = phrase ? `"${words.join(" ")}"` : words.map((word) => `"${word}"*`).join(" ");
     return sql<SqlBool>`${sql.ref(column)} IN (
         SELECT ${key} FROM ${table} WHERE id IN (SELECT rowid FROM ${kept} WHERE ${kept} MATCH ${query})
     )`;
@@ -117,6 +119,26 @@ export const unindexedAccountIds = async (
     return rows.map((row) => row.id);
 };
 
+/**
+ * What a status must have to be found, or with `negated`, mustn't: words that start with each of
+ * `values`, those words one after another as a phrase, or a hashtag, named by its one value.
+ */
+export type NoteTerm = {
+    readonly kind: "words" | "phrase" | "hashtag";
+    readonly values: readonly string[];
+    readonly negated: boolean;
+};
+
+/** Whether a status has what `term` says, not counting whether it is negated. */
+const has = (ctx: Context, term: NoteTerm) => (eb: ExpressionBuilder<Database, "notes">) =>
+    term.kind === "hashtag"
+        ? eb.exists(
+            eb.selectFrom("note_tags").select("note_tags.note_id")
+                .whereRef("note_tags.note_id", "=", "notes.id")
+                .where("note_tags.name", "=", term.values[0]),
+        )
+        : matching(ctx, notes, "notes.id", term.values, term.kind === "phrase");
+
 /** What statuses to find, besides their words. */
 export type NoteMatch = {
     /** Who is searching. */
@@ -134,23 +156,27 @@ export type NoteMatch = {
 };
 
 /**
- * Statuses, newest first, with words that start with each of `words`, of those Mastodon searches:
- * public statuses whose authors are `indexable`, and those the viewer wrote, was mentioned in,
- * liked or boosted. Of those, only the ones the viewer may see, by authors they don't block or
- * mute, are found. No words find nothing.
+ * Statuses, newest first, with what each of `terms` says, of those Mastodon searches: public
+ * statuses whose authors are `indexable`, and those the viewer wrote, was mentioned in, liked or
+ * boosted. Of those, only the ones the viewer may see, by authors they don't block or mute, are
+ * found. No terms find nothing.
  * @see https://github.com/mastodon/mastodon/blob/main/app/services/statuses_search_service.rb
  */
 export const noteIdsMatching = async (
     ctx: Context,
-    words: readonly string[],
+    terms: readonly NoteTerm[],
     match: NoteMatch,
 ): Promise<string[]> => {
     const viewerId = match.onlooker.id;
-    if (words.length === 0) return [];
+    if (terms.length === 0) return [];
 
     let query = ctx.db.selectFrom("notes")
         .select("notes.id")
-        .where(matching(ctx, notes, "notes.id", words))
+        .where((eb) =>
+            eb.and(
+                terms.map((term) => term.negated ? eb.not(has(ctx, term)(eb)) : has(ctx, term)(eb)),
+            )
+        )
         .where((eb) =>
             eb.or([
                 eb.and([

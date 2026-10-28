@@ -10,11 +10,11 @@ import { hiddenFrom } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNotes, type NoteRow } from "../notes/note_queries.ts";
 import { noteIdsMatching } from "./search_queries.ts";
-import { searchWords } from "./words.ts";
+import { parseStatusQuery } from "./query.ts";
 
 /** A search for statuses. */
 export type StatusSearch = {
-    /** Words. */
+    /** Words, phrases and hashtags, as {@link parseStatusQuery} reads them. */
     readonly query: string;
     /** Who is searching. */
     readonly viewerId: string;
@@ -29,12 +29,12 @@ export type StatusSearch = {
 };
 
 /**
- * The statuses `search` finds, newest first: those whose words start with each of its words, that
- * the viewer may see, by authors they don't block or mute.
+ * The statuses `search` finds, newest first: those with what its query says, that the viewer may
+ * see, by authors they don't block or mute.
  */
 export const searchStatuses = async (ctx: Context, search: StatusSearch): Promise<NoteRow[]> => {
     const { viewerId } = search;
-    const ids = await noteIdsMatching(ctx, searchWords(search.query), {
+    const ids = await noteIdsMatching(ctx, parseStatusQuery(search.query), {
         ...search,
         onlooker: { id: viewerId, followed: followedSubquery(ctx, viewerId) },
         hidden: hiddenFrom(ctx, viewerId),

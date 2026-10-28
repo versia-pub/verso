@@ -25,17 +25,27 @@ const open = async () => {
     await createRemoteAccount(test.ctx, "dan", "b.example");
     await updateProfile(test.ctx, "bob", { indexable: true });
 
-    /** Adds a status by `accountId` with `text`, mentioning `mentionIds`, and indexes it. */
+    /**
+     * Adds a status by `accountId` with `text`, mentioning `mentionIds` and using `tags`, and
+     * indexes it.
+     */
     const post = async (
         accountId: string,
         text: string,
         note: Partial<Insertable<NotesTable>> = {},
         mentionIds: string[] = [],
+        tags: string[] = [],
     ) => {
-        const row = await createNote(test.ctx, accountId, {
-            content_html: `<p>${text}</p>`,
-            ...note,
-        }, mentionIds);
+        const row = await createNote(
+            test.ctx,
+            accountId,
+            {
+                content_html: `<p>${text}</p>`,
+                ...note,
+            },
+            mentionIds,
+            tags,
+        );
         await indexUnindexed(test.ctx);
         return row.id;
     };
@@ -116,4 +126,25 @@ Deno.test("statuses are found newest first, by one author, between ids and a pag
     assertEquals(await test.find("fox", { minId: ids[1], maxId: ids[4] }), [ids[3], ids[2]]);
     assertEquals(await test.find("fox", { limit: 2, offset: 1 }), [ids[3], ids[2]]);
     assertEquals(await test.find(" -- "), []);
+});
+
+Deno.test("statuses are found by phrases and hashtags, and without what a query excludes", async () => {
+    await using test = await open();
+    const fox = await test.post("bob", "Quick brown fox");
+    const dog = await test.post("bob", "Brown, quick dog");
+    const nix = await test.post("alice", "Nix and rust", {}, [], ["nix"]);
+    const linux = await test.post("alice", "Linux");
+
+    assertEquals(await test.find('"quick brown"'), [fox]);
+    assertEquals(await test.find('"brown quick"'), [dog]);
+    // A phrase's words are whole.
+    assertEquals(await test.find('"quick bro"'), []);
+    assertEquals(await test.find("brown -dog"), [fox]);
+    assertEquals(await test.find('-"quick brown" -rust'), [linux, dog]);
+
+    assertEquals(await test.find("#nix"), [nix]);
+    assertEquals(await test.find("#rust"), []);
+    assertEquals(await test.find("-#nix"), [linux, dog, fox]);
+    assertEquals(await test.find("-#nix rust"), []);
+    assertEquals(await test.find("fox:quick"), [fox]);
 });
