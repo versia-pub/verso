@@ -55,6 +55,7 @@ import { vapidKeys } from "./0053_vapid_keys.ts";
 import { pushSubscriptions } from "./0054_push_subscriptions.ts";
 import { noteSearch } from "./0055_note_search.ts";
 import { accountSearch } from "./0056_account_search.ts";
+import { hashtagIndexes } from "./0057_hashtag_indexes.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -117,4 +118,5 @@ export const migrations: Record<string, Migration> = {
     "0054_push_subscriptions": pushSubscriptions,
     "0055_note_search": noteSearch,
     "0056_account_search": accountSearch,
+    "0057_hashtag_indexes": hashtagIndexes,
 };

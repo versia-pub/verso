@@ -393,6 +393,21 @@ export const accountIdsMatching = async (
 };
 
 /**
+ * Whether a hashtag's name starts with `start`, in a way its index finds. SQLite's `LIKE` ignores
+ * case, which its index can't, so SQLite uses `GLOB`. Wildcards in `start` are themselves, as `_`,
+ * common in hashtags, must be.
+ */
+const startsWith = (ctx: Pick<Context, "db">, start: string): Expression<SqlBool> => {
+    if (usesSqlite(ctx.db)) {
+        const pattern = `${start.replaceAll(/[*?[]/g, (character) => `[${character}]`)}*`;
+        return sql<SqlBool>`note_tags.name GLOB ${pattern}`;
+    }
+
+    const pattern = `${start.replaceAll(/[\\%_]/g, (character) => `\\${character}`)}%`;
+    return sql<SqlBool>`note_tags.name LIKE ${pattern} ESCAPE '\\'`;
+};
+
+/**
  * Up to `limit` hashtags, after the first `offset`, that start with `start` and are used by a
  * public or unlisted status, shortest first, as Mastodon lists them. Hashtags used only where few
  * can see them stay unknown.
@@ -404,12 +419,10 @@ export const hashtagsStartingWith = async (
     limit: number,
     offset: number,
 ): Promise<string[]> => {
-    // `_` is common in hashtags, and mustn't match any character.
-    const pattern = `${start.replaceAll(/[\\%_]/g, (character) => `\\${character}`)}%`;
     const rows = await ctx.db.selectFrom("note_tags")
         .innerJoin("notes", "notes.id", "note_tags.note_id")
         .select("note_tags.name")
-        .where(sql<SqlBool>`note_tags.name LIKE ${pattern} ESCAPE '\\'`)
+        .where(startsWith(ctx, start))
         .where("notes.visibility", "in", ["public", "unlisted"])
         .groupBy("note_tags.name")
         .orderBy(sql`length(note_tags.name)`)

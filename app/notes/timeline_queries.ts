@@ -197,11 +197,14 @@ const usesAny = (names: readonly string[]) => (eb: ExpressionBuilder<Database, "
 
 /**
  * The statuses that could be on a hashtag's timeline: public ones, replies too, as on Mastodon.
- * Boosts use no hashtags, so are on none. If there is a viewer, the statuses of the accounts they
- * block or mute, `hidden`, are omitted.
+ * Boosts use no hashtags, so are on none, and leaving them out lets the public timelines' index
+ * find the rest. If there is a viewer, the statuses of the accounts they block or mute, `hidden`,
+ * are omitted.
  */
 const hashtagQuery = (ctx: Context, hidden: Excluded | null) => {
-    const query = ctx.db.selectFrom("notes").selectAll().where("visibility", "=", "public");
+    const query = ctx.db.selectFrom("notes").selectAll()
+        .where("visibility", "=", "public")
+        .where("reblog_of_id", "is", null);
     return hidden === null ? query : query.where(without(hidden));
 };
 

@@ -41,13 +41,13 @@ Deno.test("hashtags used only in private or direct statuses aren't found", async
     assertEquals(await test.find("s"), ["shared"]);
 });
 
-Deno.test("a query's _ and % are themselves", async () => {
+Deno.test("a query's wildcards are themselves", async () => {
     await using test = await open();
-    await test.post("public", ["a_b", "axb", "a%b", "a\\b"]);
+    await test.post("public", ["a_b", "axb", "a%b", "a\\b", "a*b", "a?b", "a[b]", "a]b"]);
 
-    assertEquals(await test.find("a_"), ["a_b"]);
-    assertEquals(await test.find("a%"), ["a%b"]);
-    assertEquals(await test.find("a\\"), ["a\\b"]);
+    for (const tag of ["a_b", "a%b", "a\\b", "a*b", "a?b", "a[b]", "a]b"]) {
+        assertEquals(await test.find(tag.slice(0, 2)), [tag], tag);
+    }
 });
 
 Deno.test("a hashtag shows how public and unlisted statuses used it each day of the past week", async () => {
