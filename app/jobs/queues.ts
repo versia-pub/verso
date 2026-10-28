@@ -38,7 +38,8 @@ export const queues: Record<string, Queue> = {
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
-    [pushQueue]: { handler: pushHandler, concurrency: 4 },
+    // By the push service's host.
+    [pushQueue]: { handler: pushHandler, concurrency: 8, perGroup: 2 },
     // Each job runs vips a few times, a minute each at most, and uses memory while it does.
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
     ...Object.fromEntries(

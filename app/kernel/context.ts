@@ -49,12 +49,14 @@ export type Resolver = (
 ) => Promise<string | undefined>;
 
 /**
- * What talking to remote instances needs: whose keys to sign and validate with, whom to ignore, and
- * how to find what they have.
+ * What talking to remote instances and push services needs: whose keys to sign and validate with,
+ * whom to ignore, and how to find what they have.
  */
 export type Federation = {
     /** This instance's current key pair, cached for a minute at most. */
     readonly instanceKey: (ctx: Context) => Promise<InstanceKey>;
+    /** This instance's key pair for Web Push, which never changes, cached for a minute at most. */
+    readonly vapidKey: (ctx: Context) => Promise<VapidKey>;
     /** One store for the whole process, so each key is fetched once. */
     readonly remoteKeys: KeyStore;
     /**
@@ -64,7 +66,7 @@ export type Federation = {
     readonly isBlocked: (ctx: Context, domain: string) => Promise<boolean>;
     /** One for the whole process, so fetches in progress are shared. */
     readonly resolve: Resolver;
-    /** Clears the cached key and blocks, such as after a process changed them. */
+    /** Clears the cached instance key and blocks, such as after a process changed them. */
     readonly forget: () => void;
 };
 
@@ -73,6 +75,12 @@ export type InstanceKey = {
     readonly privateKey: CryptoKey;
     /** SPKI, in base64. */
     readonly publicKey: string;
+};
+
+/** A key to sign Web Push requests with, and its public half as an uncompressed point. */
+export type VapidKey = {
+    readonly privateKey: CryptoKey;
+    readonly publicKey: Uint8Array<ArrayBuffer>;
 };
 
 /**

@@ -4,7 +4,7 @@
  * @module
  */
 import { SignJWT } from "@panva/jose";
-import type { VapidKey } from "./keys.ts";
+import type { VapidKey } from "../kernel/context.ts";
 
 /** How long a signature lasts. RFC 8292 allows at most a day. */
 const validMs = 12 * 60 * 60 * 1000;

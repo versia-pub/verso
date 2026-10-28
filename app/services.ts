@@ -13,12 +13,13 @@ import { undoReactionsWithDeletedEmoji } from "./interactions/reactions.ts";
 import { shareDeliveries } from "./interactions/share_federation.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
 import { cached } from "./kernel/cache.ts";
-import type { Federation, Subscriber } from "./kernel/context.ts";
+import type { Context, Federation, Subscriber } from "./kernel/context.ts";
 import { domainBlocks } from "./moderation/domain_blocks.ts";
 import { blockedDomainNames } from "./moderation/domain_block_queries.ts";
 import { noteDeliveries } from "./notes/federation.ts";
 import { notifyOf } from "./notifications/notifications.ts";
 import { uncountNotesOf } from "./notes/removal.ts";
+import { vapidKey } from "./push/keys.ts";
 import { queuePushes } from "./push/pushes.ts";
 import { registry } from "./registry.ts";
 import { indexAccountsOf } from "./search/accounts.ts";
@@ -53,7 +54,7 @@ export const subscribers: readonly Subscriber[] = [
     indexAccountsOf,
 ];
 
-/** How long the instance's key and the blocked domains are cached before they are read again. */
+/** How long the instance's keys and the blocked domains are cached before they are read again. */
 const keptMs = 60_000;
 
 /**
@@ -65,10 +66,12 @@ export const federation = (
     resolverOptions: ResolverOptions = {},
 ): Federation => {
     const key = cached(keptMs, instanceKey);
+    const vapid = cached(keptMs, (ctx: Context) => vapidKey(ctx));
     const blocked = cached(keptMs, blockedDomainNames);
 
     return {
         instanceKey: key.get,
+        vapidKey: vapid.get,
         remoteKeys: remoteKeys(),
         isBlocked: domainBlocks(blockedDomains, blocked.get),
         resolve: createResolver(registry, resolverOptions),

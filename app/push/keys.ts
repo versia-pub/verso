@@ -4,14 +4,8 @@
  * @see https://www.rfc-editor.org/rfc/rfc8292
  * @module
  */
-import type { Context } from "../kernel/context.ts";
+import type { Context, VapidKey } from "../kernel/context.ts";
 import { findVapidKeyRow, insertVapidKeyRow } from "./key_queries.ts";
-
-/** A key to sign Web Push requests with, and its public half as an uncompressed point. */
-export type VapidKey = {
-    readonly privateKey: CryptoKey;
-    readonly publicKey: Uint8Array<ArrayBuffer>;
-};
 
 const algorithm = { name: "ECDSA", namedCurve: "P-256" };
 
@@ -24,7 +18,7 @@ const row = async (ctx: Pick<Context, "db">) => {
     return found;
 };
 
-/** The key pair. Importing it takes microseconds, so it isn't cached. */
+/** The key pair, read from the database. Pushes use `ctx.federation.vapidKey`, which caches it. */
 export const vapidKey = async (ctx: Pick<Context, "db">): Promise<VapidKey> => {
     const { public_key, private_key } = await row(ctx);
 

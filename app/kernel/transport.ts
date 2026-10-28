@@ -1,3 +1,4 @@
+import denoConfig from "../../deno.json" with { type: "json" };
 import { CidrText, inCidr, parseIp } from "./ip.ts";
 
 /**
@@ -10,16 +11,24 @@ export type Transport = (request: Request) => Promise<Response>;
 /** For servers the admin configured, such as identity providers, which may be on their network. */
 export const fetchTransport: Transport = (request: Request): Promise<Response> => fetch(request);
 
+/** How Verso names itself to other servers, with its address, so their admins can find it. */
+export const userAgent = (origin: string): string => `Verso/${denoConfig.version} (+${origin})`;
+
+/**
+ * A signal that aborts after `timeoutMs`, with a `TimeoutError`, or when `signal` aborts, whichever
+ * comes first.
+ */
+export const timeoutSignal = (timeoutMs: number, signal?: AbortSignal): AbortSignal =>
+    signal
+        ? AbortSignal.any([AbortSignal.timeout(timeoutMs), signal])
+        : AbortSignal.timeout(timeoutMs);
+
 /**
  * `transport`, with every request given up on after `timeoutMs`, or when its own signal aborts, so
  * a server that hangs can't hold what waits for it.
  */
 export const timedTransport = (transport: Transport, timeoutMs: number): Transport => (request) =>
-    transport(
-        new Request(request, {
-            signal: AbortSignal.any([request.signal, AbortSignal.timeout(timeoutMs)]),
-        }),
-    );
+    transport(new Request(request, { signal: timeoutSignal(timeoutMs, request.signal) }));
 
 /** The addresses a name resolves to, or none if it doesn't resolve. */
 export type DnsResolver = (hostname: string) => Promise<readonly string[]>;

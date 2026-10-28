@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { jwtVerify } from "@panva/jose";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { registerTestApp } from "../auth/testing.ts";
@@ -87,14 +87,16 @@ const open = async () => {
     /** What the push service was sent, as each push's path and decrypted payload. */
     const pushed: [string, Record<string, unknown>][] = [];
     const browsers = new Map<string, Awaited<ReturnType<typeof browser>>>();
-    let answer = 201;
+    let answer: number | Error = 201;
     test.transport.servers.set("push.example", async (request) => {
         const path = new URL(request.url).pathname;
         const body = new Uint8Array(await request.arrayBuffer());
         pushed.push([path, await browsers.get(path)?.decrypt(body)]);
+        if (answer instanceof Error) throw answer;
         return new Response(null, { status: answer });
     });
-    const answering = (status: number) => answer = status;
+    /** Has the push service answer with `status`, or fail with `error`, as `fetch` would. */
+    const answering = (answered: number | Error) => answer = answered;
 
     /** Subscribes `accountId` at `/<name>` to `alerts`, with `policy`, returning its id. */
     const subscribe = async (
@@ -158,10 +160,16 @@ Deno.test("a notification is pushed encrypted and signed, with what Mastodon pus
 
     const [request] = test.transport.sent;
     assertEquals(
-        [...["content-encoding", "content-type", "ttl", "urgency"].map((name) =>
+        [...["content-encoding", "content-type", "ttl", "urgency", "user-agent"].map((name) =>
             request.headers.get(name)
         )],
-        ["aes128gcm", "application/octet-stream", "172800", "normal"],
+        [
+            "aes128gcm",
+            "application/octet-stream",
+            "172800",
+            "normal",
+            "Verso/0.0.0 (+https://social.example)",
+        ],
     );
     const [, jwt] = /^vapid t=(\S+), k=/.exec(request.headers.get("authorization") ?? "") ?? [];
     const key = await crypto.subtle.importKey(
@@ -276,4 +284,80 @@ Deno.test("a subscription its push service says is gone is deleted, and others a
     assertEquals(test.pushed.length, 6);
     const kept = await test.ctx.db.selectFrom("push_subscriptions").select("endpoint").execute();
     assertEquals(kept, [{ endpoint: "https://push.example/a" }]);
+});
+
+Deno.test("pushes are grouped by their push service, and one that takes too long isn't retried", async () => {
+    await using test = await open();
+    await test.subscribe("alice", "a");
+
+    await test.post("bob", "Hi @alice");
+    const groups = await test.ctx.db.selectFrom("jobs").select("group_key")
+        .where("queue", "=", "push").execute();
+    assertEquals(groups, [{ group_key: "push.example" }]);
+
+    test.answering(new DOMException("Took too long", "TimeoutError"));
+    await test.drain();
+    test.clock.advance(24 * 60 * 60 * 1000);
+    await test.drain();
+    assertEquals(test.pushed.length, 1);
+
+    // Unlike one that can't be reached, or stops being waited for.
+    for (
+        const error of [new TypeError("Can't reach it"), new DOMException("Stopped", "AbortError")]
+    ) {
+        test.answering(error);
+        await test.post("bob", "Hi again @alice");
+        await test.drain();
+        test.answering(201);
+        test.clock.advance(24 * 60 * 60 * 1000);
+        await test.drain();
+    }
+    assertEquals(test.pushed.length, 5);
+});
+
+Deno.test("the key pushes are signed with is read once in a while, not for every push", async () => {
+    await using test = await open();
+    await test.subscribe("alice", "a");
+    const key = await vapidKey(test.ctx);
+
+    await test.post("bob", "Hi @alice");
+    await test.drain();
+    await test.ctx.db.deleteFrom("vapid_keys").execute();
+    await test.post("bob", "Hi again @alice");
+    await test.drain();
+
+    const verified = await Promise.all(test.transport.sent.map(async (request) => {
+        const [, jwt] = /^vapid t=(\S+), k=/.exec(request.headers.get("authorization") ?? "") ??
+            [];
+        const publicKey = await crypto.subtle.importKey(
+            "raw",
+            key.publicKey,
+            { name: "ECDSA", namedCurve: "P-256" },
+            false,
+            ["verify"],
+        );
+        return (await jwtVerify(jwt, publicKey, { currentDate: test.clock.now() })).payload.aud;
+    }));
+    assertEquals(verified, ["https://push.example", "https://push.example"]);
+});
+
+Deno.test("a push stops being waited for once its worker stops, to be retried", async () => {
+    await using test = await open();
+    await test.subscribe("alice", "a");
+    await test.post("bob", "Hi @alice");
+    const job = await test.ctx.db.selectFrom("jobs").selectAll().where("queue", "=", "push")
+        .executeTakeFirstOrThrow();
+
+    // Answers only once the push is given up on.
+    test.transport.servers.set("push.example", (request) =>
+        new Promise((_, reject) => {
+            if (request.signal.aborted) reject(request.signal.reason);
+            request.signal.addEventListener("abort", () => reject(request.signal.reason));
+        }));
+    const stopping = new AbortController();
+    const pushing = pushHandler({ ...test.ctx, signal: stopping.signal }, job);
+    stopping.abort(new DOMException("Stopping", "AbortError"));
+
+    const error = await assertRejects(() => pushing, DOMException);
+    assertEquals(error.name, "AbortError");
 });

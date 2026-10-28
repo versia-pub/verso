@@ -3,6 +3,7 @@ import {
     federationTransport,
     type FederationTransportOptions,
     timedTransport,
+    timeoutSignal,
     type Transport,
 } from "./transport.ts";
 
@@ -115,4 +116,16 @@ Deno.test("a timed transport gives up on a server that takes too long, but not o
     stopping.abort();
     const soon = new Promise((resolve) => setTimeout(() => resolve("waiting"), 1000));
     assertEquals(await Promise.race([asked, soon]), "stopped");
+});
+
+Deno.test("a timeout signal aborts with a TimeoutError, or as the signal it was given does", async () => {
+    const timedOut = timeoutSignal(10);
+    await new Promise((resolve) => timedOut.addEventListener("abort", resolve));
+    assertEquals(timedOut.reason.name, "TimeoutError");
+
+    const stopping = new AbortController();
+    const stopped = timeoutSignal(60 * 60_000, stopping.signal);
+    assertEquals(stopped.aborted, false);
+    stopping.abort(new Error("Stopping"));
+    assertEquals([stopped.aborted, stopped.reason.message], [true, "Stopping"]);
 });

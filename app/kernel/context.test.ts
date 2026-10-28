@@ -32,6 +32,7 @@ const open = async () => {
         // These tests don't federate.
         federation: {
             instanceKey: () => Promise.reject(new Error("Unused")),
+            vapidKey: () => Promise.reject(new Error("Unused")),
             remoteKeys: {
                 get: () => Promise.resolve(undefined),
                 refresh: () => Promise.resolve(undefined),

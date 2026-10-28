@@ -6,7 +6,6 @@
  * @module
  */
 import type { Notification } from "@versia/client-api";
-import denoConfig from "../../deno.json" with { type: "json" };
 import { z } from "zod";
 import { isFollowing } from "../graph/follows.ts";
 import { enqueueAll } from "../jobs/job_queries.ts";
@@ -14,11 +13,11 @@ import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { textOfHtml } from "../kernel/html.ts";
+import { timeoutSignal, userAgent } from "../kernel/transport.ts";
 import { isNotificationCreated, type NotificationCreated } from "../notifications/events.ts";
 import { shownNotification } from "../notifications/render.ts";
 import type { NotificationType } from "../notifications/tables.ts";
 import { encryptPush, randomSender } from "./encryption.ts";
-import { vapidKey } from "./keys.ts";
 import {
     deleteSubscriptionById,
     findSubscriptionById,
@@ -39,8 +38,11 @@ const ttlSeconds = 2 * 24 * 60 * 60;
 /** Tries a few times, as on Mastodon, since a push is stale soon after. */
 const maxAttempts = 5;
 
-/** How long a push service has to respond, so a slow one can't hold a worker. */
-const timeoutMs = 30_000;
+/**
+ * How long a push service has to respond, so a slow one can't hold a worker. One that takes longer
+ * isn't tried again, as it would hold a worker as long each time.
+ */
+const timeoutMs = 10_000;
 
 /** Whether `subscription` asks for `created`, by its type and by whom it is from. */
 const wants = async (
@@ -74,7 +76,9 @@ export const queuePushes = async (ctx: Context, event: DomainEvent): Promise<voi
             subscriptionId: subscription.id,
             notificationId: event.notificationId,
         };
-        jobs.push({ queue: pushQueue, payload, maxAttempts });
+        // So a push service that hangs holds only its own pushes up.
+        const group = new URL(subscription.endpoint).host;
+        jobs.push({ queue: pushQueue, payload, group, maxAttempts });
     }
     await enqueueAll(ctx, jobs);
 };
@@ -128,7 +132,7 @@ const pushOf = (subscription: PushSubscriptionRow, notification: Notification) =
 /**
  * Pushes a notification to a subscription, unless either has gone, or the user isn't shown it,
  * such as one from an account they have muted since. A subscription its push service says has gone
- * is deleted, as on Mastodon.
+ * is deleted, as on Mastodon. A push service that takes too long isn't tried again.
  */
 export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = PushJob.safeParse(job.payload);
@@ -151,28 +155,34 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
         },
         await randomSender(),
     );
-    const response = await ctx.transport(
-        new Request(subscription.endpoint, {
-            method: "POST",
-            headers: {
-                authorization: await vapidAuthorization(
-                    await vapidKey(ctx),
-                    subscription.endpoint,
-                    ctx.urls.origin,
-                    ctx.clock.now(),
-                ),
-                "user-agent": `Verso/${denoConfig.version} (+${ctx.urls.origin})`,
-                "content-encoding": "aes128gcm",
-                "content-type": "application/octet-stream",
-                ttl: String(ttlSeconds),
-                urgency: "normal",
-            },
-            body,
-            signal: ctx.signal
-                ? AbortSignal.any([AbortSignal.timeout(timeoutMs), ctx.signal])
-                : AbortSignal.timeout(timeoutMs),
-        }),
-    );
+    const request = new Request(subscription.endpoint, {
+        method: "POST",
+        headers: {
+            authorization: await vapidAuthorization(
+                await ctx.federation.vapidKey(ctx),
+                subscription.endpoint,
+                ctx.urls.origin,
+                ctx.clock.now(),
+            ),
+            "user-agent": userAgent(ctx.urls.origin),
+            "content-encoding": "aes128gcm",
+            "content-type": "application/octet-stream",
+            ttl: String(ttlSeconds),
+            urgency: "normal",
+        },
+        body,
+        signal: timeoutSignal(timeoutMs, ctx.signal),
+    });
+
+    let response;
+    try {
+        response = await ctx.transport(request);
+    } catch (error) {
+        if (error instanceof DOMException && error.name === "TimeoutError") {
+            throw new PermanentFailure(`The push service took over ${timeoutMs} ms`);
+        }
+        throw error;
+    }
     await response.body?.cancel();
 
     if (response.ok) return;

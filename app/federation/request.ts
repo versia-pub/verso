@@ -4,10 +4,10 @@
  * @module
  */
 import { sign } from "@versia/protocol";
-import denoConfig from "../../deno.json" with { type: "json" };
 import { versiaJson } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import { checkSignature } from "../kernel/signatures.ts";
+import { timeoutSignal, userAgent } from "../kernel/transport.ts";
 
 /**
  * The largest response read from a remote instance: the largest body Verso accepts, so a fetched
@@ -78,11 +78,9 @@ const send = async (
         ...init,
         headers: {
             ...init.headers,
-            "user-agent": `Verso/${denoConfig.version} (+${ctx.urls.origin})`,
+            "user-agent": userAgent(ctx.urls.origin),
         },
-        signal: ctx.signal
-            ? AbortSignal.any([AbortSignal.timeout(timeoutMs), ctx.signal])
-            : AbortSignal.timeout(timeoutMs),
+        signal: timeoutSignal(timeoutMs, ctx.signal),
     });
 
     try {
