@@ -30,7 +30,8 @@ export const remoteEmojisOf = (
 
     const emojis = new Map<string, RemoteEmoji>();
     for (const emoji of parsed.data.emojis) {
-        const shortcode = /^:([A-Za-z0-9_-]+):$/u.exec(emoji.name)?.[1];
+        // At most as long as local ones.
+        const shortcode = /^:([A-Za-z0-9_-]{1,100}):$/u.exec(emoji.name)?.[1];
         const picture = remotePicture(emoji.content);
         if (shortcode === undefined || picture === null || emojis.has(shortcode)) continue;
 

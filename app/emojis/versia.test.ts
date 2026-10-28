@@ -28,17 +28,22 @@ Deno.test("an entity's emojis are kept by their names, without the colons", () =
     ]);
 });
 
-Deno.test("emojis clients can't show, named again or named without colons are left out", () => {
+Deno.test("emojis clients can't show, named again, named without colons or too long are left out", () => {
     assertEquals(
         kept(extensions(
             emoji(":blob:"),
             emoji(":blob:", "https://b.example/other.png"),
             emoji("!bang!"),
+            emoji(`:${"a".repeat(101)}:`),
             emoji(":vector:", "https://b.example/vector.svg", "image/svg+xml"),
             { name: ":here:", content: { "image/png": { content: "here.png", remote: false } } },
         )),
         [["blob", "https://b.example/blob.png"]],
     );
+    assertEquals(kept(extensions(emoji(`:${"a".repeat(100)}:`))), [[
+        "a".repeat(100),
+        "https://b.example/blob.png",
+    ]]);
 });
 
 Deno.test("an entity has at most 100 emojis, and a malformed extension has none", () => {

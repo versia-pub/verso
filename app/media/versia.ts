@@ -13,23 +13,43 @@ import { isPlayable } from "./uploads.ts";
 /** Image types clients can be counted on to display. */
 const pictureTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
 
-/** The first version of the media at a URL whose type `takes` accepts. */
+/** The longest URL and media type Verso stores for remote media. */
+const maxUrlLength = 2048;
+const maxMediaTypeLength = 255;
+
+/** The longest thumbhash Verso keeps. Real ones are at most about 40 characters. */
+const maxThumbhashLength = 100;
+
+/** The largest number Verso's integer columns hold. */
+const maxInteger = 2 ** 31 - 1;
+
+/** `value`, unless it is too large to store, as a size or a dimension the spec allows can be. */
+const stored = (value: number | null | undefined) =>
+    value !== null && value !== undefined && value <= maxInteger ? value : undefined;
+
+/**
+ * The first version of the media at a URL whose type `takes` accepts. Versions with a URL or type
+ * too long to store are skipped, and numbers too large to store, or thumbhashes too long to be one,
+ * are left out.
+ */
 const firstOf = (
     formats: v0_6.ContentFormat | null | undefined,
     takes: (mediaType: string) => boolean,
 ): RemoteMedia | null => {
     for (const [mediaType, entry] of Object.entries(formats ?? {})) {
         if (!entry.remote || !takes(mediaType)) continue;
+        if (mediaType.length > maxMediaTypeLength || entry.content.length > maxUrlLength) continue;
         if (!v0_6.WebUrl.safeParse(entry.content).success) continue;
 
+        const { thumbhash } = entry;
         return {
             url: entry.content,
             mediaType,
-            size: entry.size ?? undefined,
+            size: stored(entry.size),
             sha256: entry.hash?.toLowerCase(),
-            width: entry.width ?? undefined,
-            height: entry.height ?? undefined,
-            thumbhash: entry.thumbhash ?? undefined,
+            width: stored(entry.width),
+            height: stored(entry.height),
+            thumbhash: thumbhash && thumbhash.length <= maxThumbhashLength ? thumbhash : undefined,
             description: entry.description ?? undefined,
         };
     }
