@@ -5782,6 +5782,15 @@
                 ],
                 "parameters": [
                     {
+                        "name": "stream",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "The stream to subscribe to once connected. More can be subscribed to by sending `subscribe` messages."
+                        }
+                    },
+                    {
                         "name": "upgrade",
                         "in": "header",
                         "required": false,

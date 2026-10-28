@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route, Upgrade } from "../http/route.ts";
+import { openSession } from "./session.ts";
 
 const docs = "https://docs.joinmastodon.org/methods/streaming";
 
@@ -27,19 +28,30 @@ export const streamingRoutes: readonly Route[] = [
         tags: ["streaming"],
         auth: { require: "user" },
         tokenElsewhere: true,
+        query: z.object({
+            stream: z.string().optional().meta({
+                description: "The stream to subscribe to once connected. More can be " +
+                    "subscribed to by sending `subscribe` messages.",
+            }),
+        }),
         headers: z.object({
             upgrade: z.string().optional(),
             "sec-websocket-protocol": z.string().optional(),
         }),
         responses: { 101: Upgrade },
-        handler: (_ctx, { headers }) => {
+        handler: (_ctx, { query, headers, viewer }) => {
             if (headers.upgrade?.toLowerCase() !== "websocket") throw new NotFound();
 
             return Promise.resolve({
                 status: 101,
                 // A browser sends the token as the protocol, and wants it accepted.
                 protocol: headers["sec-websocket-protocol"]?.split(",")[0]?.trim(),
-                socket: () => {},
+                socket: (socket) => {
+                    socket.onopen = () => {
+                        const session = openSession(viewer, socket, query);
+                        socket.onmessage = ({ data }) => session.receive(data);
+                    };
+                },
             });
         },
     }),

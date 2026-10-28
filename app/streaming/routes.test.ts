@@ -100,3 +100,36 @@ Deno.test("tokens are only taken from the query or the protocol for streaming", 
         401,
     );
 });
+
+Deno.test("a WebSocket's messages reach its session, from the stream asked for on connecting", async () => {
+    await using test = await open();
+    await using server = listen(test.app);
+    const socket = new WebSocket(
+        `ws://127.0.0.1:${server.addr.port}/api/v1/streaming?stream=nope`,
+        [test.token],
+    );
+
+    const heard: unknown[] = [];
+    const closed = new Promise<number>((resolve) => socket.onclose = ({ code }) => resolve(code));
+    // Failing rather than waiting forever if no message comes.
+    const message = () =>
+        new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("No message")), 5_000);
+            socket.onmessage = ({ data }) => {
+                clearTimeout(timeout);
+                resolve(void heard.push(JSON.parse(data)));
+            };
+        });
+
+    await message();
+    const next = message();
+    socket.send(JSON.stringify({ type: "unsubscribe", stream: "nope" }));
+    await next;
+    socket.send(new Uint8Array([1]));
+
+    assertEquals(heard, [
+        { error: "Unknown stream type", status: 400 },
+        { error: "Error unsubscribing from channel" },
+    ]);
+    assertEquals(await closed, 1003);
+});
