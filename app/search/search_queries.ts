@@ -4,6 +4,7 @@ import { usesSqlite } from "../db/columns.ts";
 import { type Excluded, notExcluded } from "../graph/excluded_queries.ts";
 import { hasAttachments } from "../media/attachment_queries.ts";
 import type { Context } from "../kernel/context.ts";
+import { firstIdAt } from "../kernel/ids.ts";
 import { isSeenBy, type Onlooker } from "../notes/thread_queries.ts";
 
 /** A search index: its table, the FTS5 table SQLite keeps its words in, and what it indexes. */
@@ -446,6 +447,10 @@ export type HashtagDay = {
 /**
  * How public and unlisted statuses used each of `names` on each of the days that start at `days`,
  * newest first, each a day long, as Mastodon counts its uses. Days they weren't used are left out.
+ *
+ * Only statuses that arrived since the oldest day are counted, so that the hashtags' index reads
+ * only those, not every use there ever was: a remote status dated after it arrived, and arriving
+ * before the oldest day, isn't.
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/tags.rb
  */
 export const hashtagUses = async (
@@ -473,6 +478,7 @@ export const hashtagUses = async (
             eb.fn.count<number | string | bigint>("notes.account_id").distinct().as("accounts"),
         ])
         .where("note_tags.name", "in", names)
+        .where("note_tags.note_id", ">=", firstIdAt(oldest))
         .where("notes.visibility", "in", ["public", "unlisted"])
         .where("notes.created_at", ">=", oldest)
         .where("notes.created_at", "<", new Date(newest.getTime() + 24 * 60 * 60 * 1000))

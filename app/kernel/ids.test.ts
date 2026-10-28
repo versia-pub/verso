@@ -1,6 +1,6 @@
 import { assertEquals, assertMatch, assertNotEquals } from "@std/assert";
 import { fakeClock } from "./clock.ts";
-import { countingRandom, idGenerator } from "./ids.ts";
+import { countingRandom, firstIdAt, idGenerator } from "./ids.ts";
 
 const uuidv7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -23,6 +23,20 @@ Deno.test("ids sort by time", () => {
     });
 
     assertEquals(ids.toSorted(), ids);
+});
+
+Deno.test("the first id at a time sorts before every id made then or later, and after earlier ones", () => {
+    const time = new Date("2026-01-01T00:00:00Z");
+    const first = firstIdAt(time);
+    assertEquals(first, "019b76da-a800-7000-8000-000000000000");
+
+    const clock = fakeClock(time);
+    const nextId = idGenerator(clock, (bytes) => bytes.fill(0xff));
+    const earlier = idGenerator(
+        fakeClock(new Date(time.getTime() - 1)),
+        (bytes) => bytes.fill(0xff),
+    );
+    assertEquals([earlier(), first, nextId()].toSorted(), [earlier(), first, nextId()]);
 });
 
 Deno.test("random ids made at the same time differ", () => {

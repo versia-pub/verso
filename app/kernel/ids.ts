@@ -36,6 +36,13 @@ export const idGenerator = (
 };
 
 /**
+ * The smallest id generated at `time` or after it, so that ids from `time` on are those at least
+ * this one.
+ */
+export const firstIdAt = (time: Date): string =>
+    idGenerator({ now: () => time }, (bytes) => bytes.fill(0))();
+
+/**
  * A random source for tests that counts up, so the ids it helps generate are the same on every run.
  */
 export const countingRandom = (): RandomSource => {

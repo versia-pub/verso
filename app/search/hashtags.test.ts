@@ -53,20 +53,24 @@ Deno.test("a query's wildcards are themselves", async () => {
 Deno.test("a hashtag shows how public and unlisted statuses used it each day of the past week", async () => {
     await using test = await open();
     await createLocalAccount(test.ctx, "bob");
-    test.clock.advance(Date.parse("2026-01-08T12:00:00Z") - test.clock.now().getTime());
-
     const post = (
         at: string,
         tags: string[],
         accountId = "alice",
         visibility: Visibility = "public",
     ) => createNote(test.ctx, accountId, { visibility, created_at: new Date(at) }, [], tags);
+    const arrive = (at: string) => test.clock.advance(Date.parse(at) - test.clock.now().getTime());
+
+    // Dated in the week, but arrived before it started, as remote statuses can be.
+    await post("2026-01-08T09:00:00Z", ["verso"], "bob");
+    arrive("2026-01-02T00:00:00Z");
+    await post("2026-01-02T00:00:00Z", ["verso"]);
+    arrive("2026-01-08T12:00:00Z");
     await post("2026-01-08T11:00:00Z", ["verso", "versia"]);
     await post("2026-01-08T00:00:00Z", ["verso"]);
     await post("2026-01-08T10:00:00Z", ["verso"], "bob", "unlisted");
     await post("2026-01-08T10:00:00Z", ["verso"], "bob", "private");
     await post("2026-01-07T23:59:59Z", ["verso"]);
-    await post("2026-01-02T00:00:00Z", ["verso"]);
     // Too long ago, or not yet.
     await post("2026-01-01T23:59:59Z", ["verso", "old"]);
     await post("2026-01-09T00:00:00Z", ["verso"]);
