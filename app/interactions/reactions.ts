@@ -5,9 +5,14 @@
  * @see https://versia.pub/extensions/reactions
  * @module
  */
+import { z } from "zod";
+import { batchesOf } from "../db/batches.ts";
 import { usableEmojiIds } from "../emojis/emoji_queries.ts";
 import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
 import { isEmojiDeleted } from "../emojis/events.ts";
+import { enqueueAll } from "../jobs/job_queries.ts";
+import type { JobsTable } from "../jobs/tables.ts";
+import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
@@ -116,9 +121,21 @@ export const unreact = (
         return await findNote(tx, reacted) ?? "missing";
     });
 
+/** The queue that tells of local users' reactions undone with their deleted emoji. */
+export const undoneReactionsQueue = "undone-reactions";
+
+/** The reactions a job tells of, with who made each and what they were to. */
+export const UndoneReactionsJob = z.object({
+    reactions: z.array(z.object({ id: z.string(), accountId: z.string(), noteId: z.string() })),
+});
+
+/** How many undone reactions a job tells of. */
+const undonePerJob = 100;
+
 /**
  * Undoes local users' reactions with a local emoji that is being deleted, as if they had undone
- * them, so remote instances are sent Deletes.
+ * them, so remote instances are sent Deletes. They are deleted with the emoji, and jobs tell of
+ * them a batch at a time, so an emoji many reacted with can be deleted at once.
  */
 export const undoReactionsWithDeletedEmoji = async (
     ctx: Context,
@@ -126,15 +143,41 @@ export const undoReactionsWithDeletedEmoji = async (
 ): Promise<void> => {
     if (!isEmojiDeleted(event)) return;
 
-    for (const reaction of await deleteReactionsWith(ctx, event.emojiId)) {
-        const undone: ReactionEvent = {
-            type: "interactions.unreacted",
-            reactionId: reaction.id,
-            accountId: reaction.account_id,
-            noteId: reaction.note_id,
-        };
-        await emit(ctx, undone);
-    }
+    const reactions = await deleteReactionsWith(ctx, event.emojiId);
+    await enqueueAll(
+        ctx,
+        batchesOf(reactions, undonePerJob).map((batch) => {
+            const payload: z.infer<typeof UndoneReactionsJob> = {
+                reactions: batch.map((reaction) => ({
+                    id: reaction.id,
+                    accountId: reaction.account_id,
+                    noteId: reaction.note_id,
+                })),
+            };
+            return { queue: undoneReactionsQueue, payload };
+        }),
+    );
+};
+
+/** Tells of the undone reactions in the job, as if their users had undone them. */
+export const undoneReactionsHandler: Handler = async (
+    ctx: Context,
+    job: JobsTable,
+): Promise<void> => {
+    const payload = UndoneReactionsJob.safeParse(job.payload);
+    if (!payload.success) throw new PermanentFailure("The job isn't an undone reactions job");
+
+    await ctx.transaction(async (tx) => {
+        for (const reaction of payload.data.reactions) {
+            const undone: ReactionEvent = {
+                type: "interactions.unreacted",
+                reactionId: reaction.id,
+                accountId: reaction.accountId,
+                noteId: reaction.noteId,
+            };
+            await emit(tx, undone);
+        }
+    });
 };
 
 /** A remote reaction, as Verso stores it. */

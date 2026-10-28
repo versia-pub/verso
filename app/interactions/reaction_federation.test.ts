@@ -5,6 +5,8 @@ import { createLocalEmoji } from "../emojis/testing.ts";
 import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
 import { fetchSigned } from "../federation/request.ts";
 import { follow } from "../graph/follows.ts";
+import { queues } from "../jobs/queues.ts";
+import { drain } from "../jobs/worker.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { entityUrl } from "../kernel/urls.ts";
@@ -14,7 +16,13 @@ import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { findLocalReaction } from "./reaction_queries.ts";
 import { reactionType } from "./reaction_federation.ts";
-import { keepRemoteReaction, react, unreact } from "./reactions.ts";
+import {
+    keepRemoteReaction,
+    react,
+    UndoneReactionsJob,
+    undoneReactionsQueue,
+    unreact,
+} from "./reactions.ts";
 
 /**
  * alice and bob are local, with the local instance's blob, carol is on b.example, erin on
@@ -269,6 +277,9 @@ Deno.test("local users' reactions with a deleted emoji are undone, and remote in
         await deleteEmoji(test.ctx, { accountId: "admin", managesEmojis: true }, emojiId.id),
         true,
     );
+    // Told by a job.
+    assertEquals((await sent(test.ctx)).length, before);
+    await drain(test.ctx, { [undoneReactionsQueue]: queues[undoneReactionsQueue] });
 
     const deletes = (await sent(test.ctx)).slice(before);
     assertEquals(deletes.map(([domain, each]) => [domain, each.type, each.deleted]), [
@@ -278,4 +289,25 @@ Deno.test("local users' reactions with a deleted emoji are undone, and remote in
     const left = await test.ctx.db.selectFrom("reactions").select("id").orderBy("id").execute();
     assertEquals(left.length, 2);
     assertEquals(left.some((row) => row.id === party), true);
+});
+
+Deno.test("the reactions undone with a deleted emoji are told of 100 to a job", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "carol", { instance_id: "b.example", remote_id: "n1" });
+    const reactors = Array.from({ length: 101 }, (_, n) => `u${n}`);
+    for (const id of reactors) {
+        await createLocalAccount(test.ctx, id);
+        await react(test.ctx, id, note.id, ":blob:");
+    }
+
+    const emoji = await test.ctx.db.selectFrom("emojis").select("id")
+        .where("instance_id", "is", null)
+        .executeTakeFirstOrThrow();
+    await deleteEmoji(test.ctx, { accountId: "admin", managesEmojis: true }, emoji.id);
+
+    const jobs = await test.ctx.db.selectFrom("jobs").select("payload")
+        .where("queue", "=", undoneReactionsQueue)
+        .execute();
+    const told = jobs.map((job) => UndoneReactionsJob.parse(job.payload).reactions.length);
+    assertEquals(told.toSorted((a, b) => b - a), [100, 1]);
 });

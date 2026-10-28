@@ -3,6 +3,7 @@ import { acceptHandler, acceptQueue } from "../graph/follows.ts";
 import { deliverQueue } from "../federation/deliver.ts";
 import { deliverDeadPayload, deliverHandler } from "../federation/deliver_worker.ts";
 import { inboxQueue } from "../federation/inbox.ts";
+import { undoneReactionsHandler, undoneReactionsQueue } from "../interactions/reactions.ts";
 import { inboxDeadPayload, inboxHandler } from "../federation/inbox_worker.ts";
 import { messageHandler, messageQueue } from "../federation/messaging.ts";
 import { deleteEndedRateLimits } from "../http/rate_limit_queries.ts";
@@ -37,6 +38,7 @@ export const queues: Record<string, Queue> = {
     },
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
+    [undoneReactionsQueue]: { handler: undoneReactionsHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
     // By the push service's host.
     [pushQueue]: { handler: pushHandler, concurrency: 8, perGroup: 2 },

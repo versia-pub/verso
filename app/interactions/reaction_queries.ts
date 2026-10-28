@@ -102,10 +102,10 @@ export const deleteReaction = async (
 export const deleteReactionsWith = async (
     ctx: Context,
     emojiId: string,
-): Promise<ReactionRow[]> =>
+): Promise<Pick<ReactionRow, "id" | "account_id" | "note_id">[]> =>
     await ctx.db.deleteFrom("reactions")
         .where("emoji_id", "=", emojiId)
-        .returningAll()
+        .returning(["id", "account_id", "note_id"])
         .execute();
 
 /** The reactions to a status with one emoji, and the custom emoji's picture, if it is one. */
