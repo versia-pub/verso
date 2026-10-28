@@ -6,14 +6,20 @@ import { openSession } from "./session.ts";
 const open = (
     scopes: readonly Scope[],
     query: { readonly stream?: string; readonly tag?: string } = {},
+    limits?: { readonly subscriptions: number; readonly tag_length: number },
 ) => {
     const sent: unknown[] = [];
     const closed: [number, string][] = [];
     const viewer = { tokenId: "token", appId: "app", accountId: "alice", scopes };
-    const session = openSession(viewer, {
-        send: (data) => void sent.push(JSON.parse(data)),
-        close: (code, reason) => void closed.push([code, reason]),
-    }, query);
+    const session = openSession(
+        viewer,
+        {
+            send: (data) => void sent.push(JSON.parse(data)),
+            close: (code, reason) => void closed.push([code, reason]),
+        },
+        query,
+        limits,
+    );
 
     const send = (...messages: unknown[]) => {
         for (const message of messages) session.receive(JSON.stringify(message));
@@ -152,4 +158,42 @@ Deno.test("a client subscribes to hashtags' streams, whatever their case, if it 
     );
     assertEquals(session.streams(), ["hashtag:local#nix", "hashtag#rust", "public"]);
     assertEquals(sent, [{ error: "Error unsubscribing from channel" }]);
+});
+
+Deno.test("a client subscribes to no more streams than the limit, nor hashtags longer than it", () => {
+    const { session, sent, send } = open(["read"], { stream: "hashtag", tag: "ab" }, {
+        subscriptions: 3,
+        tag_length: 3,
+    });
+
+    send(
+        // Characters, not bytes or UTF-16 code units.
+        { type: "subscribe", stream: "hashtag", tag: "é😀a" },
+        { type: "subscribe", stream: "hashtag", tag: "abcd" },
+        // Which isn't a hashtag's, so its tag counts for nothing.
+        { type: "subscribe", stream: "public", tag: "abcd" },
+        // Already subscribed to.
+        { type: "subscribe", stream: "public" },
+        { type: "subscribe", stream: "user" },
+    );
+    assertEquals(session.streams(), ["hashtag#ab", "hashtag#é😀a", "public"]);
+    assertEquals(sent, [
+        { error: "Tag name is too long", status: 400 },
+        { error: "Too many subscriptions", status: 400 },
+    ]);
+
+    send({ type: "unsubscribe", stream: "public" }, { type: "subscribe", stream: "user" });
+    assertEquals(session.streams(), ["hashtag#ab", "hashtag#é😀a", "user"]);
+});
+
+Deno.test("a client's streams are limited as config is by default", () => {
+    const { session, sent, send } = open(["read"]);
+    for (let i = 0; i < 101; i++) send({ type: "subscribe", stream: "hashtag", tag: `t${i}` });
+    send({ type: "subscribe", stream: "hashtag:local", tag: "a".repeat(101) });
+
+    assertEquals(session.streams().length, 100);
+    assertEquals(sent, [
+        { error: "Too many subscriptions", status: 400 },
+        { error: "Tag name is too long", status: 400 },
+    ]);
 });

@@ -3,6 +3,7 @@ import { grantRoleTo } from "../accounts/roles.ts";
 import { createLocalAccount, createRole } from "../accounts/testing.ts";
 import { registerTestApp, tokenFor } from "../auth/testing.ts";
 import { issueToken, revokeToken } from "../auth/tokens.ts";
+import { StreamingLimits } from "../kernel/config_sections.ts";
 import type { PubSub } from "../kernel/context.ts";
 import { memoryPubSub } from "../kernel/pubsub.ts";
 import { postNote } from "../notes/notes.ts";
@@ -43,11 +44,14 @@ const countedPubSub = () => {
     return Object.assign(counting, { live: () => live.size });
 };
 
-const open = async (permissions?: { anonymous: []; default: [] }) => {
+const open = async (
+    permissions?: { anonymous: []; default: [] },
+    limits = StreamingLimits.parse({}),
+) => {
     const pubsub = countedPubSub();
     const test = await createTestContext({ pubsub });
     await createLocalAccount(test.ctx, "alice");
-    const app = createTestApp(test.ctx, [...streamingRoutes, ...markerRoutes], {
+    const app = createTestApp(test.ctx, [...streamingRoutes(limits), ...markerRoutes], {
         checkResponses: true,
         permissions,
     });
@@ -243,6 +247,77 @@ Deno.test("a WebSocket streams what its user may read once their roles change, w
 
     assertEquals(JSON.parse(heard[1].payload ?? "").id, shown);
     socket.close();
+});
+
+Deno.test("an account may have only so many WebSockets open, counting those it closed no more", async () => {
+    await using test = await open(
+        undefined,
+        StreamingLimits.parse({ sockets_per_account: 2, subscriptions: 1 }),
+    );
+    await using server = listen(test.app);
+    const url = `ws://127.0.0.1:${server.addr.port}/api/v1/streaming`;
+    const refused = () =>
+        test.app.request("/api/v1/streaming", {
+            headers: { ...handshake, authorization: `Bearer ${test.token}` },
+        });
+
+    const first = await connect(url, test.token);
+    const second = await connect(url, test.token);
+    // With only so many streams each, as configured.
+    const answered = new Promise((resolve) => first.socket.onmessage = ({ data }) => resolve(data));
+    first.socket.send(JSON.stringify({ type: "subscribe", stream: "public" }));
+    first.socket.send(JSON.stringify({ type: "subscribe", stream: "user" }));
+    assertEquals(JSON.parse(String(await soon(answered))), {
+        error: "Too many subscriptions",
+        status: 400,
+    });
+    const response = await refused();
+    assertEquals([response.status, (await response.json()).error], [
+        429,
+        "Too many WebSockets are open",
+    ]);
+    // Another user's.
+    await createLocalAccount(test.ctx, "bob");
+    const bobs = await connect(url, await tokenFor(test.ctx, "bob"));
+
+    first.socket.close();
+    await first.closed();
+    const third = await connect(url, test.token);
+
+    for (const { socket, closed } of [second, third, bobs]) {
+        socket.close();
+        await closed();
+    }
+});
+
+Deno.test("WebSockets opened at once past an account's limit are closed once open", async () => {
+    await using test = await open(undefined, StreamingLimits.parse({ sockets_per_account: 1 }));
+    await using server = listen(test.app);
+    const url = `ws://127.0.0.1:${server.addr.port}/api/v1/streaming`;
+
+    /** How the socket ends up: open, closed with its code, or refused before it opened. */
+    const outcome = (socket: WebSocket) =>
+        soon(
+            new Promise<string>((resolve) => {
+                socket.onmessage = () => resolve("open");
+                socket.onclose = ({ code }) => resolve(String(code));
+                socket.onopen = () => socket.send(JSON.stringify({ type: "subscribe" }));
+            }),
+        );
+    const sockets = [0, 1, 2, 3, 4].map(() => new WebSocket(url, [test.token]));
+    const outcomes = await Promise.all(sockets.map(outcome));
+
+    // The others closed once open, or were refused before they opened, by how they raced.
+    assertEquals(outcomes.filter((ended) => ended === "open").length, 1);
+    const closing = sockets.filter((socket) => socket.readyState !== WebSocket.CLOSED);
+    for (const socket of closing) socket.close();
+    await soon(
+        Promise.all(closing.map((socket) => new Promise((resolve) => socket.onclose = resolve))),
+    );
+    // Counting none of them once closed.
+    const again = await connect(url, test.token);
+    again.socket.close();
+    await again.closed();
 });
 
 Deno.test("WebSockets close, and stop watching their tokens, once Verso stops", async () => {

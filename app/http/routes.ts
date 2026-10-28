@@ -43,7 +43,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...notificationRoutes,
         ...pushRoutes,
         ...markerRoutes,
-        ...streamingRoutes,
+        ...streamingRoutes(settings.streaming),
         ...mediaRoutes(settings.media, settings.limits),
         ...emojiRoutes(settings.media, settings.limits),
         ...roleRoutes,

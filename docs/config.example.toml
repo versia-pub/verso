@@ -15,7 +15,8 @@ domain = "social.example"
 database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # database = { sqlite = "verso.db" }
 # SQLite suits one process, running `verso all`: processes on it can't tell each other what
-# changed, so a domain block made with `verso admin`, say, applies elsewhere within a minute.
+# changed, so a domain block made with `verso admin`, say, applies elsewhere within a minute, and
+# streaming reaches only clients connected to the process where something happened.
 # With PostgreSQL, also how many connections each process may have, how long to wait for one, and
 # how long a query may run (0 for no limit), which migrations aren't held to:
 # database = { postgres = "…", pool_size = 30, connect_timeout_seconds = 10,
@@ -162,6 +163,14 @@ updated = 2026-10-01
 #     "owner:media",
 #     "owner:note",
 # ]
+
+[streaming]
+# How much one user may stream, since every WebSocket and stream costs work for each event.
+# WebSockets are counted on each process, so with several, an account may open this many on each.
+# sockets_per_account = 10
+# subscriptions = 100
+# How long a hashtag a stream is for may be, in characters.
+# tag_length = 100
 
 [jobs]
 # How many days a job that failed for good is retained, for someone to look at.

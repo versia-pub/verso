@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 import type { Viewer } from "../http/route.ts";
+import { StreamingLimits } from "../kernel/config_sections.ts";
 import { grants, type Scope } from "../kernel/scopes.ts";
 
 /** What a session needs of its WebSocket. */
@@ -69,12 +70,14 @@ const Message = z.object({
  * it connected, of the hashtag `query.tag` if it is a hashtag's. A stream the client may not have,
  * that doesn't exist, or that is a hashtag's but names none, is refused with an error message, as
  * on Mastodon. Mastodon checks the scope first, so a stream that doesn't exist needs the scope of
- * one that isn't public.
+ * one that isn't public. So are a hashtag longer than `limits` allow, and streams past as many as
+ * they allow, which Mastodon doesn't limit.
  */
 export const openSession = (
     viewer: Viewer,
     socket: Socket,
     query: { readonly stream?: string; readonly tag?: string } = {},
+    limits: Pick<StreamingLimits, "subscriptions" | "tag_length"> = StreamingLimits.parse({}),
 ): Session => {
     // Each stream, by how the session names it, as events name it: a hashtag's as the client first
     // wrote it, as on Mastodon.
@@ -102,7 +105,14 @@ export const openSession = (
 
         const key = keyOf(name, stream, tag);
         if (key === undefined) return refuse("Missing tag name parameter", 400);
-        if (!subscribed.has(key)) subscribed.set(key, tag && stream.hashtag ? [name, tag] : [name]);
+        if (subscribed.has(key)) return;
+        // In characters, as Verso counts them.
+        if (stream.hashtag && [...(tag ?? "")].length > limits.tag_length) {
+            return refuse("Tag name is too long", 400);
+        }
+        if (subscribed.size >= limits.subscriptions) return refuse("Too many subscriptions", 400);
+
+        subscribed.set(key, tag && stream.hashtag ? [name, tag] : [name]);
     };
 
     const unsubscribe = (name: string, tag: string | undefined) => {

@@ -28,7 +28,7 @@ import { vapidPublicKey } from "../push/keys.ts";
 import { countInstances } from "./instance_queries.ts";
 
 /** What the instance's description is built from. */
-export type AboutSettings = Pick<Config, "instance" | "limits" | "auth"> & {
+export type AboutSettings = Pick<Config, "instance" | "limits" | "auth" | "streaming"> & {
     readonly media: MediaLimits;
 };
 

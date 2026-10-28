@@ -82,6 +82,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                     "owner:reaction",
                 ],
             },
+            streaming: { sockets_per_account: 10, subscriptions: 100, tag_length: 100 },
             jobs: { dead_letter_days: 30 },
             logging: { level: "info" },
         },
@@ -155,6 +156,11 @@ default = ["owner:account"]
 [federation]
 unreachable_days = 3
 delivery_hours = 24
+
+[streaming]
+sockets_per_account = 4
+subscriptions = 20
+tag_length = 50
 
 [jobs]
 dead_letter_days = 14
@@ -244,6 +250,7 @@ level = "debug"
                 media_description: 1500,
             },
             permissions: { anonymous: [], default: ["owner:account"] },
+            streaming: { sockets_per_account: 4, subscriptions: 20, tag_length: 50 },
             jobs: { dead_letter_days: 14 },
             logging: { level: "debug" },
         },

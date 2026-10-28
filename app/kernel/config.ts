@@ -11,6 +11,7 @@ import {
     MediaLimits,
     Origin,
     Permissions,
+    StreamingLimits,
 } from "./config_sections.ts";
 
 const developmentOnly = 'Only allowed with mode = "development"';
@@ -153,6 +154,7 @@ export const Config = z.strictObject({
     instance: Instance,
     limits: Limits,
     permissions: Permissions,
+    streaming: StreamingLimits,
     jobs: z.strictObject({
         /** How many days a job that failed for good is retained, for someone to look at. */
         dead_letter_days: z.int().min(1).default(30),

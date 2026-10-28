@@ -223,3 +223,18 @@ export const MediaLimits = z.strictObject({
 });
 
 export type MediaLimits = z.infer<typeof MediaLimits>;
+
+/**
+ * How much one user may stream, since every socket, and every stream it subscribes to, costs work
+ * for each event.
+ */
+export const StreamingLimits = z.strictObject({
+    /** How many WebSockets each account may have open at once, on each process. */
+    sockets_per_account: z.int().min(1).default(10),
+    /** How many streams each WebSocket may subscribe to. */
+    subscriptions: z.int().min(1).default(100),
+    /** How long a hashtag a stream is for may be, in characters. */
+    tag_length: z.int().min(1).default(100),
+}).prefault({});
+
+export type StreamingLimits = z.infer<typeof StreamingLimits>;
