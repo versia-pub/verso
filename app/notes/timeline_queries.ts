@@ -119,19 +119,12 @@ export const findHomeNote = async (
 export type Origin = "all" | "local" | "remote";
 
 /**
- * A page of the public timeline, newest first: public statuses from `origin`, without replies
- * (except replies to their own authors) or boosts, as on Mastodon, and with `onlyMedia`, only those
- * with media attached. If there is a viewer, the statuses of the accounts they block or mute,
- * `hidden`, are omitted.
+ * The statuses on the public timeline: public statuses, without replies (except replies to their
+ * own authors) or boosts, as on Mastodon. If there is a viewer, the statuses of the accounts they
+ * block or mute, `hidden`, are omitted.
  */
-export const publicPage = async (
-    ctx: Context,
-    origin: Origin,
-    hidden: Excluded | null,
-    page: PageBounds,
-    onlyMedia = false,
-): Promise<NoteRow[]> => {
-    let query = ctx.db.selectFrom("notes").selectAll()
+const publicQuery = (ctx: Context, hidden: Excluded | null) => {
+    const query = ctx.db.selectFrom("notes").selectAll()
         .where("visibility", "=", "public")
         .where("reblog_of_id", "is", null)
         .where((eb) =>
@@ -141,10 +134,32 @@ export const publicPage = async (
             ])
         );
 
-    if (hidden !== null) query = query.where(without(hidden));
+    return hidden === null ? query : query.where(without(hidden));
+};
+
+/**
+ * A page of the public timeline, newest first, of the statuses {@link publicQuery} finds from
+ * `origin`, and with `onlyMedia`, only those with media attached.
+ */
+export const publicPage = async (
+    ctx: Context,
+    origin: Origin,
+    hidden: Excluded | null,
+    page: PageBounds,
+    onlyMedia = false,
+): Promise<NoteRow[]> => {
+    let query = publicQuery(ctx, hidden);
     if (origin === "local") query = query.where("instance_id", "is", null);
     if (origin === "remote") query = query.where("instance_id", "is not", null);
     if (onlyMedia) query = query.where(hasAttachments);
 
     return await readPage(query, "notes.id", page);
 };
+
+/** The status `noteId`, if it is on the public timeline, as {@link publicQuery} finds. */
+export const findPublicNote = async (
+    ctx: Context,
+    hidden: Excluded,
+    noteId: string,
+): Promise<NoteRow | undefined> =>
+    await publicQuery(ctx, hidden).where("notes.id", "=", noteId).executeTakeFirst();

@@ -201,12 +201,12 @@ Deno.test("a WebSocket closes once its token is revoked, and stops watching it o
 
     const kept = await connect(url, test.token);
     const revoked = await connect(url, issued.token);
-    // Watching each token, and streaming statuses and notifications.
-    assertEquals(test.pubsub.live(), before + 8);
+    // Watching each token, and streaming statuses to the user and public streams, and notifications.
+    assertEquals(test.pubsub.live(), before + 10);
 
     await revokeToken(test.ctx, app, issued.token);
     assertEquals(await revoked.closed(), [1000, "The access token was revoked"]);
-    await until(() => test.pubsub.live() === before + 4);
+    await until(() => test.pubsub.live() === before + 5);
 
     kept.socket.close();
     await kept.closed();
