@@ -11,6 +11,7 @@ import { createTestContext } from "../testing/context.ts";
 import {
     groupKeyOf,
     groupStatsOf,
+    insertNotifications,
     type NotificationFilter,
     notificationGroupPage,
 } from "./notification_queries.ts";
@@ -97,6 +98,48 @@ Deno.test("each query for a page of groups finds a group, until the page is full
     // The likes after the first are left out, and the last part, with fewer, ends the page.
     assertEquals(await test.queriesOf(pageOf(2)), 2);
     assertEquals(await test.queriesOf(pageOf(3)), 2);
+});
+
+Deno.test("each part of a page of groups reads twice as many notifications as the last", async () => {
+    await using test = await open();
+    // Ten groups of ten, one after another.
+    await insertNotifications(
+        test.ctx,
+        Array.from({ length: 100 }, (_, n) => ({
+            id: test.ctx.ids(),
+            account_id: "alice",
+            type: "follow",
+            from_account_id: many[n % 10],
+            note_id: null,
+            share_id: null,
+            like_id: null,
+            reaction_id: null,
+            follow_id: null,
+            group_key: `follow-${Math.floor(n / 10)}`,
+            created_at: test.ctx.clock.now(),
+        })),
+    );
+
+    const page = (limit: number) => (ctx: typeof test.ctx) =>
+        notificationGroupPage(ctx, "alice", shownTo(ctx, "alice"), {}, byDefault, { limit });
+    const keys = async (limit: number) => (await page(limit)(test.ctx)).map((row) => row.group_key);
+
+    // Of 10, 20, 40 and 80 notifications: a group, two, four, and the last three.
+    assertEquals(await test.queriesOf(page(10)), 4);
+    // The last part has two groups, of which the page has room for one.
+    assertEquals(await keys(3), ["follow-9", "follow-8", "follow-7"]);
+    assertEquals(await keys(10), [
+        "follow-9",
+        "follow-8",
+        "follow-7",
+        "follow-6",
+        "follow-5",
+        "follow-4",
+        "follow-3",
+        "follow-2",
+        "follow-1",
+        "follow-0",
+    ]);
 });
 
 Deno.test("only the types asked for are grouped, and others are a group each", async () => {

@@ -150,7 +150,9 @@ export const groupKeyOf = (row: NotificationRow, grouped: readonly NotificationT
  * `min_id`. `page.limit` counts groups, and only the types `grouped` are grouped.
  *
  * Mastodon finds them in one recursive query; Verso reads the page a part at a time, leaving out
- * the groups it has found, so that it works on SQLite too. Each part finds a group at least.
+ * the groups it has found, so that it works on SQLite too. Each part finds a group at least, and
+ * reads twice as many notifications as the last, so that large groups, which a part may be full
+ * of, take few parts.
  * @see https://github.com/mastodon/mastodon/blob/v4.3.0/app/models/notification.rb
  */
 export const notificationGroupPage = async (
@@ -166,6 +168,7 @@ export const notificationGroupPage = async (
     const oldestFirst = page.min_id !== undefined;
     const found = new Map<string, NotificationRow>();
     let bounds = page;
+    let size = page.limit;
 
     while (found.size < page.limit) {
         let query = filtered(ctx, accountId, shown, filter);
@@ -177,17 +180,17 @@ export const notificationGroupPage = async (
             );
         }
 
-        const wanted = page.limit - found.size;
-        const part = await readPage(query, "notifications.id", { ...bounds, limit: wanted });
+        const part = await readPage(query, "notifications.id", { ...bounds, limit: size });
         // Read in the order the page goes, which is oldest first after `min_id`.
         const read = oldestFirst ? part.toReversed() : part;
         for (const row of read) {
             const key = groupKeyOf(row, grouped);
-            if (!found.has(key)) found.set(key, row);
+            if (!found.has(key) && found.size < page.limit) found.set(key, row);
         }
 
         const last = read.at(-1);
-        if (last === undefined || part.length < wanted) break;
+        if (last === undefined || part.length < size) break;
+        size *= 2;
         bounds = oldestFirst ? { ...bounds, min_id: last.id } : { ...bounds, max_id: last.id };
     }
 
