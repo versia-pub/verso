@@ -2,7 +2,8 @@
 # b.test looks up alice@a.test, so b.test finds her with WebFinger and fetches her, signed. Then bea
 # follows alice, and alice's next note reaches bea's home timeline, with its totals fetched from
 # a.test. bea likes and shares it, and a.test counts both. b.test keeps its uploads in a Garage
-# bucket, which it checks it can write to when it starts.
+# bucket, which it checks it can write to when it starts, and bea's picture, processed there, reaches
+# alice on a.test.
 { pkgs, module }:
 let
   # A certificate authority both machines trust, and a certificate for each. Test keys only.
@@ -240,5 +241,34 @@ pkgs.testers.runNixOSTest {
     status = api(a, "alice-token", "GET", f"/api/v1/statuses/{posted['id']}")
     counts = [status["favourites_count"], status["reblogs_count"]]
     assert counts == [1, 1], f"a.test counts {counts!r}"
+
+    # bea uploads a picture, which b.test processes into its bucket, with a WebP preview.
+    picture = json.loads(b.succeed(
+        "printf %s 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAADUlEQVR4XmM4AQVwBgBwkgyBA1BDXQAAAABJRU5ErkJggg==' "
+        "| base64 -d > /tmp/square.png && "
+        "curl --fail-with-body --silent https://b.test/api/v2/media "
+        "--header 'authorization: Bearer bea-token' --form file=@/tmp/square.png --form description=A_square"
+    ))
+    b.wait_until_succeeds(
+        f"curl --silent --output /dev/null --write-out '%{{http_code}}' https://b.test/api/v1/media/{picture['id']} "
+        "--header 'authorization: Bearer bea-token' | grep -qx 200"
+    )
+    processed = api(b, "bea-token", "GET", f"/api/v1/media/{picture['id']}")
+    for url, kind in [(processed["url"], "image/png"), (processed["preview_url"], "image/webp")]:
+        assert url.startswith("http://media.web.garage:3902/verso/media/"), f"b.test keeps it at {url!r}"
+        served = b.succeed(f"curl --fail --silent --dump-header - --output /dev/null {url}").lower()
+        assert f"content-type: {kind}" in served, served
+
+    # bea posts it, mentioning alice, and a.test shows it from b.test's bucket. Remote pictures have
+    # no preview of a.test's own.
+    api(b, "bea-token", "POST", "/api/v1/statuses", {"status": "@alice@a.test Look", "media_ids": [picture["id"]]})
+    a.wait_until_succeeds(
+        "curl --fail --silent https://a.test/api/v1/notifications "
+        "--header 'authorization: Bearer alice-token' | grep -qF '\"type\":\"mention\"'"
+    )
+    mention = next(n for n in api(a, "alice-token", "GET", "/api/v1/notifications") if n["type"] == "mention")
+    [attachment] = mention["status"]["media_attachments"]
+    shown = [attachment["type"], attachment["url"], attachment["preview_url"], attachment["description"]]
+    assert shown == ["image", processed["url"], None, "A_square"], f"a.test shows {shown!r}"
   '';
 }
