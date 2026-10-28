@@ -44,11 +44,13 @@ const batchSize = 500;
  */
 export const indexUnindexed = async (ctx: Pick<Context, "db">): Promise<number> => {
     let count = 0;
+    let after = null;
     for (;;) {
-        const noteIds = await unindexedNoteIds(ctx, batchSize);
+        const noteIds = await unindexedNoteIds(ctx, after, batchSize);
         if (noteIds.length === 0) return count;
 
         await indexNotes(ctx, noteIds);
         count += noteIds.length;
+        after = noteIds[noteIds.length - 1];
     }
 };

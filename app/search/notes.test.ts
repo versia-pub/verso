@@ -14,6 +14,7 @@ import { removeNote } from "../notes/removal.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { indexUnindexed } from "./notes.ts";
+import { unindexedAccountIds, unindexedNoteIds } from "./search_queries.ts";
 import { searchStatuses } from "./statuses.ts";
 import { searchWords } from "./words.ts";
 
@@ -146,4 +147,24 @@ Deno.test("statuses from before search are indexed once", async () => {
     assertEquals(await test.find("old"), ids.toReversed());
     assertEquals(await test.find("old 1"), [ids[1]]);
     assertEquals(await test.find("old", 2), [ids[2], ids[1]]);
+});
+
+Deno.test("what isn't indexed is found a batch at a time, in id order, after the last batch", async () => {
+    await using test = await open();
+    const ids = [];
+    for (let i = 0; i < 3; i++) {
+        ids.push((await createNote(test.ctx, "alice", { content_html: `<p>Old ${i}</p>` })).id);
+    }
+    // Neither indexed nor counted.
+    await createShare(test.ctx, "bob", ids[1]);
+
+    assertEquals(await unindexedNoteIds(test.ctx, null, 2), ids.slice(0, 2));
+    assertEquals(await unindexedNoteIds(test.ctx, ids[1], 2), [ids[2]]);
+    assertEquals(await unindexedNoteIds(test.ctx, ids[2], 2), []);
+
+    // Accounts as statuses, with bob's index, made as his profile changed, gone.
+    await test.ctx.db.deleteFrom("account_search").execute();
+    assertEquals(await unindexedAccountIds(test.ctx, null, 1), ["alice"]);
+    assertEquals(await unindexedAccountIds(test.ctx, "alice", 5), ["bob"]);
+    assertEquals(await unindexedAccountIds(test.ctx, "bob", 5), []);
 });

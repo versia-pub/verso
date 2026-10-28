@@ -89,9 +89,14 @@ const matching = (
     )`;
 };
 
-/** Up to `limit` statuses that aren't indexed yet, other than boosts, which have no words. */
+/**
+ * Up to `limit` statuses after `after`, in id order, that aren't indexed yet, other than boosts,
+ * which have no words. Paging by id means each batch starts where the last ended, rather than
+ * passing every status indexed before it again.
+ */
 export const unindexedNoteIds = async (
     ctx: Pick<Context, "db">,
+    after: string | null,
     limit: number,
 ): Promise<string[]> => {
     const rows = await ctx.db.selectFrom("notes")
@@ -99,21 +104,26 @@ export const unindexedNoteIds = async (
         .select("notes.id")
         .where("note_search.note_id", "is", null)
         .where("notes.reblog_of_id", "is", null)
+        .$if(after !== null, (query) => query.where("notes.id", ">", after ?? ""))
+        .orderBy("notes.id")
         .limit(limit)
         .execute();
 
     return rows.map((row) => row.id);
 };
 
-/** Up to `limit` accounts that aren't indexed yet. */
+/** Up to `limit` accounts after `after`, in id order, that aren't indexed yet, as statuses are. */
 export const unindexedAccountIds = async (
     ctx: Pick<Context, "db">,
+    after: string | null,
     limit: number,
 ): Promise<string[]> => {
     const rows = await ctx.db.selectFrom("accounts")
         .leftJoin("account_search", "account_search.account_id", "accounts.id")
         .select("accounts.id")
         .where("account_search.account_id", "is", null)
+        .$if(after !== null, (query) => query.where("accounts.id", ">", after ?? ""))
+        .orderBy("accounts.id")
         .limit(limit)
         .execute();
 
