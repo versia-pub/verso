@@ -31,8 +31,10 @@ const revoke = async (ctx: Context, tokenId: string) => {
  * missed being told checks the token is still issued.
  */
 export const watchToken = (ctx: Context, tokenId: string, onRevoked: () => void): () => void => {
+    let watching = true;
+    // Not once stopped, though a check was running.
     const check = async () => {
-        if (!await tokenExists(ctx, tokenId)) onRevoked();
+        if (!await tokenExists(ctx, tokenId) && watching) onRevoked();
     };
 
     const unsubscribe = subscribe(ctx, revoked, (message) => {
@@ -47,6 +49,7 @@ export const watchToken = (ctx: Context, tokenId: string, onRevoked: () => void)
     });
 
     return () => {
+        watching = false;
         unsubscribe();
         unwatch();
     };

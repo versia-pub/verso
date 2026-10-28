@@ -310,14 +310,17 @@ Deno.test("input OAuth endpoints can't read is an invalid request, in OAuth's sh
     assertEquals([json.status, json.body.error], [400, "invalid_request"]);
 });
 
-/** Which of `tokens`, by name, were said to be revoked, while watched until `unwatch`. */
+/**
+ * Which of `tokens`, by name, were said to be revoked, while watched until `unwatch`, once each, as
+ * a watcher may be told twice: by the message, and by its first check if that is still running.
+ */
 const watching = (test: { ctx: Context }, tokens: Record<string, string>) => {
-    const told: string[] = [];
+    const told = new Set<string>();
     const unwatch = Object.entries(tokens).map(([name, id]) =>
-        watchToken(test.ctx, id, () => void told.push(name))
+        watchToken(test.ctx, id, () => void told.add(name))
     );
 
-    return { told, unwatch: () => unwatch.forEach((stop) => stop()) };
+    return { told: () => [...told], unwatch: () => unwatch.forEach((stop) => stop()) };
 };
 
 /** The id of a token this server issued. */
@@ -337,10 +340,10 @@ Deno.test("watchers hear their token is revoked by its app, or by its code being
     });
 
     await test.revoke({ ...test.credentials, token: app });
-    assertEquals(told, ["app"]);
+    assertEquals(told(), ["app"]);
 
     await test.exchange(code);
-    assertEquals(told, ["app", "alice"]);
+    assertEquals(told(), ["app", "alice"]);
 });
 
 Deno.test("watchers find their token was revoked before they watched, or while messages were missed", async () => {
@@ -361,12 +364,12 @@ Deno.test("watchers find their token was revoked before they watched, or while m
     const kept = watching(test, { app: id });
 
     await heard.missed();
-    assertEquals(told, []);
+    assertEquals(told(), []);
 
     await test.ctx.db.deleteFrom("access_tokens").where("id", "=", id).execute();
     kept.unwatch();
     await heard.missed();
-    assertEquals([told, kept.told], [["app"], []]);
+    assertEquals([told(), kept.told()], [["app"], []]);
 });
 
 Deno.test("watchers that stopped don't hear their token is revoked", async () => {
@@ -378,5 +381,12 @@ Deno.test("watchers that stopped don't hear their token is revoked", async () =>
     unwatch();
     await test.revoke({ ...test.credentials, token: app });
 
-    assertEquals(told, []);
+    assertEquals(told(), []);
+
+    // Stopped while its first check is still running.
+    await test.ctx.db.deleteFrom("access_tokens").execute();
+    const checking = watching(test, { gone: "gone" });
+    checking.unwatch();
+    await test.ctx.db.selectFrom("access_tokens").selectAll().execute();
+    assertEquals(checking.told(), []);
 });
