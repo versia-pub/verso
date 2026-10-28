@@ -209,3 +209,32 @@ export const accountIdsMatching = async (
 
     return rows.map((row) => row.id);
 };
+
+/**
+ * Up to `limit` hashtags, after the first `offset`, that start with `start` and are used by a
+ * public or unlisted status, shortest first, as Mastodon lists them. Hashtags used only where few
+ * can see them stay unknown.
+ * @see https://github.com/mastodon/mastodon/blob/main/app/models/tag.rb
+ */
+export const hashtagsStartingWith = async (
+    ctx: Pick<Context, "db">,
+    start: string,
+    limit: number,
+    offset: number,
+): Promise<string[]> => {
+    // `_` is common in hashtags, and mustn't match any character.
+    const pattern = `${start.replaceAll(/[\\%_]/g, (character) => `\\${character}`)}%`;
+    const rows = await ctx.db.selectFrom("note_tags")
+        .innerJoin("notes", "notes.id", "note_tags.note_id")
+        .select("note_tags.name")
+        .where(sql<SqlBool>`note_tags.name LIKE ${pattern} ESCAPE '\\'`)
+        .where("notes.visibility", "in", ["public", "unlisted"])
+        .groupBy("note_tags.name")
+        .orderBy(sql`length(note_tags.name)`)
+        .orderBy("note_tags.name")
+        .limit(limit)
+        .offset(offset)
+        .execute();
+
+    return rows.map((row) => row.name);
+};
