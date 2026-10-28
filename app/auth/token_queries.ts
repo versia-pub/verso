@@ -27,6 +27,13 @@ export const findTokenByHash = async (
         .where("token_hash", "=", hash)
         .executeTakeFirst();
 
+/** Whether a token with this id is still issued. */
+export const tokenExists = async (ctx: Context, id: string): Promise<boolean> =>
+    await ctx.db.selectFrom("access_tokens")
+        .select("id")
+        .where("id", "=", id)
+        .executeTakeFirst() !== undefined;
+
 /** Stores a new token, by its hash. */
 export const insertToken = async (
     ctx: Context,

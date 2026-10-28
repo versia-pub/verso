@@ -1,12 +1,56 @@
+import { getLogger } from "@logtape/logtape";
+import { z } from "zod";
 import type { Viewer } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
+import { type Channel, publish, subscribe } from "../kernel/pubsub.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { findAppByClientId } from "./app_queries.ts";
 import { deleteFlow, setCodeToken, useCode } from "./flow_queries.ts";
 import { requestedScopes } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
-import { deleteToken, findTokenByHash, insertToken } from "./token_queries.ts";
+import { deleteToken, findTokenByHash, insertToken, tokenExists } from "./token_queries.ts";
 import type { AppsTable } from "./tables.ts";
+
+const logger = getLogger(["verso", "auth"]);
+
+/** Says a token was revoked, so every process stops serving what it opened, such as streams. */
+const revoked: Channel<{ readonly tokenId: string }> = {
+    name: "tokens.revoked",
+    schema: z.object({ tokenId: z.string() }),
+};
+
+/** Revokes a token, telling every process once the current transaction commits. */
+const revoke = async (ctx: Context, tokenId: string) => {
+    await deleteToken(ctx, tokenId);
+    await publish(ctx, revoked, { tokenId });
+};
+
+/**
+ * Calls `onRevoked` once the token is revoked, until the function returned is called. It is called
+ * at once if the token already was, and may be called more than once. A process that may have
+ * missed being told checks the token is still issued.
+ */
+export const watchToken = (ctx: Context, tokenId: string, onRevoked: () => void): () => void => {
+    const check = async () => {
+        if (!await tokenExists(ctx, tokenId)) onRevoked();
+    };
+
+    const unsubscribe = subscribe(ctx, revoked, (message) => {
+        if (message.tokenId === tokenId) onRevoked();
+        return Promise.resolve();
+    });
+    const unwatch = ctx.pubsub.onMissed(check);
+
+    // Since it may have been revoked before this subscribed.
+    check().catch((error) => {
+        logger.error("Couldn't check token {tokenId} is still issued: {error}", { tokenId, error });
+    });
+
+    return () => {
+        unsubscribe();
+        unwatch();
+    };
+};
 
 /** A token this server issued, found by its hash, since that's all that is stored. */
 const findToken = async (ctx: Context, token: string) =>
@@ -139,7 +183,7 @@ export const exchangeCode = (
 
         const { flow } = used;
         if (used.reused) {
-            if (flow.token_id !== null) await deleteToken(tx, flow.token_id);
+            if (flow.token_id !== null) await revoke(tx, flow.token_id);
             await deleteFlow(tx, flow.id);
             return undefined;
         }
@@ -229,6 +273,6 @@ export const revokeToken = async (
     if (!row) return true;
     if (row.app_id !== app.id) return false;
 
-    await deleteToken(ctx, row.id);
+    await revoke(ctx, row.id);
     return true;
 };

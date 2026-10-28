@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { watchToken } from "../auth/tokens.ts";
 import { NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route, Upgrade } from "../http/route.ts";
 import { openSession } from "./session.ts";
@@ -39,7 +40,7 @@ export const streamingRoutes: readonly Route[] = [
             "sec-websocket-protocol": z.string().optional(),
         }),
         responses: { 101: Upgrade },
-        handler: (_ctx, { query, headers, viewer }) => {
+        handler: (ctx, { query, headers, viewer }) => {
             if (headers.upgrade?.toLowerCase() !== "websocket") throw new NotFound();
 
             return Promise.resolve({
@@ -50,6 +51,12 @@ export const streamingRoutes: readonly Route[] = [
                     socket.onopen = () => {
                         const session = openSession(viewer, socket, query);
                         socket.onmessage = ({ data }) => session.receive(data);
+
+                        // Mastodon closes it too, though without saying why.
+                        const unwatch = watchToken(ctx, viewer.tokenId, () => {
+                            socket.close(1000, "The access token was revoked");
+                        });
+                        socket.onclose = unwatch;
                     };
                 },
             });

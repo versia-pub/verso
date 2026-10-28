@@ -1,14 +1,17 @@
 import { assertEquals } from "@std/assert";
+import type { Context } from "../kernel/context.ts";
 import { createTestApp } from "../testing/app.ts";
-import { createTestContext } from "../testing/context.ts";
+import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { registerApp } from "./apps.ts";
 import { authRoutes } from "./routes.ts";
+import { routes } from "../kernel/pubsub.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import { registerTestApp } from "./testing.ts";
+import { authenticateToken, watchToken } from "./tokens.ts";
 
-const open = async () => {
-    const test = await createTestContext();
+const open = async (options: TestContextOptions = {}) => {
+    const test = await createTestContext(options);
     const http = createTestApp(test.ctx, authRoutes, { checkResponses: true });
 
     const { app, clientSecret } = await registerTestApp(test.ctx);
@@ -305,4 +308,75 @@ Deno.test("input OAuth endpoints can't read is an invalid request, in OAuth's sh
         error_description: "These are invalid: body.scope.",
     });
     assertEquals([json.status, json.body.error], [400, "invalid_request"]);
+});
+
+/** Which of `tokens`, by name, were said to be revoked, while watched until `unwatch`. */
+const watching = (test: { ctx: Context }, tokens: Record<string, string>) => {
+    const told: string[] = [];
+    const unwatch = Object.entries(tokens).map(([name, id]) =>
+        watchToken(test.ctx, id, () => void told.push(name))
+    );
+
+    return { told, unwatch: () => unwatch.forEach((stop) => stop()) };
+};
+
+/** The id of a token this server issued. */
+const idOf = async (test: { ctx: Context }, token: string) =>
+    (await authenticateToken(test.ctx, token))?.tokenId ?? "";
+
+Deno.test("watchers hear their token is revoked by its app, or by its code being used again", async () => {
+    await using test = await open();
+    const code = await test.allowedCode();
+    const alice = (await test.exchange(code)).body.access_token;
+    const app = (await test.token({ ...test.credentials, grant_type: "client_credentials" }))
+        .body.access_token;
+
+    const { told } = watching(test, {
+        alice: await idOf(test, alice),
+        app: await idOf(test, app),
+    });
+
+    await test.revoke({ ...test.credentials, token: app });
+    assertEquals(told, ["app"]);
+
+    await test.exchange(code);
+    assertEquals(told, ["app", "alice"]);
+});
+
+Deno.test("watchers find their token was revoked before they watched, or while messages were missed", async () => {
+    const heard = routes();
+    await using test = await open({
+        pubsub: { send: heard.deliver, subscribe: heard.subscribe, onMissed: heard.onMissed },
+    });
+
+    // Deno fails the test, rather than waiting forever, if it isn't told.
+    await new Promise<void>((resolve) => watchToken(test.ctx, "gone", resolve));
+
+    const app = (await test.token({ ...test.credentials, grant_type: "client_credentials" }))
+        .body.access_token;
+    const id = await idOf(test, app);
+    // Another token, which is still issued.
+    await test.token({ ...test.credentials, grant_type: "client_credentials" });
+    const { told } = watching(test, { app: id });
+    const kept = watching(test, { app: id });
+
+    await heard.missed();
+    assertEquals(told, []);
+
+    await test.ctx.db.deleteFrom("access_tokens").where("id", "=", id).execute();
+    kept.unwatch();
+    await heard.missed();
+    assertEquals([told, kept.told], [["app"], []]);
+});
+
+Deno.test("watchers that stopped don't hear their token is revoked", async () => {
+    await using test = await open();
+    const app = (await test.token({ ...test.credentials, grant_type: "client_credentials" }))
+        .body.access_token;
+    const { told, unwatch } = watching(test, { app: await idOf(test, app) });
+
+    unwatch();
+    await test.revoke({ ...test.credentials, token: app });
+
+    assertEquals(told, []);
 });
