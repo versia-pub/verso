@@ -6,7 +6,9 @@ import { findNote } from "../notes/note_queries.ts";
 import { findShare } from "../notes/share_queries.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { createNote } from "../notes/testing.ts";
+import type { DomainEvent } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
+import { isShareEvent } from "./events.ts";
 import { like, unlike } from "./likes.ts";
 import { share, unshare } from "./shares.ts";
 
@@ -107,4 +109,21 @@ Deno.test("a share can be undone after its note can't be seen, but no one else's
 
     assertEquals(await unshare(test.ctx, "dave", note.id), undefined);
     assertEquals((await unshare(test.ctx, "bob", note.id))?.shares_count, 0);
+});
+
+Deno.test("boosting and undoing it tell the rest of Verso the boost's visibility", async () => {
+    const events: DomainEvent[] = [];
+    await using test = await createTestContext({
+        subscribers: [(_, event) => Promise.resolve(void events.push(event))],
+    });
+    for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
+    const note = await createNote(test.ctx, "alice");
+
+    await share(test.ctx, "bob", note.id, "private");
+    await unshare(test.ctx, "bob", note.id);
+
+    assertEquals(
+        events.filter(isShareEvent).map((event) => [event.type, event.visibility]),
+        [["interactions.shared", "private"], ["interactions.unshared", "private"]],
+    );
 });

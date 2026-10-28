@@ -9,8 +9,9 @@ import type { NotePosted } from "../notes/events.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { createNote, createShare } from "../notes/testing.ts";
+import { subscribe } from "../kernel/pubsub.ts";
 import { createTestContext } from "../testing/context.ts";
-import { notifyOf } from "./notifications.ts";
+import { notified, notifyOf } from "./notifications.ts";
 import { groupKeysOf, notificationsOf } from "./testing.ts";
 
 const open = async () => {
@@ -265,4 +266,20 @@ Deno.test("a group takes notifications until 12 hours after it started", async (
         `follow--${hour}`,
         `favourite-${note.id}-${hour}`,
     ]);
+});
+
+Deno.test("each notification is sent to every process, for its user to stream", async () => {
+    await using test = await open();
+    const heard: unknown[] = [];
+    subscribe(test.ctx, notified, (message) => Promise.resolve(void heard.push(message)));
+
+    await test.post("alice", "Hi @bob and @carol");
+
+    const rows = await test.ctx.db.selectFrom("notifications").select(["id", "account_id"])
+        .orderBy("id").execute();
+    assertEquals(
+        heard,
+        rows.map((row) => ({ accountId: row.account_id, notificationId: row.id })),
+    );
+    assertEquals(rows.map((row) => row.account_id).sort(), ["bob", "carol"]);
 });

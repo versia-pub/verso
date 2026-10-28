@@ -4,6 +4,7 @@
  * Undoing any of them, or deleting the status, deletes the notification with it.
  * @module
  */
+import { z } from "zod";
 import { findAccount, findAccounts } from "../accounts/account_queries.ts";
 import { followsFrom, notifiedFollowerIds } from "../graph/follow_queries.ts";
 import { type FollowEvent, isFollowEvent } from "../graph/events.ts";
@@ -14,6 +15,7 @@ import {
     isShareEvent,
 } from "../interactions/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
+import { type Channel, publish } from "../kernel/pubsub.ts";
 import { isNoteEdited, isNotePosted, isNoteReceived } from "../notes/events.ts";
 import { findNote, mentionsOf, type NoteRow } from "../notes/note_queries.ts";
 import { localSharerIds } from "../notes/share_queries.ts";
@@ -24,6 +26,12 @@ import {
     mentionNotifiedIds,
 } from "./notification_queries.ts";
 import type { NotificationType } from "./tables.ts";
+
+/** Says a local user was notified, so every process can stream it to them. */
+export const notified: Channel<{ readonly accountId: string; readonly notificationId: string }> = {
+    name: "notifications.created",
+    schema: z.object({ accountId: z.string(), notificationId: z.string() }),
+};
 
 /** What a notification links, besides who is notified and who did it. */
 type Links = {
@@ -97,6 +105,9 @@ const notifyAll = async (
     }
 
     await insertNotifications(ctx, rows);
+    for (const row of rows) {
+        await publish(ctx, notified, { accountId: row.account_id, notificationId: row.id });
+    }
 };
 
 /** Notifies the author of `noteId` of what `fromId` did to it, if the status is local. */

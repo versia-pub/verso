@@ -79,6 +79,7 @@ export const share = (
             shareId: row.id,
             accountId,
             noteId: note.id,
+            visibility: row.visibility,
         };
         await emit(tx, event);
 
@@ -109,6 +110,7 @@ export const unshare = (
             shareId: removed.id,
             accountId,
             noteId: shared,
+            visibility: removed.visibility,
         };
         await emit(tx, event);
 

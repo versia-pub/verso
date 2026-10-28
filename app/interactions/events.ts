@@ -3,6 +3,7 @@
  * local users, and those remote instances send.
  * @module
  */
+import type { Visibility } from "../accounts/tables.ts";
 import type { DomainEvent } from "../kernel/context.ts";
 
 /** A local user liked a status, or undid it. */
@@ -22,6 +23,8 @@ export type ShareEvent = {
     readonly shareId: string;
     readonly accountId: string;
     readonly noteId: string;
+    /** The boost's, which may differ from the status's. */
+    readonly visibility: Visibility;
 };
 
 export const isShareEvent = (event: DomainEvent): event is ShareEvent =>

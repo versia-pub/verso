@@ -20,6 +20,7 @@ import { noteDeliveries } from "./notes/federation.ts";
 import { notifyOf } from "./notifications/notifications.ts";
 import { uncountNotesOf } from "./notes/removal.ts";
 import { registry } from "./registry.ts";
+import { streamStatuses } from "./streaming/statuses.ts";
 
 /** The services the HTTP app asks for, as Verso's modules provide them. */
 export const appServices = (): AppServices => ({
@@ -43,6 +44,7 @@ export const subscribers: readonly Subscriber[] = [
     uncountFollowsOf,
     uncountNotesOf,
     uncountLikesOf,
+    streamStatuses,
 ];
 
 /** How long the instance's key and the blocked domains are cached before they are read again. */
