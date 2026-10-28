@@ -244,7 +244,7 @@ export type NoteMatch = {
  * Statuses, newest first, with what each of `terms` says, of those Mastodon searches in `scope`:
  * public statuses whose authors are `indexable`, and those the viewer wrote, was mentioned in,
  * liked or boosted. Of those, only the ones the viewer may see, by authors they don't block or
- * mute, are found. No terms, without a scope, find nothing.
+ * mute, are found, and never boosts. No terms, without a scope, find nothing.
  * @see https://github.com/mastodon/mastodon/blob/main/app/services/statuses_search_service.rb
  */
 export const noteIdsMatching = async (
@@ -257,6 +257,8 @@ export const noteIdsMatching = async (
 
     let query = ctx.db.selectFrom("notes")
         .select("notes.id")
+        // Boosts aren't statuses of their own to find, as on Mastodon.
+        .where("notes.reblog_of_id", "is", null)
         .where((eb) =>
             eb.and(
                 terms.map((term) => term.negated ? eb.not(has(ctx, term)(eb)) : has(ctx, term)(eb)),

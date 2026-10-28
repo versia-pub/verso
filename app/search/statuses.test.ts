@@ -94,6 +94,23 @@ Deno.test("public statuses by indexable authors are found, and those the viewer 
     assertEquals(await test.find("quiet"), [unindexable]);
 });
 
+Deno.test("boosts aren't found, only the statuses they boost", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "My fox");
+    const boosted = await test.post("bob", "Bob's fox");
+    await share(test.ctx, "alice", boosted);
+    await share(test.ctx, "alice", own);
+
+    const cases: [string, string[]][] = [
+        ["from:me", [own]],
+        ["-fox from:me", []],
+        // What alice boosted, as it is.
+        ["in:library", [boosted, own]],
+        ["in:library -nothing", [boosted, own]],
+    ];
+    for (const [query, found] of cases) assertEquals(await test.find(query), found, query);
+});
+
 Deno.test("a status the viewer may no longer see isn't found", async () => {
     await using test = await open();
     await follow(test.ctx, "alice", "carol");
