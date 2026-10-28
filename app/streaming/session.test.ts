@@ -3,7 +3,10 @@ import type { Scope } from "../kernel/scopes.ts";
 import { openSession } from "./session.ts";
 
 /** A session for a token with `scopes`, on a socket that keeps what it's sent. */
-const open = (scopes: readonly Scope[], query: { readonly stream?: string } = {}) => {
+const open = (
+    scopes: readonly Scope[],
+    query: { readonly stream?: string; readonly tag?: string } = {},
+) => {
     const sent: unknown[] = [];
     const closed: [number, string][] = [];
     const viewer = { tokenId: "token", appId: "app", accountId: "alice", scopes };
@@ -73,7 +76,7 @@ Deno.test("a client subscribes only to streams its token's scopes allow, and pub
 
 Deno.test("a client is told of streams that don't exist, once its token could read one", () => {
     const unknown = { error: "Unknown stream type", status: 400 };
-    const reading = open(["read:statuses"], { stream: "hashtag" });
+    const reading = open(["read:statuses"], { stream: "direct" });
     reading.send({ type: "subscribe" }, { type: "subscribe", stream: [] }, {
         type: "subscribe",
         stream: "constructor",
@@ -112,4 +115,41 @@ Deno.test("messages that aren't JSON, or aren't requests, are ignored, and bytes
 
     session.receive(new ArrayBuffer(2));
     assertEquals(closed, [[1003, "Verso's streaming doesn't support binary messages"]]);
+});
+
+Deno.test("a client subscribes to hashtags' streams, whatever their case, if it names them", () => {
+    // Public streams.
+    const { session, sent, send } = open(["read:notifications"], { stream: "hashtag", tag: "Nix" });
+    const missing = { error: "Missing tag name parameter", status: 400 };
+
+    send(
+        { type: "subscribe", stream: "hashtag", tag: "nix" },
+        { type: "subscribe", stream: "hashtag:local", tag: "nix" },
+        { type: "subscribe", stream: ["hashtag", "hashtag:local"], tag: "Rust" },
+        { type: "subscribe", stream: "hashtag" },
+        { type: "subscribe", stream: "hashtag:local", tag: "" },
+        // Only hashtags' streams have one.
+        { type: "subscribe", stream: "public", tag: "nix" },
+    );
+    assertEquals(session.streams(), ["hashtag#nix", "hashtag:local#nix", "hashtag#rust", "public"]);
+    assertEquals(sent, [missing, missing]);
+
+    // Named as the client first wrote them.
+    sent.length = 0;
+    session.deliver(["hashtag#nix", "hashtag#rust", "public"], "update", "{}");
+    assertEquals(sent.map((event) => (event as { stream: string[] }).stream), [
+        ["hashtag", "Nix"],
+        ["hashtag", "Rust"],
+        ["public"],
+    ]);
+
+    sent.length = 0;
+    send(
+        { type: "unsubscribe", stream: "hashtag", tag: "NIX" },
+        // Not subscribed to.
+        { type: "unsubscribe", stream: "hashtag", tag: "go" },
+        { type: "unsubscribe", stream: "hashtag:local" },
+    );
+    assertEquals(session.streams(), ["hashtag:local#nix", "hashtag#rust", "public"]);
+    assertEquals(sent, [{ error: "Error unsubscribing from channel" }]);
 });

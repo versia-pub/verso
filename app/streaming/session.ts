@@ -17,7 +17,10 @@ export type Socket = {
 export type Session = {
     /** Handles a message the client sent, which is text unless the client sent bytes. */
     readonly receive: (data: unknown) => void;
-    /** The streams the client is subscribed to, in the order it subscribed. */
+    /**
+     * The streams the client is subscribed to, in the order it subscribed, by their names, or for a
+     * hashtag's, by {@link hashtagStream}.
+     */
     readonly streams: () => readonly string[];
     /** Whether the client is subscribed to any of `streams`. */
     readonly subscribedTo: (streams: readonly string[]) => boolean;
@@ -28,10 +31,13 @@ export type Session = {
     readonly deliver: (streams: readonly string[], event: string, payload: string) => void;
 };
 
-/** A stream a client can subscribe to, by the scope it needs, if it isn't public. */
-type Stream = { readonly scope?: Scope };
+/**
+ * A stream a client can subscribe to, by the scope it needs, if it isn't public, and whether it is
+ * one hashtag's.
+ */
+type Stream = { readonly scope?: Scope; readonly hashtag?: true };
 
-/** The streams Verso has. Mastodon's `direct`, `list` and `hashtag` streams aren't among them yet. */
+/** The streams Verso has. Mastodon's `direct` and `list` streams aren't among them yet. */
 const streams = new Map<string, Stream>([
     ["user", { scope: "read:statuses" }],
     ["user:notification", { scope: "read:notifications" }],
@@ -41,32 +47,51 @@ const streams = new Map<string, Stream>([
     ["public:local:media", {}],
     ["public:remote", {}],
     ["public:remote:media", {}],
+    ["hashtag", { hashtag: true }],
+    ["hashtag:local", { hashtag: true }],
 ]);
+
+/**
+ * How a session names the stream `name` of the hashtag `tag`, which is the same whatever its case,
+ * as on Mastodon.
+ */
+export const hashtagStream = (name: string, tag: string): string => `${name}#${tag.toLowerCase()}`;
 
 /** What a client sends: a stream, or several, of which the first counts, as on Mastodon. */
 const Message = z.object({
     type: z.string().optional(),
     stream: z.union([z.string(), z.array(z.string())]).optional(),
+    tag: z.string().optional(),
 });
 
 /**
  * A session for `viewer` on `socket`, subscribed to `query.stream` if the client asked for one when
- * it connected. A stream the client may not have, or that doesn't exist, is refused with an error
- * message, as on Mastodon. Mastodon checks the scope first, so a stream that doesn't exist needs
- * the scope of one that isn't public.
+ * it connected, of the hashtag `query.tag` if it is a hashtag's. A stream the client may not have,
+ * that doesn't exist, or that is a hashtag's but names none, is refused with an error message, as
+ * on Mastodon. Mastodon checks the scope first, so a stream that doesn't exist needs the scope of
+ * one that isn't public.
  */
 export const openSession = (
     viewer: Viewer,
     socket: Socket,
-    query: { readonly stream?: string } = {},
+    query: { readonly stream?: string; readonly tag?: string } = {},
 ): Session => {
-    const subscribed = new Set<string>();
+    // Each stream, by how the session names it, as events name it: a hashtag's as the client first
+    // wrote it, as on Mastodon.
+    const subscribed = new Map<string, readonly string[]>();
 
     const refuse = (error: string, status: number) =>
         socket.send(JSON.stringify({ error, status }));
 
+    /** What the session names the stream `name`, of the hashtag `tag` if it is a hashtag's. */
+    const keyOf = (name: string, stream: Stream, tag: string | undefined) => {
+        if (!stream.hashtag) return name;
+        // An empty tag is none, as on Mastodon.
+        if (tag) return hashtagStream(name, tag);
+    };
+
     // A missing stream is named "", which no stream is.
-    const subscribe = (name: string) => {
+    const subscribe = (name: string, tag: string | undefined) => {
         const stream = streams.get(name);
 
         const scope = stream ? stream.scope : "read:statuses";
@@ -75,18 +100,22 @@ export const openSession = (
         }
         if (!stream) return refuse("Unknown stream type", 400);
 
-        subscribed.add(name);
+        const key = keyOf(name, stream, tag);
+        if (key === undefined) return refuse("Missing tag name parameter", 400);
+        if (!subscribed.has(key)) subscribed.set(key, tag && stream.hashtag ? [name, tag] : [name]);
     };
 
-    const unsubscribe = (name: string) => {
-        if (!streams.has(name)) {
+    const unsubscribe = (name: string, tag: string | undefined) => {
+        const stream = streams.get(name);
+        const key = stream && keyOf(name, stream, tag);
+        if (key === undefined) {
             return socket.send(JSON.stringify({ error: "Error unsubscribing from channel" }));
         }
 
-        subscribed.delete(name);
+        subscribed.delete(key);
     };
 
-    if (query.stream !== undefined) subscribe(query.stream);
+    if (query.stream !== undefined) subscribe(query.stream, query.tag);
 
     return {
         receive: (data) => {
@@ -102,16 +131,14 @@ export const openSession = (
             }
 
             const name = (Array.isArray(message.stream) ? message.stream[0] : message.stream) ?? "";
-            if (message.type === "subscribe") subscribe(name);
-            if (message.type === "unsubscribe") unsubscribe(name);
+            if (message.type === "subscribe") subscribe(name, message.tag);
+            if (message.type === "unsubscribe") unsubscribe(name, message.tag);
         },
-        streams: () => [...subscribed],
+        streams: () => [...subscribed.keys()],
         subscribedTo: (streams) => streams.some((name) => subscribed.has(name)),
         deliver: (streams, event, payload) => {
-            for (const name of subscribed) {
-                if (streams.includes(name)) {
-                    socket.send(JSON.stringify({ stream: [name], event, payload }));
-                }
+            for (const [key, stream] of subscribed) {
+                if (streams.includes(key)) socket.send(JSON.stringify({ stream, event, payload }));
             }
         },
     };

@@ -7051,6 +7051,15 @@
                         }
                     },
                     {
+                        "name": "tag",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "When `stream` is `hashtag` or `hashtag:local`, the hashtag to stream."
+                        }
+                    },
+                    {
                         "name": "upgrade",
                         "in": "header",
                         "required": false,

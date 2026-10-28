@@ -201,12 +201,13 @@ Deno.test("a WebSocket closes once its token is revoked, and stops watching it o
 
     const kept = await connect(url, test.token);
     const revoked = await connect(url, issued.token);
-    // Watching each token, and streaming statuses to the user and public streams, and notifications.
-    assertEquals(test.pubsub.live(), before + 10);
+    // Watching each token, and streaming statuses to the user, public and hashtag streams, and
+    // notifications.
+    assertEquals(test.pubsub.live(), before + 12);
 
     await revokeToken(test.ctx, app, issued.token);
     assertEquals(await revoked.closed(), [1000, "The access token was revoked"]);
-    await until(() => test.pubsub.live() === before + 5);
+    await until(() => test.pubsub.live() === before + 6);
 
     kept.socket.close();
     await kept.closed();
@@ -251,5 +252,31 @@ Deno.test("a WebSocket on the user stream is sent the user's statuses, in Mastod
 
     const { stream, event, payload } = JSON.parse(heard[1]);
     assertEquals([stream, event, JSON.parse(payload).id], [["user"], "update", note?.id]);
+    socket.close();
+});
+
+Deno.test("a WebSocket connecting to a hashtag's stream is sent the statuses using it", async () => {
+    await using test = await open();
+    await using server = listen(test.app);
+    const socket = new WebSocket(
+        `ws://127.0.0.1:${server.addr.port}/api/v1/streaming?stream=hashtag&tag=Nix`,
+        [test.token],
+    );
+    const heard: string[] = [];
+    socket.onmessage = ({ data }) => void heard.push(data);
+
+    await soon(new Promise((resolve) => socket.onopen = resolve));
+    socket.send(JSON.stringify({ type: "subscribe", stream: "nope" }));
+    await until(() => heard.length === 1);
+
+    const note = await postNote(test.ctx, "alice", {
+        text: "Hi #nix",
+        format: "text/plain",
+        spoilerText: "",
+    });
+    await until(() => heard.length === 2);
+
+    const { stream, event, payload } = JSON.parse(heard[1]);
+    assertEquals([stream, event, JSON.parse(payload).id], [["hashtag", "Nix"], "update", note?.id]);
     socket.close();
 });

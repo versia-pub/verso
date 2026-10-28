@@ -2,6 +2,7 @@ import { z } from "zod";
 import { watchToken } from "../auth/tokens.ts";
 import { NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route, Upgrade } from "../http/route.ts";
+import { streamHashtags } from "./hashtags.ts";
 import { streamPublic } from "./public.ts";
 import { openSession } from "./session.ts";
 import { streamUser } from "./user.ts";
@@ -36,6 +37,10 @@ export const streamingRoutes: readonly Route[] = [
                 description: "The stream to subscribe to once connected. More can be " +
                     "subscribed to by sending `subscribe` messages.",
             }),
+            tag: z.string().optional().meta({
+                description: "When `stream` is `hashtag` or `hashtag:local`, the hashtag to " +
+                    "stream.",
+            }),
         }),
         headers: z.object({
             upgrade: z.string().optional(),
@@ -63,6 +68,7 @@ export const streamingRoutes: readonly Route[] = [
                         const unstreams = [
                             streamUser(ctx, viewer, session),
                             streamPublic(ctx, viewer, session),
+                            streamHashtags(ctx, viewer, session),
                         ];
                         socket.onclose = () => {
                             unwatch();

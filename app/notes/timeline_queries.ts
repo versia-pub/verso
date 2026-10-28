@@ -196,10 +196,19 @@ const usesAny = (names: readonly string[]) => (eb: ExpressionBuilder<Database, "
     );
 
 /**
- * A page of a hashtag's timeline, newest first, as Mastodon assembles it: public statuses, replies
- * too, that use the hashtags `tags` asks for, from `origin`, and with `onlyMedia`, only those with
- * media attached. If there is a viewer, the statuses of the accounts they block or mute, `hidden`,
- * are omitted.
+ * The statuses that could be on a hashtag's timeline: public ones, replies too, as on Mastodon.
+ * Boosts use no hashtags, so are on none. If there is a viewer, the statuses of the accounts they
+ * block or mute, `hidden`, are omitted.
+ */
+const hashtagQuery = (ctx: Context, hidden: Excluded | null) => {
+    const query = ctx.db.selectFrom("notes").selectAll().where("visibility", "=", "public");
+    return hidden === null ? query : query.where(without(hidden));
+};
+
+/**
+ * A page of a hashtag's timeline, newest first, as Mastodon assembles it: the statuses
+ * {@link hashtagQuery} finds that use the hashtags `tags` asks for, from `origin`, and with
+ * `onlyMedia`, only those with media attached.
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/tag_feed.rb
  */
 export const hashtagPage = async (
@@ -210,12 +219,17 @@ export const hashtagPage = async (
     page: PageBounds,
     onlyMedia: boolean,
 ): Promise<NoteRow[]> => {
-    let query = ctx.db.selectFrom("notes").selectAll()
-        .where("visibility", "=", "public")
-        .where(usesAny(tags.any));
+    let query = hashtagQuery(ctx, hidden).where(usesAny(tags.any));
     for (const name of tags.all) query = query.where(usesAny([name]));
     if (tags.none.length > 0) query = query.where((eb) => eb.not(usesAny(tags.none)(eb)));
-    if (hidden !== null) query = query.where(without(hidden));
 
     return await readPage(fromOrigin(query, origin, onlyMedia), "notes.id", page);
 };
+
+/** The status `noteId`, if it could be on a hashtag's timeline, as {@link hashtagQuery} finds. */
+export const findHashtagNote = async (
+    ctx: Context,
+    hidden: Excluded,
+    noteId: string,
+): Promise<NoteRow | undefined> =>
+    await hashtagQuery(ctx, hidden).where("notes.id", "=", noteId).executeTakeFirst();
