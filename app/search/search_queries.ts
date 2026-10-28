@@ -2,6 +2,7 @@ import { type Expression, type ExpressionBuilder, sql, type SqlBool } from "kyse
 import type { Database } from "../db/database.ts";
 import { usesSqlite } from "../db/columns.ts";
 import { type Excluded, notExcluded } from "../graph/excluded_queries.ts";
+import { hasAttachments } from "../media/attachment_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { isSeenBy, type Onlooker } from "../notes/thread_queries.ts";
 
@@ -121,23 +122,105 @@ export const unindexedAccountIds = async (
 
 /**
  * What a status must have to be found, or with `negated`, mustn't: words that start with each of
- * `values`, those words one after another as a phrase, or a hashtag, named by its one value.
+ * `values`, those words one after another as a phrase, or a hashtag, named by its one value; an
+ * author, if there is one by the name the query gave; a property Mastodon searches; a language; or
+ * a time it was created at or after `since`, and before `until`.
  */
-export type NoteTerm = {
-    readonly kind: "words" | "phrase" | "hashtag";
-    readonly values: readonly string[];
-    readonly negated: boolean;
+export type NoteTerm =
+    & { readonly negated: boolean }
+    & (
+        | { readonly kind: "words" | "phrase" | "hashtag"; readonly values: readonly string[] }
+        | { readonly kind: "author"; readonly accountId: string | null }
+        | { readonly kind: "property"; readonly property: string }
+        | { readonly kind: "language"; readonly language: string }
+        | { readonly kind: "created"; readonly since: Date | null; readonly until: Date | null }
+    );
+
+/** Matches nothing, for what no status has. */
+const never = sql<SqlBool>`1 = 0`;
+
+/**
+ * Whether a status has `property`, as Mastodon's search names them. Verso's media are images, and
+ * it has no polls or link previews, so a status never has the others.
+ * @see https://github.com/mastodon/mastodon/blob/main/app/models/concerns/status/search_concern.rb
+ */
+const hasProperty = (property: string) => (eb: ExpressionBuilder<Database, "notes">) => {
+    if (property === "media" || property === "image") return hasAttachments(eb);
+    if (property === "sensitive") return eb("notes.sensitive", "=", true);
+    if (property === "reply") return eb("notes.in_reply_to_id", "is not", null);
+    return never;
 };
 
-/** Whether a status has what `term` says, not counting whether it is negated. */
-const has = (ctx: Context, term: NoteTerm) => (eb: ExpressionBuilder<Database, "notes">) =>
-    term.kind === "hashtag"
-        ? eb.exists(
-            eb.selectFrom("note_tags").select("note_tags.note_id")
-                .whereRef("note_tags.note_id", "=", "notes.id")
-                .where("note_tags.name", "=", term.values[0]),
-        )
-        : matching(ctx, notes, "notes.id", term.values, term.kind === "phrase");
+/**
+ * Whether a status has what `term` says, not counting whether it is negated. It is never unknown,
+ * so that negating it finds the statuses without it.
+ */
+const has = (ctx: Context, term: NoteTerm) => (eb: ExpressionBuilder<Database, "notes">) => {
+    switch (term.kind) {
+        case "words":
+        case "phrase":
+            return matching(ctx, notes, "notes.id", term.values, term.kind === "phrase");
+        case "hashtag":
+            return eb.exists(
+                eb.selectFrom("note_tags").select("note_tags.note_id")
+                    .whereRef("note_tags.note_id", "=", "notes.id")
+                    .where("note_tags.name", "=", term.values[0]),
+            );
+        case "author":
+            return term.accountId === null ? never : eb("notes.account_id", "=", term.accountId);
+        case "property":
+            return hasProperty(term.property)(eb);
+        case "language":
+            return eb.and([
+                eb("notes.language", "is not", null),
+                eb("notes.language", "=", term.language),
+            ]);
+        case "created":
+            return eb.and([
+                ...term.since === null ? [] : [eb("notes.created_at", ">=", term.since)],
+                ...term.until === null ? [] : [eb("notes.created_at", "<", term.until)],
+            ]);
+    }
+};
+
+/**
+ * Which of the statuses Mastodon searches to search: those whose authors chose to be found, those
+ * the viewer took part in, which Mastodon calls their library, or all of them.
+ */
+export type NoteScope = "public" | "library" | "all";
+
+/** Whether a status is public, by an author who chose to be found. */
+const findable = (eb: ExpressionBuilder<Database, "notes">) =>
+    eb.and([
+        eb("notes.visibility", "=", "public"),
+        eb.exists(
+            eb.selectFrom("accounts").select("accounts.id")
+                .whereRef("accounts.id", "=", "notes.account_id")
+                .where("accounts.indexable", "=", true),
+        ),
+    ]);
+
+/** Whether `viewerId` wrote a status, was mentioned in it, liked it or boosted it. */
+const inLibraryOf = (viewerId: string) => (eb: ExpressionBuilder<Database, "notes">) =>
+    eb.or([
+        eb("notes.account_id", "=", viewerId),
+        eb.exists(
+            eb.selectFrom("note_mentions").select("note_mentions.note_id")
+                .whereRef("note_mentions.note_id", "=", "notes.id")
+                .where("note_mentions.account_id", "=", viewerId),
+        ),
+        eb.exists(
+            eb.selectFrom("likes").select("likes.id")
+                .whereRef("likes.note_id", "=", "notes.id")
+                // Local users, who alone search, never dislike statuses.
+                .where("likes.account_id", "=", viewerId),
+        ),
+        eb.exists(
+            eb.selectFrom("notes as shares").select("shares.id")
+                .whereRef("shares.reblog_of_id", "=", "notes.id")
+                .where("shares.account_id", "=", viewerId),
+        ),
+    ]);
 
 /** What statuses to find, besides their words. */
 export type NoteMatch = {
@@ -145,6 +228,8 @@ export type NoteMatch = {
     readonly onlooker: Exclude<Onlooker, null>;
     /** The accounts the viewer blocks or mutes. */
     readonly hidden: Excluded;
+    /** Which statuses to search, if the query says. */
+    readonly scope: NoteScope | null;
     /** The author to find statuses of, if only one's. */
     readonly accountId: string | null;
     /** The id statuses must be newer than, if any. */
@@ -156,10 +241,10 @@ export type NoteMatch = {
 };
 
 /**
- * Statuses, newest first, with what each of `terms` says, of those Mastodon searches: public
- * statuses whose authors are `indexable`, and those the viewer wrote, was mentioned in, liked or
- * boosted. Of those, only the ones the viewer may see, by authors they don't block or mute, are
- * found. No terms find nothing.
+ * Statuses, newest first, with what each of `terms` says, of those Mastodon searches in `scope`:
+ * public statuses whose authors are `indexable`, and those the viewer wrote, was mentioned in,
+ * liked or boosted. Of those, only the ones the viewer may see, by authors they don't block or
+ * mute, are found. No terms, without a scope, find nothing.
  * @see https://github.com/mastodon/mastodon/blob/main/app/services/statuses_search_service.rb
  */
 export const noteIdsMatching = async (
@@ -168,7 +253,7 @@ export const noteIdsMatching = async (
     match: NoteMatch,
 ): Promise<string[]> => {
     const viewerId = match.onlooker.id;
-    if (terms.length === 0) return [];
+    if (terms.length === 0 && match.scope === null) return [];
 
     let query = ctx.db.selectFrom("notes")
         .select("notes.id")
@@ -177,35 +262,11 @@ export const noteIdsMatching = async (
                 terms.map((term) => term.negated ? eb.not(has(ctx, term)(eb)) : has(ctx, term)(eb)),
             )
         )
-        .where((eb) =>
-            eb.or([
-                eb.and([
-                    eb("notes.visibility", "=", "public"),
-                    eb.exists(
-                        eb.selectFrom("accounts").select("accounts.id")
-                            .whereRef("accounts.id", "=", "notes.account_id")
-                            .where("accounts.indexable", "=", true),
-                    ),
-                ]),
-                eb("notes.account_id", "=", viewerId),
-                eb.exists(
-                    eb.selectFrom("note_mentions").select("note_mentions.note_id")
-                        .whereRef("note_mentions.note_id", "=", "notes.id")
-                        .where("note_mentions.account_id", "=", viewerId),
-                ),
-                eb.exists(
-                    eb.selectFrom("likes").select("likes.id")
-                        .whereRef("likes.note_id", "=", "notes.id")
-                        // Local users, who alone search, never dislike statuses.
-                        .where("likes.account_id", "=", viewerId),
-                ),
-                eb.exists(
-                    eb.selectFrom("notes as shares").select("shares.id")
-                        .whereRef("shares.reblog_of_id", "=", "notes.id")
-                        .where("shares.account_id", "=", viewerId),
-                ),
-            ])
-        )
+        .where((eb) => {
+            if (match.scope === "public") return findable(eb);
+            if (match.scope === "library") return inLibraryOf(viewerId)(eb);
+            return eb.or([findable(eb), inLibraryOf(viewerId)(eb)]);
+        })
         .where(isSeenBy(ctx, match.onlooker, "notes.id"))
         .where(notExcluded(match.hidden, "notes.account_id"));
     if (match.accountId !== null) query = query.where("notes.account_id", "=", match.accountId);

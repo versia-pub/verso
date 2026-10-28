@@ -5,12 +5,14 @@
  * @see https://docs.joinmastodon.org/methods/search/#v2
  * @module
  */
+import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import { followedSubquery } from "../graph/follows.ts";
 import { hiddenFrom } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNotes, type NoteRow } from "../notes/note_queries.ts";
 import { noteIdsMatching } from "./search_queries.ts";
-import { parseStatusQuery } from "./query.ts";
+import { parseStatusQuery, type QueryTerm } from "./query.ts";
+import type { NoteTerm } from "./search_queries.ts";
 
 /** A search for statuses. */
 export type StatusSearch = {
@@ -29,13 +31,34 @@ export type StatusSearch = {
 };
 
 /**
+ * `term`, with `from:`'s author found among the accounts Verso has: the viewer for `me`, as on
+ * Mastodon, or the account at the address given, if there is one.
+ */
+const authorOf = async (ctx: Context, term: QueryTerm, viewerId: string): Promise<NoteTerm> => {
+    if (term.kind !== "from") return term;
+    if (term.account === "me") {
+        return { kind: "author", accountId: viewerId, negated: term.negated };
+    }
+
+    const address = parseAddress(ctx, term.account);
+    const account = address && await findAccountByAddress(ctx, address, { fetch: false });
+    return { kind: "author", accountId: account?.id ?? null, negated: term.negated };
+};
+
+/**
  * The statuses `search` finds, newest first: those with what its query says, that the viewer may
  * see, by authors they don't block or mute.
  */
 export const searchStatuses = async (ctx: Context, search: StatusSearch): Promise<NoteRow[]> => {
     const { viewerId } = search;
-    const ids = await noteIdsMatching(ctx, parseStatusQuery(search.query), {
+    const query = parseStatusQuery(search.query);
+
+    const terms = [];
+    for (const term of query.terms) terms.push(await authorOf(ctx, term, viewerId));
+
+    const ids = await noteIdsMatching(ctx, terms, {
         ...search,
+        scope: query.scope,
         onlooker: { id: viewerId, followed: followedSubquery(ctx, viewerId) },
         hidden: hiddenFrom(ctx, viewerId),
     });

@@ -191,6 +191,19 @@ Deno.test("a search that resolves a URL finds only what it names, on the first p
     assertEquals(liked.body.statuses[0].favourited, true);
 });
 
+Deno.test("a status search with a date Mastodon wouldn't read is refused", async () => {
+    await using test = await openAnnual();
+
+    const { status, body } = await test.request("/api/v2/search?q=annual+before:2024-02-30");
+    assertEquals([status, body.error], [422, "Invalid date 2024-02-30"]);
+    // Only statuses are searched with prefixes.
+    assertEquals(await test.search("/api/v2/search?q=before:2024-02-30&type=accounts"), {
+        accounts: [],
+        statuses: [],
+        hashtags: [],
+    });
+});
+
 Deno.test("a search returns 20 of each unless asked, and at most 40", async () => {
     await using test = await openAnnual();
     for (let i = 0; i < 41; i++) await createLocalAccount(test.ctx, `zed${i}`);

@@ -8,6 +8,8 @@ import { follow, unfollow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
 import { like } from "../interactions/likes.ts";
+import { insertAttachments } from "../media/attachment_queries.ts";
+import { saveRemoteMedia } from "../media/media_queries.ts";
 import { share } from "../interactions/shares.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
@@ -147,4 +149,69 @@ Deno.test("statuses are found by phrases and hashtags, and without what a query 
     assertEquals(await test.find("-#nix"), [linux, dog, fox]);
     assertEquals(await test.find("-#nix rust"), []);
     assertEquals(await test.find("fox:quick"), [fox]);
+});
+
+Deno.test("statuses are found by Mastodon's prefixes: author, properties, language, time and where", async () => {
+    await using test = await open();
+    const at = (time: string) => ({ created_at: new Date(`${time}Z`) });
+    const one = await test.post("bob", "Fox one", {
+        ...at("2024-02-28T23:59:59.999"),
+        language: "en",
+        sensitive: true,
+    });
+    const two = await test.post("bob", "Fox two", {
+        ...at("2024-02-29T00:00:00"),
+        language: "pt",
+        in_reply_to_id: one,
+        in_reply_to_account_id: "bob",
+    });
+    const three = await test.post("alice", "Fox three", at("2024-02-29T23:59:59.999"));
+    const media = await saveRemoteMedia(test.ctx, "b.example", null, {
+        url: "https://b.example/fox.png",
+        mediaType: "image/png",
+    });
+    await insertAttachments(test.ctx, three, [media]);
+    // Found as alice is mentioned.
+    const four = await test.post("dan", "Fox four", {
+        ...at("2024-03-01T00:00:00"),
+        instance_id: "b.example",
+    }, ["alice"]);
+    const all = [four, three, two, one];
+
+    const cases: [string, string[]][] = [
+        // Needing no words.
+        ["from:me", [three]],
+        ["fox -from:me", [four, two, one]],
+        ["fox from:bob", [two, one]],
+        ["fox -from:bob", [four, three]],
+        ["fox from:@dan@b.example", [four]],
+        ["fox from:dan", []],
+        ["fox from:nobody", []],
+        ["fox -from:nobody", all],
+        ["has:media", [three]],
+        ["has:image", [three]],
+        ["fox -has:media", [four, two, one]],
+        ["has:Media", []],
+        ["fox has:poll", []],
+        ["fox -has:poll", all],
+        ["is:sensitive", [one]],
+        ["is:reply", [two]],
+        ["fox -is:reply", [four, three, one]],
+        ["language:en", [one]],
+        ["language:EN-gb", [one]],
+        ["fox -language:en", [four, three, two]],
+        ["fox before:2024-02-29", [one]],
+        ["fox after:2024-02-28", [four, three, two]],
+        ["fox during:2024-02-29", [three, two]],
+        ["fox -during:2024-02-29", [four, one]],
+        [`fox before:${Date.UTC(2024, 1, 29)}`, [one]],
+        [`fox during:${Date.UTC(2024, 1, 29)}`, [two]],
+        [`fox after:${Date.UTC(2024, 1, 29)}`, [four, three]],
+        ["fox in:library", [four, three]],
+        ["fox in:public", [two, one]],
+        ["fox in:all", all],
+        ["in:library", [four, three]],
+        ["fox -in:public from:bob", [two, one]],
+    ];
+    for (const [query, found] of cases) assertEquals(await test.find(query), found, query);
 });
