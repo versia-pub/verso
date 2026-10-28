@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from "@std/assert";
 import { z } from "zod";
 import { createTestContext } from "../testing/context.ts";
-import { type Channel, publish, routes, subscribe } from "./pubsub.ts";
+import { type Channel, maxMessageBytes, publish, routes, subscribe } from "./pubsub.ts";
 
 const said: Channel<{ readonly text: string }> = {
     name: "said",
@@ -36,6 +36,27 @@ Deno.test("messages are heard by their channel's subscribers once the transactio
 
     await publish(test.ctx, other, { text: "now" });
     assertEquals(heard, ["b: hi", "a: hi", "c: now"]);
+});
+
+Deno.test("a message too large to send throws as it is published, counted in bytes", async () => {
+    await using test = await createTestContext();
+    const heard: string[] = [];
+    subscribe(test.ctx, said, (message) => Promise.resolve(void heard.push(message.text)));
+    // Exactly as many bytes as JSON: 11 for `{"text":""}`, 2 for each é and 1 for the a.
+    const fits = `${"é".repeat((maxMessageBytes - 12) / 2)}a`;
+
+    await publish(test.ctx, said, { text: fits });
+    await assertRejects(
+        () => publish(test.ctx, said, { text: `${fits}a` }),
+        Error,
+        `A said message is ${maxMessageBytes + 1} bytes, over ${maxMessageBytes}`,
+    );
+    await assertRejects(() =>
+        test.ctx.transaction(async (tx) => {
+            await publish(tx, said, { text: `${fits}a` });
+        })
+    );
+    assertEquals(heard, [fits]);
 });
 
 Deno.test("a subscriber hears nothing once it unsubscribes, and each subscription is its own", async () => {

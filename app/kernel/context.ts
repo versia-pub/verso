@@ -106,7 +106,8 @@ export type Handler = (payload: string) => Promise<void>;
 export type PubSub = {
     /**
      * Sends `payload`, a message as JSON, to the subscribers of `channel`. It may be at most
-     * 7,000 bytes, so that it fits in a Postgres notification, of 8,000, with the channel's name.
+     * 7,000 bytes, as `publish` checks, so that it fits in a Postgres notification, of 8,000, with
+     * the channel's name.
      */
     readonly send: (channel: string, payload: string) => Promise<void>;
     /**

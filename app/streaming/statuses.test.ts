@@ -4,7 +4,7 @@ import type { InteractionReceived, LikeEvent } from "../interactions/events.ts";
 import { like } from "../interactions/likes.ts";
 import { share, unshare } from "../interactions/shares.ts";
 import { subscribe } from "../kernel/pubsub.ts";
-import type { NoteReceived } from "../notes/events.ts";
+import type { NoteDeleted, NoteReceived } from "../notes/events.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -99,4 +99,20 @@ Deno.test("statuses and boosts remote instances send are sent to every process, 
         { event: "status.update", noteId: "note-true" },
         { event: "update", noteId: "share" },
     ]);
+});
+
+Deno.test("a deleted status's mentions fit in its message, as many as a status may have", async () => {
+    await using test = await open();
+    const event: NoteDeleted = {
+        type: "notes.deleted",
+        noteId: crypto.randomUUID(),
+        accountId: crypto.randomUUID(),
+        // The longest name.
+        visibility: "unlisted",
+        mentionIds: Array.from({ length: 150 }, () => crypto.randomUUID()),
+        inReplyToAccountId: null,
+    };
+
+    await streamStatuses(test.ctx, event);
+    assertEquals(test.heard.length, 1);
 });

@@ -81,12 +81,23 @@ export const memoryPubSub = (): PubSub => {
     };
 };
 
+/** The largest message, as JSON, in bytes, as {@link PubSub}'s `send` takes it. */
+export const maxMessageBytes = 7_000;
+
 /**
  * Sends `message` on `channel` once the current transaction commits, or at once outside one. It
- * isn't sent if the transaction rolls back.
+ * isn't sent if the transaction rolls back. A message too large to send throws at once, with every
+ * adapter, so one that would only fail on Postgres fails in tests too.
  */
-export const publish = <T>(ctx: Context, channel: Channel<T>, message: T): Promise<void> =>
-    ctx.afterCommit(() => ctx.pubsub.send(channel.name, JSON.stringify(message)));
+export const publish = async <T>(ctx: Context, channel: Channel<T>, message: T): Promise<void> => {
+    const payload = JSON.stringify(message);
+    const bytes = new TextEncoder().encode(payload).length;
+    if (bytes > maxMessageBytes) {
+        throw new Error(`A ${channel.name} message is ${bytes} bytes, over ${maxMessageBytes}`);
+    }
+
+    await ctx.afterCommit(() => ctx.pubsub.send(channel.name, payload));
+};
 
 /**
  * Gives `handler` each message sent on `channel` from now on, until the function returned is

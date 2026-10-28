@@ -306,6 +306,13 @@ Deno.test("bad configs explain what is wrong", async () => {
         );
     }
 
+    // More than a deleted status's message can carry.
+    assertStringIncludes(
+        await errors(`${minimal}[limits]\nmentions = 151`),
+        "→ at limits.mentions",
+    );
+    assertEquals((await parseConfig(`${minimal}[limits]\nmentions = 150`)).ok, true);
+
     assertStringIncludes(await errors("domain = "), "Invalid TOML");
 });
 

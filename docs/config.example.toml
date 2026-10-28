@@ -146,7 +146,7 @@ updated = 2026-10-01
 # status = 10000
 # How many media attachments a status may have.
 # attachments = 16
-# How many accounts a status may mention. Mentions beyond that are left as text.
+# How many accounts a status may mention, at most 150. Mentions beyond that are left as text.
 # mentions = 100
 # A media attachment's description, its alt text.
 # media_description = 4000

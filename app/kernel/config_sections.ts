@@ -70,9 +70,10 @@ export const Limits = z.strictObject({
     attachments: z.int().min(0).default(16),
     /**
      * How many accounts a status may mention, local or remote. Each costs queries, and perhaps a
-     * fetch, so the rest are left as text.
+     * fetch, so the rest are left as text. At most 150, so that a deleted status's mentions fit in
+     * the message that streams its deletion.
      */
-    mentions: z.int().min(0).default(100),
+    mentions: z.int().min(0).max(150).default(100),
     /** A media attachment's description, its alt text. Mastodon's limit by default. */
     media_description: z.int().min(1).default(4000),
 }).prefault({});
