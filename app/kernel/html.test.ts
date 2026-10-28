@@ -67,9 +67,15 @@ Deno.test("links keep only full web addresses, and open apart", () => {
     }
 });
 
-Deno.test("HTML as text keeps only the text, with tags as spaces", () => {
+Deno.test("HTML as text keeps only the text, with blocks and line breaks as spaces", () => {
     assertEquals(
         textOfHtml("<p>Hi</p><p>#Verso &amp; <b>friends</b> &lt;3</p><script>x</script>"),
-        " Hi  #Verso &  friends  <3  ",
+        " Hi  #Verso & friends <3 ",
+    );
+    assertEquals(
+        textOfHtml(
+            'Hi <a href="x">@<span>alice</span></a><br>and <LI>#<span>tag</span></li><picture>!',
+        ),
+        "Hi @alice and  #tag !",
     );
 });

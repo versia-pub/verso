@@ -12,6 +12,23 @@ export const findSubscription = (
     ctx.db.selectFrom("push_subscriptions").selectAll().where("token_id", "=", tokenId)
         .executeTakeFirst();
 
+/** The subscriptions of the user `accountId`, one for each token they subscribed with. */
+export const subscriptionsOf = (ctx: Context, accountId: string): Promise<PushSubscriptionRow[]> =>
+    ctx.db.selectFrom("push_subscriptions").selectAll().where("account_id", "=", accountId)
+        .execute();
+
+/** The subscription `id`, if it still exists. */
+export const findSubscriptionById = (
+    ctx: Context,
+    id: string,
+): Promise<PushSubscriptionRow | undefined> =>
+    ctx.db.selectFrom("push_subscriptions").selectAll().where("id", "=", id).executeTakeFirst();
+
+/** Deletes the subscription `id`, such as when its push service says it has gone. */
+export const deleteSubscriptionById = async (ctx: Context, id: string): Promise<void> => {
+    await ctx.db.deleteFrom("push_subscriptions").where("id", "=", id).execute();
+};
+
 /** Replaces the subscription of the row's token, if it has one, with the row. */
 export const replaceSubscription = async (
     ctx: Context,

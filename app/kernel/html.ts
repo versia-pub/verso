@@ -118,12 +118,16 @@ const entities: readonly [string, string][] = [
     ["&amp;", "&"],
 ];
 
+/** Tags that start or end a block of text, or a line, rather than being part of one. */
+const blockTag = /<(?=\/?(?:p|br|div|li|ul|ol|blockquote|pre|h[1-6]|hr|table|tr|td|th)\b)/gi;
+
 /**
- * The text of `html`, as plain text, with a space where each tag was, so the text of two paragraphs
- * doesn't run together. Scripts, styles and the like are dropped.
+ * The text of `html`, as plain text, with a space where each block or line break was, so the text
+ * of two paragraphs doesn't run together, but a link's doesn't break apart. Scripts, styles and the
+ * like are dropped.
  */
 export const textOfHtml = (html: string): string =>
     entities.reduce(
         (text, [entity, character]) => text.replaceAll(entity, character),
-        sanitize(html.replaceAll("<", " <"), { allowedTags: [], allowedAttributes: {} }),
+        sanitize(html.replaceAll(blockTag, " <"), { allowedTags: [], allowedAttributes: {} }),
     );

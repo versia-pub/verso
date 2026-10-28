@@ -19,6 +19,7 @@ import { blockedDomainNames } from "./moderation/domain_block_queries.ts";
 import { noteDeliveries } from "./notes/federation.ts";
 import { notifyOf } from "./notifications/notifications.ts";
 import { uncountNotesOf } from "./notes/removal.ts";
+import { queuePushes } from "./push/pushes.ts";
 import { registry } from "./registry.ts";
 import { streamStatuses } from "./streaming/statuses.ts";
 
@@ -45,6 +46,7 @@ export const subscribers: readonly Subscriber[] = [
     uncountNotesOf,
     uncountLikesOf,
     streamStatuses,
+    queuePushes,
 ];
 
 /** How long the instance's key and the blocked domains are cached before they are read again. */

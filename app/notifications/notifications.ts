@@ -15,6 +15,7 @@ import {
     isShareEvent,
 } from "../interactions/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
+import { emit } from "../kernel/events.ts";
 import { type Channel, publish } from "../kernel/pubsub.ts";
 import { isNoteEdited, isNotePosted, isNoteReceived } from "../notes/events.ts";
 import { findNote, mentionsOf, type NoteRow } from "../notes/note_queries.ts";
@@ -25,6 +26,7 @@ import {
     latestGroupKey,
     mentionNotifiedIds,
 } from "./notification_queries.ts";
+import type { NotificationCreated } from "./events.ts";
 import type { NotificationType } from "./tables.ts";
 
 /** Says a local user was notified, so every process can stream it to them. */
@@ -106,6 +108,14 @@ const notifyAll = async (
 
     await insertNotifications(ctx, rows);
     for (const row of rows) {
+        const created: NotificationCreated = {
+            type: "notifications.created",
+            notificationId: row.id,
+            accountId: row.account_id,
+            notificationType: type,
+            fromId,
+        };
+        await emit(ctx, created);
         await publish(ctx, notified, { accountId: row.account_id, notificationId: row.id });
     }
 };

@@ -104,7 +104,7 @@ Deno.test("remote users a status mentions aren't notified", async () => {
     await using test = await open();
     const note = await createNote(test.ctx, "alice", {}, ["dave", "bob"]);
     const posted: NotePosted = { type: "notes.posted", noteId: note.id };
-    await notifyOf(test.ctx, posted);
+    await test.ctx.transaction((tx) => notifyOf(tx, posted));
 
     assertEquals(await test.of("bob"), [`mention alice ${note.id}`]);
     assertEquals(await test.of("dave"), []);

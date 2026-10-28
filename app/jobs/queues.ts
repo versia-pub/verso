@@ -8,6 +8,7 @@ import { messageHandler, messageQueue } from "../federation/messaging.ts";
 import { deleteEndedRateLimits } from "../http/rate_limit_queries.ts";
 import { mediaHandler, mediaQueue, removeUnusedMedia, unusedMediaQueue } from "../media/uploads.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
+import { pushHandler, pushQueue } from "../push/pushes.ts";
 import { registry } from "../registry.ts";
 import { deleteExpiredJobs } from "./job_queries.ts";
 import type { Task } from "./scheduler.ts";
@@ -37,6 +38,7 @@ export const queues: Record<string, Queue> = {
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
+    [pushQueue]: { handler: pushHandler, concurrency: 4 },
     // Each job runs vips a few times, a minute each at most, and uses memory while it does.
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
     ...Object.fromEntries(
