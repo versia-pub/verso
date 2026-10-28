@@ -337,23 +337,19 @@ export const accountIdsMatching = async (
             );
         }
 
+        // 1 for each way the viewer and the account follow each other. The sets are each looked up
+        // once, rather than counted again for every account that matches.
+        const followed = ctx.db.selectFrom("follows").select("followee_id")
+            .where("follower_id", "=", viewerId).where("accepted", "=", true);
+        const following = ctx.db.selectFrom("follows").select("follower_id")
+            .where("followee_id", "=", viewerId).where("accepted", "=", true);
         query = query.orderBy(
             (eb) =>
-                eb.selectFrom("follows")
-                    .select((count) => count.fn.countAll().as("count"))
-                    .where("accepted", "=", true)
-                    .where((follows) =>
-                        follows.or([
-                            follows.and([
-                                follows("follower_id", "=", viewerId),
-                                follows("followee_id", "=", follows.ref("accounts.id")),
-                            ]),
-                            follows.and([
-                                follows("follower_id", "=", follows.ref("accounts.id")),
-                                follows("followee_id", "=", viewerId),
-                            ]),
-                        ])
-                    ),
+                eb(
+                    eb.case().when("accounts.id", "in", followed).then(1).else(0).end(),
+                    "+",
+                    eb.case().when("accounts.id", "in", following).then(1).else(0).end(),
+                ),
             "desc",
         );
     }

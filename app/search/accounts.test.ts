@@ -123,6 +123,17 @@ Deno.test("accounts the viewer follows or is followed by come first, then those 
     assertEquals(await test.find("ann", "alice", { limit: 2, offset: 1 }), ["annette", "anna"]);
     assertEquals(await test.find("ann", "alice", { following: true }), ["annie"]);
     assertEquals(await test.find("a", "alice", { following: true }), ["annie", "alice"]);
+    // Following alice counts as much as being followed by her, so more followers win.
+    await follow(test.ctx, "carol", "annette");
+    await follow(test.ctx, "dave", "annette");
+    assertEquals(await test.find("ann"), ["annette", "annie", "anna", "anne"]);
+    // Following each other comes first, though more follow annette.
+    await follow(test.ctx, "annie", "alice");
+    assertEquals(await test.find("ann"), ["annie", "annette", "anna", "anne"]);
+    // A request alice hasn't accepted counts for nothing.
+    await updateProfile(test.ctx, "alice", { locked: true });
+    await follow(test.ctx, "anna", "alice");
+    assertEquals(await test.find("ann"), ["annie", "annette", "anna", "anne"]);
 });
 
 Deno.test("the account at an address comes first, on the first page only", async () => {
