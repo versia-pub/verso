@@ -3,6 +3,7 @@ import { watchToken } from "../auth/tokens.ts";
 import { NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route, Upgrade } from "../http/route.ts";
 import { openSession } from "./session.ts";
+import { streamUser } from "./user.ts";
 
 const docs = "https://docs.joinmastodon.org/methods/streaming";
 
@@ -49,6 +50,8 @@ export const streamingRoutes: readonly Route[] = [
                 protocol: headers["sec-websocket-protocol"]?.split(",")[0]?.trim(),
                 socket: (socket) => {
                     socket.onopen = () => {
+                        // Events still rendering when it closes are dropped, as Deno doesn't send
+                        // on a closed WebSocket.
                         const session = openSession(viewer, socket, query);
                         socket.onmessage = ({ data }) => session.receive(data);
 
@@ -56,7 +59,11 @@ export const streamingRoutes: readonly Route[] = [
                         const unwatch = watchToken(ctx, viewer.tokenId, () => {
                             socket.close(1000, "The access token was revoked");
                         });
-                        socket.onclose = unwatch;
+                        const unstream = streamUser(ctx, viewer, session);
+                        socket.onclose = () => {
+                            unwatch();
+                            unstream();
+                        };
                     };
                 },
             });

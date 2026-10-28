@@ -19,6 +19,7 @@ import { renderStatuses } from "../notes/render.ts";
 import { isSeenBy } from "../notes/thread_queries.ts";
 import { onlookerOf } from "../notes/visibility.ts";
 import {
+    findNotification,
     groupKeyOf,
     groupStatsOf,
     type NotificationRow,
@@ -35,6 +36,16 @@ export const shownTo = (ctx: Context, accountId: string): Shown => ({
     hidden: notificationsHiddenFrom(ctx, accountId),
     seen: (column) => isSeenBy(ctx, onlookerOf(ctx, accountId), column),
 });
+
+/** The notification `id` of `accountId`, if they are shown it, as {@link shownTo} decides. */
+export const shownNotification = async (
+    ctx: Context,
+    accountId: string,
+    id: string,
+): Promise<Notification | undefined> => {
+    const row = await findNotification(ctx, accountId, id, shownTo(ctx, accountId));
+    return row && (await renderNotifications(ctx, [row], accountId))[0];
+};
 
 /**
  * The notifications `rows` of `viewerId`, in order, with the accounts that caused them and the

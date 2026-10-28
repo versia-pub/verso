@@ -13,12 +13,16 @@ import {
     deleteNotification,
     deleteNotificationsOf,
     findGroupNotification,
-    findNotification,
     groupAccountPage,
     notificationGroupPage,
     notificationPage,
 } from "./notification_queries.ts";
-import { renderNotificationGroups, renderNotifications, shownTo } from "./render.ts";
+import {
+    renderNotificationGroups,
+    renderNotifications,
+    shownNotification,
+    shownTo,
+} from "./render.ts";
 import { isNotificationType, type NotificationType } from "./tables.ts";
 
 /**
@@ -304,11 +308,7 @@ export const notificationRoutes: readonly Route[] = [
         params: z.object({ id: z.string() }),
         responses: { 200: Notification },
         handler: async (ctx, { params, viewer }) => {
-            const shown = shownTo(ctx, viewer.accountId);
-            const row = await findNotification(ctx, viewer.accountId, params.id, shown);
-            const [notification] = row
-                ? await renderNotifications(ctx, [row], viewer.accountId)
-                : [];
+            const notification = await shownNotification(ctx, viewer.accountId, params.id);
             if (notification === undefined) throw new NotFound();
 
             return { status: 200, body: notification };

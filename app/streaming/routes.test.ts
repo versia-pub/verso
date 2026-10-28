@@ -4,6 +4,7 @@ import { registerTestApp, tokenFor } from "../auth/testing.ts";
 import { issueToken, revokeToken } from "../auth/tokens.ts";
 import type { PubSub } from "../kernel/context.ts";
 import { memoryPubSub } from "../kernel/pubsub.ts";
+import { postNote } from "../notes/notes.ts";
 import { markerRoutes } from "../markers/routes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -200,11 +201,12 @@ Deno.test("a WebSocket closes once its token is revoked, and stops watching it o
 
     const kept = await connect(url, test.token);
     const revoked = await connect(url, issued.token);
-    assertEquals(test.pubsub.live(), before + 4);
+    // Watching each token, and streaming statuses and notifications.
+    assertEquals(test.pubsub.live(), before + 8);
 
     await revokeToken(test.ctx, app, issued.token);
     assertEquals(await revoked.closed(), [1000, "The access token was revoked"]);
-    await until(() => test.pubsub.live() === before + 2);
+    await until(() => test.pubsub.live() === before + 4);
 
     kept.socket.close();
     await kept.closed();
@@ -223,4 +225,31 @@ Deno.test("WebSockets close, and stop watching their tokens, once Verso stops", 
     await server.shutdown();
     await closed();
     assertEquals(test.pubsub.live(), before);
+});
+
+Deno.test("a WebSocket on the user stream is sent the user's statuses, in Mastodon's format", async () => {
+    await using test = await open();
+    await using server = listen(test.app);
+    const socket = new WebSocket(
+        `ws://127.0.0.1:${server.addr.port}/api/v1/streaming?stream=user`,
+        [test.token],
+    );
+    const heard: string[] = [];
+    socket.onmessage = ({ data }) => void heard.push(data);
+
+    // Once the session is subscribed, which a message it answers shows.
+    await soon(new Promise((resolve) => socket.onopen = resolve));
+    socket.send(JSON.stringify({ type: "subscribe", stream: "nope" }));
+    await until(() => heard.length === 1);
+
+    const note = await postNote(test.ctx, "alice", {
+        text: "Hi",
+        format: "text/plain",
+        spoilerText: "",
+    });
+    await until(() => heard.length === 2);
+
+    const { stream, event, payload } = JSON.parse(heard[1]);
+    assertEquals([stream, event, JSON.parse(payload).id], [["user"], "update", note?.id]);
+    socket.close();
 });

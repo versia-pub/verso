@@ -35,22 +35,21 @@ const mergePages = (pages: readonly NoteRow[][], page: PageBounds) => {
 };
 
 /**
- * A page of `viewerId`'s home timeline, newest first: all their own statuses and boosts, the
- * statuses of `followed` that they may see, and the boosts of `sharing`, the accounts of `followed`
- * whose boosts they see. Of those statuses, a direct one must mention them, and a reply must be to
- * them or to someone they follow, with its author among them, as on Mastodon. Nothing from the
- * accounts they block or mute, `hidden`, is included, nor anyone's boosts of their statuses. Each
- * of the three sets is read on its own, so each can use the index that suits it, however many
- * accounts they follow. No status is in two of them, as no one follows themselves.
+ * The statuses on `viewerId`'s home timeline: all their own statuses and boosts, the statuses of
+ * `followed` that they may see, and the boosts of `sharing`, the accounts of `followed` whose boosts
+ * they see. Of those statuses, a direct one must mention them, and a reply must be to them or to
+ * someone they follow, with its author among them, as on Mastodon. Nothing from the accounts they
+ * block or mute, `hidden`, is included, nor anyone's boosts of their statuses. They are three
+ * queries, so each can use the index that suits it, however many accounts they follow. No status is
+ * in two of them, as no one follows themselves.
  */
-export const homePage = async (
+const homeQueries = (
     ctx: Context,
     viewerId: string,
     followed: AccountIdQuery,
     sharing: AccountIdQuery,
     hidden: Excluded,
-    page: PageBounds,
-): Promise<NoteRow[]> => {
+) => {
     const notes = ctx.db.selectFrom("notes").selectAll().where(without(hidden));
 
     const own = notes.where("account_id", "=", viewerId);
@@ -78,10 +77,39 @@ export const homePage = async (
             ])
         );
 
+    return [own, shares, others];
+};
+
+/** A page of `viewerId`'s home timeline, newest first, of the statuses {@link homeQueries} finds. */
+export const homePage = async (
+    ctx: Context,
+    viewerId: string,
+    followed: AccountIdQuery,
+    sharing: AccountIdQuery,
+    hidden: Excluded,
+    page: PageBounds,
+): Promise<NoteRow[]> => {
     const pages = [];
-    for (const query of [own, shares, others]) pages.push(await readPage(query, "notes.id", page));
+    for (const query of homeQueries(ctx, viewerId, followed, sharing, hidden)) {
+        pages.push(await readPage(query, "notes.id", page));
+    }
 
     return mergePages(pages, page);
+};
+
+/** The status `noteId`, if it is on `viewerId`'s home timeline, as {@link homeQueries} finds. */
+export const findHomeNote = async (
+    ctx: Context,
+    viewerId: string,
+    followed: AccountIdQuery,
+    sharing: AccountIdQuery,
+    hidden: Excluded,
+    noteId: string,
+): Promise<NoteRow | undefined> => {
+    for (const query of homeQueries(ctx, viewerId, followed, sharing, hidden)) {
+        const note = await query.where("notes.id", "=", noteId).executeTakeFirst();
+        if (note) return note;
+    }
 };
 
 /**

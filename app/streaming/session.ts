@@ -19,6 +19,13 @@ export type Session = {
     readonly receive: (data: unknown) => void;
     /** The streams the client is subscribed to, in the order it subscribed. */
     readonly streams: () => readonly string[];
+    /** Whether the client is subscribed to any of `streams`. */
+    readonly subscribedTo: (streams: readonly string[]) => boolean;
+    /**
+     * Sends the client an event of `streams`, such as a status as JSON, or a deleted one's id, once
+     * for each of them it is subscribed to, as on Mastodon.
+     */
+    readonly deliver: (streams: readonly string[], event: string, payload: string) => void;
 };
 
 /** A stream a client can subscribe to, by the scope it needs, if it isn't public. */
@@ -99,5 +106,13 @@ export const openSession = (
             if (message.type === "unsubscribe") unsubscribe(name);
         },
         streams: () => [...subscribed],
+        subscribedTo: (streams) => streams.some((name) => subscribed.has(name)),
+        deliver: (streams, event, payload) => {
+            for (const name of subscribed) {
+                if (streams.includes(name)) {
+                    socket.send(JSON.stringify({ stream: [name], event, payload }));
+                }
+            }
+        },
     };
 };
