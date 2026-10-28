@@ -2,7 +2,7 @@ import type { Insertable, Selectable } from "kysely";
 import type { Visibility } from "../accounts/tables.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
-import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
+import { type Excluded, notExcluded } from "../graph/blocks.ts";
 import type { Context } from "../kernel/context.ts";
 import type { LikeKind, LikesTable } from "./tables.ts";
 import { uncountLikesOn } from "../notes/note_queries.ts";
@@ -224,7 +224,7 @@ export const countLikesBy = async (
         .select((eb) => ["note_id", countAll(eb)])
         .where("note_id", "in", noteIds)
         .where("kind", "=", "like")
-        .where(isExcluded(by, "likes.account_id"))
+        .where("account_id", "in", by.all)
         .groupBy("note_id")
         .execute();
     return new Map(rows.map((row) => [row.note_id, readCount(row)]));

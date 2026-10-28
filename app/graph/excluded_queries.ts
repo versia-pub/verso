@@ -16,6 +16,12 @@ export type Excluded = {
     readonly accounts: AccountIdQuery;
     /** Whether the account whose id is in `column` is on one of the instances. */
     readonly onInstances: (column: string) => Expression<unknown>;
+    /**
+     * The accounts, and those on the instances, as one list, for finding what they did from them,
+     * through indexes that start from an account, rather than looking up each row's account. An
+     * account can be in it twice, which `in` doesn't mind.
+     */
+    readonly all: AccountIdQuery;
 };
 
 /**
@@ -32,6 +38,10 @@ export const excluded = (
         ctx.db.selectFrom("accounts as excluded").select("excluded.id")
             .where("excluded.id", "=", sql.ref<string>(column))
             .where("excluded.instance_id", "in", instances),
+    all: accounts.unionAll(
+        ctx.db.selectFrom("accounts as excluded").select("excluded.id as account_id")
+            .where("excluded.instance_id", "in", instances),
+    ),
 });
 
 /** A condition on rows, for any query's `where`. */

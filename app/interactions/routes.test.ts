@@ -319,3 +319,30 @@ Deno.test("the blocker isn't shown, or counted, the likes of the accounts on dom
     );
     assertEquals(await ids("bob"), ["alice", "erin", "bob"]);
 });
+
+Deno.test("what an account blocked alone and by its domain did is taken from the counts once", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "erin", "b.example");
+    const note = await createNote(test.ctx, "alice");
+    await react(test.ctx, "erin", note.id, "👀");
+    for (const by of ["bob", "erin"]) {
+        await like(test.ctx, by, note.id);
+        await share(test.ctx, by, note.id, "public");
+        await react(test.ctx, by, note.id, "🎉");
+    }
+    await react(test.ctx, "bob", note.id, "👀");
+    // Blocked twice over, and counted once.
+    await blockDomainFor(test.ctx, "alice", "b.example");
+    await block(test.ctx, "alice", "erin");
+
+    const status = (await test.request("POST", `/api/v1/statuses/${note.id}/favourite`, "alice"))
+        .body;
+    // Her own like, and bob's.
+    assertEquals([status.favourites_count, status.reblogs_count], [2, 1]);
+    // Where erin first used it.
+    assertEquals(status.reactions, [
+        { name: "👀", count: 1, remote: false, me: false },
+        { name: "🎉", count: 1, remote: false, me: false },
+    ]);
+});

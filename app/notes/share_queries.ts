@@ -2,7 +2,7 @@ import { uncountStatusesFor } from "../accounts/count_queries.ts";
 import type { Visibility } from "../accounts/tables.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
-import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
+import { type Excluded, notExcluded } from "../graph/blocks.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 import type { NoteIdQuery } from "./removal_queries.ts";
@@ -160,7 +160,7 @@ export const countSharesBy = async (
     const rows = await ctx.db.selectFrom("notes")
         .select((eb) => ["reblog_of_id", countAll(eb)])
         .where("reblog_of_id", "in", noteIds)
-        .where(isExcluded(by, "notes.account_id"))
+        .where("account_id", "in", by.all)
         .groupBy("reblog_of_id")
         .execute();
     return new Map(

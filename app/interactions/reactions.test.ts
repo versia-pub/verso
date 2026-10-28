@@ -2,6 +2,7 @@ import { assertEquals } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { keepRemoteEmojis } from "../emojis/emojis.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
+import { block, blockedByAccount } from "../graph/blocks.ts";
 import { follow, unfollow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { renderStatuses } from "../notes/render.ts";
@@ -50,6 +51,24 @@ Deno.test("a note is reacted to with each emoji once, the first used first", asy
         ((await reactionsOf(test.ctx, [note.id], "dave", null)).get(note.id) ?? [])
             .map((group) => group.me),
         [false, true],
+    );
+});
+
+Deno.test("the reactions of blocked accounts are taken from their status's and emoji's count", async () => {
+    await using test = await open();
+    await createLocalEmoji(test.ctx, "cat");
+    const notes = [await createNote(test.ctx, "alice"), await createNote(test.ctx, "alice")];
+    await react(test.ctx, "dave", notes[0].id, ":blob:");
+    for (const note of notes) {
+        for (const name of [":blob:", ":cat:"]) await react(test.ctx, "bob", note.id, name);
+    }
+    await block(test.ctx, "alice", "dave");
+
+    const ids = notes.map((note) => note.id);
+    const groups = await reactionsOf(test.ctx, ids, "alice", blockedByAccount(test.ctx, "alice"));
+    assertEquals(
+        ids.map((id) => (groups.get(id) ?? []).map((group) => [group.shortcode, group.count])),
+        [[["blob", 1], ["cat", 1]], [["blob", 1], ["cat", 1]]],
     );
 });
 
