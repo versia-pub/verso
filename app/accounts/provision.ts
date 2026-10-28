@@ -1,4 +1,5 @@
 import type { Context } from "../kernel/context.ts";
+import { emit } from "../kernel/events.ts";
 import type { Claims, Issuer } from "../kernel/identity.ts";
 import {
     deleteAccount,
@@ -7,6 +8,7 @@ import {
 } from "./account_queries.ts";
 import { linkedAccount, linkIdentity } from "./identity_queries.ts";
 import { claimContains } from "./claims.ts";
+import type { AccountCreated } from "./events.ts";
 import { syncClaimedRoles } from "./roles.ts";
 
 /** Mastodon's limit for local usernames. */
@@ -108,7 +110,11 @@ const linkAccount = async (tx: Context, issuer: Issuer, claims: Claims): Promise
         displayNameFrom(claims.name),
     );
     const identity = { issuer: issuer.url, subject: claims.sub, accountId };
-    if (await linkIdentity(tx, identity)) return { ok: true, accountId, created: true };
+    if (await linkIdentity(tx, identity)) {
+        const created: AccountCreated = { type: "accounts.created", accountId };
+        await emit(tx, created);
+        return { ok: true, accountId, created: true };
+    }
 
     // The same login finished first in another request, such as a double-submitted callback. Its
     // account is the user's, so the one created here is deleted.

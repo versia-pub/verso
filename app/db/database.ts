@@ -34,7 +34,7 @@ import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { MarkersTable } from "../markers/tables.ts";
 import type { NotificationsTable } from "../notifications/tables.ts";
 import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
-import type { NoteSearchTable } from "../search/tables.ts";
+import type { AccountSearchTable, NoteSearchTable } from "../search/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
 import { sqliteDialect } from "./sqlite.ts";
@@ -46,6 +46,7 @@ export type Database = {
     account_emojis: AccountEmojisTable;
     account_notes: AccountNotesTable;
     account_roles: AccountRolesTable;
+    account_search: AccountSearchTable;
     accounts: AccountsTable;
     apps: AppsTable;
     domain_blocks: DomainBlocksTable;

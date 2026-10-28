@@ -6,3 +6,8 @@
 export type NoteSearchTable = {
     note_id: string;
 };
+
+/** An account that can be found by the words of its names and domain, kept as `note_search` does. */
+export type AccountSearchTable = {
+    account_id: string;
+};

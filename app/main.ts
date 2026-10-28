@@ -17,6 +17,7 @@ import { routes } from "./http/routes.ts";
 import { appServices, federation, subscribers } from "./services.ts";
 import { ensureInstanceKey, instanceKey } from "./instances/keys.ts";
 import { ensureVapidKey, vapidKey } from "./push/keys.ts";
+import { indexUnindexedAccounts } from "./search/accounts.ts";
 import { indexUnindexed } from "./search/notes.ts";
 import { queues, tasks } from "./jobs/queues.ts";
 import { runScheduler } from "./jobs/scheduler.ts";
@@ -229,8 +230,10 @@ const runMigrations = async (config: Config): Promise<number> => {
     const keyed = { db, clock: systemClock, ids: idGenerator(systemClock) };
     if (await ensureInstanceKey(keyed)) logger.info("Made the instance's key pair");
     if (await ensureVapidKey(keyed)) logger.info("Made the instance's key pair for Web Push");
-    const indexed = await indexUnindexed(keyed);
-    if (indexed > 0) logger.info("Indexed {count} statuses for search", { count: indexed });
+    const statuses = await indexUnindexed(keyed);
+    if (statuses > 0) logger.info("Indexed {count} statuses for search", { count: statuses });
+    const accounts = await indexUnindexedAccounts(keyed);
+    if (accounts > 0) logger.info("Indexed {count} accounts for search", { count: accounts });
 
     return 0;
 };

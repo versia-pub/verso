@@ -7,7 +7,7 @@ import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { deleteMedia, type RemoteMedia, saveRemoteMedia } from "../media/media_queries.ts";
-import type { AccountDeleting } from "./events.ts";
+import type { AccountDeleting, AccountReceived } from "./events.ts";
 import {
     deleteAccount,
     findRemoteAccount,
@@ -36,7 +36,7 @@ export type RemoteAccount = {
  * is taken from any account Verso had with it, which is fetched again later. Its pictures are saved
  * over the ones it had, and a picture it no longer has is deleted. The custom emojis it uses
  * replace the ones it used. Saving the same account again changes nothing but the time it was
- * fetched, so receiving it twice is harmless.
+ * fetched, so receiving it twice is harmless. It is emitted either way.
  */
 export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise<string> =>
     ctx.transaction(async (tx) => {
@@ -61,6 +61,9 @@ export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise
             saved.id,
             await keepRemoteEmojis(tx, account.instanceId, account.emojis),
         );
+
+        const received: AccountReceived = { type: "accounts.received", accountId: saved.id };
+        await emit(tx, received);
 
         return saved.id;
     });

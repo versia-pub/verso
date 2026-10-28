@@ -49,7 +49,7 @@ const named =
  * account needs. It joins the instances and media tables rather than going through those modules,
  * so that a page of accounts takes one query.
  */
-const accountRows = (ctx: Context) =>
+const accountRows = (ctx: Pick<Context, "db">) =>
     ctx.db.selectFrom("accounts")
         .leftJoin("instances", "instances.id", "accounts.instance_id")
         .leftJoin("media as avatar", "avatar.id", "accounts.avatar_id")
@@ -79,7 +79,7 @@ export type AccountPictures = Pick<AccountRow, "id" | "avatar_id" | "header_id">
 
 /** The accounts in `ids` that exist, in no particular order, however many `ids` there are. */
 export const findAccounts = async (
-    ctx: Context,
+    ctx: Pick<Context, "db">,
     ids: readonly string[],
 ): Promise<AccountRow[]> => {
     const rows = [];

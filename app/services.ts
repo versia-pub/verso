@@ -21,6 +21,7 @@ import { notifyOf } from "./notifications/notifications.ts";
 import { uncountNotesOf } from "./notes/removal.ts";
 import { queuePushes } from "./push/pushes.ts";
 import { registry } from "./registry.ts";
+import { indexAccountsOf } from "./search/accounts.ts";
 import { indexStatuses } from "./search/notes.ts";
 import { streamStatuses } from "./streaming/statuses.ts";
 
@@ -49,6 +50,7 @@ export const subscribers: readonly Subscriber[] = [
     streamStatuses,
     queuePushes,
     indexStatuses,
+    indexAccountsOf,
 ];
 
 /** How long the instance's key and the blocked domains are cached before they are read again. */
