@@ -6,9 +6,9 @@ import { type MarkerRow, markersOf, setMarker } from "./marker_queries.ts";
 import { renderMarkers } from "./render.ts";
 import { isTimeline, timelines } from "./tables.ts";
 
-/** Where the user read up to in a timeline. */
+/** Where the user read up to in a timeline, by an id at most as long as any Verso gives. */
 const Position = z.object({
-    last_read_id: z.string().min(1).meta({
+    last_read_id: z.string().min(1).max(100).meta({
         description: "ID of the last status or notification read.",
     }),
 }).optional();

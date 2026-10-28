@@ -96,12 +96,16 @@ Deno.test("markers are each user's own", async () => {
     assertEquals(await test.markers("?timeline[]=home", "bob"), { home: ["b", 1] });
 });
 
-Deno.test("a marker needs an id, and reading or saving them takes statuses scopes", async () => {
+Deno.test("a marker needs an id of at most 100 characters, and reading or saving them takes statuses scopes", async () => {
     await using test = await open();
     const empty = { body: { home: { last_read_id: "" } } };
     const reading = { scopes: ["read:statuses" as const] };
 
     assertEquals((await test.request("POST", "/api/v1/markers", empty)).status, 422);
+    for (const [length, status] of [[100, 200], [101, 422]]) {
+        const body = { home: { last_read_id: "1".repeat(length) } };
+        assertEquals((await test.request("POST", "/api/v1/markers", { body })).status, status);
+    }
     assertEquals((await test.request("GET", "/api/v1/markers", reading)).status, 200);
     assertEquals(
         (await test.request("GET", "/api/v1/markers", { scopes: ["read:notifications"] })).status,

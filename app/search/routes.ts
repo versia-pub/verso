@@ -4,7 +4,7 @@ import type { AccountRow } from "../accounts/account_queries.ts";
 import { publicAccountsOf } from "../accounts/public.ts";
 import { HttpError } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { Flag, Integer } from "../http/schemas.ts";
+import { Flag, Integer, Text } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "../notes/note_queries.ts";
 import { renderStatuses } from "../notes/render.ts";
@@ -14,19 +14,28 @@ import { searchStatuses } from "./statuses.ts";
 import { isUrlQuery, resolveUrl } from "./urls.ts";
 
 /**
+ * The longest query Verso searches for, in characters, and the most results it skips, so a search
+ * can't make it do unbounded work. Mastodon has neither.
+ */
+const maxQueryLength = 500;
+const maxOffset = 10_000;
+
+/**
  * What `/api/v1/accounts/search` accepts, as Mastodon describes it. Clients may request more than
  * 80 accounts, and get 80.
  * @see https://docs.joinmastodon.org/methods/accounts/#search
  */
 const AccountSearchQuery = z.object({
-    q: z.string().meta({ description: "Search query for accounts." }),
+    q: Text(maxQueryLength).meta({
+        description: `Search query for accounts. At most ${maxQueryLength} characters.`,
+    }),
     limit: Integer.pipe(z.int().min(0)).optional()
         .transform((asked) => Math.max(1, Math.min(asked ?? 40, 80)))
         .meta({
             description: "Maximum number of results. Defaults to 40 accounts. Max 80 accounts.",
         }),
-    offset: Integer.pipe(z.int().min(0)).default(0)
-        .meta({ description: "Skip the first n results." }),
+    offset: Integer.pipe(z.int().min(0).max(maxOffset)).default(0)
+        .meta({ description: `Skip the first n results. At most ${maxOffset}.` }),
     resolve: Flag.default(false).meta({
         description: "Attempt WebFinger lookup. Defaults to false. Use this when `q` is an exact " +
             "address.",
@@ -42,7 +51,9 @@ const AccountSearchQuery = z.object({
  * @see https://docs.joinmastodon.org/methods/search/#v2
  */
 const SearchQuery = z.object({
-    q: z.string().meta({ description: "The search query." }),
+    q: Text(maxQueryLength).meta({
+        description: `The search query. At most ${maxQueryLength} characters.`,
+    }),
     type: z.enum(["accounts", "hashtags", "statuses"]).optional().meta({
         description: "Specify whether to search for only `accounts`, `hashtags`, `statuses`.",
     }),
@@ -76,8 +87,9 @@ const SearchQuery = z.object({
             description: "Maximum number of results to return, per type. Defaults to 20 results " +
                 "per category. Max 40 results per category.",
         }),
-    offset: Integer.pipe(z.int().min(0)).optional().meta({
-        description: "Skip the first n results. Only applies when `type` is also present.",
+    offset: Integer.pipe(z.int().min(0).max(maxOffset)).optional().meta({
+        description: "Skip the first n results. Only applies when `type` is also present. At " +
+            `most ${maxOffset}.`,
     }),
 });
 

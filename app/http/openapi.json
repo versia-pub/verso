@@ -2189,7 +2189,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "Search query for accounts."
+                            "description": "Search query for accounts. At most 500 characters."
                         }
                     },
                     {
@@ -2227,7 +2227,7 @@
                                     "pattern": "^-?\\d+$"
                                 }
                             ],
-                            "description": "Skip the first n results."
+                            "description": "Skip the first n results. At most 10000."
                         }
                     },
                     {
@@ -2297,7 +2297,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "The search query."
+                            "description": "The search query. At most 500 characters."
                         }
                     },
                     {
@@ -2412,7 +2412,7 @@
                                     "pattern": "^-?\\d+$"
                                 }
                             ],
-                            "description": "Skip the first n results. Only applies when `type` is also present."
+                            "description": "Skip the first n results. Only applies when `type` is also present. At most 10000."
                         }
                     }
                 ],
@@ -6900,6 +6900,7 @@
                                             "last_read_id": {
                                                 "type": "string",
                                                 "minLength": 1,
+                                                "maxLength": 100,
                                                 "description": "ID of the last status or notification read."
                                             }
                                         },
@@ -6913,6 +6914,7 @@
                                             "last_read_id": {
                                                 "type": "string",
                                                 "minLength": 1,
+                                                "maxLength": 100,
                                                 "description": "ID of the last status or notification read."
                                             }
                                         },
@@ -6933,6 +6935,7 @@
                                             "last_read_id": {
                                                 "type": "string",
                                                 "minLength": 1,
+                                                "maxLength": 100,
                                                 "description": "ID of the last status or notification read."
                                             }
                                         },
@@ -6946,6 +6949,7 @@
                                             "last_read_id": {
                                                 "type": "string",
                                                 "minLength": 1,
+                                                "maxLength": 100,
                                                 "description": "ID of the last status or notification read."
                                             }
                                         },
@@ -6966,6 +6970,7 @@
                                             "last_read_id": {
                                                 "type": "string",
                                                 "minLength": 1,
+                                                "maxLength": 100,
                                                 "description": "ID of the last status or notification read."
                                             }
                                         },
@@ -6979,6 +6984,7 @@
                                             "last_read_id": {
                                                 "type": "string",
                                                 "minLength": 1,
+                                                "maxLength": 100,
                                                 "description": "ID of the last status or notification read."
                                             }
                                         },

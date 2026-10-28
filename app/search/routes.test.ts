@@ -69,6 +69,17 @@ Deno.test("only signed-in users search accounts, for a query", async () => {
     assertEquals((await test.request("/api/v1/accounts/search?q=ann&offset=-1")).status, 422);
 });
 
+Deno.test("a search's query and offset are bounded, the query in characters", async () => {
+    await using test = await open();
+    const q = encodeURIComponent("😀".repeat(500));
+
+    for (const path of ["/api/v1/accounts/search?q=", "/api/v2/search?type=accounts&q="]) {
+        assertEquals((await test.request(`${path}${q}&offset=10000`)).status, 200, path);
+        assertEquals((await test.request(`${path}${q}a`)).status, 422, path);
+        assertEquals((await test.request(`${path}ann&offset=10001`)).status, 422, path);
+    }
+});
+
 /** What `/api/v2/search` finds at `path`: usernames, status ids and hashtag names. */
 const searched = (body: {
     accounts: { username: string }[];
