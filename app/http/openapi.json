@@ -2319,7 +2319,7 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "description": "Attempt WebFinger lookup for a remote account that isn't known yet, when `q` is its address. Defaults to false. Verso doesn't resolve URLs yet.",
+                            "description": "Attempt WebFinger lookup, when `q` is an account's address, or look up the account or status at a URL, when `q` is one. Defaults to false. Verso looks up the Versia URLs it shows as accounts' and statuses' `uri`.",
                             "type": [
                                 "boolean",
                                 "string"

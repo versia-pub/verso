@@ -1,13 +1,17 @@
 import { Account, Search } from "@versia/client-api";
 import { z } from "zod";
+import type { AccountRow } from "../accounts/account_queries.ts";
 import { publicAccountsOf } from "../accounts/public.ts";
 import { HttpError } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Flag, Integer } from "../http/schemas.ts";
+import type { Context } from "../kernel/context.ts";
+import type { NoteRow } from "../notes/note_queries.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { searchAccounts } from "./accounts.ts";
 import { renderHashtags, searchHashtags } from "./hashtags.ts";
 import { searchStatuses } from "./statuses.ts";
+import { isUrlQuery, resolveUrl } from "./urls.ts";
 
 /**
  * What `/api/v1/accounts/search` accepts, as Mastodon describes it. Clients may request more than
@@ -43,9 +47,9 @@ const SearchQuery = z.object({
         description: "Specify whether to search for only `accounts`, `hashtags`, `statuses`.",
     }),
     resolve: Flag.default(false).meta({
-        description:
-            "Attempt WebFinger lookup for a remote account that isn't known yet, when `q` " +
-            "is its address. Defaults to false. Verso doesn't resolve URLs yet.",
+        description: "Attempt WebFinger lookup, when `q` is an account's address, or look up " +
+            "the account or status at a URL, when `q` is one. Defaults to false. Verso " +
+            "looks up the Versia URLs it shows as accounts' and statuses' `uri`.",
     }),
     following: Flag.default(false).meta({
         description: "Only include accounts that the user is following? Defaults to false.",
@@ -75,6 +79,22 @@ const SearchQuery = z.object({
     offset: Integer.pipe(z.int().min(0)).optional().meta({
         description: "Skip the first n results. Only applies when `type` is also present.",
     }),
+});
+
+/** What a search found, rendered as `viewerId` sees it. */
+const rendered = async (
+    ctx: Context,
+    viewerId: string | null,
+    found: {
+        readonly accounts: readonly AccountRow[];
+        readonly statuses: readonly NoteRow[];
+        readonly hashtags: readonly string[];
+    },
+): Promise<Search> => ({
+    // In the order of `accounts`.
+    accounts: [...(await publicAccountsOf(ctx, found.accounts)).values()],
+    statuses: await renderStatuses(ctx, found.statuses, viewerId),
+    hashtags: await renderHashtags(ctx, found.hashtags),
 });
 
 /**
@@ -139,6 +159,22 @@ export const searchRoutes: readonly Route[] = [
             const { limit } = query;
             const offset = query.type === undefined ? 0 : query.offset ?? 0;
 
+            // A URL is all a search that resolves looks for, as on Mastodon: what it names, on the
+            // first page, if it is of the type wanted.
+            const q = query.q.trim();
+            if (query.resolve && viewerId !== null && isUrlQuery(q)) {
+                const found = offset === 0 ? await resolveUrl(ctx, q, viewerId) : undefined;
+                const shown = found && wants(found.type) ? found : undefined;
+                return {
+                    status: 200,
+                    body: await rendered(ctx, viewerId, {
+                        accounts: shown?.type === "accounts" ? [shown.account] : [],
+                        statuses: shown?.type === "statuses" ? [shown.note] : [],
+                        hashtags: [],
+                    }),
+                };
+            }
+
             const accounts = wants("accounts")
                 ? await searchAccounts(ctx, {
                     query: query.q,
@@ -166,12 +202,7 @@ export const searchRoutes: readonly Route[] = [
 
             return {
                 status: 200,
-                body: {
-                    // In the order of `accounts`.
-                    accounts: [...(await publicAccountsOf(ctx, accounts)).values()],
-                    statuses: await renderStatuses(ctx, statuses, viewerId),
-                    hashtags: await renderHashtags(ctx, hashtags),
-                },
+                body: await rendered(ctx, viewerId, { accounts, statuses, hashtags }),
             };
         },
     }),

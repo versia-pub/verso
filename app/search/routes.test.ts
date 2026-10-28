@@ -150,6 +150,47 @@ Deno.test("accounts, statuses and hashtags are searched together, or one of them
     }
 });
 
+Deno.test("a search that resolves a URL finds only what it names, on the first page, of the type wanted", async () => {
+    await using test = await openAnnual();
+    const entities = "https://social.example/.versia/v0.6/entities";
+    const url = `${entities}/Note/${test.id}`;
+    // Which the words of the URL find.
+    const quoting = await createNote(test.ctx, "alice", { content_html: `<p>See ${url}</p>` });
+    await indexUnindexed(test.ctx);
+    const none = { accounts: [], statuses: [], hashtags: [] };
+
+    const search = (options: string) =>
+        test.search(`/api/v2/search?q=${encodeURIComponent(` ${url}`)}&${options}`);
+    assertEquals(await search("resolve=false"), { ...none, statuses: [quoting.id] });
+    assertEquals(await search("resolve=true"), { ...none, statuses: [test.id] });
+    assertEquals(await search("resolve=true&type=statuses"), { ...none, statuses: [test.id] });
+    assertEquals(await search("resolve=true&type=statuses&offset=1"), none);
+    assertEquals(await search("resolve=true&type=accounts"), none);
+    assertEquals(await search("resolve=true&type=hashtags"), none);
+    // Only a URL, whether on HTTPS or not.
+    assertEquals(await test.search(`/api/v2/search?q=see ${url}&resolve=true`), {
+        ...none,
+        statuses: [quoting.id],
+    });
+    const http = url.replace("https:", "http:");
+    assertEquals(await test.search(`/api/v2/search?q=${http}&resolve=true`), {
+        ...none,
+        statuses: [test.id],
+    });
+
+    const user = `${entities}/User/annie`;
+    assertEquals(await test.search(`/api/v2/search?q=${user}&resolve=true`), {
+        ...none,
+        accounts: ["annie"],
+    });
+    assertEquals(await test.search(`/api/v2/search?q=${entities}/Tag/annual&resolve=true`), none);
+
+    // As alice sees it.
+    await like(test.ctx, "alice", test.id);
+    const liked = await test.request(`/api/v2/search?q=${url}&resolve=true`);
+    assertEquals(liked.body.statuses[0].favourited, true);
+});
+
 Deno.test("a search returns 20 of each unless asked, and at most 40", async () => {
     await using test = await openAnnual();
     for (let i = 0; i < 41; i++) await createLocalAccount(test.ctx, `zed${i}`);
