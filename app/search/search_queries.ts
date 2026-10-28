@@ -1,6 +1,8 @@
 import { type Expression, sql, type SqlBool } from "kysely";
 import { usesSqlite } from "../db/columns.ts";
+import { type Excluded, notExcluded } from "../graph/excluded_queries.ts";
 import type { Context } from "../kernel/context.ts";
+import { isSeenBy, type Onlooker } from "../notes/thread_queries.ts";
 
 /** A search index: its table, the FTS5 table SQLite keeps its words in, and what it indexes. */
 type Index = { readonly table: string; readonly text: string; readonly key: string };
@@ -115,22 +117,79 @@ export const unindexedAccountIds = async (
     return rows.map((row) => row.id);
 };
 
+/** What statuses to find, besides their words. */
+export type NoteMatch = {
+    /** Who is searching. */
+    readonly onlooker: Exclude<Onlooker, null>;
+    /** The accounts the viewer blocks or mutes. */
+    readonly hidden: Excluded;
+    /** The author to find statuses of, if only one's. */
+    readonly accountId: string | null;
+    /** The id statuses must be newer than, if any. */
+    readonly minId: string | null;
+    /** The id statuses must be older than, if any. */
+    readonly maxId: string | null;
+    readonly limit: number;
+    readonly offset: number;
+};
+
 /**
- * Up to `limit` statuses, newest first, with words that start with each of `words`. No words find
- * nothing.
+ * Statuses, newest first, with words that start with each of `words`, of those Mastodon searches:
+ * public statuses whose authors are `indexable`, and those the viewer wrote, was mentioned in,
+ * liked or boosted. Of those, only the ones the viewer may see, by authors they don't block or
+ * mute, are found. No words find nothing.
+ * @see https://github.com/mastodon/mastodon/blob/main/app/services/statuses_search_service.rb
  */
 export const noteIdsMatching = async (
-    ctx: Pick<Context, "db">,
+    ctx: Context,
     words: readonly string[],
-    limit: number,
+    match: NoteMatch,
 ): Promise<string[]> => {
+    const viewerId = match.onlooker.id;
     if (words.length === 0) return [];
 
-    const rows = await ctx.db.selectFrom("notes")
-        .select("id")
+    let query = ctx.db.selectFrom("notes")
+        .select("notes.id")
         .where(matching(ctx, notes, "notes.id", words))
-        .orderBy("id", "desc")
-        .limit(limit)
+        .where((eb) =>
+            eb.or([
+                eb.and([
+                    eb("notes.visibility", "=", "public"),
+                    eb.exists(
+                        eb.selectFrom("accounts").select("accounts.id")
+                            .whereRef("accounts.id", "=", "notes.account_id")
+                            .where("accounts.indexable", "=", true),
+                    ),
+                ]),
+                eb("notes.account_id", "=", viewerId),
+                eb.exists(
+                    eb.selectFrom("note_mentions").select("note_mentions.note_id")
+                        .whereRef("note_mentions.note_id", "=", "notes.id")
+                        .where("note_mentions.account_id", "=", viewerId),
+                ),
+                eb.exists(
+                    eb.selectFrom("likes").select("likes.id")
+                        .whereRef("likes.note_id", "=", "notes.id")
+                        // Local users, who alone search, never dislike statuses.
+                        .where("likes.account_id", "=", viewerId),
+                ),
+                eb.exists(
+                    eb.selectFrom("notes as shares").select("shares.id")
+                        .whereRef("shares.reblog_of_id", "=", "notes.id")
+                        .where("shares.account_id", "=", viewerId),
+                ),
+            ])
+        )
+        .where(isSeenBy(ctx, match.onlooker, "notes.id"))
+        .where(notExcluded(match.hidden, "notes.account_id"));
+    if (match.accountId !== null) query = query.where("notes.account_id", "=", match.accountId);
+    if (match.minId !== null) query = query.where("notes.id", ">", match.minId);
+    if (match.maxId !== null) query = query.where("notes.id", "<", match.maxId);
+
+    const rows = await query
+        .orderBy("notes.id", "desc")
+        .limit(match.limit)
+        .offset(match.offset)
         .execute();
 
     return rows.map((row) => row.id);

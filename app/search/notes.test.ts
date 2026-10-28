@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { sql } from "kysely";
+import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { usesSqlite } from "../db/columns.ts";
 import { share } from "../interactions/shares.ts";
@@ -13,12 +14,14 @@ import { removeNote } from "../notes/removal.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { indexUnindexed } from "./notes.ts";
-import { noteIdsMatching } from "./search_queries.ts";
+import { searchStatuses } from "./statuses.ts";
 import { searchWords } from "./words.ts";
 
 const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
+    // So that alice finds bob's statuses.
+    await updateProfile(test.ctx, "bob", { indexable: true });
 
     const post = async (
         text: string,
@@ -34,8 +37,19 @@ const open = async () => {
         return note.id;
     };
 
-    /** The statuses with words starting with each of the words of `query`. */
-    const find = (query: string) => noteIdsMatching(test.ctx, searchWords(query), 40);
+    /** The statuses alice finds with words starting with each of the words of `query`. */
+    const find = async (query: string, limit = 40) => {
+        const found = await searchStatuses(test.ctx, {
+            query,
+            viewerId: "alice",
+            accountId: null,
+            minId: null,
+            maxId: null,
+            limit,
+            offset: 0,
+        });
+        return found.map((note) => note.id);
+    };
 
     /** How many statuses' words are kept, counting those SQLite keeps apart. */
     const kept = async () => {
@@ -131,5 +145,5 @@ Deno.test("statuses from before search are indexed once", async () => {
     assertEquals(await indexUnindexed(test.ctx), 0);
     assertEquals(await test.find("old"), ids.toReversed());
     assertEquals(await test.find("old 1"), [ids[1]]);
-    assertEquals(await noteIdsMatching(test.ctx, ["old"], 2), [ids[2], ids[1]]);
+    assertEquals(await test.find("old", 2), [ids[2], ids[1]]);
 });
