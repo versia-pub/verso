@@ -448,9 +448,10 @@ export type HashtagDay = {
  * How public and unlisted statuses used each of `names` on each of the days that start at `days`,
  * newest first, each a day long, as Mastodon counts its uses. Days they weren't used are left out.
  *
- * Only statuses that arrived since the oldest day are counted, so that the hashtags' index reads
- * only those, not every use there ever was: a remote status dated after it arrived, and arriving
- * before the oldest day, isn't.
+ * Only statuses whose ids are from the oldest day on are counted, so that the hashtags' index
+ * reads only those, not every use there ever was. Ids have the time a status was made, except a
+ * remote status dated after it arrived, whose id has when it arrived, so one of those that arrived
+ * before the oldest day isn't counted.
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/tags.rb
  */
 export const hashtagUses = async (

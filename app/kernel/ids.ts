@@ -1,7 +1,10 @@
 import type { Clock } from "./clock.ts";
 
-/** Returns a new UUIDv7 each time it is called. */
-export type IdGenerator = () => string;
+/**
+ * Returns a new UUIDv7 each time it is called, with the time it is called, or `at`, which must be
+ * after 1970 and not after the year 10889, a UUIDv7's last.
+ */
+export type IdGenerator = (at?: Date) => string;
 
 /** Fills the array with random bytes, like `crypto.getRandomValues`. */
 export type RandomSource = (bytes: Uint8Array) => void;
@@ -15,11 +18,11 @@ export const idGenerator = (
     clock: Clock,
     random: RandomSource = (bytes) => crypto.getRandomValues(bytes),
 ): IdGenerator =>
-() => {
+(at) => {
     const bytes = new Uint8Array(16);
     random(bytes);
 
-    const time = clock.now().getTime();
+    const time = (at ?? clock.now()).getTime();
     for (let i = 0; i < 6; i++) {
         bytes[i] = Math.floor(time / 2 ** (8 * (5 - i))) % 256;
     }

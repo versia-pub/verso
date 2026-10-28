@@ -578,6 +578,33 @@ Deno.test("an older note fetched late leaves when its author last posted", async
     assertEquals(await test.counts(test.bob), [2, "2026-01-02T00:00:00.000Z"]);
 });
 
+Deno.test("a note's id has the time it was made, however late it arrived, but none after", async () => {
+    await using test = await open();
+    const mentions = [`a.test:${test.alice}`];
+    /** The time `remoteId`'s id has, as a.test keeps it. */
+    const idTime = async (remoteId: string) => {
+        const hex = (await test.kept(remoteId))?.id.replace("-", "").slice(0, 12) ?? "";
+        return new Date(Number.parseInt(hex, 16)).toISOString();
+    };
+
+    test.network.clock.advance(60_000);
+    const posted = await postNote(test.a, test.alice, {
+        text: "Hi",
+        format: "text/plain",
+        spoilerText: "",
+    });
+    await test.send(note("old", { mentions }));
+    await test.send(note("ancient", { mentions, created_at: "1969-12-31T00:00:00Z" }));
+    await test.send(note("future", { mentions, created_at: "2030-01-01T00:00:00Z" }));
+
+    assertEquals(await idTime("old"), "2026-01-01T00:00:00.000Z");
+    assertEquals(await idTime("ancient"), "1970-01-01T00:00:00.000Z");
+    assertEquals(await idTime("future"), test.network.clock.now().toISOString());
+    // Before what was posted before it arrived, but after it was made.
+    const old = (await test.kept("old"))?.id ?? "";
+    assertEquals(old < (posted?.id ?? ""), true);
+});
+
 Deno.test("notes with the same id on two instances are two notes", async () => {
     await using test = await open();
     const c = await addEvilInstance(test.network, "c.test");

@@ -132,6 +132,14 @@ const mayBeWanted = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
     return author !== undefined && await hasFollowers(ctx, author.id);
 };
 
+/**
+ * The time a remote status's id has: when it was made, so that it sorts by its date, as on
+ * Mastodon, however late Verso fetched it, but not after now, nor before 1970, which ids can't
+ * hold.
+ */
+const idTimeOf = (ctx: Context, createdAt: Date): Date =>
+    new Date(Math.min(Math.max(createdAt.getTime(), 0), ctx.clock.now().getTime()));
+
 /** The status that `reference` points at, if there is one and Verso has it. */
 export const knownNoteRow = async (
     ctx: Context,
@@ -238,10 +246,11 @@ export const receiveNote = async (
         return await emit(ctx, event);
     }
 
+    const createdAt = new Date(note.created_at);
     const row = await insertNote(
         ctx,
         {
-            id: ctx.ids(),
+            id: ctx.ids(idTimeOf(ctx, createdAt)),
             account_id: author.id,
             instance_id: sender.instanceId,
             remote_id: note.id,
@@ -251,7 +260,7 @@ export const receiveNote = async (
             in_reply_to_id: parent?.id ?? null,
             in_reply_to_account_id: parent?.account_id ?? null,
             quote_id: quote?.id ?? null,
-            created_at: new Date(note.created_at),
+            created_at: createdAt,
             edited_at: null,
         },
         mentionIds,
