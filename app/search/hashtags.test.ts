@@ -3,7 +3,7 @@ import type { Visibility } from "../accounts/tables.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { type HashtagSearch, searchHashtags } from "./hashtags.ts";
+import { type HashtagSearch, renderHashtags, searchHashtags } from "./hashtags.ts";
 
 const open = async () => {
     const test = await createTestContext();
@@ -48,4 +48,55 @@ Deno.test("a query's _ and % are themselves", async () => {
     assertEquals(await test.find("a_"), ["a_b"]);
     assertEquals(await test.find("a%"), ["a%b"]);
     assertEquals(await test.find("a\\"), ["a\\b"]);
+});
+
+Deno.test("a hashtag shows how public and unlisted statuses used it each day of the past week", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "bob");
+    test.clock.advance(Date.parse("2026-01-08T12:00:00Z") - test.clock.now().getTime());
+
+    const post = (
+        at: string,
+        tags: string[],
+        accountId = "alice",
+        visibility: Visibility = "public",
+    ) => createNote(test.ctx, accountId, { visibility, created_at: new Date(at) }, [], tags);
+    await post("2026-01-08T11:00:00Z", ["verso", "versia"]);
+    await post("2026-01-08T00:00:00Z", ["verso"]);
+    await post("2026-01-08T10:00:00Z", ["verso"], "bob", "unlisted");
+    await post("2026-01-08T10:00:00Z", ["verso"], "bob", "private");
+    await post("2026-01-07T23:59:59Z", ["verso"]);
+    await post("2026-01-02T00:00:00Z", ["verso"]);
+    // Too long ago, or not yet.
+    await post("2026-01-01T23:59:59Z", ["verso", "old"]);
+    await post("2026-01-09T00:00:00Z", ["verso"]);
+
+    /** The past week's days, today first, with uses and accounts for those used. */
+    const history = (used: Record<number, [number, number]>) =>
+        Array.from({ length: 7 }, (_, i) => ({
+            day: String(Date.UTC(2026, 0, 8 - i) / 1000),
+            uses: String(used[i]?.[0] ?? 0),
+            accounts: String(used[i]?.[1] ?? 0),
+        }));
+    assertEquals(await renderHashtags(test.ctx, ["verso", "versia", "old"]), [
+        {
+            id: "verso",
+            name: "verso",
+            url: "https://social.example/tags/verso",
+            history: history({ 0: [3, 2], 1: [1, 1], 6: [1, 1] }),
+        },
+        {
+            id: "versia",
+            name: "versia",
+            url: "https://social.example/tags/versia",
+            history: history({ 0: [1, 1] }),
+        },
+        {
+            id: "old",
+            name: "old",
+            url: "https://social.example/tags/old",
+            history: history({}),
+        },
+    ]);
+    assertEquals(await renderHashtags(test.ctx, []), []);
 });

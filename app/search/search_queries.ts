@@ -297,3 +297,56 @@ export const hashtagsStartingWith = async (
 
     return rows.map((row) => row.name);
 };
+
+/** How many statuses used a hashtag on one of the days asked about, and how many accounts. */
+export type HashtagDay = {
+    readonly name: string;
+    /** Which of the days. */
+    readonly day: number;
+    readonly uses: number;
+    readonly accounts: number;
+};
+
+/**
+ * How public and unlisted statuses used each of `names` on each of the days that start at `days`,
+ * newest first, each a day long, as Mastodon counts its uses. Days they weren't used are left out.
+ * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/tags.rb
+ */
+export const hashtagUses = async (
+    ctx: Pick<Context, "db">,
+    names: readonly string[],
+    days: readonly Date[],
+): Promise<HashtagDay[]> => {
+    const newest = days.at(0);
+    const oldest = days.at(-1);
+    if (names.length === 0 || newest === undefined || oldest === undefined) return [];
+
+    // Which of `days` a status is from, by the newest it is after.
+    const day = sql<number>`CASE ${
+        sql.join(
+            days.map((start, i) => sql`WHEN notes.created_at >= ${start} THEN ${sql.lit(i)}`),
+            sql` `,
+        )
+    } END`;
+    const rows = await ctx.db.selectFrom("note_tags")
+        .innerJoin("notes", "notes.id", "note_tags.note_id")
+        .select((eb) => [
+            "note_tags.name",
+            day.as("day"),
+            eb.fn.countAll<number | string | bigint>().as("uses"),
+            eb.fn.count<number | string | bigint>("notes.account_id").distinct().as("accounts"),
+        ])
+        .where("note_tags.name", "in", names)
+        .where("notes.visibility", "in", ["public", "unlisted"])
+        .where("notes.created_at", ">=", oldest)
+        .where("notes.created_at", "<", new Date(newest.getTime() + 24 * 60 * 60 * 1000))
+        .groupBy(["note_tags.name", sql`day`])
+        .execute();
+
+    return rows.map((row) => ({
+        name: row.name,
+        day: Number(row.day),
+        uses: Number(row.uses),
+        accounts: Number(row.accounts),
+    }));
+};

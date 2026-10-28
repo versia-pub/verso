@@ -3,8 +3,9 @@
  * @see https://github.com/mastodon/mastodon/blob/main/app/services/tag_search_service.rb
  * @module
  */
+import type { Tag } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
-import { hashtagsStartingWith } from "./search_queries.ts";
+import { hashtagsStartingWith, hashtagUses } from "./search_queries.ts";
 
 /** A search for hashtags. */
 export type HashtagSearch = {
@@ -20,4 +21,32 @@ export const searchHashtags = async (ctx: Context, search: HashtagSearch): Promi
     if (start === "") return [];
 
     return await hashtagsStartingWith(ctx, start, search.limit, search.offset);
+};
+
+const dayLength = 24 * 60 * 60 * 1000;
+
+/**
+ * The hashtags `names`, with how they were used on each of the past week's days, today first, in
+ * UTC, as Mastodon shows them. Verso keeps no table of hashtags, so each one's id is its name.
+ */
+export const renderHashtags = async (ctx: Context, names: readonly string[]): Promise<Tag[]> => {
+    const today = Math.floor(ctx.clock.now().getTime() / dayLength) * dayLength;
+    const days = Array.from({ length: 7 }, (_, i) => new Date(today - i * dayLength));
+    const uses = new Map(
+        (await hashtagUses(ctx, names, days)).map((used) => [`${used.name} ${used.day}`, used]),
+    );
+
+    return names.map((name) => ({
+        id: name,
+        name,
+        url: ctx.urls.url`/tags/${name}`,
+        history: days.map((day, i) => {
+            const used = uses.get(`${name} ${i}`);
+            return {
+                day: String(day.getTime() / 1000),
+                uses: String(used?.uses ?? 0),
+                accounts: String(used?.accounts ?? 0),
+            };
+        }),
+    }));
 };

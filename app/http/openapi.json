@@ -13488,6 +13488,52 @@
                     "url"
                 ]
             },
+            "Tag": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "history": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TagHistory"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "url",
+                    "history"
+                ]
+            },
+            "TagHistory": {
+                "type": "object",
+                "properties": {
+                    "day": {
+                        "type": "string"
+                    },
+                    "uses": {
+                        "type": "string"
+                    },
+                    "accounts": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "day",
+                    "uses",
+                    "accounts"
+                ]
+            },
             "TermsOfService": {
                 "type": "object",
                 "properties": {
