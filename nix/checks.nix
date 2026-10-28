@@ -22,7 +22,9 @@ let
       chmod -R a-w "$TMPDIR/src"
       ${setup}
       cd "$TMPDIR/src"
-      deno task ${task}
+      # A test that hangs fails the check, rather than holding it up forever. Deno names a test
+      # that has run for over a minute, so the log says which.
+      timeout --kill-after=10 600 deno task ${task}
       touch $out
     '';
 in
