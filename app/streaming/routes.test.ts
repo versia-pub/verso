@@ -80,6 +80,7 @@ Deno.test("a WebSocket opens with a user's token, sent in a header, as the proto
     );
     // As browsers send it, which accept it only if the server accepts that protocol.
     assertEquals(await accepted(new WebSocket(url, [test.token])), test.token);
+    assertEquals(await accepted(new WebSocket(url, [test.token, "other"])), test.token);
     assertEquals(await accepted(new WebSocket(`${url}?access_token=${test.token}`)), "");
     // The first, of protocols offered by a client sending its token in the header.
     assertEquals(

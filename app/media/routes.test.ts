@@ -289,6 +289,11 @@ Deno.test("only local files that are kept are served", async () => {
         mediaType: "application/zip",
         sha256: key,
     });
+    // Even if it were marked processed, or had the key as its preview.
+    await test.ctx.db.updateTable("media")
+        .set({ processed_at: new Date(), preview_sha256: key })
+        .where("instance_id", "is not", null)
+        .execute();
 
     const { body } = await test.upload(png(4, 4), "image/png");
     await drain(test.ctx, queues);

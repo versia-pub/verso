@@ -3,6 +3,7 @@ import { createLocalAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
 import type { Context } from "../kernel/context.ts";
+import type { Permission } from "../kernel/permissions.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
@@ -19,11 +20,25 @@ const open = async () => {
     const streaming = (
         accountId: string,
         streams: readonly string[],
-        scopes: readonly Scope[] = ["read"],
-        ctx: Context = test.ctx,
+        options: {
+            scopes?: readonly Scope[];
+            ctx?: Context;
+            permissions?: readonly Permission[];
+        } = {},
     ) => {
         const sent: unknown[] = [];
-        const viewer = { tokenId: "token", appId: "app", accountId, scopes };
+        const viewer = {
+            tokenId: "token",
+            appId: "app",
+            accountId,
+            scopes: options.scopes ?? ["read"],
+            permissions: () =>
+                Promise.resolve(
+                    new Set<Permission>(
+                        options.permissions ?? ["read:note", "owner:notification"],
+                    ),
+                ),
+        };
         const session = openSession(viewer, {
             send: (data) => {
                 const { stream, event, payload } = JSON.parse(data);
@@ -36,7 +51,7 @@ const open = async () => {
             session.receive(JSON.stringify({ type: "subscribe", stream }));
         }
 
-        return { sent, stop: streamUser(ctx, viewer, session) };
+        return { sent, stop: streamUser(options.ctx ?? test.ctx, viewer, session) };
     };
 
     const post = async (accountId: string, text: string, visibility?: "direct" | "private") => {
@@ -101,7 +116,7 @@ Deno.test("a user is told of statuses they may see, and those deleted that they 
 Deno.test("a user is sent their notifications on each stream for them, if their token may read them", async () => {
     await using test = await open();
     const both = test.streaming("alice", ["user:notification", "user", "public"]);
-    const statuses = test.streaming("alice", ["user"], ["read:statuses"]);
+    const statuses = test.streaming("alice", ["user"], { scopes: ["read:statuses"] });
 
     const note = await test.post("carol", "Hi @alice");
     // Of bob's, not alice's.
@@ -113,6 +128,22 @@ Deno.test("a user is sent their notifications on each stream for them, if their 
         note,
     ]]);
     assertEquals(statuses.sent, []);
+});
+
+Deno.test("a user is sent no statuses unless they may read them, nor notifications unless they may read theirs", async () => {
+    await using test = await open();
+    const notes = ["user", "user:notification"];
+    const noStatuses = test.streaming("alice", notes, { permissions: ["owner:notification"] });
+    const noNotifications = test.streaming("alice", notes, { permissions: ["read:note"] });
+
+    const note = await test.post("bob", "Hi @alice");
+    await removeNote(test.ctx, note);
+
+    assertEquals(noStatuses.sent, [
+        ["user", "notification", note],
+        ["user:notification", "notification", note],
+    ]);
+    assertEquals(noNotifications.sent, [["user", "update", note], ["user", "delete", note]]);
 });
 
 Deno.test("a user is sent nothing once they stop streaming", async () => {
@@ -135,8 +166,8 @@ Deno.test("a user's session reads nothing for streams it isn't subscribed to, or
         },
     });
     const counted = { ...test.ctx, db };
-    test.streaming("alice", ["public"], ["read"], counted);
-    test.streaming("bob", ["user:notification"], ["read"], counted);
+    test.streaming("alice", ["public"], { ctx: counted });
+    test.streaming("bob", ["user:notification"], { ctx: counted });
 
     const note = await test.post("bob", "Hi @alice");
     await removeNote(test.ctx, note);

@@ -92,7 +92,9 @@ const bearerOf = (
 ) => {
     const token = bearerToken(c.req.header("authorization")) ??
         (elsewhere
-            ? c.req.query("access_token") ?? c.req.header("sec-websocket-protocol")
+            // The first protocol, which is the one accepted.
+            ? c.req.query("access_token") ??
+                c.req.header("sec-websocket-protocol")?.split(",")[0]
             : undefined);
     if (token === undefined) return Promise.resolve(undefined);
 

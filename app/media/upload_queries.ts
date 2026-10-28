@@ -117,6 +117,7 @@ export const findServedFile = (
     key: string,
 ): Promise<Pick<MediaRow, "media_type" | "preview_sha256"> | undefined> =>
     ctx.db.selectFrom("media").select(["media_type", "preview_sha256"])
+        .where("instance_id", "is", null)
         .where((eb) =>
             eb.or([
                 eb.and([eb("sha256", "=", key), eb("processed_at", "is not", null)]),
