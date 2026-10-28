@@ -13,3 +13,4 @@ export * from "./status.ts";
 export * from "./token.ts";
 export * from "./versia_emoji.ts";
 export * from "./versia_role.ts";
+export * from "./web_push_subscription.ts";

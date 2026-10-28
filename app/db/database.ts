@@ -33,7 +33,7 @@ import type {
 import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { MarkersTable } from "../markers/tables.ts";
 import type { NotificationsTable } from "../notifications/tables.ts";
-import type { VapidKeysTable } from "../push/tables.ts";
+import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
 import type { Config } from "../kernel/config.ts";
 import { jsonValues } from "./json_values.ts";
 import { sqliteDialect } from "./sqlite.ts";
@@ -69,6 +69,7 @@ export type Database = {
     notes: NotesTable;
     notifications: NotificationsTable;
     oauth_flows: OAuthFlowsTable;
+    push_subscriptions: PushSubscriptionsTable;
     rate_limits: RateLimitsTable;
     reactions: ReactionsTable;
     remote_note_totals: RemoteNoteTotalsTable;

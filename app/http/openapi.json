@@ -5560,6 +5560,814 @@
                 }
             }
         },
+        "/api/v1/push/subscription": {
+            "post": {
+                "summary": "Subscribe to push notifications",
+                "description": "Add a Web Push API subscription to receive notifications. Each access token can have one push subscription. If you create a new subscription, the old subscription is deleted. Verso only pushes to `https` endpoints.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/push/#create"
+                },
+                "tags": [
+                    "push"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "push"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "authorization",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "subscription": {
+                                        "type": "object",
+                                        "properties": {
+                                            "endpoint": {
+                                                "type": "string",
+                                                "maxLength": 2048,
+                                                "format": "uri",
+                                                "description": "The endpoint URL that is called when a notification event occurs."
+                                            },
+                                            "keys": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "p256dh": {
+                                                        "type": "string",
+                                                        "description": "User agent public key. Base64 encoded string of a public key from a ECDH keypair using the `prime256v1` curve."
+                                                    },
+                                                    "auth": {
+                                                        "type": "string",
+                                                        "description": "Auth secret. Base64 encoded string of 16 bytes of random data."
+                                                    }
+                                                },
+                                                "required": [
+                                                    "p256dh",
+                                                    "auth"
+                                                ]
+                                            }
+                                        },
+                                        "required": [
+                                            "endpoint",
+                                            "keys"
+                                        ]
+                                    },
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "alerts": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "mention": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reblog": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow_request": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "favourite": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "poll": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.sign_up": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.report": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reaction": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "description": "Whether to push each type of notification, by its type."
+                                            },
+                                            "policy": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "all",
+                                                    "followed",
+                                                    "follower",
+                                                    "none"
+                                                ],
+                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                            }
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "subscription"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "subscription": {
+                                        "type": "object",
+                                        "properties": {
+                                            "endpoint": {
+                                                "type": "string",
+                                                "maxLength": 2048,
+                                                "format": "uri",
+                                                "description": "The endpoint URL that is called when a notification event occurs."
+                                            },
+                                            "keys": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "p256dh": {
+                                                        "type": "string",
+                                                        "description": "User agent public key. Base64 encoded string of a public key from a ECDH keypair using the `prime256v1` curve."
+                                                    },
+                                                    "auth": {
+                                                        "type": "string",
+                                                        "description": "Auth secret. Base64 encoded string of 16 bytes of random data."
+                                                    }
+                                                },
+                                                "required": [
+                                                    "p256dh",
+                                                    "auth"
+                                                ]
+                                            }
+                                        },
+                                        "required": [
+                                            "endpoint",
+                                            "keys"
+                                        ]
+                                    },
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "alerts": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "mention": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reblog": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow_request": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "favourite": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "poll": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.sign_up": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.report": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reaction": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "description": "Whether to push each type of notification, by its type."
+                                            },
+                                            "policy": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "all",
+                                                    "followed",
+                                                    "follower",
+                                                    "none"
+                                                ],
+                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                            }
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "subscription"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "subscription": {
+                                        "type": "object",
+                                        "properties": {
+                                            "endpoint": {
+                                                "type": "string",
+                                                "maxLength": 2048,
+                                                "format": "uri",
+                                                "description": "The endpoint URL that is called when a notification event occurs."
+                                            },
+                                            "keys": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "p256dh": {
+                                                        "type": "string",
+                                                        "description": "User agent public key. Base64 encoded string of a public key from a ECDH keypair using the `prime256v1` curve."
+                                                    },
+                                                    "auth": {
+                                                        "type": "string",
+                                                        "description": "Auth secret. Base64 encoded string of 16 bytes of random data."
+                                                    }
+                                                },
+                                                "required": [
+                                                    "p256dh",
+                                                    "auth"
+                                                ]
+                                            }
+                                        },
+                                        "required": [
+                                            "endpoint",
+                                            "keys"
+                                        ]
+                                    },
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "alerts": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "mention": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reblog": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow_request": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "favourite": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "poll": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.sign_up": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.report": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reaction": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "description": "Whether to push each type of notification, by its type."
+                                            },
+                                            "policy": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "all",
+                                                    "followed",
+                                                    "follower",
+                                                    "none"
+                                                ],
+                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                            }
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "subscription"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WebPushSubscription"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Get current subscription",
+                "description": "View the PushSubscription currently associated with this access token.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/push/#get"
+                },
+                "tags": [
+                    "push"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "push"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WebPushSubscription"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Change types of notifications",
+                "description": "Updates the current push subscription. Only the data part can be updated. To change fundamentals, a new subscription must be created instead. What isn't given is reset, as when subscribing.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/push/#update"
+                },
+                "tags": [
+                    "push"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "push"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "alerts": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "mention": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reblog": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow_request": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "favourite": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "poll": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.sign_up": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.report": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reaction": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "description": "Whether to push each type of notification, by its type."
+                                            },
+                                            "policy": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "all",
+                                                    "followed",
+                                                    "follower",
+                                                    "none"
+                                                ],
+                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "alerts": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "mention": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reblog": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow_request": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "favourite": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "poll": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.sign_up": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.report": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reaction": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "description": "Whether to push each type of notification, by its type."
+                                            },
+                                            "policy": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "all",
+                                                    "followed",
+                                                    "follower",
+                                                    "none"
+                                                ],
+                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "alerts": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "mention": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reblog": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "follow_request": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "favourite": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "poll": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.sign_up": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "admin.report": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "reaction": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "description": "Whether to push each type of notification, by its type."
+                                            },
+                                            "policy": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "all",
+                                                    "followed",
+                                                    "follower",
+                                                    "none"
+                                                ],
+                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/WebPushSubscription"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove current subscription",
+                "description": "Removes the current Web Push API subscription.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/push/#delete"
+                },
+                "tags": [
+                    "push"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "push"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/markers": {
             "get": {
                 "summary": "Get saved timeline positions",
@@ -11883,6 +12691,57 @@
                     "account"
                 ]
             },
+            "PushAlerts": {
+                "type": "object",
+                "properties": {
+                    "mention": {
+                        "type": "boolean"
+                    },
+                    "status": {
+                        "type": "boolean"
+                    },
+                    "reblog": {
+                        "type": "boolean"
+                    },
+                    "follow": {
+                        "type": "boolean"
+                    },
+                    "follow_request": {
+                        "type": "boolean"
+                    },
+                    "favourite": {
+                        "type": "boolean"
+                    },
+                    "poll": {
+                        "type": "boolean"
+                    },
+                    "update": {
+                        "type": "boolean"
+                    },
+                    "admin.sign_up": {
+                        "type": "boolean"
+                    },
+                    "admin.report": {
+                        "type": "boolean"
+                    },
+                    "reaction": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "mention",
+                    "status",
+                    "reblog",
+                    "follow",
+                    "follow_request",
+                    "favourite",
+                    "poll",
+                    "update",
+                    "admin.sign_up",
+                    "admin.report",
+                    "reaction"
+                ]
+            },
             "Quote": {
                 "type": "object",
                 "properties": {
@@ -12943,6 +13802,39 @@
                     "unlisted",
                     "private",
                     "direct"
+                ]
+            },
+            "WebPushSubscription": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "endpoint": {
+                        "type": "string"
+                    },
+                    "alerts": {
+                        "$ref": "#/components/schemas/PushAlerts"
+                    },
+                    "server_key": {
+                        "type": "string"
+                    },
+                    "policy": {
+                        "type": "string",
+                        "enum": [
+                            "all",
+                            "followed",
+                            "follower",
+                            "none"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "endpoint",
+                    "alerts",
+                    "server_key",
+                    "policy"
                 ]
             }
         },

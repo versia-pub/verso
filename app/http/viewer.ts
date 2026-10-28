@@ -75,6 +75,10 @@ export const checkPermission = async (
     if (!granted.has(needed)) throw new NotPermitted();
 };
 
+/** The token an `Authorization: Bearer` header holds, if it holds one. */
+export const bearerToken = (authorization: string | undefined): string | undefined =>
+    /^Bearer\s+(\S+)$/i.exec(authorization ?? "")?.[1];
+
 /**
  * The viewer the request's bearer token stands for, if it is valid, or, `elsewhere`, the token its
  * `Sec-WebSocket-Protocol` or `access_token` holds, without a bearer token. It is looked up once,
@@ -86,7 +90,7 @@ const bearerOf = (
     services: AppServices,
     elsewhere = false,
 ) => {
-    const token = /^Bearer\s+(\S+)$/i.exec(c.req.header("authorization") ?? "")?.[1] ??
+    const token = bearerToken(c.req.header("authorization")) ??
         (elsewhere
             ? c.req.query("access_token") ?? c.req.header("sec-websocket-protocol")
             : undefined);
