@@ -9,6 +9,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [Configuring](admin/configuring.md): the instance, logging in, permissions, media, federation
 - [Commands](admin/commands.md): running, migrating, and the admin commands
 - [Running an instance](admin/running.md): upgrading, scaling, backups, failed jobs, logs
+- [Moderating](admin/moderating.md): blocking instances, moderators, custom emoji
 
 ## How Verso works
 
