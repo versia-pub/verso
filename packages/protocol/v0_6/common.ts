@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { parseReference } from "../reference.ts";
 
-/** An optional field. Peers may leave it out or set it to null (see docs/decisions/0005). */
+/** An optional field. Peers may leave it out or set it to null (see docs/federation.md). */
 export const optional = <T extends z.ZodType>(
     schema: T,
 ): z.ZodOptional<z.ZodNullable<T>> => schema.nullish();

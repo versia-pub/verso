@@ -8,5 +8,6 @@ These docs explain how Verso works and how to change it. To set up and run Verso
 - [Database](database.md): Kysely, writing queries, Postgres and SQLite, migrations
 - [HTTP](http.md): routes, what happens to a request, input, responses, errors, auth, OpenAPI
 - [Events, jobs and messages](events-and-jobs.md): subscribers, the job queue, workers, pubsub
+- [Federation](federation.md): Versia receiving, sending, fetching, signatures, spec gaps
 
 [`config.example.toml`](config.example.toml) lists every config setting, with its default.
