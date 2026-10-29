@@ -73,14 +73,8 @@ On NixOS, the module runs `verso migrate` before the service starts. Processes s
 
 ## Admin commands
 
-| Command                                        | Does                                      |
-| ---------------------------------------------- | ----------------------------------------- |
-| `verso admin domains block`, `unblock`, `list` | blocks instances, besides the config's    |
-| `verso admin keys rotate`                      | replaces the instance's key pair          |
-| `verso admin roles create`, `list`             | manages roles                             |
-| `verso admin users grant-role`, `revoke-role`  | gives an account a role, or takes it back |
-
-Each prints JSON, for scripts. `--help` on any of them says what it takes. They are in
+`verso admin` manages domain blocks, roles and the instance's keys. Each command prints JSON, for
+scripts. [Commands](admin/commands.md) lists them, and they are in
 [`app/admin/cli.ts`](../app/admin/cli.ts).
 
 ## Failed jobs

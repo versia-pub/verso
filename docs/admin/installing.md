@@ -162,4 +162,4 @@ checks.
    groups instead, see [Roles from your provider](configuring.md#roles-from-your-provider).
 3. **Check federation**, by searching for an account on another Versia instance.
 
-Each instance serves its API reference at `/docs`.
+[Commands](commands.md) lists every command. Each instance serves its API reference at `/docs`.
