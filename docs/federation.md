@@ -177,8 +177,7 @@ admins to read. See [`app/federation/messaging.ts`](../app/federation/messaging.
 
 ## Where the spec is unclear
 
-Where the Versia 0.6 spec is unclear or wrong, Verso does as follows. Each will be raised
-upstream.
+Where the Versia 0.6 spec is unclear or wrong, Verso does as follows. Each will be raised upstream.
 
 - **[Signing](https://versia.pub/signatures)**: the example code uses milliseconds; the text says
   seconds. Verso uses seconds.
