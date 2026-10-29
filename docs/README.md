@@ -20,4 +20,8 @@ These docs explain how Verso works and how to change it. To set up and run Verso
 - [Build and CI](build-and-ci.md): Nix outputs, vendored dependencies, the image, checks, CI
 - [Maintenance](maintenance.md): upgrading, the Mastodon version, admin commands, failed jobs, logs
 
+How-tos:
+
+- [Adding a route](guides/adding-a-route.md)
+
 [`config.example.toml`](config.example.toml) lists every config setting, with its default.
