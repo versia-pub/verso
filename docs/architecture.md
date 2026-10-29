@@ -63,7 +63,7 @@ packages/
   protocol/          @versia/protocol: Versia entities, references, signing. No I/O.
   client-api/        @versia/client-api: Mastodon API entities as Zod schemas
 lint/plugin.ts       Verso's own lint rules
-scripts/             import-cycle and unused-dependency checks
+scripts/             import-cycle and unused-dependency checks, the README banner
 nix/                 package, container image, NixOS module, checks, dev shell
 docs/                these docs and config.example.toml
 ```

@@ -13,6 +13,7 @@ there, so your machine, CI and production use the same versions of everything.
 | `nixosModules.default` | `nix/module.nix`   | `services.verso`, for NixOS       |
 | `apps.update-hashes`   | `nix/apps.nix`     | recomputes the dependency hash    |
 | `apps.dev-services`    | `nix/apps.nix`     | a throwaway PostgreSQL in `.dev/` |
+| `apps.banner`          | `nix/apps.nix`     | a Versia-branded README banner    |
 | `checks`               | `nix/checks.nix`   | everything CI runs                |
 
 ## Dependencies

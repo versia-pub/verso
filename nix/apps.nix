@@ -61,8 +61,28 @@ let
       wait "$server" || true
     '';
   };
+  # Makes a Versia-branded banner for a README, with scripts/banner.ts. It needs no repository, so
+  # other projects can run it too.
+  banner = pkgs.writeShellApplication {
+    name = "banner";
+    runtimeInputs = [
+      pkgs.deno
+      pkgs.inkscape
+    ];
+    runtimeEnv.FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.inter ]; };
+    text = ''
+      exec deno run --no-config --no-lock --allow-read --allow-write --allow-env \
+        --allow-run=inkscape ${../scripts/banner.ts} "$@"
+    '';
+  };
 in
 {
+  banner = {
+    type = "app";
+    program = pkgs.lib.getExe banner;
+    meta.description = "Make a Versia-branded README banner with a title and tagline";
+  };
+
   dev-services = {
     type = "app";
     program = pkgs.lib.getExe dev-services;

@@ -36,6 +36,7 @@ or `nix flake check`, or Nix will act as if it isn't there.
 | `nix build`                     | Build the server package                                   |
 | `nix run .#update-hashes`       | Update the dependency hash after changing `deno.lock`      |
 | `nix run .#dev-services`        | Run a throwaway PostgreSQL in `.dev/`                      |
+| `nix run .#banner -- --help`    | Make a Versia-branded README banner                        |
 
 CI runs `nix flake check` and nothing else. It runs the same Deno tasks inside the Nix sandbox,
 without network access. If it passes on your machine, it should pass in CI.
