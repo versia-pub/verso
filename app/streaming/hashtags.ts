@@ -5,7 +5,7 @@
  * @module
  */
 import type { Context } from "../kernel/context.ts";
-import { hashtagStatus } from "../notes/public.ts";
+import { hashtagStatus } from "../notes/stream_lookups.ts";
 import { hashtagStream } from "./session.ts";
 import type { Sessions } from "./dispatcher.ts";
 import { sharedStreams } from "./shared.ts";

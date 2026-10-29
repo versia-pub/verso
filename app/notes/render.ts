@@ -8,7 +8,6 @@ import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
 import { type Excluded, viewerBlocks } from "../graph/blocks.ts";
-import { followedSubquery } from "../graph/follows.ts";
 import { countLikesBy, likedAmong } from "../interactions/like_queries.ts";
 import { reactionsOf } from "../interactions/reaction_queries.ts";
 import { reactionEmojis, renderReactions } from "../interactions/render.ts";
@@ -24,6 +23,7 @@ import { countSharesBy, sharedAmong } from "./share_queries.ts";
 import { pinnedAmong } from "./pin_queries.ts";
 import { isPinnable } from "./pins.ts";
 import { totalsOf } from "./total_queries.ts";
+import { onlookerOf } from "./visibility.ts";
 
 /**
  * The status's id in Versia: the URL its Note entity is fetched from, or for a local boost, its
@@ -64,10 +64,7 @@ const sharedStatuses = async (
     const ids = [...new Set(shares.flatMap((note) => note.reblog_of_id ?? []))];
     if (ids.length === 0) return new Map();
 
-    const onlooker = viewerId === null
-        ? null
-        : { id: viewerId, followed: followedSubquery(ctx, viewerId) };
-    const seen = await notesSeenBy(ctx, ids, onlooker);
+    const seen = await notesSeenBy(ctx, ids, onlookerOf(ctx, viewerId));
     const notes = (await findNotes(ctx, ids)).filter((note) => seen.has(note.id));
     const statuses = await renderStatuses(ctx, notes, viewerId);
     return new Map(statuses.map((status) => [status.id, status]));

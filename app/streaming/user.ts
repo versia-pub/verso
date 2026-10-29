@@ -8,7 +8,7 @@ import { followersAmong } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { grants } from "../kernel/scopes.ts";
-import { homeAuthorOf, homeStatus } from "../notes/home.ts";
+import { homeAuthorOf, homeStatus } from "../notes/stream_lookups.ts";
 import { shownNotification } from "../notifications/render.ts";
 import { atMost, type Sessions, type StreamViewer } from "./dispatcher.ts";
 import type { Session } from "./session.ts";

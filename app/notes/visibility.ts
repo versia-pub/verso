@@ -27,9 +27,15 @@ export const canSee = async (
     return note.visibility === "private" && await isFollowing(ctx, viewerId, note.account_id);
 };
 
+/** A local user viewing statuses, in the form queries over many statuses take. */
+export const signedInOnlooker = (ctx: Context, viewerId: string): Exclude<Onlooker, null> => ({
+    id: viewerId,
+    followed: followedSubquery(ctx, viewerId),
+});
+
 /** Someone viewing statuses, in the form queries over many statuses take, or `null` for anyone. */
 export const onlookerOf = (ctx: Context, viewerId: string | null): Onlooker =>
-    viewerId === null ? null : { id: viewerId, followed: followedSubquery(ctx, viewerId) };
+    viewerId === null ? null : signedInOnlooker(ctx, viewerId);
 
 /**
  * Which of `ids`, statuses that aren't boosts, `viewerId` (or anyone if it is `null`) may see, as

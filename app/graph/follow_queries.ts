@@ -248,6 +248,10 @@ export const followedIdsQuery = (
     accountId: string,
 ): AccountIdQuery => listed(ctx, "following", accountId).select("followee_id as account_id");
 
+/** The accounts that follow an account, and were accepted, as a subquery. */
+export const followerIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
+    listed(ctx, "followers", accountId).select("follower_id as account_id");
+
 /** The accounts an account follows and sees the boosts of, as a subquery. */
 export const sharingIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     listed(ctx, "following", accountId).where("show_reblogs", "=", true)

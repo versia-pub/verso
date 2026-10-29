@@ -1,14 +1,16 @@
 /**
- * Single statuses of the public and hashtag timelines, for streaming them as they appear. They are
- * rendered as anyone sees them, as Mastodon streams them, so that each is rendered once for every
- * viewer.
+ * Single statuses of timelines, looked up for streaming them as they appear. Those of the public
+ * and hashtag timelines are rendered as anyone sees them, as Mastodon streams them, so that each is
+ * rendered once for every viewer. Those of home timelines are rendered for each viewer.
  * @module
  */
 import type { Status } from "@versia/client-api";
+import { followedSubquery, sharingSubquery } from "../graph/follows.ts";
+import { hiddenFrom } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
+import { findNote, type NoteRow } from "./note_queries.ts";
 import { renderStatuses } from "./render.ts";
-import type { NoteRow } from "./note_queries.ts";
-import { findHashtagNote, findPublicNote } from "./timeline_queries.ts";
+import { findHashtagNote, findHomeNote, findPublicNote } from "./timeline_queries.ts";
 
 /** A status of a public or hashtag timeline. */
 export type PublicStatus = {
@@ -19,8 +21,8 @@ export type PublicStatus = {
     readonly accountId: string;
     readonly local: boolean;
     /**
-     * Renders it as anyone sees it: with none of a viewer's likes, boosts or bookmarks, and with the
-     * likes, boosts and reactions of everyone counted.
+     * Renders it as anyone sees it: with none of a viewer's likes, boosts or bookmarks, and with
+     * the likes, boosts and reactions of everyone counted.
      */
     readonly render: () => Promise<Status>;
 };
@@ -52,4 +54,29 @@ export const hashtagStatus = async (
 ): Promise<PublicStatus | undefined> => {
     const note = await findHashtagNote(ctx, noteId);
     return note && publicStatusOf(ctx, note);
+};
+
+/**
+ * Who posted the status or boost `noteId`, if it exists. It can be on the home timelines of them
+ * and their followers only.
+ */
+export const homeAuthorOf = async (ctx: Context, noteId: string): Promise<string | undefined> =>
+    (await findNote(ctx, noteId))?.account_id;
+
+/** The status `noteId` as `viewerId` sees it, if it is on their home timeline. */
+export const homeStatus = async (
+    ctx: Context,
+    viewerId: string,
+    noteId: string,
+): Promise<Status | undefined> => {
+    const note = await findHomeNote(
+        ctx,
+        viewerId,
+        followedSubquery(ctx, viewerId),
+        sharingSubquery(ctx, viewerId),
+        hiddenFrom(ctx, viewerId),
+        noteId,
+    );
+
+    return note && (await renderStatuses(ctx, [note], viewerId))[0];
 };

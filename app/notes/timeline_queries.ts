@@ -1,5 +1,5 @@
 import { hasAttachments } from "../media/attachment_queries.ts";
-import type { ExpressionBuilder, SelectQueryBuilder } from "kysely";
+import type { ExpressionBuilder, ExpressionWrapper, SelectQueryBuilder, SqlBool } from "kysely";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
@@ -183,8 +183,13 @@ export type HashtagFilter = {
     readonly none: readonly string[];
 };
 
+/** A condition on statuses, for a query's `where`. */
+export type NoteCondition = (
+    eb: ExpressionBuilder<Database, "notes">,
+) => ExpressionWrapper<Database, "notes", SqlBool>;
+
 /** Whether a status uses any of `names`. */
-const usesAny = (names: readonly string[]) => (eb: ExpressionBuilder<Database, "notes">) =>
+export const usesAny = (names: readonly string[]): NoteCondition => (eb) =>
     eb.exists(
         eb.selectFrom("note_tags").select("note_tags.note_id")
             .whereRef("note_tags.note_id", "=", "notes.id")

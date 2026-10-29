@@ -6,10 +6,10 @@
  * @module
  */
 import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
-import { followedSubquery } from "../graph/follows.ts";
 import { hiddenFrom } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNotes, type NoteRow } from "../notes/note_queries.ts";
+import { signedInOnlooker } from "../notes/visibility.ts";
 import { noteIdsMatching } from "./search_queries.ts";
 import { parseStatusQuery, type QueryTerm } from "./query.ts";
 import type { NoteTerm } from "./search_queries.ts";
@@ -59,7 +59,7 @@ export const searchStatuses = async (ctx: Context, search: StatusSearch): Promis
     const ids = await noteIdsMatching(ctx, terms, {
         ...search,
         scope: query.scope,
-        onlooker: { id: viewerId, followed: followedSubquery(ctx, viewerId) },
+        onlooker: signedInOnlooker(ctx, viewerId),
         hidden: hiddenFrom(ctx, viewerId),
     });
 

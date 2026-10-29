@@ -8,7 +8,7 @@
 import type { Status } from "@versia/client-api";
 import { hidingAmong } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
-import type { PublicStatus } from "../notes/public.ts";
+import type { PublicStatus } from "../notes/stream_lookups.ts";
 import type { Sessions, StreamViewer } from "./dispatcher.ts";
 import type { Session } from "./session.ts";
 

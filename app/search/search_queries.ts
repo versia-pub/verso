@@ -2,10 +2,12 @@ import { type Expression, type ExpressionBuilder, sql, type SqlBool } from "kyse
 import type { Database } from "../db/database.ts";
 import { usesSqlite } from "../db/columns.ts";
 import { type Excluded, notExcluded } from "../graph/excluded_queries.ts";
+import { followedIdsQuery, followerIdsQuery } from "../graph/follow_queries.ts";
 import { hasAttachments } from "../media/attachment_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
 import { isSeenBy, type Onlooker } from "../notes/thread_queries.ts";
+import { usesAny } from "../notes/timeline_queries.ts";
 
 /** A search index: its table, the FTS5 table SQLite keeps its words in, and what it indexes. */
 type Index = { readonly table: string; readonly text: string; readonly key: string };
@@ -185,11 +187,7 @@ const has = (ctx: Context, term: NoteTerm) => (eb: ExpressionBuilder<Database, "
         case "phrase":
             return matching(ctx, notes, "notes.id", term.values, term.kind === "phrase");
         case "hashtag":
-            return eb.exists(
-                eb.selectFrom("note_tags").select("note_tags.note_id")
-                    .whereRef("note_tags.note_id", "=", "notes.id")
-                    .where("note_tags.name", "=", term.values[0]),
-            );
+            return usesAny(term.values)(eb);
         case "author":
             return term.accountId === null ? never : eb("notes.account_id", "=", term.accountId);
         case "property":
@@ -339,7 +337,7 @@ export type AccountMatch = {
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/concerns/account/search.rb
  */
 export const accountIdsMatching = async (
-    ctx: Pick<Context, "db">,
+    ctx: Context,
     words: readonly string[],
     match: AccountMatch,
 ): Promise<string[]> => {
@@ -350,28 +348,16 @@ export const accountIdsMatching = async (
         .select("accounts.id")
         .where(matching(ctx, accounts, "accounts.id", words));
     if (viewerId !== null) {
+        const followed = followedIdsQuery(ctx, viewerId);
         if (match.following) {
             query = query.where((eb) =>
-                eb.or([
-                    eb("accounts.id", "=", viewerId),
-                    eb(
-                        "accounts.id",
-                        "in",
-                        eb.selectFrom("follows")
-                            .select("followee_id")
-                            .where("follower_id", "=", viewerId)
-                            .where("accepted", "=", true),
-                    ),
-                ])
+                eb.or([eb("accounts.id", "=", viewerId), eb("accounts.id", "in", followed)])
             );
         }
 
         // 1 for each way the viewer and the account follow each other. The sets are each looked up
         // once, rather than counted again for every account that matches.
-        const followed = ctx.db.selectFrom("follows").select("followee_id")
-            .where("follower_id", "=", viewerId).where("accepted", "=", true);
-        const following = ctx.db.selectFrom("follows").select("follower_id")
-            .where("followee_id", "=", viewerId).where("accepted", "=", true);
+        const following = followerIdsQuery(ctx, viewerId);
         query = query.orderBy(
             (eb) =>
                 eb(

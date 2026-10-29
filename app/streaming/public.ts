@@ -6,7 +6,7 @@
  * @module
  */
 import type { Context } from "../kernel/context.ts";
-import { publicStatus } from "../notes/public.ts";
+import { publicStatus } from "../notes/stream_lookups.ts";
 import type { Sessions } from "./dispatcher.ts";
 import { sharedStreams } from "./shared.ts";
 

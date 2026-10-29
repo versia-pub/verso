@@ -6,7 +6,7 @@ import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, Paged, type Route } from "../http/route.ts";
 import { Flag, Strings } from "../http/schemas.ts";
 import { renderStatuses } from "./render.ts";
-import { hashtagPage, homePage, publicPage } from "./timeline_queries.ts";
+import { hashtagPage, homePage, type Origin, publicPage } from "./timeline_queries.ts";
 
 /**
  * Which public statuses to return. `local` wins over `remote`, as on Mastodon.
@@ -17,6 +17,10 @@ const PublicQuery = PageQuery({ default: 20, max: 40 }).extend({
     remote: Flag.default(false),
     only_media: Flag.default(false),
 });
+
+/** Where the statuses `query` asks for are from: here only, other instances only, or both. */
+const originOf = (query: z.output<typeof PublicQuery>): Origin =>
+    query.local ? "local" : query.remote ? "remote" : "all";
 
 /** How many hashtags each of `any`, `all` and `none` may have, as on Mastodon. */
 const hashtagsPerList = 4;
@@ -81,11 +85,10 @@ export const timelineRoutes: readonly Route[] = [
         query: PublicQuery,
         responses: { 200: Paged(Status) },
         handler: async (ctx, { query, viewer }) => {
-            const origin = query.local ? "local" : query.remote ? "remote" : "all";
             const viewerId = viewer?.accountId ?? null;
             const notes = await publicPage(
                 ctx,
-                origin,
+                originOf(query),
                 viewerHidden(ctx, viewerId),
                 query,
                 query.only_media,
@@ -115,7 +118,6 @@ export const timelineRoutes: readonly Route[] = [
         query: HashtagQuery,
         responses: { 200: Paged(Status) },
         handler: async (ctx, { params, query, viewer }) => {
-            const origin = query.local ? "local" : query.remote ? "remote" : "all";
             const viewerId = viewer?.accountId ?? null;
             const hashtag = params.hashtag.toLowerCase();
             const tags = {
@@ -128,7 +130,7 @@ export const timelineRoutes: readonly Route[] = [
             const notes = await hashtagPage(
                 ctx,
                 tags,
-                origin,
+                originOf(query),
                 viewerHidden(ctx, viewerId),
                 query,
                 query.only_media,
