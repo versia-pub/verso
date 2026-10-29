@@ -48,6 +48,8 @@ services.verso = {
       url = "https://id.social.example";
       client_id = "verso";
       client_secret = "\${file:/run/credentials/verso.service/oidc}";
+      # Anyone the provider lets in gets an account. It is "closed" by default.
+      registration = "open";
     }];
   };
   credentials.oidc = "/run/secrets/verso-oidc";
@@ -61,11 +63,10 @@ services.verso = {
 | `database.createLocally` | runs PostgreSQL on the machine for Verso, `true` by default |
 | `package`                | the Verso package to run                                    |
 
-- **Settings** are the same as in `config.toml`. [`config.example.toml`](../config.example.toml)
-  lists every one, with its default.
+- **Settings** are the same as in `config.toml`. See [Configuring](configuring.md).
 - **Secrets** go in `credentials` (never in `settings`, which ends up in the world-readable Nix
-  store). The module refuses a client secret, S3 secret key or database password written there. Refer
-  to a credential as `${file:/run/credentials/verso.service/<name>}`, written `\${…}` in Nix.
+  store). The module refuses a client secret, S3 secret key or database password written there.
+  Refer to a credential as `${file:/run/credentials/verso.service/<name>}`, written `\${…}` in Nix.
 - **Media** is kept in `/var/lib/verso/media`, unless `settings.media.storage` says otherwise.
 - **The service** runs `verso migrate`, then `verso all`, as an unprivileged dynamic user.
 - **Admin commands** run with `sudo verso-admin …`, which has the service's config and secrets.
@@ -148,7 +149,8 @@ checks.
 ## First steps
 
 1. **Log in.** Verso has no web interface of its own: add your domain to a Mastodon app, and log in
-   through your provider. Your account is made at your first login.
+   through your provider. Your account is made at your first login, if the issuer's `registration`
+   lets you in.
 2. **Make an admin role**, and give it to yourself:
 
    ```sh
@@ -157,7 +159,7 @@ checks.
    ```
 
    On NixOS, run `sudo verso-admin` instead of `verso admin`. To grant roles from your provider's
-   groups instead, use `roles` in `[[auth.issuers]]`, once the role exists.
+   groups instead, see [Roles from your provider](configuring.md#roles-from-your-provider).
 3. **Check federation**, by searching for an account on another Versia instance.
 
 Each instance serves its API reference at `/docs`.

@@ -6,6 +6,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 ## Running Verso
 
 - [Installing](admin/installing.md): NixOS, the container image, the package, a reverse proxy
+- [Configuring](admin/configuring.md): the instance, logging in, permissions, media, federation
 
 ## How Verso works
 
