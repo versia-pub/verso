@@ -1,7 +1,11 @@
 # Verso's documentation
 
-These docs explain how Verso works and how to change it. To set up and run Verso, start with
-[CONTRIBUTING.md](../CONTRIBUTING.md).
+These docs explain how to run Verso, how it works and how to change it. To work on Verso itself,
+start with [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## Running Verso
+
+- [Installing](admin/installing.md): NixOS, the container image, the package, a reverse proxy
 
 ## How Verso works
 

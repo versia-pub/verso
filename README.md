@@ -13,7 +13,7 @@
 [![Built with Deno](https://img.shields.io/badge/built_with-Deno-22162B?logo=deno)](https://deno.com)
 [![Nix flake](https://img.shields.io/badge/Nix-flake-5277C3?logo=nixos&logoColor=white)](flake.nix)
 
-**[Docs](docs/README.md)** · **[Getting started](CONTRIBUTING.md#running-verso-locally)** ·
+**[Docs](docs/README.md)** · **[Installing](docs/admin/installing.md)** ·
 **[Contributing](CONTRIBUTING.md)** · **[Versia](https://versia.pub)**
 
 </div>
@@ -36,11 +36,8 @@ social media. It also speaks the Mastodon client API, so it works with the apps 
 
 ## Running Verso
 
-- **Locally**: follow [Running Verso locally](CONTRIBUTING.md#running-verso-locally).
-- **On NixOS**: import the module from [`nix/module.nix`](nix/module.nix). See
-  [Configuration](docs/configuration.md#nixos).
-- **In a container**: build the image with Nix. See
-  [The container image](docs/build-and-ci.md#the-container-image).
+[Installing Verso](docs/admin/installing.md) covers NixOS, the container image and the package. To
+run it locally for development, see [Running Verso locally](CONTRIBUTING.md#running-verso-locally).
 
 Every setting is listed, with its default, in [`config.example.toml`](docs/config.example.toml).
 
