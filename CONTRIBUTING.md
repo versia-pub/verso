@@ -1,7 +1,7 @@
 # Contributing to Verso
 
 Thanks for helping out. This file covers how to set up, how to run things, and what we look for in a
-pull request.
+pull request. To learn how Verso works and how to change it, read [the docs](docs/README.md).
 
 ## Setup
 
@@ -40,16 +40,9 @@ or `nix flake check`, or Nix will act as if it isn't there.
 CI runs `nix flake check` and nothing else. It runs the same Deno tasks inside the Nix sandbox,
 without network access. If it passes on your machine, it should pass in CI.
 
-Tests run on PGlite, an in-process PostgreSQL, by default. To run them on SQLite, set
-`VERSO_TEST_DATABASE=sqlite`. To run them on a real PostgreSQL server, set it to the server's URL
-and add `--allow-net` for its address. Each test creates its own database there, so use a throwaway
-server, such as the one `nix run .#dev-services` starts:
-
-```sh
-VERSO_TEST_DATABASE=postgresql://verso@localhost:5433/verso deno task test --allow-net=localhost
-```
-
-`nix flake check` runs all three.
+Tests run on PGlite, an in-process PostgreSQL, by default. `VERSO_TEST_DATABASE` runs them on SQLite
+or a real PostgreSQL server instead, and `nix flake check` runs all three. See
+[Testing](docs/testing.md).
 
 ## Running Verso locally
 
@@ -83,17 +76,8 @@ The API is at `http://localhost:8080`, and its documentation at `/docs`. `config
 
 Every dependency is code we don't control, so add one only when it pays for itself. In the pull
 request, say what it replaces, how big it is, how well it's maintained, and why the standard library
-or Deno's built-ins aren't enough.
-
-To add one:
-
-```sh
-deno add --save-exact jsr:@std/cli   # or npm:some-package
-nix run .#update-hashes
-```
-
-Commit `deno.json`, `deno.lock` and `nix/deps.nix` together. If you forget the hash, the `deps-hash`
-check fails and tells you what to run.
+or Deno's built-ins aren't enough. [Maintenance](docs/maintenance.md#dependencies) says how to add
+and upgrade them.
 
 ## Writing code
 
