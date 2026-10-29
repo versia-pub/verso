@@ -5,9 +5,11 @@
  * `nix run github:versia-pub/verso#banner`.
  */
 
-const usage = `Usage: banner --title <title> --tagline <tagline> [--output <file>]
+const usage =
+    `Usage: banner --title <title> --tagline <tagline> [--theme light|dark] [--output <file>]
 
-Writes the banner to <file>, or to banner.svg.`;
+Writes the banner to <file>, or to banner.svg. The dark theme suits pages with a dark background;
+a README can show each with a <picture> element and prefers-color-scheme.`;
 
 const width = 1280;
 const height = 400;
@@ -25,6 +27,32 @@ const logoSparkles =
 /** A four-pointed sparkle, 2 wide, drawn around 0,0. */
 const sparkle =
     "M0 -1C0.08 -0.3 0.3 -0.08 1 0C0.3 0.08 0.08 0.3 0 1C-0.08 0.3 -0.3 0.08 -1 0C-0.3 -0.08 -0.08 -0.3 0 -1Z";
+
+type Theme = {
+    readonly background: string;
+    readonly sparkle: string;
+    readonly border: string;
+    readonly title: string;
+    readonly tagline: string;
+};
+
+/** The logo's tile is the same in both, as it is Versia's colour. */
+const themes: Record<string, Theme> = {
+    light: {
+        background: "#F6EEFA",
+        sparkle: "#EEDDF7",
+        border: "#E6D4F0",
+        title: "#22162B",
+        tagline: "#6B5878",
+    },
+    dark: {
+        background: "#1B1421",
+        sparkle: "#251B2D",
+        border: "#33263D",
+        title: "#F4ECF8",
+        tagline: "#B9A5C6",
+    },
+};
 
 type Line = {
     readonly id: string;
@@ -108,7 +136,12 @@ const outlines = async (lines: Line[], directory: string): Promise<Map<string, s
 };
 
 // Laid out as `deno fmt` would, so a repository that formats SVG files can keep the output as is.
-const banner = (title: string, tagline: string, paths: Map<string, string>): string =>
+const banner = (
+    title: string,
+    tagline: string,
+    theme: Theme,
+    paths: Map<string, string>,
+): string =>
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     <title>${escapeXml(`${title}: ${tagline}`)}</title>
     <!-- Made with Verso's scripts/banner.ts. The tile is the Versia logo. The text is Inter. -->
@@ -120,12 +153,12 @@ const banner = (title: string, tagline: string, paths: Map<string, string>): str
             d="${sparkle}" />
     </defs>
     <g clip-path="url(#card)">
-        <rect width="${width}" height="${height}" fill="#F6EEFA" />
-        <use href="#sparkle" fill="#EEDDF7" transform="translate(1190 310) scale(250)" />
+        <rect width="${width}" height="${height}" fill="${theme.background}" />
+        <use href="#sparkle" fill="${theme.sparkle}" transform="translate(1190 310) scale(250)" />
     </g>
     <rect x="0.5" y="0.5" width="${width - 1}" height="${
         height - 1
-    }" rx="23.5" fill="none" stroke="#E6D4F0" />
+    }" rx="23.5" fill="none" stroke="${theme.border}" />
     <g transform="translate(104 100) scale(0.8734)">
         <path
             d="${logoTile}"
@@ -142,6 +175,7 @@ const banner = (title: string, tagline: string, paths: Map<string, string>): str
 const options = parseArgs(Deno.args);
 const title = options?.get("title");
 const tagline = options?.get("tagline");
+const theme = themes[options?.get("theme") ?? "light"];
 
 if (Deno.args.includes("--help")) {
     // deno-lint-ignore no-console -- the usage is the command's output
@@ -149,7 +183,7 @@ if (Deno.args.includes("--help")) {
     Deno.exit(0);
 }
 
-if (title === undefined || tagline === undefined) {
+if (title === undefined || tagline === undefined || theme === undefined) {
     // deno-lint-ignore no-console -- the usage is the command's output
     console.error(usage);
     Deno.exit(1);
@@ -164,7 +198,7 @@ const lines: Line[] = [
         size: 128,
         weight: 700,
         spacing: -4,
-        fill: "#22162B",
+        fill: theme.title,
     },
     // Moved right a little, as the title's first letter has more space on its left than small text.
     {
@@ -175,14 +209,17 @@ const lines: Line[] = [
         size: 32,
         weight: 400,
         spacing: 0,
-        fill: "#6B5878",
+        fill: theme.tagline,
     },
 ];
 
 const directory = await Deno.makeTempDir();
 try {
     const output = options?.get("output") ?? "banner.svg";
-    await Deno.writeTextFile(output, banner(title, tagline, await outlines(lines, directory)));
+    await Deno.writeTextFile(
+        output,
+        banner(title, tagline, theme, await outlines(lines, directory)),
+    );
 } finally {
     await Deno.remove(directory, { recursive: true });
 }

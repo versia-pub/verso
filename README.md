@@ -1,8 +1,11 @@
 <div align="center">
 
-<img src="docs/assets/banner.svg" alt="Verso: the Versia reference implementation" width="100%">
-
-<br>
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
+    <img src="docs/assets/banner.svg" alt="Verso: the Versia reference implementation" width="640">
+  </picture>
+</p>
 
 [![CI](https://github.com/versia-pub/verso/actions/workflows/ci.yml/badge.svg)](https://github.com/versia-pub/verso/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-22162B)](LICENSE)
