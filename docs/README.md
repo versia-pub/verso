@@ -11,6 +11,11 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [Running an instance](admin/running.md): upgrading, scaling, backups, failed jobs, logs
 - [Moderating](admin/moderating.md): blocking instances, moderators, custom emoji
 
+## Using the API
+
+- [Mastodon API compatibility](api/compatibility.md): every Mastodon 4.3 method with Verso's
+  differences
+
 ## How Verso works
 
 - [Architecture](architecture.md): processes, layers, the context, events and jobs
