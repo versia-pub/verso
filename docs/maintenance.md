@@ -1,6 +1,7 @@
 # Maintenance
 
-How to keep Verso up to date, and how to look after a running instance.
+How to keep Verso's code and tools up to date. To look after a running instance, see
+[Running an instance](admin/running.md).
 
 ## Dependencies
 
@@ -53,23 +54,10 @@ a later version added, so clients use it.
   package per platform, which would break our single dependency hash, and its API is still unstable.
   Revisit this when TypeScript 7's API is stable, or when review keeps missing them.
 
-## Upgrading an instance
-
-1. Install the new version.
-2. Run `verso migrate`. All pending migrations run in one transaction, so if one fails, nothing
-   changes, and the old version can keep running.
-3. Restart every `verso serve`, `verso work` and `verso all` process.
-
-On NixOS, the module runs `verso migrate` before the service starts. Processes stop gracefully on
-`SIGTERM`: they finish the requests and jobs in progress first.
-
 ## The instance's keys
 
-- **`verso admin keys rotate`** replaces the instance's key pair, such as when the old one may have
-  leaked, and prints the new public key. The old one is deleted at once. Remote instances fetch the
-  new key when a signature stops verifying, and every process hears of it on `federation.changed`.
-- **The Web Push key never changes**, as changing it would break every subscription. See
-  [Notifications and push](notifications.md#web-push).
+Every process hears of a key rotation on `federation.changed`. The Web Push key never changes; see
+[Notifications and push](notifications.md#web-push).
 
 ## Admin commands
 
@@ -79,30 +67,13 @@ scripts. [Commands](admin/commands.md) lists them, and they are in
 
 ## Failed jobs
 
-A job that fails for good stays in the `jobs` table as a dead letter, for `[jobs] dead_letter_days`,
-30 by default. See [Events, jobs and messages](events-and-jobs.md#a-jobs-life). To see them:
-
-```sql
-SELECT queue, last_error, run_at AS died_at, payload
-FROM jobs
-WHERE finished_at IS NULL AND attempts >= max_attempts
-ORDER BY run_at DESC;
-```
-
-To run one again once the cause is fixed, give it its attempts back. On Postgres:
-
-```sql
-UPDATE jobs SET attempts = 0, run_at = now() WHERE id = '…';
-```
-
-Many dead deliveries to one instance usually mean it is down or blocks Verso. See
-[Federation](federation.md#sending).
+Dead letters stay in the `jobs` table for `[jobs] dead_letter_days`. See
+[Events, jobs and messages](events-and-jobs.md#a-jobs-life) for how jobs fail, and
+[Running an instance](admin/running.md#failed-jobs) for how to find and retry them.
 
 ## Logs
 
-Verso logs to the console, through LogTape, at `[logging] level`, `info` by default. In a terminal,
-logs are in colour, so the important parts stand out. Elsewhere, such as in journald or container
-logs, they are plain text. `NO_COLOR` turns colour off too.
-
-Each module logs under `verso.<module>`, such as `verso.streaming`, with values as properties. See
+Verso logs through LogTape. Logs printed to a terminal are in colour, so the important parts stand
+out; elsewhere they are plain text. Each module logs under `verso.<module>`, such as
+`verso.streaming`, with values as properties. See
 [`app/kernel/logging.ts`](../app/kernel/logging.ts).

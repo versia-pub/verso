@@ -8,6 +8,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [Installing](admin/installing.md): NixOS, the container image, the package, a reverse proxy
 - [Configuring](admin/configuring.md): the instance, logging in, permissions, media, federation
 - [Commands](admin/commands.md): running, migrating, and the admin commands
+- [Running an instance](admin/running.md): upgrading, scaling, backups, failed jobs, logs
 
 ## How Verso works
 
@@ -25,7 +26,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [Configuration](configuration.md): reading the config, secrets, how settings reach the code
 - [Testing](testing.md): test contexts, route tests, several instances, fakes, snapshots
 - [Build and CI](build-and-ci.md): Nix outputs, vendored dependencies, the image, checks, CI
-- [Maintenance](maintenance.md): upgrading, the Mastodon version, admin commands, failed jobs, logs
+- [Maintenance](maintenance.md): dependencies, tools, the Mastodon version, unused code
 
 ## How to add things
 
