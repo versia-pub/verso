@@ -62,8 +62,8 @@ storage = { filesystem = "/var/lib/verso/media" }
 trusted_proxies = ["127.0.0.1", "::1"]
 
 [http.rate_limit]
-# How many requests each client may make in a window, per access token, or per IP address
-# without one.
+# How many requests each client may make in a window: per account, or per IP address without
+# one, counting IPv6 addresses by their /64.
 # limit = 300
 # window_seconds = 300
 # Where counts are stored: "memory", in each server, or "database", shared by several web nodes.
