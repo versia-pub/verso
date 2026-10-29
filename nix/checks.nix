@@ -71,7 +71,7 @@ in
       echo "The image's entrypoint answered '$version', expected 'verso ${image.imageTag}'."
       exit 1
     fi
-    # Warnings here, such as a missing workspace member, mean the package is incomplete.
+    # Warnings here, such as an unknown flag in the wrapper, mean Verso doesn't start cleanly.
     if [ -s stderr ]; then
       echo "The image's entrypoint printed warnings:"
       cat stderr

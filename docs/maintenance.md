@@ -34,6 +34,9 @@ nix run .#update-hashes   # a new Deno can change the dependency hash
 nix flake check
 ```
 
+If the package build then says Deno runs another esbuild, update
+[`nix/esbuild.nix`](../nix/esbuild.nix).
+
 GitHub Actions in `ci.yml` are pinned to a commit, with the version in a comment. Upgrade both
 together.
 

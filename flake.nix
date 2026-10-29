@@ -18,7 +18,10 @@
 
       packages = forAllSystems (pkgs: rec {
         deps = pkgs.callPackage ./nix/deps.nix { };
-        default = pkgs.callPackage ./nix/package.nix { inherit deps; };
+        default = pkgs.callPackage ./nix/package.nix {
+          inherit deps;
+          esbuild = pkgs.callPackage ./nix/esbuild.nix { };
+        };
         image = pkgs.callPackage ./nix/image.nix { verso = default; };
       });
 

@@ -49,16 +49,32 @@ and `nix/deps.nix` together. The `deps-hash` check fails, and says so, if you fo
 
 ## The package
 
-`nix/package.nix` copies `app/`, `packages/`, `deno.json`, `deno.lock` and the vendored
-dependencies, and wraps Deno as `verso`:
+`nix/package.nix` bundles Verso with `deno bundle`, from `app/main.ts` and the vendored
+dependencies, into one file, `share/verso/verso.js`, and wraps Deno as `verso` to run it:
 
-- **`--cached-only --frozen`**: dependencies come only from the vendored copy, never the network.
+- **Only what `app/main.ts` imports is in it**, so tests and their dependencies, such as PGlite, are
+  left out. It is about 3 MB, where the source and its dependencies take 59 MiB.
+- **It isn't minified.** That would save under 2 MB and a few milliseconds at start, and rename the
+  functions in stack traces. `--keep-names` would keep them, but Deno then can't make `require` work
+  in the bundle.
+- **The source map** gives each line of the bundle's place in the source, so stack traces name the
+  source files. It has no copy of their contents.
+- **`--no-config --no-remote --no-npm`**: the bundle imports nothing, so Deno needs no config,
+  lockfile or network.
 - **`--allow-run=vips,vipsheader`**: the only programs Verso runs, which the package puts on its
   `PATH`.
 - **Reads and writes aren't narrowed**, since the config, secrets and SQLite file can be anywhere.
   What runs Verso narrows them: the NixOS module's `DynamicUser`, or the image's `nobody` user.
 
 The version is `deno.json`'s `version`.
+
+`deno bundle` runs esbuild, and works only with the version it was made for, which it would
+download. [`nix/esbuild.nix`](../nix/esbuild.nix) builds that version from source instead.
+Trade-offs:
+
+- `deno bundle` is still experimental, so a Deno upgrade can change what it does.
+- A Deno upgrade can need another esbuild. The package build then fails and says so: update the
+  version and hash in `nix/esbuild.nix`.
 
 ## The container image
 
