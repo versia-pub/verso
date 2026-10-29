@@ -9,7 +9,8 @@ import { z } from "zod";
 import { publicAccounts } from "../accounts/public.ts";
 import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
-import { defineRoute, Linked, Paged, type Route } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { Linked, Paged } from "../http/responses.ts";
 import {
     deleteGroup,
     findGroupNotification,

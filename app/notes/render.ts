@@ -9,7 +9,7 @@ import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
 import { type Excluded, viewerBlocks } from "../graph/blocks.ts";
 import { countLikesBy, likedAmong } from "../interactions/like_queries.ts";
-import { reactionsOf } from "../interactions/reaction_queries.ts";
+import { reactionsOf } from "../interactions/reaction_render_queries.ts";
 import { reactionEmojis, renderReactions } from "../interactions/render.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";

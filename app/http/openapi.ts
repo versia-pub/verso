@@ -5,7 +5,8 @@
 import { z } from "zod";
 import denoConfig from "../../deno.json" with { type: "json" };
 import { scopes } from "../kernel/scopes.ts";
-import { defineRoute, type Responses, type Route } from "./route.ts";
+import { defineRoute, type Route } from "./route.ts";
+import { type Responses } from "./responses.ts";
 import { components, type JsonSchema, jsonSchema, type Naming, naming } from "./openapi_schemas.ts";
 
 /** @see https://spec.openapis.org/oas/v3.1.1.html#parameter-object */

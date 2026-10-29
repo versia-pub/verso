@@ -4,7 +4,8 @@
  * @module
  */
 import { html } from "@hono/hono/html";
-import { defineRoute, Page, type Route } from "./route.ts";
+import { defineRoute, type Route } from "./route.ts";
+import { Page } from "./responses.ts";
 
 /** Pinned, and checked against its hash, so a changed file on the CDN doesn't run. */
 const scalar = {

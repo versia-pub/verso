@@ -7,7 +7,8 @@
 import { parseJson } from "@versia/protocol";
 import { z } from "zod";
 import { BadRequest, ValidationFailed } from "../http/errors.ts";
-import { defineRoute, NoBody, type Route } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { NoBody } from "../http/responses.ts";
 import { recordReached } from "../instances/reachability.ts";
 import { enqueue } from "../jobs/job_queries.ts";
 import { resumeGroup } from "../jobs/job_pause_queries.ts";

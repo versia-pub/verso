@@ -11,7 +11,7 @@ import type {
 import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccountsOf } from "../accounts/public.ts";
 import { notificationsHiddenFrom } from "../graph/hidden.ts";
-import { emojisOfReactions } from "../interactions/reaction_queries.ts";
+import { emojisOfReactions } from "../interactions/reaction_render_queries.ts";
 import { renderReactionEmoji } from "../interactions/render.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNotes } from "../notes/note_queries.ts";

@@ -1,7 +1,8 @@
 import { findAccount } from "../accounts/account_queries.ts";
 import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
-import { defineRoute, Paged } from "../http/route.ts";
+import { defineRoute } from "../http/route.ts";
+import { Paged } from "../http/responses.ts";
 import { Flag } from "../http/schemas.ts";
 import { notePageBy } from "./note_queries.ts";
 import { pinnedNotes } from "./pin_queries.ts";

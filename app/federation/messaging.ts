@@ -8,7 +8,8 @@
  */
 import { getLogger } from "@logtape/logtape";
 import { z } from "zod";
-import { defineRoute, NoBody, type Route } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { NoBody } from "../http/responses.ts";
 import { takesMessages } from "../instances/instance_queries.ts";
 import { enqueue } from "../jobs/job_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";

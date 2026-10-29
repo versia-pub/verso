@@ -4,7 +4,7 @@
  * @module
  */
 import { z } from "zod";
-import type { Cursors } from "./route.ts";
+import type { Cursors } from "./responses.ts";
 import { Integer } from "./schemas.ts";
 
 type PageFields = {

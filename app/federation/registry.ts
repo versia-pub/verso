@@ -7,7 +7,8 @@
 import { type Reference, v0_6 } from "@versia/protocol";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
-import { defineRoute, type Route, versiaJson } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { versiaJson } from "../http/responses.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 
 /**

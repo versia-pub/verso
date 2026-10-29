@@ -8,7 +8,7 @@ import { createInstance } from "../instances/testing.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { reactionsOf } from "./reaction_queries.ts";
+import { reactionsOf } from "./reaction_render_queries.ts";
 import { react, unreact } from "./reactions.ts";
 
 /** alice, bob, who follows her, and dave; the local instance's blob, and b.example's dog. */

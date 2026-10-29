@@ -1,7 +1,8 @@
 import { html } from "@hono/hono/html";
 import { z } from "zod";
 import { layout } from "../http/page.ts";
-import { defineRoute, Page, type Route } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { Page } from "../http/responses.ts";
 import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import type { UrlBuilder } from "../kernel/urls.ts";
 import { randomToken } from "./secrets.ts";

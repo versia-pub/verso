@@ -6,7 +6,7 @@ import type { StatusReaction } from "@versia/client-api";
 import type { ShownEmoji } from "../emojis/emoji_queries.ts";
 import { emojiPicture } from "../emojis/render.ts";
 import type { Context } from "../kernel/context.ts";
-import type { ReactionGroup, ReactionWithEmoji } from "./reaction_queries.ts";
+import type { ReactionGroup, ReactionWithEmoji } from "./reaction_render_queries.ts";
 
 /** What names a reaction's emoji. */
 type Named = Pick<ReactionGroup, "text" | "shortcode" | "domain">;

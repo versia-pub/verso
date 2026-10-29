@@ -6,7 +6,7 @@ import { getLogger } from "@logtape/logtape";
 import { canonicalizeDomain, importPublicKey, v0_6 } from "@versia/protocol";
 import { messagingExtension } from "../federation/messaging.ts";
 import { fetchUnsigned } from "../federation/request.ts";
-import { versiaJson } from "../http/route.ts";
+import { versiaJson } from "../http/responses.ts";
 import type { Context } from "../kernel/context.ts";
 import { lru } from "../kernel/lru.ts";
 import { versiaUrl } from "../kernel/urls.ts";

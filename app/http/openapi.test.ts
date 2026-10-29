@@ -3,7 +3,8 @@ import { Account, CredentialAccount } from "@versia/client-api";
 import { z } from "zod";
 import { scopes } from "../kernel/scopes.ts";
 import { openApiDocument } from "./openapi.ts";
-import { Binary, defineRoute, Linked, NoBody, Page, Paged, Redirect, type Route } from "./route.ts";
+import { defineRoute, type Route } from "./route.ts";
+import { Binary, Linked, NoBody, Page, Paged, Redirect } from "./responses.ts";
 
 const info = { title: "social.example", version: "0.0.0" };
 const origin = "https://social.example";

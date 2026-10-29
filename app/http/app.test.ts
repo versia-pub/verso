@@ -6,7 +6,8 @@ import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
 import { layout } from "./page.ts";
 import { cursorsOf, PageQuery } from "./paging.ts";
-import { Binary, defineRoute, Linked, NoBody, Page, Paged, Redirect } from "./route.ts";
+import { defineRoute } from "./route.ts";
+import { Binary, Linked, NoBody, Page, Paged, Redirect } from "./responses.ts";
 
 const rename = defineRoute({
     method: "POST",

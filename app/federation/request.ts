@@ -4,7 +4,7 @@
  * @module
  */
 import { sign } from "@versia/protocol";
-import { versiaJson } from "../http/route.ts";
+import { versiaJson } from "../http/responses.ts";
 import type { Context } from "../kernel/context.ts";
 import { checkSignature } from "../kernel/signatures.ts";
 import { timeoutSignal, userAgent } from "../kernel/transport.ts";

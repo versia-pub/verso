@@ -2,7 +2,8 @@ import { v0_6 } from "@versia/protocol";
 import { z } from "zod";
 import denoConfig from "../../deno.json" with { type: "json" };
 import { firstMigratedAt } from "../db/migrate.ts";
-import { defineRoute, type Route, versiaJson } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { versiaJson } from "../http/responses.ts";
 import type { Config } from "../kernel/config.ts";
 
 /**

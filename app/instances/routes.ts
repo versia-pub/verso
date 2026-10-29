@@ -9,7 +9,8 @@ import {
 import { z } from "zod";
 import { identiconBanner } from "../accounts/identicon.ts";
 import { NotFound } from "../http/errors.ts";
-import { Binary, defineRoute, type Route } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { Binary } from "../http/responses.ts";
 import { cached } from "../kernel/cache.ts";
 import {
     type AboutSettings,

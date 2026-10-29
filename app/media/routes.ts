@@ -1,7 +1,8 @@
 import { MediaAttachment } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound, Unprocessable } from "../http/errors.ts";
-import { Binary, defineRoute, Redirect, type Route } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { Binary, Redirect } from "../http/responses.ts";
 import { Text } from "../http/schemas.ts";
 import type { Limits, MediaLimits } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";

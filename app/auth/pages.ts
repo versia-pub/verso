@@ -1,6 +1,6 @@
 import { html } from "@hono/hono/html";
 import { layout } from "../http/page.ts";
-import type { Html } from "../http/route.ts";
+import type { Html } from "../http/responses.ts";
 import type { ConsentRequest } from "./consent.ts";
 import type { Issuer } from "../kernel/identity.ts";
 

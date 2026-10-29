@@ -1,7 +1,8 @@
 import { publicAccounts } from "../accounts/public.ts";
 import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
-import { defineRoute, Paged, type Route } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { Paged } from "../http/responses.ts";
 import { Flag } from "../http/schemas.ts";
 import { blockPage } from "./block_queries.ts";
 import { block, unblock } from "./blocks.ts";

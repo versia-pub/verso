@@ -1,5 +1,5 @@
 import { html } from "@hono/hono/html";
-import type { Html } from "./route.ts";
+import type { Html } from "./responses.ts";
 
 /** Verso's one page layout: a heading and its content, readable on any screen, light or dark. */
 export const layout = (title: string, content: Html): Html =>

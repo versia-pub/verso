@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
-import { Binary, defineRoute, type Route } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { Binary } from "../http/responses.ts";
 import { lru } from "../kernel/lru.ts";
 import { findAccount } from "./account_queries.ts";
 import { identicon, identiconBanner } from "./identicon.ts";

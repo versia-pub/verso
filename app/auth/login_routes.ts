@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { defineRoute, Page, Redirect, type Route } from "../http/route.ts";
+import { defineRoute, type Route } from "../http/route.ts";
+import { Page, Redirect } from "../http/responses.ts";
 import { authorize, chooseIssuer, outOfBand, withParams } from "./authorize.ts";
 import { consentRequest, decide, finishLogin, type SendBack } from "./consent.ts";
 import { chooserPage, codePage, consentPage, errorPage } from "./pages.ts";

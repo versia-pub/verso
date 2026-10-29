@@ -5,7 +5,8 @@ import { createTestContext } from "../testing/context.ts";
 import { urlBuilder } from "../kernel/urls.ts";
 import { createTestApp } from "../testing/app.ts";
 import { layout } from "./page.ts";
-import { defineRoute, Page } from "./route.ts";
+import { defineRoute } from "./route.ts";
+import { Page } from "./responses.ts";
 
 const thing = defineRoute({
     method: "GET",
