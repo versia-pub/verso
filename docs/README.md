@@ -16,5 +16,6 @@ These docs explain how Verso works and how to change it. To set up and run Verso
 - [Streaming](streaming.md): the WebSocket, streams, the dispatcher, limits
 - [Search](search.md): indexing words, status queries, accounts, hashtags, limits
 - [Configuration](configuration.md): reading the config, secrets, how settings reach the code
+- [Testing](testing.md): test contexts, route tests, several instances, fakes, snapshots
 
 [`config.example.toml`](config.example.toml) lists every config setting, with its default.
