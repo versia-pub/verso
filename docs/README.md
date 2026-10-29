@@ -18,6 +18,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
   differences
 - [Differences from Mastodon](api/differences.md): where the methods Verso has behave differently
 - [Roles](api/roles.md): the Role entity, and creating, changing and granting roles
+- [Custom emoji](api/emojis.md): adding, changing and deleting custom emoji
 
 ## How Verso works
 

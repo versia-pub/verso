@@ -35,9 +35,6 @@ show the `emojis` and `roles` permissions as Mastodon's "Manage custom emojis" a
 ## Custom emoji
 
 Every user can add their own custom emoji, which only they can use. Global emoji are for everyone on
-the instance. Users with the `emojis` permission make them, by uploading an emoji with `global` set,
-or by making one of theirs global. A user's own emoji replaces a global one of the same shortcode,
-for them.
-
-Emoji are managed through the API, with `/api/v1/emojis`. Remote instances' emoji arrive with their
-statuses, and aren't managed here.
+the instance: users with the `emojis` permission make them, by adding an emoji as global or making
+one of theirs global. There is no admin command for emoji; they are managed through the API, as
+[Custom emoji](../api/emojis.md) explains.

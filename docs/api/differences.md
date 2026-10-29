@@ -68,6 +68,5 @@ Where a method Verso has behaves unlike Mastodon's. For methods Verso doesn't ha
 
 ## Custom emoji
 
-- **Users have their own custom emoji**, from Versia Server, as well as the instance's global ones.
-  `GET /api/v1/custom_emojis` lists the global ones and the viewer's own, which replace global ones
-  of the same shortcode.
+- **`GET /api/v1/custom_emojis`** also lists the viewer's own emoji, as
+  [Custom emoji](emojis.md#listing-them) explains.
