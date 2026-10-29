@@ -17,6 +17,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [Mastodon API compatibility](api/compatibility.md): every Mastodon 4.3 method with Verso's
   differences
 - [Differences from Mastodon](api/differences.md): where the methods Verso has behave differently
+- [Roles](api/roles.md): the Role entity, and creating, changing and granting roles
 
 ## How Verso works
 

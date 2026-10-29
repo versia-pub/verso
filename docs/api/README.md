@@ -7,6 +7,7 @@ people who write apps, or want to know what an app can do with Verso:
 - [Mastodon API compatibility](compatibility.md) lists every Mastodon method, and whether Verso has
   it.
 - [Differences from Mastodon](differences.md) says where the methods Verso has behave differently.
+- [Roles](roles.md) documents Verso's role methods.
 
 Every instance also serves its own API reference: `/docs` shows it, and `/openapi.json` is the
 OpenAPI document it is made from. Each method there says what it needs, and where Verso differs from
