@@ -82,7 +82,8 @@ logged as a warning at startup. See [`app/auth/dev_login.ts`](../app/auth/dev_lo
 - **Revoking tells every process**, on the `tokens.revoked` channel, so streams opened with the
   token close at once.
 - **Push subscriptions** are the one place a token is stored as it is, so pushes can carry it, as
-  Mastodon's do. See [decision 7](decisions/0007-push-subscriptions-keep-tokens.md).
+  Mastodon's do. See
+  [Notifications and push](notifications.md#subscriptions-keep-their-access-tokens).
 
 The HTTP app reads the token from `Authorization: Bearer`, through `authenticateToken` in
 [`app/auth/tokens.ts`](../app/auth/tokens.ts), and gives the route a `viewer`. See

@@ -11,5 +11,7 @@ These docs explain how Verso works and how to change it. To set up and run Verso
 - [Federation](federation.md): Versia receiving, sending, fetching, signatures, spec gaps
 - [Logging in and permissions](auth.md): apps, OpenID Connect, tokens, scopes, roles
 - [Media](media.md): uploads, image processing with vips, file stores, cleanup
+- [Notifications and push](notifications.md): who is notified, grouped notifications, markers, Web
+  Push
 
 [`config.example.toml`](config.example.toml) lists every config setting, with its default.
