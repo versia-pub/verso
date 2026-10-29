@@ -25,5 +25,6 @@ How-tos:
 - [Adding a route](guides/adding-a-route.md)
 - [Adding a table](guides/adding-a-table.md)
 - [Adding a Versia type](guides/adding-a-versia-type.md)
+- [Adding a side effect](guides/adding-a-side-effect.md)
 
 [`config.example.toml`](config.example.toml) lists every config setting, with its default.

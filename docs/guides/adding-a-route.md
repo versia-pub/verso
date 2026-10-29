@@ -85,7 +85,7 @@ export const markerRoutes: readonly Route[] = [
 - **Input.** Everything the handler reads comes through a schema, so it is validated before the
   handler runs. Query values are strings: use `z.coerce` for numbers.
 - **Writes** go in `ctx.transaction`, with an event for anything other modules should do. See
-  [Events, jobs and messages](../events-and-jobs.md).
+  [Adding a side effect](adding-a-side-effect.md).
 - **Errors.** Throw `NotFound`, `Unprocessable` and the like, from `app/http/errors.ts`.
 
 ## 5. Register it
