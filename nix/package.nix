@@ -60,29 +60,29 @@ stdenvNoCC.mkDerivation {
     jq -c 'del(.sourcesContent)' dist/verso.js.map > dist/map.tmp
     mv dist/map.tmp dist/verso.js.map
 
+    # One program: the bundle and its source map, with Deno's runtime, which has no compiler or
+    # other tools. It keeps a code cache in the temporary directory, and uses no DENO_DIR.
+    #
+    # Reads and writes can't be narrowed here: the config file is given with --config, secrets come
+    # from wherever ''${file:…} points, and the SQLite file is wherever the config says. What runs
+    # Verso narrows them instead. The NixOS module's DynamicUser makes the system read-only but for
+    # Verso's state and /tmp, and the image runs as nobody, who can write only /tmp and mounted
+    # volumes. The only programs Verso runs are vips's, for pictures, which come with it. Native
+    # libraries and system information stay denied.
+    # The program stores each file's modification time, so make them the same on every build.
+    touch --date=@1 dist/verso.js dist/verso.js.map
+    DENORT_BIN=${deno.denort}/bin/denort deno compile --no-check --no-config --no-remote --no-npm \
+      --allow-net --allow-read --allow-write --allow-env --allow-run=vips,vipsheader \
+      --include dist/verso.js.map --output dist/verso dist/verso.js
+
     runHook postBuild
   '';
 
   installPhase = ''
     runHook preInstall
 
-    mkdir -p $out/share/verso
-    cp dist/verso.js dist/verso.js.map $out/share/verso/
-
-    # The bundle imports nothing, so Deno needs no config, lockfile or network to run it.
-    #
-    # Reads and writes can't be narrowed here: the config file is given with --config, secrets come
-    # from wherever ''${file:…} points, and the SQLite file is wherever the config says. What runs
-    # Verso narrows them instead. The NixOS module's DynamicUser makes the system read-only but
-    # for Verso's cache, and the image runs as nobody, who can write only /tmp and mounted volumes.
-    # The only programs Verso runs are vips's, for pictures, which come with it. Native libraries
-    # and system information stay denied.
-    makeWrapper ${lib.getExe deno} $out/bin/verso \
-      --set DENO_NO_UPDATE_CHECK 1 \
-      --prefix PATH : ${lib.makeBinPath [ vips ]} \
-      --add-flags "run --no-config --no-remote --no-npm" \
-      --add-flags "--allow-net --allow-read --allow-write --allow-env --allow-run=vips,vipsheader" \
-      --add-flags "$out/share/verso/verso.js"
+    install -D dist/verso $out/libexec/verso
+    makeWrapper $out/libexec/verso $out/bin/verso --prefix PATH : ${lib.makeBinPath [ vips ]}
 
     runHook postInstall
   '';

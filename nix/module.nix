@@ -47,8 +47,7 @@ let
       exec ${config.systemd.package}/bin/systemd-run --quiet --pipe --wait --collect \
         --unit="$unit" --service-type=exec \
         --property=DynamicUser=yes --property=User=verso \
-        --property=StateDirectory=verso --property=CacheDirectory=verso \
-        --setenv=DENO_DIR=/var/cache/verso \
+        --property=StateDirectory=verso \
         ${lib.concatMapStrings (c: "--property=LoadCredential=${lib.escapeShellArg c} ") credentials}\
         --property=BindReadOnlyPaths="-/run/credentials/$unit.service:/run/credentials/verso.service" \
         ${lib.getExe cfg.package} admin --config ${configFile} "$@"
@@ -145,8 +144,6 @@ in
       after = [ "network.target" ] ++ lib.optional cfg.database.createLocally "postgresql.target";
       requires = lib.optional cfg.database.createLocally "postgresql.target";
 
-      environment.DENO_DIR = "%C/verso";
-
       serviceConfig = {
         ExecStartPre = "${lib.getExe cfg.package} migrate --config ${configFile}";
         ExecStart = "${lib.getExe cfg.package} all --config ${configFile}";
@@ -157,7 +154,6 @@ in
         # verso role.
         DynamicUser = true;
         User = "verso";
-        CacheDirectory = "verso";
         StateDirectory = "verso";
 
         CapabilityBoundingSet = "";

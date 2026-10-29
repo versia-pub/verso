@@ -50,16 +50,19 @@ and `nix/deps.nix` together. The `deps-hash` check fails, and says so, if you fo
 ## The package
 
 `nix/package.nix` bundles Verso with `deno bundle`, from `app/main.ts` and the vendored
-dependencies, into one file, `share/verso/verso.js`, and wraps Deno as `verso` to run it:
+dependencies, into one file. `deno compile` then makes it one program, with Deno's runtime, which
+has no compiler or other tools. The package wraps it as `verso`, with vips on its `PATH`.
 
 - **Only what `app/main.ts` imports is in it**, so tests and their dependencies, such as PGlite, are
-  left out. It is about 3 MB, where the source and its dependencies take 59 MiB.
+  left out. The bundle is about 3 MB, where the source and its dependencies take 59 MiB.
 - **It isn't minified.** That would save under 2 MB and a few milliseconds at start, and rename the
   functions in stack traces. `--keep-names` would keep them, but Deno then can't make `require` work
   in the bundle.
-- **The source map** gives each line of the bundle's place in the source, so stack traces name the
-  source files. It has no copy of their contents.
-- **`--no-config --no-remote --no-npm`**: the bundle imports nothing, so Deno needs no config,
+- **The source map** is in the program, so stack traces name the source files. It has no copy of
+  their contents.
+- **Compiling** leaves out Deno's tools, which saves 27 MiB, and halves the time Verso takes to
+  start. The program keeps a code cache in the temporary directory, and uses no `DENO_DIR`.
+- **`--no-config --no-remote --no-npm`**: the bundle imports nothing, so it needs no config,
   lockfile or network.
 - **`--allow-run=vips,vipsheader`**: the only programs Verso runs, which the package puts on its
   `PATH`.
@@ -73,6 +76,7 @@ download. [`nix/esbuild.nix`](../nix/esbuild.nix) builds that version from sourc
 Trade-offs:
 
 - `deno bundle` is still experimental, so a Deno upgrade can change what it does.
+- `deno compile` stores each file's modification time, so the build sets them to the same time.
 - A Deno upgrade can need another esbuild. The package build then fails and says so: update the
   version and hash in `nix/esbuild.nix`.
 
