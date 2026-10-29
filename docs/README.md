@@ -13,5 +13,6 @@ These docs explain how Verso works and how to change it. To set up and run Verso
 - [Media](media.md): uploads, image processing with vips, file stores, cleanup
 - [Notifications and push](notifications.md): who is notified, grouped notifications, markers, Web
   Push
+- [Streaming](streaming.md): the WebSocket, streams, the dispatcher, limits
 
 [`config.example.toml`](config.example.toml) lists every config setting, with its default.
