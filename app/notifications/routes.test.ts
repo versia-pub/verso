@@ -8,6 +8,8 @@ import { follow, unfollow } from "../graph/follows.ts";
 import { mute, unmute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
 import { like } from "../interactions/likes.ts";
+import { queues } from "../jobs/queues.ts";
+import { drain } from "../jobs/worker.ts";
 import { react } from "../interactions/reactions.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { setMarker } from "../markers/marker_queries.ts";
@@ -89,6 +91,9 @@ const open = async () => {
             visibility,
         });
         if (note === undefined) throw new Error("Not posted");
+
+        // So the followers it notifies are notified.
+        await drain(test.ctx, queues);
         return note;
     };
 

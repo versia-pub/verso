@@ -5,13 +5,16 @@ import { createInstance } from "../instances/testing.ts";
 import { like, unlike } from "../interactions/likes.ts";
 import { react, unreact } from "../interactions/reactions.ts";
 import { share, unshare } from "../interactions/shares.ts";
+import { enqueue } from "../jobs/job_queries.ts";
+import { queues } from "../jobs/queues.ts";
+import { drain } from "../jobs/worker.ts";
 import type { NotePosted } from "../notes/events.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { subscribe } from "../kernel/pubsub.ts";
 import { createTestContext } from "../testing/context.ts";
-import { notified, notifyOf } from "./notifications.ts";
+import { notified, NotifyJob, notifyOf, notifyQueue } from "./notifications.ts";
 import { groupKeysOf, notificationsOf } from "./testing.ts";
 
 const open = async () => {
@@ -28,6 +31,9 @@ const open = async () => {
             inReplyToId,
         });
         if (note === undefined) throw new Error("Not posted");
+
+        // So the followers it notifies are notified before what comes next.
+        await drain(test.ctx, queues);
         return note;
     };
     const lock = async (id: string) => {
@@ -35,7 +41,13 @@ const open = async () => {
             .execute();
     };
 
-    return { ...test, post, lock, of: (id: string) => notificationsOf(test.ctx, id) };
+    /** The notifications of `id`, once the jobs that notify are done. */
+    const of = async (id: string) => {
+        await drain(test.ctx, queues);
+        return await notificationsOf(test.ctx, id);
+    };
+
+    return { ...test, post, lock, of };
 };
 
 Deno.test("likes, boosts and reactions notify the author, until they are undone", async () => {
@@ -161,6 +173,71 @@ Deno.test("local users who boosted a status are notified of its edits", async ()
     assertEquals(await test.of("bob"), [`update alice ${note.id}`, `update alice ${note.id}`]);
     assertEquals(await test.of("carol"), []);
     assertEquals(await test.of("dave"), []);
+});
+
+Deno.test("followers and boosters are notified by jobs, 100 to a job, after the status is posted", async () => {
+    await using test = await open();
+    const followers = Array.from({ length: 101 }, (_, n) => `u${n}`);
+    for (const id of followers) {
+        await createLocalAccount(test.ctx, id);
+        await follow(test.ctx, id, "alice", { notify: true });
+    }
+    const note = await postNote(test.ctx, "alice", {
+        text: "Hi @bob",
+        format: "text/plain",
+        spoilerText: "",
+    });
+    if (note === undefined) throw new Error("Not posted");
+    await share(test.ctx, "u0", note.id);
+    await share(test.ctx, "bob", note.id);
+    await editNote(test.ctx, "alice", note.id, { text: "Hi @bob again" });
+
+    const jobs = await test.ctx.db.selectFrom("jobs").select("payload")
+        .where("queue", "=", notifyQueue)
+        .execute();
+    const queued = jobs.map((job) => NotifyJob.parse(job.payload))
+        .map(({ type, accountIds }) => `${type} ${accountIds.length}`);
+    assertEquals(queued.toSorted(), ["status 1", "status 100", "update 2"]);
+    assertEquals(await notificationsOf(test.ctx, "u100"), []);
+    assertEquals(await notificationsOf(test.ctx, "bob"), [`mention alice ${note.id}`]);
+
+    assertEquals(await test.of("u100"), [`status alice ${note.id}`]);
+    assertEquals(await test.of("u0"), [`update alice ${note.id}`, `status alice ${note.id}`]);
+    assertEquals(await test.of("bob"), [`update alice ${note.id}`, `mention alice ${note.id}`]);
+});
+
+Deno.test("a job notifies no one of a status deleted before it ran", async () => {
+    await using test = await open();
+    await follow(test.ctx, "bob", "alice", { notify: true });
+    const note = await postNote(test.ctx, "alice", {
+        text: "Hi",
+        format: "text/plain",
+        spoilerText: "",
+    });
+    if (note === undefined) throw new Error("Not posted");
+    const queued = () =>
+        test.ctx.db.selectFrom("jobs").select("last_error").where("queue", "=", notifyQueue)
+            .execute();
+    assertEquals((await queued()).length, 1);
+
+    await removeNote(test.ctx, note.id);
+    assertEquals(await test.of("bob"), []);
+    // Done, rather than kept to be tried again.
+    assertEquals(await queued(), []);
+});
+
+Deno.test("a job that isn't a notify job is given up on", async () => {
+    await using test = await open();
+    await enqueue(test.ctx, { queue: notifyQueue, payload: { noteId: "n1" } });
+
+    await drain(test.ctx, queues);
+    const jobs = await test.ctx.db.selectFrom("jobs").select("last_error")
+        .where("queue", "=", notifyQueue)
+        .execute();
+    assertEquals(
+        jobs.map((job) => job.last_error?.split("\n")[0]),
+        ["PermanentFailure: The job isn't a notify job"],
+    );
 });
 
 Deno.test("deleting a status deletes its notifications", async () => {

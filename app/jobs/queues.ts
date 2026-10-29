@@ -9,6 +9,7 @@ import { messageHandler, messageQueue } from "../federation/messaging.ts";
 import { deleteEndedRateLimits } from "../http/rate_limit_queries.ts";
 import { mediaHandler, mediaQueue, removeUnusedMedia, unusedMediaQueue } from "../media/uploads.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
+import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
 import { pushHandler, pushQueue } from "../push/pushes.ts";
 import { registry } from "../registry.ts";
 import { deleteExpiredJobs } from "./job_queries.ts";
@@ -39,6 +40,7 @@ export const queues: Record<string, Queue> = {
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
     [undoneReactionsQueue]: { handler: undoneReactionsHandler, concurrency: 2 },
+    [notifyQueue]: { handler: notifyHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
     // By the push service's host.
     [pushQueue]: { handler: pushHandler, concurrency: 8, perGroup: 2 },

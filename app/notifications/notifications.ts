@@ -1,11 +1,13 @@
 /**
  * Notifying local users of what others do: mentions, statuses of accounts they asked to be notified
  * of, boosts, follows, follow requests, likes, reactions and edits of statuses they boosted.
- * Undoing any of them, or deleting the status, deletes the notification with it.
+ * Undoing any of them, or deleting the status, deletes the notification with it. Followers and
+ * boosters of a status can be many, so jobs notify them, a batch at a time.
  * @module
  */
 import { z } from "zod";
 import { findAccount, findAccounts } from "../accounts/account_queries.ts";
+import { batchesOf } from "../db/batches.ts";
 import { followsFrom, notifiedFollowerIds } from "../graph/follow_queries.ts";
 import { type FollowEvent, isFollowEvent } from "../graph/events.ts";
 import {
@@ -14,6 +16,9 @@ import {
     isReactionEvent,
     isShareEvent,
 } from "../interactions/events.ts";
+import { enqueueAll } from "../jobs/job_queries.ts";
+import type { JobsTable } from "../jobs/tables.ts";
+import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type Channel, publish } from "../kernel/pubsub.ts";
@@ -123,6 +128,49 @@ const notifyAll = async (
     }
 };
 
+/** The queue that notifies a status's followers of it, or its boosters of an edit. */
+export const notifyQueue = "notify";
+
+/** Some of the local users a job notifies of a status, and of what. */
+export const NotifyJob = z.object({
+    type: z.enum(["status", "update"]),
+    noteId: z.string(),
+    accountIds: z.array(z.string()),
+});
+
+/** How many users a job notifies. */
+const notifiedPerJob = 100;
+
+/** Queues jobs that notify `accountIds` of the status `noteId`, a batch at a time. */
+const notifyLater = async (
+    ctx: Context,
+    accountIds: readonly string[],
+    type: z.infer<typeof NotifyJob>["type"],
+    noteId: string,
+) => {
+    await enqueueAll(
+        ctx,
+        batchesOf(accountIds, notifiedPerJob).map((batch) => {
+            const payload: z.infer<typeof NotifyJob> = { type, noteId, accountIds: batch };
+            return { queue: notifyQueue, payload };
+        }),
+    );
+};
+
+/** Notifies the users in the job of its status, unless the status has gone since. */
+export const notifyHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
+    const payload = NotifyJob.safeParse(job.payload);
+    if (!payload.success) throw new PermanentFailure("The job isn't a notify job");
+
+    const { type, noteId, accountIds } = payload.data;
+    await ctx.transaction(async (tx) => {
+        const note = await findNote(tx, noteId);
+        if (note === undefined) return;
+
+        await notifyAll(tx, accountIds, type, note.account_id, { noteId });
+    });
+};
+
 /** Notifies the author of `noteId` of what `fromId` did to it, if the status is local. */
 const notifyAuthor = async (
     ctx: Context,
@@ -160,7 +208,7 @@ const notifyPosted = async (ctx: Context, note: NoteRow) => {
 
     const followers = await notifiedFollowerIds(ctx, note.account_id);
     const unmentioned = followers.filter((id) => !mentioned.includes(id));
-    await notifyAll(ctx, unmentioned, "status", note.account_id, { noteId: note.id });
+    await notifyLater(ctx, unmentioned, "status", note.id);
 };
 
 /**
@@ -173,7 +221,7 @@ const notifyEdited = async (ctx: Context, note: NoteRow) => {
     await notifyAll(ctx, mentioned, "mention", note.account_id, { noteId: note.id });
 
     const sharers = await localSharerIds(ctx, note.id);
-    await notifyAll(ctx, sharers, "update", note.account_id, { noteId: note.id });
+    await notifyLater(ctx, sharers, "update", note.id);
 };
 
 /**
