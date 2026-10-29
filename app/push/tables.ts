@@ -1,3 +1,5 @@
+import type { PushAlerts } from "@versia/client-api";
+
 /**
  * The key pair this instance signs Web Push requests with, as VAPID. There is only ever one, as
  * changing it would break every subscription.
@@ -11,6 +13,9 @@ export type VapidKeysTable = {
     private_key: string;
     created_at: Date;
 };
+
+/** A type of notification a subscription may push, as Mastodon names them in `alerts`. */
+export type PushAlert = keyof PushAlerts;
 
 /** Whose notifications are pushed, as a subscription's `policy` says. */
 export type PushPolicy = "all" | "followed" | "follower" | "none";
@@ -36,7 +41,7 @@ export type PushSubscriptionsTable = {
     /** The client's secret for the encryption, in URL-safe base64. */
     auth: string;
     /** The types of notifications pushed, as Mastodon names them in `alerts`. */
-    alerts: string[];
+    alerts: PushAlert[];
     policy: PushPolicy;
     created_at: Date;
 };

@@ -1,6 +1,6 @@
 import type { Selectable } from "kysely";
 import type { Context } from "../kernel/context.ts";
-import type { PushPolicy, PushSubscriptionsTable } from "./tables.ts";
+import type { PushAlert, PushPolicy, PushSubscriptionsTable } from "./tables.ts";
 
 export type PushSubscriptionRow = Selectable<PushSubscriptionsTable>;
 
@@ -44,7 +44,7 @@ export const replaceSubscription = async (
 export const updateSubscription = (
     ctx: Context,
     tokenId: string,
-    alerts: readonly string[],
+    alerts: readonly PushAlert[],
     policy: PushPolicy,
 ): Promise<PushSubscriptionRow | undefined> =>
     ctx.db.updateTable("push_subscriptions")

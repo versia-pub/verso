@@ -5,7 +5,7 @@
  */
 import { formatReference, type v0_6 } from "@versia/protocol";
 import { userReferenceMap } from "../accounts/federation.ts";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { emojiExtensions } from "../emojis/versia.ts";
 import type { Context } from "../kernel/context.ts";

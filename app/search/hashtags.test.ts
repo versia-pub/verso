@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";

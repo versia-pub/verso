@@ -3,7 +3,7 @@ import { batchesOf } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { attachmentsOf, hasAttachments } from "../media/attachment_queries.ts";
 import type { NoteIdQuery } from "./removal_queries.ts";
 import type { NotesTable, NoteVersionsTable } from "./tables.ts";

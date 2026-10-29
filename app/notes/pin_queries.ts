@@ -2,7 +2,7 @@ import { hasAttachments } from "../media/attachment_queries.ts";
 import type { Selectable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import type { NoteRow } from "./note_queries.ts";
 import type { NotePinsTable } from "./tables.ts";
 

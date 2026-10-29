@@ -1,4 +1,4 @@
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { countAll, readCount } from "../db/count.ts";
 import type { Database } from "../db/database.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";

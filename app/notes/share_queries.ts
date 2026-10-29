@@ -1,5 +1,5 @@
 import { uncountStatusesFor } from "../accounts/count_queries.ts";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, notExcluded } from "../graph/blocks.ts";

@@ -6,7 +6,7 @@
 import { getLogger } from "@logtape/logtape";
 import { parseReference, type Reference, type v0_6 } from "@versia/protocol";
 import { knownUser, remoteText } from "../accounts/federation.ts";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { setNoteEmojis } from "../emojis/emoji_queries.ts";
 import { keepRemoteEmojis } from "../emojis/emojis.ts";
 import { remoteEmojisOf } from "../emojis/versia.ts";

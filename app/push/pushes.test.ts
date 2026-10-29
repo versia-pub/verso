@@ -11,7 +11,7 @@ import { createTestContext } from "../testing/context.ts";
 import { vapidKey } from "./keys.ts";
 import { pushHandler, pushQueue } from "./pushes.ts";
 import { findSubscriptionById, replaceSubscription } from "./subscription_queries.ts";
-import type { PushPolicy } from "./tables.ts";
+import type { PushAlert, PushPolicy } from "./tables.ts";
 
 const queues = { [pushQueue]: { handler: pushHandler, concurrency: 1 } };
 
@@ -102,7 +102,7 @@ const open = async () => {
     const subscribe = async (
         accountId: string,
         name: string,
-        alerts: string[] = ["mention", "follow", "favourite"],
+        alerts: PushAlert[] = ["mention", "follow", "favourite"],
         policy: PushPolicy = "all",
     ) => {
         const subscriber = await browser();

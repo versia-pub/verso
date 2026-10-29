@@ -16,7 +16,7 @@ import { textOfHtml } from "../kernel/html.ts";
 import { timeoutSignal, userAgent } from "../kernel/transport.ts";
 import { isNotificationCreated, type NotificationCreated } from "../notifications/events.ts";
 import { shownNotification } from "../notifications/render.ts";
-import type { NotificationType } from "../notifications/tables.ts";
+import { isNotificationType, type NotificationType } from "../notifications/tables.ts";
 import { encryptPush, randomSender } from "./encryption.ts";
 import {
     deleteSubscriptionById,
@@ -110,7 +110,11 @@ const truncate = (text: string) => {
  * What a push says, as Mastodon's do, so clients can show it, or fetch the notification with the
  * token: its title and body in English, as Verso has no other languages yet.
  */
-const pushOf = (subscription: PushSubscriptionRow, notification: Notification) => {
+const pushOf = (
+    subscription: PushSubscriptionRow,
+    notification: Notification,
+    type: NotificationType,
+) => {
     const { account, status } = notification;
     // A content warning is text already; the rest is HTML.
     const text = status?.spoiler_text || textOfHtml(status?.content || account.note);
@@ -121,10 +125,7 @@ const pushOf = (subscription: PushSubscriptionRow, notification: Notification) =
         notification_id: notification.id,
         notification_type: notification.type,
         icon: account.avatar_static,
-        // Verso only notifies of its own types, which Mastodon's include.
-        title: titles[notification.type as NotificationType](
-            account.display_name || account.username,
-        ),
+        title: titles[type](account.display_name || account.username),
         body: truncate(text.replaceAll(/\s+/g, " ").trim()),
     };
 };
@@ -145,10 +146,12 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
         subscription.account_id,
         payload.data.notificationId,
     );
-    if (!notification) return;
+    // Verso renders only its own types of notification, which are among Mastodon's.
+    if (!notification || !isNotificationType(notification.type)) return;
 
+    const push = pushOf(subscription, notification, notification.type);
     const body = await encryptPush(
-        new TextEncoder().encode(JSON.stringify(pushOf(subscription, notification))),
+        new TextEncoder().encode(JSON.stringify(push)),
         {
             p256dh: Uint8Array.fromBase64(subscription.p256dh, { alphabet: "base64url" }),
             auth: Uint8Array.fromBase64(subscription.auth, { alphabet: "base64url" }),

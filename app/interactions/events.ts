@@ -3,7 +3,7 @@
  * local users, and those remote instances send.
  * @module
  */
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import type { DomainEvent } from "../kernel/context.ts";
 
 /** A local user liked a status, or undid it. */

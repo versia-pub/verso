@@ -6,7 +6,7 @@
  * @module
  */
 import { z } from "zod";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { isInteractionReceived, isShareEvent } from "../interactions/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { type Channel, publish } from "../kernel/pubsub.ts";

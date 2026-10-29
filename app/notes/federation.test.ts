@@ -17,7 +17,7 @@ import { upload } from "../media/uploads.ts";
 import { memoryFiles } from "../kernel/files.ts";
 import { registry } from "../registry.ts";
 import { createNetwork } from "../testing/network.ts";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
 import { audienceOf } from "./audience.ts";

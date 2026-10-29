@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert";
 import type { Insertable } from "kysely";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { mute } from "../graph/mutes.ts";

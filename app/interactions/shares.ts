@@ -5,7 +5,7 @@
  * @module
  */
 import { findAccount } from "../accounts/account_queries.ts";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";

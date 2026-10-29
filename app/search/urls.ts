@@ -25,7 +25,8 @@ const entityAt = (text: string) => {
     const match = entityPath.exec(url.pathname);
     if (match === null) return undefined;
 
-    const [, type, id] = match;
+    const [, name, id] = match;
+    const type = name === "User" ? "User" : "Note";
     const reference = parseReference(id, url.host);
     return reference && { type, reference };
 };

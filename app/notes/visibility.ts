@@ -1,4 +1,4 @@
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { followedSubquery, isFollowing } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, isMentioned, type NoteRow } from "./note_queries.ts";

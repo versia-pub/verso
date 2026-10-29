@@ -14,7 +14,8 @@ import {
     updateLocalAccount,
 } from "./account_queries.ts";
 import type { ProfileUpdated } from "./events.ts";
-import type { ProfileField, Visibility } from "./tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
+import type { ProfileField } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
 
 /** A picture of a profile: a new image, or a new description of the current one, or both. */

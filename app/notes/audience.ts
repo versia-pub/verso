@@ -3,7 +3,7 @@
  * @module
  */
 import { instancesHosting } from "../accounts/account_queries.ts";
-import type { Visibility } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 import { followerInstances, hasFollowersOn } from "../graph/follows.ts";
 import { findInstanceId } from "../instances/instance_queries.ts";
 import type { Context } from "../kernel/context.ts";

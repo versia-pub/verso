@@ -1,5 +1,6 @@
 import type { Generated } from "kysely";
-import type { TextFormat, Visibility } from "../accounts/tables.ts";
+import type { TextFormat } from "../accounts/tables.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 
 /** A status, local or remote. */
 export type NotesTable = {

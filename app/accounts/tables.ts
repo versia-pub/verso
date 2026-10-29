@@ -1,5 +1,6 @@
 import type { Generated } from "kysely";
 import type { Permission } from "../kernel/permissions.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 
 /** What a user wrote text in, which decides how it becomes HTML. */
 export type TextFormat = "text/plain" | "text/markdown";
@@ -16,12 +17,6 @@ export type ProfileField = {
     readonly name_html: string;
     readonly value_html: string;
 };
-
-/**
- * Who can see a status: everyone; everyone but not in public timelines; followers; or mentioned
- * users.
- */
-export type Visibility = "public" | "unlisted" | "private" | "direct";
 
 /**
  * A local or remote user. Rich text, such as the bio, is stored as HTML, which every account has,
