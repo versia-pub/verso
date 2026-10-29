@@ -9,6 +9,7 @@ people who write apps, or want to know what an app can do with Verso:
 - [Differences from Mastodon](differences.md) says where the methods Verso has behave differently.
 - [Roles](roles.md) documents Verso's role methods.
 - [Custom emoji](emojis.md) documents adding, changing and deleting custom emoji.
+- [Reactions](reactions.md) documents reacting to statuses with emoji.
 
 Every instance also serves its own API reference: `/docs` shows it, and `/openapi.json` is the
 OpenAPI document it is made from. Each method there says what it needs, and where Verso differs from

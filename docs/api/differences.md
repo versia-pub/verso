@@ -48,9 +48,8 @@ Where a method Verso has behaves unlike Mastodon's. For methods Verso doesn't ha
 
 ## Notifications
 
-- **`reaction` notifications** say someone reacted to the user's status, with the emoji, as
-  Pleroma's do. On `/api/v2/notifications`, they are grouped by status when `grouped_types` includes
-  `reaction`.
+- **`reaction` notifications** say someone reacted to the user's status, as
+  [Reactions](reactions.md#notifications) explains.
 - **Verso never makes** `poll`, `admin.sign_up`, `admin.report`, `severed_relationships`,
   `moderation_warning` or `quote` notifications.
 - **Notifications from blocked and muted accounts**, and about statuses the user may no longer see,

@@ -25,7 +25,7 @@ Verso's emoji methods answer with Mastodon's CustomEmoji, plus these fields:
     "visible_in_picker": true,
     "category": "Blobs",
     "global": true,
-    "description": "A yellow blob with a cat face",
+    "description": "A yellow blob with a cat face"
 }
 ```
 
