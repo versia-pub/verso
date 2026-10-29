@@ -35,6 +35,26 @@ let
     else
       null;
 
+  credentials = lib.mapAttrsToList (name: path: "${name}:${path}") cfg.credentials;
+
+  # `verso admin …` as the service runs: as its user, with its config, and with its credentials at
+  # the service's path, so ''${file:/run/credentials/verso.service/…} references still work. Only
+  # a unit can be given those, so it runs in a short-lived one.
+  adminCommand = pkgs.writeShellApplication {
+    name = "verso-admin";
+    text = ''
+      unit="verso-admin-$$"
+      exec ${config.systemd.package}/bin/systemd-run --quiet --pipe --wait --collect \
+        --unit="$unit" --service-type=exec \
+        --property=DynamicUser=yes --property=User=verso \
+        --property=StateDirectory=verso --property=CacheDirectory=verso \
+        --setenv=DENO_DIR=/var/cache/verso \
+        ${lib.concatMapStrings (c: "--property=LoadCredential=${lib.escapeShellArg c} ") credentials}\
+        --property=BindReadOnlyPaths="-/run/credentials/$unit.service:/run/credentials/verso.service" \
+        ${lib.getExe cfg.package} admin --config ${configFile} "$@"
+    '';
+  };
+
   secretAdvice = "The Nix store, where settings end up, can be read by anyone on the machine. Pass the secret in services.verso.credentials and refer to it as \${file:/run/credentials/verso.service/<name>}.";
 in
 {
@@ -117,6 +137,8 @@ in
       ];
     };
 
+    environment.systemPackages = [ adminCommand ];
+
     systemd.services.verso = {
       description = "Verso";
       wantedBy = [ "multi-user.target" ];
@@ -129,7 +151,7 @@ in
         ExecStartPre = "${lib.getExe cfg.package} migrate --config ${configFile}";
         ExecStart = "${lib.getExe cfg.package} all --config ${configFile}";
         Restart = "on-failure";
-        LoadCredential = lib.mapAttrsToList (name: path: "${name}:${path}") cfg.credentials;
+        LoadCredential = credentials;
 
         # The dynamic user is named verso, so PostgreSQL's peer authentication maps it to the
         # verso role.

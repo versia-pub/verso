@@ -95,6 +95,9 @@ referred to as `${file:/run/credentials/verso.service/<name>}`. The module refus
 client secret, an S3 secret key or a database password written in `settings`, since they would land
 in the Nix store.
 
+The module also installs `verso-admin`, which runs `verso admin …` as the service would, with its
+user, config and credentials, in a short-lived systemd unit. Run it as root.
+
 ## Tests
 
 [`app/kernel/config.test.ts`](../app/kernel/config.test.ts) checks that `config.example.toml`

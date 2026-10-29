@@ -115,6 +115,11 @@ in
       assert migrations.strip() == "verso", f"the migrations table is owned by {migrations!r}"
       # Verso made its media directory, which survives restarts, and checked it can write there.
       machine.succeed("test -d /var/lib/verso/media/tmp")
+      # verso-admin reads the same config, credentials included, and connects as the same role.
+      machine.succeed("verso-admin roles create Admin --permissions roles,emojis --priority 100")
+      roles = machine.succeed("verso-admin roles list")
+      assert '"name":"Admin"' in roles.replace(" ", ""), f"verso-admin listed {roles!r}"
+      machine.fail("verso-admin users grant-role nobody Admin")
     '';
   };
 
