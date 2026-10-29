@@ -79,7 +79,7 @@ const has = (ctx: Context, term: NoteTerm) => (eb: ExpressionBuilder<Database, "
 export type NoteScope = "public" | "library" | "all";
 
 /** Whether a status is public, by an author who chose to be found. */
-const findable = (eb: ExpressionBuilder<Database, "notes" >) =>
+const findable = (eb: ExpressionBuilder<Database, "notes">) =>
     eb.and([
         eb("notes.visibility", "=", "public"),
         eb.exists(

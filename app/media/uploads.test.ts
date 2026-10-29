@@ -14,14 +14,9 @@ import { createTestContext, type TestContextOptions } from "../testing/context.t
 import { createInstance } from "../instances/testing.ts";
 import { isMediaProcessed } from "./events.ts";
 import { findMedia, saveRemoteMedia } from "./media_queries.ts";
+import { deleteFileIfUnused } from "./cleanup.ts";
 import { finishUpload } from "./upload_queries.ts";
-import {
-    deleteFileIfUnused,
-    mediaQueue,
-    processingFailed,
-    upload,
-    uploadPicture,
-} from "./uploads.ts";
+import { mediaQueue, processingFailed, upload, uploadPicture } from "./uploads.ts";
 
 /** A `width`×`height` PNG, entirely red. */
 const png = (width: number, height: number) =>

@@ -12,7 +12,8 @@ import type { Settings } from "../kernel/settings.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
 import { findMedia, saveRemoteMedia } from "./media_queries.ts";
-import { removeUnusedMedia, upload } from "./uploads.ts";
+import { removeUnusedMedia } from "./cleanup.ts";
+import { upload } from "./uploads.ts";
 
 const hour = 60 * 60 * 1000;
 

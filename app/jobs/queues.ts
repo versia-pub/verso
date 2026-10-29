@@ -7,7 +7,9 @@ import { undoneReactionsHandler, undoneReactionsQueue } from "../interactions/re
 import { inboxDeadPayload, inboxHandler } from "../federation/inbox_worker.ts";
 import { messageHandler, messageQueue } from "../federation/messaging.ts";
 import { deleteEndedRateLimits } from "../http/rate_limit_queries.ts";
-import { mediaHandler, mediaQueue, removeUnusedMedia, unusedMediaQueue } from "../media/uploads.ts";
+import { removeUnusedMedia, unusedMediaQueue } from "../media/cleanup.ts";
+import { mediaHandler } from "../media/processing.ts";
+import { mediaQueue } from "../media/uploads.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
 import { pushHandler, pushQueue } from "../push/pushes.ts";
