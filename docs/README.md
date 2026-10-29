@@ -27,5 +27,6 @@ How-tos:
 - [Adding a Versia type](guides/adding-a-versia-type.md)
 - [Adding a side effect](guides/adding-a-side-effect.md)
 - [Adding a job](guides/adding-a-job.md)
+- [Adding a config option](guides/adding-a-config-option.md)
 
 [`config.example.toml`](config.example.toml) lists every config setting, with its default.
