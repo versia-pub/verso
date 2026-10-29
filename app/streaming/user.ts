@@ -4,63 +4,137 @@
  * @see https://docs.joinmastodon.org/methods/streaming/#user
  * @module
  */
-import { isFollowing } from "../graph/follows.ts";
-import type { RouteViewer } from "../http/route.ts";
+import { followersAmong } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
+import type { Permission } from "../kernel/permissions.ts";
 import { grants } from "../kernel/scopes.ts";
-import { homeStatus } from "../notes/home.ts";
-import type { NotifiedMessage } from "../notifications/notifications.ts";
+import { homeAuthorOf, homeStatus } from "../notes/home.ts";
 import { shownNotification } from "../notifications/render.ts";
-import type { Listener } from "./dispatcher.ts";
+import { atMost, type Sessions, type StreamViewer } from "./dispatcher.ts";
 import type { Session } from "./session.ts";
 import type { StatusMessage } from "./statuses.ts";
 
-/** Whether `viewerId` could see the status deleted, so is told it went. */
-const couldSee = async (
-    ctx: Context,
-    viewerId: string,
-    deleted: Extract<StatusMessage, { event: "delete" }>,
-) => deleted.accountId === viewerId || deleted.mentionIds.includes(viewerId) ||
-    (deleted.visibility !== "direct" && await isFollowing(ctx, viewerId, deleted.accountId));
+/** A session, with its viewer. */
+type Entry = { readonly viewer: StreamViewer; readonly session: Session };
+
+/** How many viewers a status is rendered for at once, each with queries of its own. */
+const viewersAtOnce = 8;
 
 /**
- * What `session` is sent of its viewer's `user` streams while it is subscribed to them. A status is sent if it is on their home timeline when it is
- * heard of, and a notification if they are shown it, each rendered as they see it, as long as they
- * may read statuses and their notifications, as on the routes for them. As on Mastodon, the `user`
- * stream has notifications only if the token may read them.
+ * The streams a session is sent its viewer's notifications on. As on Mastodon, the `user` stream
+ * has them only if the token may read them.
  */
-export const streamUser = (
-    ctx: Context,
-    viewer: RouteViewer & { readonly accountId: string },
-    session: Session,
-): Listener => {
-    const viewerId = viewer.accountId;
-    const streams = grants(viewer.scopes, "read:notifications")
+const notificationStreams = (viewer: StreamViewer) =>
+    grants(viewer.scopes, "read:notifications")
         ? ["user", "user:notification"]
         : ["user:notification"];
 
-    const statuses = async (message: StatusMessage) => {
-        if (!session.subscribedTo(["user"])) return;
-        if (!(await viewer.permissions()).has("read:note")) return;
+/** Of `entries`, those whose viewers may `permission`, checked one at a time, as each may query. */
+const allowed = async (entries: readonly Entry[], permission: Permission) => {
+    const found = [];
+    for (const entry of entries) {
+        if ((await entry.viewer.permissions()).has(permission)) found.push(entry);
+    }
+    return found;
+};
 
-        if (message.event === "delete") {
-            if (await couldSee(ctx, viewerId, message)) {
-                session.deliver(["user"], "delete", message.noteId);
+/**
+ * Of `entries`, those whose viewers could have the status `deleted` on their home timelines, so
+ * are told it went: its author, those it mentions, and unless it was direct, its author's
+ * followers.
+ */
+const couldSee = async (
+    ctx: Context,
+    entries: readonly Entry[],
+    deleted: Extract<StatusMessage, { event: "delete" }>,
+) => {
+    const viewerIds = new Set(entries.map((entry) => entry.viewer.accountId));
+    const followers = deleted.visibility === "direct"
+        ? new Set()
+        : await followersAmong(ctx, deleted.accountId, [...viewerIds]);
+
+    return entries.filter(({ viewer }) =>
+        viewer.accountId === deleted.accountId || deleted.mentionIds.includes(viewer.accountId) ||
+        followers.has(viewer.accountId)
+    );
+};
+
+/**
+ * What the sessions of the process `ctx` belongs to are sent of their viewers' `user` streams. A
+ * status is looked up for the viewers it could reach, its author and their followers, and sent if
+ * it is on their home timeline when it is heard of, rendered once for each of them, as they see it.
+ * A notification is rendered once for its viewer. Each is sent as long as they may read statuses
+ * and their notifications, as on the routes for them.
+ */
+export const userStreams = (ctx: Context): Sessions => {
+    const sessions = new Set<Entry>();
+
+    /** Sends each of `entries` what `render` renders for its viewer, rendering it once for each. */
+    const deliverEach = async (
+        entries: readonly Entry[],
+        render: (viewerId: string) => Promise<unknown>,
+        send: (entry: Entry, payload: string) => void,
+    ) => {
+        const byViewer = Map.groupBy(entries, (entry) => entry.viewer.accountId);
+        await atMost(viewersAtOnce, [...byViewer], async ([viewerId, reached]) => {
+            const shown = await render(viewerId);
+            if (shown === undefined) return;
+
+            const payload = JSON.stringify(shown);
+            for (const entry of reached) send(entry, payload);
+        });
+    };
+
+    return {
+        statuses: async (message) => {
+            const subscribed = [...sessions].filter((entry) =>
+                entry.session.subscribedTo(["user"])
+            );
+            if (subscribed.length === 0) return;
+
+            if (message.event === "delete") {
+                const told = await allowed(await couldSee(ctx, subscribed, message), "read:note");
+                for (const { session } of told) session.deliver(["user"], "delete", message.noteId);
+                return;
             }
-            return;
-        }
 
-        const status = await homeStatus(ctx, viewerId, message.noteId);
-        if (status) session.deliver(["user"], message.event, JSON.stringify(status));
+            const authorId = await homeAuthorOf(ctx, message.noteId);
+            if (authorId === undefined) return;
+            const viewerIds = new Set(subscribed.map((entry) => entry.viewer.accountId));
+            const followers = await followersAmong(ctx, authorId, [...viewerIds]);
+            const reached = await allowed(
+                subscribed.filter(({ viewer }) =>
+                    viewer.accountId === authorId || followers.has(viewer.accountId)
+                ),
+                "read:note",
+            );
+
+            await deliverEach(
+                reached,
+                (viewerId) => homeStatus(ctx, viewerId, message.noteId),
+                ({ session }, payload) => session.deliver(["user"], message.event, payload),
+            );
+        },
+        notifications: async (message) => {
+            const subscribed = [...sessions].filter(({ viewer, session }) =>
+                viewer.accountId === message.accountId &&
+                session.subscribedTo(notificationStreams(viewer))
+            );
+            const reached = await allowed(subscribed, "owner:notification");
+
+            await deliverEach(
+                reached,
+                (viewerId) => shownNotification(ctx, viewerId, message.notificationId),
+                ({ viewer, session }, payload) =>
+                    session.deliver(notificationStreams(viewer), "notification", payload),
+            );
+        },
+        add: (viewer, session) => {
+            const entry = { viewer, session };
+            sessions.add(entry);
+            return () => {
+                sessions.delete(entry);
+            };
+        },
     };
-
-    const notifications = async (message: NotifiedMessage) => {
-        if (message.accountId !== viewerId || !session.subscribedTo(streams)) return;
-        if (!(await viewer.permissions()).has("owner:notification")) return;
-
-        const notification = await shownNotification(ctx, viewerId, message.notificationId);
-        if (notification) session.deliver(streams, "notification", JSON.stringify(notification));
-    };
-
-    return { statuses, notifications };
 };

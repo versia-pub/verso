@@ -1,30 +1,47 @@
+import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { assertEquals } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
-import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
+import { publish } from "../kernel/pubsub.ts";
 import { createTestContext } from "../testing/context.ts";
 import { openSession } from "./session.ts";
-import { dispatcher } from "./dispatcher.ts";
-import { streamUser } from "./user.ts";
+import { dispatcher, type Sessions } from "./dispatcher.ts";
+import { statusMessages } from "./statuses.ts";
+import { userStreams } from "./user.ts";
 
 const open = async () => {
     const test = await createTestContext();
     const dispatch = dispatcher(test.ctx);
+    const shared = userStreams(test.ctx);
+    dispatch.listen(shared);
     for (const id of ["alice", "bob", "carol"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "alice", "bob");
+    // What failed to stream, which nothing should.
+    const failed: LogRecord[] = [];
+    await configure({
+        reset: true,
+        sinks: { buffer: (record) => failed.push(record) },
+        loggers: [
+            { category: ["verso", "streaming"], sinks: ["buffer"] },
+            { category: ["logtape", "meta"], lowestLevel: "warning", sinks: [] },
+        ],
+    });
 
-    /** What `accountId` is sent on `streams`, as each event's stream, type, and status or id. */
+    /**
+     * What `accountId` is sent on `streams`, as each event's stream, type, and status or id. Its
+     * session is added to the test's user streams, or `options.sessions`.
+     */
     const streaming = (
         accountId: string,
         streams: readonly string[],
         options: {
             scopes?: readonly Scope[];
-            ctx?: Context;
+            sessions?: Sessions;
             permissions?: readonly Permission[];
         } = {},
     ) => {
@@ -56,7 +73,7 @@ const open = async () => {
 
         return {
             sent,
-            stop: dispatch.listen(streamUser(options.ctx ?? test.ctx, viewer, session)),
+            stop: (options.sessions ?? shared).add(viewer, session),
         };
     };
 
@@ -72,7 +89,33 @@ const open = async () => {
         return note.id;
     };
 
-    return { ...test, dispatch, streaming, post };
+    /** User streams of their own, and how many queries they have made. */
+    const counted = () => {
+        let queries = 0;
+        const db = test.ctx.db.withPlugin({
+            transformQuery: ({ node }) => node,
+            transformResult: ({ result }) => {
+                queries += 1;
+                return Promise.resolve(result);
+            },
+        });
+        const sessions = userStreams({ ...test.ctx, db });
+        dispatch.listen(sessions);
+        return { sessions, queries: () => queries };
+    };
+
+    return {
+        ...test,
+        dispatch,
+        streaming,
+        counted,
+        post,
+        failed,
+        [Symbol.asyncDispose]: async () => {
+            await reset();
+            await test[Symbol.asyncDispose]();
+        },
+    };
 };
 
 Deno.test("a user is sent the statuses of their home timeline as they are posted, edited and deleted", async () => {
@@ -121,6 +164,7 @@ Deno.test("a user is told of statuses they may see, and those deleted that they 
         ["user", "delete", shown],
     ]);
     assertEquals(carol.sent, [["user", "delete", shown]]);
+    assertEquals(test.failed, []);
 });
 
 Deno.test("a user is sent their notifications on each stream for them, if their token may read them", async () => {
@@ -167,22 +211,69 @@ Deno.test("a user is sent nothing once they stop streaming", async () => {
     assertEquals(alice.sent, []);
 });
 
+Deno.test("a user isn't told of the statuses of those they only asked to follow, nor of statuses gone", async () => {
+    await using test = await open();
+    await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "carol")
+        .execute();
+    await follow(test.ctx, "bob", "carol");
+    const bob = test.streaming("bob", ["user"]);
+
+    const note = await test.post("carol", "Hi", "private");
+    await removeNote(test.ctx, note);
+    await publish(test.ctx, statusMessages, { event: "status.update", noteId: note });
+    await test.dispatch.idle();
+
+    assertEquals(bob.sent, []);
+    assertEquals(test.failed, []);
+});
+
+Deno.test("a status is looked up for its author and their followers only, once for each", async () => {
+    await using test = await open();
+    const one = test.counted();
+    test.streaming("alice", ["user"], { sessions: one.sessions });
+    // alice twice more, asked about once, and as many who don't follow bob, nor exist, as one
+    // query asks about with her.
+    const many = test.counted();
+    const viewers = ["alice", "alice", ...Array.from({ length: 999 }, (_, n) => `nobody${n}`)];
+    const sent = viewers.map((accountId) =>
+        test.streaming(accountId, ["user"], { sessions: many.sessions }).sent
+    );
+
+    const note = await test.post("bob", "Hi");
+    await removeNote(test.ctx, note);
+    await test.dispatch.idle();
+
+    const told = [["user", "update", note], ["user", "delete", note]];
+    assertEquals(sent.slice(0, 2), [told, told]);
+    assertEquals(sent.slice(2).flat(), []);
+    assertEquals(many.queries(), one.queries());
+});
+
+Deno.test("a notification is rendered once for each viewer, however many sessions they have", async () => {
+    await using test = await open();
+    const one = test.counted();
+    test.streaming("alice", ["user:notification"], { sessions: one.sessions });
+    const many = test.counted();
+    const sent = [1, 2].map(() =>
+        test.streaming("alice", ["user:notification"], { sessions: many.sessions }).sent
+    );
+
+    const note = await test.post("carol", "Hi @alice");
+
+    const told = [["user:notification", "notification", note]];
+    assertEquals(sent, [told, told]);
+    assertEquals(many.queries(), one.queries());
+});
+
 Deno.test("a user's session reads nothing for streams it isn't subscribed to, or others' notifications", async () => {
     await using test = await open();
-    let reads = 0;
-    const db = new Proxy(test.ctx.db, {
-        get: (target, name) => {
-            if (name === "selectFrom") reads++;
-            return Reflect.get(target, name);
-        },
-    });
-    const counted = { ...test.ctx, db };
-    test.streaming("alice", ["public"], { ctx: counted });
-    test.streaming("bob", ["user:notification"], { ctx: counted });
+    const { sessions, queries } = test.counted();
+    test.streaming("alice", ["public"], { sessions });
+    test.streaming("bob", ["user:notification"], { sessions });
 
     const note = await test.post("bob", "Hi @alice");
     await removeNote(test.ctx, note);
     await test.dispatch.idle();
 
-    assertEquals(reads, 0);
+    assertEquals(queries(), 0);
 });

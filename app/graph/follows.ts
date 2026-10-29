@@ -3,7 +3,7 @@ import { z } from "zod";
 import { findAccount } from "../accounts/account_queries.ts";
 import { countFollow, uncountFollowers, uncountFollowing } from "../accounts/count_queries.ts";
 import { isAccountDeleting, isProfileUpdated } from "../accounts/events.ts";
-import { batchSize } from "../db/batches.ts";
+import { batchesOf, batchSize } from "../db/batches.ts";
 import { enqueue } from "../jobs/job_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
@@ -23,6 +23,7 @@ import {
     followIdsFrom,
     type FollowOptions,
     followsFrom,
+    followsOf,
     insertFollow,
     sharingIdsQuery,
     updateFollowOptions,
@@ -188,6 +189,22 @@ export const isFollowing = async (
 ): Promise<boolean> => {
     const [follow] = await followsFrom(ctx, followerId, [followeeId]);
     return follow?.accepted === true;
+};
+
+/** Which of `otherIds` follow `accountId`, and were accepted, asked about in batches. */
+export const followersAmong = async (
+    ctx: Context,
+    accountId: string,
+    otherIds: readonly string[],
+): Promise<Set<string>> => {
+    const followers = new Set<string>();
+    for (const asked of batchesOf(otherIds)) {
+        for (const follow of await followsOf(ctx, accountId, asked)) {
+            if (follow.accepted) followers.add(follow.follower_id);
+        }
+    }
+
+    return followers;
 };
 
 /**

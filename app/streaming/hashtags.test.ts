@@ -10,10 +10,9 @@ import { publish } from "../kernel/pubsub.ts";
 import type { NotesTable } from "../notes/tables.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { dispatcher } from "./dispatcher.ts";
+import { dispatcher, type Sessions } from "./dispatcher.ts";
 import { hashtagStreams } from "./hashtags.ts";
 import { openSession } from "./session.ts";
-import type { SharedSessions } from "./shared.ts";
 import { type StatusMessage, statusMessages } from "./statuses.ts";
 
 /** The `hashtag` and `hashtag:local` streams of #nix and #rust. */
@@ -40,7 +39,7 @@ const open = async () => {
     const streaming = (
         accountId: string,
         streams: readonly string[][] = everyStream,
-        options: { sessions?: SharedSessions; permissions?: readonly Permission[] } = {},
+        options: { sessions?: Sessions; permissions?: readonly Permission[] } = {},
     ) => {
         const sent: unknown[] = [];
         const viewer = {

@@ -7,7 +7,8 @@
 import type { Context } from "../kernel/context.ts";
 import { hashtagStatus } from "../notes/public.ts";
 import { hashtagStream } from "./session.ts";
-import { type SharedSessions, sharedStreams } from "./shared.ts";
+import type { Sessions } from "./dispatcher.ts";
+import { sharedStreams } from "./shared.ts";
 
 /** Whether `stream`, as a session names it, is a hashtag's. */
 const isHashtagStream = (stream: string) =>
@@ -19,7 +20,7 @@ const isHashtagStream = (stream: string) =>
  * sent on the streams of each hashtag it uses if it could be on their timelines, rendered as anyone
  * sees it, to those whose viewers may read statuses and don't block or mute its author.
  */
-export const hashtagStreams = (ctx: Context): SharedSessions =>
+export const hashtagStreams = (ctx: Context): Sessions =>
     sharedStreams(ctx, {
         subscribed: (session) => session.streams().filter(isHashtagStream),
         find: hashtagStatus,

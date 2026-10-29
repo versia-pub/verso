@@ -7,7 +7,8 @@
  */
 import type { Context } from "../kernel/context.ts";
 import { publicStatus } from "../notes/public.ts";
-import { type SharedSessions, sharedStreams } from "./shared.ts";
+import type { Sessions } from "./dispatcher.ts";
+import { sharedStreams } from "./shared.ts";
 
 const streams = [
     "public",
@@ -23,7 +24,7 @@ const streams = [
  * sent if it is on the public timeline, rendered as anyone sees it, to those whose viewers may read
  * statuses and don't block or mute its author, as on the public timeline.
  */
-export const publicStreams = (ctx: Context): SharedSessions =>
+export const publicStreams = (ctx: Context): Sessions =>
     sharedStreams(ctx, {
         subscribed: (session) => session.streams().filter((stream) => streams.includes(stream)),
         find: publicStatus,

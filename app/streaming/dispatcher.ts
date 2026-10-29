@@ -1,20 +1,32 @@
 /**
  * Giving a process's streaming sessions the statuses and notifications they stream, from one
- * subscription to each channel rather than one for every session. Messages are handled one at a
- * time, in the order they are heard, so a session is never sent a status's delete before its
- * update, and what published them doesn't wait for them to be streamed.
+ * subscription to each channel rather than one for every session, through a listener for each kind
+ * of stream. Messages are handled one at a time, in the order they are heard, so a session is never
+ * sent a status's delete before its update, and what published them doesn't wait for them to be
+ * streamed.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
+import type { RouteViewer } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import { subscribe } from "../kernel/pubsub.ts";
 import { notified, type NotifiedMessage } from "../notifications/notifications.ts";
+import type { Session } from "./session.ts";
 import { type StatusMessage, statusMessages } from "./statuses.ts";
 
-/** What a session streams of each message, as each stream's module decides. */
+/** What a kind of stream sends its sessions of each message, as its module decides. */
 export type Listener = {
     readonly statuses?: (message: StatusMessage) => Promise<void>;
     readonly notifications?: (message: NotifiedMessage) => Promise<void>;
+};
+
+/** A session's viewer, who is logged in. */
+export type StreamViewer = RouteViewer & { readonly accountId: string };
+
+/** What a process's sessions are sent of a kind of stream, for those added to it. */
+export type Sessions = Listener & {
+    /** Adds `session` of `viewer`, until the function returned is called. */
+    readonly add: (viewer: StreamViewer, session: Session) => () => void;
 };
 
 export type Dispatcher = {
@@ -23,9 +35,6 @@ export type Dispatcher = {
     /** Resolves once every message heard so far is handled. */
     readonly idle: () => Promise<void>;
 };
-
-/** How many listeners handle a message at once, each with queries of its own. */
-const listenersAtOnce = 8;
 
 /**
  * How many messages may wait to be handled. Past that, streaming has fallen behind, and messages
@@ -36,7 +45,11 @@ const maxWaiting = 1000;
 const logger = getLogger(["verso", "streaming"]);
 
 /** Runs `run` on each of `items`, `limit` at a time, logging rather than throwing if any fails. */
-const atMost = async <T>(limit: number, items: readonly T[], run: (item: T) => Promise<void>) => {
+export const atMost = async <T>(
+    limit: number,
+    items: readonly T[],
+    run: (item: T) => Promise<void>,
+): Promise<void> => {
     let next = 0;
     const worker = async () => {
         while (next < items.length) {
@@ -68,7 +81,8 @@ export const dispatcher = (ctx: Context): Dispatcher => {
 
         waiting++;
         handled = handled.then(async () => {
-            await atMost(listenersAtOnce, [...listeners], run);
+            // One for each kind of stream, so all at once.
+            await atMost(listeners.size, [...listeners], run);
             waiting--;
         });
         return Promise.resolve();

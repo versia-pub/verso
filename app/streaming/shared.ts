@@ -7,14 +7,10 @@
  */
 import type { Status } from "@versia/client-api";
 import { hidingAmong } from "../graph/hidden.ts";
-import type { RouteViewer } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import type { PublicStatus } from "../notes/public.ts";
-import type { Listener } from "./dispatcher.ts";
+import type { Sessions, StreamViewer } from "./dispatcher.ts";
 import type { Session } from "./session.ts";
-
-/** A session's viewer, who is logged in. */
-export type StreamViewer = RouteViewer & { readonly accountId: string };
 
 /** Which statuses a kind of stream has, and on which of its streams each goes. */
 export type SharedStreams = {
@@ -26,14 +22,8 @@ export type SharedStreams = {
     readonly streamsOf: (shown: PublicStatus, status: Status) => readonly string[];
 };
 
-/** What a process's sessions are sent of a kind of stream, for those added to it. */
-export type SharedSessions = Listener & {
-    /** Adds `session` of `viewer`, until the function returned is called. */
-    readonly add: (viewer: StreamViewer, session: Session) => () => void;
-};
-
 /** The sessions of the process `ctx` belongs to that are sent `streams`. */
-export const sharedStreams = (ctx: Context, streams: SharedStreams): SharedSessions => {
+export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions => {
     const sessions = new Set<{ readonly viewer: StreamViewer; readonly session: Session }>();
 
     /**

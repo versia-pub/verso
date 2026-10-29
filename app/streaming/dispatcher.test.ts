@@ -43,13 +43,13 @@ Deno.test("messages are handled one at a time, in order, without what published 
     assertEquals(heard, ["first", "second", "third"]);
 });
 
-Deno.test("a message is handled by 8 listeners at a time, and those that fail don't stop the rest", async () => {
+Deno.test("a message is handled by every listener at once, and those that fail don't stop the rest", async () => {
     await using test = await createTestContext();
     const dispatch = dispatcher(test.ctx);
     let running = 0;
     let most = 0;
     let heard = 0;
-    for (let n = 0; n < 20; n++) {
+    for (let n = 0; n < 4; n++) {
         dispatch.listen({
             statuses: async () => {
                 running++;
@@ -64,7 +64,7 @@ Deno.test("a message is handled by 8 listeners at a time, and those that fail do
 
     await update(test.ctx, "n1");
     await dispatch.idle();
-    assertEquals([most, heard], [8, 10]);
+    assertEquals([most, heard], [4, 2]);
 });
 
 Deno.test("a listener stops hearing messages once it stops listening", async () => {
