@@ -120,30 +120,30 @@ anonymous = []
 
 Permissions apply to the client API. Other instances still fetch public statuses over Versia.
 
-| Permission             | Lets one                                               |
-| ---------------------- | ------------------------------------------------------ |
-| `read:account`         | view accounts and their profiles                       |
-| `read:account_follows` | view who accounts follow, and who follows them         |
-| `read:note`            | view statuses, as their visibility allows              |
-| `read:note_likes`      | view who likes the statuses one may see                |
-| `read:note_boosts`     | view who boosts the statuses one may see               |
-| `read:reaction`        | view who reacts to the statuses one may see            |
-| `read:emoji`           | view global custom emojis and one's own                |
-| `search`               | search accounts, statuses and hashtags                 |
-| `owner:account`        | change one's own profile and settings                  |
-| `owner:follow`         | follow and unfollow accounts                           |
-| `owner:block`          | block and unblock accounts                             |
-| `owner:mute`           | mute and unmute accounts                               |
-| `owner:like`           | like statuses                                          |
-| `owner:boost`          | boost statuses                                         |
-| `owner:reaction`       | react to statuses                                      |
-| `owner:note`           | post and delete one's own statuses                     |
-| `owner:media`          | upload media                                           |
-| `owner:emoji`          | add one's own custom emojis                            |
-| `owner:notification`   | view and dismiss one's own notifications               |
-| `blocks`               | see who blocks each account, as moderators may need to |
-| `emojis`               | add global custom emojis                               |
-| `roles`                | create, change and grant roles below one's highest     |
+| Permission             | Lets one                                                       |
+| ---------------------- | -------------------------------------------------------------- |
+| `read:account`         | view accounts and their profiles                               |
+| `read:account_follows` | view who accounts follow, and who follows them                 |
+| `read:note`            | view statuses, as their visibility allows                      |
+| `read:note_likes`      | view who likes the statuses one may see                        |
+| `read:note_boosts`     | view who boosts the statuses one may see                       |
+| `read:reaction`        | view who reacts to the statuses one may see                    |
+| `read:emoji`           | view global custom emojis and one's own                        |
+| `search`               | search accounts, statuses and hashtags                         |
+| `owner:account`        | change one's own profile and settings                          |
+| `owner:follow`         | follow and unfollow accounts                                   |
+| `owner:block`          | block and unblock accounts                                     |
+| `owner:mute`           | mute and unmute accounts                                       |
+| `owner:like`           | like statuses                                                  |
+| `owner:boost`          | boost statuses                                                 |
+| `owner:reaction`       | react to statuses                                              |
+| `owner:note`           | post and delete one's own statuses                             |
+| `owner:media`          | upload media                                                   |
+| `owner:emoji`          | add one's own custom emojis                                    |
+| `owner:notification`   | view and dismiss one's own notifications                       |
+| `blocks`               | see who blocks each account, as moderators may need to         |
+| `emojis`               | add, change and delete any custom emoji, and make them global  |
+| `roles`                | create, change and grant lower roles, with permissions one has |
 
 Setting a list replaces the default, so list everything you want to keep.
 
@@ -174,15 +174,8 @@ public_url = "https://media.social.example"
 
 ## Federation
 
-```toml
-[federation]
-blocked_domains = ["spam.example"]
-```
+`blocked_domains` and `silent_blocks` block instances, as [Moderating](moderating.md) explains.
 
-- **`blocked_domains`** are instances Verso doesn't federate with, along with their subdomains.
-  `verso admin domains block` blocks more without a restart.
-- **`silent_blocks`** answers blocked instances as if nothing were wrong, rather than telling them
-  they're blocked.
 - **`delivery_hours`** (48) is how long a delivery is retried before it is given up on.
 - **`unreachable_days`** (7) is how long an instance can go unreached before Verso stops sending it
   anything, until it hears from it again.
@@ -217,9 +210,10 @@ store = "memory"
 ```
 
 Each client may make `limit` requests in each window: counted per account, or per IP address without
-one. With several web nodes, set `store = "database"`, so they share the counts.
+one. Counts are kept in each process's `"memory"`, or in the `"database"`, which several web nodes
+share.
 
 ## Logging
 
-`[logging] level` is `trace`, `debug`, `info` (the default), `warning`, `error` or `fatal`. Logs go
-to the console, in colour in a terminal and plain text elsewhere, such as in journald.
+`[logging] level` is `trace`, `debug`, `info` (the default), `warning`, `error` or `fatal`. See
+[Logs](running.md#logs).

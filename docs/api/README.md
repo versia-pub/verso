@@ -6,6 +6,7 @@ people who write apps, or want to know what an app can do with Verso:
 
 - [Mastodon API compatibility](compatibility.md) lists every Mastodon method, and whether Verso has
   it.
+- [Differences from Mastodon](differences.md) says where the methods Verso has behave differently.
 
 Every instance also serves its own API reference: `/docs` shows it, and `/openapi.json` is the
 OpenAPI document it is made from. Each method there says what it needs, and where Verso differs from
@@ -43,8 +44,7 @@ Two things decide what a request may do:
   `read:statuses`. The token holds the scopes the user allowed.
 - **Permissions** limit what the user may do on the instance at all, such as posting statuses or
   managing roles. The instance gives every user some, and roles give more. Logged-out requests get
-  the instance's anonymous permissions, which by default allow reading public accounts and statuses,
-  and searching.
+  the instance's anonymous [permissions](../admin/configuring.md#permissions).
 
 A request needs both: the method's scope in its token, and the method's permission for its user.
 Missing either is a `403`. `/docs` names each method's scope and permission.
@@ -66,11 +66,10 @@ Missing either is a `403`. `/docs` names each method's scope and permission.
 Statuses are plain text by default, as on Mastodon: links, mentions and hashtags are found and
 linked. Posting with `content_type` set to `text/markdown`, as on Pleroma, formats the status as
 Markdown instead. `GET /api/v1/statuses/:id/source` gives the text back as it was written, with its
-`content_type`, for editing.
+`content_type`, for editing. An edit keeps the format unless it sets `content_type`.
 
 ## Streaming
 
 `GET /api/v1/streaming` opens a WebSocket, on the same host and port as the rest of the API, as
 `/api/v2/instance` says. The token can be sent as `Authorization`, as the `access_token` query
-parameter, or as `Sec-WebSocket-Protocol`, which browsers can set. The server-sent events endpoints
-aren't supported.
+parameter, or as `Sec-WebSocket-Protocol`, which browsers can set.

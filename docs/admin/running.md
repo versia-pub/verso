@@ -6,12 +6,11 @@ logs.
 ## Upgrading
 
 1. Install the new version.
-2. Run `verso migrate`. All pending migrations run in one transaction, so if one fails, nothing
-   changes, and the old version keeps working.
+2. Run [`verso migrate`](commands.md#migrating).
 3. Restart every `verso serve`, `verso work` and `verso all` process.
 
 On NixOS, the service runs `verso migrate` before it starts, so switching to the new configuration
-is enough. Processes stop cleanly on `SIGTERM`, finishing the requests and jobs in progress first.
+is enough.
 
 Verso is in early development, and migrations only go forward: back up the database before
 upgrading.
@@ -39,8 +38,7 @@ One `verso all` process suits a small instance. To spread the load:
 
 - **Use PostgreSQL.** Processes share jobs through the database, and tell each other what changed
   through it, such as a new status for streaming clients. SQLite can't, so it suits one process.
-- **Share rate limits** between web nodes with `[http.rate_limit] store = "database"`. Otherwise,
-  each counts on its own.
+- **Share [rate limits](configuring.md#rate-limits)** between web nodes, with `store = "database"`.
 - **Use S3 for media**, or a directory every process can reach.
 - **Any web node takes streaming clients.** The load balancer must pass WebSocket upgrades.
 - **Add workers** when jobs fall behind: each sends more to each remote instance at once.
@@ -51,17 +49,10 @@ Back up these, together:
 
 - **The database**, with `pg_dump`, or by copying the SQLite file while Verso is stopped. It holds
   everything users made, and the instance's key pairs. Without the keys, other instances can't trust
-  what Verso sends, and push subscriptions stop working.
+  what Verso sends, and push subscriptions stop working. If a key may have leaked, replace it with
+  [`verso admin keys rotate`](commands.md#verso-admin-keys).
 - **Media**: the `[media] storage` directory, or the S3 bucket.
 - **The config**, and the secrets it reads.
-
-## The instance's keys
-
-The instance signs everything it sends with its key pair. If the private key may have leaked,
-replace it with `verso admin keys rotate`. The old one is deleted at once, and other instances fetch
-the new one when a signature stops verifying.
-
-The Web Push keys never change, as changing them would end every push subscription.
 
 ## Failed jobs
 

@@ -16,6 +16,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [The client API](api/README.md): logging in, scopes and permissions, ids, pages, errors
 - [Mastodon API compatibility](api/compatibility.md): every Mastodon 4.3 method with Verso's
   differences
+- [Differences from Mastodon](api/differences.md): where the methods Verso has behave differently
 
 ## How Verso works
 

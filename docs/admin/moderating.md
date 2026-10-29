@@ -11,8 +11,8 @@ nothing, and fetches nothing from it. Block one in either of two places:
 
 - **In the config**, with `[federation] blocked_domains`, which takes effect when Verso restarts.
   Use it for blocks you want kept with the rest of the setup.
-- **With the CLI**, with `verso admin domains block <domain> --reason "…"`, which takes effect
-  without a restart. `verso admin domains list` shows both kinds.
+- **With [`verso admin domains`](commands.md#verso-admin-domains)**, which takes effect without a
+  restart.
 
 ```toml
 [federation]
@@ -28,21 +28,9 @@ for themselves, from their app, which hides it from them alone.
 
 ## Moderators
 
-Give moderators a role with the permissions they need:
-
-| Permission | Lets them                                                                          |
-| ---------- | ---------------------------------------------------------------------------------- |
-| `blocks`   | see who blocks each account, which is otherwise only the blocker's to know         |
-| `emojis`   | add, change and delete any custom emoji, and make emoji global for everyone        |
-| `roles`    | create, change and grant roles below their own highest, with permissions they have |
-
-```sh
-verso admin roles create Moderator --permissions blocks,emojis --priority 50
-verso admin users grant-role alice Moderator
-```
-
-Mastodon apps show the `emojis` and `roles` permissions as Mastodon's "Manage custom emojis" and
-"Manage roles".
+Give moderators a [role](commands.md#verso-admin-roles) with the staff
+[permissions](configuring.md#permissions) they need: `blocks`, `emojis` or `roles`. Mastodon apps
+show the `emojis` and `roles` permissions as Mastodon's "Manage custom emojis" and "Manage roles".
 
 ## Custom emoji
 

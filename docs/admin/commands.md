@@ -23,10 +23,8 @@ prints the version.
 
 ## Running Verso
 
-`verso all` is enough for most instances. To spread the load, run `verso serve` on as many web nodes
-as you need, behind a load balancer, and `verso work` on one or more workers. They share the work
-through the database, which must be PostgreSQL. Each worker sends more to each remote instance at
-once, so add workers when deliveries fall behind.
+`verso all` is enough for most instances. [Scaling](running.md#scaling) explains when and how to run
+`verso serve` and `verso work` apart instead.
 
 All three run until stopped. On `SIGTERM` or `SIGINT`, they stop taking new requests and jobs,
 finish the ones in progress, and exit.
@@ -46,7 +44,7 @@ prints its help and exits with 2.
 
 ### `verso admin domains`
 
-Blocks instances, with their subdomains, alongside the config's `[federation] blocked_domains`.
+Blocks instances alongside the config's `blocked_domains`, as [Moderating](moderating.md) explains.
 Blocks take effect without a restart: at once on PostgreSQL, and within a minute on SQLite.
 
 | Command                                | Does                                           |
@@ -81,10 +79,9 @@ $ verso admin roles create Moderator --permissions blocks,emojis --priority 50
 {"id":"01a1899c-…","name":"Moderator","permissions":["blocks","emojis"],"priority":50,…}
 ```
 
-- **`--permissions`** is a comma-separated list. [Configuring](configuring.md#permissions) lists
-  them all.
-- **`--priority`**, 0 by default, ranks roles. Users with the `roles` permission can manage only
-  roles below their own highest one.
+- **`--permissions`** is a comma-separated list of [permissions](configuring.md#permissions).
+- **`--priority`**, 0 by default, ranks roles: users with the `roles` permission manage only those
+  below their own.
 - **Names** are unique, ignoring case.
 
 Roles can then be changed, deleted and granted through the API, by anyone with the `roles`

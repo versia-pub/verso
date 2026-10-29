@@ -8,9 +8,8 @@ features that version has. This page compares Verso with
 - 🟡 works, with what is missing or different in the notes.
 - ❌ isn't there yet. Apps get a `404`.
 
-Fields Verso can't fill yet, such as a poll on a status, are `null` or empty, as Mastodon sends them
-when there is nothing to show. A request that asks for a feature Verso doesn't have, such as posting
-a poll, is refused with a `422` saying so, rather than silently ignored.
+[Differences from Mastodon](differences.md) says more about the methods marked 🟡, and others that
+behave differently.
 
 ## Summary
 
@@ -100,7 +99,7 @@ trends, announcements and the admin API.
 | `GET /api/v1/statuses`                   | ❌    | Several statuses by id         |
 | `PUT /api/v1/statuses/:id`               | 🟡    | No polls                       |
 | `DELETE /api/v1/statuses/:id`            | ✅    |                                |
-| `GET /api/v1/statuses/:id/context`       | ✅    | Only replies Verso has         |
+| `GET /api/v1/statuses/:id/context`       | 🟡    | Only replies Verso has         |
 | `GET /api/v1/statuses/:id/history`       | ✅    |                                |
 | `GET /api/v1/statuses/:id/source`        | ✅    |                                |
 | `GET /api/v1/statuses/:id/reblogged_by`  | ✅    |                                |
@@ -142,25 +141,25 @@ trends, announcements and the admin API.
 
 ## Notifications
 
-| Method                                          | Verso | Notes                         |
-| ----------------------------------------------- | ----- | ----------------------------- |
-| `GET /api/v1/notifications`                     | ✅    | Adds `reaction` notifications |
-| `GET /api/v1/notifications/:id`                 | ✅    |                               |
-| `POST /api/v1/notifications/clear`              | ✅    |                               |
-| `POST /api/v1/notifications/:id/dismiss`        | ✅    |                               |
-| `GET /api/v1/notifications/unread_count`        | ✅    |                               |
-| `GET /api/v2/notifications`                     | ✅    | Adds `reaction` groups        |
-| `GET /api/v2/notifications/:group_key`          | ✅    |                               |
-| `GET /api/v2/notifications/:group_key/accounts` | ✅    |                               |
-| `POST /api/v2/notifications/:group_key/dismiss` | ✅    |                               |
-| `GET /api/v2/notifications/unread_count`        | ✅    |                               |
-| `POST /api/v2/notifications/clear`              | ❌    | Use v1                        |
-| Notification requests (7 methods)               | ❌    |                               |
-| Notification policy (v1 and v2)                 | ❌    |                               |
-| `POST /api/v1/push/subscription`                | ✅    | Only to `https` endpoints     |
-| `GET /api/v1/push/subscription`                 | ✅    |                               |
-| `PUT /api/v1/push/subscription`                 | ✅    |                               |
-| `DELETE /api/v1/push/subscription`              | ✅    |                               |
+| Method                                          | Verso | Notes  |
+| ----------------------------------------------- | ----- | ------ |
+| `GET /api/v1/notifications`                     | ✅    |        |
+| `GET /api/v1/notifications/:id`                 | ✅    |        |
+| `POST /api/v1/notifications/clear`              | ✅    |        |
+| `POST /api/v1/notifications/:id/dismiss`        | ✅    |        |
+| `GET /api/v1/notifications/unread_count`        | ✅    |        |
+| `GET /api/v2/notifications`                     | ✅    |        |
+| `GET /api/v2/notifications/:group_key`          | ✅    |        |
+| `GET /api/v2/notifications/:group_key/accounts` | ✅    |        |
+| `POST /api/v2/notifications/:group_key/dismiss` | ✅    |        |
+| `GET /api/v2/notifications/unread_count`        | ✅    |        |
+| `POST /api/v2/notifications/clear`              | ❌    | Use v1 |
+| Notification requests (7 methods)               | ❌    |        |
+| Notification policy (v1 and v2)                 | ❌    |        |
+| `POST /api/v1/push/subscription`                | ✅    |        |
+| `GET /api/v1/push/subscription`                 | ✅    |        |
+| `PUT /api/v1/push/subscription`                 | ✅    |        |
+| `DELETE /api/v1/push/subscription`              | ✅    |        |
 
 ## Search
 
@@ -170,24 +169,24 @@ trends, announcements and the admin API.
 
 ## Instance
 
-| Method                                       | Verso | Notes                              |
-| -------------------------------------------- | ----- | ---------------------------------- |
-| `GET /api/v2/instance`                       | ✅    |                                    |
-| `GET /api/v1/instance`                       | ✅    | Deprecated by Mastodon             |
-| `GET /api/v1/instance/rules`                 | ✅    |                                    |
-| `GET /api/v1/instance/extended_description`  | ✅    |                                    |
-| `GET /api/v1/instance/privacy_policy`        | ✅    |                                    |
-| `GET /api/v1/instance/peers`                 | ❌    |                                    |
-| `GET /api/v1/instance/activity`              | ❌    |                                    |
-| `GET /api/v1/instance/domain_blocks`         | ❌    |                                    |
-| `GET /api/v1/instance/languages`             | ❌    |                                    |
-| `GET /api/v1/instance/translation_languages` | ❌    |                                    |
-| `GET /api/v1/custom_emojis`                  | ✅    | Global emoji, and the viewer's own |
-| `GET /api/v1/directory`                      | ❌    |                                    |
-| Trends (3 methods)                           | ❌    |                                    |
-| Announcements (4 methods)                    | ❌    |                                    |
-| `GET /api/oembed`                            | ❌    |                                    |
-| `GET /health`                                | ❌    | Verso has `GET /health/live`       |
+| Method                                       | Verso | Notes                        |
+| -------------------------------------------- | ----- | ---------------------------- |
+| `GET /api/v2/instance`                       | ✅    |                              |
+| `GET /api/v1/instance`                       | ✅    | Deprecated by Mastodon       |
+| `GET /api/v1/instance/rules`                 | ✅    |                              |
+| `GET /api/v1/instance/extended_description`  | ✅    |                              |
+| `GET /api/v1/instance/privacy_policy`        | ✅    |                              |
+| `GET /api/v1/instance/peers`                 | ❌    |                              |
+| `GET /api/v1/instance/activity`              | ❌    |                              |
+| `GET /api/v1/instance/domain_blocks`         | ❌    |                              |
+| `GET /api/v1/instance/languages`             | ❌    |                              |
+| `GET /api/v1/instance/translation_languages` | ❌    |                              |
+| `GET /api/v1/custom_emojis`                  | ✅    |                              |
+| `GET /api/v1/directory`                      | ❌    |                              |
+| Trends (3 methods)                           | ❌    |                              |
+| Announcements (4 methods)                    | ❌    |                              |
+| `GET /api/oembed`                            | ❌    |                              |
+| `GET /health`                                | ❌    | Verso has `GET /health/live` |
 
 ## Admin
 
@@ -203,4 +202,3 @@ Verso also has:
 - **Custom emoji management**, with `/api/v1/emojis`, from Versia Server.
 - **Reactions** to statuses, with `reactions` on each status and `/api/v1/statuses/:id/reactions`,
   from Versia Server.
-- **Markdown**, with `content_type` when posting, as on Pleroma.

@@ -36,20 +36,13 @@ Config, read by every command before it does anything
 
 ## Secrets
 
-Secrets such as an issuer's client secret or a database password shouldn't sit in `config.toml`,
-which on NixOS lands in the world-readable Nix store, and elsewhere often ends up in a repository.
+`${env:…}` and `${file:…}` references keep secrets out of the config, as
+[Configuring](admin/configuring.md#secrets) explains for admins. They are filled in by
+[`app/kernel/interpolate.ts`](../app/kernel/interpolate.ts), before the schema sees the config:
 
-Any string value in the config can include references, filled in when the config is read:
-
-- `${env:NAME}`, an environment variable, for containers and `.env` files.
-- `${file:/path}`, a file's contents without its trailing newline, for Docker and systemd
-  credentials and other secret managers.
-- `$${` for a literal `${`.
-
-They can be mixed with text, as in `postgres = "postgresql://verso:${env:PGPASS}@db/verso"`. A
-missing variable or file, or anything else in `${…}`, stops Verso from starting, and the error names
-where in the config it is, never the value. References only fill in strings, so numbers such as
-`http.port` can't come from them. What a reference reads isn't searched for more references.
+- **Only strings** are filled in, so numbers such as `http.port` can't come from a reference.
+- **What a reference reads** isn't searched for more references.
+- **Errors name where** in the config the reference is, never the value it read.
 
 ## How settings reach the code
 
@@ -90,13 +83,15 @@ The `domain` can't change later, as accounts and federation are tied to it.
 ## NixOS
 
 The NixOS module, in [`nix/module.nix`](../nix/module.nix), writes `services.verso.settings` as
-`config.toml`. Secret files go in `services.verso.credentials`, which become systemd credentials,
-referred to as `${file:/run/credentials/verso.service/<name>}`. The module refuses an issuer's
-client secret, an S3 secret key or a database password written in `settings`, since they would land
-in the Nix store.
+`config.toml`, and passes `services.verso.credentials` as systemd credentials.
+[Installing](admin/installing.md#on-nixos) covers using it.
 
-The module also installs `verso-admin`, which runs `verso admin …` as the service would, with its
-user, config and credentials, in a short-lived systemd unit. Run it as root.
+- **Its assertions** refuse an issuer's client secret, an S3 secret key or a database password
+  written in `settings` rather than as a reference, since they would land in the Nix store. The
+  `nixos-module-secrets` check tests them.
+- **`verso-admin`** runs `verso admin …` in a short-lived unit made by `systemd-run`, with the
+  service's dynamic user and config. The unit's credentials are bound to
+  `/run/credentials/verso.service/`, so the config's references work unchanged.
 
 ## Tests
 

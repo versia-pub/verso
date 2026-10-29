@@ -7,8 +7,8 @@ system. To work on Verso itself, see [CONTRIBUTING.md](../../CONTRIBUTING.md) in
 
 - **A Linux server**, x86_64 or aarch64, with [Nix](https://nixos.org) and flakes enabled to build
   Verso.
-- **A domain, served over HTTPS.** Accounts and federation are tied to it, so it can't change later.
-  Verso must answer at `https://<domain>/` itself, as other instances look for it there.
+- **A domain, served over HTTPS**, which [can't change later](configuring.md#the-basics). Verso must
+  answer at `https://<domain>/` itself, as other instances look for it there.
 - **A database**: PostgreSQL, tested with version 18, with a UTF-8 database. SQLite also works, for
   a small instance in one process.
 - **An OpenID Connect provider**, such as Keycloak, Authentik or Kanidm. Verso has no passwords:
@@ -69,7 +69,7 @@ services.verso = {
   Refer to a credential as `${file:/run/credentials/verso.service/<name>}`, written `\${…}` in Nix.
 - **Media** is kept in `/var/lib/verso/media`, unless `settings.media.storage` says otherwise.
 - **The service** runs `verso migrate`, then `verso all`, as an unprivileged dynamic user.
-- **Admin commands** run with `sudo verso-admin …`, which has the service's config and secrets.
+- **Admin commands** run with `sudo verso-admin …`. See [Commands](commands.md).
 
 ## In a container
 
@@ -80,7 +80,7 @@ $(nix build --print-out-paths github:versia-pub/verso#image) | docker load
 ```
 
 The image is `verso:<version>`. It runs as user 65534, listens on port 8080, and reads
-`/config.toml`. Pass secrets as environment variables, and refer to them with `${env:NAME}`:
+`/config.toml`. Pass [secrets](configuring.md#secrets) as environment variables:
 
 ```sh
 docker run --rm -v ./config.toml:/config.toml:ro -e DB_PASSWORD verso:0.0.0 migrate
@@ -88,8 +88,7 @@ docker run -d -p 8080:8080 -v ./config.toml:/config.toml:ro -e DB_PASSWORD verso
 ```
 
 The first command sets up the database, and the second runs Verso. Use S3 for media in a container,
-or mount a volume writable by user 65534 and point `[media] storage` at it. Add the proxy's address
-to `[http] trusted_proxies`, so Verso sees each client's real address.
+or mount a volume writable by user 65534 and point `[media] storage` at it.
 
 ## From the package
 
@@ -102,8 +101,7 @@ nix build --out-link /opt/verso github:versia-pub/verso
 ```
 
 The link in `/opt/verso` keeps the build from being garbage-collected. Run `verso all` as a service,
-under its own user, such as with systemd. It stops cleanly on `SIGTERM`, finishing the requests and
-jobs in progress first.
+under its own user, such as with systemd.
 
 ## Behind a reverse proxy
 
@@ -140,17 +138,14 @@ server {
 }
 ```
 
-`$connection_upgrade` comes from the usual `map $http_upgrade $connection_upgrade` block. Verso
-trusts `X-Forwarded-For` only from `[http] trusted_proxies`, localhost by default.
-
-`GET /health/live` answers `ok` while Verso is running, for load balancers and container health
-checks.
+`$connection_upgrade` comes from the usual `map $http_upgrade $connection_upgrade` block. If the
+proxy isn't on the same machine, add its address to
+[`[http] trusted_proxies`](configuring.md#the-basics).
 
 ## First steps
 
 1. **Log in.** Verso has no web interface of its own: add your domain to a Mastodon app, and log in
-   through your provider. Your account is made at your first login, if the issuer's `registration`
-   lets you in.
+   through your provider. Your account is made at your first login.
 2. **Make an admin role**, and give it to yourself:
 
    ```sh
