@@ -60,9 +60,10 @@ Missing either is a `403`. `/docs` names each method's scope and permission.
   The `Link` header has the next and previous pages.
 - **Errors** are JSON, as on Mastodon: `{ "error": "…" }`, with `error_description` when there is
   more to say. A request that doesn't validate is a `422` saying what is wrong with it.
-- **Rate limits** count per account, or per IP address without one. Responses carry the IETF draft's
-  `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` headers, not Mastodon's
-  `X-RateLimit-*` ones. Past the limit, requests get a `429`, with `Retry-After`.
+- **Rate limits** count per account, or per IP address without one. Responses carry Mastodon's
+  `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` headers, and the IETF draft's
+  `RateLimit-*` ones, which Versia requires. Past the limit, requests get a `429`, with
+  `Retry-After`.
 
 ## Text
 

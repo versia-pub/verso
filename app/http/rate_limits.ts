@@ -80,6 +80,8 @@ export type Quota = {
     readonly remaining: number;
     /** Whole seconds until the window ends, as `RateLimit-Reset` and `Retry-After` expect. */
     readonly resetSeconds: number;
+    /** When the window ends, as `X-RateLimit-Reset` expects. */
+    readonly resetsAt: Date;
     readonly windowSeconds: number;
 };
 
@@ -98,6 +100,7 @@ export const consume = async (
         limit: policy.limit,
         remaining: Math.max(policy.limit - hits.count, 0),
         resetSeconds: Math.max(Math.ceil(untilReset / 1000), 0),
+        resetsAt: hits.resetsAt,
         windowSeconds: policy.windowSeconds,
     };
 };
@@ -113,7 +116,9 @@ export type RateLimits = {
 
 /**
  * Counts a request against `key` under `policy`, and rejects it once the key is over the limit.
- * Every response says how much of the quota is left.
+ * Every response says how much of the quota is left, in the draft's headers, which Versia requires,
+ * and in Mastodon's, which its clients read.
+ * @see https://docs.joinmastodon.org/api/rate-limits/
  */
 export const checkRateLimit = async (
     c: HonoContext,
@@ -127,6 +132,9 @@ export const checkRateLimit = async (
     c.header("ratelimit-limit", `${quota.limit}, ${quota.limit};w=${quota.windowSeconds}`);
     c.header("ratelimit-remaining", String(quota.remaining));
     c.header("ratelimit-reset", String(quota.resetSeconds));
+    c.header("x-ratelimit-limit", String(quota.limit));
+    c.header("x-ratelimit-remaining", String(quota.remaining));
+    c.header("x-ratelimit-reset", quota.resetsAt.toISOString());
 
     if (!quota.allowed) {
         // The same moment as RateLimit-Reset, as the draft requires.

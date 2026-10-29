@@ -13,6 +13,9 @@ const exposed = [
     "RateLimit-Remaining",
     "RateLimit-Reset",
     "Retry-After",
+    "X-RateLimit-Limit",
+    "X-RateLimit-Remaining",
+    "X-RateLimit-Reset",
 ];
 
 /**

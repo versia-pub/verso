@@ -36,12 +36,14 @@ for (const [name, open] of Object.entries(stores)) {
         await using subject = await open();
         const { store, clock } = subject;
         const take = () => consume(store, clock, policy, "client");
+        const resetsAt = new Date(clock.now().getTime() + 30_000);
 
         assertEquals(await take(), {
             allowed: true,
             limit: 2,
             remaining: 1,
             resetSeconds: 30,
+            resetsAt,
             windowSeconds: 30,
         });
         clock.advance(10_500);
@@ -153,11 +155,15 @@ Deno.test("replies say how much of the quota is left, and when it is gone", asyn
     const request = () =>
         test.app.request("/api/v1/ping", {}, { remoteAddr: { hostname: "203.0.113.9" } });
 
+    const resetsAt = new Date(test.clock.now().getTime() + 30_000).toISOString();
     const first = await request();
     await first.body?.cancel();
     assertEquals(first.headers.get("ratelimit-limit"), "2, 2;w=30");
     assertEquals(first.headers.get("ratelimit-remaining"), "1");
     assertEquals(first.headers.get("ratelimit-reset"), "30");
+    assertEquals(first.headers.get("x-ratelimit-limit"), "2");
+    assertEquals(first.headers.get("x-ratelimit-remaining"), "1");
+    assertEquals(first.headers.get("x-ratelimit-reset"), resetsAt);
 
     test.clock.advance(5_000);
     await (await request()).body?.cancel();
@@ -168,6 +174,8 @@ Deno.test("replies say how much of the quota is left, and when it is gone", asyn
     assertEquals(refused.headers.get("ratelimit-remaining"), "0");
     assertEquals(refused.headers.get("retry-after"), "25");
     assertEquals(refused.headers.get("ratelimit-reset"), "25");
+    assertEquals(refused.headers.get("x-ratelimit-remaining"), "0");
+    assertEquals(refused.headers.get("x-ratelimit-reset"), resetsAt);
     assertEquals(refused.headers.get("access-control-allow-origin"), "*");
 });
 

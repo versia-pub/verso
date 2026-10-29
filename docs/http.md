@@ -144,7 +144,8 @@ Every route is limited per client unless it sets `rateLimit: false`. A client is
 account, or else its IP address, where an IPv6 address counts by its /64. Signed routes are limited
 per remote instance instead. Counts live in memory, or in the `rate_limits` table so several web
 nodes share them, as `[http.rate_limit]` in config says. Responses carry the `RateLimit-*` headers
-Versia requires. The code is in [`app/http/rate_limits.ts`](../app/http/rate_limits.ts).
+Versia requires, and Mastodon's `X-RateLimit-*` ones, which its clients read. The code is in
+[`app/http/rate_limits.ts`](../app/http/rate_limits.ts).
 
 Behind a reverse proxy, list it in `http.trusted_proxies`, so the client's address is read from
 `X-Forwarded-For`.
