@@ -1,17 +1,14 @@
 import { Account, Search } from "@versia/client-api";
 import { z } from "zod";
-import type { AccountRow } from "../accounts/account_queries.ts";
 import { publicAccountsOf } from "../accounts/public.ts";
 import { HttpError } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Flag, Integer, Text } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
-import type { NoteRow } from "../notes/note_queries.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { searchAccounts } from "./accounts.ts";
-import { renderHashtags, searchHashtags } from "./hashtags.ts";
-import { searchStatuses } from "./statuses.ts";
-import { isUrlQuery, resolveUrl } from "./urls.ts";
+import { renderHashtags } from "./hashtags.ts";
+import { searchAll, type SearchResults } from "./search.ts";
 
 /**
  * The longest query Verso searches for, in characters, and the most results it skips, so a search
@@ -97,11 +94,7 @@ const SearchQuery = z.object({
 const rendered = async (
     ctx: Context,
     viewerId: string | null,
-    found: {
-        readonly accounts: readonly AccountRow[];
-        readonly statuses: readonly NoteRow[];
-        readonly hashtags: readonly string[];
-    },
+    found: SearchResults,
 ): Promise<Search> => ({
     // In the order of `accounts`.
     accounts: [...(await publicAccountsOf(ctx, found.accounts)).values()],
@@ -168,56 +161,19 @@ export const searchRoutes: readonly Route[] = [
                 );
             }
 
-            const wants = (type: typeof query.type) =>
-                query.type === undefined || query.type === type;
-            const { limit } = query;
-            const offset = query.type === undefined ? 0 : query.offset ?? 0;
-
-            // A URL is all a search that resolves looks for, as on Mastodon: what it names, on the
-            // first page, if it is of the type wanted.
-            const q = query.q.trim();
-            if (query.resolve && viewerId !== null && isUrlQuery(q)) {
-                const found = offset === 0 ? await resolveUrl(ctx, q, viewerId) : undefined;
-                const shown = found && wants(found.type) ? found : undefined;
-                return {
-                    status: 200,
-                    body: await rendered(ctx, viewerId, {
-                        accounts: shown?.type === "accounts" ? [shown.account] : [],
-                        statuses: shown?.type === "statuses" ? [shown.note] : [],
-                        hashtags: [],
-                    }),
-                };
-            }
-
-            const accounts = wants("accounts")
-                ? await searchAccounts(ctx, {
-                    query: query.q,
-                    viewerId,
-                    resolve: query.resolve,
-                    following: query.following,
-                    limit,
-                    offset,
-                })
-                : [];
-            const statuses = wants("statuses") && viewerId !== null
-                ? await searchStatuses(ctx, {
-                    query: query.q,
-                    viewerId,
-                    accountId: query.account_id ?? null,
-                    minId: query.min_id ?? null,
-                    maxId: query.max_id ?? null,
-                    limit,
-                    offset,
-                })
-                : [];
-            const hashtags = wants("hashtags")
-                ? await searchHashtags(ctx, { query: query.q, limit, offset })
-                : [];
-
-            return {
-                status: 200,
-                body: await rendered(ctx, viewerId, { accounts, statuses, hashtags }),
-            };
+            const found = await searchAll(ctx, {
+                query: query.q,
+                type: query.type,
+                viewerId,
+                resolve: query.resolve,
+                following: query.following,
+                accountId: query.account_id ?? null,
+                minId: query.min_id ?? null,
+                maxId: query.max_id ?? null,
+                limit: query.limit,
+                offset: query.offset,
+            });
+            return { status: 200, body: await rendered(ctx, viewerId, found) };
         },
     }),
 ];
