@@ -51,7 +51,8 @@ Rules for subscribers:
   notification it makes, which `queuePushes` hears.
 
 Events carry ids rather than rows, so any module can read them without depending on another module's
-row types. A subscriber that needs more looks it up.
+row types. A subscriber that needs more looks it up. To add one, see
+[Adding a side effect](guides/adding-a-side-effect.md).
 
 ## Jobs
 
@@ -91,7 +92,8 @@ Every queue is listed in [`app/jobs/queues.ts`](../app/jobs/queues.ts), with its
 | `leaseMs`     | how long a job may run before another worker may claim it; 5 minutes default |
 | `deadPayload` | what a dead job keeps of its payload, such as a summary of a large one       |
 
-Limits are per worker, so three workers send an instance three times as much at once.
+Limits are per worker, so three workers send an instance three times as much at once. To add a
+queue, see [Adding a job](guides/adding-a-job.md).
 
 ### Handlers
 

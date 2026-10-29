@@ -48,7 +48,8 @@ The main fields:
 | `maxBodyBytes`                   | a larger body limit than 256 KiB, such as for uploads        |
 | `maxAge`, `immutable`            | let others cache the response; otherwise nothing may         |
 
-The comments in `route.ts` describe the rest.
+The comments in `route.ts` describe the rest. To add one, see
+[Adding a route](guides/adding-a-route.md).
 
 ## What happens to a request
 

@@ -65,7 +65,7 @@ later, and nothing reads environment variables except the config's own `${env:â€
 
 `ctx.settings` is a [`Settings`](../app/kernel/settings.ts), in the units the code uses, such as
 `deliveryMs` for `[federation] delivery_hours`. Tests use `defaultSettings`, and change only what
-they test.
+they test. To add a setting, see [Adding a config option](guides/adding-a-config-option.md).
 
 ## Sections
 

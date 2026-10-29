@@ -121,6 +121,8 @@ export const markers: Migration = {
 After the schema, `verso migrate` also makes the instance's keys and indexes for search any statuses
 and accounts that aren't yet.
 
+To add a table, see [Adding a table](guides/adding-a-table.md).
+
 ## Tests
 
 Each test gets a new database with every migration run, from `migratedTestDatabase` in

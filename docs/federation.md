@@ -45,7 +45,8 @@ the resolver and the entity routes all read:
 
 Modules add collections to `User` and `Note` in `app/registry.ts`, so `notes` doesn't need to know
 about likes, nor `accounts` about follows. The registry also lists the extensions Verso supports,
-for `/.versia/v0.6/instance`.
+for `/.versia/v0.6/instance`. To add a type, see
+[Adding a Versia type](guides/adding-a-versia-type.md).
 
 ## Receiving
 
