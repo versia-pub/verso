@@ -35,7 +35,8 @@ nix flake check
 ```
 
 If the package build then says Deno runs another esbuild, update
-[`nix/esbuild.nix`](../nix/esbuild.nix).
+[`nix/esbuild.nix`](../nix/esbuild.nix). If vips fails to build because a dependency isn't found,
+add that feature to the ones [`nix/vips.nix`](../nix/vips.nix) leaves out.
 
 GitHub Actions in `ci.yml` are pinned to a commit, with the version in a comment. Upgrade both
 together.

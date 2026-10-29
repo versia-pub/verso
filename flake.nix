@@ -18,8 +18,9 @@
 
       packages = forAllSystems (pkgs: rec {
         deps = pkgs.callPackage ./nix/deps.nix { };
+        vips = pkgs.callPackage ./nix/vips.nix { };
         default = pkgs.callPackage ./nix/package.nix {
-          inherit deps;
+          inherit deps vips;
           esbuild = pkgs.callPackage ./nix/esbuild.nix { };
         };
         image = pkgs.callPackage ./nix/image.nix { verso = default; };
@@ -30,7 +31,9 @@
       apps = forAllSystems (pkgs: import ./nix/apps.nix { inherit pkgs; });
 
       devShells = forAllSystems (pkgs: {
-        default = pkgs.callPackage ./nix/devshell.nix { };
+        default = pkgs.callPackage ./nix/devshell.nix {
+          inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) vips;
+        };
       });
 
       checks = forAllSystems (
@@ -39,7 +42,7 @@
           inherit pkgs;
           src = self;
           module = self.nixosModules.default;
-          inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) deps image;
+          inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) deps image vips;
         }
       );
     };

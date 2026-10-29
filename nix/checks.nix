@@ -4,6 +4,7 @@
   deps,
   image,
   module,
+  vips,
 }:
 let
   # Runs a deno.json task in a read-only copy of the source and its vendored dependencies, so a
@@ -35,18 +36,18 @@ in
   # Tests process pictures with vips, as Verso does. Each PGlite takes most of a gigabyte until it
   # is collected, so fewer tests run at once, which takes barely longer than one per core.
   test-pglite = denoTaskWith "test-pglite" "test" {
-    packages = [ pkgs.vips ];
+    packages = [ vips ];
     setup = "export DENO_JOBS=6";
   };
   test-sqlite = denoTaskWith "test-sqlite" "test" {
-    packages = [ pkgs.vips ];
+    packages = [ vips ];
     setup = "export VERSO_TEST_DATABASE=sqlite";
   };
   # A throwaway PostgreSQL in $TMPDIR, reached over loopback, the only network in the sandbox.
   test-postgres = denoTaskWith "test-postgres" "test" {
     packages = [
       pkgs.postgresql_18
-      pkgs.vips
+      vips
     ];
     setup = ''
       # UTF-8, as real installs are, so that words of every script are words.

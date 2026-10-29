@@ -304,7 +304,7 @@ Deno.test("what isn't a picture in a format Verso takes is refused as unsupporte
         await refused(new TextEncoder().encode("<svg xmlns='http://www.w3.org/2000/svg'/>")),
         "unsupported",
     );
-    assertEquals(await refused(await picture("tif", 4, 4, red)), "unsupported");
+    assertEquals(await refused(await picture("ppm", 4, 4, red)), "unsupported");
     assertEquals(await refused(new Uint8Array()), "unsupported");
 });
 

@@ -47,21 +47,24 @@ another status. Edits keep the old version's media, so a status's history still 
 
 ## Processing with vips
 
-Images are processed by running the [vips](https://www.libvips.org) command-line tools from nixpkgs,
-in [`app/kernel/vips_images.ts`](../app/kernel/vips_images.ts). The old server used sharp, which
-ships native binaries that needed workarounds under Nix. With the CLI, no native npm packages are
-involved.
+Images are processed by running the [vips](https://www.libvips.org) command-line tools, built by
+[`nix/vips.nix`](../nix/vips.nix), in [`app/kernel/vips_images.ts`](../app/kernel/vips_images.ts).
+The old server used sharp, which ships native binaries that needed workarounds under Nix. With the
+CLI, no native npm packages are involved.
 
 It is fast enough: turning a 48 MP photo upright and stripping its metadata takes about 0.4 s on a
 desktop, and up to 1.4 s on CI runners. A thumbnail takes less.
 
 - **Untrusted loaders are blocked**, with `VIPS_BLOCK_UNTRUSTED=1`, so vips won't read formats such
-  as SVG through ImageMagick. Verso checks this at startup, and stops if vips is too old to block
-  them (it needs 8.13 or later).
+  as SVG, even if it was built to. Verso checks this at startup, and stops if vips is too old to
+  block them (it needs 8.13 or later).
 - **Each job runs vips a few times**, a minute each at most, so the media queue runs two jobs at a
   time per worker, with a lease of 15 minutes.
 - **Stripping metadata re-encodes JPEGs**, which loses a little quality.
-- **vips adds about 278 MiB** to the container image.
+- **vips has only the libraries for the formats Verso accepts**, and for colour profiles and EXIF
+  orientation, unlike nixpkgs's, which has ImageMagick, Poppler and more. It adds about 90 MiB to
+  the container image, over a third of that for HEIC and AVIF, which x265 and libaom encode. The dev
+  shell and the tests use the same vips.
 - **In shell scripts**, quote arguments such as `"in.jpg[autorotate]"`. Nix's build shell drops them
   otherwise.
 

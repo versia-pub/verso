@@ -8,6 +8,7 @@ there, so your machine, CI and production use the same versions of everything.
 | ---------------------- | ------------------ | --------------------------------- |
 | `devShells.default`    | `nix/devshell.nix` | Deno, nixfmt, PostgreSQL and vips |
 | `packages.deps`        | `nix/deps.nix`     | every dependency, vendored        |
+| `packages.vips`        | `nix/vips.nix`     | vips, with only Verso's formats   |
 | `packages.default`     | `nix/package.nix`  | the `verso` command               |
 | `packages.image`       | `nix/image.nix`    | the container image               |
 | `nixosModules.default` | `nix/module.nix`   | `services.verso`, for NixOS       |
