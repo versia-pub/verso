@@ -11,9 +11,10 @@ import { publish } from "../kernel/pubsub.ts";
 import type { NotesTable } from "../notes/tables.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
+import { dispatcher } from "./dispatcher.ts";
 import { streamHashtags } from "./hashtags.ts";
 import { openSession } from "./session.ts";
-import { statusMessages } from "./statuses.ts";
+import { type StatusMessage, statusMessages } from "./statuses.ts";
 
 /** The `hashtag` and `hashtag:local` streams of #nix and #rust. */
 const everyStream = [
@@ -25,6 +26,7 @@ const everyStream = [
 
 const open = async () => {
     const test = await createTestContext();
+    const dispatch = dispatcher(test.ctx);
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     await createInstance(test.ctx, "b.example");
     await createRemoteAccount(test.ctx, "carol", "b.example");
@@ -62,7 +64,17 @@ const open = async () => {
             session.receive(JSON.stringify({ type: "subscribe", stream, tag }));
         }
 
-        return { sent, liked, stop: streamHashtags(options.ctx ?? test.ctx, viewer, session) };
+        return {
+            sent,
+            liked,
+            stop: dispatch.listen(streamHashtags(options.ctx ?? test.ctx, viewer, session)),
+        };
+    };
+
+    /** Publishes `message`, and waits until it is streamed. */
+    const published = async (message: StatusMessage) => {
+        await publish(test.ctx, statusMessages, message);
+        await dispatch.idle();
     };
 
     /** Adds a status using `tags`, as `createNote` does, and says it appeared. */
@@ -72,13 +84,13 @@ const open = async () => {
         note: Partial<Insertable<NotesTable>> = {},
     ) => {
         const { id } = await createNote(test.ctx, accountId, note, [], tags);
-        await publish(test.ctx, statusMessages, { event: "update", noteId: id });
+        await published({ event: "update", noteId: id });
         return id;
     };
 
     /** Says the status `noteId` was deleted, as it would if it were `visibility`. */
     const deleted = async (noteId: string, visibility: Visibility = "public") =>
-        await publish(test.ctx, statusMessages, {
+        await published({
             event: "delete",
             noteId,
             accountId: "bob",
@@ -86,7 +98,7 @@ const open = async () => {
             mentionIds: [],
         });
 
-    return { ...test, streaming, post, deleted };
+    return { ...test, streaming, post, deleted, published };
 };
 
 Deno.test("public statuses are sent on the streams of each hashtag they use, for where they are from", async () => {
@@ -95,7 +107,7 @@ Deno.test("public statuses are sent on the streams of each hashtag they use, for
     const local = test.streaming("alice", [["hashtag:local", "rust"]]);
 
     const both = await test.post("bob", ["nix", "rust"]);
-    await publish(test.ctx, statusMessages, { event: "status.update", noteId: both });
+    await test.published({ event: "status.update", noteId: both });
     const remote = await test.post("carol", ["nix"], { instance_id: "b.example", remote_id: "c1" });
     // Replies too.
     const reply = await test.post("bob", ["rust"], {
@@ -133,7 +145,7 @@ Deno.test("only public statuses using hashtags are sent, and only deletes of pub
     await test.post("bob", ["go"]);
     const untagged = await test.post("bob", []);
     const share = await createShare(test.ctx, "bob", untagged);
-    await publish(test.ctx, statusMessages, { event: "update", noteId: share.id });
+    await test.published({ event: "update", noteId: share.id });
     await test.deleted(unlisted, "unlisted");
     await test.deleted(untagged);
 

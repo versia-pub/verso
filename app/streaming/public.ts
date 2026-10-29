@@ -7,10 +7,9 @@
  */
 import type { RouteViewer } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
-import { subscribe } from "../kernel/pubsub.ts";
 import { publicStatus } from "../notes/public.ts";
 import type { Session } from "./session.ts";
-import { statusMessages } from "./statuses.ts";
+import type { Listener } from "./dispatcher.ts";
 
 const streams = [
     "public",
@@ -22,16 +21,16 @@ const streams = [
 ];
 
 /**
- * Sends `session` the events of the `public` streams while it is subscribed to any of them, until
- * the function returned is called. A status is sent if it is on the public timeline its viewer
- * sees, and they may read statuses, as on the public timeline, rendered as they see it.
+ * What `session` is sent of the `public` streams while it is subscribed to any of them. A status
+ * is sent if it is on the public timeline its viewer sees, and they may read statuses, as on the
+ * public timeline, rendered as they see it.
  */
 export const streamPublic = (
     ctx: Context,
     viewer: RouteViewer & { readonly accountId: string },
     session: Session,
-): () => void =>
-    subscribe(ctx, statusMessages, async (message) => {
+): Listener => ({
+    statuses: async (message) => {
         if (!session.subscribedTo(streams)) return;
         if (!(await viewer.permissions()).has("read:note")) return;
 
@@ -54,4 +53,5 @@ export const streamPublic = (
             message.event,
             JSON.stringify(shown.status),
         );
-    });
+    },
+});

@@ -4,6 +4,7 @@ import { watchToken } from "../auth/tokens.ts";
 import { HttpError, NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route, Upgrade } from "../http/route.ts";
 import type { StreamingLimits } from "../kernel/config_sections.ts";
+import { type Dispatcher, dispatcher } from "./dispatcher.ts";
 import { streamHashtags } from "./hashtags.ts";
 import { streamPublic } from "./public.ts";
 import { openSession } from "./session.ts";
@@ -23,6 +24,8 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
         opened.set(accountId, open);
         return open;
     };
+    /** The process's, once a WebSocket first needs it. */
+    let dispatch: Dispatcher | undefined;
 
     return [
         defineRoute({
@@ -96,11 +99,12 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
                                 viewer.accountId,
                                 viewer.forgetPermissions,
                             );
+                            const { listen } = dispatch ??= dispatcher(ctx);
                             const unstreams = [
                                 streamUser(ctx, viewer, session),
                                 streamPublic(ctx, viewer, session),
                                 streamHashtags(ctx, viewer, session),
-                            ];
+                            ].map(listen);
                             socket.onclose = () => {
                                 count(viewer.accountId, -1);
                                 unwatch();

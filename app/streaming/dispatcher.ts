@@ -1,0 +1,97 @@
+/**
+ * Giving a process's streaming sessions the statuses and notifications they stream, from one
+ * subscription to each channel rather than one for every session. Messages are handled one at a
+ * time, in the order they are heard, so a session is never sent a status's delete before its
+ * update, and what published them doesn't wait for them to be streamed.
+ * @module
+ */
+import { getLogger } from "@logtape/logtape";
+import type { Context } from "../kernel/context.ts";
+import { subscribe } from "../kernel/pubsub.ts";
+import { notified, type NotifiedMessage } from "../notifications/notifications.ts";
+import { type StatusMessage, statusMessages } from "./statuses.ts";
+
+/** What a session streams of each message, as each stream's module decides. */
+export type Listener = {
+    readonly statuses?: (message: StatusMessage) => Promise<void>;
+    readonly notifications?: (message: NotifiedMessage) => Promise<void>;
+};
+
+export type Dispatcher = {
+    /** Gives `listener` each message from now on, until the function returned is called. */
+    readonly listen: (listener: Listener) => () => void;
+    /** Resolves once every message heard so far is handled. */
+    readonly idle: () => Promise<void>;
+};
+
+/** How many listeners handle a message at once, each with queries of its own. */
+const listenersAtOnce = 8;
+
+/**
+ * How many messages may wait to be handled. Past that, streaming has fallen behind, and messages
+ * are dropped rather than kept in memory.
+ */
+const maxWaiting = 1000;
+
+const logger = getLogger(["verso", "streaming"]);
+
+/** Runs `run` on each of `items`, `limit` at a time, logging rather than throwing if any fails. */
+const atMost = async <T>(limit: number, items: readonly T[], run: (item: T) => Promise<void>) => {
+    let next = 0;
+    const worker = async () => {
+        while (next < items.length) {
+            const item = items[next++];
+            try {
+                await run(item);
+            } catch (error) {
+                logger.error("Failed to stream a message: {error}", { error });
+            }
+        }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+};
+
+/** A dispatcher for the sessions of the process `ctx` belongs to. */
+export const dispatcher = (ctx: Context): Dispatcher => {
+    const listeners = new Set<Listener>();
+    let handled = Promise.resolve();
+    let waiting = 0;
+
+    const handle = (run: (listener: Listener) => Promise<void>) => {
+        if (waiting >= maxWaiting) {
+            logger.warning("Dropped a message, as streaming is {waiting} messages behind", {
+                waiting,
+            });
+            return Promise.resolve();
+        }
+
+        waiting++;
+        handled = handled.then(async () => {
+            await atMost(listenersAtOnce, [...listeners], run);
+            waiting--;
+        });
+        return Promise.resolve();
+    };
+
+    subscribe(
+        ctx,
+        statusMessages,
+        (message) => handle(async (listener) => await listener.statuses?.(message)),
+    );
+    subscribe(
+        ctx,
+        notified,
+        (message) => handle(async (listener) => await listener.notifications?.(message)),
+    );
+
+    return {
+        listen: (listener) => {
+            listeners.add(listener);
+            return () => {
+                listeners.delete(listener);
+            };
+        },
+        idle: () => handled,
+    };
+};

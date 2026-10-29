@@ -6,10 +6,9 @@
  */
 import type { RouteViewer } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
-import { subscribe } from "../kernel/pubsub.ts";
 import { hashtagStatus } from "../notes/public.ts";
 import { hashtagStream, type Session } from "./session.ts";
-import { statusMessages } from "./statuses.ts";
+import type { Listener } from "./dispatcher.ts";
 
 /** Whether `stream`, as a session names it, is a hashtag's. */
 const isHashtagStream = (stream: string) =>
@@ -17,16 +16,16 @@ const isHashtagStream = (stream: string) =>
     stream.startsWith(hashtagStream("hashtag:local", ""));
 
 /**
- * Sends `session` the events of the hashtag streams it is subscribed to, until the function
- * returned is called. A status is sent on the streams of each hashtag it uses if it could be on
- * their timelines as its viewer sees them, and they may read statuses, rendered as they see it.
+ * What `session` is sent of the hashtag streams it is subscribed to. A status is sent on the
+ * streams of each hashtag it uses if it could be on their timelines as its viewer sees them, and
+ * they may read statuses, rendered as they see it.
  */
 export const streamHashtags = (
     ctx: Context,
     viewer: RouteViewer & { readonly accountId: string },
     session: Session,
-): () => void =>
-    subscribe(ctx, statusMessages, async (message) => {
+): Listener => ({
+    statuses: async (message) => {
         const subscribed = session.streams().filter(isHashtagStream);
         if (subscribed.length === 0) return;
         if (!(await viewer.permissions()).has("read:note")) return;
@@ -49,4 +48,5 @@ export const streamHashtags = (
             message.event,
             JSON.stringify(shown.status),
         );
-    });
+    },
+});

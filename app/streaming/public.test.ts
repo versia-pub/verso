@@ -13,9 +13,10 @@ import { saveRemoteMedia } from "../media/media_queries.ts";
 import type { NotesTable } from "../notes/tables.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
+import { dispatcher } from "./dispatcher.ts";
 import { streamPublic } from "./public.ts";
 import { openSession } from "./session.ts";
-import { statusMessages } from "./statuses.ts";
+import { type StatusMessage, statusMessages } from "./statuses.ts";
 
 const everyStream = [
     "public",
@@ -28,6 +29,7 @@ const everyStream = [
 
 const open = async () => {
     const test = await createTestContext();
+    const dispatch = dispatcher(test.ctx);
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     await createInstance(test.ctx, "b.example");
     await createRemoteAccount(test.ctx, "carol", "b.example");
@@ -65,19 +67,29 @@ const open = async () => {
             session.receive(JSON.stringify({ type: "subscribe", stream }));
         }
 
-        return { sent, liked, stop: streamPublic(options.ctx ?? test.ctx, viewer, session) };
+        return {
+            sent,
+            liked,
+            stop: dispatch.listen(streamPublic(options.ctx ?? test.ctx, viewer, session)),
+        };
+    };
+
+    /** Publishes `message`, and waits until it is streamed. */
+    const published = async (message: StatusMessage) => {
+        await publish(test.ctx, statusMessages, message);
+        await dispatch.idle();
     };
 
     /** Adds a status, as `createNote` does, and says it appeared. */
     const post = async (accountId: string, note: Partial<Insertable<NotesTable>> = {}) => {
         const { id } = await createNote(test.ctx, accountId, note);
-        await publish(test.ctx, statusMessages, { event: "update", noteId: id });
+        await published({ event: "update", noteId: id });
         return id;
     };
 
     /** Says the status `noteId` was deleted, as it would if it were `visibility`. */
     const deleted = async (noteId: string, visibility: Visibility = "public") =>
-        await publish(test.ctx, statusMessages, {
+        await published({
             event: "delete",
             noteId,
             accountId: "bob",
@@ -85,7 +97,7 @@ const open = async () => {
             mentionIds: [],
         });
 
-    return { ...test, streaming, post, deleted };
+    return { ...test, streaming, post, deleted, published };
 };
 
 Deno.test("public statuses are sent on the public streams for where they are from", async () => {
@@ -94,7 +106,7 @@ Deno.test("public statuses are sent on the public streams for where they are fro
     const local = test.streaming("alice", ["public:local"]);
 
     const note = await test.post("bob");
-    await publish(test.ctx, statusMessages, { event: "status.update", noteId: note });
+    await test.published({ event: "status.update", noteId: note });
     const remote = await test.post("carol", { instance_id: "b.example", remote_id: "c1" });
     const media = await saveRemoteMedia(test.ctx, "b.example", null, {
         url: "https://b.example/carol.png",
@@ -105,7 +117,7 @@ Deno.test("public statuses are sent on the public streams for where they are fro
         remote_id: "c2",
     });
     await insertAttachments(test.ctx, pictured.id, [media]);
-    await publish(test.ctx, statusMessages, { event: "update", noteId: pictured.id });
+    await test.published({ event: "update", noteId: pictured.id });
 
     assertEquals(alice.sent, [
         ["public", "update", note],
@@ -138,7 +150,7 @@ Deno.test("only statuses of the public timeline are sent, and only deletes of pu
         in_reply_to_account_id: "alice",
     });
     const share = await createShare(test.ctx, "bob", unlisted);
-    await publish(test.ctx, statusMessages, { event: "update", noteId: share.id });
+    await test.published({ event: "update", noteId: share.id });
     await test.deleted(unlisted, "unlisted");
     await test.deleted(reply);
 

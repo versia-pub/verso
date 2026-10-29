@@ -7,13 +7,13 @@
 import { isFollowing } from "../graph/follows.ts";
 import type { RouteViewer } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
-import { subscribe } from "../kernel/pubsub.ts";
 import { grants } from "../kernel/scopes.ts";
 import { homeStatus } from "../notes/home.ts";
-import { notified } from "../notifications/notifications.ts";
+import type { NotifiedMessage } from "../notifications/notifications.ts";
 import { shownNotification } from "../notifications/render.ts";
+import type { Listener } from "./dispatcher.ts";
 import type { Session } from "./session.ts";
-import { type StatusMessage, statusMessages } from "./statuses.ts";
+import type { StatusMessage } from "./statuses.ts";
 
 /** Whether `viewerId` could see the status deleted, so is told it went. */
 const couldSee = async (
@@ -24,8 +24,7 @@ const couldSee = async (
     (deleted.visibility !== "direct" && await isFollowing(ctx, viewerId, deleted.accountId));
 
 /**
- * Sends `session` the events of its viewer's `user` streams while it is subscribed to them, until
- * the function returned is called. A status is sent if it is on their home timeline when it is
+ * What `session` is sent of its viewer's `user` streams while it is subscribed to them. A status is sent if it is on their home timeline when it is
  * heard of, and a notification if they are shown it, each rendered as they see it, as long as they
  * may read statuses and their notifications, as on the routes for them. As on Mastodon, the `user`
  * stream has notifications only if the token may read them.
@@ -34,10 +33,13 @@ export const streamUser = (
     ctx: Context,
     viewer: RouteViewer & { readonly accountId: string },
     session: Session,
-): () => void => {
+): Listener => {
     const viewerId = viewer.accountId;
+    const streams = grants(viewer.scopes, "read:notifications")
+        ? ["user", "user:notification"]
+        : ["user:notification"];
 
-    const unsubscribeStatuses = subscribe(ctx, statusMessages, async (message) => {
+    const statuses = async (message: StatusMessage) => {
         if (!session.subscribedTo(["user"])) return;
         if (!(await viewer.permissions()).has("read:note")) return;
 
@@ -50,21 +52,15 @@ export const streamUser = (
 
         const status = await homeStatus(ctx, viewerId, message.noteId);
         if (status) session.deliver(["user"], message.event, JSON.stringify(status));
-    });
+    };
 
-    const streams = grants(viewer.scopes, "read:notifications")
-        ? ["user", "user:notification"]
-        : ["user:notification"];
-    const unsubscribeNotifications = subscribe(ctx, notified, async (message) => {
+    const notifications = async (message: NotifiedMessage) => {
         if (message.accountId !== viewerId || !session.subscribedTo(streams)) return;
         if (!(await viewer.permissions()).has("owner:notification")) return;
 
         const notification = await shownNotification(ctx, viewerId, message.notificationId);
         if (notification) session.deliver(streams, "notification", JSON.stringify(notification));
-    });
-
-    return () => {
-        unsubscribeStatuses();
-        unsubscribeNotifications();
     };
+
+    return { statuses, notifications };
 };

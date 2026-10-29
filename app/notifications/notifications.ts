@@ -29,8 +29,11 @@ import {
 import type { NotificationCreated } from "./events.ts";
 import type { NotificationType } from "./tables.ts";
 
+/** Who was notified, and of which notification. */
+export type NotifiedMessage = { readonly accountId: string; readonly notificationId: string };
+
 /** Says a local user was notified, so every process can stream it to them. */
-export const notified: Channel<{ readonly accountId: string; readonly notificationId: string }> = {
+export const notified: Channel<NotifiedMessage> = {
     name: "notifications.created",
     schema: z.object({ accountId: z.string(), notificationId: z.string() }),
 };

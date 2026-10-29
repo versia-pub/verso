@@ -9,10 +9,12 @@ import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { createTestContext } from "../testing/context.ts";
 import { openSession } from "./session.ts";
+import { dispatcher } from "./dispatcher.ts";
 import { streamUser } from "./user.ts";
 
 const open = async () => {
     const test = await createTestContext();
+    const dispatch = dispatcher(test.ctx);
     for (const id of ["alice", "bob", "carol"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "alice", "bob");
 
@@ -52,7 +54,10 @@ const open = async () => {
             session.receive(JSON.stringify({ type: "subscribe", stream }));
         }
 
-        return { sent, stop: streamUser(options.ctx ?? test.ctx, viewer, session) };
+        return {
+            sent,
+            stop: dispatch.listen(streamUser(options.ctx ?? test.ctx, viewer, session)),
+        };
     };
 
     const post = async (accountId: string, text: string, visibility?: "direct" | "private") => {
@@ -63,10 +68,11 @@ const open = async () => {
             visibility,
         });
         if (note === undefined) throw new Error("Not posted");
+        await dispatch.idle();
         return note.id;
     };
 
-    return { ...test, streaming, post };
+    return { ...test, dispatch, streaming, post };
 };
 
 Deno.test("a user is sent the statuses of their home timeline as they are posted, edited and deleted", async () => {
@@ -79,7 +85,9 @@ Deno.test("a user is sent the statuses of their home timeline as they are posted
 
     const note = await test.post("bob", "Hi");
     await editNote(test.ctx, "bob", note, { text: "Hello" });
+    await test.dispatch.idle();
     await removeNote(test.ctx, note);
+    await test.dispatch.idle();
 
     const told = [["user", "update", note], ["user", "status.update", note], [
         "user",
@@ -102,6 +110,7 @@ Deno.test("a user is told of statuses they may see, and those deleted that they 
     // carol muted bob, so isn't sent his statuses, though she is told those deleted.
     const shown = await test.post("bob", "Hi", "private");
     for (const note of [direct, mentioning, shown]) await removeNote(test.ctx, note);
+    await test.dispatch.idle();
 
     assertEquals(alice.sent, [
         // Her token may read notifications.
@@ -139,6 +148,7 @@ Deno.test("a user is sent no statuses unless they may read them, nor notificatio
 
     const note = await test.post("bob", "Hi @alice");
     await removeNote(test.ctx, note);
+    await test.dispatch.idle();
 
     assertEquals(noStatuses.sent, [
         ["user", "notification", note],
@@ -172,6 +182,7 @@ Deno.test("a user's session reads nothing for streams it isn't subscribed to, or
 
     const note = await test.post("bob", "Hi @alice");
     await removeNote(test.ctx, note);
+    await test.dispatch.idle();
 
     assertEquals(reads, 0);
 });
