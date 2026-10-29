@@ -5,7 +5,7 @@ import { registerTestApp } from "../auth/testing.ts";
 import { issueToken } from "../auth/tokens.ts";
 import { follow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
-import { drain } from "../jobs/worker.ts";
+import { drain, PermanentFailure } from "../jobs/worker.ts";
 import { postNote } from "../notes/notes.ts";
 import { createTestContext } from "../testing/context.ts";
 import { vapidKey } from "./keys.ts";
@@ -360,4 +360,28 @@ Deno.test("a push stops being waited for once its worker stops, to be retried", 
 
     const error = await assertRejects(() => pushing, DOMException);
     assertEquals(error.name, "AbortError");
+});
+
+Deno.test("a push service has as long to answer as settings give it", async () => {
+    await using test = await open();
+    await test.subscribe("alice", "a");
+    await test.post("bob", "Hi @alice");
+    const job = await test.ctx.db.selectFrom("jobs").selectAll().where("queue", "=", "push")
+        .executeTakeFirstOrThrow();
+
+    // Answers only once the push is given up on.
+    test.transport.servers.set("push.example", (request) =>
+        new Promise((_, reject) => {
+            request.signal.addEventListener("abort", () => reject(request.signal.reason));
+        }));
+    const settings = { ...test.ctx.settings, pushTimeoutMs: 10 };
+    const started = performance.now();
+
+    await assertRejects(
+        () => pushHandler({ ...test.ctx, settings }, job),
+        PermanentFailure,
+        "took over 10 ms",
+    );
+    // Well under the default of 10 seconds.
+    assertEquals(performance.now() - started < 1000, true);
 });

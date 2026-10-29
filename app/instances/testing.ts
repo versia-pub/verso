@@ -1,4 +1,10 @@
-import { Instance, Limits, MediaLimits, StreamingLimits } from "../kernel/config_sections.ts";
+import {
+    Instance,
+    Limits,
+    MediaLimits,
+    SearchLimits,
+    StreamingLimits,
+} from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Server } from "../kernel/fake_transport.ts";
 import type { AboutSettings } from "./render.ts";
@@ -26,6 +32,7 @@ export const defaultSettings = (): AboutSettings => ({
     auth: { issuers: [], dev_login: false, timeout_seconds: 15 },
     media: MediaLimits.parse({}),
     streaming: StreamingLimits.parse({}),
+    search: SearchLimits.parse({}),
 });
 
 /** An instance's key pair, with its public half as InstanceMetadata shows it. */

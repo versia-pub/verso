@@ -38,12 +38,6 @@ const ttlSeconds = 2 * 24 * 60 * 60;
 /** Tries a few times, as on Mastodon, since a push is stale soon after. */
 const maxAttempts = 5;
 
-/**
- * How long a push service has to respond, so a slow one can't hold a worker. One that takes longer
- * isn't tried again, as it would hold a worker as long each time.
- */
-const timeoutMs = 10_000;
-
 /** Whether `subscription` asks for `created`, by its type and by whom it is from. */
 const wants = async (
     ctx: Context,
@@ -174,7 +168,7 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
             urgency: "normal",
         },
         body,
-        signal: timeoutSignal(timeoutMs, ctx.signal),
+        signal: timeoutSignal(ctx.settings.pushTimeoutMs, ctx.signal),
     });
 
     let response;
@@ -182,7 +176,9 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
         response = await ctx.transport(request);
     } catch (error) {
         if (error instanceof DOMException && error.name === "TimeoutError") {
-            throw new PermanentFailure(`The push service took over ${timeoutMs} ms`);
+            throw new PermanentFailure(
+                `The push service took over ${ctx.settings.pushTimeoutMs} ms`,
+            );
         }
         throw error;
     }

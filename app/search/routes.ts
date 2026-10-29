@@ -4,6 +4,7 @@ import { publicAccountsOf } from "../accounts/public.ts";
 import { HttpError } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Flag, Integer, Text } from "../http/schemas.ts";
+import type { SearchLimits } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { searchAccounts } from "./accounts.ts";
@@ -11,18 +12,13 @@ import { renderHashtags } from "./hashtags.ts";
 import { searchAll, type SearchResults } from "./search.ts";
 
 /**
- * The longest query Verso searches for, in characters, and the most results it skips, so a search
- * can't make it do unbounded work. Mastodon has neither.
- */
-const maxQueryLength = 500;
-const maxOffset = 10_000;
-
-/**
- * What `/api/v1/accounts/search` accepts, as Mastodon describes it. Clients may request more than
- * 80 accounts, and get 80.
+ * What `/api/v1/accounts/search` accepts, as Mastodon describes it, with a query and offset no
+ * longer than `limits` allow. Clients may request more than 80 accounts, and get 80.
  * @see https://docs.joinmastodon.org/methods/accounts/#search
  */
-const AccountSearchQuery = z.object({
+const AccountSearchQuery = (
+    { query_length: maxQueryLength, max_offset: maxOffset }: SearchLimits,
+) => z.object({
     q: Text(maxQueryLength).meta({
         description: `Search query for accounts. At most ${maxQueryLength} characters.`,
     }),
@@ -43,52 +39,56 @@ const AccountSearchQuery = z.object({
 });
 
 /**
- * What `/api/v2/search` accepts, as Mastodon describes it. Clients may request more than 40 of each,
- * and get 40.
+ * What `/api/v2/search` accepts, as Mastodon describes it, with a query and offset no longer than
+ * `limits` allow. Clients may request more than 40 of each, and get 40.
  * @see https://docs.joinmastodon.org/methods/search/#v2
  */
-const SearchQuery = z.object({
-    q: Text(maxQueryLength).meta({
-        description: `The search query. At most ${maxQueryLength} characters.`,
-    }),
-    type: z.enum(["accounts", "hashtags", "statuses"]).optional().meta({
-        description: "Specify whether to search for only `accounts`, `hashtags`, `statuses`.",
-    }),
-    resolve: Flag.default(false).meta({
-        description: "Attempt WebFinger lookup, when `q` is an account's address, or look up " +
-            "the account or status at a URL, when `q` is one. Defaults to false. Verso " +
-            "looks up the Versia URLs it shows as accounts' and statuses' `uri`.",
-    }),
-    following: Flag.default(false).meta({
-        description: "Only include accounts that the user is following? Defaults to false.",
-    }),
-    account_id: z.string().optional().meta({
-        description: "If provided, will only return statuses authored by this account.",
-    }),
-    exclude_unreviewed: Flag.default(false).meta({
-        description: "Filter out unreviewed tags? Verso doesn't review hashtags, so this changes " +
-            "nothing.",
-    }),
-    max_id: z.string().optional().meta({
-        description: "All results returned will be lesser than this ID. In effect, sets an upper " +
-            "bound on results.",
-    }),
-    min_id: z.string().optional().meta({
-        description:
-            "Returns results immediately newer than this ID. In effect, sets a cursor at " +
-            "this ID and paginates forward.",
-    }),
-    limit: Integer.pipe(z.int().min(0)).optional()
-        .transform((asked) => Math.max(1, Math.min(asked ?? 20, 40)))
-        .meta({
-            description: "Maximum number of results to return, per type. Defaults to 20 results " +
-                "per category. Max 40 results per category.",
+const SearchQuery = ({ query_length: maxQueryLength, max_offset: maxOffset }: SearchLimits) =>
+    z.object({
+        q: Text(maxQueryLength).meta({
+            description: `The search query. At most ${maxQueryLength} characters.`,
         }),
-    offset: Integer.pipe(z.int().min(0).max(maxOffset)).optional().meta({
-        description: "Skip the first n results. Only applies when `type` is also present. At " +
-            `most ${maxOffset}.`,
-    }),
-});
+        type: z.enum(["accounts", "hashtags", "statuses"]).optional().meta({
+            description: "Specify whether to search for only `accounts`, `hashtags`, `statuses`.",
+        }),
+        resolve: Flag.default(false).meta({
+            description: "Attempt WebFinger lookup, when `q` is an account's address, or look up " +
+                "the account or status at a URL, when `q` is one. Defaults to false. Verso " +
+                "looks up the Versia URLs it shows as accounts' and statuses' `uri`.",
+        }),
+        following: Flag.default(false).meta({
+            description: "Only include accounts that the user is following? Defaults to false.",
+        }),
+        account_id: z.string().optional().meta({
+            description: "If provided, will only return statuses authored by this account.",
+        }),
+        exclude_unreviewed: Flag.default(false).meta({
+            description:
+                "Filter out unreviewed tags? Verso doesn't review hashtags, so this changes " +
+                "nothing.",
+        }),
+        max_id: z.string().optional().meta({
+            description:
+                "All results returned will be lesser than this ID. In effect, sets an upper " +
+                "bound on results.",
+        }),
+        min_id: z.string().optional().meta({
+            description:
+                "Returns results immediately newer than this ID. In effect, sets a cursor at " +
+                "this ID and paginates forward.",
+        }),
+        limit: Integer.pipe(z.int().min(0)).optional()
+            .transform((asked) => Math.max(1, Math.min(asked ?? 20, 40)))
+            .meta({
+                description:
+                    "Maximum number of results to return, per type. Defaults to 20 results " +
+                    "per category. Max 40 results per category.",
+            }),
+        offset: Integer.pipe(z.int().min(0).max(maxOffset)).optional().meta({
+            description: "Skip the first n results. Only applies when `type` is also present. At " +
+                `most ${maxOffset}.`,
+        }),
+    });
 
 /** What a search found, rendered as `viewerId` sees it. */
 const rendered = async (
@@ -103,10 +103,10 @@ const rendered = async (
 });
 
 /**
- * Searching accounts, statuses and hashtags. Before the account routes, whose
- * `/api/v1/accounts/:id` would otherwise match `/api/v1/accounts/search`.
+ * Searching accounts, statuses and hashtags, as far as `limits` allow. Before the account routes,
+ * whose `/api/v1/accounts/:id` would otherwise match `/api/v1/accounts/search`.
  */
-export const searchRoutes: readonly Route[] = [
+export const searchRoutes = (limits: SearchLimits): readonly Route[] => [
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/search",
@@ -115,7 +115,7 @@ export const searchRoutes: readonly Route[] = [
         docs: "https://docs.joinmastodon.org/methods/accounts/#search",
         tags: ["accounts"],
         auth: { require: "user", scope: "read:accounts", permission: "search" },
-        query: AccountSearchQuery,
+        query: AccountSearchQuery(limits),
         responses: { 200: z.array(Account) },
         handler: async (ctx, { query, viewer }) => {
             const rows = await searchAccounts(ctx, {
@@ -142,7 +142,7 @@ export const searchRoutes: readonly Route[] = [
         docs: "https://docs.joinmastodon.org/methods/search/#v2",
         tags: ["search"],
         auth: { require: "optional", scope: "read:search", permission: "search" },
-        query: SearchQuery,
+        query: SearchQuery(limits),
         responses: { 200: Search },
         handler: async (ctx, { query, viewer }) => {
             const viewerId = viewer?.accountId ?? null;

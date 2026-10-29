@@ -11,6 +11,8 @@ import {
     MediaLimits,
     Origin,
     Permissions,
+    PushSettings,
+    SearchLimits,
     StreamingLimits,
 } from "./config_sections.ts";
 
@@ -155,6 +157,8 @@ export const Config = z.strictObject({
     limits: Limits,
     permissions: Permissions,
     streaming: StreamingLimits,
+    search: SearchLimits,
+    push: PushSettings,
     jobs: z.strictObject({
         /** How many days a job that failed for good is retained, for someone to look at. */
         dead_letter_days: z.int().min(1).default(30),

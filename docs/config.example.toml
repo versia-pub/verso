@@ -194,6 +194,15 @@ updated = 2026-10-01
 # How long a hashtag a stream is for may be, in characters.
 # tag_length = 100
 
+[search]
+# How long a query may be, in characters, and how many results a search may skip.
+# query_length = 500
+# max_offset = 10000
+
+[push]
+# How many seconds a push service has to respond. One that takes longer isn't tried again.
+# timeout_seconds = 10
+
 [jobs]
 # How many days a job that failed for good is retained, for someone to look at.
 # dead_letter_days = 30

@@ -24,11 +24,13 @@ export type Settings = {
     readonly unattachedMs: number;
     /** For how long a delivery is retried. */
     readonly deliveryMs: number;
+    /** How long a push service has to respond. */
+    readonly pushTimeoutMs: number;
 };
 
 /** The settings `config` produces. */
 export const settingsOf = (
-    config: Pick<Config, "jobs" | "federation" | "limits" | "media">,
+    config: Pick<Config, "jobs" | "federation" | "limits" | "media" | "push">,
 ): Settings => ({
     deadLetterMs: config.jobs.dead_letter_days * dayMs,
     unreachableMs: config.federation.unreachable_days * dayMs,
@@ -37,6 +39,7 @@ export const settingsOf = (
     mediaDescription: config.limits.media_description,
     unattachedMs: config.media.unattached_hours * hourMs,
     deliveryMs: config.federation.delivery_hours * hourMs,
+    pushTimeoutMs: config.push.timeout_seconds * 1000,
 });
 
 /** The settings an instance has when its config leaves them out. */
@@ -48,4 +51,5 @@ export const defaultSettings: Settings = {
     mediaDescription: 4000,
     unattachedMs: 24 * hourMs,
     deliveryMs: 48 * hourMs,
+    pushTimeoutMs: 10_000,
 };

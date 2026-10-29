@@ -36,7 +36,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         // Before the account routes, whose `/api/v1/accounts/:id` would otherwise match their
         // paths.
         ...graphRoutes,
-        ...searchRoutes,
+        ...searchRoutes(settings.search),
         ...accountRoutes(settings.media, settings.limits),
         ...noteRoutes(settings.limits),
         ...interactionRoutes,

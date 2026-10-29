@@ -239,3 +239,25 @@ export const StreamingLimits = z.strictObject({
 }).prefault({});
 
 export type StreamingLimits = z.infer<typeof StreamingLimits>;
+
+/**
+ * How much one search may ask for, so that it can't make Verso do unbounded work. Mastodon has no
+ * such limits.
+ */
+export const SearchLimits = z.strictObject({
+    /** How long a query may be, in characters. */
+    query_length: z.int().min(1).default(500),
+    /** How many results a search may skip. */
+    max_offset: z.int().min(0).default(10_000),
+}).prefault({});
+
+export type SearchLimits = z.infer<typeof SearchLimits>;
+
+/** How Web Push is sent. */
+export const PushSettings = z.strictObject({
+    /**
+     * How long a push service has to respond, so a slow one can't hold a worker. One that takes
+     * longer isn't tried again, as it would hold a worker as long each time.
+     */
+    timeout_seconds: z.int().min(1).default(10),
+}).prefault({});

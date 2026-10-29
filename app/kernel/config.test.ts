@@ -2,6 +2,7 @@ import { assertEquals, assertStringIncludes } from "@std/assert";
 import { parse as parseToml } from "@std/toml";
 import { parseConfig } from "./config.ts";
 import { Permissions } from "./config_sections.ts";
+import { settingsOf } from "./settings.ts";
 
 const minimal = `
 domain = "social.example"
@@ -85,6 +86,8 @@ Deno.test("a minimal config gets the defaults", async () => {
                 ],
             },
             streaming: { sockets_per_account: 10, subscriptions: 100, tag_length: 100 },
+            search: { query_length: 500, max_offset: 10_000 },
+            push: { timeout_seconds: 10 },
             jobs: { dead_letter_days: 30 },
             logging: { level: "info" },
         },
@@ -163,6 +166,13 @@ delivery_hours = 24
 sockets_per_account = 4
 subscriptions = 20
 tag_length = 50
+
+[search]
+query_length = 200
+max_offset = 1000
+
+[push]
+timeout_seconds = 5
 
 [jobs]
 dead_letter_days = 14
@@ -253,10 +263,13 @@ level = "debug"
             },
             permissions: { anonymous: [], default: ["owner:account"] },
             streaming: { sockets_per_account: 4, subscriptions: 20, tag_length: 50 },
+            search: { query_length: 200, max_offset: 1000 },
+            push: { timeout_seconds: 5 },
             jobs: { dead_letter_days: 14 },
             logging: { level: "debug" },
         },
     });
+    assertEquals(result.ok && settingsOf(result.config).pushTimeoutMs, 5000);
 });
 
 const errors = async (toml: string) => {

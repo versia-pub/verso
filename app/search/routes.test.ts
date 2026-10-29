@@ -4,6 +4,7 @@ import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { like } from "../interactions/likes.ts";
+import { SearchLimits } from "../kernel/config_sections.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -11,10 +12,15 @@ import { indexUnindexedAccounts } from "./accounts.ts";
 import { indexUnindexed } from "./notes.ts";
 import { searchRoutes } from "./routes.ts";
 
-/** Alice, who follows annie, and anna, each indexed as if from before Verso searched accounts. */
-const open = async () => {
+/**
+ * Alice, who follows annie, and anna, each indexed as if from before Verso searched accounts,
+ * searching as far as `limits` allow.
+ */
+const open = async (limits = SearchLimits.parse({})) => {
     const test = await createTestContext();
-    const app = createTestApp(test.ctx, searchRoutes, { checkResponses: true });
+    const app = createTestApp(test.ctx, searchRoutes(limits), {
+        checkResponses: true,
+    });
     await createInstance(test.ctx, "b.example");
     for (const id of ["alice", "anna", "annie"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "alice", "annie");
@@ -77,6 +83,16 @@ Deno.test("a search's query and offset are bounded, the query in characters", as
         assertEquals((await test.request(`${path}${q}&offset=10000`)).status, 200, path);
         assertEquals((await test.request(`${path}${q}a`)).status, 422, path);
         assertEquals((await test.request(`${path}ann&offset=10001`)).status, 422, path);
+    }
+});
+
+Deno.test("a search's query and offset are bounded as config says", async () => {
+    await using test = await open({ query_length: 3, max_offset: 5 });
+
+    for (const path of ["/api/v1/accounts/search?q=", "/api/v2/search?type=accounts&q="]) {
+        assertEquals((await test.request(`${path}ann&offset=5`)).status, 200, path);
+        assertEquals((await test.request(`${path}anna`)).status, 422, path);
+        assertEquals((await test.request(`${path}ann&offset=6`)).status, 422, path);
     }
 });
 
@@ -260,7 +276,7 @@ Deno.test("without signing in, statuses aren't searched, and pages and lookups a
 
 Deno.test("searching needs permission to", async () => {
     await using test = await openAnnual();
-    const app = createTestApp(test.ctx, searchRoutes, {
+    const app = createTestApp(test.ctx, searchRoutes(SearchLimits.parse({})), {
         checkResponses: true,
         permissions: { anonymous: [], default: ["read:account", "read:note"] },
     });
