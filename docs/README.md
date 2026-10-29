@@ -14,5 +14,6 @@ These docs explain how Verso works and how to change it. To set up and run Verso
 - [Notifications and push](notifications.md): who is notified, grouped notifications, markers, Web
   Push
 - [Streaming](streaming.md): the WebSocket, streams, the dispatcher, limits
+- [Search](search.md): indexing words, status queries, accounts, hashtags, limits
 
 [`config.example.toml`](config.example.toml) lists every config setting, with its default.
