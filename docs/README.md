@@ -23,5 +23,6 @@ These docs explain how Verso works and how to change it. To set up and run Verso
 How-tos:
 
 - [Adding a route](guides/adding-a-route.md)
+- [Adding a table](guides/adding-a-table.md)
 
 [`config.example.toml`](config.example.toml) lists every config setting, with its default.
