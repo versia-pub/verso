@@ -5320,6 +5320,229 @@
                 }
             }
         },
+        "/api/v1/notifications/clear": {
+            "post": {
+                "summary": "Dismiss all notifications",
+                "description": "Clear all notifications from the server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#clear"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/unread_count": {
+            "get": {
+                "summary": "Get the number of unread notifications",
+                "description": "Get the (capped) number of unread notifications for the current user.\n\nA notification is considered unread if it is more recent than the notifications read marker.\n\nBecause the count is dependent on the parameters, it is computed every time and is thus a relatively slow operation (although faster than getting the full corresponding notifications), therefore the number of returned notifications is capped.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#unread-count"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that should count towards unread notifications."
+                        }
+                    },
+                    {
+                        "name": "exclude_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that should not count towards unread notifications."
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Only count unread notifications received from the specified account."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "count": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                        }
+                                    },
+                                    "required": [
+                                        "count"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/{id}": {
+            "get": {
+                "summary": "Get a single notification",
+                "description": "View information about a notification with a given ID.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#get-one"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notification"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/{id}/dismiss": {
+            "post": {
+                "summary": "Dismiss a single notification",
+                "description": "Dismiss a single notification from the server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#dismiss"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/notifications": {
             "get": {
                 "summary": "Get all grouped notifications",
@@ -5767,229 +5990,6 @@
                 "parameters": [
                     {
                         "name": "group_key",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A JSON body",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {}
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/notifications/clear": {
-            "post": {
-                "summary": "Dismiss all notifications",
-                "description": "Clear all notifications from the server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
-                "externalDocs": {
-                    "url": "https://docs.joinmastodon.org/methods/notifications/#clear"
-                },
-                "tags": [
-                    "notifications"
-                ],
-                "security": [
-                    {
-                        "OAuth2": [
-                            "write:notifications"
-                        ]
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A JSON body",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {}
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/notifications/unread_count": {
-            "get": {
-                "summary": "Get the number of unread notifications",
-                "description": "Get the (capped) number of unread notifications for the current user.\n\nA notification is considered unread if it is more recent than the notifications read marker.\n\nBecause the count is dependent on the parameters, it is computed every time and is thus a relatively slow operation (although faster than getting the full corresponding notifications), therefore the number of returned notifications is capped.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
-                "externalDocs": {
-                    "url": "https://docs.joinmastodon.org/methods/notifications/#unread-count"
-                },
-                "tags": [
-                    "notifications"
-                ],
-                "security": [
-                    {
-                        "OAuth2": [
-                            "read:notifications"
-                        ]
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "limit",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991
-                                },
-                                {
-                                    "type": "string",
-                                    "pattern": "^-?\\d+$"
-                                }
-                            ]
-                        }
-                    },
-                    {
-                        "name": "types",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                }
-                            ],
-                            "description": "Types of notifications that should count towards unread notifications."
-                        }
-                    },
-                    {
-                        "name": "exclude_types",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                }
-                            ],
-                            "description": "Types of notifications that should not count towards unread notifications."
-                        }
-                    },
-                    {
-                        "name": "account_id",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "description": "Only count unread notifications received from the specified account."
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A JSON body",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "minimum": -9007199254740991,
-                                            "maximum": 9007199254740991
-                                        }
-                                    },
-                                    "required": [
-                                        "count"
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/notifications/{id}": {
-            "get": {
-                "summary": "Get a single notification",
-                "description": "View information about a notification with a given ID.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
-                "externalDocs": {
-                    "url": "https://docs.joinmastodon.org/methods/notifications/#get-one"
-                },
-                "tags": [
-                    "notifications"
-                ],
-                "security": [
-                    {
-                        "OAuth2": [
-                            "read:notifications"
-                        ]
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A JSON body",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Notification"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/notifications/{id}/dismiss": {
-            "post": {
-                "summary": "Dismiss a single notification",
-                "description": "Dismiss a single notification from the server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
-                "externalDocs": {
-                    "url": "https://docs.joinmastodon.org/methods/notifications/#dismiss"
-                },
-                "tags": [
-                    "notifications"
-                ],
-                "security": [
-                    {
-                        "OAuth2": [
-                            "write:notifications"
-                        ]
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
                         "in": "path",
                         "required": true,
                         "schema": {

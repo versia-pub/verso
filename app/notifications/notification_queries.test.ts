@@ -8,13 +8,8 @@ import { react } from "../interactions/reactions.ts";
 import type { PageBounds } from "../db/paging.ts";
 import { postNote } from "../notes/notes.ts";
 import { createTestContext } from "../testing/context.ts";
-import {
-    groupKeyOf,
-    groupStatsOf,
-    insertNotifications,
-    type NotificationFilter,
-    notificationGroupPage,
-} from "./notification_queries.ts";
+import { groupKeyOf, groupStatsOf, notificationGroupPage } from "./group_queries.ts";
+import { insertNotifications, type NotificationFilter } from "./notification_queries.ts";
 import { shownOf } from "./render.ts";
 import type { NotificationType } from "./tables.ts";
 

@@ -11,6 +11,7 @@ import { mediaRoutes } from "../media/routes.ts";
 import { entityRoutes } from "../federation/registry.ts";
 import { graphRoutes } from "../graph/routes.ts";
 import { noteRoutes } from "../notes/routes.ts";
+import { groupedNotificationRoutes } from "../notifications/grouped_routes.ts";
 import { notificationRoutes } from "../notifications/routes.ts";
 import { pushRoutes } from "../push/routes.ts";
 import { timelineRoutes } from "../notes/timeline_routes.ts";
@@ -41,6 +42,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...interactionRoutes,
         ...timelineRoutes,
         ...notificationRoutes,
+        ...groupedNotificationRoutes,
         ...pushRoutes,
         ...markerRoutes,
         ...streamingRoutes(settings.streaming),

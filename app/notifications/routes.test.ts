@@ -16,6 +16,7 @@ import { setMarker } from "../markers/marker_queries.ts";
 import { postNote } from "../notes/notes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
+import { groupedNotificationRoutes } from "./grouped_routes.ts";
 import { notificationRoutes } from "./routes.ts";
 
 type Shown = {
@@ -50,7 +51,11 @@ type Grouped = {
 
 const open = async () => {
     const test = await createTestContext();
-    const app = createTestApp(test.ctx, notificationRoutes, { checkResponses: true });
+    const app = createTestApp(
+        test.ctx,
+        [...notificationRoutes, ...groupedNotificationRoutes],
+        { checkResponses: true },
+    );
     for (const id of ["alice", "bob", "carol"]) await createLocalAccount(test.ctx, id);
     await createInstance(test.ctx, "b.example");
     await createRemoteAccount(test.ctx, "dave", "b.example");

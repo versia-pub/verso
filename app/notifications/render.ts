@@ -18,13 +18,8 @@ import { findNotes } from "../notes/note_queries.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { isSeenBy } from "../notes/thread_queries.ts";
 import { onlookerOf } from "../notes/visibility.ts";
-import {
-    findNotification,
-    groupKeyOf,
-    groupStatsOf,
-    type NotificationRow,
-    type Shown,
-} from "./notification_queries.ts";
+import { groupKeyOf, groupStatsOf } from "./group_queries.ts";
+import { findNotification, type NotificationRow, type Shown } from "./notification_queries.ts";
 import type { NotificationType } from "./tables.ts";
 
 /**
