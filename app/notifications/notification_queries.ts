@@ -79,7 +79,7 @@ export type NotificationFilter = {
  * The notifications of `accountId` that `shown` allows: not from the accounts it hides, and about
  * no status, or one they may see.
  */
-const shownTo = (ctx: Context, accountId: string, shown: Shown) =>
+const shownQuery = (ctx: Context, accountId: string, shown: Shown) =>
     ctx.db.selectFrom("notifications")
         .where("account_id", "=", accountId)
         .where(notExcluded(shown.hidden, "notifications.from_account_id"))
@@ -90,9 +90,9 @@ const shownTo = (ctx: Context, accountId: string, shown: Shown) =>
             ])
         );
 
-/** The notifications of `accountId` that {@link shownTo} and `filter` allow. */
+/** The notifications of `accountId` that {@link shownQuery} and `filter` allow. */
 const filtered = (ctx: Context, accountId: string, shown: Shown, filter: NotificationFilter) => {
-    let query = shownTo(ctx, accountId, shown).selectAll();
+    let query = shownQuery(ctx, accountId, shown).selectAll();
     if (filter.types) query = query.where("type", "in", filter.types);
     if (filter.excludeTypes?.length) query = query.where("type", "not in", filter.excludeTypes);
     if (filter.fromId !== undefined) query = query.where("from_account_id", "=", filter.fromId);
@@ -101,7 +101,8 @@ const filtered = (ctx: Context, accountId: string, shown: Shown, filter: Notific
 };
 
 /**
- * A page of the notifications of `accountId`, newest first, as {@link shownTo} and `filter` allow.
+ * A page of the notifications of `accountId`, newest first, as {@link shownQuery} and `filter`
+ * allow.
  */
 export const notificationPage = async (
     ctx: Context,
@@ -115,7 +116,7 @@ export const notificationPage = async (
 };
 
 /**
- * How many of the notifications of `accountId` that {@link shownTo} and `filter` allow are newer
+ * How many of the notifications of `accountId` that {@link shownQuery} and `filter` allow are newer
  * than `after`, if given, counting up to `limit`.
  */
 export const countNotifications = async (
@@ -145,7 +146,7 @@ export const groupKeyOf = (row: NotificationRow, grouped: readonly NotificationT
     row.group_key !== null && grouped.includes(row.type) ? row.group_key : `ungrouped-${row.id}`;
 
 /**
- * A page of the groups of the notifications of `accountId`, newest first, as {@link shownTo} and
+ * A page of the groups of the notifications of `accountId`, newest first, as {@link shownQuery} and
  * `filter` allow, as one notification of each: the newest in the page, or the oldest after
  * `min_id`. `page.limit` counts groups, and only the types `grouped` are grouped.
  *
@@ -218,7 +219,7 @@ const sampleSize = 8;
 
 /**
  * The {@link GroupStats} of the groups `keys` of `accountId`'s notifications, in a page from
- * `oldest` to `newest`, counting only the notifications {@link shownTo} allows.
+ * `oldest` to `newest`, counting only the notifications {@link shownQuery} allows.
  */
 export const groupStatsOf = async (
     ctx: Context,
@@ -230,7 +231,7 @@ export const groupStatsOf = async (
     if (keys.length === 0) return new Map();
 
     const inGroups = () =>
-        shownTo(ctx, accountId, shown)
+        shownQuery(ctx, accountId, shown)
             .where("group_key", "in", keys)
             .where("notifications.id", "<=", page.newest);
 
@@ -324,21 +325,21 @@ const inGroup = (key: string) => (eb: ExpressionBuilder<Database, "notifications
         ? eb("notifications.id", "=", key.slice(ungrouped.length))
         : eb("notifications.group_key", "=", key);
 
-/** The newest notification of `accountId`'s group `key` that {@link shownTo} allows, if any. */
+/** The newest notification of `accountId`'s group `key` that {@link shownQuery} allows, if any. */
 export const findGroupNotification = async (
     ctx: Context,
     accountId: string,
     key: string,
     shown: Shown,
 ): Promise<NotificationRow | undefined> =>
-    await shownTo(ctx, accountId, shown).selectAll()
+    await shownQuery(ctx, accountId, shown).selectAll()
         .where(inGroup(key))
         .orderBy("notifications.id", "desc")
         .limit(1)
         .executeTakeFirst();
 
 /**
- * A page of the notifications of `accountId`'s group `key` that {@link shownTo} allows, newest
+ * A page of the notifications of `accountId`'s group `key` that {@link shownQuery} allows, newest
  * first, as the newest of each account's, so that each account is on one page once.
  */
 export const groupAccountPage = async (
@@ -348,7 +349,7 @@ export const groupAccountPage = async (
     shown: Shown,
     page: PageBounds,
 ): Promise<Pick<NotificationRow, "id" | "from_account_id">[]> => {
-    let query = shownTo(ctx, accountId, shown)
+    let query = shownQuery(ctx, accountId, shown)
         .select(["notifications.id", "notifications.from_account_id"])
         .where(inGroup(key));
 
@@ -376,14 +377,14 @@ export const deleteGroup = async (ctx: Context, accountId: string, key: string):
         .execute();
 };
 
-/** The notification `id` of `accountId`, if {@link shownTo} allows it. */
+/** The notification `id` of `accountId`, if {@link shownQuery} allows it. */
 export const findNotification = async (
     ctx: Context,
     accountId: string,
     id: string,
     shown: Shown,
 ): Promise<NotificationRow | undefined> =>
-    await shownTo(ctx, accountId, shown).selectAll().where("id", "=", id).executeTakeFirst();
+    await shownQuery(ctx, accountId, shown).selectAll().where("id", "=", id).executeTakeFirst();
 
 /** Deletes the notification `id` of `accountId`. Returns whether there was one. */
 export const deleteNotification = async (

@@ -11,6 +11,7 @@ import { batchesOf } from "../db/batches.ts";
 import { followsFrom, notifiedFollowerIds } from "../graph/follow_queries.ts";
 import { type FollowEvent, isFollowEvent } from "../graph/events.ts";
 import {
+    type InteractionReceived,
     isInteractionReceived,
     isLikeEvent,
     isReactionEvent,
@@ -216,8 +217,8 @@ const notifyPosted = async (ctx: Context, note: NoteRow) => {
  * boosted it, as on Mastodon.
  */
 const notifyEdited = async (ctx: Context, note: NoteRow) => {
-    const notified = await mentionNotifiedIds(ctx, note.id);
-    const mentioned = (await mentionedLocals(ctx, note)).filter((id) => !notified.has(id));
+    const alreadyMentioned = await mentionNotifiedIds(ctx, note.id);
+    const mentioned = (await mentionedLocals(ctx, note)).filter((id) => !alreadyMentioned.has(id));
     await notifyAll(ctx, mentioned, "mention", note.account_id, { noteId: note.id });
 
     const sharers = await localSharerIds(ctx, note.id);
@@ -253,12 +254,33 @@ const notifyOfNote = async (ctx: Context, noteId: string, edited: boolean) => {
     await (edited ? notifyEdited(ctx, note) : notifyPosted(ctx, note));
 };
 
-/** What notifies of a remote interaction, and what it links, by its kind. */
-const received = {
+/** What notifies of an interaction, and what it links, by its kind. */
+const interacted = {
     like: (id: string) => ["favourite", { likeId: id }],
     share: (id: string) => ["reblog", { shareId: id }],
     reaction: (id: string) => ["reaction", { reactionId: id }],
 } as const satisfies Record<string, (id: string) => readonly [NotificationType, Links]>;
+
+/** A like, boost or reaction: its kind and id, who made it, and what it is to. */
+type Interaction = Pick<InteractionReceived, "kind" | "id" | "accountId" | "noteId">;
+
+/** The like, boost or reaction an event says was made, by a local user or a remote one. */
+const interactionOf = (event: DomainEvent): Interaction | undefined => {
+    if (isInteractionReceived(event)) return event;
+
+    if (isLikeEvent(event) && event.type === "interactions.liked") {
+        const { likeId: id, accountId, noteId } = event;
+        return { kind: "like", id, accountId, noteId };
+    }
+    if (isShareEvent(event) && event.type === "interactions.shared") {
+        const { shareId: id, accountId, noteId } = event;
+        return { kind: "share", id, accountId, noteId };
+    }
+    if (isReactionEvent(event) && event.type === "interactions.reacted") {
+        const { reactionId: id, accountId, noteId } = event;
+        return { kind: "reaction", id, accountId, noteId };
+    }
+};
 
 /**
  * Notifies local users of what others did, local or remote. Remote statuses Verso fetched notify no
@@ -267,22 +289,10 @@ const received = {
 export const notifyOf = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (isFollowEvent(event)) return await notifyFollow(ctx, event);
 
-    if (isInteractionReceived(event)) {
-        const [type, links] = received[event.kind](event.id);
-        return await notifyAuthor(ctx, event.noteId, type, event.accountId, links);
-    }
-
-    if (isLikeEvent(event) && event.type === "interactions.liked") {
-        const links = { likeId: event.likeId };
-        return await notifyAuthor(ctx, event.noteId, "favourite", event.accountId, links);
-    }
-    if (isShareEvent(event) && event.type === "interactions.shared") {
-        const links = { shareId: event.shareId };
-        return await notifyAuthor(ctx, event.noteId, "reblog", event.accountId, links);
-    }
-    if (isReactionEvent(event) && event.type === "interactions.reacted") {
-        const links = { reactionId: event.reactionId };
-        return await notifyAuthor(ctx, event.noteId, "reaction", event.accountId, links);
+    const interaction = interactionOf(event);
+    if (interaction !== undefined) {
+        const [type, links] = interacted[interaction.kind](interaction.id);
+        return await notifyAuthor(ctx, interaction.noteId, type, interaction.accountId, links);
     }
 
     if (isNotePosted(event) || isNoteEdited(event)) {

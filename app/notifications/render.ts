@@ -32,25 +32,25 @@ import type { NotificationType } from "./tables.ts";
  * domain too, or mute with their notifications, and none about statuses they may no longer see.
  * Those are kept, so that unblocking or unmuting shows them again.
  */
-export const shownTo = (ctx: Context, accountId: string): Shown => ({
+export const shownOf = (ctx: Context, accountId: string): Shown => ({
     hidden: notificationsHiddenFrom(ctx, accountId),
     seen: (column) => isSeenBy(ctx, onlookerOf(ctx, accountId), column),
 });
 
-/** The notification `id` of `accountId`, if they are shown it, as {@link shownTo} decides. */
+/** The notification `id` of `accountId`, if they are shown it, as {@link shownOf} decides. */
 export const shownNotification = async (
     ctx: Context,
     accountId: string,
     id: string,
 ): Promise<Notification | undefined> => {
-    const row = await findNotification(ctx, accountId, id, shownTo(ctx, accountId));
+    const row = await findNotification(ctx, accountId, id, shownOf(ctx, accountId));
     return row && (await renderNotifications(ctx, [row], accountId))[0];
 };
 
 /**
  * The notifications `rows` of `viewerId`, in order, with the accounts that caused them and the
  * statuses they are about, as the viewer sees those, which they must be able to see, as
- * {@link shownTo} ensures. Those of types that aren't grouped each have a group of their own.
+ * {@link shownOf} ensures. Those of types that aren't grouped each have a group of their own.
  */
 export const renderNotifications = async (
     ctx: Context,
@@ -115,7 +115,7 @@ export const renderNotificationGroups = async (
     const stats = await groupStatsOf(
         ctx,
         viewerId,
-        shownTo(ctx, viewerId),
+        shownOf(ctx, viewerId),
         keyed.map(({ key }) => key),
         { oldest: oldest.id, newest: newest.id },
     );

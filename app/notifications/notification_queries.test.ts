@@ -15,7 +15,7 @@ import {
     type NotificationFilter,
     notificationGroupPage,
 } from "./notification_queries.ts";
-import { shownTo } from "./render.ts";
+import { shownOf } from "./render.ts";
 import type { NotificationType } from "./tables.ts";
 
 /** Mastodon's default `grouped_types`. */
@@ -43,7 +43,7 @@ const open = async () => {
     ) => (await notificationGroupPage(
         test.ctx,
         "alice",
-        shownTo(test.ctx, "alice"),
+        shownOf(test.ctx, "alice"),
         filter,
         grouped,
         { limit: 40, ...page },
@@ -93,7 +93,7 @@ Deno.test("each query for a page of groups finds a group, until the page is full
     for (const id of many) await like(test.ctx, id, test.note.id);
 
     const pageOf = (limit: number) => (ctx: typeof test.ctx) =>
-        notificationGroupPage(ctx, "alice", shownTo(ctx, "alice"), {}, byDefault, { limit });
+        notificationGroupPage(ctx, "alice", shownOf(ctx, "alice"), {}, byDefault, { limit });
 
     // The likes after the first are left out, and the last part, with fewer, ends the page.
     assertEquals(await test.queriesOf(pageOf(2)), 2);
@@ -121,7 +121,7 @@ Deno.test("each part of a page of groups reads twice as many notifications as th
     );
 
     const page = (limit: number) => (ctx: typeof test.ctx) =>
-        notificationGroupPage(ctx, "alice", shownTo(ctx, "alice"), {}, byDefault, { limit });
+        notificationGroupPage(ctx, "alice", shownOf(ctx, "alice"), {}, byDefault, { limit });
     const keys = async (limit: number) => (await page(limit)(test.ctx)).map((row) => row.group_key);
 
     // Of 10, 20, 40 and 80 notifications: a group, two, four, and the last three.
@@ -207,7 +207,7 @@ Deno.test("a group's stats count up to the page's newest, and sample 8 accounts"
     const stats = await groupStatsOf(
         test.ctx,
         "alice",
-        shownTo(test.ctx, "alice"),
+        shownOf(test.ctx, "alice"),
         [groupOf("favourite u0"), groupOf("follow bob")],
         { oldest: id("favourite u5"), newest: id("favourite u7") },
     );
@@ -257,7 +257,7 @@ Deno.test("a group's samples are 8 different accounts, and its count each notifi
     const stats = await groupStatsOf(
         test.ctx,
         "alice",
-        shownTo(test.ctx, "alice"),
+        shownOf(test.ctx, "alice"),
         [key, otherKey],
         { oldest: oldest.id, newest: newest.id },
     );
@@ -292,7 +292,7 @@ Deno.test("no groups have no stats", async () => {
     const page = { oldest: "0", newest: "z" };
 
     assertEquals(
-        await groupStatsOf(test.ctx, "alice", shownTo(test.ctx, "alice"), [], page),
+        await groupStatsOf(test.ctx, "alice", shownOf(test.ctx, "alice"), [], page),
         new Map(),
     );
 });

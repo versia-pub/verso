@@ -21,7 +21,7 @@ import {
     renderNotificationGroups,
     renderNotifications,
     shownNotification,
-    shownTo,
+    shownOf,
 } from "./render.ts";
 import { isNotificationType, type NotificationType } from "./tables.ts";
 
@@ -100,7 +100,7 @@ export const notificationRoutes: readonly Route[] = [
             const rows = await notificationPage(
                 ctx,
                 viewer.accountId,
-                shownTo(ctx, viewer.accountId),
+                shownOf(ctx, viewer.accountId),
                 { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
                 query,
             );
@@ -143,7 +143,7 @@ export const notificationRoutes: readonly Route[] = [
             const rows = await notificationGroupPage(
                 ctx,
                 viewer.accountId,
-                shownTo(ctx, viewer.accountId),
+                shownOf(ctx, viewer.accountId),
                 { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
                 query.grouped_types,
                 query,
@@ -177,7 +177,7 @@ export const notificationRoutes: readonly Route[] = [
             const groups = await notificationGroupPage(
                 ctx,
                 viewer.accountId,
-                shownTo(ctx, viewer.accountId),
+                shownOf(ctx, viewer.accountId),
                 { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
                 query.grouped_types,
                 { min_id: await lastReadOf(ctx, viewer.accountId), limit: query.limit },
@@ -200,7 +200,7 @@ export const notificationRoutes: readonly Route[] = [
         responses: { 200: GroupedNotificationsResults },
         handler: async (ctx, { params, viewer }) => {
             const key = params.group_key;
-            const shown = shownTo(ctx, viewer.accountId);
+            const shown = shownOf(ctx, viewer.accountId);
             const row = await findGroupNotification(ctx, viewer.accountId, key, shown);
             if (row === undefined) throw new NotFound();
 
@@ -228,7 +228,7 @@ export const notificationRoutes: readonly Route[] = [
         query: PageQuery({ default: 40, max: 80 }),
         responses: { 200: Paged(Account) },
         handler: async (ctx, { params, query, viewer }) => {
-            const shown = shownTo(ctx, viewer.accountId);
+            const shown = shownOf(ctx, viewer.accountId);
             const rows = await groupAccountPage(
                 ctx,
                 viewer.accountId,
@@ -288,7 +288,7 @@ export const notificationRoutes: readonly Route[] = [
             const count = await countNotifications(
                 ctx,
                 viewer.accountId,
-                shownTo(ctx, viewer.accountId),
+                shownOf(ctx, viewer.accountId),
                 { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
                 await lastReadOf(ctx, viewer.accountId),
                 query.limit,
