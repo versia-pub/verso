@@ -27,7 +27,8 @@ social media. It also speaks the Mastodon client API, so it works with the apps 
 ## Features
 
 - **Versia 0.6 federation**: statuses, follows, shares, reactions and custom emoji
-- **Mastodon client API**: works with existing apps, including streaming, notifications and Web Push
+- **Mastodon client API**: works with existing apps, including streaming, notifications and Web
+  Push; see [what's supported](docs/api/compatibility.md)
 - **Search** across statuses, accounts and hashtags
 - **Sign-in** through OpenID Connect
 - **Media storage** on local disk or any S3-compatible service
@@ -36,16 +37,15 @@ social media. It also speaks the Mastodon client API, so it works with the apps 
 
 ## Running Verso
 
-[Installing Verso](docs/admin/installing.md) covers NixOS, the container image and the package. To
-run it locally for development, see [Running Verso locally](CONTRIBUTING.md#running-verso-locally).
-
-Every setting is listed, with its default, in [`config.example.toml`](docs/config.example.toml).
+[Installing Verso](docs/admin/installing.md) covers NixOS, the container image and the package, and
+[Configuring](docs/admin/configuring.md) the settings most instances change. To run it locally for
+development, see [Running Verso locally](CONTRIBUTING.md#running-verso-locally).
 
 ## Documentation
 
-The [docs](docs/README.md) explain how Verso works, and walk through common changes such as adding a
-route or a table. [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, everyday commands and what we
-look for in a pull request.
+The [docs](docs/README.md) cover running an instance, the client API and how Verso works, with
+guides to common changes such as adding a route or a table. [CONTRIBUTING.md](CONTRIBUTING.md)
+covers setup, everyday commands and what we look for in a pull request.
 
 ## License
 

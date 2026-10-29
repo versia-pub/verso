@@ -85,7 +85,7 @@ registration = "open"
   the first login.
 - **`url`** links the accounts to the provider, so changing it cuts them off.
 - **`username_claim`** is the claim a new account's username comes from, `preferred_username` by
-  default. If it is taken, Verso adds a number, e.g. `username1`.
+  default. If it is taken, Verso adds a number, e.g. `username2`.
 - **`scopes`** are requested besides `openid` and `profile`, such as `["groups"]` for a groups
   claim.
 - **`name`** is shown on the login page, when there is more than one provider.

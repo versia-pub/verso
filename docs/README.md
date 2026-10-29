@@ -14,8 +14,8 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 ## Using the API
 
 - [The client API](api/README.md): logging in, scopes and permissions, ids, pages, errors
-- [Mastodon API compatibility](api/compatibility.md): every Mastodon 4.3 method with Verso's
-  differences
+- [Mastodon API compatibility](api/compatibility.md): every Mastodon 4.3 method, and whether Verso
+  has it
 - [Differences from Mastodon](api/differences.md): where the methods Verso has behave differently
 - [Roles](api/roles.md): the Role entity, and creating, changing and granting roles
 - [Custom emoji](api/emojis.md): adding, changing and deleting custom emoji
@@ -47,5 +47,3 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [Adding a side effect](guides/adding-a-side-effect.md)
 - [Adding a job](guides/adding-a-job.md)
 - [Adding a config option](guides/adding-a-config-option.md)
-
-[`config.example.toml`](config.example.toml) lists every config setting, with its default.
