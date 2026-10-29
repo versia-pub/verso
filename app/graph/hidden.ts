@@ -4,11 +4,11 @@
  * @module
  */
 import type { Context } from "../kernel/context.ts";
-import { blocksBetween } from "./block_queries.ts";
+import { blockersAmong, blocksBetween } from "./block_queries.ts";
 import { blockedByAccount } from "./blocks.ts";
-import { domainBlockedAmong } from "./domain_block_queries.ts";
+import { domainBlockedAmong, domainBlockersAmong } from "./domain_block_queries.ts";
 import type { Excluded } from "./excluded_queries.ts";
-import { mutedIdsQuery, mutesOf, notificationMutedIdsQuery } from "./mute_queries.ts";
+import { mutedIdsQuery, mutersAmong, mutesOf, notificationMutedIdsQuery } from "./mute_queries.ts";
 
 /** The accounts `accountId` blocks, individually or by their domain, or currently mutes. */
 export const hiddenFrom = (ctx: Context, accountId: string): Excluded => {
@@ -46,4 +46,30 @@ export const hiddenAmong = async (
     const muting = await mutesOf(ctx, accountId, otherIds);
 
     return new Set([...blocking, ...domainBlocked, ...muting.keys()]);
+};
+
+/** How many accounts {@link hidingAmong} asks about in each query, as queries take only so many. */
+const askedAtOnce = 1000;
+
+/**
+ * Which of `otherIds` block `accountId`, individually or by its domain, or currently mute it, as
+ * {@link hiddenFrom} finds for each of them. They are asked about 1000 at a time.
+ */
+export const hidingAmong = async (
+    ctx: Context,
+    accountId: string,
+    otherIds: readonly string[],
+): Promise<Set<string>> => {
+    const hiding = new Set<string>();
+    for (let start = 0; start < otherIds.length; start += askedAtOnce) {
+        const asked = otherIds.slice(start, start + askedAtOnce);
+        const found = [
+            ...await blockersAmong(ctx, accountId, asked),
+            ...await domainBlockersAmong(ctx, accountId, asked),
+            ...await mutersAmong(ctx, accountId, asked),
+        ];
+        for (const id of found) hiding.add(id);
+    }
+
+    return hiding;
 };

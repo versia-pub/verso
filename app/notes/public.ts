@@ -1,39 +1,55 @@
 /**
- * Single statuses of the public and hashtag timelines, for streaming them as they appear.
+ * Single statuses of the public and hashtag timelines, for streaming them as they appear. They are
+ * rendered as anyone sees them, as Mastodon streams them, so that each is rendered once for every
+ * viewer.
  * @module
  */
 import type { Status } from "@versia/client-api";
-import { hiddenFrom } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
 import { renderStatuses } from "./render.ts";
 import type { NoteRow } from "./note_queries.ts";
 import { findHashtagNote, findPublicNote } from "./timeline_queries.ts";
 
-/** A status of a public or hashtag timeline as a viewer sees it, and whether it is local. */
-export type PublicStatus = { readonly status: Status; readonly local: boolean };
-
-/** `note` as `viewerId` sees it. */
-const shownTo = async (ctx: Context, viewerId: string, note: NoteRow) => {
-    const [status] = await renderStatuses(ctx, [note], viewerId);
-    return status && { status, local: note.instance_id === null };
+/** A status of a public or hashtag timeline. */
+export type PublicStatus = {
+    /**
+     * Who posted it. Neither timeline has boosts, so they are the only account whose blocks or
+     * mutes could leave it out.
+     */
+    readonly accountId: string;
+    readonly local: boolean;
+    /**
+     * Renders it as anyone sees it: with none of a viewer's likes, boosts or bookmarks, and with the
+     * likes, boosts and reactions of everyone counted.
+     */
+    readonly render: () => Promise<Status>;
 };
 
-/** The status `noteId` as `viewerId` sees it, if it is on the public timeline they see. */
+const publicStatusOf = (ctx: Context, note: NoteRow): PublicStatus => ({
+    accountId: note.account_id,
+    local: note.instance_id === null,
+    render: async () => {
+        const [status] = await renderStatuses(ctx, [note], null);
+        // Only boosts can render as nothing, and neither timeline has any.
+        if (status === undefined) throw new Error(`Note ${note.id} rendered as nothing`);
+        return status;
+    },
+});
+
+/** The status `noteId`, if it is on the public timeline. */
 export const publicStatus = async (
     ctx: Context,
-    viewerId: string,
     noteId: string,
 ): Promise<PublicStatus | undefined> => {
-    const note = await findPublicNote(ctx, hiddenFrom(ctx, viewerId), noteId);
-    return note && await shownTo(ctx, viewerId, note);
+    const note = await findPublicNote(ctx, noteId);
+    return note && publicStatusOf(ctx, note);
 };
 
-/** The status `noteId` as `viewerId` sees it, if it could be on a hashtag's timeline they see. */
+/** The status `noteId`, if it could be on a hashtag's timeline. */
 export const hashtagStatus = async (
     ctx: Context,
-    viewerId: string,
     noteId: string,
 ): Promise<PublicStatus | undefined> => {
-    const note = await findHashtagNote(ctx, hiddenFrom(ctx, viewerId), noteId);
-    return note && await shownTo(ctx, viewerId, note);
+    const note = await findHashtagNote(ctx, noteId);
+    return note && publicStatusOf(ctx, note);
 };

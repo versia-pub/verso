@@ -5,15 +5,15 @@ import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts"
 import { block } from "../graph/blocks.ts";
 import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
-import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { publish } from "../kernel/pubsub.ts";
 import type { NotesTable } from "../notes/tables.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { dispatcher } from "./dispatcher.ts";
-import { streamHashtags } from "./hashtags.ts";
+import { hashtagStreams } from "./hashtags.ts";
 import { openSession } from "./session.ts";
+import type { SharedSessions } from "./shared.ts";
 import { type StatusMessage, statusMessages } from "./statuses.ts";
 
 /** The `hashtag` and `hashtag:local` streams of #nix and #rust. */
@@ -27,18 +27,22 @@ const everyStream = [
 const open = async () => {
     const test = await createTestContext();
     const dispatch = dispatcher(test.ctx);
+    const shared = hashtagStreams(test.ctx);
+    dispatch.listen(shared);
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     await createInstance(test.ctx, "b.example");
     await createRemoteAccount(test.ctx, "carol", "b.example");
 
-    /** What `accountId` is sent on `streams`, as each event's stream, type, and status or id. */
+    /**
+     * What `accountId` is sent on `streams`, as each event's stream, type, and status or id. Its
+     * session is added to the test's hashtag streams, or `options.sessions`.
+     */
     const streaming = (
         accountId: string,
         streams: readonly string[][] = everyStream,
-        options: { ctx?: Context; permissions?: readonly Permission[] } = {},
+        options: { sessions?: SharedSessions; permissions?: readonly Permission[] } = {},
     ) => {
         const sent: unknown[] = [];
-        const liked: unknown[] = [];
         const viewer = {
             tokenId: "token",
             appId: "app",
@@ -51,7 +55,6 @@ const open = async () => {
         const session = openSession(viewer, {
             send: (data) => {
                 const { stream, event, payload } = JSON.parse(data);
-                if (event !== "delete") liked.push(JSON.parse(payload).favourited);
                 sent.push([
                     stream.join(),
                     event,
@@ -64,11 +67,7 @@ const open = async () => {
             session.receive(JSON.stringify({ type: "subscribe", stream, tag }));
         }
 
-        return {
-            sent,
-            liked,
-            stop: dispatch.listen(streamHashtags(options.ctx ?? test.ctx, viewer, session)),
-        };
+        return { sent, stop: (options.sessions ?? shared).add(viewer, session) };
     };
 
     /** Publishes `message`, and waits until it is streamed. */
@@ -98,7 +97,7 @@ const open = async () => {
             mentionIds: [],
         });
 
-    return { ...test, streaming, post, deleted, published };
+    return { ...test, dispatch, streaming, post, deleted, published };
 };
 
 Deno.test("public statuses are sent on the streams of each hashtag they use, for where they are from", async () => {
@@ -128,8 +127,6 @@ Deno.test("public statuses are sent on the streams of each hashtag they use, for
         ["hashtag,rust", "update", reply],
         ["hashtag:local,rust", "update", reply],
     ]);
-    // Rendered as alice sees them.
-    assertEquals(new Set(alice.liked), new Set([false]));
     assertEquals(local.sent, [
         ["hashtag:local,rust", "update", both],
         ["hashtag:local,rust", "status.update", both],
@@ -186,16 +183,21 @@ Deno.test("hashtag streams send nothing to those who may not read statuses, or w
 
 Deno.test("a session reads nothing for hashtag streams it isn't subscribed to", async () => {
     await using test = await open();
-    let reads = 0;
-    const db = new Proxy(test.ctx.db, {
-        get: (target, name) => {
-            if (name === "selectFrom") reads++;
-            return Reflect.get(target, name);
+    let queries = 0;
+    const db = test.ctx.db.withPlugin({
+        transformQuery: ({ node }) => node,
+        transformResult: ({ result }) => {
+            queries += 1;
+            return Promise.resolve(result);
         },
     });
-    test.streaming("alice", [["public"]], { ctx: { ...test.ctx, db } });
+    const sessions = hashtagStreams({ ...test.ctx, db });
+    test.dispatch.listen(sessions);
+    test.streaming("alice", [["public"]], { sessions });
+    test.streaming("bob", [["hashtag", "nix"]], { sessions, permissions: ["read:account"] });
 
     await test.post("bob", ["nix"]);
+    await test.deleted("gone");
 
-    assertEquals(reads, 0);
+    assertEquals(queries, 0);
 });

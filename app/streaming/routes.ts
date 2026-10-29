@@ -4,10 +4,12 @@ import { watchToken } from "../auth/tokens.ts";
 import { HttpError, NotFound } from "../http/errors.ts";
 import { Binary, defineRoute, type Route, Upgrade } from "../http/route.ts";
 import type { StreamingLimits } from "../kernel/config_sections.ts";
+import type { Context } from "../kernel/context.ts";
 import { type Dispatcher, dispatcher } from "./dispatcher.ts";
-import { streamHashtags } from "./hashtags.ts";
-import { streamPublic } from "./public.ts";
+import { hashtagStreams } from "./hashtags.ts";
+import { publicStreams } from "./public.ts";
 import { openSession } from "./session.ts";
+import type { SharedSessions } from "./shared.ts";
 import { streamUser } from "./user.ts";
 
 const docs = "https://docs.joinmastodon.org/methods/streaming";
@@ -24,8 +26,19 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
         opened.set(accountId, open);
         return open;
     };
-    /** The process's, once a WebSocket first needs it. */
-    let dispatch: Dispatcher | undefined;
+    /**
+     * The process's dispatcher, and its sessions of the streams shared by every viewer, once a
+     * WebSocket first needs them.
+     */
+    let processWide: { dispatch: Dispatcher; shared: readonly SharedSessions[] } | undefined;
+    const processWideOf = (ctx: Context) => {
+        if (processWide) return processWide;
+
+        const dispatch = dispatcher(ctx);
+        const shared = [publicStreams(ctx), hashtagStreams(ctx)];
+        for (const sessions of shared) dispatch.listen(sessions);
+        return processWide = { dispatch, shared };
+    };
 
     return [
         defineRoute({
@@ -99,12 +112,11 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
                                 viewer.accountId,
                                 viewer.forgetPermissions,
                             );
-                            const { listen } = dispatch ??= dispatcher(ctx);
+                            const { dispatch, shared } = processWideOf(ctx);
                             const unstreams = [
-                                streamUser(ctx, viewer, session),
-                                streamPublic(ctx, viewer, session),
-                                streamHashtags(ctx, viewer, session),
-                            ].map(listen);
+                                dispatch.listen(streamUser(ctx, viewer, session)),
+                                ...shared.map((sessions) => sessions.add(viewer, session)),
+                            ];
                             socket.onclose = () => {
                                 count(viewer.accountId, -1);
                                 unwatch();

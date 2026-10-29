@@ -170,12 +170,8 @@ export const publicPage = async (
 };
 
 /** The status `noteId`, if it is on the public timeline, as {@link publicQuery} finds. */
-export const findPublicNote = async (
-    ctx: Context,
-    hidden: Excluded,
-    noteId: string,
-): Promise<NoteRow | undefined> =>
-    await publicQuery(ctx, hidden).where("notes.id", "=", noteId).executeTakeFirst();
+export const findPublicNote = async (ctx: Context, noteId: string): Promise<NoteRow | undefined> =>
+    await publicQuery(ctx, null).where("notes.id", "=", noteId).executeTakeFirst();
 
 /**
  * The hashtags the statuses on a hashtag's timeline use: at least one of `any`, which must have
@@ -230,9 +226,5 @@ export const hashtagPage = async (
 };
 
 /** The status `noteId`, if it could be on a hashtag's timeline, as {@link hashtagQuery} finds. */
-export const findHashtagNote = async (
-    ctx: Context,
-    hidden: Excluded,
-    noteId: string,
-): Promise<NoteRow | undefined> =>
-    await hashtagQuery(ctx, hidden).where("notes.id", "=", noteId).executeTakeFirst();
+export const findHashtagNote = async (ctx: Context, noteId: string): Promise<NoteRow | undefined> =>
+    await hashtagQuery(ctx, null).where("notes.id", "=", noteId).executeTakeFirst();

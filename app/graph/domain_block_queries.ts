@@ -45,22 +45,24 @@ export const domainBlockPage = async (
         page,
     );
 
+/** Whether the domain block is of the instance's domain, or a domain it is under. */
+const blocksDomainOf = (eb: ExpressionBuilder<Database, "account_domain_blocks" | "instances">) =>
+    eb.or([
+        eb("account_domain_blocks.domain", "=", eb.ref("instances.domain")),
+        eb(
+            "instances.domain",
+            "like",
+            sql<string>`'%.' || ${eb.ref("account_domain_blocks.domain")}`,
+        ),
+    ]);
+
 /** Whether `accountId` blocks the instance's domain, or a domain it is under. */
 const blocksInstance = (accountId: string) => (eb: ExpressionBuilder<Database, "instances">) =>
     eb.exists(
         eb.selectFrom("account_domain_blocks")
             .select("account_domain_blocks.id")
             .where("account_domain_blocks.account_id", "=", accountId)
-            .where((inner) =>
-                inner.or([
-                    inner("account_domain_blocks.domain", "=", inner.ref("instances.domain")),
-                    inner(
-                        "instances.domain",
-                        "like",
-                        sql<string>`'%.' || ${inner.ref("account_domain_blocks.domain")}`,
-                    ),
-                ])
-            ),
+            .where(blocksDomainOf),
     );
 
 /**
@@ -93,4 +95,24 @@ export const domainBlockedAmong = async (
         .execute();
 
     return new Set(rows.map((row) => row.id));
+};
+
+/**
+ * Which of `otherIds`, of which there must be some, block the domain `accountId` is on, or a domain
+ * it is under. It reads the `accounts` and `instances` tables directly rather than going through
+ * their modules, so that it takes one query.
+ */
+export const domainBlockersAmong = async (
+    ctx: Context,
+    accountId: string,
+    otherIds: readonly string[],
+): Promise<string[]> => {
+    const rows = await ctx.db.selectFrom("accounts")
+        .innerJoin("instances", "instances.id", "accounts.instance_id")
+        .innerJoin("account_domain_blocks", (join) => join.on(blocksDomainOf))
+        .select("account_domain_blocks.account_id")
+        .where("accounts.id", "=", accountId)
+        .where("account_domain_blocks.account_id", "in", otherIds)
+        .execute();
+    return rows.map((row) => row.account_id);
 };

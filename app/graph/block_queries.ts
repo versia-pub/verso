@@ -63,6 +63,20 @@ export const blocksBetween = async (
     };
 };
 
+/** Which of `otherIds`, of which there must be some, block `accountId`. */
+export const blockersAmong = async (
+    ctx: Context,
+    accountId: string,
+    otherIds: readonly string[],
+): Promise<string[]> => {
+    const rows = await ctx.db.selectFrom("blocks")
+        .select("account_id")
+        .where("target_id", "=", accountId)
+        .where("account_id", "in", otherIds)
+        .execute();
+    return rows.map((row) => row.account_id);
+};
+
 /**
  * A page of the accounts `accountId` blocks, latest blocked first, each as the block's id, which
  * pages are counted by, and the blocked account's id.

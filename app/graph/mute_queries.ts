@@ -75,6 +75,21 @@ export const mutesOf = async (
     return new Map(rows.map((row) => [row.target_id, row]));
 };
 
+/** Which of `otherIds`, of which there must be some, currently mute `accountId`. */
+export const mutersAmong = async (
+    ctx: Context,
+    accountId: string,
+    otherIds: readonly string[],
+): Promise<string[]> => {
+    const rows = await ctx.db.selectFrom("mutes")
+        .select("account_id")
+        .where("target_id", "=", accountId)
+        .where("account_id", "in", otherIds)
+        .where(ongoing(ctx.clock.now()))
+        .execute();
+    return rows.map((row) => row.account_id);
+};
+
 /**
  * A page of the accounts `accountId` mutes, latest muted first, each as the mute's id, which pages
  * are counted by, the muted account's id, and when the mute ends.

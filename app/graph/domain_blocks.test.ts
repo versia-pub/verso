@@ -5,7 +5,7 @@ import { createTestContext } from "../testing/context.ts";
 import { block, blockedByAccount, type Excluded, isExcluded } from "./blocks.ts";
 import { domainBlockedAmong, domainBlockPage } from "./domain_block_queries.ts";
 import { blockDomainFor, unblockDomainFor } from "./domain_blocks.ts";
-import { hiddenAmong, hiddenFrom } from "./hidden.ts";
+import { hiddenAmong, hiddenFrom, hidingAmong } from "./hidden.ts";
 import { mute } from "./mutes.ts";
 
 /**
@@ -95,4 +95,48 @@ Deno.test("what doesn't reach an account includes the accounts on the domains it
         "other",
         "sub",
     ]);
+});
+
+Deno.test("an account is hidden from those who block it, its domain or one it is under, or mute it", async () => {
+    await using test = await open();
+    const viewers = ["exacts", "parents", "others", "blocker", "muter", "expired", "blocked"];
+    for (const id of viewers) await createLocalAccount(test.ctx, id);
+    await blockDomainFor(test.ctx, "exacts", "a.b.example");
+    await blockDomainFor(test.ctx, "parents", "b.example");
+    await blockDomainFor(test.ctx, "others", "c.example");
+    await block(test.ctx, "others", "exact");
+    await mute(test.ctx, "others", "exact", { notifications: false, duration: 0 });
+    await block(test.ctx, "blocker", "sub");
+    await mute(test.ctx, "muter", "sub", { notifications: false, duration: 0 });
+    await mute(test.ctx, "expired", "sub", { notifications: false, duration: 60 });
+    test.clock.advance(60_000);
+    // The other way round, which doesn't hide it.
+    await block(test.ctx, "sub", "blocked");
+
+    assertEquals([...await hidingAmong(test.ctx, "sub", viewers)].toSorted(), [
+        "blocker",
+        "exacts",
+        "muter",
+        "parents",
+    ]);
+    assertEquals([...await hidingAmong(test.ctx, "sub", [])], []);
+});
+
+Deno.test("who an account is hidden from is asked of 1000 accounts at a time", async () => {
+    await using test = await open();
+    // At the end of the first 1000, and the start of the rest.
+    await block(test.ctx, "alice", "sub");
+    await block(test.ctx, "bob", "sub");
+    let queries = 0;
+    const db = test.ctx.db.withPlugin({
+        transformQuery: ({ node }) => node,
+        transformResult: ({ result }) => {
+            queries += 1;
+            return Promise.resolve(result);
+        },
+    });
+    const asked = [...Array.from({ length: 999 }, (_, n) => `nobody${n}`), "alice", "bob"];
+
+    assertEquals([...await hidingAmong({ ...test.ctx, db }, "sub", asked)], ["alice", "bob"]);
+    assertEquals(queries, 6);
 });
