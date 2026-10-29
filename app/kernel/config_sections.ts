@@ -16,7 +16,7 @@ export type ClaimTest = z.infer<typeof ClaimTest>;
 
 /**
  * Who may get an account on first login with an issuer: anyone (`open`), nobody (`closed`, so only
- * identities an admin linked), or anyone whose claim contains a value.
+ * logins already linked to an account get in), or anyone whose claim contains a value.
  */
 const Registration = z.union([z.enum(["open", "closed"]), ClaimTest]);
 
