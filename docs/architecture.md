@@ -40,8 +40,9 @@ admin commands. [`app/main.ts`](../app/main.ts) reads the command line, and
 ```
 
 Processes share nothing but the database and the file store. They tell each other things, such as
-"this cache is stale" or "this status appeared", through Postgres `NOTIFY`. On SQLite there is one
-process, so messages stay in memory, and workers poll for jobs instead of being woken.
+"this cache is stale" or "this status appeared", through Postgres `NOTIFY`. SQLite has no `NOTIFY`,
+so there each process hears only its own messages, and workers poll for jobs instead of being woken.
+SQLite suits one process running `verso all`.
 
 ## Repository layout
 
