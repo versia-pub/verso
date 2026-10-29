@@ -1,3 +1,10 @@
+/**
+ * The search indexes, and the searches over them. Search is a read model: besides its own tables,
+ * its queries read those of the statuses, accounts, follows, likes, mentions and hashtags they
+ * search, and use other modules' query helpers where there are some, so that a search takes one
+ * query.
+ * @module
+ */
 import { type Expression, type ExpressionBuilder, sql, type SqlBool } from "kysely";
 import type { Database } from "../db/database.ts";
 import { usesSqlite } from "../db/columns.ts";

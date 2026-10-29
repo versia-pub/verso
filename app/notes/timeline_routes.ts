@@ -54,8 +54,8 @@ export const timelineRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/timelines/home",
-        summary:
-            "The viewer's statuses and those of the accounts they follow, and their shares, newest first",
+        summary: "The viewer's statuses and those of the accounts they follow, and their " +
+            "shares, newest first",
         tags: ["timelines"],
         auth: { require: "user", scope: "read:statuses", permission: "read:note" },
         query: PageQuery({ default: 20, max: 40 }),

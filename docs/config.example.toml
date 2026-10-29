@@ -155,15 +155,35 @@ updated = 2026-10-01
 
 [permissions]
 # What everyone may do, before roles add more: logged-out visitors, and every user.
-# anonymous = ["read:account", "read:account_follows", "read:note"]
+# anonymous = [
+#     "read:account",
+#     "read:account_follows",
+#     "read:note",
+#     "read:note_likes",
+#     "read:note_boosts",
+#     "read:reaction",
+#     "search",
+# ]
 # default = [
 #     "read:account",
 #     "read:account_follows",
 #     "read:note",
+#     "read:note_likes",
+#     "read:note_boosts",
+#     "read:reaction",
+#     "read:emoji",
+#     "search",
 #     "owner:account",
+#     "owner:block",
+#     "owner:boost",
+#     "owner:emoji",
 #     "owner:follow",
+#     "owner:like",
 #     "owner:media",
+#     "owner:mute",
 #     "owner:note",
+#     "owner:notification",
+#     "owner:reaction",
 # ]
 
 [streaming]

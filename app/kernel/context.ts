@@ -112,7 +112,8 @@ export type PubSub = {
     readonly send: (channel: string, payload: string) => Promise<void>;
     /**
      * Gives `handler` what is sent on `channel` from now on, until the function returned is called.
-     * Subscribing a handler that is already subscribed does nothing.
+     * Subscribing a handler that is already subscribed does nothing, and calling either function
+     * returned unsubscribes it.
      */
     readonly subscribe: (channel: string, handler: Handler) => () => void;
     /**

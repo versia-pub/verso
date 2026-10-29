@@ -38,7 +38,9 @@ export const replaceSubscription = async (
     await ctx.db.insertInto("push_subscriptions").values(row).execute();
 };
 
-/** Changes which notifications the subscription of `tokenId` pushes, returning it, if it has one. */
+/**
+ * Changes which notifications the subscription of `tokenId` pushes, returning it, if it has one.
+ */
 export const updateSubscription = (
     ctx: Context,
     tokenId: string,

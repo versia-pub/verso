@@ -287,9 +287,9 @@ export const processingFailed = (upload: MediaRow): boolean => upload.sha256 ===
 
 /**
  * Marks the upload `id` as processed using another upload of the same file, `uploaded`, scaled down
- * to fit the same box `fit`, if there is one, and returns whether there was. Its files are locked and checked to still be stored first, so
- * that if they were removed in the meantime, this upload is processed again rather than left
- * pointing at nothing.
+ * to fit the same box `fit`, if there is one, and returns whether there was. Its files are locked
+ * and checked to still be stored first, so that if they were removed in the meantime, this upload
+ * is processed again rather than left pointing at nothing.
  */
 const reuseProcessed = async (
     ctx: Context,
@@ -315,9 +315,9 @@ const reuseProcessed = async (
 
 /**
  * Processes the image in the job: stores it upright, without metadata and no larger than allowed or
- * than its box, with a preview, then removes the original upload. An image that vips rejects, or that still fails
- * on the job's last attempt, is marked failed and removed, as it may hold metadata. An upload that
- * was already processed once keeps that result.
+ * than its box, with a preview, then removes the original upload. An image that vips rejects, or
+ * that still fails on the job's last attempt, is marked failed and removed, as it may hold
+ * metadata. An upload that was already processed once keeps that result.
  */
 export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = MediaJob.safeParse(job.payload);

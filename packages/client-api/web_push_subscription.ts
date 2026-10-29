@@ -31,7 +31,10 @@ export const WebPushSubscription = z.object({
     alerts: PushAlerts,
     /** The instance's VAPID public key, which push services check the pushes are signed with. */
     server_key: z.string(),
-    /** Whose notifications are pushed: everyone's, or only those the user follows, or who follow them, or no one's. */
+    /**
+     * Whose notifications are pushed: everyone's, or only those the user follows, or who follow
+     * them, or no one's.
+     */
     policy: z.enum(["all", "followed", "follower", "none"]),
 });
 export type WebPushSubscription = z.infer<typeof WebPushSubscription>;

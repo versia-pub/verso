@@ -1,5 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
+import { parse as parseToml } from "@std/toml";
 import { parseConfig } from "./config.ts";
+import { Permissions } from "./config_sections.ts";
 
 const minimal = `
 domain = "social.example"
@@ -563,4 +565,18 @@ Deno.test("the example config in the docs is valid", async () => {
         "social.example",
         "Example Social",
     ]);
+});
+
+Deno.test("the example config's permissions, commented out, are the defaults", async () => {
+    const example = await Deno.readTextFile(
+        new URL("../../docs/config.example.toml", import.meta.url),
+    );
+    const section = example.split(/^\[permissions\]$/m)[1].split(/^\[/m)[0];
+    // The settings and their lists, but not the comments that describe them.
+    const settings = section.split("\n")
+        .filter((line) => /^# ([a-z]+ = | {4}"|\])/.test(line))
+        .map((line) => line.slice(2))
+        .join("\n");
+
+    assertEquals(parseToml(settings), Permissions.parse({}));
 });

@@ -36,12 +36,12 @@ const mergePages = (pages: readonly NoteRow[][], page: PageBounds) => {
 
 /**
  * The statuses on `viewerId`'s home timeline: all their own statuses and boosts, the statuses of
- * `followed` that they may see, and the boosts of `sharing`, the accounts of `followed` whose boosts
- * they see. Of those statuses, a direct one must mention them, and a reply must be to them or to
- * someone they follow, with its author among them, as on Mastodon. Nothing from the accounts they
- * block or mute, `hidden`, is included, nor anyone's boosts of their statuses. They are three
- * queries, so each can use the index that suits it, however many accounts they follow. No status is
- * in two of them, as no one follows themselves.
+ * `followed` that they may see, and the boosts of `sharing`, the accounts of `followed` whose
+ * boosts they see. Of those statuses, a direct one must mention them, and a reply must be to them
+ * or to someone they follow, with its author among them, as on Mastodon. Nothing from the accounts
+ * they block or mute, `hidden`, is included, nor anyone's boosts of their statuses. They are three
+ * queries, so each can use the index that suits it, however many accounts they follow. No status
+ * is in two of them, as no one follows themselves.
  */
 const homeQueries = (
     ctx: Context,
@@ -80,7 +80,9 @@ const homeQueries = (
     return [own, shares, others];
 };
 
-/** A page of `viewerId`'s home timeline, newest first, of the statuses {@link homeQueries} finds. */
+/**
+ * A page of `viewerId`'s home timeline, newest first, of the statuses {@link homeQueries} finds.
+ */
 export const homePage = async (
     ctx: Context,
     viewerId: string,

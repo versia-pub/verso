@@ -17,7 +17,9 @@ export type Channel<T> = {
 
 /** The subscribers of each channel, as adapters keep them. */
 export type Routes = Pick<PubSub, "subscribe" | "onMissed"> & {
-    /** Gives `payload` to each subscriber of `channel`, logging rather than throwing if any fails. */
+    /**
+     * Gives `payload` to each subscriber of `channel`, logging rather than throwing if any fails.
+     */
     readonly deliver: (channel: string, payload: string) => Promise<void>;
     /** Runs every `onMissed` handler, logging rather than throwing if any fails. */
     readonly missed: () => Promise<void>;
@@ -101,7 +103,9 @@ export const publish = async <T>(ctx: Context, channel: Channel<T>, message: T):
 
 /**
  * Gives `handler` each message sent on `channel` from now on, until the function returned is
- * called. Messages that aren't JSON, or don't match the channel's schema, are logged and skipped.
+ * called. Each call subscribes anew, even with the same handler. Messages that don't match the
+ * channel's schema are logged and skipped. Verso sends only JSON, so one that isn't fails, and is
+ * logged as a failure.
  */
 export const subscribe = <T>(
     ctx: Context,

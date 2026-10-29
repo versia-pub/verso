@@ -76,8 +76,10 @@ const useEmojis = async (ctx: Context, row: AccountRow) => {
 };
 
 /**
- * Describes the picture `id` of `accountId` as the change does, if it does. A picture the change
- * replaces is described too, which does nothing, as it is no longer used.
+ * Gives the picture `id`, which `accountId` had before the change, the description the change sets,
+ * if it sets one. A new picture is described when it is uploaded, so this describes the picture the
+ * account keeps. One the change replaces is described too, which is harmless, as it is no longer
+ * shown.
  */
 const describeKept = async (
     ctx: Context,
@@ -90,8 +92,8 @@ const describeKept = async (
 
 /**
  * The picture `accountId` has as `name` after the change: a new one, uploaded and to be scaled down
- * to fit in `fit`, or `null` if it is removed, or `undefined` if it stays. Refuses a file that isn't
- * an image.
+ * to fit in `fit`, or `null` if it is removed, or `undefined` if it stays. Refuses a file that
+ * isn't an image.
  */
 const uploadedPicture = async (
     ctx: Context,

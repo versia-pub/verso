@@ -277,8 +277,8 @@ export const notificationRoutes: readonly Route[] = [
         method: "GET",
         path: "/api/v1/notifications/unread_count",
         summary: "Get the number of unread notifications",
-        description:
-            `Get the (capped) number of unread notifications for the current user.\n\n${unreadDescription}`,
+        description: "Get the (capped) number of unread notifications for the current user.\n\n" +
+            unreadDescription,
         docs: `${docs}/#unread-count`,
         tags: ["notifications"],
         auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },

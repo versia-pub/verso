@@ -8,6 +8,7 @@ import type { NotificationsTable, NotificationType } from "./tables.ts";
 
 export type NotificationRow = Selectable<NotificationsTable>;
 
+/** Adds the notifications `rows`, a batch at a time. */
 export const insertNotifications = async (
     ctx: Context,
     rows: readonly Insertable<NotificationsTable>[],
