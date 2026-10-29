@@ -111,7 +111,7 @@ await network.drain(); // every instance's jobs, until none are left
   and Garage.
 - **`image`** runs the container image's entrypoint, and checks it prints Verso's version.
 
-All three run in `nix flake check`.
+All three run in `nix flake check`. See [Build and CI](build-and-ci.md).
 
 ## Writing tests
 

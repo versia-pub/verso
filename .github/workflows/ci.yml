@@ -25,7 +25,7 @@ jobs:
                 group: [other, test-pglite, test-sqlite, test-postgres, vms]
                 # The arm runners have no KVM, so the NixOS VM tests run emulated there, and take
                 # about as long to boot as the test driver waits for them. They run on x86_64 only;
-                # see docs/decisions/0004-ci-runners-and-cache.md.
+                # see docs/build-and-ci.md.
                 exclude:
                     - runner: ubuntu-24.04-arm
                       group: vms
