@@ -14,7 +14,7 @@ import { removeNote } from "../notes/removal.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { indexUnindexed } from "./notes.ts";
-import { unindexedAccountIds, unindexedNoteIds } from "./search_queries.ts";
+import { unindexedAccountIds, unindexedNoteIds } from "./index_queries.ts";
 import { searchStatuses } from "./statuses.ts";
 import { searchWords } from "./words.ts";
 

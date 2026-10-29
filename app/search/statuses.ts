@@ -10,9 +10,9 @@ import { hiddenFrom } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNotes, type NoteRow } from "../notes/note_queries.ts";
 import { signedInOnlooker } from "../notes/visibility.ts";
-import { noteIdsMatching } from "./search_queries.ts";
+import { noteIdsMatching } from "./note_search_queries.ts";
 import { parseStatusQuery, type QueryTerm } from "./query.ts";
-import type { NoteTerm } from "./search_queries.ts";
+import type { NoteTerm } from "./note_search_queries.ts";
 
 /** A search for statuses. */
 export type StatusSearch = {

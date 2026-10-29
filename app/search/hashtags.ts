@@ -5,7 +5,7 @@
  */
 import type { Tag } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
-import { hashtagsStartingWith, hashtagUses } from "./search_queries.ts";
+import { hashtagsStartingWith, hashtagUses } from "./hashtag_queries.ts";
 
 /** A search for hashtags. */
 export type HashtagSearch = {

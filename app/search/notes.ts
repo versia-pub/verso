@@ -9,7 +9,7 @@ import { textOfHtml } from "../kernel/html.ts";
 import { attachmentsOf } from "../media/attachment_queries.ts";
 import { isNoteEdited, isNotePosted, isNoteReceived } from "../notes/events.ts";
 import { findNotes } from "../notes/note_queries.ts";
-import { indexNote, unindexedNoteIds } from "./search_queries.ts";
+import { indexNote, unindexedNoteIds } from "./index_queries.ts";
 import { searchWords } from "./words.ts";
 
 /**

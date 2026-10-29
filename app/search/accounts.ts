@@ -9,7 +9,8 @@ import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import { isAccountCreated, isAccountReceived, isProfileUpdated } from "../accounts/events.ts";
 import { isFollowing } from "../graph/follows.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
-import { accountIdsMatching, indexAccount, unindexedAccountIds } from "./search_queries.ts";
+import { accountIdsMatching } from "./account_search_queries.ts";
+import { indexAccount, unindexedAccountIds } from "./index_queries.ts";
 import { searchWords } from "./words.ts";
 
 /** Indexes the words of each of `accountIds`: its username, display name and domain. */

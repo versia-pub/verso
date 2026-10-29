@@ -7,7 +7,7 @@
  * @module
  */
 import { HttpError } from "../http/errors.ts";
-import type { NoteScope, NoteTerm } from "./search_queries.ts";
+import type { NoteScope, NoteTerm } from "./note_search_queries.ts";
 import { searchWords } from "./words.ts";
 
 /**
