@@ -13,7 +13,8 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Using the API
 
-- [The client API](api/README.md): logging in, scopes and permissions, ids, pages, errors
+- [The client API](api/README.md): logging in, scopes and permissions, ids, pages, errors, a
+  TypeScript client
 - [Mastodon API compatibility](api/compatibility.md): every Mastodon 4.3 method, and whether Verso
   has it
 - [Differences from Mastodon](api/differences.md): where the methods Verso has behave differently

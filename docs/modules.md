@@ -72,4 +72,5 @@ Both live in [`packages/`](../packages/) and are imported by name through `deno.
 package imports nothing from `app/` and does no I/O. Verso uses only the client API's schemas, but
 its bundle has the client too, about 26 KB: esbuild keeps classes that extend `Error`. A second
 entry point, for the schemas alone, made Deno 2.9.7 crash at random while type-checking in the Nix
-sandbox. The client's tests run against Verso, in `app/http/client.test.ts`.
+sandbox. The client's tests run against Verso, in `app/http/client.test.ts`, and
+`app/http/client_coverage.test.ts` checks it has a method for every route.

@@ -109,6 +109,16 @@ deno task update-openapi
 Commit the changed `app/http/openapi.json` with the route. Reviewers read its diff to see the API
 change.
 
+## 8. Add a client method
+
+Add a method for the route to the client in
+[`packages/client-api/client/`](../../packages/client-api/client/), in the file for its area, with
+Mastodon's docs in `@see`. Then add the route and a call of the method to `calls` in
+[`app/http/client_coverage.test.ts`](../../app/http/client_coverage.test.ts), which fails until
+every route has one, or a reason in `uncalled` it has none, such as a page only browsers open. Test
+what the method sends in `packages/client-api/client.test.ts`, if it builds the request in a way of
+its own, and what it does against Verso in `app/http/client.test.ts`.
+
 ## Checklist
 
 - [ ] The route is in the module that owns its data.
@@ -117,3 +127,4 @@ change.
 - [ ] Writes are in a transaction, and side effects are events.
 - [ ] Tests cover the errors and who may not call it.
 - [ ] `openapi.json` is updated.
+- [ ] The client has a method for it, in `client_coverage.test.ts`.

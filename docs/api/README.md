@@ -77,3 +77,17 @@ Markdown instead. `GET /api/v1/statuses/:id/source` gives the text back as it wa
 `GET /api/v1/streaming` opens a WebSocket, on the same host and port as the rest of the API, as
 `/api/v2/instance` says. The token can be sent as `Authorization`, as the `access_token` query
 parameter, or as `Sec-WebSocket-Protocol`, which browsers can set.
+
+## TypeScript client
+
+[`packages/client-api/`](../../packages/client-api/) has a client for the API (Deno and browsers).
+It isn't published yet. Each response is checked against the package's schemas, a failure throws an
+`ApiError` with the instance's error, and lists are pages that follow the `Link` header:
+
+```ts
+import { Client } from "@versia/client-api";
+
+const client = new Client("https://verso.example", { token });
+const me = await client.accounts.verifyCredentials();
+for await (const status of await client.accounts.statuses(me.id)) console.log(status.content);
+```
