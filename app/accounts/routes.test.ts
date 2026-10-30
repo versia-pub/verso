@@ -137,6 +137,55 @@ Deno.test("a user sees their own account, with their settings", async () => {
     );
 });
 
+Deno.test("a user's preferences are their defaults for posting, and Mastodon's for the rest", async () => {
+    await using test = await openApi();
+    const preferences = async () =>
+        await test.get("/api/v1/preferences", await tokenFor(test.ctx, "alice"));
+    const others = {
+        "posting:default:quote_policy": "public",
+        "posting:default:spoiler_field": false,
+        "reading:expand:media": "default",
+        "reading:expand:spoilers": false,
+        "reading:autoplay:gifs": false,
+    };
+
+    assertEquals(await preferences(), {
+        status: 200,
+        body: {
+            "posting:default:visibility": "public",
+            "posting:default:sensitive": false,
+            "posting:default:language": null,
+            ...others,
+        },
+    });
+
+    await test.update(JSON.stringify({
+        source: { privacy: "private", sensitive: true, language: "fr" },
+    }));
+    assertEquals((await preferences()).body, {
+        "posting:default:visibility": "private",
+        "posting:default:sensitive": true,
+        "posting:default:language": "fr",
+        ...others,
+    });
+});
+
+Deno.test("preferences need a user's token that may read accounts", async () => {
+    await using test = await openApi();
+    const path = "/api/v1/preferences";
+
+    assertEquals(
+        (await test.get(path, await tokenFor(test.ctx, "alice", ["read:accounts"]))).status,
+        200,
+    );
+    assertEquals(
+        (await test.get(path, await tokenFor(test.ctx, "alice", ["read:statuses"]))).status,
+        403,
+    );
+    assertEquals((await test.get(path)).status, 401);
+    assertEquals((await test.get(path, await tokenFor(test.ctx, null))).status, 422);
+});
+
 Deno.test("anyone sees an account by its id, without its settings", async () => {
     await using test = await openApi();
 

@@ -35,6 +35,9 @@ Where a method Verso has behaves unlike Mastodon's. For methods Verso doesn't ha
 - **Muting an account already muted** changes how it is muted. Mutes last at most five years.
 - **Users with the `blocks` permission**, usually moderators, see in `blocked_by` whether each
   account blocks the one asked about, which is otherwise false.
+- **`GET /api/v1/preferences`** gives the user's defaults for posting, which
+  `PATCH /api/v1/accounts/update_credentials` changes. The others are always Mastodon's defaults:
+  sensitive media hidden, content warnings closed, and GIFs still.
 
 ## Media
 

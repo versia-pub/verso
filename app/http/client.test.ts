@@ -263,6 +263,11 @@ Deno.test("a user changes their profile as JSON, or as a form with a picture", a
 
     assertEquals([named.display_name, named.locked], ["Alice", true]);
     assertEquals([named.source.privacy, named.source.language], ["unlisted", "en"]);
+    const preferences = await alice.accounts.preferences();
+    assertEquals(
+        [preferences["posting:default:visibility"], preferences["posting:default:language"]],
+        ["unlisted", "en"],
+    );
     assertEquals(pictured.fields.map((field) => field.name), ["Pronouns"]);
     assertEquals([pictured.avatar_description, pictured.source.sensitive], ["Me", true]);
     assert(processed.avatar !== named.avatar);
@@ -457,6 +462,13 @@ Deno.test("a user reads, counts and dismisses their notifications, alone or grou
     await drain(test.ctx, queues);
     await alice.notifications.clear();
     assertEquals((await alice.groupedNotifications.list()).items, []);
+
+    await bob.statuses.unreblog(id);
+    await bob.statuses.reblog(id);
+    await drain(test.ctx, queues);
+    assertEquals((await alice.notifications.list()).items.map((n) => n.type), ["reblog"]);
+    await alice.groupedNotifications.clear();
+    assertEquals((await alice.notifications.list()).items, []);
 });
 
 Deno.test("a user saves where they read up to, and the unread count follows it", async () => {

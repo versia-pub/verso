@@ -3076,6 +3076,37 @@
                 }
             }
         },
+        "/api/v1/preferences": {
+            "get": {
+                "summary": "View user preferences",
+                "description": "Preferences defined by the user in their account settings.\n\nVerso keeps only the defaults for posting, which `update_credentials` changes. The others are always Mastodon's defaults, and quotes are never restricted.\n\nNeeds a token for a user, not one an app got for itself.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/preferences/#get"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Preferences"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/profile/avatar": {
             "delete": {
                 "summary": "Delete profile avatar",
@@ -5990,6 +6021,38 @@
                                     "required": [
                                         "count"
                                     ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/notifications/clear": {
+            "post": {
+                "summary": "Dismiss all notifications",
+                "description": "Clear all notifications from the server.\n\nAs on Mastodon, this is the same as `POST /api/v1/notifications/clear`, which its docs describe.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#clear"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
                                 }
                             }
                         }
@@ -13224,6 +13287,58 @@
                     "avatar_static",
                     "locked",
                     "bot"
+                ]
+            },
+            "Preferences": {
+                "type": "object",
+                "properties": {
+                    "posting:default:visibility": {
+                        "$ref": "#/components/schemas/Visibility"
+                    },
+                    "posting:default:sensitive": {
+                        "type": "boolean"
+                    },
+                    "posting:default:language": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "posting:default:quote_policy": {
+                        "type": "string",
+                        "enum": [
+                            "public",
+                            "followers",
+                            "nobody"
+                        ]
+                    },
+                    "posting:default:spoiler_field": {
+                        "type": "boolean"
+                    },
+                    "reading:expand:media": {
+                        "type": "string",
+                        "enum": [
+                            "default",
+                            "show_all",
+                            "hide_all"
+                        ]
+                    },
+                    "reading:expand:spoilers": {
+                        "type": "boolean"
+                    },
+                    "reading:autoplay:gifs": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "posting:default:visibility",
+                    "posting:default:sensitive",
+                    "posting:default:language",
+                    "posting:default:quote_policy",
+                    "posting:default:spoiler_field",
+                    "reading:expand:media",
+                    "reading:expand:spoilers",
+                    "reading:autoplay:gifs"
                 ]
             },
             "PreviewCard": {

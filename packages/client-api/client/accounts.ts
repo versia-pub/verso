@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Account, CredentialAccount, FamiliarFollowers, type Visibility } from "../account.ts";
+import { Preferences } from "../preferences.ts";
 import { Relationship } from "../relationship.ts";
 import { Status } from "../status.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
@@ -91,6 +92,14 @@ export class AccountMethods {
             "/api/v1/accounts/verify_credentials",
             options,
         );
+    }
+
+    /**
+     * The viewer's preferences, which clients share.
+     * @see https://docs.joinmastodon.org/methods/preferences/#get
+     */
+    preferences(options?: CallOptions): Promise<Preferences> {
+        return this.http.json(Preferences, "GET", "/api/v1/preferences", options);
     }
 
     /**

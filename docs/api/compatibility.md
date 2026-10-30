@@ -85,7 +85,7 @@ trends, announcements and the admin API.
 | `GET /api/v1/endorsements`                        | ❌    |                                   |
 | Featured tags (4 methods)                         | ❌    |                                   |
 | Tags and followed tags                            | ❌    |                                   |
-| `GET /api/v1/preferences`                         | ❌    |                                   |
+| `GET /api/v1/preferences`                         | 🟡    | Only the defaults for posting     |
 | Suggestions (v1 and v2)                           | ❌    |                                   |
 | Filters (v1 and v2)                               | ❌    |                                   |
 | `POST /api/v1/reports`                            | ❌    |                                   |
@@ -141,25 +141,25 @@ trends, announcements and the admin API.
 
 ## Notifications
 
-| Method                                          | Verso | Notes  |
-| ----------------------------------------------- | ----- | ------ |
-| `GET /api/v1/notifications`                     | ✅    |        |
-| `GET /api/v1/notifications/:id`                 | ✅    |        |
-| `POST /api/v1/notifications/clear`              | ✅    |        |
-| `POST /api/v1/notifications/:id/dismiss`        | ✅    |        |
-| `GET /api/v1/notifications/unread_count`        | ✅    |        |
-| `GET /api/v2/notifications`                     | ✅    |        |
-| `GET /api/v2/notifications/:group_key`          | ✅    |        |
-| `GET /api/v2/notifications/:group_key/accounts` | ✅    |        |
-| `POST /api/v2/notifications/:group_key/dismiss` | ✅    |        |
-| `GET /api/v2/notifications/unread_count`        | ✅    |        |
-| `POST /api/v2/notifications/clear`              | ❌    | Use v1 |
-| Notification requests (7 methods)               | ❌    |        |
-| Notification policy (v1 and v2)                 | ❌    |        |
-| `POST /api/v1/push/subscription`                | ✅    |        |
-| `GET /api/v1/push/subscription`                 | ✅    |        |
-| `PUT /api/v1/push/subscription`                 | ✅    |        |
-| `DELETE /api/v1/push/subscription`              | ✅    |        |
+| Method                                          | Verso | Notes |
+| ----------------------------------------------- | ----- | ----- |
+| `GET /api/v1/notifications`                     | ✅    |       |
+| `GET /api/v1/notifications/:id`                 | ✅    |       |
+| `POST /api/v1/notifications/clear`              | ✅    |       |
+| `POST /api/v1/notifications/:id/dismiss`        | ✅    |       |
+| `GET /api/v1/notifications/unread_count`        | ✅    |       |
+| `GET /api/v2/notifications`                     | ✅    |       |
+| `GET /api/v2/notifications/:group_key`          | ✅    |       |
+| `GET /api/v2/notifications/:group_key/accounts` | ✅    |       |
+| `POST /api/v2/notifications/:group_key/dismiss` | ✅    |       |
+| `GET /api/v2/notifications/unread_count`        | ✅    |       |
+| `POST /api/v2/notifications/clear`              | ✅    |       |
+| Notification requests (7 methods)               | ❌    |       |
+| Notification policy (v1 and v2)                 | ❌    |       |
+| `POST /api/v1/push/subscription`                | ✅    |       |
+| `GET /api/v1/push/subscription`                 | ✅    |       |
+| `PUT /api/v1/push/subscription`                 | ✅    |       |
+| `DELETE /api/v1/push/subscription`              | ✅    |       |
 
 ## Search
 

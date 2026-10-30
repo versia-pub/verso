@@ -11,6 +11,7 @@ import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Linked, Paged } from "../http/responses.ts";
+import { deleteNotificationsOf } from "./notification_queries.ts";
 import {
     deleteGroup,
     findGroupNotification,
@@ -118,6 +119,22 @@ export const groupedNotificationRoutes: readonly Route[] = [
             );
 
             return { status: 200, body: { count: groups.length } };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v2/notifications/clear",
+        summary: "Dismiss all notifications",
+        description:
+            "Clear all notifications from the server.\n\nAs on Mastodon, this is the same " +
+            "as `POST /api/v1/notifications/clear`, which its docs describe.",
+        docs: "https://docs.joinmastodon.org/methods/notifications/#clear",
+        tags: ["notifications"],
+        auth: { require: "user", scope: "write:notifications", permission: "owner:notification" },
+        responses: { 200: z.object({}) },
+        handler: async (ctx, { viewer }) => {
+            await deleteNotificationsOf(ctx, viewer.accountId);
+            return { status: 200, body: {} };
         },
     }),
     defineRoute({

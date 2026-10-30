@@ -24,6 +24,7 @@ const calls: Record<string, (client: Client) => unknown> = {
 
     "GET /api/v1/accounts/verify_credentials": (c) => c.accounts.verifyCredentials(),
     "PATCH /api/v1/accounts/update_credentials": (c) => c.accounts.updateCredentials({}),
+    "GET /api/v1/preferences": (c) => c.accounts.preferences(),
     "DELETE /api/v1/profile/avatar": (c) => c.accounts.deleteAvatar(),
     "DELETE /api/v1/profile/header": (c) => c.accounts.deleteHeader(),
     "GET /api/v1/accounts": (c) => c.accounts.getMany(["1"]),
@@ -93,6 +94,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v2/notifications/{group_key}/accounts": (c) => c.groupedNotifications.accounts("1"),
     "GET /api/v2/notifications/unread_count": (c) => c.groupedNotifications.unreadCount(),
     "POST /api/v2/notifications/{group_key}/dismiss": (c) => c.groupedNotifications.dismiss("1"),
+    "POST /api/v2/notifications/clear": (c) => c.groupedNotifications.clear(),
     "GET /api/v1/markers": (c) => c.markers.get(["home"]),
     "POST /api/v1/markers": (c) => c.markers.set({}),
 

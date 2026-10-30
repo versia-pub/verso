@@ -2,7 +2,14 @@
  * Renders accounts as the client API's entities.
  * @module
  */
-import type { Account, CredentialAccount, CustomEmoji, Field, Role } from "@versia/client-api";
+import type {
+    Account,
+    CredentialAccount,
+    CustomEmoji,
+    Field,
+    Preferences,
+    Role,
+} from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
@@ -171,4 +178,19 @@ export const renderCredentialAccount = (
         quote_policy: "public",
     },
     role: renderRole(roles, permissions),
+});
+
+/**
+ * A user's preferences. Verso keeps only those for posting; the others are Mastodon's defaults, and
+ * Verso doesn't restrict quotes.
+ */
+export const renderPreferences = (row: AccountRow): Preferences => ({
+    "posting:default:visibility": row.default_visibility,
+    "posting:default:sensitive": row.default_sensitive,
+    "posting:default:language": row.default_language === "" ? null : row.default_language,
+    "posting:default:quote_policy": "public",
+    "posting:default:spoiler_field": false,
+    "reading:expand:media": "default",
+    "reading:expand:spoilers": false,
+    "reading:autoplay:gifs": false,
 });

@@ -1,4 +1,4 @@
-import { Account, CredentialAccount } from "@versia/client-api";
+import { Account, CredentialAccount, Preferences } from "@versia/client-api";
 import { z } from "zod";
 import { emojisOfAccounts } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
@@ -14,7 +14,7 @@ import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { pictureRoutes } from "./picture_routes.ts";
 import { updateProfile } from "./profile.ts";
 import { publicAccount, publicAccounts } from "./public.ts";
-import { renderCredentialAccount } from "./render.ts";
+import { renderCredentialAccount, renderPreferences } from "./render.ts";
 import { rolesOf } from "./role_queries.ts";
 
 const found = (row: AccountRow | undefined) => {
@@ -175,6 +175,22 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
         handler: async (ctx, { params }) => ({
             status: 200,
             body: await publicAccount(ctx, found(await findAccount(ctx, params.id))),
+        }),
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/preferences",
+        summary: "View user preferences",
+        description: "Preferences defined by the user in their account settings.\n\nVerso keeps " +
+            "only the defaults for posting, which `update_credentials` changes. The others are " +
+            "always Mastodon's defaults, and quotes are never restricted.",
+        docs: "https://docs.joinmastodon.org/methods/preferences/#get",
+        tags: ["accounts"],
+        auth: { require: "user", scope: "read:accounts" },
+        responses: { 200: Preferences },
+        handler: async (ctx, { viewer }) => ({
+            status: 200,
+            body: renderPreferences(found(await findAccount(ctx, viewer.accountId))),
         }),
     }),
     ...(["avatar", "header"] as const).map((picture) =>

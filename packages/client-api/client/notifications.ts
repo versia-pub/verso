@@ -193,6 +193,14 @@ export class GroupedNotificationMethods {
     async dismiss(groupKey: string, options?: CallOptions): Promise<void> {
         await this.http.send("POST", path`/api/v2/notifications/${groupKey}/dismiss`, options);
     }
+
+    /**
+     * Dismisses all the viewer's notifications, as {@link NotificationMethods.clear} does. Mastodon
+     * documents only that one.
+     */
+    async clear(options?: CallOptions): Promise<void> {
+        await this.http.send("POST", "/api/v2/notifications/clear", options);
+    }
 }
 
 /** Where the viewer last read up to in their home timeline and notifications. */

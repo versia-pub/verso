@@ -241,18 +241,21 @@ Deno.test("a notification is shown and dismissed only by its user", async () => 
 });
 
 Deno.test("clearing dismisses all the user's notifications, and no one else's", async () => {
-    await using test = await open();
-    await follow(test.ctx, "bob", "alice");
-    await follow(test.ctx, "carol", "alice");
-    await follow(test.ctx, "alice", "bob");
+    for (const version of ["v1", "v2"]) {
+        await using test = await open();
+        await follow(test.ctx, "bob", "alice");
+        await follow(test.ctx, "carol", "alice");
+        await follow(test.ctx, "alice", "bob");
 
-    const cleared = await test.request("POST", "/api/v1/notifications/clear");
-    assertEquals([cleared.status, cleared.body], [200, {}]);
-    assertEquals(await test.list(), []);
-    assertEquals(
-        (await test.request("GET", "/api/v1/notifications", { as: "bob" })).body.length,
-        1,
-    );
+        const cleared = await test.request("POST", `/api/${version}/notifications/clear`);
+        assertEquals([cleared.status, cleared.body], [200, {}], version);
+        assertEquals(await test.list(), [], version);
+        assertEquals(
+            (await test.request("GET", "/api/v1/notifications", { as: "bob" })).body.length,
+            1,
+            version,
+        );
+    }
 });
 
 Deno.test("reading notifications takes read:notifications, and dismissing them write", async () => {
@@ -268,6 +271,10 @@ Deno.test("reading notifications takes read:notifications, and dismissing them w
     );
     assertEquals(
         (await test.request("POST", "/api/v2/notifications/a/dismiss", writing)).status,
+        403,
+    );
+    assertEquals(
+        (await test.request("POST", "/api/v2/notifications/clear", writing)).status,
         403,
     );
     assertEquals((await test.request("GET", "/api/v2/notifications/a", reading)).status, 403);
