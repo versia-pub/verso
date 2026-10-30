@@ -21,6 +21,10 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/instance/privacy_policy": (c) => c.instance.privacyPolicy(),
     "GET /api/v1/instance/terms_of_service": (c) => c.instance.termsOfService(),
     "GET /api/v1/instance/terms_of_service/{date}": (c) => c.instance.termsOfService("2026-01-01"),
+    "GET /api/v1/instance/peers": (c) => c.instance.peers(),
+    "GET /api/v1/instance/activity": (c) => c.instance.activity(),
+    "GET /api/v1/instance/languages": (c) => c.instance.languages(),
+    "GET /api/v1/instance/domain_blocks": (c) => c.instance.domainBlocks(),
 
     "GET /api/v1/accounts/verify_credentials": (c) => c.accounts.verifyCredentials(),
     "PATCH /api/v1/accounts/update_credentials": (c) => c.accounts.updateCredentials({}),

@@ -4,18 +4,21 @@ import type { Scope } from "../kernel/scopes.ts";
 import type { AccessTokensTable } from "./tables.ts";
 
 /**
- * How many accounts were issued an access token since `since`, as a measure of who is active. Only
- * local accounts get them.
+ * How many accounts were issued an access token from `since`, and before `until` if given, as a
+ * measure of who logged in. Only local accounts get them.
  */
-export const countAccountsWithTokensSince = async (ctx: Context, since: Date): Promise<number> =>
-    readCount(
-        await ctx.db.selectFrom("access_tokens")
-            .select((eb) =>
-                eb.fn.count<number | string | bigint>("account_id").distinct().as("count")
-            )
-            .where("created_at", ">=", since)
-            .executeTakeFirstOrThrow(),
-    );
+export const countAccountsWithTokensSince = async (
+    ctx: Context,
+    since: Date,
+    until?: Date,
+): Promise<number> => {
+    let query = ctx.db.selectFrom("access_tokens")
+        .select((eb) => eb.fn.count<number | string | bigint>("account_id").distinct().as("count"))
+        .where("created_at", ">=", since);
+    if (until !== undefined) query = query.where("created_at", "<", until);
+
+    return readCount(await query.executeTakeFirstOrThrow());
+};
 
 /** The token with this hash, which is all that is stored of it. */
 export const findTokenByHash = async (

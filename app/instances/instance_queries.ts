@@ -12,6 +12,11 @@ export const takesMessages = async (ctx: Context, domain: string): Promise<boole
     (await ctx.db.selectFrom("instances").select("takes_messages").where("domain", "=", domain)
         .executeTakeFirst())?.takes_messages === true;
 
+/** The domains of every other instance this one has stored, sorted. */
+export const instanceDomains = async (ctx: Context): Promise<string[]> =>
+    (await ctx.db.selectFrom("instances").select("domain").orderBy("domain").execute())
+        .map((row) => row.domain);
+
 /** How many other instances this one has stored. */
 export const countInstances = async (ctx: Context): Promise<number> =>
     readCount(await ctx.db.selectFrom("instances").select(countAll).executeTakeFirstOrThrow());

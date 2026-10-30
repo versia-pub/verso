@@ -153,6 +153,21 @@ export const countLocalStatuses = async (ctx: Context): Promise<number> =>
             .executeTakeFirstOrThrow(),
     );
 
+/** How many local accounts were created from `since` and before `until`. */
+export const countLocalAccountsCreated = async (
+    ctx: Context,
+    since: Date,
+    until: Date,
+): Promise<number> =>
+    readCount(
+        await ctx.db.selectFrom("accounts")
+            .select(countAll)
+            .where("instance_id", "is", null)
+            .where("created_at", ">=", since)
+            .where("created_at", "<", until)
+            .executeTakeFirstOrThrow(),
+    );
+
 /** How many accounts this instance has. */
 export const countLocalAccounts = async (ctx: Context): Promise<number> =>
     readCount(

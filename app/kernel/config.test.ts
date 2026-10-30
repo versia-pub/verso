@@ -41,7 +41,15 @@ Deno.test("a minimal config gets the defaults", async () => {
                 rate_limit: { limit: 3000, window_seconds: 300 },
                 fetch_limit: { limit: 600, window_seconds: 300 },
             },
-            instance: { description: "", contact: {}, rules: [] },
+            instance: {
+                description: "",
+                contact: {},
+                rules: [],
+                show_peers: true,
+                show_activity: true,
+                show_blocks: "none",
+                show_block_reasons: "none",
+            },
             limits: {
                 display_name: 60,
                 note: 10_000,
@@ -140,6 +148,10 @@ description = " A place to talk. "
 contact = { email = "admin@social.example", account = "admin" }
 privacy_policy = { text = " We keep little. ", updated = 2026-10-01 }
 terms_of_service = { text = "Be kind.", updated = 2026-09-01T12:00:00Z }
+show_peers = false
+show_activity = false
+show_blocks = "users"
+show_block_reasons = "all"
 
 [[instance.rules]]
 text = " Be kind "
@@ -249,6 +261,10 @@ level = "debug"
                     text: "Be kind.",
                     updated: new Date("2026-09-01T12:00:00Z"),
                 },
+                show_peers: false,
+                show_activity: false,
+                show_blocks: "users",
+                show_block_reasons: "all",
             },
             limits: {
                 display_name: 60,

@@ -170,7 +170,9 @@ Deno.test("the instance's own pages all match their schemas", async () => {
             extended_description: document,
             privacy_policy: document,
             terms_of_service: document,
+            show_blocks: "all",
         },
+        federation: { blocked_domains: ["spam.example"] },
     });
 
     assertEquals((await test.client.instance.get()).domain, "social.example");
@@ -182,6 +184,16 @@ Deno.test("the instance's own pages all match their schemas", async () => {
     assertEquals(
         (await test.client.instance.termsOfService("2026-01-01")).effective_date,
         "2026-01-01",
+    );
+    assertEquals(await test.client.instance.peers(), []);
+    assertEquals((await test.client.instance.activity()).length, 12);
+    assertEquals(
+        (await test.client.instance.languages()).find((language) => language.code === "de")?.name,
+        "German",
+    );
+    assertEquals(
+        (await test.client.instance.domainBlocks()).map((block) => block.domain),
+        ["spam.example"],
     );
 });
 

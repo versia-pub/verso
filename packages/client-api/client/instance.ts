@@ -1,15 +1,18 @@
 import { z } from "zod";
 import {
+    DomainBlock,
     ExtendedDescription,
     Instance,
+    Language,
     PrivacyPolicy,
     Rule,
     TermsOfService,
     V1Instance,
+    WeeklyActivity,
 } from "../instance.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
 
-/** What the instance says about itself. Anyone may ask. */
+/** What the instance says about itself. Anyone may ask, unless the instance keeps some of it back. */
 export class InstanceMethods {
     constructor(private readonly http: Http) {}
 
@@ -69,6 +72,45 @@ export class InstanceMethods {
             date === undefined
                 ? "/api/v1/instance/terms_of_service"
                 : path`/api/v1/instance/terms_of_service/${date}`,
+            options,
+        );
+    }
+
+    /**
+     * The domains of the instances this one knows of.
+     * @see https://docs.joinmastodon.org/methods/instance/#peers
+     */
+    peers(options?: CallOptions): Promise<string[]> {
+        return this.http.json(z.array(z.string()), "GET", "/api/v1/instance/peers", options);
+    }
+
+    /**
+     * How active the instance was in each of the last 12 weeks, the current one first.
+     * @see https://docs.joinmastodon.org/methods/instance/#activity
+     */
+    activity(options?: CallOptions): Promise<WeeklyActivity[]> {
+        return this.http.json(
+            z.array(WeeklyActivity),
+            "GET",
+            "/api/v1/instance/activity",
+            options,
+        );
+    }
+
+    /** The languages statuses may be written in. */
+    languages(options?: CallOptions): Promise<Language[]> {
+        return this.http.json(z.array(Language), "GET", "/api/v1/instance/languages", options);
+    }
+
+    /**
+     * The instances this one has blocked, if the instance shows them to the caller.
+     * @see https://docs.joinmastodon.org/methods/instance/#domain_blocks
+     */
+    domainBlocks(options?: CallOptions): Promise<DomainBlock[]> {
+        return this.http.json(
+            z.array(DomainBlock),
+            "GET",
+            "/api/v1/instance/domain_blocks",
             options,
         );
     }

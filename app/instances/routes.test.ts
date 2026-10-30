@@ -9,6 +9,8 @@ import { parseConfig } from "../kernel/config.ts";
 import { createTestContext } from "../testing/context.ts";
 import { postNote } from "../notes/notes.ts";
 import { vapidPublicKey } from "../push/keys.ts";
+import { blockDomain } from "../moderation/domain_blocks.ts";
+import { weekStart } from "./activity.ts";
 import { type AboutSettings, instanceStats } from "./render.ts";
 import { instanceRoutes } from "./routes.ts";
 import { createInstance, defaultSettings } from "./testing.ts";
@@ -346,4 +348,72 @@ Deno.test("texts that aren't configured aren't found", async () => {
             body: { error: "Record not found" },
         });
     }
+});
+
+Deno.test("peers are the instances Verso knows of, without blocked ones", async () => {
+    await using test = await open();
+    for (const domain of ["b.example", "a.example", "spam.example"]) {
+        await createInstance(test.ctx, domain);
+    }
+    await blockDomain(test.ctx, "spam.example");
+
+    const { status, body } = await test.fetch("/api/v1/instance/peers");
+
+    assertEquals(status, 200);
+    assertEquals(body, ["a.example", "b.example"]);
+});
+
+Deno.test("a week runs from midnight UTC on Monday", () => {
+    // A Sunday evening, and a Monday just after midnight.
+    assertEquals(weekStart(new Date("2026-01-04T23:00:00Z")), new Date("2025-12-29T00:00:00Z"));
+    assertEquals(weekStart(new Date("2026-01-05T00:01:00Z")), new Date("2026-01-05T00:00:00Z"));
+});
+
+Deno.test("activity counts each week's statuses, logins and new accounts", async () => {
+    await using test = await open();
+    const post = (text: string) =>
+        postNote(test.ctx, "alice", { text, format: "text/plain", spoilerText: "" });
+
+    await createLocalAccount(test.ctx, "alice");
+    await tokenFor(test.ctx, "alice");
+    await post("Last week");
+    test.clock.advance(7 * 24 * 60 * 60 * 1000);
+    await createLocalAccount(test.ctx, "bob");
+    await post("This week");
+    await post("And again");
+
+    const { status, body } = await test.fetch("/api/v1/instance/activity");
+
+    // The clock starts on Thursday 1 January 2026, in the week from Monday 29 December.
+    assertEquals(status, 200);
+    assertEquals(body.length, 12);
+    assertEquals(body.slice(0, 3), [
+        { week: "1767571200", statuses: "2", logins: "0", registrations: "1" },
+        { week: "1766966400", statuses: "1", logins: "1", registrations: "1" },
+        { week: "1766361600", statuses: "0", logins: "0", registrations: "0" },
+    ]);
+});
+
+Deno.test("peers and activity can be turned off", async () => {
+    const settings = defaultSettings();
+    await using test = await open({
+        ...settings,
+        instance: { ...settings.instance, show_peers: false, show_activity: false },
+    });
+
+    assertEquals((await test.fetch("/api/v1/instance/peers")).status, 404);
+    assertEquals((await test.fetch("/api/v1/instance/activity")).status, 404);
+});
+
+Deno.test("languages are every ISO 639-1 language, named in English", async () => {
+    await using test = await open();
+
+    const { status, body } = await test.fetch("/api/v1/instance/languages");
+
+    assertEquals(status, 200);
+    assertEquals(body.length, 183);
+    assertEquals(body.find((language: { code: string }) => language.code === "en"), {
+        code: "en",
+        name: "English",
+    });
 });

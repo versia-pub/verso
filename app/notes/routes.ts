@@ -144,8 +144,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
         method: "GET",
         path: "/api/v1/statuses",
         summary: "View multiple statuses",
-        description: "Obtain information about multiple statuses.\n\nVerso takes at most 20 ids, " +
-            "as Mastodon does, and leaves out statuses that don't exist or the viewer may not see.",
+        description: "Obtain information about multiple statuses.",
         docs: "https://docs.joinmastodon.org/methods/statuses/#index",
         tags: ["statuses"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:note" },

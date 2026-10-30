@@ -150,8 +150,7 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
         method: "GET",
         path: "/api/v1/accounts",
         summary: "Get multiple accounts",
-        description: "View information about multiple profiles.\n\nVerso takes at most 40 ids, " +
-            "as Mastodon does, and leaves out accounts that don't exist.",
+        description: "View information about multiple profiles.",
         docs: "https://docs.joinmastodon.org/methods/accounts/#index",
         tags: ["accounts"],
         auth: { require: "optional", permission: "read:account" },
@@ -181,9 +180,7 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
         method: "GET",
         path: "/api/v1/preferences",
         summary: "View user preferences",
-        description: "Preferences defined by the user in their account settings.\n\nVerso keeps " +
-            "only the defaults for posting, which `update_credentials` changes. The others are " +
-            "always Mastodon's defaults, and quotes are never restricted.",
+        description: "Preferences defined by the user in their account settings.",
         docs: "https://docs.joinmastodon.org/methods/preferences/#get",
         tags: ["accounts"],
         auth: { require: "user", scope: "read:accounts" },

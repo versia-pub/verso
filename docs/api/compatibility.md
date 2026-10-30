@@ -175,10 +175,10 @@ and announcements. There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/instance/rules`                 | ✅    |                              |
 | `GET /api/v1/instance/extended_description`  | ✅    |                              |
 | `GET /api/v1/instance/privacy_policy`        | ✅    |                              |
-| `GET /api/v1/instance/peers`                 | ❌    |                              |
-| `GET /api/v1/instance/activity`              | ❌    |                              |
-| `GET /api/v1/instance/domain_blocks`         | ❌    |                              |
-| `GET /api/v1/instance/languages`             | ❌    |                              |
+| `GET /api/v1/instance/peers`                 | ✅    |                              |
+| `GET /api/v1/instance/activity`              | 🟡    | Logins are counted by tokens |
+| `GET /api/v1/instance/domain_blocks`         | ✅    |                              |
+| `GET /api/v1/instance/languages`             | ✅    |                              |
 | `GET /api/v1/instance/translation_languages` | ❌    |                              |
 | `GET /api/v1/custom_emojis`                  | ✅    |                              |
 | `GET /api/v1/directory`                      | ❌    |                              |

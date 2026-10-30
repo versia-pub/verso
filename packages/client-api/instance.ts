@@ -208,3 +208,44 @@ export const TermsOfService = z.object({
     succeeded_by: z.iso.date().nullable(),
 });
 export type TermsOfService = z.infer<typeof TermsOfService>;
+
+/**
+ * How active the instance was in a week, as Mastodon gives it: every number as a string.
+ * @see https://docs.joinmastodon.org/methods/instance/#activity
+ */
+export const WeeklyActivity = z.object({
+    /** When the week started, at midnight UTC on a Monday, in seconds since the epoch. */
+    week: z.string(),
+    /** How many statuses local users posted. */
+    statuses: z.string(),
+    /** How many local users logged in. */
+    logins: z.string(),
+    /** How many local accounts were created. */
+    registrations: z.string(),
+});
+export type WeeklyActivity = z.infer<typeof WeeklyActivity>;
+
+/** A language statuses may be written in. */
+export const Language = z.object({
+    /** Its ISO 639 code, such as `en`. */
+    code: z.string(),
+    /** Its name in English. */
+    name: z.string(),
+});
+export type Language = z.infer<typeof Language>;
+
+/**
+ * An instance this one has blocked.
+ * @see https://docs.joinmastodon.org/entities/DomainBlock/
+ */
+export const DomainBlock = z.object({
+    /** The domain which is blocked. This may be obfuscated or partially censored. */
+    domain: z.string(),
+    /** The SHA256 hash digest of the domain string. */
+    digest: z.string(),
+    /** The level to which the domain is blocked. */
+    severity: z.enum(["silence", "suspend"]),
+    /** An optional reason for the domain block. */
+    comment: z.string().nullish(),
+});
+export type DomainBlock = z.infer<typeof DomainBlock>;

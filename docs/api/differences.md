@@ -65,6 +65,13 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - `exclude_unreviewed` does nothing, since Verso doesn't review hashtags.
 - `resolve` fetches accounts and statuses by their Versia URL, and accounts by `username@domain`.
 
+## Instance
+
+- `GET /api/v1/instance/activity` counts a week's logins by the access tokens issued that week, so a
+  user who stays logged in isn't counted. Deleted statuses aren't counted.
+- Every block in `GET /api/v1/instance/domain_blocks` has the severity `suspend`, since Verso blocks
+  instances entirely.
+
 ## Custom emoji
 
 - `GET /api/v1/custom_emojis` also lists the viewer's own emoji. See

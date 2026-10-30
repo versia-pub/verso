@@ -128,6 +128,14 @@ rules = [
     { text = "Be kind" },
     { text = "No spam", hint = "Advertising counts as spam." },
 ]
+# Whether apps can list the instances Verso knows of, and weekly counts of local statuses, logins
+# and new accounts.
+# show_peers = true
+# show_activity = true
+# Who apps show the blocked instances to, and why each was blocked: "none", "users" (signed-in
+# users) or "all".
+# show_blocks = "none"
+# show_block_reasons = "none"
 
 # Long texts, in plain text with a blank line between paragraphs, and the day they last changed.
 [instance.privacy_policy]

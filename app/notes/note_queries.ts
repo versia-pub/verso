@@ -3,6 +3,7 @@ import { batchesOf } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
+import { firstIdAt } from "../kernel/ids.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { attachmentsOf, hasAttachments } from "../media/attachment_queries.ts";
 import type { NoteIdQuery } from "./removal_queries.ts";
@@ -213,6 +214,24 @@ export const countNotesBy = async (
             .where("account_id", "=", accountId)
             .where("visibility", "in", visibilities)
             .where("reblog_of_id", "is", null)
+            .executeTakeFirstOrThrow(),
+    );
+
+/**
+ * How many local statuses, not counting boosts, were posted from `since` and before `until`, by
+ * their ids' times. Deleted ones aren't counted.
+ */
+export const countLocalNotesPosted = async (
+    ctx: Context,
+    since: Date,
+    until: Date,
+): Promise<number> =>
+    readCount(
+        await ctx.db.selectFrom("notes").select(countAll)
+            .where("instance_id", "is", null)
+            .where("reblog_of_id", "is", null)
+            .where("id", ">=", firstIdAt(since))
+            .where("id", "<", firstIdAt(until))
             .executeTakeFirstOrThrow(),
     );
 

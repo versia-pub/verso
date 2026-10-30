@@ -1971,7 +1971,7 @@
         "/api/v1/accounts/familiar_followers": {
             "get": {
                 "summary": "Find familiar followers",
-                "description": "Obtain a list of all accounts that follow a given account, filtered for accounts you follow.\n\nVerso takes at most 80 ids. Accounts that don't exist are left out, as are followers who hide whom they follow.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:account_follows` permission.",
+                "description": "Obtain a list of all accounts that follow a given account, filtered for accounts you follow.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:account_follows` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/accounts/#familiar_followers"
                 },
@@ -2988,7 +2988,7 @@
         "/api/v1/accounts": {
             "get": {
                 "summary": "Get multiple accounts",
-                "description": "View information about multiple profiles.\n\nVerso takes at most 40 ids, as Mastodon does, and leaves out accounts that don't exist.\n\nNeeds the `read:account` permission.",
+                "description": "View information about multiple profiles.\n\nNeeds the `read:account` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/accounts/#index"
                 },
@@ -3079,7 +3079,7 @@
         "/api/v1/preferences": {
             "get": {
                 "summary": "View user preferences",
-                "description": "Preferences defined by the user in their account settings.\n\nVerso keeps only the defaults for posting, which `update_credentials` changes. The others are always Mastodon's defaults, and quotes are never restricted.\n\nNeeds a token for a user, not one an app got for itself.",
+                "description": "Preferences defined by the user in their account settings.\n\nNeeds a token for a user, not one an app got for itself.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/preferences/#get"
                 },
@@ -3500,7 +3500,7 @@
             },
             "get": {
                 "summary": "View multiple statuses",
-                "description": "Obtain information about multiple statuses.\n\nVerso takes at most 20 ids, as Mastodon does, and leaves out statuses that don't exist or the viewer may not see.\n\nNeeds the `read:note` permission.",
+                "description": "Obtain information about multiple statuses.\n\nNeeds the `read:note` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/statuses/#index"
                 },
@@ -6031,7 +6031,7 @@
         "/api/v2/notifications/clear": {
             "post": {
                 "summary": "Dismiss all notifications",
-                "description": "Clear all notifications from the server.\n\nAs on Mastodon, this is the same as `POST /api/v1/notifications/clear`, which its docs describe.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "description": "Clear all notifications from the server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/notifications/#clear"
                 },
@@ -10846,6 +10846,117 @@
                 }
             }
         },
+        "/api/v1/instance/peers": {
+            "get": {
+                "summary": "List of connected domains",
+                "description": "Domains that this server is aware of.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#peers"
+                },
+                "tags": [
+                    "instance"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instance/activity": {
+            "get": {
+                "summary": "Weekly activity",
+                "description": "Server activity over the last 3 months, binned weekly.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#activity"
+                },
+                "tags": [
+                    "instance"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/WeeklyActivity"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instance/languages": {
+            "get": {
+                "summary": "Supported languages",
+                "description": "Languages that statuses may be written in.",
+                "tags": [
+                    "instance"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Language"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/instance/domain_blocks": {
+            "get": {
+                "summary": "View moderated servers",
+                "description": "Obtain a list of domains that have been blocked.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#domain_blocks"
+                },
+                "tags": [
+                    "instance"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/DomainBlock"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/.well-known/versia": {
             "get": {
                 "summary": "The versions of Versia the instance speaks",
@@ -11980,6 +12091,35 @@
                     "category"
                 ]
             },
+            "DomainBlock": {
+                "type": "object",
+                "properties": {
+                    "domain": {
+                        "type": "string"
+                    },
+                    "digest": {
+                        "type": "string"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "silence",
+                            "suspend"
+                        ]
+                    },
+                    "comment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "domain",
+                    "digest",
+                    "severity"
+                ]
+            },
             "ExtendedDescription": {
                 "type": "object",
                 "properties": {
@@ -12646,6 +12786,21 @@
                     "api_versions",
                     "contact",
                     "rules"
+                ]
+            },
+            "Language": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "code",
+                    "name"
                 ]
             },
             "Marker": {
@@ -14678,6 +14833,29 @@
                     "alerts",
                     "server_key",
                     "policy"
+                ]
+            },
+            "WeeklyActivity": {
+                "type": "object",
+                "properties": {
+                    "week": {
+                        "type": "string"
+                    },
+                    "statuses": {
+                        "type": "string"
+                    },
+                    "logins": {
+                        "type": "string"
+                    },
+                    "registrations": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "week",
+                    "statuses",
+                    "logins",
+                    "registrations"
                 ]
             }
         },

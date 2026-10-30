@@ -1,10 +1,12 @@
 import {
     ExtendedDescription,
     Instance,
+    Language,
     PrivacyPolicy,
     Rule,
     TermsOfService,
     V1Instance,
+    WeeklyActivity,
 } from "@versia/client-api";
 import { z } from "zod";
 import { identiconBanner } from "../accounts/identicon.ts";
@@ -12,6 +14,9 @@ import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Binary } from "../http/responses.ts";
 import { cached } from "../kernel/cache.ts";
+import { weeklyActivity } from "./activity.ts";
+import { instanceDomains } from "./instance_queries.ts";
+import { languages } from "./languages.ts";
 import {
     type AboutSettings,
     instanceStats,
@@ -43,9 +48,13 @@ const thumbnailRoute = () => {
 /** How long the instance's stats are cached: clients request them each time they start. */
 const statsMs = 5 * 60_000;
 
+/** How long lists that change slowly may be cached, as Mastodon caches them. */
+const daySeconds = 24 * 60 * 60;
+
 /** What the instance tells clients about itself, with its stats cached for a while. */
 export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
     const stats = cached(statsMs, instanceStats);
+    const activity = cached(daySeconds * 1000, weeklyActivity);
 
     return [
         defineRoute({
@@ -131,6 +140,51 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
 
                 return Promise.resolve({ status: 200, body: terms });
             },
+        }),
+        defineRoute({
+            method: "GET",
+            path: "/api/v1/instance/peers",
+            summary: "List of connected domains",
+            description: "Domains that this server is aware of.",
+            docs: "https://docs.joinmastodon.org/methods/instance/#peers",
+            tags: ["instance"],
+            maxAge: daySeconds,
+            responses: { 200: z.array(z.string()) },
+            handler: async (ctx) => {
+                if (!settings.instance.show_peers) throw new NotFound();
+
+                const domains = await instanceDomains(ctx);
+                const blocked = await Promise.all(
+                    domains.map((domain) => ctx.federation.isBlocked(ctx, domain)),
+                );
+
+                return { status: 200, body: domains.filter((_, index) => !blocked[index]) };
+            },
+        }),
+        defineRoute({
+            method: "GET",
+            path: "/api/v1/instance/activity",
+            summary: "Weekly activity",
+            description: "Server activity over the last 3 months, binned weekly.",
+            docs: "https://docs.joinmastodon.org/methods/instance/#activity",
+            tags: ["instance"],
+            maxAge: daySeconds,
+            responses: { 200: z.array(WeeklyActivity) },
+            handler: async (ctx) => {
+                if (!settings.instance.show_activity) throw new NotFound();
+
+                return { status: 200, body: await activity.get(ctx) };
+            },
+        }),
+        defineRoute({
+            method: "GET",
+            path: "/api/v1/instance/languages",
+            summary: "Supported languages",
+            description: "Languages that statuses may be written in.",
+            tags: ["instance"],
+            maxAge: daySeconds,
+            responses: { 200: z.array(Language) },
+            handler: () => Promise.resolve({ status: 200, body: [...languages] }),
         }),
     ];
 };

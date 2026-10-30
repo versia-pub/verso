@@ -125,9 +125,7 @@ export const groupedNotificationRoutes: readonly Route[] = [
         method: "POST",
         path: "/api/v2/notifications/clear",
         summary: "Dismiss all notifications",
-        description:
-            "Clear all notifications from the server.\n\nAs on Mastodon, this is the same " +
-            "as `POST /api/v1/notifications/clear`, which its docs describe.",
+        description: "Clear all notifications from the server.",
         docs: "https://docs.joinmastodon.org/methods/notifications/#clear",
         tags: ["notifications"],
         auth: { require: "user", scope: "write:notifications", permission: "owner:notification" },

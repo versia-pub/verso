@@ -186,9 +186,8 @@ export const graphRoutes: readonly Route[] = [
         method: "GET",
         path: "/api/v1/accounts/familiar_followers",
         summary: "Find familiar followers",
-        description: "Obtain a list of all accounts that follow a given account, filtered for " +
-            "accounts you follow.\n\nVerso takes at most 80 ids. Accounts that don't exist are " +
-            "left out, as are followers who hide whom they follow.",
+        description:
+            "Obtain a list of all accounts that follow a given account, filtered for accounts you follow.",
         docs: "https://docs.joinmastodon.org/methods/accounts/#familiar_followers",
         tags: ["accounts"],
         auth: { require: "user", scope: "read:follows", permission: "read:account_follows" },

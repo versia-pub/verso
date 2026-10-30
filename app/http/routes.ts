@@ -18,6 +18,7 @@ import { timelineRoutes } from "../notes/timeline_routes.ts";
 import type { AboutSettings } from "../instances/render.ts";
 import { instanceRoutes } from "../instances/routes.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
+import { moderationRoutes } from "../moderation/routes.ts";
 import { registry } from "../registry.ts";
 import { searchRoutes } from "../search/routes.ts";
 import { streamingRoutes } from "../streaming/routes.ts";
@@ -54,6 +55,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         inboxRoute(registry),
         messagingRoute,
         ...instanceRoutes(settings),
+        ...moderationRoutes(settings.instance, settings.federation.blocked_domains),
         ...versiaInstanceRoutes(settings.instance, registry.extensions),
         docsRoute,
     ];

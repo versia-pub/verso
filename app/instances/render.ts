@@ -32,6 +32,7 @@ export type AboutSettings =
     & Pick<Config, "instance" | "limits" | "auth" | "streaming" | "search">
     & {
         readonly media: MediaLimits;
+        readonly federation: Pick<Config["federation"], "blocked_domains">;
     };
 
 /**

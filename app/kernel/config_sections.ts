@@ -92,6 +92,9 @@ const Document = z.strictObject({
 });
 
 /** What the instance tells people about itself. */
+/** Who may see something: nobody, signed-in users, or everyone. */
+const Audience = z.enum(["none", "users", "all"]);
+
 export const Instance = z.strictObject({
     /** Its name. Without one, it goes by its domain. */
     name: z.string().trim().min(1).optional(),
@@ -115,6 +118,14 @@ export const Instance = z.strictObject({
     privacy_policy: Document.optional(),
     /** In force from its `updated` date. */
     terms_of_service: Document.optional(),
+    /** Whether `/api/v1/instance/peers` lists the instances Verso knows of. */
+    show_peers: z.boolean().default(true),
+    /** Whether `/api/v1/instance/activity` gives weekly counts of statuses, logins and sign-ups. */
+    show_activity: z.boolean().default(true),
+    /** Who `/api/v1/instance/domain_blocks` shows the blocked instances to. */
+    show_blocks: Audience.default("none"),
+    /** Who sees why each instance was blocked, if they see the blocks. */
+    show_block_reasons: Audience.default("none"),
 }).prefault({});
 
 /** What everyone may do, before any role adds more. */

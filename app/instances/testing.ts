@@ -33,6 +33,7 @@ export const defaultSettings = (): AboutSettings => ({
     media: MediaLimits.parse({}),
     streaming: StreamingLimits.parse({}),
     search: SearchLimits.parse({}),
+    federation: { blocked_domains: [] },
 });
 
 /** An instance's key pair, with its public half as InstanceMetadata shows it. */
