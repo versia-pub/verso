@@ -1,9 +1,9 @@
 # Adding a job
 
-A job is work that runs later, in a worker, and is retried if it fails: anything slow, anything that
-calls another server, or anything too large for one transaction. This walks through the `notify`
-jobs in [`app/notifications/notifications.ts`](../../app/notifications/notifications.ts), which
-notify a status's author's followers 100 at a time. Read
+Jobs are for work that's slow, calls another server, or is too big for one transaction. They run
+later in a worker, and are retried if they fail. This guide uses the `notify` jobs in
+[`app/notifications/notifications.ts`](../../app/notifications/notifications.ts), which notify a
+status author's followers 100 at a time. Read
 [Events, jobs and messages](../events-and-jobs.md#jobs) first.
 
 ```
@@ -15,7 +15,7 @@ subscriber, in the transaction        worker, later
 
 ## 1. Name the queue and its payload
 
-In the module the work belongs to:
+Do this in the module the work belongs to:
 
 ```ts
 export const notifyQueue = "notify";
@@ -28,11 +28,12 @@ export const NotifyJob = z.object({
 });
 ```
 
-- **Carry ids (not rows)**, so the job sees what is true when it runs, not when it was queued.
-- **Keep the payload small.** Split large work into several jobs, as `notify` jobs carry 100 users
-  each.
-- **Changing a payload's shape** must still parse jobs queued by the old version, since they may be
-  waiting when you upgrade. Add optional fields, rather than renaming or removing them.
+Payloads carry ids, not rows, so the job sees what's true when it runs rather than when it was
+queued. Keep them small, and split large work into several jobs, as `notify` does with 100 users
+each.
+
+Jobs queued by an older version may still be waiting after an upgrade, so a changed payload schema
+must still parse them. Add optional fields instead of renaming or removing fields.
 
 ## 2. Write the handler
 
@@ -51,12 +52,10 @@ export const notifyHandler: Handler = async (ctx: Context, job: JobsTable): Prom
 };
 ```
 
-- **A payload that doesn't parse** can never succeed: throw `PermanentFailure`.
-- **It may run twice**, if a worker dies mid-run, so make it idempotent.
-- **What it is about may be gone**, such as a deleted status. Do nothing then.
-- **Open a transaction to write.** Don't hold one open while calling other servers.
-- **Choose how it fails.** Throw to retry after a backoff, `RetryAt` to wait until a time, and
-  `PermanentFailure` when retrying can't help.
+[Handlers](../events-and-jobs.md#handlers) explains the rules this follows: the payload is
+validated, the handler is idempotent, it does nothing if the status is gone, and it opens its own
+transaction to write. Don't hold a transaction open while calling other servers. To decide how it
+fails, see [A job's life](../events-and-jobs.md#a-jobs-life).
 
 ## 3. Add the queue
 
@@ -66,18 +65,16 @@ Add it to `queues` in [`app/jobs/queues.ts`](../../app/jobs/queues.ts):
 [notifyQueue]: { handler: notifyHandler, concurrency: 2 },
 ```
 
-- **`concurrency`** is how many of its jobs one worker runs at once: 8 for deliveries, which mostly
-  wait on other servers, and 2 for media processing, which uses a lot of memory.
-- **`perGroup`** limits the jobs of one group, such as one instance, so one slow server can't take
-  every slot. Give each job a `group` when enqueueing it.
-- **`leaseMs`**, 5 minutes by default, must be longer than the slowest job, or another worker starts
-  it again.
-- **`deadPayload`** trims what a dead letter keeps, for payloads that are large.
+Pick `concurrency` to suit the work. Deliveries, which mostly wait on other servers, run 8 at once
+per worker, and media processing, which uses a lot of memory, runs 2. Use `perGroup` so one slow
+instance can't take every slot, and give each job a `group` when enqueueing it. `leaseMs`, 5 minutes
+by default, must be longer than the slowest job, or another worker will start it again.
+[Queues](../events-and-jobs.md#queues) lists every field.
 
 ## 4. Enqueue it
 
-Enqueue jobs in the transaction of the change that causes them, usually from a subscriber, so they
-exist exactly when the change commits:
+Enqueue jobs in the same transaction as the change that causes them, usually from a subscriber, so
+they only exist if the change commits:
 
 ```ts
 await enqueueAll(
@@ -89,15 +86,14 @@ await enqueueAll(
 );
 ```
 
-Use `enqueue` for one job. A `dedupeKey` stops the same work being queued twice while one is
-waiting, and `runAt` delays it. The options are listed in
-[Events, jobs and messages](../events-and-jobs.md#jobs).
+Use `enqueue` for a single job. A `dedupeKey` stops the same work from being queued twice, and
+`runAt` delays it. [Jobs](../events-and-jobs.md#jobs) lists every option.
 
 ## Recurring jobs
 
-For work that runs on a schedule, such as a cleanup, add the handler to `hourly` in `queues.ts`. The
-scheduler queues it once an hour, in its own queue, and only one runs at a time. For another period,
-add a `Task` with `every: "minute"` or `"day"` to `tasks`.
+For scheduled work, such as a cleanup, add the handler to `hourly` in `queues.ts`. The scheduler
+queues it once an hour in its own queue, one at a time. For a different period, add a `Task` to
+`tasks` with `every: "minute"` or `"day"`.
 
 ## 5. Test it
 
@@ -107,10 +103,9 @@ Tests have no workers. Run the jobs with `drain`, then check what they did:
 await drain(test.ctx, queues);
 ```
 
-- **Retries**: make the job fail, then `test.clock.advance` past the backoff and `drain` again.
-- **A deleted subject**: delete what the job is about before draining, and check nothing happens.
-- **Between instances**, `network.drain()` runs every instance's jobs. See
-  [Testing](../testing.md#several-instances).
+To test retries, make the job fail, then `test.clock.advance` past the backoff and `drain` again. To
+test a missing subject, delete it before draining and check nothing happens. With several instances,
+`network.drain()` runs every instance's jobs, as [Testing](../testing.md#several-instances) shows.
 
 ## Checklist
 

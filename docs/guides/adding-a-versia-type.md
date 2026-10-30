@@ -1,9 +1,9 @@
 # Adding a Versia type
 
-This walks through supporting a new Versia entity type, using reactions, from the
-[reactions extension](https://versia.pub/extensions/reactions), as the example. The code is in
+This guide adds support for a new Versia entity type, using the reactions from the
+[reactions extension](https://versia.pub/extensions/reactions). The code is in
 [`app/interactions/reaction_federation.ts`](../../app/interactions/reaction_federation.ts). Read
-[Federation](../federation.md) first for how entities are received, sent, fetched and served.
+[Federation](../federation.md) first.
 
 ```
 packages/protocol/v0_6/reactions.ts      the schema, as the spec gives it
@@ -16,8 +16,8 @@ app/services.ts                          registers the subscriber that sends it
 ## 1. Add the schema
 
 Entity schemas are in [`packages/protocol/v0_6/`](../../packages/protocol/v0_6/), one file per
-extension, exported from `mod.ts`. The package has no I/O and knows nothing of Verso, so it holds
-only what the spec says:
+extension, exported from `mod.ts`. The package knows nothing about Verso, so it only holds what the
+spec says:
 
 ```ts
 /**
@@ -33,19 +33,19 @@ export const Reaction = Entity.extend({
 export type Reaction = z.infer<typeof Reaction>;
 ```
 
-Add tests with the spec's examples. If the spec is unclear, pick a reading, and add it to
+Add tests using the spec's examples. If the spec is unclear, pick a reading and add it to
 [Where the spec is unclear](../federation.md#where-the-spec-is-unclear).
 
 ## 2. Store it
 
-Remote entities are usually rows beside local ones, with the sender's `instance_id` and the entity's
-`remote_id`, unique together, so receiving the same one twice changes nothing. See
-[Adding a table](adding-a-table.md).
+Remote entities are usually stored in the same table as local ones, with the sender's `instance_id`
+and the entity's `remote_id`. Make the pair unique, so receiving the same entity twice changes
+nothing. See [Adding a table](adding-a-table.md).
 
 ## 3. Write the entity type
 
 The `EntityType` says what Verso does with the type. It goes in the module that owns the data, in
-its `federation.ts` or a file named for the type:
+its `federation.ts` or a file named after the type:
 
 ```ts
 export const reactionType: EntityType<v0_6.Reaction> = {
@@ -76,24 +76,26 @@ export const reactionType: EntityType<v0_6.Reaction> = {
 | `find`         | it returns a local entity only to an instance that may see it                  |
 | `known`        | references to the entity can be resolved; only for types others refer to       |
 
-- **Drop what Verso can't show** without failing, as `receive` does for a reaction whose emoji
-  Mastodon's clients can't display. Throw `PermanentFailure` for entities that are wrong, which
-  tells the sender why.
-- **Check what the sender claims.** `authority` stops one instance sending another's entities, but
-  `receive` must still check, for example, that the author may see the status they react to.
-- **Collections**, such as a status's reactions, are `CollectionProvider`s. Add them to the type
-  they belong to in `app/registry.ts`, rather than to that type's module.
+If Verso can't show an entity, drop it quietly, as `receive` does for a reaction with an emoji
+Mastodon apps can't display. If an entity is invalid, throw `PermanentFailure`, which tells the
+sender why.
+
+`authority` stops an instance from sending another's entities, but `receive` still has to check the
+rest. For example, it checks that the author can see the status they're reacting to.
+
+Collections, such as a status's reactions, are `CollectionProvider`s. Add them to the type they
+belong to in `app/registry.ts`, not in that type's module.
 
 ## 4. Register it
 
 Add the type to `types` in [`app/registry.ts`](../../app/registry.ts), and its collections to `user`
-or `note` there. The registry gives the type to the inbox, the resolver and the entity routes, and
-lists its extension in `/.versia/v0.6/instance`. An extension that adds fields but no types goes in
+or `note` there. That makes it available to the inbox, the resolver and the entity routes, and lists
+its extension in the instance metadata. An extension that only adds fields, with no types, goes in
 the second list of `createRegistry`.
 
 ## 5. Send it
 
-Local changes are sent by an event subscriber that works out the audience and queues a delivery for
+Local changes are sent by an event subscriber, which works out the audience and queues a delivery to
 each instance:
 
 ```ts
@@ -116,18 +118,19 @@ export const reactionDeliveries = async (ctx: Context, event: DomainEvent): Prom
 };
 ```
 
-Add it to `subscribers` in [`app/services.ts`](../../app/services.ts). Send only to instances that
-may see the entity: [`app/notes/audience.ts`](../../app/notes/audience.ts) has the rules for
+Add it to `subscribers` in [`app/services.ts`](../../app/services.ts). Only send to instances that
+may see the entity. [`app/notes/audience.ts`](../../app/notes/audience.ts) has the rules for
 statuses.
 
 ## 6. Test it
 
-- **Receiving**: post entities to the inbox, from a fake instance, and check what Verso kept. Test
-  receiving it twice, a `Delete`, what is dropped and what is refused, as
-  `app/interactions/reaction_receive.test.ts` does.
-- **Sending and serving**: check who is sent what, and who may fetch it.
-- **End to end**: a scenario between instances with `createNetwork`, as in
-  `app/interactions/scenarios.test.ts`. See [Testing](../testing.md#several-instances).
+For receiving, post entities to the inbox from a fake instance and check what Verso kept. Cover
+receiving the same entity twice, a `Delete`, and what gets dropped or refused, as
+`app/interactions/reaction_receive.test.ts` does.
+
+For sending and serving, check who gets sent what, and who can fetch it. Then write an end-to-end
+scenario between instances with `createNetwork`, as in `app/interactions/scenarios.test.ts`. See
+[Testing](../testing.md#several-instances).
 
 ## Checklist
 

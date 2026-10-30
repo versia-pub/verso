@@ -1,7 +1,7 @@
 # Adding a table
 
-This walks through adding a table, using `markers` from [`app/markers/`](../../app/markers/) as the
-example. Read [Database](../database.md) first for the rules every query follows.
+This guide adds a table, using `markers` from [`app/markers/`](../../app/markers/) as the example.
+Read [Database](../database.md) first for the rules every query follows.
 
 ```
 app/db/migrations/0052_markers.ts   creates the table, on Postgres and SQLite
@@ -14,12 +14,12 @@ docs/modules.md                     says markers owns it
 
 ## 1. Pick the owner
 
-Every table has one module that owns it and is the only one to write it. Usually that is the module
-that needs it. Name the table in the plural, in snake case, such as `push_subscriptions`.
+Every table has one owning module, which is the only one that writes it. That's usually the module
+that needs it. Table names are plural and snake case, such as `push_subscriptions`.
 
 ## 2. Write the migration
 
-Add the next file in [`app/db/migrations/`](../../app/db/migrations/), numbered after the last:
+Add the next numbered file to [`app/db/migrations/`](../../app/db/migrations/):
 
 ```ts
 // 0052_markers.ts
@@ -41,28 +41,24 @@ export const markers: Migration = {
 };
 ```
 
-Then import it in `mod.ts`, and add it to the list there under its file name.
+Then import it in `mod.ts` and add it to the list there, under its file name.
 
-- **Ids are `text`**, filled with `ctx.ids()`, a UUIDv7.
-- **Times and JSON** use `columnTypes(db).timestamp` and `.json`, so they work on both databases.
-  Never give a time column a default: times come from `ctx.clock`.
-- **Say what happens on delete.** A row that means nothing without its account, such as a marker,
-  goes with it: `onDelete("cascade")`. Think about remote accounts and statuses too, which are
-  deleted when their instance says so.
-- **Add the indexes your queries need**, such as one for each column a query filters or orders by
-  that the primary key doesn't cover.
-- **No arrays.** A list is a table of its own, such as `note_tags`.
-- **Write the same schema on both databases.** Branch on `usesSqlite(db)` only for what SQLite can't
-  do, such as full-text search.
+[Database](../database.md#migrations) has the rules every migration follows, such as `text` ids,
+`columnTypes` for times and JSON, and no arrays. A few more things to get right for a new table:
 
-A released migration never changes, since instances have already run it. To change a table later,
-write another migration. On SQLite, read the migration rules in
-[Database](../database.md#migrations) first: most changes there rebuild the table.
+- Never give a time column a default. Times come from `ctx.clock`.
+- Every reference needs an `onDelete`. A row that means nothing without its account, like a marker,
+  should be deleted with it, using `onDelete("cascade")`. Remember that remote accounts and statuses
+  are deleted too, when their instance says so.
+- Add an index for each column your queries filter or sort by that the primary key doesn't cover.
+
+Once released, a migration never changes. To change the table later, write a new migration. On
+SQLite, most changes rebuild the table, so read [Database](../database.md#migrations) first.
 
 ## 3. Write the row type
 
-In the module's `tables.ts`, with a comment on the table and on any column whose meaning isn't
-plain:
+The row type goes in the module's `tables.ts`, with a comment on the table and on any column whose
+meaning isn't obvious:
 
 ```ts
 /**
@@ -81,21 +77,21 @@ export type MarkersTable = {
 };
 ```
 
-Use `Date` for times, `boolean` for booleans, and Kysely's `Generated<T>` for a column with a
-default, so inserts may leave it out. Then add the table to `Database` in
+Use `Date` for times, `boolean` for booleans, and Kysely's `Generated<T>` for columns with a
+default, so inserts can leave them out. Then add the table to `Database` in
 [`app/db/database.ts`](../../app/db/database.ts): `markers: MarkersTable`.
 
 ## 4. Write the queries
 
-Put them in the module's `*_queries.ts` file. Other modules never write the table. One that needs
-its data calls these functions, or a subquery helper this module exports, and reads the table itself
-only when that saves a query. See [Writing queries](../database.md#writing-queries).
+Queries go in the module's `*_queries.ts` file. Other modules that need the data call these
+functions, or a subquery helper the module exports. See
+[Writing queries](../database.md#writing-queries).
 
 ## 5. Update the docs and test
 
 - Add the table to its owner in [Modules](../modules.md#who-owns-which-table).
-- `deno task test` runs every migration on a new database for each test, so a broken one fails at
-  once. Run the tests on SQLite too, with `VERSO_TEST_DATABASE=sqlite`, as CI does.
+- `deno task test` runs every migration on a fresh database for each test, so a broken migration
+  fails straight away. Run the tests on SQLite too, with `VERSO_TEST_DATABASE=sqlite`, as CI does.
 - Test the queries through the module's routes or services, as in [Testing](../testing.md).
 
 ## Checklist

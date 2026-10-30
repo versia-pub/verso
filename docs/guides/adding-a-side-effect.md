@@ -1,9 +1,9 @@
 # Adding a side effect
 
-A side effect is what one module does when another changes something: sending a reaction to remote
-instances, notifying a status's author, indexing a status for search. Modules don't call each other
-for these. The module that changes something emits an event, and the others subscribe to it. Read
-[Events, jobs and messages](../events-and-jobs.md) first.
+A side effect is something one module does when another changes something, such as sending a
+reaction to remote instances, notifying a status's author, or indexing a status for search. Modules
+don't call each other for these. Instead, the module making the change emits an event, and the
+others subscribe to it. Read [Events, jobs and messages](../events-and-jobs.md) first.
 
 ```
 react(…), in reactions.ts
@@ -20,12 +20,12 @@ react(…), in reactions.ts
   )
 ```
 
-This walks through the reaction events in [`app/interactions/`](../../app/interactions/).
+This guide uses the reaction events in [`app/interactions/`](../../app/interactions/).
 
 ## 1. Find or declare the event
 
-Look in the changing module's `events.ts` first: the event may already exist. If not, declare it
-there, as plain data with ids, and a type guard:
+Check the changing module's `events.ts` first, as the event may already exist. If not, declare it
+there, with a type guard:
 
 ```ts
 /** A local user reacted to a status, or undid it. */
@@ -40,15 +40,13 @@ export const isReactionEvent = (event: DomainEvent): event is ReactionEvent =>
     event.type === "interactions.reacted" || event.type === "interactions.unreacted";
 ```
 
-- **Name it `<module>.<what happened>`**, in the past tense.
-- **Carry ids (not rows)** A subscriber looks up what it needs, so no module depends on another's
-  row types.
-- **Keep remote and local apart** when subscribers treat them differently. A remote user's reaction
-  is `InteractionReceived`, so `reactionDeliveries` can't send it back out by mistake.
+Name it `<module>.<what happened>`, in the past tense, and give it ids rather than rows. If
+subscribers treat local and remote changes differently, use separate events. A remote user's
+reaction is `InteractionReceived`, so `reactionDeliveries` can't send it back out by mistake.
 
 ## 2. Emit it
 
-Emit it inside the transaction that makes the change, once the change is written:
+Emit the event inside the transaction that makes the change, after the change is written:
 
 ```ts
 ctx.transaction(async (tx) => {
@@ -66,24 +64,13 @@ ctx.transaction(async (tx) => {
 });
 ```
 
-`emit` throws outside a transaction, so a side effect can never commit without its change, or the
-change without it.
+`emit` throws outside a transaction, so a change and its side effects always commit together.
 
 ## 3. Write the subscriber
 
-A subscriber is `(ctx, event) => Promise<void>`, in the module whose effect it is. It ignores events
-it doesn't care about:
-
-```ts
-/** Indexes statuses as they are posted, edited or received. */
-export const indexStatuses = async (ctx: Context, event: DomainEvent): Promise<void> => {
-    if (isNotePosted(event) || isNoteEdited(event) || isNoteReceived(event)) {
-        await indexNotes(ctx, [event.noteId]);
-    }
-};
-```
-
-It runs in the transaction, so it can do only three kinds of thing:
+A subscriber is a function `(ctx, event) => Promise<void>` in the module the effect belongs to. It
+ignores events it doesn't care about, as `indexStatuses` in [Events](../events-and-jobs.md#events)
+shows. Because it runs inside the transaction, it can only do three kinds of thing:
 
 | To                                             | Do                                          |
 | ---------------------------------------------- | ------------------------------------------- |
@@ -91,21 +78,21 @@ It runs in the transaction, so it can do only three kinds of thing:
 | do anything slow, or that calls another server | enqueue a job, as `reactionDeliveries` does |
 | tell every process, such as streaming clients  | `publish`, as `streamStatuses` does         |
 
-If it throws, the whole change rolls back, so it must not fail for reasons the change can't help. A
-subscriber may emit events of its own, as `notifyOf` emits `notifications.created`.
+If it throws, the whole change rolls back, so it shouldn't fail for reasons that have nothing to do
+with the change.
 
 ## 4. Register it
 
 Add it to `subscribers` in [`app/services.ts`](../../app/services.ts). Subscribers run in that
-order. If yours must run before or after another, put it there and say why in a comment, as for
+order, so if yours has to run before or after another, put it there and say why in a comment, as for
 `acceptWhenUnlocked`.
 
 ## 5. Test it
 
-Test the effect through the change that causes it: react through the route, then check the
-notification exists, or that a delivery was queued. Tests use every subscriber, as the server does.
-To test one alone, pass `createTestContext({ subscribers: [yours] })`. If the subscriber enqueues
-jobs, run them with `drain`. See [Testing](../testing.md).
+Test the effect through the change that causes it. For example, react through the route, then check
+that the notification exists or that a delivery was queued. Tests use every subscriber, like the
+server does. To test one on its own, pass `createTestContext({ subscribers: [yours] })`. If the
+subscriber enqueues jobs, run them with `drain`. See [Testing](../testing.md).
 
 ## Checklist
 
