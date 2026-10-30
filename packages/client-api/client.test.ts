@@ -232,3 +232,35 @@ Deno.test("a reaction's emoji is escaped in its path, custom or not", async () =
         "/api/v1/statuses/1/reactions/%F0%9F%91%8D",
     ]);
 });
+
+Deno.test("a list in a shape of its own gives each page's body, and its items across pages", async () => {
+    const page = (groups: string[], next?: string) =>
+        json(
+            {
+                accounts: [],
+                statuses: [],
+                notification_groups: groups.map((key) => ({
+                    group_key: key,
+                    notifications_count: 1,
+                    type: "follow",
+                    most_recent_notification_id: key,
+                    sample_account_ids: [],
+                })),
+            },
+            next === undefined ? {} : { headers: { link: `<${next}>; rel="next"` } },
+        );
+    const { client } = fake((request) =>
+        new URL(request.url).searchParams.has("max_id")
+            ? page(["1"])
+            : page(["3", "2"], "https://social.example/api/v2/notifications?max_id=2")
+    );
+
+    const first = await client.groupedNotifications.list();
+    const bodies = [];
+    for await (const each of first.pages()) bodies.push(each.body.notification_groups.length);
+    const keys = [];
+    for await (const group of first) keys.push(group.group_key);
+
+    assertEquals(bodies, [2, 1]);
+    assertEquals(keys, ["3", "2", "1"]);
+});

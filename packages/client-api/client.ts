@@ -17,6 +17,11 @@ import {
 import { Http, type RateLimit } from "./client/http.ts";
 import { InstanceMethods } from "./client/instance.ts";
 import { MediaMethods } from "./client/media.ts";
+import {
+    GroupedNotificationMethods,
+    MarkerMethods,
+    NotificationMethods,
+} from "./client/notifications.ts";
 import { OAuth } from "./client/oauth.ts";
 import { FavouriteMethods, StatusMethods } from "./client/statuses.ts";
 import { TimelineMethods } from "./client/timelines.ts";
@@ -30,6 +35,15 @@ export type {
 } from "./client/accounts.ts";
 export { ApiError, type CallOptions, type RateLimit, UnexpectedResponse } from "./client/http.ts";
 export type { Upload } from "./client/media.ts";
+export type {
+    GroupedNotificationsQuery,
+    Grouping,
+    MarkerChanges,
+    MarkerTimeline,
+    NotificationFilter,
+    NotificationsQuery,
+    UnreadCountQuery,
+} from "./client/notifications.ts";
 export {
     type AppCredentials,
     type AppRegistration,
@@ -74,6 +88,12 @@ export class Client {
     readonly favourites: FavouriteMethods;
     /** Lists of statuses, newest first. */
     readonly timelines: TimelineMethods;
+    /** The viewer's notifications, each on its own. */
+    readonly notifications: NotificationMethods;
+    /** The viewer's notifications in groups, such as the likes of a status. */
+    readonly groupedNotifications: GroupedNotificationMethods;
+    /** Where the viewer last read up to in their home timeline and notifications. */
+    readonly markers: MarkerMethods;
     /** Uploading files to attach to statuses. */
     readonly media: MediaMethods;
 
@@ -92,6 +112,9 @@ export class Client {
         this.statuses = new StatusMethods(this.#http);
         this.favourites = new FavouriteMethods(this.#http);
         this.timelines = new TimelineMethods(this.#http);
+        this.notifications = new NotificationMethods(this.#http);
+        this.groupedNotifications = new GroupedNotificationMethods(this.#http);
+        this.markers = new MarkerMethods(this.#http);
         this.media = new MediaMethods(this.#http);
     }
 

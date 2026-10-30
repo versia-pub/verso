@@ -390,3 +390,66 @@ Deno.test("a user reads the home, public and hashtag timelines", async () => {
     assertEquals(await ids(test.client.timelines.tag("cats", { all: ["dogs"] })), [both.id]);
     assertEquals(await ids(test.client.timelines.tag("cats", { none: ["dogs"] })), [cats.id]);
 });
+
+Deno.test("a user reads, counts and dismisses their notifications, alone or grouped", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const carol = await test.as("carol");
+    const { id: bobId } = await test.client.accounts.lookup("bob");
+    const { id: aliceId } = await test.client.accounts.lookup("alice");
+
+    const { id } = await alice.statuses.post({ status: "Hello" });
+    await bob.statuses.favourite(id);
+    await carol.statuses.favourite(id);
+    await bob.accounts.follow(aliceId);
+    await drain(test.ctx, queues);
+
+    const all = await alice.notifications.list();
+    const [follow] = (await alice.notifications.list({ types: ["follow"] })).items;
+    assertEquals(all.items.map((n) => n.type), ["follow", "favourite", "favourite"]);
+    assertEquals((await alice.notifications.get(follow.id)).account.id, bobId);
+    assertEquals(await alice.notifications.unreadCount({ exclude_types: ["follow"] }), 2);
+
+    const grouped = await alice.groupedNotifications.list();
+    const [, liked] = grouped.items;
+    assertEquals(grouped.items.map((g) => [g.type, g.notifications_count]), [
+        ["follow", 1],
+        ["favourite", 2],
+    ]);
+    assertEquals(grouped.body.statuses.map((status) => status.id), [id]);
+    assertEquals((await alice.groupedNotifications.get(liked.group_key)).statuses[0].id, id);
+    assertEquals(
+        (await alice.groupedNotifications.accounts(liked.group_key)).items.length,
+        2,
+    );
+    assertEquals(await alice.groupedNotifications.unreadCount(), 2);
+
+    await alice.groupedNotifications.dismiss(liked.group_key);
+    assertEquals(await alice.notifications.unreadCount(), 1);
+    await alice.notifications.dismiss(follow.id);
+    assertEquals((await alice.notifications.list()).items, []);
+
+    await bob.statuses.reblog(id);
+    await drain(test.ctx, queues);
+    await alice.notifications.clear();
+    assertEquals((await alice.groupedNotifications.list()).items, []);
+});
+
+Deno.test("a user saves where they read up to, and the unread count follows it", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const { id: aliceId } = await test.client.accounts.lookup("alice");
+    await bob.accounts.follow(aliceId);
+    await drain(test.ctx, queues);
+    const [follow] = (await alice.notifications.list()).items;
+
+    const set = await alice.markers.set({ notifications: { last_read_id: follow.id } });
+    const got = await alice.markers.get(["home", "notifications"]);
+
+    assertEquals(set.notifications?.last_read_id, follow.id);
+    assertEquals(got.home, undefined);
+    assertEquals(got.notifications?.last_read_id, follow.id);
+    assertEquals(await alice.notifications.unreadCount(), 0);
+});
