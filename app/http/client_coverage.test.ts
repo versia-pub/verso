@@ -83,6 +83,8 @@ const calls: Record<string, (client: Client) => unknown> = {
     "POST /api/v1/statuses/{id}/bookmark": (c) => c.statuses.bookmark("1"),
     "POST /api/v1/statuses/{id}/unbookmark": (c) => c.statuses.unbookmark("1"),
     "GET /api/v1/bookmarks": (c) => c.bookmarks.list(),
+    "POST /api/v1/statuses/{id}/mute": (c) => c.statuses.mute("1"),
+    "POST /api/v1/statuses/{id}/unmute": (c) => c.statuses.unmute("1"),
 
     "POST /api/v2/media": (c) => c.media.upload({ file: new Blob([]) }),
     "PUT /api/v1/media/{id}": (c) => c.media.update("1", {}),

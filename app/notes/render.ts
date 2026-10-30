@@ -22,6 +22,7 @@ import { notesSeenBy } from "./thread_queries.ts";
 import { countSharesBy, sharedAmong } from "./share_queries.ts";
 import { pinnedAmong } from "./pin_queries.ts";
 import { bookmarkedAmong } from "./bookmark_queries.ts";
+import { mutedThreadsAmong } from "./thread_mute_queries.ts";
 import { isPinnable } from "./pins.ts";
 import { totalsOf } from "./total_queries.ts";
 import { onlookerOf } from "./visibility.ts";
@@ -41,18 +42,19 @@ const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
 };
 
 /**
- * What only a logged-in viewer is told: whether they like, boost and bookmark the status and, for
- * their own statuses that they can pin, whether they pin it. Muting threads isn't supported yet.
+ * What only a logged-in viewer is told: whether they like, boost and bookmark the status, whether
+ * they mute its thread and, for their own statuses that they can pin, whether they pin it.
  */
 const viewerFlags = (
     liked: boolean,
     shared: boolean,
+    muted: boolean,
     bookmarked: boolean,
     pinned: boolean | undefined,
 ) => ({
     favourited: liked,
     reblogged: shared,
-    muted: false,
+    muted,
     bookmarked,
     ...pinned === undefined ? {} : { pinned },
 });
@@ -122,6 +124,9 @@ export const renderStatuses = async (
     const bookmarked = viewerId === null
         ? new Set()
         : await bookmarkedAmong(ctx, viewerId, noteIds);
+    const mutedThreads = viewerId === null
+        ? new Set()
+        : await mutedThreadsAmong(ctx, viewerId, notes.map((note) => note.thread_id));
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
 
     const accountIds = [
@@ -190,6 +195,7 @@ export const renderStatuses = async (
             ...(viewerId === null ? {} : viewerFlags(
                 liked.has(note.id),
                 shared.has(note.id),
+                mutedThreads.has(note.thread_id),
                 bookmarked.has(note.id),
                 isPinnable(note, viewerId) ? pinned.has(note.id) : undefined,
             )),

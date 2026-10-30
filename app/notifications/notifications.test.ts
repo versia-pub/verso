@@ -12,6 +12,7 @@ import type { NotePosted } from "../notes/events.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { createNote, createShare } from "../notes/testing.ts";
+import { setThreadMuted } from "../notes/thread_mutes.ts";
 import { subscribe } from "../kernel/pubsub.ts";
 import { createTestContext } from "../testing/context.ts";
 import { notified, NotifyJob, notifyOf, notifyQueue } from "./notifications.ts";
@@ -49,6 +50,27 @@ const open = async () => {
 
     return { ...test, post, lock, of };
 };
+
+Deno.test("nothing about the statuses in a thread notifies a user who mutes it", async () => {
+    await using test = await open();
+    const note = await test.post("alice", "Hi");
+    const reply = await test.post("bob", "@alice Hello", note.id);
+    const other = await test.post("alice", "Another");
+    await setThreadMuted(test.ctx, "alice", reply.id, true);
+
+    await like(test.ctx, "bob", note.id);
+    await share(test.ctx, "carol", reply.id);
+    await test.post("carol", "@alice Me too", reply.id);
+    await like(test.ctx, "bob", other.id);
+    // Bob doesn't mute the thread.
+    const toBob = await test.post("carol", "@bob Hi", note.id);
+    assertEquals(await test.of("alice"), [`favourite bob ${other.id}`, `mention bob ${reply.id}`]);
+    assertEquals(await test.of("bob"), [`mention carol ${toBob.id}`, `reblog carol ${reply.id}`]);
+
+    await setThreadMuted(test.ctx, "alice", note.id, false);
+    await like(test.ctx, "carol", note.id);
+    assertEquals((await test.of("alice"))[0], `favourite carol ${note.id}`);
+});
 
 Deno.test("likes, boosts and reactions notify the author, until they are undone", async () => {
     await using test = await open();

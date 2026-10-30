@@ -402,6 +402,16 @@ Deno.test("a user bookmarks a status, lists it, and removes the bookmark", async
     assertEquals((await bob.bookmarks.list()).items, []);
 });
 
+Deno.test("a user mutes the thread of a status, and unmutes it", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const { id } = await alice.statuses.post({ status: "Hello" });
+
+    assertEquals((await alice.statuses.mute(id)).muted, true);
+    assertEquals((await alice.statuses.get(id)).muted, true);
+    assertEquals((await alice.statuses.unmute(id)).muted, false);
+});
+
 Deno.test("a user reads a thread and a status's edits, and pins a status", async () => {
     await using test = await open();
     const alice = await test.as("alice");

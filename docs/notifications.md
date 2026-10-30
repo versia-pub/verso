@@ -29,8 +29,9 @@ by jobs in the `notify` queue, 100 users per job. The users are found in the tra
 whose status has since been deleted does nothing.
 
 Undoing the action, or deleting the status, deletes the notification. Nobody is notified about their
-own actions, and a follower who is mentioned doesn't also get a `status` notification. Each
-notification emits `notifications.created`, which push and streaming listen for.
+own actions, and a follower who is mentioned doesn't also get a `status` notification. A user who
+mutes a thread isn't notified about any status in it, and unlike blocks, these notifications are
+never created. Each notification emits `notifications.created`, which push and streaming listen for.
 
 ## Reading them
 

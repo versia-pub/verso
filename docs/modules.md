@@ -44,7 +44,7 @@ their own.
 | `accounts`, `identities`, `roles`, `account_roles`                     | `accounts`      |
 | `apps`, `oauth_flows`, `access_tokens`                                 | `auth`          |
 | `notes`, `note_mentions`, `note_tags`, `note_versions`, `note_pins`    | `notes`         |
-| `remote_note_totals`, `bookmarks`                                      | `notes`         |
+| `remote_note_totals`, `bookmarks`, `thread_mutes`                      | `notes`         |
 | `follows`, `blocks`, `mutes`, `account_domain_blocks`, `account_notes` | `graph`         |
 | `likes`, `reactions`                                                   | `interactions`  |
 | `emojis`, `note_emojis`, `account_emojis`                              | `emojis`        |

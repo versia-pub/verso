@@ -30,6 +30,11 @@ export type NotesTable = {
     in_reply_to_id: string | null;
     in_reply_to_account_id: string | null;
     /**
+     * The thread it is in, as the id of the status that starts it: its own, unless it replies to
+     * a status Verso had when it arrived. It stays when that status is deleted.
+     */
+    thread_id: string;
+    /**
      * The status it quotes, or `null` if none, or if it has been deleted. Only remote statuses
      * quote so far.
      */
@@ -93,6 +98,15 @@ export type BookmarksTable = {
     id: string;
     account_id: string;
     note_id: string;
+    created_at: Date;
+};
+
+/** A thread that a local account muted, which Mastodon calls muting a conversation. */
+export type ThreadMutesTable = {
+    id: string;
+    account_id: string;
+    /** The id of the status that starts the thread, which may since have been deleted. */
+    thread_id: string;
     created_at: Date;
 };
 

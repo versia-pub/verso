@@ -111,8 +111,8 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `POST /api/v1/statuses/:id/unpin`        | ✅    |                                |
 | `POST /api/v1/statuses/:id/bookmark`     | ✅    |                                |
 | `POST /api/v1/statuses/:id/unbookmark`   | ✅    |                                |
-| `POST /api/v1/statuses/:id/mute`         | ❌    | Muting a conversation          |
-| `POST /api/v1/statuses/:id/unmute`       | ❌    |                                |
+| `POST /api/v1/statuses/:id/mute`         | ✅    |                                |
+| `POST /api/v1/statuses/:id/unmute`       | ✅    |                                |
 | `POST /api/v1/statuses/:id/translate`    | ❌    |                                |
 | `POST /api/v2/media`                     | 🟡    | Only images are processed      |
 | `GET /api/v1/media/:id`                  | ✅    |                                |

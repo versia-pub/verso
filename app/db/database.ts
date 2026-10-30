@@ -30,6 +30,7 @@ import type {
     NoteTagsTable,
     NoteVersionsTable,
     RemoteNoteTotalsTable,
+    ThreadMutesTable,
 } from "../notes/tables.ts";
 import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { MarkersTable } from "../markers/tables.ts";
@@ -79,6 +80,7 @@ export type Database = {
     reactions: ReactionsTable;
     remote_note_totals: RemoteNoteTotalsTable;
     roles: RolesTable;
+    thread_mutes: ThreadMutesTable;
     vapid_keys: VapidKeysTable;
 };
 

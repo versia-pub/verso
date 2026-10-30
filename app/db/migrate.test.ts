@@ -1,7 +1,9 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { type Kysely, sql } from "kysely";
 import { checkForeignKeys } from "./columns.ts";
+import type { Database } from "./database.ts";
 import { firstMigratedAt, migrate } from "./migrate.ts";
+import { migrations } from "./migrations/mod.ts";
 import { testDatabase, testDatabaseKind } from "./testing.ts";
 
 const createNotes = {
@@ -160,4 +162,41 @@ Deno.test("the database was set up when its first migration ran", async () => {
     const setUp = (await firstMigratedAt(db, { "1_notes": createNotes, "2_text": addText }))
         .getTime();
     assert(before <= setUp && setUp <= after, `${before} <= ${setUp} <= ${after}`);
+});
+
+Deno.test("existing statuses are put in the thread of the status they reply to", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0060_thread_mutes"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    const now = new Date("2026-01-01T00:00:00Z");
+    await db.insertInto("accounts")
+        .values({
+            id: "alice",
+            username: "alice",
+            instance_id: null,
+            remote_id: null,
+            created_at: now,
+        })
+        .execute();
+    // A status, a reply to it and a reply to that, and another status.
+    for (const [id, parent] of [["a", null], ["b", "a"], ["c", "b"], ["d", null]]) {
+        await sql`
+            insert into notes
+                (id, account_id, visibility, content, content_format, content_html,
+                    in_reply_to_id, created_at)
+            values (${id}, 'alice', 'public', 'Hi', 'text/plain', '<p>Hi</p>', ${parent}, ${now})
+        `.execute(db);
+    }
+
+    assertEquals((await migrate(db)).ok, true);
+    const rows = await db.selectFrom("notes").select(["id", "thread_id"]).orderBy("id").execute();
+    assertEquals(rows, [
+        { id: "a", thread_id: "a" },
+        { id: "b", thread_id: "a" },
+        { id: "c", thread_id: "a" },
+        { id: "d", thread_id: "d" },
+    ]);
 });

@@ -4549,6 +4549,88 @@
                 }
             }
         },
+        "/api/v1/statuses/{id}/mute": {
+            "post": {
+                "summary": "Mute a conversation",
+                "description": "Do not receive notifications for the thread that this status is part of. Must be a thread in which you are a participant.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:mute` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#mute"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:mutes"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/unmute": {
+            "post": {
+                "summary": "Unmute a conversation",
+                "description": "Start receiving notifications again for the thread that this status is part of.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:mute` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#unmute"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:mutes"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses/{id}/history": {
             "get": {
                 "summary": "View edit history of a status",

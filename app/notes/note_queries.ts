@@ -33,14 +33,25 @@ const insertMentionsAndTags = async (
     }
 };
 
-/** Adds a status, with the accounts it mentions and its hashtags in lower case. */
+/**
+ * Adds a status, with the accounts it mentions and its hashtags in lower case, in the thread of the
+ * status it replies to, or in a thread of its own.
+ */
 export const insertNote = async (
     ctx: Context,
-    note: Insertable<NotesTable>,
+    note: Omit<Insertable<NotesTable>, "thread_id">,
     mentionIds: readonly string[],
     tags: readonly string[],
 ): Promise<NoteRow> => {
-    const row = await ctx.db.insertInto("notes").values(note).returningAll()
+    const parent = note.in_reply_to_id
+        ? await ctx.db.selectFrom("notes").select("thread_id")
+            .where("id", "=", note.in_reply_to_id)
+            .executeTakeFirst()
+        : undefined;
+
+    const row = await ctx.db.insertInto("notes")
+        .values({ ...note, thread_id: parent?.thread_id ?? note.id })
+        .returningAll()
         .executeTakeFirstOrThrow();
     await insertMentionsAndTags(ctx, row.id, mentionIds, tags);
 

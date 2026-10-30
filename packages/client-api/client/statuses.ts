@@ -207,6 +207,22 @@ export class StatusMethods {
     }
 
     /**
+     * Mutes the thread of a status for the viewer, who then isn't notified about it.
+     * @see https://docs.joinmastodon.org/methods/statuses/#mute
+     */
+    mute(id: string, options?: CallOptions): Promise<Status> {
+        return this.act(id, "mute", options);
+    }
+
+    /**
+     * Unmutes the thread of a status for the viewer.
+     * @see https://docs.joinmastodon.org/methods/statuses/#unmute
+     */
+    unmute(id: string, options?: CallOptions): Promise<Status> {
+        return this.act(id, "unmute", options);
+    }
+
+    /**
      * Bookmarks a status, or the status a boost boosts, for the viewer alone.
      * @see https://docs.joinmastodon.org/methods/statuses/#bookmark
      */

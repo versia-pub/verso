@@ -26,6 +26,7 @@ import { type Channel, publish } from "../kernel/pubsub.ts";
 import { isNoteEdited, isNotePosted, isNoteReceived } from "../notes/events.ts";
 import { findNote, mentionsOf, type NoteRow } from "../notes/note_queries.ts";
 import { localSharerIds } from "../notes/share_queries.ts";
+import { threadMutersAmong } from "../notes/thread_mute_queries.ts";
 import {
     deleteFollowNotifications,
     insertNotifications,
@@ -89,7 +90,25 @@ const groupOf = async (
     return `${prefix}-${started !== undefined && hour < started + groupSpanHours ? started : hour}`;
 };
 
-/** Notifies each of `accountIds`, local users, of what `fromId` did, unless it is themselves. */
+/**
+ * The users of `accountIds` who mute the thread of the status `noteId`, if there is one, and so
+ * aren't notified of it, as on Mastodon.
+ */
+const mutingThread = async (
+    ctx: Context,
+    noteId: string | undefined,
+    accountIds: readonly string[],
+): Promise<Set<string>> => {
+    const note = noteId === undefined ? undefined : await findNote(ctx, noteId);
+    return note === undefined
+        ? new Set()
+        : await threadMutersAmong(ctx, note.thread_id, accountIds);
+};
+
+/**
+ * Notifies each of `accountIds`, local users, of what `fromId` did, unless it is themselves or
+ * they mute the thread of the status it is about.
+ */
 const notifyAll = async (
     ctx: Context,
     accountIds: readonly string[],
@@ -98,8 +117,11 @@ const notifyAll = async (
     links: Links,
 ) => {
     const now = ctx.clock.now();
+    const others = accountIds.filter((id) => id !== fromId);
+    const muting = await mutingThread(ctx, links.noteId, others);
+
     const rows = [];
-    for (const accountId of accountIds.filter((id) => id !== fromId)) {
+    for (const accountId of others.filter((id) => !muting.has(id))) {
         rows.push({
             id: ctx.ids(),
             account_id: accountId,
