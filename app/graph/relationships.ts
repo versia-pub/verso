@@ -9,6 +9,7 @@ import type { Context } from "../kernel/context.ts";
 import { accountNotesOn } from "./account_note_queries.ts";
 import { blocksBetween } from "./block_queries.ts";
 import { domainBlockedAmong } from "./domain_block_queries.ts";
+import { endorsedAmong } from "./endorsement_queries.ts";
 import { followsFrom, followsOf } from "./follow_queries.ts";
 import { mutesOf } from "./mute_queries.ts";
 import { renderRelationship } from "./render.ts";
@@ -37,6 +38,7 @@ export const relationships = async (
     const seesBlocks = (await viewer.permissions()).has("blocks");
     const domainBlocked = await domainBlockedAmong(ctx, viewerId, asked);
     const mutes = await mutesOf(ctx, viewerId, asked);
+    const endorsed = await endorsedAmong(ctx, viewerId, asked);
     const notes = await accountNotesOn(ctx, viewerId, asked);
 
     return asked.filter((id) => known.has(id))
@@ -51,6 +53,7 @@ export const relationships = async (
                     domainBlocking: domainBlocked.has(id),
                 },
                 mutes.get(id),
+                endorsed.has(id),
                 notes.get(id) ?? "",
             )
         );

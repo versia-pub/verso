@@ -402,6 +402,18 @@ Deno.test("a user bookmarks a status, lists it, and removes the bookmark", async
     assertEquals((await bob.bookmarks.list()).items, []);
 });
 
+Deno.test("a user features an account they follow, lists it, and stops featuring it", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    await test.as("bob");
+    const { id } = await test.client.accounts.lookup("bob");
+    await alice.accounts.follow(id);
+
+    assertEquals((await alice.accounts.pin(id)).endorsed, true);
+    assertEquals((await alice.endorsements.list()).items.map((account) => account.id), [id]);
+    assertEquals((await alice.accounts.unpin(id)).endorsed, false);
+});
+
 Deno.test("a user mutes the thread of a status, and unmutes it", async () => {
     await using test = await open();
     const alice = await test.as("alice");

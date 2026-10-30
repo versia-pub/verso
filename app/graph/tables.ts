@@ -46,6 +46,20 @@ export type MutesTable = {
     created_at: Date;
 };
 
+/**
+ * An account that a local user features on their profile, which Mastodon calls endorsing it. Only
+ * accounts the user follows are featured.
+ */
+export type EndorsementsTable = {
+    /** Orders endorsements by creation time, for paging through them. */
+    id: string;
+    /** Who features the account. */
+    account_id: string;
+    /** Who is featured. */
+    target_id: string;
+    created_at: Date;
+};
+
 /** What an account privately notes about another, which only it sees, as on Mastodon. */
 export type AccountNotesTable = {
     /** Who wrote it. */

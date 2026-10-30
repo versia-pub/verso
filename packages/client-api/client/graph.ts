@@ -56,6 +56,19 @@ export class BlockMethods {
     }
 }
 
+/** The accounts the viewer features on their profile. Feature them with `accounts`. */
+export class EndorsementMethods {
+    constructor(private readonly http: Http) {}
+
+    /**
+     * The accounts the viewer features, the latest featured first.
+     * @see https://docs.joinmastodon.org/methods/endorsements/#get
+     */
+    list(query: PageQuery = {}, options?: CallOptions): Promise<Page<Account>> {
+        return Page.get(this.http, Account, "/api/v1/endorsements", query, options);
+    }
+}
+
 /** The accounts the viewer mutes. Mute and unmute them with `accounts`. */
 export class MuteMethods {
     constructor(private readonly http: Http) {}

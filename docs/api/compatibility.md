@@ -15,7 +15,7 @@ behave differently.
 | Area                       | Supported                                                                 |
 | -------------------------- | ------------------------------------------------------------------------- |
 | Logging in and apps        | all but email confirmation, through OpenID Connect                        |
-| Accounts and relationships | most: profiles, follows, blocks, mutes, notes, search                     |
+| Accounts and relationships | most: profiles, follows, blocks, mutes, notes, endorsements, search       |
 | Statuses                   | most: posting, editing, deleting, likes, shares, pins, bookmarks, threads |
 | Media                      | images; other files kept as they are                                      |
 | Timelines                  | home, public and hashtag                                                  |
@@ -61,8 +61,8 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `POST /api/v1/accounts/:id/unblock`               | ✅    |                                   |
 | `POST /api/v1/accounts/:id/mute`                  | ✅    |                                   |
 | `POST /api/v1/accounts/:id/unmute`                | ✅    |                                   |
-| `POST /api/v1/accounts/:id/pin`                   | ❌    | Endorsing accounts                |
-| `POST /api/v1/accounts/:id/unpin`                 | ❌    |                                   |
+| `POST /api/v1/accounts/:id/pin`                   | ✅    |                                   |
+| `POST /api/v1/accounts/:id/unpin`                 | ✅    |                                   |
 | `POST /api/v1/accounts/:id/note`                  | ✅    |                                   |
 | `GET /api/v1/accounts/relationships`              | ✅    |                                   |
 | `GET /api/v1/accounts/familiar_followers`         | ✅    |                                   |
@@ -81,7 +81,7 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/follow_requests`                     | ✅    |                                   |
 | `POST /api/v1/follow_requests/:id/authorize`      | ✅    |                                   |
 | `POST /api/v1/follow_requests/:id/reject`         | ✅    |                                   |
-| `GET /api/v1/endorsements`                        | ❌    |                                   |
+| `GET /api/v1/endorsements`                        | ✅    |                                   |
 | Featured tags (4 methods)                         | ❌    |                                   |
 | Tags and followed tags                            | ❌    |                                   |
 | `GET /api/v1/preferences`                         | 🟡    | Only the defaults for posting     |

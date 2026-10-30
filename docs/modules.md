@@ -46,6 +46,7 @@ their own.
 | `notes`, `note_mentions`, `note_tags`, `note_versions`, `note_pins`    | `notes`         |
 | `remote_note_totals`, `bookmarks`, `thread_mutes`                      | `notes`         |
 | `follows`, `blocks`, `mutes`, `account_domain_blocks`, `account_notes` | `graph`         |
+| `endorsements`                                                         | `graph`         |
 | `likes`, `reactions`                                                   | `interactions`  |
 | `emojis`, `note_emojis`, `account_emojis`                              | `emojis`        |
 | `media`, `note_media`                                                  | `media`         |

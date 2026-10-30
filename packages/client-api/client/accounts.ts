@@ -306,6 +306,22 @@ export class AccountMethods {
     }
 
     /**
+     * Features an account the viewer follows on their profile.
+     * @see https://docs.joinmastodon.org/methods/accounts/#pin
+     */
+    pin(id: string, options?: CallOptions): Promise<Relationship> {
+        return this.relate(id, "pin", options);
+    }
+
+    /**
+     * Stops featuring an account on the viewer's profile.
+     * @see https://docs.joinmastodon.org/methods/accounts/#unpin
+     */
+    unpin(id: string, options?: CallOptions): Promise<Relationship> {
+        return this.relate(id, "unpin", options);
+    }
+
+    /**
      * Sets the viewer's private note on an account, or removes it if empty.
      * @see https://docs.joinmastodon.org/methods/accounts/#note
      */

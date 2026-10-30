@@ -12,6 +12,7 @@ import { accountNoteLimit, noteAccount } from "./account_notes.ts";
 import { familiarFollows, followPage, type FollowSide } from "./follow_queries.ts";
 import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
 import { blockRoutes } from "./block_routes.ts";
+import { endorsementRoutes } from "./endorsement_routes.ts";
 import { relationship, relationships } from "./relationships.ts";
 
 /**
@@ -181,6 +182,7 @@ export const graphRoutes: readonly Route[] = [
     answerRequest("authorize"),
     answerRequest("reject"),
     ...blockRoutes,
+    ...endorsementRoutes,
     noteRoute,
     defineRoute({
         method: "GET",

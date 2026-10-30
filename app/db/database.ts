@@ -14,6 +14,7 @@ import type {
     AccountDomainBlocksTable,
     AccountNotesTable,
     BlocksTable,
+    EndorsementsTable,
     FollowsTable,
     MutesTable,
 } from "../graph/tables.ts";
@@ -53,6 +54,7 @@ export type Database = {
     apps: AppsTable;
     domain_blocks: DomainBlocksTable;
     emojis: EmojisTable;
+    endorsements: EndorsementsTable;
     follows: FollowsTable;
     blocks: BlocksTable;
     bookmarks: BookmarksTable;

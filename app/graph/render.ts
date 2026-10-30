@@ -5,7 +5,8 @@ import type { MuteRow } from "./mute_queries.ts";
 /**
  * The viewer's relationship with the account `id`, from the viewer's follow of it and its follow of
  * the viewer (either of which may be a request), whether either blocks the other, whether the
- * viewer blocks its domain, the viewer's mute of it, if they mute it, and what they note about it.
+ * viewer blocks its domain, the viewer's mute of it, if they mute it, whether they feature it, and
+ * what they note about it.
  */
 export const renderRelationship = (
     id: string,
@@ -17,6 +18,7 @@ export const renderRelationship = (
         readonly domainBlocking: boolean;
     },
     mute: MuteRow | undefined,
+    endorsed: boolean,
     note: string,
 ): Relationship => ({
     id,
@@ -33,6 +35,6 @@ export const renderRelationship = (
     requested: outgoing !== undefined && !outgoing.accepted,
     requested_by: incoming !== undefined && !incoming.accepted,
     domain_blocking: blocks.domainBlocking,
-    endorsed: false,
+    endorsed,
     note,
 });

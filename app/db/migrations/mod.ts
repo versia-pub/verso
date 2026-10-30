@@ -59,6 +59,7 @@ import { hashtagIndexes } from "./0057_hashtag_indexes.ts";
 import { reactionsByAccount } from "./0058_reactions_by_account.ts";
 import { bookmarks } from "./0059_bookmarks.ts";
 import { threadMutes } from "./0060_thread_mutes.ts";
+import { endorsements } from "./0061_endorsements.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -125,4 +126,5 @@ export const migrations: Record<string, Migration> = {
     "0058_reactions_by_account": reactionsByAccount,
     "0059_bookmarks": bookmarks,
     "0060_thread_mutes": threadMutes,
+    "0061_endorsements": endorsements,
 };

@@ -5,6 +5,7 @@ import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 import type { FollowsTable } from "./tables.ts";
+import { deleteEndorsement } from "./endorsement_queries.ts";
 
 export type FollowRow = Selectable<FollowsTable>;
 
@@ -87,7 +88,7 @@ export const acceptPendingFollow = async (
 
 /**
  * Removes a follow or a follow request, and returns it, if there was one. With `accepted`, it only
- * removes a follow, or only a request.
+ * removes a follow, or only a request. The follower no longer features the followee.
  */
 export const deleteFollow = async (
     ctx: Context,
@@ -100,7 +101,10 @@ export const deleteFollow = async (
         .where("followee_id", "=", followeeId);
     if (accepted !== undefined) query = query.where("accepted", "=", accepted);
 
-    return await query.returningAll().executeTakeFirst();
+    const removed = await query.returningAll().executeTakeFirst();
+    if (removed?.accepted) await deleteEndorsement(ctx, followerId, followeeId);
+
+    return removed;
 };
 
 /** The follows and follow requests from `followerId` to any of `followeeIds`. */

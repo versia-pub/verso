@@ -13,6 +13,7 @@ import { EmojiMethods } from "./client/emojis.ts";
 import {
     BlockMethods,
     DomainBlockMethods,
+    EndorsementMethods,
     FollowRequestMethods,
     MuteMethods,
 } from "./client/graph.ts";
@@ -101,7 +102,12 @@ export class Client {
     readonly mutes: MuteMethods;
     /** The domains the viewer blocks. */
     readonly domainBlocks: DomainBlockMethods;
-    /** Posting, viewing, editing and deleting statuses, and liking, sharing, reacting to and bookmarking them. */
+    /** The accounts the viewer features on their profile. */
+    readonly endorsements: EndorsementMethods;
+    /**
+     * Posting, viewing, editing and deleting statuses, and liking, sharing, reacting to,
+     * bookmarking and muting them.
+     */
     readonly statuses: StatusMethods;
     /** The statuses the viewer likes. */
     readonly favourites: FavouriteMethods;
@@ -138,6 +144,7 @@ export class Client {
         this.blocks = new BlockMethods(this.#http);
         this.mutes = new MuteMethods(this.#http);
         this.domainBlocks = new DomainBlockMethods(this.#http);
+        this.endorsements = new EndorsementMethods(this.#http);
         this.statuses = new StatusMethods(this.#http);
         this.favourites = new FavouriteMethods(this.#http);
         this.bookmarks = new BookmarkMethods(this.#http);

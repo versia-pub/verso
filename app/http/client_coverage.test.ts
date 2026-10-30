@@ -49,6 +49,9 @@ const calls: Record<string, (client: Client) => unknown> = {
     "POST /api/v1/accounts/{id}/mute": (c) => c.accounts.mute("1"),
     "POST /api/v1/accounts/{id}/unmute": (c) => c.accounts.unmute("1"),
     "POST /api/v1/accounts/{id}/note": (c) => c.accounts.note("1", ""),
+    "POST /api/v1/accounts/{id}/pin": (c) => c.accounts.pin("1"),
+    "POST /api/v1/accounts/{id}/unpin": (c) => c.accounts.unpin("1"),
+    "GET /api/v1/endorsements": (c) => c.endorsements.list(),
 
     "GET /api/v1/follow_requests": (c) => c.followRequests.list(),
     "POST /api/v1/follow_requests/{id}/authorize": (c) => c.followRequests.authorize("1"),
