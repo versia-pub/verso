@@ -181,7 +181,7 @@ and announcements. There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/instance/languages`             | ✅    |                              |
 | `GET /api/v1/instance/translation_languages` | ❌    |                              |
 | `GET /api/v1/custom_emojis`                  | ✅    |                              |
-| `GET /api/v1/directory`                      | ❌    |                              |
+| `GET /api/v1/directory`                      | 🟡    | Local accounts only          |
 | Trends (3 methods)                           | ❌    |                              |
 | Announcements (4 methods)                    | ❌    |                              |
 | `GET /api/oembed`                            | ❌    |                              |

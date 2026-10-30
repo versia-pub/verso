@@ -35,6 +35,7 @@ import { TimelineMethods } from "./client/timelines.ts";
 export type {
     AccountSearchQuery,
     AccountStatusesQuery,
+    DirectoryQuery,
     FollowOptions,
     MuteOptions,
     ProfileChanges,

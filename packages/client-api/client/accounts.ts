@@ -30,6 +30,17 @@ export type AccountSearchQuery = {
     readonly following?: boolean;
 };
 
+/** Which page of the profile directory to list. Results come by offset, not in linked pages. */
+export type DirectoryQuery = {
+    readonly limit?: number;
+    /** How many results to skip. */
+    readonly offset?: number;
+    /** `active`, the default, lists those who posted most recently first; `new`, the newest. */
+    readonly order?: "active" | "new";
+    /** Only local accounts. */
+    readonly local?: boolean;
+};
+
 /** Changes to the viewer's profile and settings. What is omitted stays as it was. */
 export type ProfileChanges = {
     readonly display_name?: string;
@@ -173,6 +184,14 @@ export class AccountMethods {
             ...options,
             query,
         });
+    }
+
+    /**
+     * The accounts listed in the profile directory.
+     * @see https://docs.joinmastodon.org/methods/directory/#get
+     */
+    directory(query: DirectoryQuery = {}, options?: CallOptions): Promise<Account[]> {
+        return this.http.json(z.array(Account), "GET", "/api/v1/directory", { ...options, query });
     }
 
     /**

@@ -99,3 +99,9 @@ export const blockedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery
     ctx.db.selectFrom("blocks")
         .select("target_id as account_id")
         .where("account_id", "=", accountId);
+
+/** The accounts that block `accountId`, as a subquery. */
+export const blockerIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
+    ctx.db.selectFrom("blocks")
+        .select("account_id")
+        .where("target_id", "=", accountId);

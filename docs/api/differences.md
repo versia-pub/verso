@@ -67,6 +67,7 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 
 ## Instance
 
+- `GET /api/v1/directory` only lists local accounts, so `local` changes nothing.
 - `GET /api/v1/instance/activity` counts a week's logins by the access tokens issued that week, so a
   user who stays logged in isn't counted. Deleted statuses aren't counted.
 - Every block in `GET /api/v1/instance/domain_blocks` has the severity `suspend`, since Verso blocks

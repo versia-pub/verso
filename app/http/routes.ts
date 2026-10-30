@@ -1,4 +1,5 @@
 import { roleRoutes } from "../accounts/role_routes.ts";
+import { directoryRoutes } from "../accounts/directory.ts";
 import { accountRoutes } from "../accounts/routes.ts";
 import { webfingerRoutes } from "../accounts/webfinger.ts";
 import { authRoutes } from "../auth/routes.ts";
@@ -39,6 +40,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...graphRoutes,
         ...searchRoutes(settings.search),
         ...accountRoutes(settings.media, settings.limits),
+        ...directoryRoutes,
         ...noteRoutes(settings.limits),
         ...interactionRoutes,
         ...timelineRoutes,

@@ -3223,6 +3223,105 @@
                 }
             }
         },
+        "/api/v1/directory": {
+            "get": {
+                "summary": "View profile directory",
+                "description": "List accounts visible in the directory.\n\nNeeds the `read:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/directory/#get"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Skip the first n results."
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "How many accounts to load. Defaults to 40 accounts. Max 80 accounts."
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": "active",
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "new"
+                            ],
+                            "description": "Use `active` to sort by most recently posted statuses (default) or `new` to sort by most recently created profiles."
+                        }
+                    },
+                    {
+                        "name": "local",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "If true, returns only local accounts.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses": {
             "post": {
                 "summary": "Posts a status",

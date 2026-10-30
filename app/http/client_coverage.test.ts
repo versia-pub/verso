@@ -35,6 +35,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/accounts/{id}": (c) => c.accounts.get("1"),
     "GET /api/v1/accounts/lookup": (c) => c.accounts.lookup("alice"),
     "GET /api/v1/accounts/search": (c) => c.accounts.search({ q: "alice" }),
+    "GET /api/v1/directory": (c) => c.accounts.directory(),
     "GET /api/v1/accounts/{id}/statuses": (c) => c.accounts.statuses("1"),
     "GET /api/v1/accounts/{id}/followers": (c) => c.accounts.followers("1"),
     "GET /api/v1/accounts/{id}/following": (c) => c.accounts.following("1"),
