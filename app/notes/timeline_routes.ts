@@ -55,8 +55,9 @@ export const timelineRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/timelines/home",
-        summary: "The viewer's statuses and those of the accounts they follow, and their " +
-            "shares, newest first",
+        summary: "View home timeline",
+        description: "View statuses from followed users and hashtags.",
+        docs: "https://docs.joinmastodon.org/methods/timelines/#home",
         tags: ["timelines"],
         auth: { require: "user", scope: "read:statuses", permission: "read:note" },
         query: PageQuery({ default: 20, max: 40 }),
@@ -80,7 +81,9 @@ export const timelineRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/timelines/public",
-        summary: "Public statuses, here or from other instances, newest first",
+        summary: "View public timeline",
+        description: "View public statuses.",
+        docs: "https://docs.joinmastodon.org/methods/timelines/#public",
         tags: ["timelines"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
         query: PublicQuery,
@@ -105,9 +108,7 @@ export const timelineRoutes: readonly Route[] = [
         method: "GET",
         path: "/api/v1/timelines/tag/:hashtag",
         summary: "View hashtag timeline",
-        description: "View public statuses containing the given hashtag.\n\nAs on Mastodon, " +
-            `\`any\`, \`all\` and \`none\` each take at most ${hashtagsPerList} hashtags, the ` +
-            "first of `any` being the hashtag itself.",
+        description: "View public statuses containing the given hashtag.",
         docs: "https://docs.joinmastodon.org/methods/timelines/#tag",
         tags: ["timelines"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:note" },

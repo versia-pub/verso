@@ -78,7 +78,7 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/roles",
-        summary: "Every role, highest priority first",
+        summary: "List roles",
         tags: ["roles"],
         auth: { require: "user", scope: "read:accounts" },
         responses: { 200: z.array(VersiaRole) },
@@ -90,7 +90,7 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "POST",
         path: "/api/v1/roles",
-        summary: "Creates a role below the viewer's highest, with permissions they have",
+        summary: "Create role",
         tags: ["roles"],
         auth: { require: "user", scope: "write:accounts", permission: "roles" },
         body: RoleFields.partial().required({ name: true }),
@@ -111,7 +111,7 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/roles/:id",
-        summary: "A role",
+        summary: "Get role",
         tags: ["roles"],
         auth: { require: "user", scope: "read:accounts" },
         params: Id,
@@ -126,7 +126,7 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "PATCH",
         path: "/api/v1/roles/:id",
-        summary: "Changes a role below the viewer's highest, keeping it there",
+        summary: "Update role",
         tags: ["roles"],
         auth: { require: "user", scope: "write:accounts", permission: "roles" },
         params: Id,
@@ -142,7 +142,7 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "DELETE",
         path: "/api/v1/roles/:id",
-        summary: "Deletes a role below the viewer's highest, taking it from everyone who has it",
+        summary: "Delete role",
         tags: ["roles"],
         auth: { require: "user", scope: "write:accounts", permission: "roles" },
         params: Id,
@@ -156,7 +156,7 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/:id/roles",
-        summary: "An account's roles, highest priority first",
+        summary: "List roles of account",
         tags: ["roles"],
         auth: { require: "user", scope: "read:accounts" },
         params: Id,
@@ -170,8 +170,7 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "POST",
         path: "/api/v1/accounts/:id/roles/:role_id",
-        summary: "Gives an account below the viewer a role below their highest, " +
-            "with permissions they have",
+        summary: "Add role to account",
         tags: ["roles"],
         auth: { require: "user", scope: "write:accounts", permission: "roles" },
         params: AccountAndRole,
@@ -187,8 +186,7 @@ export const roleRoutes: readonly Route[] = [
     defineRoute({
         method: "DELETE",
         path: "/api/v1/accounts/:id/roles/:role_id",
-        summary:
-            "Takes from an account below the viewer a role below their highest, that an admin gave",
+        summary: "Remove role from account",
         tags: ["roles"],
         auth: { require: "user", scope: "write:accounts", permission: "roles" },
         params: AccountAndRole,

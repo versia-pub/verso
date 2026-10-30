@@ -42,7 +42,10 @@ const UploadBody = (media: MediaLimits, limits: Limits) =>
     z.object({
         file: z.file().max(media.max_upload_bytes, {
             error: `Must be at most ${media.max_upload_bytes} bytes`,
-        }).meta({ description: "The file to be attached." }),
+        }).meta({
+            description: "The file to be attached, encoded using multipart form data. The " +
+                "file must have a MIME type.",
+        }),
         thumbnail: z.unknown()
             .refine((value) => value === undefined || value === "", {
                 error: "Thumbnails aren't supported yet",
@@ -85,11 +88,7 @@ export const mediaRoutes = (media: MediaLimits, limits: Limits): readonly Route[
         path: "/api/v2/media",
         summary: "Upload media as an attachment (async)",
         description: "Creates a media attachment to be used with a new status. The full sized " +
-            "media will be processed asynchronously in the background for large uploads.\n\n" +
-            "Pictures are processed, and answered with 202 until they are; any other file is " +
-            "kept as it is, as a file of type `unknown`. A picture that can't be processed is " +
-            "removed, as it may hold metadata, and then answered with 422. Files are at most " +
-            `${media.max_upload_bytes} bytes.`,
+            "media will be processed asynchronously in the background for large uploads.",
         docs: "https://docs.joinmastodon.org/methods/media/#v2",
         tags: ["media"],
         auth: { require: "user", scope: "write:media", permission: "owner:media" },
@@ -134,7 +133,7 @@ export const mediaRoutes = (media: MediaLimits, limits: Limits): readonly Route[
         path: "/api/v1/media/:id",
         summary: "Update media attachment",
         description: "Update a MediaAttachment's parameters, before it is attached to a status " +
-            "and posted.\n\nAn empty description clears it.",
+            "and posted.",
         docs: "https://docs.joinmastodon.org/methods/media/#update",
         tags: ["media"],
         auth: { require: "user", scope: "write:media", permission: "owner:media" },
@@ -151,12 +150,8 @@ export const mediaRoutes = (media: MediaLimits, limits: Limits): readonly Route[
     defineRoute({
         method: "GET",
         path: "/media/:key",
-        summary: "A file someone uploaded, or its preview",
-        description: "Files are kept under the SHA-256 of their bytes, so they never change. " +
-            "Pictures are served as pictures, and video and audio as the type they were " +
-            "uploaded as; any other file is served for browsers to save, as " +
-            "`application/octet-stream`. Where the store serves files itself, such as " +
-            "through a CDN, this redirects there.",
+        summary: "Get uploaded file",
+        description: "Files are kept under the SHA-256 of their bytes, so they never change.",
         tags: ["media"],
         immutable: true,
         // Pages load many at once, so these requests are counted in their own bucket, which allows

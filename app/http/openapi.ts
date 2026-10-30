@@ -268,7 +268,7 @@ export const openApiRoute = (documented: readonly Route[], name: string | undefi
     const route = defineRoute({
         method: "GET",
         path: "/openapi.json",
-        summary: "This API, described with OpenAPI",
+        summary: "Get OpenAPI description",
         tags: ["docs"],
         responses: { 200: z.looseObject({ openapi: z.literal("3.1.1") }) },
         handler: (ctx) => {

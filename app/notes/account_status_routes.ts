@@ -28,7 +28,9 @@ const AccountStatusesQuery = PageQuery({ default: 20, max: 40 }).extend({
 export const accountStatusesRoute = defineRoute({
     method: "GET",
     path: "/api/v1/accounts/:id/statuses",
-    summary: "An account's statuses that the viewer may see, newest first",
+    summary: "Get account's statuses",
+    description: "Statuses posted to the given account.",
+    docs: "https://docs.joinmastodon.org/methods/accounts/#statuses",
     tags: ["accounts"],
     auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
     params: z.object({ id: z.string() }),

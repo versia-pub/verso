@@ -52,8 +52,7 @@ export const emojiRoutes = (media: MediaLimits, limits: Limits): readonly Route[
         method: "GET",
         path: "/api/v1/custom_emojis",
         summary: "View all custom emoji",
-        description: "Returns custom emojis that are available on the server.\n\n" +
-            "Global emojis, and the viewer's own, which replace global ones of the same name.",
+        description: "Returns custom emojis that are available on the server.",
         docs: "https://docs.joinmastodon.org/methods/custom_emojis/#get",
         tags: ["emojis"],
         auth: { require: "optional" },
@@ -67,12 +66,7 @@ export const emojiRoutes = (media: MediaLimits, limits: Limits): readonly Route[
         method: "POST",
         path: "/api/v1/emojis",
         summary: "Upload emoji",
-        description: "Upload a new emoji to the server.\n\n" +
-            "The emoji is the user's own unless `global`, which needs the `emojis` permission. " +
-            "Its picture is processed after the response, which is 202, without URLs; text " +
-            `doesn't use the emoji until then. Pictures are at most ${media.max_emoji_bytes} ` +
-            "bytes. A shortcode the user may already use, for their own emoji or a global one, " +
-            "is answered with 422.",
+        description: "Upload a new emoji to the server.",
         docs: versiaServerEmojis,
         tags: ["emojis"],
         auth: { require: "user", scope: "write:media", permission: "owner:emoji" },
@@ -98,8 +92,7 @@ export const emojiRoutes = (media: MediaLimits, limits: Limits): readonly Route[
         method: "GET",
         path: "/api/v1/emojis/:id",
         summary: "Get emoji",
-        description: "Retrieves a custom emoji from database by ID.\n\n" +
-            "Users see global emojis and their own; those with the `emojis` permission see any.",
+        description: "Retrieves a custom emoji from database by ID.",
         docs: versiaServerEmojis,
         tags: ["emojis"],
         auth: { require: "user", scope: "read", permission: "read:emoji" },
@@ -116,11 +109,7 @@ export const emojiRoutes = (media: MediaLimits, limits: Limits): readonly Route[
         method: "PATCH",
         path: "/api/v1/emojis/:id",
         summary: "Modify emoji",
-        description: "Edit image or metadata of an emoji.\n\n" +
-            "Users change their own emojis; those with the `emojis` permission change any, and " +
-            "make them global or not. A global emoji made not global becomes the editor's own. " +
-            "Statuses that use a renamed emoji keep it. A new picture is processed after the " +
-            "response, and the emoji has no URLs until then.",
+        description: "Edit image or metadata of an emoji.",
         docs: versiaServerEmojis,
         tags: ["emojis"],
         auth: { require: "user", scope: "write:media", permission: "owner:emoji" },
@@ -145,10 +134,7 @@ export const emojiRoutes = (media: MediaLimits, limits: Limits): readonly Route[
         method: "DELETE",
         path: "/api/v1/emojis/:id",
         summary: "Delete emoji",
-        description: "Delete a custom emoji from the database.\n\n" +
-            "Users delete their own emojis; those with the `emojis` permission delete any. " +
-            "Statuses and profiles that used it no longer do, and local users' reactions with " +
-            "it are undone. Answered with an empty object, as Verso's other deletions are.",
+        description: "Delete a custom emoji from the database.",
         docs: versiaServerEmojis,
         tags: ["emojis"],
         auth: { require: "user", scope: "write:media", permission: "owner:emoji" },

@@ -35,7 +35,8 @@ const logger = getLogger(["verso", "federation", "messaging"]);
 export const messagingRoute: Route = defineRoute({
     method: "POST",
     path: "/.versia/v0.6/messaging",
-    summary: "A message from another instance about why something this one sent failed",
+    summary: "Receive a message",
+    description: "Another instance says why something this one sent failed.",
     tags: ["versia"],
     textBody: true,
     body: z.string().trim().min(1),

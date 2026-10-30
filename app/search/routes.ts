@@ -20,7 +20,7 @@ const AccountSearchQuery = (
     { query_length: maxQueryLength, max_offset: maxOffset }: SearchLimits,
 ) => z.object({
     q: Text(maxQueryLength).meta({
-        description: `Search query for accounts. At most ${maxQueryLength} characters.`,
+        description: "Search query for accounts.",
     }),
     limit: Integer.pipe(z.int().min(0)).optional()
         .transform((asked) => Math.max(1, Math.min(asked ?? 40, 80)))
@@ -28,7 +28,7 @@ const AccountSearchQuery = (
             description: "Maximum number of results. Defaults to 40 accounts. Max 80 accounts.",
         }),
     offset: Integer.pipe(z.int().min(0).max(maxOffset)).default(0)
-        .meta({ description: `Skip the first n results. At most ${maxOffset}.` }),
+        .meta({ description: "Skip the first n results." }),
     resolve: Flag.default(false).meta({
         description: "Attempt WebFinger lookup. Defaults to false. Use this when `q` is an exact " +
             "address.",
@@ -46,15 +46,21 @@ const AccountSearchQuery = (
 const SearchQuery = ({ query_length: maxQueryLength, max_offset: maxOffset }: SearchLimits) =>
     z.object({
         q: Text(maxQueryLength).meta({
-            description: `The search query. At most ${maxQueryLength} characters.`,
+            description: "The search query.",
         }),
         type: z.enum(["accounts", "hashtags", "statuses"]).optional().meta({
-            description: "Specify whether to search for only `accounts`, `hashtags`, `statuses`.",
+            description: "Specify whether to search for only `accounts`, `hashtags`, `statuses`",
         }),
         resolve: Flag.default(false).meta({
-            description: "Attempt WebFinger lookup, when `q` is an account's address, or look up " +
-                "the account or status at a URL, when `q` is one. Defaults to false. Verso " +
-                "looks up the Versia URLs it shows as accounts' and statuses' `uri`.",
+            description: "Only relevant if `type` includes `accounts` or if `q` is a HTTPS URL. " +
+                "In the first case, if `true` and (a) the search query is for a remote account " +
+                "(e.g., `someaccount@someother.server`) and (b) the local server does not know " +
+                "about the account, WebFinger is used to try and resolve the account at " +
+                "`someother.server`. This provides the best recall at higher latency. If " +
+                "`false`, only accounts the server knows about are returned. In the second " +
+                "case, if `true`, resolving the URL and returning the matching status, account " +
+                "or Collection is attempted. If `false`, this resolving logic is circumvented " +
+                "and a regular search is performed instead.",
         }),
         following: Flag.default(false).meta({
             description: "Only include accounts that the user is following? Defaults to false.",
@@ -64,8 +70,8 @@ const SearchQuery = ({ query_length: maxQueryLength, max_offset: maxOffset }: Se
         }),
         exclude_unreviewed: Flag.default(false).meta({
             description:
-                "Filter out unreviewed tags? Verso doesn't review hashtags, so this changes " +
-                "nothing.",
+                "Filter out unreviewed tags? Defaults to false. Use true when trying to find " +
+                "trending tags.",
         }),
         max_id: z.string().optional().meta({
             description:
@@ -85,8 +91,9 @@ const SearchQuery = ({ query_length: maxQueryLength, max_offset: maxOffset }: Se
                     "per category. Max 40 results per category.",
             }),
         offset: Integer.pipe(z.int().min(0).max(maxOffset)).optional().meta({
-            description: "Skip the first n results. Only applies when `type` is also present. At " +
-                `most ${maxOffset}.`,
+            description:
+                "Skip the first n results. Only applies when `type` is also present (ignored " +
+                "otherwise).",
         }),
     });
 
@@ -135,10 +142,7 @@ export const searchRoutes = (limits: SearchLimits): readonly Route[] => [
         path: "/api/v2/search",
         summary: "Perform a search",
         description: "Perform a search for content in accounts, statuses and hashtags with the " +
-            "given parameters.\n\nAs on Mastodon, only signed-in users search statuses, or use " +
-            "`resolve` or `offset`. Verso only searches statuses for a query with a word, a " +
-            "phrase, a hashtag, `from:` or `in:library`, or with `account_id`, and finds words " +
-            "of one letter only as whole words.",
+            "given parameters.",
         docs: "https://docs.joinmastodon.org/methods/search/#v2",
         tags: ["search"],
         auth: { require: "optional", scope: "read:search", permission: "search" },

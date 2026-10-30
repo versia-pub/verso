@@ -48,7 +48,9 @@ const applicationOf = async (ctx: Context, app: AppsTable): Promise<Application>
 const postApps = defineRoute({
     method: "POST",
     path: "/api/v1/apps",
-    summary: "Registers a client app",
+    summary: "Create an application",
+    description: "Create a new application to obtain OAuth2 credentials.",
+    docs: "https://docs.joinmastodon.org/methods/apps/#create",
     body: AppForm,
     responses: { 200: CredentialApplication },
     handler: async (ctx, { body }) => {
@@ -78,7 +80,9 @@ const postApps = defineRoute({
 const verifyAppCredentials = defineRoute({
     method: "GET",
     path: "/api/v1/apps/verify_credentials",
-    summary: "Shows the app a token belongs to",
+    summary: "Verify your app works",
+    description: "Confirm that the app's OAuth2 credentials work.",
+    docs: "https://docs.joinmastodon.org/methods/apps/#verify_credentials",
     auth: { require: "app" },
     responses: { 200: Application },
     handler: async (ctx, { viewer }) => ({

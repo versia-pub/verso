@@ -65,10 +65,7 @@ export const notificationRoutes: readonly Route[] = [
         summary: "Get all notifications",
         description: "Notifications concerning the user. This API returns Link headers " +
             "containing links to the next/previous page. However, the links can also be " +
-            "constructed dynamically using query params and `id` values.\n\nNotifications from " +
-            "accounts the user blocks, or mutes with their notifications, and about statuses " +
-            "they may no longer see, are left out. A `reaction` notification has the emoji, as " +
-            "Pleroma has it.",
+            "constructed dynamically using query params and `id` values.",
         docs: `${docs}/#get`,
         tags: ["notifications"],
         auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },

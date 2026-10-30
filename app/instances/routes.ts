@@ -34,7 +34,7 @@ const thumbnailRoute = () => {
     return defineRoute({
         method: "GET",
         path: "/instance/thumbnail.png",
-        summary: "The instance's picture, drawn from its domain",
+        summary: "Get instance thumbnail",
         tags: ["instance"],
         maxAge: 24 * 60 * 60,
         responses: { 200: Binary("image/png") },
@@ -60,7 +60,9 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
         defineRoute({
             method: "GET",
             path: "/api/v2/instance",
-            summary: "The instance, its limits, and how to join and contact it",
+            summary: "View server information",
+            description: "Obtain general information about the server.",
+            docs: "https://docs.joinmastodon.org/methods/instance/#v2",
             tags: ["instance"],
             responses: { 200: Instance },
             handler: async (ctx) => ({
@@ -72,7 +74,10 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
         defineRoute({
             method: "GET",
             path: "/api/v1/instance",
-            summary: "The instance, as Mastodon described it before 4.0",
+            summary: "View server information (v1)",
+            description: "Obtain general information about the server. See api/v2/instance " +
+                "instead.",
+            docs: "https://docs.joinmastodon.org/methods/instance/#v1",
             tags: ["instance"],
             responses: { 200: V1Instance },
             handler: async (ctx) => {
@@ -86,7 +91,9 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
         defineRoute({
             method: "GET",
             path: "/api/v1/instance/rules",
-            summary: "What people agree to follow on the instance",
+            summary: "List of rules",
+            description: "Rules that the users of this service should follow.",
+            docs: "https://docs.joinmastodon.org/methods/instance/#rules",
             tags: ["instance"],
             responses: { 200: z.array(Rule) },
             handler: () => Promise.resolve({ status: 200, body: renderRules(settings.instance) }),
@@ -94,7 +101,9 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
         defineRoute({
             method: "GET",
             path: "/api/v1/instance/extended_description",
-            summary: "A longer text about the instance, for its about page",
+            summary: "View extended description",
+            description: "Obtain an extended description of this server.",
+            docs: "https://docs.joinmastodon.org/methods/instance/#extended_description",
             tags: ["instance"],
             responses: { 200: ExtendedDescription },
             handler: () =>
@@ -106,7 +115,9 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
         defineRoute({
             method: "GET",
             path: "/api/v1/instance/privacy_policy",
-            summary: "The instance's privacy policy",
+            summary: "View privacy policy",
+            description: "Obtain the contents of this server's privacy policy.",
+            docs: "https://docs.joinmastodon.org/methods/instance/#privacy_policy",
             tags: ["instance"],
             responses: { 200: PrivacyPolicy },
             handler: () =>
@@ -118,7 +129,9 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
         defineRoute({
             method: "GET",
             path: "/api/v1/instance/terms_of_service",
-            summary: "The instance's terms of service",
+            summary: "View terms of service",
+            description: "Obtain the contents of this server's terms of service, if configured.",
+            docs: "https://docs.joinmastodon.org/methods/instance/#terms_of_service",
             tags: ["instance"],
             responses: { 200: TermsOfService },
             handler: (ctx) =>
@@ -130,7 +143,10 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
         defineRoute({
             method: "GET",
             path: "/api/v1/instance/terms_of_service/:date",
-            summary: "The instance's terms of service in force from a day",
+            summary: "View a specific version of the terms of service",
+            description: "Obtain the contents of this server's terms of service, for a specified " +
+                "date, if configured.",
+            docs: "https://docs.joinmastodon.org/methods/instance/#terms_of_service_date",
             tags: ["instance"],
             params: z.object({ date: z.string() }),
             responses: { 200: TermsOfService },

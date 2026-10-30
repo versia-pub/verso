@@ -148,7 +148,7 @@ const routesOf = (type: EntityType): Route[] => {
         routes.push(defineRoute({
             method: "GET",
             path,
-            summary: `A local ${type.type}, for another instance`,
+            summary: `Get a ${type.type}`,
             tags: ["versia"],
             signed: true,
             contentType: versiaJson,
@@ -167,7 +167,7 @@ const routesOf = (type: EntityType): Route[] => {
         routes.push(defineRoute({
             method: "GET",
             path: `${path}/collections/:name`,
-            summary: `A page of one of a local ${type.type}'s collections, for another instance`,
+            summary: `Get a collection of a ${type.type}`,
             tags: ["versia"],
             signed: true,
             contentType: versiaJson,

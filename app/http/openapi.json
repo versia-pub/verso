@@ -12,7 +12,11 @@
     "paths": {
         "/api/v1/apps": {
             "post": {
-                "summary": "Registers a client app",
+                "summary": "Create an application",
+                "description": "Create a new application to obtain OAuth2 credentials.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/apps/#create"
+                },
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -169,7 +173,11 @@
         },
         "/api/v1/apps/verify_credentials": {
             "get": {
-                "summary": "Shows the app a token belongs to",
+                "summary": "Verify your app works",
+                "description": "Confirm that the app's OAuth2 credentials work.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/apps/#verify_credentials"
+                },
                 "security": [
                     {
                         "OAuth2": []
@@ -191,7 +199,11 @@
         },
         "/oauth/authorize": {
             "get": {
-                "summary": "Starts logging a user in to an app",
+                "summary": "Authorize a user",
+                "description": "Displays an authorization form to the user. If approved, it will create and return an authorization code, then redirect to the desired `redirect_uri`, or show the authorization code if `urn:ietf:wg:oauth:2.0:oob` was requested. The authorization code can be used while requesting a token to obtain access to user-level methods.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/oauth/#authorize"
+                },
                 "parameters": [
                     {
                         "name": "client_id",
@@ -297,7 +309,7 @@
         },
         "/oauth/authorize/issuer": {
             "post": {
-                "summary": "Logs in with the issuer the user chose",
+                "summary": "Log in with an issuer",
                 "parameters": [
                     {
                         "name": "sec-fetch-site",
@@ -410,7 +422,8 @@
         },
         "/oauth/callback": {
             "get": {
-                "summary": "Finishes the login when the issuer sends the user back",
+                "summary": "Finish logging in",
+                "description": "The issuer sends the user back here.",
                 "parameters": [
                     {
                         "name": "__Host-oauth_flow",
@@ -469,7 +482,7 @@
         },
         "/oauth/consent": {
             "get": {
-                "summary": "Asks the user whether to let the app use their account",
+                "summary": "Ask for consent",
                 "parameters": [
                     {
                         "name": "__Host-oauth_flow",
@@ -504,7 +517,7 @@
                 }
             },
             "post": {
-                "summary": "Records whether the user lets the app use their account",
+                "summary": "Record consent",
                 "parameters": [
                     {
                         "name": "sec-fetch-site",
@@ -629,7 +642,11 @@
         },
         "/oauth/token": {
             "post": {
-                "summary": "Gives an app an access token",
+                "summary": "Obtain a token",
+                "description": "Obtain an access token, to be used during API calls that are not public.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/oauth/#token"
+                },
                 "parameters": [
                     {
                         "name": "authorization",
@@ -745,7 +762,11 @@
         },
         "/oauth/revoke": {
             "post": {
-                "summary": "Revokes an access token",
+                "summary": "Revoke a token",
+                "description": "Revoke an access token to make it no longer valid for use.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/oauth/#revoke"
+                },
                 "parameters": [
                     {
                         "name": "authorization",
@@ -827,7 +848,11 @@
         },
         "/.well-known/oauth-authorization-server": {
             "get": {
-                "summary": "Describes the OAuth endpoints",
+                "summary": "Discover OAuth Server Configuration",
+                "description": "Returns the OAuth 2 Authorization Server Metadata for the Mastodon server, as defined by RFC 8414.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/oauth/#authorization-server-metadata"
+                },
                 "responses": {
                     "200": {
                         "description": "A JSON body",
@@ -844,8 +869,11 @@
         },
         "/api/v1/accounts/{id}/followers": {
             "get": {
-                "summary": "The accounts following an account, newest first",
-                "description": "Needs the `read:account_follows` permission.",
+                "summary": "Get account's followers",
+                "description": "Accounts which follow the given account, if network is not hidden by the account owner.\n\nNeeds the `read:account_follows` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#followers"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -937,8 +965,11 @@
         },
         "/api/v1/accounts/{id}/following": {
             "get": {
-                "summary": "The accounts an account follows, newest first",
-                "description": "Needs the `read:account_follows` permission.",
+                "summary": "Get account's following",
+                "description": "Accounts which the given account is following, if network is not hidden by the account owner.\n\nNeeds the `read:account_follows` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#following"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -1030,8 +1061,11 @@
         },
         "/api/v1/follow_requests": {
             "get": {
-                "summary": "The accounts asking to follow the viewer, newest first",
+                "summary": "View pending follow requests",
                 "description": "Needs a token for a user, not one an app got for itself.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/follow_requests/#get"
+                },
                 "tags": [
                     "follow_requests"
                 ],
@@ -1114,8 +1148,11 @@
         },
         "/api/v1/follow_requests/{id}/authorize": {
             "post": {
-                "summary": "Accepts an account's request to follow the viewer",
+                "summary": "Accept follow request",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/follow_requests/#accept"
+                },
                 "tags": [
                     "follow_requests"
                 ],
@@ -1152,8 +1189,11 @@
         },
         "/api/v1/follow_requests/{id}/reject": {
             "post": {
-                "summary": "Rejects an account's request to follow the viewer",
+                "summary": "Reject follow request",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/follow_requests/#reject"
+                },
                 "tags": [
                     "follow_requests"
                 ],
@@ -1191,7 +1231,7 @@
         "/api/v1/accounts/{id}/block": {
             "post": {
                 "summary": "Block account",
-                "description": "Block the given account. Clients should filter statuses from this account if received (e.g. due to a boost in the Home timeline).\n\nUnlike Mastodon, Verso tells neither the account nor its instance, and blocking ends no follows.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:block` permission.",
+                "description": "Blocks the given account.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:block` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/accounts/#block"
                 },
@@ -1273,7 +1313,7 @@
         "/api/v1/accounts/{id}/mute": {
             "post": {
                 "summary": "Mute account",
-                "description": "Mute the given account. Clients should filter statuses and notifications from this account, if received (e.g. due to a boost in the Home timeline).\n\nMuting an account already muted changes how it is muted. Durations are at most five years.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:mute` permission.",
+                "description": "Mute the given account. Clients should filter statuses and notifications from this account, if received (e.g. due to a boost in the Home timeline).\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:mute` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/accounts/#mute"
                 },
@@ -1423,7 +1463,7 @@
         "/api/v1/domain_blocks": {
             "post": {
                 "summary": "Block a domain",
-                "description": "Block a domain to change interactions with that domain's server.\n\nUnlike Mastodon, Verso tells no one, keeps the viewer's followers there, and lets its users still follow them. Instead, it blocks each account on the domain, and on its subdomains, as blocking the account would. The domain must be a domain name.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:block` permission.",
+                "description": "Block a domain to change interactions with that domain's server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:block` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/domain_blocks/#block"
                 },
@@ -1751,7 +1791,7 @@
         "/api/v1/blocks": {
             "get": {
                 "summary": "View blocked users",
-                "description": "View your blocks. See also accounts/:id/{block,unblock}\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:block` permission.",
+                "description": "Returns your blocked accounts.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:block` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/blocks/#get"
                 },
@@ -1838,7 +1878,7 @@
         "/api/v1/accounts/{id}/note": {
             "post": {
                 "summary": "Set private note on profile",
-                "description": "Sets a private note on a user.\n\nAs on Mastodon, a note is at most 2000 characters.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "description": "Sets a private note on a user.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/accounts/#note"
                 },
@@ -1919,8 +1959,11 @@
         },
         "/api/v1/accounts/relationships": {
             "get": {
-                "summary": "How the viewer is connected to each of some accounts",
-                "description": "Needs a token for a user, not one an app got for itself.",
+                "summary": "Check relationships to other accounts",
+                "description": "Find out whether a given account is followed, blocked, muted, etc.\n\nNeeds a token for a user, not one an app got for itself.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#relationships"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -2025,8 +2068,11 @@
         },
         "/api/v1/accounts/{id}/follow": {
             "post": {
-                "summary": "Follows an account, or asks to, or changes how the viewer sees one they follow",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "summary": "Follow account",
+                "description": "Follow the given account. Can also be used to update whether to show reblogs or enable notifications.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#follow"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -2146,8 +2192,11 @@
         },
         "/api/v1/accounts/{id}/unfollow": {
             "post": {
-                "summary": "Stops following an account, or withdraws asking to",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "summary": "Unfollow account",
+                "description": "Unfollow the given account.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#unfollow"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -2184,8 +2233,11 @@
         },
         "/api/v1/accounts/{id}/remove_from_followers": {
             "post": {
-                "summary": "Removes an account from the viewer's followers",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "summary": "Remove account from followers",
+                "description": "Remove the given account from your followers.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:follow` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#remove_from_followers"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -2244,7 +2296,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "Search query for accounts. At most 500 characters."
+                            "description": "Search query for accounts."
                         }
                     },
                     {
@@ -2282,7 +2334,7 @@
                                     "pattern": "^-?\\d+$"
                                 }
                             ],
-                            "description": "Skip the first n results. At most 10000."
+                            "description": "Skip the first n results."
                         }
                     },
                     {
@@ -2330,7 +2382,7 @@
         "/api/v2/search": {
             "get": {
                 "summary": "Perform a search",
-                "description": "Perform a search for content in accounts, statuses and hashtags with the given parameters.\n\nAs on Mastodon, only signed-in users search statuses, or use `resolve` or `offset`. Verso only searches statuses for a query with a word, a phrase, a hashtag, `from:` or `in:library`, or with `account_id`, and finds words of one letter only as whole words.\n\nNeeds the `search` permission.",
+                "description": "Perform a search for content in accounts, statuses and hashtags with the given parameters.\n\nNeeds the `search` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/search/#v2"
                 },
@@ -2352,7 +2404,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "The search query. At most 500 characters."
+                            "description": "The search query."
                         }
                     },
                     {
@@ -2366,7 +2418,7 @@
                                 "hashtags",
                                 "statuses"
                             ],
-                            "description": "Specify whether to search for only `accounts`, `hashtags`, `statuses`."
+                            "description": "Specify whether to search for only `accounts`, `hashtags`, `statuses`"
                         }
                     },
                     {
@@ -2374,7 +2426,7 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "description": "Attempt WebFinger lookup, when `q` is an account's address, or look up the account or status at a URL, when `q` is one. Defaults to false. Verso looks up the Versia URLs it shows as accounts' and statuses' `uri`.",
+                            "description": "Only relevant if `type` includes `accounts` or if `q` is a HTTPS URL. In the first case, if `true` and (a) the search query is for a remote account (e.g., `someaccount@someother.server`) and (b) the local server does not know about the account, WebFinger is used to try and resolve the account at `someother.server`. This provides the best recall at higher latency. If `false`, only accounts the server knows about are returned. In the second case, if `true`, resolving the URL and returning the matching status, account or Collection is attempted. If `false`, this resolving logic is circumvented and a regular search is performed instead.",
                             "type": [
                                 "boolean",
                                 "string"
@@ -2407,7 +2459,7 @@
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "description": "Filter out unreviewed tags? Verso doesn't review hashtags, so this changes nothing.",
+                            "description": "Filter out unreviewed tags? Defaults to false. Use true when trying to find trending tags.",
                             "type": [
                                 "boolean",
                                 "string"
@@ -2467,7 +2519,7 @@
                                     "pattern": "^-?\\d+$"
                                 }
                             ],
-                            "description": "Skip the first n results. Only applies when `type` is also present. At most 10000."
+                            "description": "Skip the first n results. Only applies when `type` is also present (ignored otherwise)."
                         }
                     }
                 ],
@@ -2487,8 +2539,11 @@
         },
         "/api/v1/accounts/verify_credentials": {
             "get": {
-                "summary": "The viewer's own account, with their settings",
-                "description": "Needs a token for a user, not one an app got for itself.",
+                "summary": "Verify account credentials",
+                "description": "Test to make sure that the user token works.\n\nNeeds a token for a user, not one an app got for itself.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#verify_credentials"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -2515,8 +2570,11 @@
         },
         "/api/v1/accounts/update_credentials": {
             "patch": {
-                "summary": "Changes the viewer's profile and settings",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "summary": "Update account credentials",
+                "description": "Update the user's display and preferences.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#update_credentials"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -2950,8 +3008,11 @@
         },
         "/api/v1/accounts/lookup": {
             "get": {
-                "summary": "An account, by its username or WebFinger address",
-                "description": "Needs the `read:account` permission.",
+                "summary": "Lookup account ID from WebFinger address",
+                "description": "Quickly lookup a username to see if it is available, skipping WebFinger resolution.\n\nNeeds the `read:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#lookup"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -3041,8 +3102,11 @@
         },
         "/api/v1/accounts/{id}": {
             "get": {
-                "summary": "An account",
-                "description": "Needs the `read:account` permission.",
+                "summary": "Get account",
+                "description": "View information about a profile.\n\nNeeds the `read:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#get"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -3171,7 +3235,7 @@
         },
         "/accounts/{id}/avatar.png": {
             "get": {
-                "summary": "An account's default avatar",
+                "summary": "Get default avatar",
                 "tags": [
                     "accounts"
                 ],
@@ -3198,7 +3262,7 @@
         },
         "/accounts/{id}/header.png": {
             "get": {
-                "summary": "An account's default header",
+                "summary": "Get default header",
                 "tags": [
                     "accounts"
                 ],
@@ -3324,8 +3388,11 @@
         },
         "/api/v1/statuses": {
             "post": {
-                "summary": "Posts a status",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "summary": "Post a new status",
+                "description": "Publish a status with the given parameters.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#create"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -3654,8 +3721,11 @@
         },
         "/api/v1/statuses/{id}": {
             "get": {
-                "summary": "A status, if the viewer may see it",
-                "description": "Needs the `read:note` permission.",
+                "summary": "View a single status",
+                "description": "Obtain information about a status.\n\nNeeds the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#get"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -3691,8 +3761,11 @@
                 }
             },
             "put": {
-                "summary": "Edits one of the viewer's statuses",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "summary": "Edit a status",
+                "description": "Edit a given status to change its text, sensitivity, media attachments, or poll.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#edit"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -3996,8 +4069,11 @@
                 }
             },
             "delete": {
-                "summary": "Deletes one of the viewer's statuses or shares, and gives it back, to redraft",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "summary": "Delete a status",
+                "description": "Delete one of your own statuses.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#delete"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -4034,8 +4110,11 @@
         },
         "/api/v1/statuses/{id}/context": {
             "get": {
-                "summary": "The statuses a status replies to, and the replies under it, that the viewer may see",
-                "description": "Needs the `read:note` permission.",
+                "summary": "Get parent and child statuses in context",
+                "description": "View statuses above and below this status in the thread.\n\nNeeds the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#context"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -4073,8 +4152,11 @@
         },
         "/api/v1/accounts/{id}/statuses": {
             "get": {
-                "summary": "An account's statuses that the viewer may see, newest first",
-                "description": "Needs the `read:note` permission.",
+                "summary": "Get account's statuses",
+                "description": "Statuses posted to the given account.\n\nNeeds the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#statuses"
+                },
                 "tags": [
                     "accounts"
                 ],
@@ -4219,7 +4301,7 @@
         "/api/v1/statuses/{id}/pin": {
             "post": {
                 "summary": "Pin status to profile",
-                "description": "Feature one of your own public statuses at the top of your profile.\n\nLike Mastodon, Verso lets an account pin its public, unlisted and private statuses, up to 5 of them.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "description": "Feature one of your own public statuses at the top of your profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/statuses/#pin"
                 },
@@ -4300,8 +4382,11 @@
         },
         "/api/v1/statuses/{id}/history": {
             "get": {
-                "summary": "What a status said before each edit, and now, if the viewer may see it",
-                "description": "Needs the `read:note` permission.",
+                "summary": "View edit history of a status",
+                "description": "Get all known versions of a status, including the initial and current states.\n\nNeeds the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#history"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -4342,8 +4427,11 @@
         },
         "/api/v1/statuses/{id}/source": {
             "get": {
-                "summary": "A status as its author wrote it, if the viewer may see it, for editing it",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `read:note` permission.",
+                "summary": "View status source",
+                "description": "Obtain the source properties for a status so that it can be edited.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#source"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -4380,7 +4468,7 @@
         },
         "/api/v1/statuses/{id}/reactions/{name}": {
             "put": {
-                "summary": "Reacts to a status the viewer may see with an emoji",
+                "summary": "React to a status with an emoji",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:reaction` permission.",
                 "tags": [
                     "statuses"
@@ -4425,7 +4513,7 @@
                 }
             },
             "delete": {
-                "summary": "Undoes the viewer's reaction to a status with an emoji",
+                "summary": "Undo reaction to a status with an emoji",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:reaction` permission.",
                 "tags": [
                     "statuses"
@@ -4470,8 +4558,8 @@
                 }
             },
             "get": {
-                "summary": "The accounts that reacted to a status the viewer may see with an emoji, newest first",
-                "description": "The emoji is named as the status's reactions name it: a Unicode emoji, or a custom one's shortcode in colons, with its domain if it is another instance's, such as `:blob@b.example:`.\n\nNeeds the `read:reaction` permission.",
+                "summary": "List accounts that reacted with an emoji",
+                "description": "Accounts that reacted to a status with an emoji.\n\nNeeds the `read:reaction` permission.",
                 "externalDocs": {
                     "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions"
                 },
@@ -4501,7 +4589,8 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "minLength": 1
+                            "minLength": 1,
+                            "description": "A Unicode emoji, or a custom emoji's shortcode in colons, with its domain if it's another instance's, such as `:blob@b.example:`."
                         }
                     },
                     {
@@ -4575,8 +4664,8 @@
         },
         "/api/v1/statuses/{id}/reactions": {
             "get": {
-                "summary": "The reactions to a status the viewer may see, by emoji, with how many made each",
-                "description": "Who made them is listed for each emoji, a page at a time, by `GET /api/v1/statuses/:id/reactions/:name`.\n\nNeeds the `read:reaction` permission.",
+                "summary": "List reactions to a status",
+                "description": "Reactions to a status, by emoji.\n\nNeeds the `read:reaction` permission.",
                 "externalDocs": {
                     "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions"
                 },
@@ -4620,8 +4709,11 @@
         },
         "/api/v1/statuses/{id}/favourite": {
             "post": {
-                "summary": "Likes a status the viewer may see",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:like` permission.",
+                "summary": "Favourite a status",
+                "description": "Add a status to your favourites list.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:like` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#favourite"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -4658,8 +4750,11 @@
         },
         "/api/v1/statuses/{id}/unfavourite": {
             "post": {
-                "summary": "Undoes the viewer's like of a status",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:like` permission.",
+                "summary": "Undo favourite of a status",
+                "description": "Remove a status from your favourites list.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:like` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#unfavourite"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -4696,8 +4791,11 @@
         },
         "/api/v1/statuses/{id}/favourited_by": {
             "get": {
-                "summary": "The accounts that like a status the viewer may see, newest first",
-                "description": "Needs the `read:note_likes` permission.",
+                "summary": "See who favourited a status",
+                "description": "View who favourited a given status.\n\nNeeds the `read:note_likes` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#favourited_by"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -4789,8 +4887,11 @@
         },
         "/api/v1/favourites": {
             "get": {
-                "summary": "The statuses the viewer likes and may still see, the latest liked first",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `read:note` permission.",
+                "summary": "View favourited statuses",
+                "description": "Statuses the user has favourited.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/favourites/#get"
+                },
                 "tags": [
                     "favourites"
                 ],
@@ -4873,8 +4974,11 @@
         },
         "/api/v1/statuses/{id}/reblog": {
             "post": {
-                "summary": "Shares a public or unlisted status the viewer may see, and gives the share",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:boost` permission.",
+                "summary": "Boost a status",
+                "description": "Reshare a status on your own profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:boost` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#boost"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -4961,8 +5065,11 @@
         },
         "/api/v1/statuses/{id}/unreblog": {
             "post": {
-                "summary": "Undoes the viewer's share of a status, and gives the status",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:boost` permission.",
+                "summary": "Undo boost of a status",
+                "description": "Undo a reshare of a status.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:boost` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#unreblog"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -4999,8 +5106,11 @@
         },
         "/api/v1/statuses/{id}/reblogged_by": {
             "get": {
-                "summary": "The accounts that share a status the viewer may see, publicly, newest first",
-                "description": "Needs the `read:note_boosts` permission.",
+                "summary": "See who boosted a status",
+                "description": "View who boosted a given status.\n\nNeeds the `read:note_boosts` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#reblogged_by"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -5092,8 +5202,11 @@
         },
         "/api/v1/timelines/home": {
             "get": {
-                "summary": "The viewer's statuses and those of the accounts they follow, and their shares, newest first",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `read:note` permission.",
+                "summary": "View home timeline",
+                "description": "View statuses from followed users and hashtags.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/timelines/#home"
+                },
                 "tags": [
                     "timelines"
                 ],
@@ -5176,8 +5289,11 @@
         },
         "/api/v1/timelines/public": {
             "get": {
-                "summary": "Public statuses, here or from other instances, newest first",
-                "description": "Needs the `read:note` permission.",
+                "summary": "View public timeline",
+                "description": "View public statuses.\n\nNeeds the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/timelines/#public"
+                },
                 "tags": [
                     "timelines"
                 ],
@@ -5295,7 +5411,7 @@
         "/api/v1/timelines/tag/{hashtag}": {
             "get": {
                 "summary": "View hashtag timeline",
-                "description": "View public statuses containing the given hashtag.\n\nAs on Mastodon, `any`, `all` and `none` each take at most 4 hashtags, the first of `any` being the hashtag itself.\n\nNeeds the `read:note` permission.",
+                "description": "View public statuses containing the given hashtag.\n\nNeeds the `read:note` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/timelines/#tag"
                 },
@@ -5482,7 +5598,7 @@
         "/api/v1/notifications": {
             "get": {
                 "summary": "Get all notifications",
-                "description": "Notifications concerning the user. This API returns Link headers containing links to the next/previous page. However, the links can also be constructed dynamically using query params and `id` values.\n\nNotifications from accounts the user blocks, or mutes with their notifications, and about statuses they may no longer see, are left out. A `reaction` notification has the emoji, as Pleroma has it.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "description": "Notifications concerning the user. This API returns Link headers containing links to the next/previous page. However, the links can also be constructed dynamically using query params and `id` values.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/notifications/#get"
                 },
@@ -5839,7 +5955,7 @@
         "/api/v2/notifications": {
             "get": {
                 "summary": "Get all grouped notifications",
-                "description": "Return grouped notifications concerning the user. This API returns Link headers containing links to the next/previous page. However, the links can also be constructed dynamically using query params and `id` values.\n\nNotifications from accounts the user blocks, or mutes with their notifications, and about statuses they may no longer see, are left out, and not counted. `reaction` notifications are grouped by status too, when `grouped_types` has `reaction`, and a `reaction` group has its emojis.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "description": "Return grouped notifications concerning the user. This API returns Link headers containing links to the next/previous page. However, the links can also be constructed dynamically using query params and `id` values.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/grouped_notifications/#get-grouped"
                 },
@@ -5954,7 +6070,7 @@
                                 "full",
                                 "partial_avatars"
                             ],
-                            "description": "When `partial_avatars`, the accounts of each group but its most recent are in `partial_accounts`, stripped down."
+                            "description": "One of `full` (default) or `partial_avatars`. When set to `partial_avatars`, some accounts will not be rendered in full in the returned `accounts` list but will be instead returned in stripped-down form in the `partial_accounts` list. The most recent account in a notification group is always rendered in full in the `accounts` attribute."
                         }
                     },
                     {
@@ -6130,10 +6246,7 @@
         "/api/v2/notifications/clear": {
             "post": {
                 "summary": "Dismiss all notifications",
-                "description": "Clear all notifications from the server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
-                "externalDocs": {
-                    "url": "https://docs.joinmastodon.org/methods/notifications/#clear"
-                },
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
                 "tags": [
                     "notifications"
                 ],
@@ -6162,7 +6275,7 @@
         "/api/v2/notifications/{group_key}": {
             "get": {
                 "summary": "Get a single notification group",
-                "description": "View information about a specific notification group with a given group key.\n\nIt is counted and sampled as a whole, leaving out notifications from accounts the user blocks, or mutes with their notifications.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "description": "View information about a specific notification group with a given group key.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/grouped_notifications/#get-notification-group"
                 },
@@ -6203,7 +6316,7 @@
         "/api/v2/notifications/{group_key}/accounts": {
             "get": {
                 "summary": "Get accounts of all notifications in a notification group",
-                "description": "The accounts that caused the notifications of a group, newest first, each once.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/grouped_notifications/#get-group-accounts"
                 },
@@ -6340,7 +6453,7 @@
         "/api/v1/push/subscription": {
             "post": {
                 "summary": "Subscribe to push notifications",
-                "description": "Add a Web Push API subscription to receive notifications. Each access token can have one push subscription. If you create a new subscription, the old subscription is deleted. Verso only pushes to `https` endpoints.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "description": "Add a Web Push API subscription to receive notifications. Each access token can have one push subscription. If you create a new subscription, the old subscription is deleted.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/push/#create"
                 },
@@ -6486,7 +6599,7 @@
                                                     "follower",
                                                     "none"
                                                 ],
-                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                                "description": "Specify whether to receive push notifications from `all`, `followed`, `follower`, or `none` users."
                                             }
                                         }
                                     }
@@ -6615,7 +6728,7 @@
                                                     "follower",
                                                     "none"
                                                 ],
-                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                                "description": "Specify whether to receive push notifications from `all`, `followed`, `follower`, or `none` users."
                                             }
                                         }
                                     }
@@ -6744,7 +6857,7 @@
                                                     "follower",
                                                     "none"
                                                 ],
-                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                                "description": "Specify whether to receive push notifications from `all`, `followed`, `follower`, or `none` users."
                                             }
                                         }
                                     }
@@ -6800,7 +6913,7 @@
             },
             "put": {
                 "summary": "Change types of notifications",
-                "description": "Updates the current push subscription. Only the data part can be updated. To change fundamentals, a new subscription must be created instead. What isn't given is reset, as when subscribing.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "description": "Updates the current push subscription. Only the data part can be updated. To change fundamentals, a new subscription must be created instead.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/push/#update"
                 },
@@ -6904,7 +7017,7 @@
                                                     "follower",
                                                     "none"
                                                 ],
-                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                                "description": "Specify whether to receive push notifications from `all`, `followed`, `follower`, or `none` users."
                                             }
                                         }
                                     }
@@ -6998,7 +7111,7 @@
                                                     "follower",
                                                     "none"
                                                 ],
-                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                                "description": "Specify whether to receive push notifications from `all`, `followed`, `follower`, or `none` users."
                                             }
                                         }
                                     }
@@ -7092,7 +7205,7 @@
                                                     "follower",
                                                     "none"
                                                 ],
-                                                "description": "Whose notifications to push: `all`, `followed`, `follower` or `none`. Defaults to `all`."
+                                                "description": "Specify whether to receive push notifications from `all`, `followed`, `follower`, or `none` users."
                                             }
                                         }
                                     }
@@ -7359,7 +7472,7 @@
         "/api/v1/streaming": {
             "get": {
                 "summary": "Establishing a WebSocket connection",
-                "description": "Open a multiplexed WebSocket connection to receive events. A request that isn't for a WebSocket finds nothing, as on Mastodon, where that means streaming is on the same host.\n\nNeeds a token for a user, not one an app got for itself. The token may also be sent as `Sec-WebSocket-Protocol`, or as the `access_token` query parameter.",
+                "description": "Open a multiplexed WebSocket connection to receive events. While the WebSocket spec allows for both text and binary date frames, since we are working only with small text fragments the streaming server uses text frames only. Clients should be configured that way if necessary.\n\nNeeds a token for a user, not one an app got for itself. The token may also be sent as `Sec-WebSocket-Protocol`, or as the `access_token` query parameter.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/streaming/#websocket"
                 },
@@ -7378,7 +7491,7 @@
                         "required": false,
                         "schema": {
                             "type": "string",
-                            "description": "The stream to subscribe to once connected. More can be subscribed to by sending `subscribe` messages."
+                            "description": "When attempting to watch a single stream for events. See Streams for possible values."
                         }
                     },
                     {
@@ -7387,7 +7500,7 @@
                         "required": false,
                         "schema": {
                             "type": "string",
-                            "description": "When `stream` is `hashtag` or `hashtag:local`, the hashtag to stream."
+                            "description": "When `stream` is set to `hashtag` or `hashtag:local`, use this parameter to specify the tag name."
                         }
                     },
                     {
@@ -7417,7 +7530,7 @@
         "/api/v2/media": {
             "post": {
                 "summary": "Upload media as an attachment (async)",
-                "description": "Creates a media attachment to be used with a new status. The full sized media will be processed asynchronously in the background for large uploads.\n\nPictures are processed, and answered with 202 until they are; any other file is kept as it is, as a file of type `unknown`. A picture that can't be processed is removed, as it may hold metadata, and then answered with 422. Files are at most 16777216 bytes.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
+                "description": "Creates a media attachment to be used with a new status. The full sized media will be processed asynchronously in the background for large uploads.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/media/#v2"
                 },
@@ -7443,7 +7556,7 @@
                                         "format": "binary",
                                         "contentEncoding": "binary",
                                         "maxLength": 16777216,
-                                        "description": "The file to be attached."
+                                        "description": "The file to be attached, encoded using multipart form data. The file must have a MIME type."
                                     },
                                     "thumbnail": {},
                                     "description": {
@@ -7470,7 +7583,7 @@
                                         "format": "binary",
                                         "contentEncoding": "binary",
                                         "maxLength": 16777216,
-                                        "description": "The file to be attached."
+                                        "description": "The file to be attached, encoded using multipart form data. The file must have a MIME type."
                                     },
                                     "thumbnail": {},
                                     "description": {
@@ -7497,7 +7610,7 @@
                                         "format": "binary",
                                         "contentEncoding": "binary",
                                         "maxLength": 16777216,
-                                        "description": "The file to be attached."
+                                        "description": "The file to be attached, encoded using multipart form data. The file must have a MIME type."
                                     },
                                     "thumbnail": {},
                                     "description": {
@@ -7593,7 +7706,7 @@
             },
             "put": {
                 "summary": "Update media attachment",
-                "description": "Update a MediaAttachment's parameters, before it is attached to a status and posted.\n\nAn empty description clears it.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
+                "description": "Update a MediaAttachment's parameters, before it is attached to a status and posted.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/media/#update"
                 },
@@ -7696,8 +7809,8 @@
         },
         "/media/{key}": {
             "get": {
-                "summary": "A file someone uploaded, or its preview",
-                "description": "Files are kept under the SHA-256 of their bytes, so they never change. Pictures are served as pictures, and video and audio as the type they were uploaded as; any other file is served for browsers to save, as `application/octet-stream`. Where the store serves files itself, such as through a CDN, this redirects there.",
+                "summary": "Get uploaded file",
+                "description": "Files are kept under the SHA-256 of their bytes, so they never change.",
                 "tags": [
                     "media"
                 ],
@@ -7735,7 +7848,7 @@
         "/api/v1/custom_emojis": {
             "get": {
                 "summary": "View all custom emoji",
-                "description": "Returns custom emojis that are available on the server.\n\nGlobal emojis, and the viewer's own, which replace global ones of the same name.",
+                "description": "Returns custom emojis that are available on the server.",
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/custom_emojis/#get"
                 },
@@ -7768,7 +7881,7 @@
         "/api/v1/emojis": {
             "post": {
                 "summary": "Upload emoji",
-                "description": "Upload a new emoji to the server.\n\nThe emoji is the user's own unless `global`, which needs the `emojis` permission. Its picture is processed after the response, which is 202, without URLs; text doesn't use the emoji until then. Pictures are at most 262144 bytes. A shortcode the user may already use, for their own emoji or a global one, is answered with 422.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:emoji` permission.",
+                "description": "Upload a new emoji to the server.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:emoji` permission.",
                 "externalDocs": {
                     "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/emojis"
                 },
@@ -7912,7 +8025,7 @@
         "/api/v1/emojis/{id}": {
             "get": {
                 "summary": "Get emoji",
-                "description": "Retrieves a custom emoji from database by ID.\n\nUsers see global emojis and their own; those with the `emojis` permission see any.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:emoji` permission.",
+                "description": "Retrieves a custom emoji from database by ID.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:emoji` permission.",
                 "externalDocs": {
                     "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/emojis"
                 },
@@ -7951,7 +8064,7 @@
             },
             "patch": {
                 "summary": "Modify emoji",
-                "description": "Edit image or metadata of an emoji.\n\nUsers change their own emojis; those with the `emojis` permission change any, and make them global or not. A global emoji made not global becomes the editor's own. Statuses that use a renamed emoji keep it. A new picture is processed after the response, and the emoji has no URLs until then.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:emoji` permission.",
+                "description": "Edit image or metadata of an emoji.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:emoji` permission.",
                 "externalDocs": {
                     "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/emojis"
                 },
@@ -8091,7 +8204,7 @@
             },
             "delete": {
                 "summary": "Delete emoji",
-                "description": "Delete a custom emoji from the database.\n\nUsers delete their own emojis; those with the `emojis` permission delete any. Statuses and profiles that used it no longer do, and local users' reactions with it are undone. Answered with an empty object, as Verso's other deletions are.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:emoji` permission.",
+                "description": "Delete a custom emoji from the database.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:emoji` permission.",
                 "externalDocs": {
                     "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/emojis"
                 },
@@ -8133,7 +8246,7 @@
         },
         "/api/v1/roles": {
             "get": {
-                "summary": "Every role, highest priority first",
+                "summary": "List roles",
                 "description": "Needs a token for a user, not one an app got for itself.",
                 "tags": [
                     "roles"
@@ -8162,7 +8275,7 @@
                 }
             },
             "post": {
-                "summary": "Creates a role below the viewer's highest, with permissions they have",
+                "summary": "Create role",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `roles` permission.",
                 "tags": [
                     "roles"
@@ -8459,7 +8572,7 @@
         },
         "/api/v1/roles/{id}": {
             "get": {
-                "summary": "A role",
+                "summary": "Get role",
                 "description": "Needs a token for a user, not one an app got for itself.",
                 "tags": [
                     "roles"
@@ -8495,7 +8608,7 @@
                 }
             },
             "patch": {
-                "summary": "Changes a role below the viewer's highest, keeping it there",
+                "summary": "Update role",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `roles` permission.",
                 "tags": [
                     "roles"
@@ -8791,7 +8904,7 @@
                 }
             },
             "delete": {
-                "summary": "Deletes a role below the viewer's highest, taking it from everyone who has it",
+                "summary": "Delete role",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `roles` permission.",
                 "tags": [
                     "roles"
@@ -8831,7 +8944,7 @@
         },
         "/api/v1/accounts/{id}/roles": {
             "get": {
-                "summary": "An account's roles, highest priority first",
+                "summary": "List roles of account",
                 "description": "Needs a token for a user, not one an app got for itself.",
                 "tags": [
                     "roles"
@@ -8872,7 +8985,7 @@
         },
         "/api/v1/accounts/{id}/roles/{role_id}": {
             "post": {
-                "summary": "Gives an account below the viewer a role below their highest, with permissions they have",
+                "summary": "Add role to account",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `roles` permission.",
                 "tags": [
                     "roles"
@@ -8918,7 +9031,7 @@
                 }
             },
             "delete": {
-                "summary": "Takes from an account below the viewer a role below their highest, that an admin gave",
+                "summary": "Remove role from account",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `roles` permission.",
                 "tags": [
                     "roles"
@@ -8966,7 +9079,7 @@
         },
         "/.well-known/webfinger": {
             "get": {
-                "summary": "A local account, by its acct: address",
+                "summary": "Look up an account with WebFinger",
                 "tags": [
                     "versia"
                 ],
@@ -9036,7 +9149,7 @@
         },
         "/.versia/v0.6/entities/User/{id}": {
             "get": {
-                "summary": "A local User, for another instance",
+                "summary": "Get a User",
                 "tags": [
                     "versia"
                 ],
@@ -9691,7 +9804,7 @@
         },
         "/.versia/v0.6/entities/User/{id}/collections/{name}": {
             "get": {
-                "summary": "A page of one of a local User's collections, for another instance",
+                "summary": "Get a collection of a User",
                 "tags": [
                     "versia"
                 ],
@@ -9855,7 +9968,7 @@
         },
         "/.versia/v0.6/entities/Note/{id}": {
             "get": {
-                "summary": "A local Note, for another instance",
+                "summary": "Get a Note",
                 "tags": [
                     "versia"
                 ],
@@ -10297,7 +10410,7 @@
         },
         "/.versia/v0.6/entities/Note/{id}/collections/{name}": {
             "get": {
-                "summary": "A page of one of a local Note's collections, for another instance",
+                "summary": "Get a collection of a Note",
                 "tags": [
                     "versia"
                 ],
@@ -10461,7 +10574,7 @@
         },
         "/.versia/v0.6/entities/pub.versia%3Alikes%2FLike/{id}": {
             "get": {
-                "summary": "A local pub.versia:likes/Like, for another instance",
+                "summary": "Get a pub.versia:likes/Like",
                 "tags": [
                     "versia"
                 ],
@@ -10551,7 +10664,7 @@
         },
         "/.versia/v0.6/entities/pub.versia%3Ashare%2FShare/{id}": {
             "get": {
-                "summary": "A local pub.versia:share/Share, for another instance",
+                "summary": "Get a pub.versia:share/Share",
                 "tags": [
                     "versia"
                 ],
@@ -10641,7 +10754,7 @@
         },
         "/.versia/v0.6/entities/pub.versia%3Areactions%2FReaction/{id}": {
             "get": {
-                "summary": "A local pub.versia:reactions/Reaction, for another instance",
+                "summary": "Get a pub.versia:reactions/Reaction",
                 "tags": [
                     "versia"
                 ],
@@ -10736,7 +10849,7 @@
         },
         "/.versia/v0.6/inbox": {
             "post": {
-                "summary": "Entities another instance sends to this one",
+                "summary": "Receive entities",
                 "tags": [
                     "versia"
                 ],
@@ -10754,7 +10867,8 @@
         },
         "/.versia/v0.6/messaging": {
             "post": {
-                "summary": "A message from another instance about why something this one sent failed",
+                "summary": "Receive a message",
+                "description": "Another instance says why something this one sent failed.",
                 "tags": [
                     "versia"
                 ],
@@ -10778,7 +10892,11 @@
         },
         "/api/v2/instance": {
             "get": {
-                "summary": "The instance, its limits, and how to join and contact it",
+                "summary": "View server information",
+                "description": "Obtain general information about the server.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#v2"
+                },
                 "tags": [
                     "instance"
                 ],
@@ -10798,7 +10916,7 @@
         },
         "/instance/thumbnail.png": {
             "get": {
-                "summary": "The instance's picture, drawn from its domain",
+                "summary": "Get instance thumbnail",
                 "tags": [
                     "instance"
                 ],
@@ -10814,7 +10932,11 @@
         },
         "/api/v1/instance": {
             "get": {
-                "summary": "The instance, as Mastodon described it before 4.0",
+                "summary": "View server information (v1)",
+                "description": "Obtain general information about the server. See api/v2/instance instead.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#v1"
+                },
                 "tags": [
                     "instance"
                 ],
@@ -10834,7 +10956,11 @@
         },
         "/api/v1/instance/rules": {
             "get": {
-                "summary": "What people agree to follow on the instance",
+                "summary": "List of rules",
+                "description": "Rules that the users of this service should follow.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#rules"
+                },
                 "tags": [
                     "instance"
                 ],
@@ -10857,7 +10983,11 @@
         },
         "/api/v1/instance/extended_description": {
             "get": {
-                "summary": "A longer text about the instance, for its about page",
+                "summary": "View extended description",
+                "description": "Obtain an extended description of this server.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#extended_description"
+                },
                 "tags": [
                     "instance"
                 ],
@@ -10877,7 +11007,11 @@
         },
         "/api/v1/instance/privacy_policy": {
             "get": {
-                "summary": "The instance's privacy policy",
+                "summary": "View privacy policy",
+                "description": "Obtain the contents of this server's privacy policy.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#privacy_policy"
+                },
                 "tags": [
                     "instance"
                 ],
@@ -10897,7 +11031,11 @@
         },
         "/api/v1/instance/terms_of_service": {
             "get": {
-                "summary": "The instance's terms of service",
+                "summary": "View terms of service",
+                "description": "Obtain the contents of this server's terms of service, if configured.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#terms_of_service"
+                },
                 "tags": [
                     "instance"
                 ],
@@ -10917,7 +11055,11 @@
         },
         "/api/v1/instance/terms_of_service/{date}": {
             "get": {
-                "summary": "The instance's terms of service in force from a day",
+                "summary": "View a specific version of the terms of service",
+                "description": "Obtain the contents of this server's terms of service, for a specified date, if configured.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/instance/#terms_of_service_date"
+                },
                 "tags": [
                     "instance"
                 ],
@@ -11058,7 +11200,7 @@
         },
         "/.well-known/versia": {
             "get": {
-                "summary": "The versions of Versia the instance speaks",
+                "summary": "List Versia versions",
                 "tags": [
                     "versia"
                 ],
@@ -11089,7 +11231,7 @@
         },
         "/.versia/v0.6/instance": {
             "get": {
-                "summary": "What the instance says about itself, with its public key",
+                "summary": "Get Versia instance metadata",
                 "tags": [
                     "versia"
                 ],
@@ -11446,7 +11588,7 @@
         },
         "/docs": {
             "get": {
-                "summary": "This API's documentation",
+                "summary": "View API documentation",
                 "tags": [
                     "docs"
                 ],
@@ -11466,7 +11608,7 @@
         },
         "/openapi.json": {
             "get": {
-                "summary": "This API, described with OpenAPI",
+                "summary": "Get OpenAPI description",
                 "tags": [
                     "docs"
                 ],

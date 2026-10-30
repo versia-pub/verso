@@ -42,7 +42,13 @@ const SameOrigin = z.object({ "sec-fetch-site": z.literal("same-origin").optiona
 const getAuthorize = defineRoute({
     method: "GET",
     path: "/oauth/authorize",
-    summary: "Starts logging a user in to an app",
+    summary: "Authorize a user",
+    description:
+        "Displays an authorization form to the user. If approved, it will create and return " +
+        "an authorization code, then redirect to the desired `redirect_uri`, or show the " +
+        "authorization code if `urn:ietf:wg:oauth:2.0:oob` was requested. The authorization code " +
+        "can be used while requesting a token to obtain access to user-level methods.",
+    docs: "https://docs.joinmastodon.org/methods/oauth/#authorize",
     query: z.object({
         client_id: z.string().optional(),
         redirect_uri: z.string().optional(),
@@ -86,7 +92,7 @@ const getAuthorize = defineRoute({
 const postIssuer = defineRoute({
     method: "POST",
     path: "/oauth/authorize/issuer",
-    summary: "Logs in with the issuer the user chose",
+    summary: "Log in with an issuer",
     body: z.object({ issuer: z.string(), form_token: z.string() }),
     cookies: FlowCookie,
     headers: SameOrigin,
@@ -108,7 +114,8 @@ const postIssuer = defineRoute({
 const getCallback = defineRoute({
     method: "GET",
     path: "/oauth/callback",
-    summary: "Finishes the login when the issuer sends the user back",
+    summary: "Finish logging in",
+    description: "The issuer sends the user back here.",
     query: z.record(z.string(), z.string()),
     cookies: FlowCookie,
     responses: { 200: Page, 302: Redirect, 303: Redirect, 400: Page },
@@ -131,7 +138,7 @@ const getCallback = defineRoute({
 const getConsent = defineRoute({
     method: "GET",
     path: "/oauth/consent",
-    summary: "Asks the user whether to let the app use their account",
+    summary: "Ask for consent",
     cookies: FlowCookie,
     responses: { 200: Page, 400: Page },
     handler: async (ctx, { cookies }) => {
@@ -144,7 +151,7 @@ const getConsent = defineRoute({
 const postConsent = defineRoute({
     method: "POST",
     path: "/oauth/consent",
-    summary: "Records whether the user lets the app use their account",
+    summary: "Record consent",
     body: z.object({ decision: z.enum(["allow", "deny"]), form_token: z.string() }),
     cookies: FlowCookie,
     headers: SameOrigin,

@@ -52,22 +52,22 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
             method: "GET",
             path: "/api/v1/streaming",
             summary: "Establishing a WebSocket connection",
-            description:
-                "Open a multiplexed WebSocket connection to receive events. A request that " +
-                "isn't for a WebSocket finds nothing, as on Mastodon, where that means streaming " +
-                "is on the same host.",
+            description: "Open a multiplexed WebSocket connection to receive events. While the " +
+                "WebSocket spec allows for both text and binary date frames, since we are " +
+                "working only with small text fragments the streaming server uses text frames " +
+                "only. Clients should be configured that way if necessary.",
             docs: `${docs}/#websocket`,
             tags: ["streaming"],
             auth: { require: "user" },
             tokenElsewhere: true,
             query: z.object({
                 stream: z.string().optional().meta({
-                    description: "The stream to subscribe to once connected. More can be " +
-                        "subscribed to by sending `subscribe` messages.",
+                    description: "When attempting to watch a single stream for events. See " +
+                        "Streams for possible values.",
                 }),
                 tag: z.string().optional().meta({
-                    description: "When `stream` is `hashtag` or `hashtag:local`, the hashtag to " +
-                        "stream.",
+                    description: "When `stream` is set to `hashtag` or `hashtag:local`, use " +
+                        "this parameter to specify the tag name.",
                 }),
             }),
             headers: z.object({

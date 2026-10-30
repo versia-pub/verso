@@ -43,7 +43,7 @@ const policy = [
 export const docsRoute: Route = defineRoute({
     method: "GET",
     path: "/docs",
-    summary: "This API's documentation",
+    summary: "View API documentation",
     tags: ["docs"],
     pagePolicy: policy,
     responses: { 200: Page },

@@ -117,7 +117,9 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
         method: "POST",
         path: "/api/v1/statuses",
-        summary: "Posts a status",
+        summary: "Post a new status",
+        description: "Publish a status with the given parameters.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#create",
         tags: ["statuses"],
         auth: { require: "user", scope: "write:statuses", permission: "owner:note" },
         body: draft(limits),
@@ -164,7 +166,9 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id",
-        summary: "A status, if the viewer may see it",
+        summary: "View a single status",
+        description: "Obtain information about a status.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#get",
         tags: ["statuses"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
         params: z.object({ id: z.string() }),
@@ -182,7 +186,10 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
         method: "PUT",
         path: "/api/v1/statuses/:id",
-        summary: "Edits one of the viewer's statuses",
+        summary: "Edit a status",
+        description:
+            "Edit a given status to change its text, sensitivity, media attachments, or poll.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#edit",
         tags: ["statuses"],
         auth: { require: "user", scope: "write:statuses", permission: "owner:note" },
         params: z.object({ id: z.string() }),
@@ -207,8 +214,9 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/context",
-        summary:
-            "The statuses a status replies to, and the replies under it, that the viewer may see",
+        summary: "Get parent and child statuses in context",
+        description: "View statuses above and below this status in the thread.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#context",
         tags: ["statuses"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
         params: z.object({ id: z.string() }),
@@ -235,7 +243,10 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/history",
-        summary: "What a status said before each edit, and now, if the viewer may see it",
+        summary: "View edit history of a status",
+        description:
+            "Get all known versions of a status, including the initial and current states.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#history",
         tags: ["statuses"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
         params: z.object({ id: z.string() }),
@@ -250,7 +261,9 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/source",
-        summary: "A status as its author wrote it, if the viewer may see it, for editing it",
+        summary: "View status source",
+        description: "Obtain the source properties for a status so that it can be edited.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#source",
         tags: ["statuses"],
         auth: { require: "user", scope: "read:statuses", permission: "read:note" },
         params: z.object({ id: z.string() }),
@@ -273,7 +286,9 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     defineRoute({
         method: "DELETE",
         path: "/api/v1/statuses/:id",
-        summary: "Deletes one of the viewer's statuses or shares, and gives it back, to redraft",
+        summary: "Delete a status",
+        description: "Delete one of your own statuses.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#delete",
         tags: ["statuses"],
         auth: { require: "user", scope: "write:statuses", permission: "owner:note" },
         params: z.object({ id: z.string() }),

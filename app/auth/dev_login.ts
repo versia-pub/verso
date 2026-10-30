@@ -53,7 +53,7 @@ const devLoginProvider = (urls: UrlBuilder): IdentityProvider => {
 const getDevLogin = defineRoute({
     method: "GET",
     path: "/oauth/dev-login",
-    summary: "Asks who to log in as, in development",
+    summary: "Choose a development login",
     query: z.object({ state: z.string() }),
     responses: { 200: Page },
     handler: (_, { query }) =>

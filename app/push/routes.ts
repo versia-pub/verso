@@ -35,8 +35,8 @@ const Data = z.object({
         .optional()
         .meta({ description: "Whether to push each type of notification, by its type." }),
     policy: z.enum(["all", "followed", "follower", "none"]).optional().meta({
-        description: "Whose notifications to push: `all`, `followed`, `follower` or `none`. " +
-            "Defaults to `all`.",
+        description: "Specify whether to receive push notifications from `all`, `followed`, " +
+            "`follower`, or `none` users.",
     }),
 }).optional();
 
@@ -53,7 +53,7 @@ export const pushRoutes: readonly Route[] = [
         summary: "Subscribe to push notifications",
         description: "Add a Web Push API subscription to receive notifications. Each access " +
             "token can have one push subscription. If you create a new subscription, the old " +
-            "subscription is deleted. Verso only pushes to `https` endpoints.",
+            "subscription is deleted.",
         docs: `${docs}/#create`,
         tags: ["push"],
         auth,
@@ -124,8 +124,7 @@ export const pushRoutes: readonly Route[] = [
         path: "/api/v1/push/subscription",
         summary: "Change types of notifications",
         description: "Updates the current push subscription. Only the data part can be " +
-            "updated. To change fundamentals, a new subscription must be created instead. " +
-            "What isn't given is reset, as when subscribing.",
+            "updated. To change fundamentals, a new subscription must be created instead.",
         docs: `${docs}/#update`,
         tags: ["push"],
         auth,

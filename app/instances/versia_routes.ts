@@ -19,7 +19,7 @@ export const versiaInstanceRoutes = (
     defineRoute({
         method: "GET",
         path: "/.well-known/versia",
-        summary: "The versions of Versia the instance speaks",
+        summary: "List Versia versions",
         tags: ["versia"],
         // As the spec's example responses.
         contentType: "application/jrd+json",
@@ -29,7 +29,7 @@ export const versiaInstanceRoutes = (
     defineRoute({
         method: "GET",
         path: "/.versia/v0.6/instance",
-        summary: "What the instance says about itself, with its public key",
+        summary: "Get Versia instance metadata",
         tags: ["versia"],
         contentType: versiaJson,
         responses: { 200: v0_6.InstanceMetadata },

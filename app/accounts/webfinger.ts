@@ -26,7 +26,7 @@ export const webfingerRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/.well-known/webfinger",
-        summary: "A local account, by its acct: address",
+        summary: "Look up an account with WebFinger",
         tags: ["versia"],
         contentType: "application/jrd+json",
         // The resource is validated by hand, so a bad one gets WebFinger's 400 rather than 422.

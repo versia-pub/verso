@@ -62,7 +62,7 @@ export const pictureRoutes = (
         });
 
     return [
-        picture("avatar", "An account's default avatar"),
-        picture("header", "An account's default header"),
+        picture("avatar", "Get default avatar"),
+        picture("header", "Get default header"),
     ];
 };

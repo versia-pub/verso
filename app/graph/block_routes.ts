@@ -21,13 +21,7 @@ const blockRoute = (action: "block" | "unblock") =>
         method: "POST",
         path: `/api/v1/accounts/:id/${action}`,
         ...action === "block"
-            ? {
-                summary: "Block account",
-                description: "Block the given account. Clients should filter statuses from this " +
-                    "account if received (e.g. due to a boost in the Home timeline).\n\n" +
-                    "Unlike Mastodon, Verso tells neither the account nor its instance, and " +
-                    "blocking ends no follows.",
-            }
+            ? { summary: "Block account", description: "Blocks the given account." }
             : { summary: "Unblock account", description: "Unblock the given account." },
         docs: `https://docs.joinmastodon.org/methods/accounts/#${action}`,
         tags: ["accounts"],
@@ -66,8 +60,7 @@ const muteRoute = defineRoute({
     path: "/api/v1/accounts/:id/mute",
     summary: "Mute account",
     description: "Mute the given account. Clients should filter statuses and notifications from " +
-        "this account, if received (e.g. due to a boost in the Home timeline).\n\nMuting an " +
-        "account already muted changes how it is muted. Durations are at most five years.",
+        "this account, if received (e.g. due to a boost in the Home timeline).",
     docs: "https://docs.joinmastodon.org/methods/accounts/#mute",
     tags: ["accounts"],
     auth: { require: "user", scope: "write:mutes", permission: "owner:mute" },
@@ -102,10 +95,7 @@ const blockDomainRoute = defineRoute({
     method: "POST",
     path: "/api/v1/domain_blocks",
     summary: "Block a domain",
-    description: "Block a domain to change interactions with that domain's server.\n\nUnlike " +
-        "Mastodon, Verso tells no one, keeps the viewer's followers there, and lets its users " +
-        "still follow them. Instead, it blocks each account on the domain, and on its " +
-        "subdomains, as blocking the account would. The domain must be a domain name.",
+    description: "Block a domain to change interactions with that domain's server.",
     docs: "https://docs.joinmastodon.org/methods/domain_blocks/#block",
     tags: ["domain_blocks"],
     auth: { require: "user", scope: "write:blocks", permission: "owner:block" },
@@ -204,7 +194,7 @@ const blockList = defineRoute({
     method: "GET",
     path: "/api/v1/blocks",
     summary: "View blocked users",
-    description: "View your blocks. See also accounts/:id/{block,unblock}",
+    description: "Returns your blocked accounts.",
     docs: "https://docs.joinmastodon.org/methods/blocks/#get",
     tags: ["blocks"],
     auth: { require: "user", scope: "read:blocks", permission: "owner:block" },

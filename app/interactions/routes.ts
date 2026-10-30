@@ -24,9 +24,17 @@ const likeRoute = (action: "favourite" | "unfavourite") =>
     defineRoute({
         method: "POST",
         path: `/api/v1/statuses/:id/${action}`,
-        summary: action === "favourite"
-            ? "Likes a status the viewer may see"
-            : "Undoes the viewer's like of a status",
+        ...action === "favourite"
+            ? {
+                summary: "Favourite a status",
+                description: "Add a status to your favourites list.",
+                docs: "https://docs.joinmastodon.org/methods/statuses/#favourite",
+            }
+            : {
+                summary: "Undo favourite of a status",
+                description: "Remove a status from your favourites list.",
+                docs: "https://docs.joinmastodon.org/methods/statuses/#unfavourite",
+            },
         tags: ["statuses"],
         auth: { require: "user", scope: "write:favourites", permission: "owner:like" },
         params: z.object({ id: z.string() }),
@@ -64,8 +72,8 @@ const reactionRoute = (method: "PUT" | "DELETE") =>
         method,
         path: "/api/v1/statuses/:id/reactions/:name",
         summary: method === "PUT"
-            ? "Reacts to a status the viewer may see with an emoji"
-            : "Undoes the viewer's reaction to a status with an emoji",
+            ? "React to a status with an emoji"
+            : "Undo reaction to a status with an emoji",
         tags: ["statuses"],
         auth: { require: "user", scope: "write:statuses", permission: "owner:reaction" },
         params: z.object({ id: z.string(), name: z.string().min(1) }),
@@ -94,9 +102,8 @@ export const interactionRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/reactions",
-        summary: "The reactions to a status the viewer may see, by emoji, with how many made each",
-        description: "Who made them is listed for each emoji, a page at a time, by " +
-            "`GET /api/v1/statuses/:id/reactions/:name`.",
+        summary: "List reactions to a status",
+        description: "Reactions to a status, by emoji.",
         docs: versiaServerReactions,
         tags: ["statuses"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:reaction" },
@@ -116,16 +123,18 @@ export const interactionRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/reactions/:name",
-        summary:
-            "The accounts that reacted to a status the viewer may see with an emoji, newest first",
-        description:
-            "The emoji is named as the status's reactions name it: a Unicode emoji, or a " +
-            "custom one's shortcode in colons, with its domain if it is another instance's, " +
-            "such as `:blob@b.example:`.",
+        summary: "List accounts that reacted with an emoji",
+        description: "Accounts that reacted to a status with an emoji.",
         docs: versiaServerReactions,
         tags: ["statuses"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:reaction" },
-        params: z.object({ id: z.string(), name: z.string().min(1) }),
+        params: z.object({
+            id: z.string(),
+            name: z.string().min(1).meta({
+                description: "A Unicode emoji, or a custom emoji's shortcode in colons, with its " +
+                    "domain if it's another instance's, such as `:blob@b.example:`.",
+            }),
+        }),
         query: PageQuery({ default: 40, max: 80 }),
         responses: { 200: Paged(Account) },
         handler: async (ctx, { params, query, viewer }) => {
@@ -151,7 +160,9 @@ export const interactionRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/favourited_by",
-        summary: "The accounts that like a status the viewer may see, newest first",
+        summary: "See who favourited a status",
+        description: "View who favourited a given status.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#favourited_by",
         tags: ["statuses"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:note_likes" },
         params: z.object({ id: z.string() }),
@@ -173,7 +184,9 @@ export const interactionRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/favourites",
-        summary: "The statuses the viewer likes and may still see, the latest liked first",
+        summary: "View favourited statuses",
+        description: "Statuses the user has favourited.",
+        docs: "https://docs.joinmastodon.org/methods/favourites/#get",
         tags: ["favourites"],
         auth: { require: "user", scope: "read:favourites", permission: "read:note" },
         query: PageQuery({ default: 20, max: 40 }),
@@ -204,7 +217,9 @@ export const interactionRoutes: readonly Route[] = [
     defineRoute({
         method: "POST",
         path: "/api/v1/statuses/:id/reblog",
-        summary: "Shares a public or unlisted status the viewer may see, and gives the share",
+        summary: "Boost a status",
+        description: "Reshare a status on your own profile.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#boost",
         tags: ["statuses"],
         auth: { require: "user", scope: "write:statuses", permission: "owner:boost" },
         params: z.object({ id: z.string() }),
@@ -224,7 +239,9 @@ export const interactionRoutes: readonly Route[] = [
     defineRoute({
         method: "POST",
         path: "/api/v1/statuses/:id/unreblog",
-        summary: "Undoes the viewer's share of a status, and gives the status",
+        summary: "Undo boost of a status",
+        description: "Undo a reshare of a status.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#unreblog",
         tags: ["statuses"],
         auth: { require: "user", scope: "write:statuses", permission: "owner:boost" },
         params: z.object({ id: z.string() }),
@@ -240,7 +257,9 @@ export const interactionRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/reblogged_by",
-        summary: "The accounts that share a status the viewer may see, publicly, newest first",
+        summary: "See who boosted a status",
+        description: "View who boosted a given status.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#reblogged_by",
         tags: ["statuses"],
         auth: { require: "optional", scope: "read:statuses", permission: "read:note_boosts" },
         params: z.object({ id: z.string() }),

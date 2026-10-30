@@ -25,7 +25,9 @@ const tokenOf = (issued: IssuedToken): Token => ({
 const postToken = defineRoute({
     method: "POST",
     path: "/oauth/token",
-    summary: "Gives an app an access token",
+    summary: "Obtain a token",
+    description: "Obtain an access token, to be used during API calls that are not public.",
+    docs: "https://docs.joinmastodon.org/methods/oauth/#token",
     oauthErrors: true,
     body: z.object({
         grant_type: z.string().optional(),
@@ -64,7 +66,9 @@ const postToken = defineRoute({
 const postRevoke = defineRoute({
     method: "POST",
     path: "/oauth/revoke",
-    summary: "Revokes an access token",
+    summary: "Revoke a token",
+    description: "Revoke an access token to make it no longer valid for use.",
+    docs: "https://docs.joinmastodon.org/methods/oauth/#revoke",
     oauthErrors: true,
     body: z.object({
         client_id: z.string().optional(),
@@ -100,7 +104,10 @@ const postRevoke = defineRoute({
 const getOAuthMetadata = defineRoute({
     method: "GET",
     path: "/.well-known/oauth-authorization-server",
-    summary: "Describes the OAuth endpoints",
+    summary: "Discover OAuth Server Configuration",
+    description: "Returns the OAuth 2 Authorization Server Metadata for the Mastodon server, " +
+        "as defined by RFC 8414.",
+    docs: "https://docs.joinmastodon.org/methods/oauth/#authorization-server-metadata",
     responses: { 200: OAuthServerMetadata },
     handler: ({ urls }) =>
         Promise.resolve({

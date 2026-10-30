@@ -92,7 +92,9 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/verify_credentials",
-        summary: "The viewer's own account, with their settings",
+        summary: "Verify account credentials",
+        description: "Test to make sure that the user token works.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#verify_credentials",
         tags: ["accounts"],
         auth: { require: "user", scope: "profile" },
         responses: { 200: CredentialAccount },
@@ -101,7 +103,9 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
     defineRoute({
         method: "PATCH",
         path: "/api/v1/accounts/update_credentials",
-        summary: "Changes the viewer's profile and settings",
+        summary: "Update account credentials",
+        description: "Update the user's display and preferences.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#update_credentials",
         tags: ["accounts"],
         auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
         maxBodyBytes: 2 * media.max_upload_bytes + formBytes,
@@ -130,7 +134,10 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/lookup",
-        summary: "An account, by its username or WebFinger address",
+        summary: "Lookup account ID from WebFinger address",
+        description:
+            "Quickly lookup a username to see if it is available, skipping WebFinger resolution.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#lookup",
         tags: ["accounts"],
         auth: { require: "optional", permission: "read:account" },
         query: z.object({ acct: z.string() }),
@@ -166,7 +173,9 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/:id",
-        summary: "An account",
+        summary: "Get account",
+        description: "View information about a profile.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#get",
         tags: ["accounts"],
         auth: { require: "optional", permission: "read:account" },
         params: z.object({ id: z.string() }),

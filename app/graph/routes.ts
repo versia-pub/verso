@@ -30,9 +30,21 @@ const followList = (side: FollowSide) =>
     defineRoute({
         method: "GET",
         path: `/api/v1/accounts/:id/${side}`,
-        summary: side === "followers"
-            ? "The accounts following an account, newest first"
-            : "The accounts an account follows, newest first",
+        ...side === "followers"
+            ? {
+                summary: "Get account's followers",
+                description:
+                    "Accounts which follow the given account, if network is not hidden by the " +
+                    "account owner.",
+                docs: "https://docs.joinmastodon.org/methods/accounts/#followers",
+            }
+            : {
+                summary: "Get account's following",
+                description:
+                    "Accounts which the given account is following, if network is not hidden " +
+                    "by the account owner.",
+                docs: "https://docs.joinmastodon.org/methods/accounts/#following",
+            },
         tags: ["accounts"],
         auth: { require: "optional", scope: "read:accounts", permission: "read:account_follows" },
         params: z.object({ id: z.string() }),
@@ -59,9 +71,15 @@ const answerRequest = (answer: "authorize" | "reject") =>
     defineRoute({
         method: "POST",
         path: `/api/v1/follow_requests/:id/${answer}`,
-        summary: answer === "authorize"
-            ? "Accepts an account's request to follow the viewer"
-            : "Rejects an account's request to follow the viewer",
+        ...answer === "authorize"
+            ? {
+                summary: "Accept follow request",
+                docs: "https://docs.joinmastodon.org/methods/follow_requests/#accept",
+            }
+            : {
+                summary: "Reject follow request",
+                docs: "https://docs.joinmastodon.org/methods/follow_requests/#reject",
+            },
         tags: ["follow_requests"],
         auth: { require: "user", scope: "write:follows", permission: "owner:follow" },
         params: z.object({ id: z.string() }),
@@ -92,8 +110,7 @@ const noteRoute = defineRoute({
     method: "POST",
     path: "/api/v1/accounts/:id/note",
     summary: "Set private note on profile",
-    description: "Sets a private note on a user.\n\nAs on Mastodon, a note is at most " +
-        `${accountNoteLimit} characters.`,
+    description: "Sets a private note on a user.",
     docs: "https://docs.joinmastodon.org/methods/accounts/#note",
     tags: ["accounts"],
     auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
@@ -146,7 +163,8 @@ export const graphRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/follow_requests",
-        summary: "The accounts asking to follow the viewer, newest first",
+        summary: "View pending follow requests",
+        docs: "https://docs.joinmastodon.org/methods/follow_requests/#get",
         tags: ["follow_requests"],
         auth: { require: "user", scope: "read:follows" },
         query: PageQuery({ default: 40, max: 80 }),
@@ -167,7 +185,9 @@ export const graphRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",
         path: "/api/v1/accounts/relationships",
-        summary: "How the viewer is connected to each of some accounts",
+        summary: "Check relationships to other accounts",
+        description: "Find out whether a given account is followed, blocked, muted, etc.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#relationships",
         tags: ["accounts"],
         auth: { require: "user", scope: "read:follows" },
         // `id[]=1&id[]=2`, or a single `id=1`. Each id costs queries, so there are at most as many
@@ -205,7 +225,11 @@ export const graphRoutes: readonly Route[] = [
     defineRoute({
         method: "POST",
         path: "/api/v1/accounts/:id/follow",
-        summary: "Follows an account, or asks to, or changes how the viewer sees one they follow",
+        summary: "Follow account",
+        description:
+            "Follow the given account. Can also be used to update whether to show reblogs or " +
+            "enable notifications.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#follow",
         tags: ["accounts"],
         auth: { require: "user", scope: "write:follows", permission: "owner:follow" },
         params: z.object({ id: z.string() }),
@@ -227,7 +251,9 @@ export const graphRoutes: readonly Route[] = [
     defineRoute({
         method: "POST",
         path: "/api/v1/accounts/:id/unfollow",
-        summary: "Stops following an account, or withdraws asking to",
+        summary: "Unfollow account",
+        description: "Unfollow the given account.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#unfollow",
         tags: ["accounts"],
         auth: { require: "user", scope: "write:follows", permission: "owner:follow" },
         params: z.object({ id: z.string() }),
@@ -240,7 +266,9 @@ export const graphRoutes: readonly Route[] = [
     defineRoute({
         method: "POST",
         path: "/api/v1/accounts/:id/remove_from_followers",
-        summary: "Removes an account from the viewer's followers",
+        summary: "Remove account from followers",
+        description: "Remove the given account from your followers.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#remove_from_followers",
         tags: ["accounts"],
         auth: { require: "user", scope: "write:follows", permission: "owner:follow" },
         params: z.object({ id: z.string() }),

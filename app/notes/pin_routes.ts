@@ -10,9 +10,7 @@ export const pinRoute = defineRoute({
     method: "POST",
     path: "/api/v1/statuses/:id/pin",
     summary: "Pin status to profile",
-    description: "Feature one of your own public statuses at the top of your profile.\n\n" +
-        `Like Mastodon, Verso lets an account pin its public, unlisted and private statuses, ` +
-        `up to ${pinLimit} of them.`,
+    description: "Feature one of your own public statuses at the top of your profile.",
     docs: "https://docs.joinmastodon.org/methods/statuses/#pin",
     tags: ["statuses"],
     auth: { require: "user", scope: "write:accounts", permission: "owner:note" },

@@ -51,11 +51,7 @@ export const groupedNotificationRoutes: readonly Route[] = [
         summary: "Get all grouped notifications",
         description: "Return grouped notifications concerning the user. This API returns Link " +
             "headers containing links to the next/previous page. However, the links can also " +
-            "be constructed dynamically using query params and `id` values.\n\nNotifications " +
-            "from accounts the user blocks, or mutes with their notifications, and about " +
-            "statuses they may no longer see, are left out, and not counted. `reaction` " +
-            "notifications are grouped by status too, when `grouped_types` has `reaction`, and " +
-            "a `reaction` group has its emojis.",
+            "be constructed dynamically using query params and `id` values.",
         docs: `${groupedDocs}/#get-grouped`,
         tags: ["notifications"],
         auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },
@@ -68,8 +64,11 @@ export const groupedNotificationRoutes: readonly Route[] = [
                 description: "Return only notifications received from the specified account.",
             }),
             expand_accounts: z.enum(["full", "partial_avatars"]).default("full").meta({
-                description: "When `partial_avatars`, the accounts of each group but its most " +
-                    "recent are in `partial_accounts`, stripped down.",
+                description: "One of `full` (default) or `partial_avatars`. When set to " +
+                    "`partial_avatars`, some accounts will not be rendered in full in the " +
+                    "returned `accounts` list but will be instead returned in stripped-down " +
+                    "form in the `partial_accounts` list. The most recent account in a " +
+                    "notification group is always rendered in full in the `accounts` attribute.",
             }),
             grouped_types: GroupedTypes,
         }),
@@ -125,8 +124,6 @@ export const groupedNotificationRoutes: readonly Route[] = [
         method: "POST",
         path: "/api/v2/notifications/clear",
         summary: "Dismiss all notifications",
-        description: "Clear all notifications from the server.",
-        docs: "https://docs.joinmastodon.org/methods/notifications/#clear",
         tags: ["notifications"],
         auth: { require: "user", scope: "write:notifications", permission: "owner:notification" },
         responses: { 200: z.object({}) },
@@ -140,8 +137,7 @@ export const groupedNotificationRoutes: readonly Route[] = [
         path: "/api/v2/notifications/:group_key",
         summary: "Get a single notification group",
         description: "View information about a specific notification group with a given group " +
-            "key.\n\nIt is counted and sampled as a whole, leaving out notifications from " +
-            "accounts the user blocks, or mutes with their notifications.",
+            "key.",
         docs: `${groupedDocs}/#get-notification-group`,
         tags: ["notifications"],
         auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },
@@ -168,8 +164,6 @@ export const groupedNotificationRoutes: readonly Route[] = [
         method: "GET",
         path: "/api/v2/notifications/:group_key/accounts",
         summary: "Get accounts of all notifications in a notification group",
-        description: "The accounts that caused the notifications of a group, newest first, " +
-            "each once.",
         docs: `${groupedDocs}/#get-group-accounts`,
         tags: ["notifications"],
         auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },

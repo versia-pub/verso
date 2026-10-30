@@ -118,7 +118,7 @@ export const inboxRoute = (registry: Registry): Route =>
     defineRoute({
         method: "POST",
         path: "/.versia/v0.6/inbox",
-        summary: "Entities another instance sends to this one",
+        summary: "Receive entities",
         tags: ["versia"],
         signed: true,
         responses: { 202: NoBody },
