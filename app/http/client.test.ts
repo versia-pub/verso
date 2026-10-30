@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
-import { ApiError, Client, createPkce } from "@versia/client-api";
+import { ApiError, Client, createPkce, type Stream, type StreamEvent } from "@versia/client-api";
 import { encode } from "fast-png";
 import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
 import { oidcProvider } from "../auth/oidc.ts";
@@ -67,7 +67,19 @@ const open = async (settings = defaultSettings()) => {
     const as = async (accountId: string) =>
         client.withToken(await tokenFor(test.ctx, await createLocalAccount(test.ctx, accountId)));
 
-    return { ...test, idp, client, browse, as };
+    /** Verso, served on a port of its own, for WebSockets, until disposed. */
+    const listen = () => {
+        const server = Deno.serve(
+            { hostname: "127.0.0.1", port: 0, onListen: () => {} },
+            (request) => verso.request(request),
+        );
+        return Object.assign(server, {
+            url: `http://127.0.0.1:${server.addr.port}`,
+            [Symbol.asyncDispose]: () => server.shutdown(),
+        });
+    };
+
+    return { ...test, idp, client, browse, as, listen };
 };
 
 const locationOf = (response: Response) => response.headers.get("location") ?? "";
@@ -579,4 +591,74 @@ Deno.test("a user subscribes to pushes, changes which, and unsubscribes", async 
 
     await alice.push.unsubscribe();
     assertEquals((await assertRejects(() => alice.push.get(), ApiError)).status, 404);
+});
+
+/** The next `count` events of `stream`, by what each says. */
+const next = async (stream: Stream, count: number) => {
+    const events: string[] = [];
+    if (count === 0) return events;
+
+    for await (const event of stream) {
+        events.push(describe(event));
+        if (events.length === count) break;
+    }
+    return events;
+};
+
+const describe = (event: StreamEvent) => {
+    switch (event.event) {
+        case "update":
+        case "status.update":
+            return `${event.stream.join(",")} ${event.event} ${event.status.id}`;
+        case "delete":
+            return `${event.stream.join(",")} delete ${event.id}`;
+        case "notification":
+            return `${event.stream.join(",")} notification ${event.notification.type}`;
+        case "unknown":
+            return `${event.stream.join(",")} ${event.name}`;
+        case "error":
+            return `error ${event.status} ${event.error}`;
+    }
+};
+
+Deno.test("a user streams statuses and notifications as they happen", async () => {
+    await using test = await open();
+    await using server = test.listen();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const { id: aliceId } = await test.client.accounts.lookup("alice");
+
+    assertEquals(await alice.streaming.health(), true);
+    await using stream = await alice.streaming.connect({
+        url: server.url,
+        subscribe: [{ stream: "user" }, { stream: "hashtag", tag: "Cats" }],
+    });
+    stream.subscribe({ stream: "hashtag" });
+    assertEquals(await next(stream, 1), ["error 400 Missing tag name parameter"]);
+
+    const posted = await alice.statuses.post({ status: "Hi #cats" });
+    assertEquals((await next(stream, 2)).sort(), [
+        `hashtag,Cats update ${posted.id}`,
+        `user update ${posted.id}`,
+    ]);
+
+    stream.unsubscribe({ stream: "hashtag", tag: "cats" });
+    await alice.statuses.edit(posted.id, { status: "Hi again" });
+    assertEquals(await next(stream, 1), [`user status.update ${posted.id}`]);
+    await alice.statuses.delete(posted.id);
+    assertEquals(await next(stream, 1), [`user delete ${posted.id}`]);
+
+    await bob.accounts.follow(aliceId);
+    await drain(test.ctx, queues);
+    assertEquals(await next(stream, 1), ["user notification follow"]);
+
+    assertEquals((await stream.close()).code, 1000);
+    assertEquals(await next(stream, 0), []);
+});
+
+Deno.test("a stream without a user's token doesn't open", async () => {
+    await using test = await open();
+    await using server = test.listen();
+
+    await assertRejects(() => test.client.streaming.connect({ url: server.url }));
 });

@@ -28,6 +28,7 @@ import { OAuth } from "./client/oauth.ts";
 import { PushMethods } from "./client/push.ts";
 import { RoleMethods } from "./client/roles.ts";
 import { search, type SearchQuery } from "./client/search.ts";
+import { StreamingMethods } from "./client/streaming.ts";
 import { FavouriteMethods, StatusMethods } from "./client/statuses.ts";
 import { TimelineMethods } from "./client/timelines.ts";
 
@@ -63,6 +64,14 @@ export type { PushData, PushEndpoint } from "./client/push.ts";
 export type { RoleChanges, RoleDraft } from "./client/roles.ts";
 export type { SearchQuery } from "./client/search.ts";
 export type { ContentType, ReblogOptions, StatusChanges, StatusDraft } from "./client/statuses.ts";
+export {
+    type Closed,
+    type ConnectOptions,
+    Stream,
+    type StreamEvent,
+    type StreamName,
+    type Subscription,
+} from "./client/streaming.ts";
 export type { HashtagTimelineQuery, PublicTimelineQuery } from "./client/timelines.ts";
 
 export type ClientOptions = {
@@ -103,6 +112,8 @@ export class Client {
     readonly groupedNotifications: GroupedNotificationMethods;
     /** Where the viewer last read up to in their home timeline and notifications. */
     readonly markers: MarkerMethods;
+    /** Events as they happen, over a WebSocket. */
+    readonly streaming: StreamingMethods;
     /** Pushing the notifications of the viewer's token to a browser. */
     readonly push: PushMethods;
     /** The instance's custom emojis, and the viewer's own. */
@@ -130,6 +141,7 @@ export class Client {
         this.notifications = new NotificationMethods(this.#http);
         this.groupedNotifications = new GroupedNotificationMethods(this.#http);
         this.markers = new MarkerMethods(this.#http);
+        this.streaming = new StreamingMethods(this.#http);
         this.push = new PushMethods(this.#http);
         this.emojis = new EmojiMethods(this.#http);
         this.roles = new RoleMethods(this.#http);

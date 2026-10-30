@@ -1,5 +1,12 @@
 import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
-import { ApiError, Client, createPkce, UnexpectedResponse } from "./client.ts";
+import {
+    ApiError,
+    Client,
+    createPkce,
+    Stream,
+    type StreamEvent,
+    UnexpectedResponse,
+} from "./client.ts";
 import { account } from "./testing.ts";
 
 /** A client whose requests `answer` answers, and the requests it was sent. */
@@ -263,4 +270,42 @@ Deno.test("a list in a shape of its own gives each page's body, and its items ac
 
     assertEquals(bodies, [2, 1]);
     assertEquals(keys, ["3", "2", "1"]);
+});
+
+/** A WebSocket the instance sends `messages` on, then closes. */
+const fakeSocket = (messages: readonly string[]) => {
+    const socket = Object.assign(new EventTarget(), {
+        onmessage: undefined as ((message: MessageEvent) => void) | undefined,
+        closedWith: undefined as number | undefined,
+        send: () => {},
+        close: (code: number) => {
+            socket.closedWith = code;
+            socket.dispatchEvent(Object.assign(new Event("close"), { code, reason: "" }));
+        },
+    });
+    queueMicrotask(() => {
+        for (const data of messages) socket.onmessage?.(new MessageEvent("message", { data }));
+    });
+
+    return socket;
+};
+
+Deno.test("a stream gives events it doesn't know, and ends at a message that isn't one", async () => {
+    const socket = fakeSocket([
+        JSON.stringify({ stream: ["user"], event: "filters_changed", payload: "" }),
+        JSON.stringify({ stream: ["user"], event: "update", payload: "{}" }),
+        JSON.stringify({ stream: ["user"], event: "delete", payload: "1" }),
+    ]);
+    const stream = new Stream(socket as unknown as WebSocket);
+
+    const events: StreamEvent[] = [];
+    const error = await assertRejects(async () => {
+        for await (const event of stream) events.push(event);
+    }, UnexpectedResponse);
+
+    assertEquals(events, [
+        { event: "unknown", stream: ["user"], name: "filters_changed", payload: "" },
+    ]);
+    assertEquals(error.status, 101);
+    assertEquals(socket.closedWith, 1003);
 });
