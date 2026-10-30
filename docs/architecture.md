@@ -1,13 +1,13 @@
 # Architecture
 
-Verso is a [Versia](https://versia.pub) server with a Mastodon-compatible client API. It is a
-modular monolith: one Deno program, split into feature modules, that runs as a web node, a job
-worker or both. PostgreSQL is the only service it needs. SQLite also works, for small instances and
+Verso is a [Versia](https://versia.pub) server with a Mastodon-compatible client API. It's a modular
+monolith: one Deno program, split into feature modules, that runs as a web node, a job worker, or
+both. PostgreSQL is the only service it needs, though SQLite works too, for small instances and
 tests.
 
 ## Processes
 
-The same program runs in one of three roles, picked on the command line:
+The command line picks one of three roles:
 
 | Command       | Serves HTTP | Runs jobs | Use                               |
 | ------------- | ----------- | --------- | --------------------------------- |
@@ -39,10 +39,10 @@ admin commands. [`app/main.ts`](../app/main.ts) reads the command line, and
 └─────────────────┘     └─────────────────┘  process media, push
 ```
 
-Processes share nothing but the database and the file store. They tell each other things, such as
-"this cache is stale" or "this status appeared", through Postgres `NOTIFY`. SQLite has no `NOTIFY`,
-so there each process hears only its own messages, and workers poll for jobs instead of being woken.
-SQLite suits one process running `verso all`.
+Processes share nothing but the database and the file store. They tell each other things like "this
+cache is stale" or "this status appeared" through Postgres `NOTIFY`. SQLite has no `NOTIFY`, so each
+process only hears its own messages and workers poll for jobs. That's why SQLite suits a single
+`verso all` process.
 
 ## Repository layout
 
@@ -91,20 +91,23 @@ Mastodon API in and out        Versia entities in and out      run what was queu
        database
 ```
 
-- **Routes and federation code translate.** A route reads the request, calls a service and renders
-  the result. `federation.ts` and `versia.ts` turn Versia entities into service calls and rows into
-  entities. Neither holds rules of its own.
-- **Services hold the rules.** They are plain functions that take a `Context` first, and return
-  plain data. They never import Hono or call `fetch`: they talk to the outside through ports.
-- **Only `*_queries.ts` files use Kysely.** Query functions are named for what they do, such as
-  `findLocalAccount` or `rolesOf`. There is no generic "find where" helper, so a caller can't leave
-  out a condition such as who may see a row.
-- **A module writes only its own tables.** Other modules call its functions. A query may read
-  another module's table when that saves a query, and its comment says which ones it reads. Search
-  is the main example: it is a read model over statuses, accounts and the follow graph.
-- **`packages/protocol` imports nothing from `app/` and does no I/O**, so it can be tested and
-  published on its own.
-- **No import cycles.** `deno task import-cycles` checks this, and so does CI.
+Routes and federation code only translate. A route reads the request, calls a service and renders
+the result. `federation.ts` and `versia.ts` turn Versia entities into service calls, and rows into
+entities. Neither has rules of its own.
+
+Services hold the rules. They're plain functions that take a `Context` first and return plain data.
+They never import Hono or call `fetch`, and reach the outside world through ports.
+
+Only `*_queries.ts` files use Kysely. Query functions are named for what they do, like
+`findLocalAccount` or `rolesOf`. There's no generic "find where" helper, so callers can't forget a
+condition such as who may see a row.
+
+A module only writes its own tables, and other modules call its functions. A query may read another
+module's table when that saves a query, as long as its comment says so. Search is the main example:
+it's a read model over statuses, accounts and the follow graph.
+
+`packages/protocol` imports nothing from `app/` and does no I/O, so it can be tested and published
+on its own. There are no import cycles anywhere, which `deno task import-cycles` and CI check.
 
 ## A module's files
 
@@ -148,12 +151,10 @@ world, so tests can swap any of it for a fake:
 `contextFor` in [`app/run.ts`](../app/run.ts) is the only place that picks adapters. No module reads
 config or environment variables itself.
 
-Two files wire the modules together, so modules don't import each other just to plug in:
-
-- [`app/registry.ts`](../app/registry.ts) lists the Versia entity types, with the collections each
-  module adds to users and notes.
-- [`app/services.ts`](../app/services.ts) lists the event subscribers, in order, and the services
-  the HTTP app and federation need from modules.
+Two files wire the modules together, so modules don't need to import each other to plug in.
+[`app/registry.ts`](../app/registry.ts) lists the Versia entity types and the collections each
+module adds to users and notes. [`app/services.ts`](../app/services.ts) lists the event subscribers,
+in order, and the services the HTTP app and federation need from modules.
 
 ## Transactions, events and jobs
 
@@ -178,30 +179,26 @@ ctx.transaction(tx ⇒ …)  ─────────────────
 commit ───────────────────────────────────────────────────────────────┘
   │
   ├─ afterCommit: published messages go out to every process
-  └─ workers wake and claism the new jobs
+  └─ workers wake and claim the new jobs
 ```
 
-- **`ctx.transaction`** runs its callback in one database transaction. A nested call joins the outer
-  one.
-- **`emit`** in [`app/kernel/events.ts`](../app/kernel/events.ts) calls every subscriber with the
-  event. It throws outside a transaction, so a job can't be enqueued without the change that caused
-  it, or outlive a rollback.
-- **Subscribers only write rows and enqueue jobs.** Anything slow, such as a request to another
-  server, happens in a job. A new side effect is a new subscriber, not an edit to the service.
-- **`ctx.afterCommit`** runs once the transaction commits. `publish` uses it, so other processes
-  only hear of what committed.
+`ctx.transaction` runs its callback in one database transaction, and a nested call joins the outer
+one. Anything slow happens later, in a job. A new side effect is a new subscriber, not an edit to
+the service.
 
-Jobs live in the `jobs` table. Each queue in [`app/jobs/queues.ts`](../app/jobs/queues.ts) has a
-handler and limits on how many of its jobs run at once, in all and per group, such as per remote
-instance.
+`ctx.afterCommit` runs code once the transaction commits, which is how `publish` makes sure other
+processes only hear about changes that stuck. [Events, jobs and messages](events-and-jobs.md) covers
+each part in detail.
 
 ## Ids, references and URLs
 
-- Every row's primary key is a UUIDv7 from `ctx.ids`. They sort by time, so they double as paging
-  cursors.
-- Remote accounts, statuses and the rest share tables with local ones. `instance_id` is `null` for
-  local rows. Remote rows also keep `remote_id`, their id on their instance.
-- A Versia reference is computed only when sending: a local row's is its `id`, and a remote row's is
-  `domain:remote_id`. No row stores a URL or a full reference, so renaming the instance's domain
-  rewrites no rows.
-- Every public URL, such as an account's `url` or a media file's, comes from `ctx.urls`.
+Every row's primary key is a UUIDv7 from `ctx.ids`. They sort by time, so they double as paging
+cursors.
+
+Remote accounts, statuses and so on share tables with local ones. `instance_id` is `null` for local
+rows, and remote rows also keep `remote_id`, their id on their own instance.
+
+Versia references are only worked out when sending: a local row's is its `id`, and a remote row's is
+`domain:remote_id`. No row stores a URL or a full reference, so renaming the instance's domain
+doesn't rewrite any rows. Every public URL, such as an account's or a media file's, comes from
+`ctx.urls`.

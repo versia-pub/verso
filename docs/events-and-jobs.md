@@ -1,6 +1,6 @@
 # Events, jobs and messages
 
-Three mechanisms carry work beyond the service that started it:
+Work that goes beyond the service that started it is carried in one of three ways:
 
 | Mechanism | Runs                                   | For                                        |
 | --------- | -------------------------------------- | ------------------------------------------ |
@@ -39,26 +39,26 @@ export const indexStatuses = async (ctx: Context, event: DomainEvent): Promise<v
 };
 ```
 
-Rules for subscribers:
+Subscribers run inside the transaction, so if one throws, the whole change rolls back. `emit` throws
+when it's called outside a transaction.
 
-- **They run inside the transaction.** If one throws, the whole change rolls back. `emit` throws if
-  it isn't in a transaction.
-- **They only write rows, queue jobs and publish messages.** A request to another server, or
-  anything else slow, goes in a job.
-- **Order matters only where a comment says so.** For example, `acceptWhenUnlocked` runs before
-  `profileDeliveries`, so a follower it accepts is sent the profile too.
-- **A subscriber may emit events of its own.** `notifyOf` emits `notifications.created` for each
-  notification it makes, which `queuePushes` hears.
+A subscriber only writes rows, queues jobs and publishes messages. Requests to other servers, and
+anything else slow, go in a job.
 
-Events carry ids rather than rows, so any module can read them without depending on another module's
-row types. A subscriber that needs more looks it up. To add one, see
-[Adding a side effect](guides/adding-a-side-effect.md).
+The order of subscribers only matters where a comment says so. For example, `acceptWhenUnlocked`
+runs before `profileDeliveries`, so a follower it accepts gets the profile too.
+
+Subscribers can emit events of their own. `notifyOf` emits `notifications.created` for each
+notification it makes, and `queuePushes` handles those.
+
+Events carry ids, not rows, so modules don't depend on each other's row types. A subscriber that
+needs more looks it up. To add one, see [Adding a side effect](guides/adding-a-side-effect.md).
 
 ## Jobs
 
 A job is a row in the `jobs` table: a queue name, a JSON payload, and when it may run. Enqueue one
 with `enqueue` or `enqueueAll` from [`app/jobs/job_queries.ts`](../app/jobs/job_queries.ts), inside
-the transaction of the change that caused it. It then exists exactly when the change commits.
+the same transaction as the change that caused it, so the job exists only if the change commits.
 
 ```ts
 await enqueueAll(
@@ -112,14 +112,17 @@ export const notifyHandler: Handler = async (ctx: Context, job: JobsTable): Prom
 };
 ```
 
-- **Validate the payload with Zod.** It was written by a process that may run an older version. A
-  payload that doesn't parse can't succeed, so throw `PermanentFailure`.
-- **Make handlers idempotent.** A job may run more than once, such as when its worker dies mid-run
-  and the lease runs out.
-- **Expect what the job is about to be gone.** A status may be deleted before its job runs. Do
-  nothing then.
-- **Open a transaction if you write.** The handler isn't run in one, so it can make requests without
-  holding one open.
+Validate the payload with Zod, since it may have been written by an older version of Verso. A
+payload that doesn't parse will never succeed, so throw `PermanentFailure`.
+
+Handlers must be idempotent. A job can run more than once, for example when its worker dies and the
+lease runs out.
+
+What the job is about may be gone by the time it runs, such as a deleted status. In that case, do
+nothing.
+
+Handlers don't run in a transaction, so they can make requests without holding one open. Open one
+yourself to write.
 
 ### A job's life
 
@@ -132,35 +135,37 @@ enqueue ──► queued ──► running ─┬─ resolves ──────
                                 └─ lease runs out ───► queued again
 ```
 
-A worker claims a queued job once it is due and its group isn't paused. Claiming leases the job to
-the worker and uses one of its attempts.
+A worker claims a job once it's due and its group isn't paused. Claiming leases the job to the
+worker and uses up one attempt.
 
-- **`throw` anything** to retry after a backoff: about 30 seconds, doubling each time up to six
-  hours, with jitter. Once its attempts are used up, the job is a dead letter.
-- **`throw new RetryAt(date, reason)`** to wait until a time, such as a server's `Retry-After`. It
-  doesn't use an attempt.
-- **`throw new PermanentFailure(reason)`** when retrying can't help. The job is a dead letter at
-  once.
-- **Dead letters** stay in the table, with `last_error`, for `[jobs] dead_letter_days`, 30 by
-  default, so someone can look at them.
-- **Pausing a group.** `postponeGroup(ctx, queue, group, until)` holds every job of a group until a
-  time, such as all deliveries to an instance that asked to be left alone. `resumeGroup` ends it.
+- Throwing any error retries the job after a backoff of up to 30 seconds, doubling each time to at
+  most six hours, with jitter. When it runs out of attempts, it becomes a dead letter.
+- `throw new RetryAt(date, reason)` retries at a given time, such as a server's `Retry-After`,
+  without using an attempt.
+- `throw new PermanentFailure(reason)` makes it a dead letter straight away, for when retrying can't
+  help.
+
+Dead letters stay in the table with their `last_error` for `[jobs] dead_letter_days`, 30 by default,
+so someone can look into them.
+
+`postponeGroup(ctx, queue, group, until)` pauses every job in a group until a given time, such as
+all deliveries to an instance that asked Verso to slow down. `resumeGroup` ends the pause.
 
 ### Workers and the scheduler
 
 `verso work` and `verso all` run `work` from [`app/jobs/worker.ts`](../app/jobs/worker.ts), which
-loops over every queue, claiming jobs as slots free up. On Postgres, `enqueue` sends a `NOTIFY` on
-commit, so idle workers start at once; otherwise they poll every second. On stop, a worker claims
-nothing more and waits for running jobs to finish.
+loops over every queue and claims jobs as slots free up. On Postgres, `enqueue` sends a `NOTIFY` on
+commit, so idle workers start straight away. Otherwise they poll every second. When stopped, a
+worker stops claiming jobs and waits for running ones to finish.
 
 The scheduler, in [`app/jobs/scheduler.ts`](../app/jobs/scheduler.ts), queues recurring work. The
 tasks in `queues.ts` run hourly: cleaning up finished jobs, ended login flows, rate limit counts and
-unused media. Every worker runs the scheduler, and a dedupe key per period makes each period's job
-exist once.
+unused media. Every worker runs the scheduler, and a dedupe key per period makes sure each task is
+queued once per period.
 
 ## Messages between processes
 
-Some things must reach every process, not just one worker: a cache that is stale, or a status that
+Some things need to reach every process, not just one worker, such as a stale cache or a status that
 streaming clients should see. These go through `ctx.pubsub`, with `publish` and `subscribe` from
 [`app/kernel/pubsub.ts`](../app/kernel/pubsub.ts). Each kind of message is a `Channel`, with a name
 and a Zod schema:
@@ -173,17 +178,19 @@ and a Zod schema:
 | `streaming.statuses`    | a status appeared, changed or went          | streaming sessions     |
 | `notifications.created` | a notification was made                     | streaming sessions     |
 
-- **`publish` sends after commit**, so no process hears of a change that rolled back. A message is
-  at most 7,000 bytes, to fit in a Postgres notification, and `publish` throws on a larger one in
-  every adapter, so tests catch it. Messages name ids, not whole rows.
-- **Every process hears every message**, the sender included.
-- **Messages can be missed**, such as while the listening connection reconnects. `onMissed` runs a
-  handler then, so it can reload what it caches.
-- **On SQLite**, messages stay in the process that sent them.
+`publish` sends after commit, so no process hears about a change that rolled back. Every process
+gets every message, including the one that sent it. On SQLite, messages stay in the process that
+sent them.
+
+A message can be at most 7,000 bytes, to fit in a Postgres notification. Every adapter throws on a
+larger one, so tests catch it. Messages carry ids, not whole rows.
+
+Messages can be missed, for example while the listening connection reconnects. `onMissed` registers
+a handler for that, so it can reload what it caches.
 
 ## Tests
 
 Tests don't run workers. They call `drain(ctx, queues)` from `app/jobs/worker.ts`, which runs every
 due job one at a time, including the jobs those jobs queue, until none are left. With the test
 clock, a failed job waits out its backoff, so `drain` always ends. Finished jobs are deleted, so to
-check a job ran, check what it did, or that the queue is empty.
+check that a job ran, check what it did, or that its queue is empty.
