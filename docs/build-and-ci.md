@@ -30,73 +30,65 @@ nix/deps.nix (fixed-output: may use the network, must match its hash)
 packages.deps ──► the package, and every check
 ```
 
-Nix builds without network access, except for fixed-output derivations, whose output must match a
-hash given in advance. `nix/deps.nix` is the one such derivation, and its hash is the only one in
-the repository.
+`nix/deps.nix` is the only fixed-output derivation, and its hash is the only one in the repository.
 
-Deno's normal cache can't give the same hash on every build: it stores HTTP headers and download
-times in every file. So `deno.json` sets `"vendor": true`. Dependencies go into `vendor/` and
-`node_modules/` as plain files, and `deps.nix` trims each JSR `meta.json`, which lists every version
-ever published, down to the versions in `deno.lock`. CI got the same hash on x86_64 and aarch64.
+Deno's normal cache doesn't give the same hash on every build, because it stores HTTP headers and
+download times in every file. So `deno.json` sets `"vendor": true`, which puts dependencies in
+`vendor/` and `node_modules/` as plain files. `deps.nix` also trims each JSR `meta.json`, which
+lists every version ever published, down to the versions in `deno.lock`. CI gets the same hash on
+x86_64 and aarch64.
 
-Trade-offs:
+The downside is that your checkout gets `vendor/` and `node_modules/`, which Git and the tools
+ignore. A Deno upgrade can change the hash, and an npm package with per-platform binaries would need
+a hash per system.
 
-- Your checkout gets `vendor/` and `node_modules/`. Git and the tools ignore them.
-- A Deno upgrade can change the hash. Run `nix run .#update-hashes`.
-- An npm package with per-platform binaries would need one hash per system.
-
-**After changing `deno.lock`**, run `nix run .#update-hashes`, and commit `deno.json`, `deno.lock`
-and `nix/deps.nix` together. The `deps-hash` check fails, and says so, if you forget.
+After changing `deno.lock`, run `nix run .#update-hashes`, and commit `deno.json`, `deno.lock` and
+`nix/deps.nix` together. If you forget, the `deps-hash` check fails and tells you.
 
 ## The package
 
-`nix/package.nix` bundles Verso with `deno bundle`, from `app/main.ts` and the vendored
-dependencies, into one file. `deno compile` then makes it one program, with Deno's runtime, which
-has no compiler or other tools. The package wraps it as `verso`, with vips on its `PATH`.
+`nix/package.nix` bundles `app/main.ts` and the vendored dependencies into one file with
+`deno bundle`. `deno compile` then turns that into a single program with Deno's runtime, but without
+its compiler or other tools. The package wraps it as `verso`, with vips on its `PATH`.
 
-- **Only what `app/main.ts` imports is in it**, so tests and their dependencies, such as PGlite, are
-  left out. The bundle is about 3 MB, where the source and its dependencies take 59 MiB.
-- **It isn't minified.** That would save under 2 MB and a few milliseconds at start, and rename the
-  functions in stack traces. `--keep-names` would keep them, but Deno then can't make `require` work
-  in the bundle.
-- **The source map** is in the program, so stack traces name the source files. It has no copy of
-  their contents.
-- **Compiling** leaves out Deno's tools, which saves 27 MiB, and halves the time Verso takes to
-  start. The program keeps a code cache in the temporary directory, and uses no `DENO_DIR`.
-- **`--no-config --no-remote --no-npm`**: the bundle imports nothing, so it needs no config,
-  lockfile or network.
-- **`--allow-run=vips,vipsheader`**: the only programs Verso runs, which the package puts on its
-  `PATH`.
-- **Reads and writes aren't narrowed**, since the config, secrets and SQLite file can be anywhere.
-  What runs Verso narrows them: the NixOS module's `DynamicUser`, or the image's `nobody` user.
+Only what `app/main.ts` imports is bundled, so tests and their dependencies, such as PGlite, are
+left out. The bundle is about 3 MB, against 59 MiB for the source and its dependencies. It isn't
+minified: that would save under 2 MB and a few milliseconds at startup, but rename the functions in
+stack traces, and `--keep-names` breaks `require` in the bundle. The source map is embedded, without
+the sources, so stack traces name the source files.
+
+Compiling without Deno's tools saves 27 MiB and halves Verso's startup time. The program keeps a
+code cache in the temporary directory, and doesn't use `DENO_DIR`.
+
+The program runs with `--no-config --no-remote --no-npm`, since the bundle imports nothing, and
+`--allow-run=vips,vipsheader`, the only programs Verso runs. File access isn't restricted, since the
+config, secrets and SQLite file can be anywhere. Whatever runs Verso restricts it instead: the NixOS
+module's `DynamicUser`, or the image's `nobody` user.
 
 The version is `deno.json`'s `version`.
 
-`deno bundle` runs esbuild, and works only with the version it was made for, which it would
-download. [`nix/esbuild.nix`](../nix/esbuild.nix) builds that version from source instead.
-Trade-offs:
+`deno bundle` runs esbuild, and only works with the exact version it was built for, which it would
+otherwise download. [`nix/esbuild.nix`](../nix/esbuild.nix) builds that version from source.
+`deno bundle` is still experimental, so a Deno upgrade can change its output, or need a different
+esbuild. In that case the package build fails and says so, and you update the version and hash in
+`nix/esbuild.nix`.
 
-- `deno bundle` is still experimental, so a Deno upgrade can change what it does.
-- `deno compile` stores each file's modification time, so the build sets them to the same time.
-- A Deno upgrade can need another esbuild. The package build then fails and says so: update the
-  version and hash in `nix/esbuild.nix`.
+`deno compile` stores each file's modification time, so the build sets them all to the same time.
 
 ## The container image
 
-`nix/image.nix` makes a layered image of the package and what it needs, with no base system:
-
-- **The entrypoint is `verso`**, and the command `all`, for a small instance. Run `serve` and `work`
-  in separate containers to scale them apart.
-- **It runs as `nobody`** (65534), who can write only `/tmp` and mounted volumes.
-- **Port 8080** is exposed.
+`nix/image.nix` makes a layered image of the package and what it needs, with no base system. The
+entrypoint is `verso` and the default command is `all`, so run `serve` and `work` in separate
+containers to scale them. It runs as `nobody` (65534), who can only write to `/tmp` and mounted
+volumes, and exposes port 8080.
 
 `nix build .#image` builds a script that streams the image. Load it with
 `$(nix build --print-out-paths .#image) | docker load`.
 
 ## Checks
 
-`nix flake check` runs every check. Each Deno task runs in a read-only copy of the source and its
-dependencies, without network access, so a task that writes there, or downloads, fails.
+`nix flake check` runs every check. Deno tasks run in a read-only copy of the source and
+dependencies without network access, so a task that writes there or downloads anything fails.
 
 | Check                      | Runs                                                                |
 | -------------------------- | ------------------------------------------------------------------- |
@@ -113,15 +105,14 @@ dependencies, without network access, so a task that writes there, or downloads,
 | `nixos-module-secrets`     | that the module refuses secrets written in `settings`, without a VM |
 | `federation-vms`           | two instances in VMs, federating over TLS, one using Garage         |
 
-A Deno task that runs for 10 minutes is stopped, so a hung test fails its check rather than holding
-up CI. Run one check with `nix build -L .#checks.x86_64-linux.<name>`.
+A Deno task is stopped after 10 minutes, so a hung test fails its check instead of holding up CI.
+Run one check with `nix build -L .#checks.x86_64-linux.<name>`.
 
 ## CI
 
-CI, in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), runs the flake's checks and
-nothing else, on an x86_64 and an aarch64 GitHub runner. On each, they are split into jobs that run
-side by side: the tests on PGlite, on SQLite and on PostgreSQL, the NixOS VM tests, and everything
-else. CI then takes as long as the slowest job, not all of them in turn.
+CI, in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), only runs the flake's checks, on
+an x86_64 and an aarch64 GitHub runner. On each, they're split into parallel jobs: the tests on
+PGlite, on SQLite and on PostgreSQL, the NixOS VM tests, and everything else.
 
 ```
             ┌───────┬─────────────┬─────────────┬───────────────┬─────┐
@@ -131,17 +122,17 @@ aarch64     │ other │ test-pglite │ test-sqlite │ test-postgres │
             └───────┴─────────────┴─────────────┴───────────────┘
 ```
 
-The `other` job first evaluates every check, so a broken one fails there whichever job builds it.
+The `other` job evaluates every check first, so a broken one fails there whichever job builds it.
 
-The arm runners have no KVM, so NixOS VM tests would run emulated there. Booting the VM then took
-about as long as the test driver waits for its shell, 300 seconds, so the test failed about as often
-as it passed. The arm runner gets every job but the VM tests, `nixos-module` and `federation-vms`,
-which run on x86_64 only. Anyone on aarch64 with KVM can still run them with `nix flake check`.
+The VM tests, `nixos-module` and `federation-vms`, only run on x86_64. The arm runners have no KVM,
+so the VMs would be emulated, and booting took about as long as the test driver's 300-second
+timeout, failing about half the time. Anyone on aarch64 with KVM can still run them with
+`nix flake check`.
 
 `nix-community/cache-nix-action` saves the Nix store between runs, so unchanged checks are skipped.
-Only the `other` job saves it; the others only restore it, since a repository's cache holds 10 GB,
-and a snapshot from each job would push the others out. We picked the action over Magic Nix Cache,
-which hits GitHub's rate limits and uploads to FlakeHub by default, and over Cachix, which costs
-money for private repositories.
+Only the `other` job saves it, and the rest only restore it, because a repository's cache holds 10
+GB and a snapshot from each job would push the others out. Magic Nix Cache hits GitHub's rate limits
+and uploads to FlakeHub by default, and Cachix costs money for private repositories, so we use this
+action instead.
 
 Actions are pinned to a commit, with the version in a comment.

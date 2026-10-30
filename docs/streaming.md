@@ -1,8 +1,8 @@
 # Streaming
 
-Clients open a WebSocket to `/api/v1/streaming` and are sent statuses and notifications as they
-happen, as on Mastodon's streaming server. Verso serves it from the same process and port as the
-rest of the API, so any `verso serve` or `verso all` process takes streaming clients.
+Clients open a WebSocket to `/api/v1/streaming` and get statuses and notifications as they happen.
+Unlike Mastodon, there's no separate streaming server: any `verso serve` or `verso all` process
+takes streaming clients, on the same port as the API.
 
 The code is in [`app/streaming/`](../app/streaming/), with each kind of stream in its own file:
 `user.ts`, `public.ts` and `hashtags.ts`.
@@ -30,17 +30,15 @@ dispatcher: one per process, one message at a time
        each session subscribed to a stream it is on ──► WebSocket
 ```
 
-- **Messages carry ids, not statuses**, so nothing private travels between processes. Each process
-  looks the status up itself, for the sessions it has.
-- **Notifications** come the same way, on `notifications.created`, and go only to their user's
-  sessions.
-- **One subscription per process.** The dispatcher, in
-  [`app/streaming/dispatcher.ts`](../app/streaming/dispatcher.ts), subscribes once to each channel,
-  rather than once per WebSocket, and hands each message to each kind of stream.
-- **In order.** Messages are handled one at a time, so a client never gets a status's delete before
-  its update. Publishing doesn't wait for them.
-- **Falling behind.** Past 1,000 messages waiting, new ones are dropped and a warning is logged,
-  rather than kept in memory.
+Messages carry ids, not statuses, so nothing private travels between processes. Each process looks
+the status up itself for its own sessions. Notifications arrive the same way, on
+`notifications.created`, and only go to their user's sessions.
+
+The dispatcher, in [`app/streaming/dispatcher.ts`](../app/streaming/dispatcher.ts), subscribes once
+to each channel per process, rather than once per WebSocket, and hands each message to each kind of
+stream. It handles messages one at a time, so a client never gets a status's delete before its
+update, though publishing doesn't wait for it. If more than 1,000 messages are waiting, new ones are
+dropped and a warning is logged.
 
 ## Streams
 
@@ -52,32 +50,35 @@ dispatcher: one per process, one message at a time
 | the same, with `:media`                   | those with media attached               |
 | `hashtag`, `hashtag:local`                | public statuses with the hashtag `tag`  |
 
-- **`user`** needs `read:statuses`, and `user:notification` needs `read:notifications`. The `user`
-  stream has notifications only if the token may read them, as on Mastodon.
-- **Home statuses** are rendered once for each viewer, as they see them, so 8 viewers at a time.
-  Public and hashtag statuses are rendered once for everyone, in
-  [`app/streaming/shared.ts`](../app/streaming/shared.ts), and not sent to viewers who block or mute
-  the author.
-- **Permissions are checked for each message**, so a viewer whose roles no longer give `read:note`
-  stops getting statuses.
-- **Deletes** go to whoever could have had the status: its author, those it mentions and, unless it
-  was direct, the author's followers. On public streams, every public status's delete is sent, as
-  clients ignore ids they don't have.
-- Mastodon's `direct` and `list` streams aren't there yet.
+`user` needs `read:statuses`, and `user:notification` needs `read:notifications`. The `user` stream
+only includes notifications if the token can read them.
+
+Home statuses are rendered separately for each viewer, 8 viewers at a time. Public and hashtag
+statuses are rendered once for everyone, in [`app/streaming/shared.ts`](../app/streaming/shared.ts),
+and aren't sent to viewers who block or mute the author. Permissions are checked for each message,
+so a viewer whose roles no longer give `read:note` stops getting statuses.
+
+Deletes go to everyone who could have had the status: its author, the accounts it mentions and,
+unless it was direct, the author's followers. On public streams, every public status's delete is
+sent, since clients ignore ids they don't have.
+
+Mastodon's `direct` and `list` streams aren't supported yet.
 
 ## A WebSocket's life
 
 The route is in [`app/streaming/routes.ts`](../app/streaming/routes.ts), and each WebSocket's
 session in [`app/streaming/session.ts`](../app/streaming/session.ts).
 
-- **The token** comes from `Authorization`, the `access_token` query, or the first
-  `Sec-WebSocket-Protocol`, which browsers use since they can't set headers on a WebSocket.
-- **Subscribing.** The client names a stream in the URL, or sends a `subscribe` message naming it,
-  and `unsubscribe` to stop. A stream it may not have, or that doesn't exist, gets an error message
-  back, as on Mastodon. Binary messages close the WebSocket.
-- **It closes when the token is revoked**, as every process hears on `tokens.revoked`.
-- **Role changes** reach it on `roles.changed`, so its permissions are looked up again.
-- **`/api/v1/streaming/health`** answers `OK`, for clients that check before connecting.
+The token comes from `Authorization`, the `access_token` query parameter, or the first
+`Sec-WebSocket-Protocol`, which browsers use because they can't set headers on a WebSocket.
+
+The client names a stream in the URL, or sends a `subscribe` message, and `unsubscribe` to stop.
+Asking for a stream that doesn't exist, or that the client isn't allowed, gets an error message
+back. Binary messages close the WebSocket.
+
+The WebSocket closes when its token is revoked, which every process hears on `tokens.revoked`. When
+the user's roles change, `roles.changed` makes it look up its permissions again.
+`/api/v1/streaming/health` returns `OK`, for clients that check before connecting.
 
 ## Limits
 
@@ -89,16 +90,16 @@ session in [`app/streaming/session.ts`](../app/streaming/session.ts).
 | `subscriptions`       | 100     | streams per WebSocket                   |
 | `tag_length`          | 100     | a hashtag stream's tag, in characters   |
 
-Sockets are counted per process, since processes don't share counts: with three web nodes, an
+Sockets are counted per process, since processes don't share counts, so with three web nodes an
 account can open 30.
 
 ## SQLite
 
-On SQLite, messages stay in the process that sent them. A client streaming from one process only
-hears of changes made in that process. Run SQLite as one `verso all` process if you use streaming.
+On SQLite, messages stay in the process that sent them, so a client only hears about changes made in
+the process it's connected to. Use a single `verso all` process with SQLite if you need streaming.
 
 ## Tests
 
-Tests open sessions with a fake socket, and wait for the dispatcher with its `idle()`, rather than
-opening real WebSockets. [`app/streaming/routes.test.ts`](../app/streaming/routes.test.ts) opens
-real ones, against a test server, for the route itself.
+Most tests open sessions with a fake socket and wait for the dispatcher with its `idle()`, rather
+than opening real WebSockets. [`app/streaming/routes.test.ts`](../app/streaming/routes.test.ts)
+opens real ones, against a test server, for the route itself.
