@@ -7,14 +7,16 @@
  * for await (const status of await client.accounts.statuses(me.id)) console.log(status.content);
  * @module
  */
+import type { Search } from "./search.ts";
 import { AccountMethods } from "./client/accounts.ts";
+import { EmojiMethods } from "./client/emojis.ts";
 import {
     BlockMethods,
     DomainBlockMethods,
     FollowRequestMethods,
     MuteMethods,
 } from "./client/graph.ts";
-import { Http, type RateLimit } from "./client/http.ts";
+import { type CallOptions, Http, type RateLimit } from "./client/http.ts";
 import { InstanceMethods } from "./client/instance.ts";
 import { MediaMethods } from "./client/media.ts";
 import {
@@ -23,6 +25,9 @@ import {
     NotificationMethods,
 } from "./client/notifications.ts";
 import { OAuth } from "./client/oauth.ts";
+import { PushMethods } from "./client/push.ts";
+import { RoleMethods } from "./client/roles.ts";
+import { search, type SearchQuery } from "./client/search.ts";
 import { FavouriteMethods, StatusMethods } from "./client/statuses.ts";
 import { TimelineMethods } from "./client/timelines.ts";
 
@@ -33,6 +38,7 @@ export type {
     MuteOptions,
     ProfileChanges,
 } from "./client/accounts.ts";
+export type { EmojiChanges, EmojiDraft } from "./client/emojis.ts";
 export { ApiError, type CallOptions, type RateLimit, UnexpectedResponse } from "./client/http.ts";
 export type { Upload } from "./client/media.ts";
 export type {
@@ -53,6 +59,9 @@ export {
     type Pkce,
 } from "./client/oauth.ts";
 export { Page, type PageQuery } from "./client/pages.ts";
+export type { PushData, PushEndpoint } from "./client/push.ts";
+export type { RoleChanges, RoleDraft } from "./client/roles.ts";
+export type { SearchQuery } from "./client/search.ts";
 export type { ContentType, ReblogOptions, StatusChanges, StatusDraft } from "./client/statuses.ts";
 export type { HashtagTimelineQuery, PublicTimelineQuery } from "./client/timelines.ts";
 
@@ -94,6 +103,12 @@ export class Client {
     readonly groupedNotifications: GroupedNotificationMethods;
     /** Where the viewer last read up to in their home timeline and notifications. */
     readonly markers: MarkerMethods;
+    /** Pushing the notifications of the viewer's token to a browser. */
+    readonly push: PushMethods;
+    /** The instance's custom emojis, and the viewer's own. */
+    readonly emojis: EmojiMethods;
+    /** Roles, which grant permissions to the accounts that have them. */
+    readonly roles: RoleMethods;
     /** Uploading files to attach to statuses. */
     readonly media: MediaMethods;
 
@@ -115,6 +130,9 @@ export class Client {
         this.notifications = new NotificationMethods(this.#http);
         this.groupedNotifications = new GroupedNotificationMethods(this.#http);
         this.markers = new MarkerMethods(this.#http);
+        this.push = new PushMethods(this.#http);
+        this.emojis = new EmojiMethods(this.#http);
+        this.roles = new RoleMethods(this.#http);
         this.media = new MediaMethods(this.#http);
     }
 
@@ -131,6 +149,16 @@ export class Client {
     /** The rate limit the latest response gave, or `undefined` before one has. */
     get rateLimit(): RateLimit | undefined {
         return this.#http.rateLimit;
+    }
+
+    /**
+     * Accounts, statuses and hashtags matching a query. Only a signed-in user finds statuses, and
+     * only for a query with a word, a phrase, a hashtag, `from:` or `in:library`, or with
+     * `account_id`.
+     * @see https://docs.joinmastodon.org/methods/search/#v2
+     */
+    search(query: SearchQuery, options?: CallOptions): Promise<Search> {
+        return search(this.#http, query, options);
     }
 
     /** A client for the same instance, making requests with `token`, such as one just issued. */

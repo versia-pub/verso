@@ -1,12 +1,13 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { ApiError, Client, createPkce } from "@versia/client-api";
 import { encode } from "fast-png";
-import { createLocalAccount } from "../accounts/testing.ts";
+import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
 import { oidcProvider } from "../auth/oidc.ts";
 import { formTokenIn, tokenFor } from "../auth/testing.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { indexUnindexedAccounts } from "../search/accounts.ts";
+import { indexUnindexed } from "../search/notes.ts";
 import { drain } from "../jobs/worker.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
@@ -452,4 +453,130 @@ Deno.test("a user saves where they read up to, and the unread count follows it",
     assertEquals(got.home, undefined);
     assertEquals(got.notifications?.last_read_id, follow.id);
     assertEquals(await alice.notifications.unreadCount(), 0);
+});
+
+Deno.test("a user searches for accounts, statuses and hashtags", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    await test.as("bob");
+    await alice.accounts.updateCredentials({ indexable: true });
+    const posted = await alice.statuses.post({ status: "Purple elephants at the #zoo" });
+
+    // The test accounts and statuses are made without being indexed.
+    await indexUnindexedAccounts(test.ctx);
+    await indexUnindexed(test.ctx);
+    const found = await alice.search({ q: "elephants" });
+    const hashtags = await alice.search({ q: "#zoo", type: "hashtags" });
+    const accounts = await alice.search({ q: "bob", type: "accounts" });
+
+    assertEquals(found.statuses.map((status) => status.id), [posted.id]);
+    assertEquals(hashtags.hashtags.map((tag) => tag.name), ["zoo"]);
+    assertEquals(accounts.accounts.map((account) => account.username), ["bob"]);
+    assertEquals((await test.client.search({ q: "elephants" })).statuses, []);
+});
+
+Deno.test("a user adds, changes and deletes custom emojis, their own or global", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    await createRole(test.ctx, "Admin", ["emojis"]);
+    await giveRole(test.ctx, "alice", "Admin");
+
+    const picture = () => new File([png(8, 8)], "blob.png", { type: "image/png" });
+    const added = await alice.emojis.create({
+        shortcode: "blob",
+        element: picture(),
+        alt: "A blob",
+    });
+    assertEquals([added.url, added.global, added.description], [null, false, "A blob"]);
+
+    await drain(test.ctx, queues);
+    assert((await alice.emojis.get(added.id)).url !== null);
+    assertEquals((await alice.emojis.list()).map((emoji) => emoji.shortcode), ["blob"]);
+    assertEquals(await test.client.emojis.list(), []);
+
+    const renamed = await alice.emojis.update(added.id, { shortcode: "blobby", global: true });
+    const repictured = await alice.emojis.update(added.id, { element: picture() });
+    assertEquals([renamed.shortcode, renamed.global], ["blobby", true]);
+    assertEquals(repictured.url, null);
+    await drain(test.ctx, queues);
+    assertEquals((await test.client.emojis.list()).map((emoji) => emoji.shortcode), ["blobby"]);
+
+    await alice.emojis.delete(added.id);
+    assertEquals(await alice.emojis.list(), []);
+});
+
+Deno.test("a role manager creates, gives, takes and deletes a role below their own", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    await test.as("bob");
+    const { id: bobId } = await test.client.accounts.lookup("bob");
+    await createRole(test.ctx, "Admin", ["roles", "emojis"]);
+    await test.ctx.db.updateTable("roles").set({ priority: 100 }).where("id", "=", "Admin")
+        .execute();
+    await giveRole(test.ctx, "alice", "Admin");
+
+    const created = await alice.roles.create({
+        name: "Emoji keeper",
+        permissions: ["emojis"],
+        priority: 10,
+        color: "#ff3838",
+    });
+    const changed = await alice.roles.update(created.id, { description: "Keeps emojis" });
+    await alice.roles.give(bobId, created.id);
+
+    assertEquals((await alice.roles.list()).map((role) => role.name), ["Admin", "Emoji keeper"]);
+    assertEquals((await alice.roles.get(created.id)).permissions, ["emojis"]);
+    assertEquals(changed.description, "Keeps emojis");
+    assertEquals((await alice.roles.ofAccount(bobId)).map((role) => role.id), [created.id]);
+    const refused = await assertRejects(
+        () => alice.roles.create({ name: "Over", priority: 200 }),
+        ApiError,
+    );
+    assertEquals(refused.status, 403);
+
+    await alice.roles.take(bobId, created.id);
+    assertEquals(await alice.roles.ofAccount(bobId), []);
+    await alice.roles.delete(created.id);
+    assertEquals((await alice.roles.list()).map((role) => role.name), ["Admin"]);
+});
+
+/** A browser's keys for a push subscription, in URL-safe base64. */
+const browserKeys = async () => {
+    const pair = await crypto.subtle.generateKey(
+        { name: "ECDH", namedCurve: "P-256" },
+        true,
+        ["deriveBits"],
+    );
+    const raw = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+
+    return {
+        p256dh: raw.toBase64({ alphabet: "base64url", omitPadding: true }),
+        auth: crypto.getRandomValues(new Uint8Array(16))
+            .toBase64({ alphabet: "base64url", omitPadding: true }),
+    };
+};
+
+Deno.test("a user subscribes to pushes, changes which, and unsubscribes", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const keys = await browserKeys();
+
+    const subscribed = await alice.push.subscribe(
+        { endpoint: "https://push.example/a", keys },
+        { alerts: { follow: true, reaction: true }, policy: "followed" },
+    );
+    const changed = await alice.push.update({ alerts: { mention: true } });
+
+    assertEquals(subscribed.endpoint, "https://push.example/a");
+    assertEquals([subscribed.alerts.follow, subscribed.alerts.mention], [true, false]);
+    assertEquals([subscribed.alerts.reaction, subscribed.policy], [true, "followed"]);
+    assertEquals((await alice.push.get()).id, subscribed.id);
+    assertEquals([changed.alerts.follow, changed.alerts.mention, changed.policy], [
+        false,
+        true,
+        "all",
+    ]);
+
+    await alice.push.unsubscribe();
+    assertEquals((await assertRejects(() => alice.push.get(), ApiError)).status, 404);
 });
