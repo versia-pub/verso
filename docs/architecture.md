@@ -61,7 +61,7 @@ app/                 the server
   testing/           fakes and helpers for tests
 packages/
   protocol/          @versia/protocol: Versia entities, references, signing. No I/O.
-  client-api/        @versia/client-api: Mastodon API entities as Zod schemas
+  client-api/        @versia/client-api: Mastodon API entities as Zod schemas, and a client
 lint/plugin.ts       Verso's own lint rules
 scripts/             import-cycle and unused-dependency checks, the README banner
 nix/                 package, container image, NixOS module, checks, dev shell

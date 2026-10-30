@@ -66,7 +66,10 @@ every table.
 | Package              | What it is                                                          |
 | -------------------- | ------------------------------------------------------------------- |
 | `@versia/protocol`   | Versia 0.6 entities as Zod schemas, references, JSON rules, signing |
-| `@versia/client-api` | the Mastodon client API's entities as Zod schemas                   |
+| `@versia/client-api` | the Mastodon client API's entities as Zod schemas, and a client     |
 
 Both live in [`packages/`](../packages/) and are imported by name through `deno.json`. The protocol
-package imports nothing from `app/` and does no I/O.
+package imports nothing from `app/` and does no I/O. Verso uses only the client API's schemas, but
+its bundle has the client too, about 26 KB: esbuild keeps classes that extend `Error`. A second
+entry point, for the schemas alone, made Deno 2.9.7 crash at random while type-checking in the Nix
+sandbox. The client's tests run against Verso, in `app/http/client.test.ts`.

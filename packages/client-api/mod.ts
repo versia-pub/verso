@@ -1,18 +1,7 @@
-export * from "./account.ts";
-export * from "./application.ts";
-export * from "./custom_emoji.ts";
-export * from "./instance.ts";
-export * from "./marker.ts";
-export * from "./media_attachment.ts";
-export * from "./notification.ts";
-export * from "./oauth_metadata.ts";
-export * from "./preview_card.ts";
-export * from "./relationship.ts";
-export * from "./role.ts";
-export * from "./search.ts";
-export * from "./status.ts";
-export * from "./tag.ts";
-export * from "./token.ts";
-export * from "./versia_emoji.ts";
-export * from "./versia_role.ts";
-export * from "./web_push_subscription.ts";
+/**
+ * A client for Verso's client API, and the Mastodon entities it gives as Zod schemas, which
+ * Verso itself uses.
+ * @module
+ */
+export * from "./client.ts";
+export * from "./schemas.ts";

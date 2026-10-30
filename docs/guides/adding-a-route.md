@@ -16,7 +16,7 @@ For a new module, make a folder in `app/` with a `routes.ts`, and add it to `mod
 
 Mastodon's entities are Zod schemas in [`packages/client-api/`](../../packages/client-api/), such as
 `Markers` in `marker.ts`. Use the one Mastodon's docs name for the route. If it isn't there, add it,
-with Mastodon's field descriptions, and export it from `mod.ts`.
+with Mastodon's field descriptions, and export it from `schemas.ts`.
 
 ## 3. Write the query and the rendering
 
