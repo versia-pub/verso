@@ -179,3 +179,44 @@ Deno.test("the authorize URL asks for a code, with a PKCE challenge of the verif
     );
     assertEquals(pkce.verifier.length, 43);
 });
+
+Deno.test("forms name nested fields as Rails does, and leave out those not given", async () => {
+    const { client, sent } = fake(() => json({}, { status: 500 }));
+    const avatar = new File([new Uint8Array([1])], "me.png", { type: "image/png" });
+
+    await assertRejects(() =>
+        client.accounts.updateCredentials({
+            avatar,
+            locked: false,
+            fields_attributes: [{ name: "Website", value: "alice.example" }],
+            source: { privacy: "unlisted", language: undefined },
+        })
+    );
+
+    const form = await sent[0].formData();
+    assertEquals([...form.keys()], [
+        "avatar",
+        "locked",
+        "fields_attributes[0][name]",
+        "fields_attributes[0][value]",
+        "source[privacy]",
+    ]);
+    assertEquals(form.get("locked"), "false");
+});
+
+Deno.test("a profile change without pictures is sent as JSON", async () => {
+    const { client, sent } = fake(() => json({}, { status: 500 }));
+
+    await assertRejects(() => client.accounts.updateCredentials({ display_name: "Alice" }));
+
+    assertEquals(sent[0].headers.get("content-type"), "application/json");
+    assertEquals(await sent[0].json(), { display_name: "Alice" });
+});
+
+Deno.test("relationships ask for each id Rails-style", async () => {
+    const { client, sent } = fake(() => json([]));
+
+    await client.accounts.relationships(["1", "2"]);
+
+    assertEquals(new URL(sent[0].url).search, "?id%5B%5D=1&id%5B%5D=2");
+});

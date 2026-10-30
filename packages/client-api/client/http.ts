@@ -9,8 +9,19 @@ export type Query = Readonly<
     Record<string, string | number | boolean | readonly string[] | undefined | null>
 >;
 
+/** A form field's value. Objects and arrays are sent with Rails-style names, as `a[b]` and `a[0]`. */
+export type FormValue =
+    | string
+    | number
+    | boolean
+    | Blob
+    | undefined
+    | null
+    | readonly FormValue[]
+    | { readonly [key: string]: FormValue };
+
 /** A form's values, for bodies with files. `undefined` and `null` leave a field out. */
-export type Form = Readonly<Record<string, string | number | boolean | Blob | undefined | null>>;
+export type Form = { readonly [key: string]: FormValue };
 
 /** What every method takes, last. */
 export type CallOptions = {
@@ -118,6 +129,21 @@ const errorOf = async (response: Response): Promise<ApiError> => {
 const given = <T>(fields: Readonly<Record<string, T | undefined | null>>): [string, T][] =>
     Object.entries(fields).filter((field): field is [string, T] => field[1] != null);
 
+/** `form` as form data, with each nested field named for its path, as `source[privacy]`. */
+const formData = (form: Form): FormData => {
+    const data = new FormData();
+    const add = (name: string, value: FormValue) => {
+        if (value === undefined || value === null) return;
+
+        if (value instanceof Blob) data.append(name, value);
+        else if (typeof value !== "object") data.append(name, String(value));
+        else for (const [key, item] of Object.entries(value)) add(`${name}[${key}]`, item);
+    };
+    for (const [name, value] of Object.entries(form)) add(name, value);
+
+    return data;
+};
+
 /** Sends requests to one instance, as one user or app, or as nobody. */
 export class Http {
     #rateLimit: RateLimit | undefined;
@@ -152,11 +178,7 @@ export class Http {
             headers.set("content-type", "application/json");
             body = JSON.stringify(options.json);
         } else if (options.form !== undefined) {
-            const form = new FormData();
-            for (const [key, value] of given(options.form)) {
-                form.append(key, value instanceof Blob ? value : String(value));
-            }
-            body = form;
+            body = formData(options.form);
         } else if (options.urlencoded !== undefined) {
             body = new URLSearchParams(given(options.urlencoded));
         }

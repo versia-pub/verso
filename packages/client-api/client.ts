@@ -8,13 +8,25 @@
  * @module
  */
 import { AccountMethods } from "./client/accounts.ts";
+import {
+    BlockMethods,
+    DomainBlockMethods,
+    FollowRequestMethods,
+    MuteMethods,
+} from "./client/graph.ts";
 import { Http, type RateLimit } from "./client/http.ts";
 import { InstanceMethods } from "./client/instance.ts";
 import { MediaMethods } from "./client/media.ts";
 import { OAuth } from "./client/oauth.ts";
 import { StatusMethods } from "./client/statuses.ts";
 
-export type { AccountStatusesQuery } from "./client/accounts.ts";
+export type {
+    AccountSearchQuery,
+    AccountStatusesQuery,
+    FollowOptions,
+    MuteOptions,
+    ProfileChanges,
+} from "./client/accounts.ts";
 export { ApiError, type CallOptions, type RateLimit, UnexpectedResponse } from "./client/http.ts";
 export type { Upload } from "./client/media.ts";
 export {
@@ -44,8 +56,16 @@ export class Client {
     readonly oauth: OAuth;
     /** What the instance says about itself. */
     readonly instance: InstanceMethods;
-    /** Accounts, and the viewer's own. */
+    /** Accounts, the viewer's own, and how the viewer is connected to others. */
     readonly accounts: AccountMethods;
+    /** The accounts asking to follow the viewer. */
+    readonly followRequests: FollowRequestMethods;
+    /** The accounts the viewer blocks. */
+    readonly blocks: BlockMethods;
+    /** The accounts the viewer mutes. */
+    readonly mutes: MuteMethods;
+    /** The domains the viewer blocks. */
+    readonly domainBlocks: DomainBlockMethods;
     /** Posting, viewing, editing and deleting statuses. */
     readonly statuses: StatusMethods;
     /** Uploading files to attach to statuses. */
@@ -59,6 +79,10 @@ export class Client {
         this.oauth = new OAuth(this.#http);
         this.instance = new InstanceMethods(this.#http);
         this.accounts = new AccountMethods(this.#http);
+        this.followRequests = new FollowRequestMethods(this.#http);
+        this.blocks = new BlockMethods(this.#http);
+        this.mutes = new MuteMethods(this.#http);
+        this.domainBlocks = new DomainBlockMethods(this.#http);
         this.statuses = new StatusMethods(this.#http);
         this.media = new MediaMethods(this.#http);
     }

@@ -6,6 +6,7 @@ import { oidcProvider } from "../auth/oidc.ts";
 import { formTokenIn, tokenFor } from "../auth/testing.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { queues } from "../jobs/queues.ts";
+import { indexUnindexedAccounts } from "../search/accounts.ts";
 import { drain } from "../jobs/worker.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
@@ -222,4 +223,104 @@ Deno.test("a user uploads a picture, describes it, and attaches it once processe
     assert(processed.url !== null);
     assertEquals(described.description, "A red square");
     assertEquals(posted.media_attachments.map((media) => media.id), [uploaded.id]);
+});
+
+Deno.test("a user changes their profile as JSON, or as a form with a picture", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+
+    const named = await alice.accounts.updateCredentials({
+        display_name: "Alice",
+        locked: true,
+        fields_attributes: [{ name: "Website", value: "alice.example" }],
+        source: { privacy: "unlisted", language: "en" },
+    });
+    const pictured = await alice.accounts.updateCredentials({
+        avatar: new File([png(8, 8)], "me.png", { type: "image/png" }),
+        avatar_description: "Me",
+        fields_attributes: [{ name: "Pronouns", value: "she/her" }],
+        source: { sensitive: true },
+    });
+    await drain(test.ctx, queues);
+    const processed = await alice.accounts.verifyCredentials();
+    const removed = await alice.accounts.deleteAvatar();
+
+    assertEquals([named.display_name, named.locked], ["Alice", true]);
+    assertEquals([named.source.privacy, named.source.language], ["unlisted", "en"]);
+    assertEquals(pictured.fields.map((field) => field.name), ["Pronouns"]);
+    assertEquals([pictured.avatar_description, pictured.source.sensitive], ["Me", true]);
+    assert(processed.avatar !== named.avatar);
+    assertEquals(removed.avatar, named.avatar);
+    assertEquals((await alice.accounts.deleteHeader()).header, named.header);
+});
+
+Deno.test("a user follows, is followed back on request, and sees both sides", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const { id: aliceId } = await test.client.accounts.lookup("alice");
+    const { id: bobId } = await test.client.accounts.lookup("bob");
+    await alice.accounts.updateCredentials({ locked: true });
+
+    const following = await alice.accounts.follow(bobId, { reblogs: false, notify: true });
+    const asked = await bob.accounts.follow(aliceId);
+    const requests = await alice.followRequests.list();
+    const accepted = await alice.followRequests.authorize(bobId);
+
+    assertEquals([following.following, following.showing_reblogs, following.notifying], [
+        true,
+        false,
+        true,
+    ]);
+    assertEquals([asked.following, asked.requested], [false, true]);
+    assertEquals(requests.items.map((account) => account.id), [bobId]);
+    assertEquals(accepted.followed_by, true);
+    assertEquals((await alice.accounts.followers(aliceId)).items.map((a) => a.id), [bobId]);
+    assertEquals((await alice.accounts.following(aliceId)).items.map((a) => a.id), [bobId]);
+    assertEquals(
+        (await alice.accounts.relationships([bobId, aliceId])).map((r) => r.id),
+        [bobId, aliceId],
+    );
+
+    assertEquals((await alice.accounts.removeFromFollowers(bobId)).followed_by, false);
+    assertEquals((await alice.accounts.unfollow(bobId)).following, false);
+    await bob.accounts.follow(aliceId);
+    assertEquals((await alice.followRequests.reject(bobId)).followed_by, false);
+});
+
+Deno.test("a user blocks, mutes and notes accounts, and blocks a domain", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    await test.as("bob");
+    const { id: bobId } = await test.client.accounts.lookup("bob");
+
+    assertEquals((await alice.accounts.block(bobId)).blocking, true);
+    assertEquals((await alice.blocks.list()).items.map((account) => account.id), [bobId]);
+    assertEquals((await alice.accounts.unblock(bobId)).blocking, false);
+
+    const muted = await alice.accounts.mute(bobId, { notifications: false, duration: 3600 });
+    const [mute] = (await alice.mutes.list()).items;
+    assertEquals([muted.muting, muted.muting_notifications], [true, false]);
+    assert(mute.mute_expires_at !== null);
+    assertEquals((await alice.accounts.unmute(bobId)).muting, false);
+
+    assertEquals((await alice.accounts.note(bobId, "Met at a café")).note, "Met at a café");
+
+    await alice.domainBlocks.block("spam.example");
+    assertEquals((await alice.domainBlocks.list()).items, ["spam.example"]);
+    await alice.domainBlocks.unblock("spam.example");
+    assertEquals((await alice.domainBlocks.list()).items, []);
+});
+
+Deno.test("a user searches for accounts", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    await test.as("alicia");
+    await test.as("bob");
+
+    // The test accounts are made without being indexed.
+    await indexUnindexedAccounts(test.ctx);
+    const found = await alice.accounts.search({ q: "ali", limit: 5 });
+
+    assertEquals(found.map((account) => account.username).sort(), ["alice", "alicia"]);
 });
