@@ -1,8 +1,8 @@
 # Reactions
 
-Users react to statuses with emoji, as on Versia Server and Pleroma. Each user can react to a status
-with several different emoji, once each. Reactions federate, so statuses also show those Verso has
-received from other instances.
+Users can react to statuses with emoji, as on Versia Server and Pleroma. A user can react to a
+status with several different emoji, once each. Reactions federate, so statuses also show those
+Verso has received from other instances.
 
 ## Naming an emoji
 

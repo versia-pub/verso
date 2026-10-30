@@ -19,27 +19,28 @@
 </div>
 
 Verso is the reference implementation of [Versia](https://versia.pub), a federation protocol for
-social media. It also speaks the Mastodon client API, so it works with the apps people already use.
+social media. It also implements the Mastodon client API, so it works with the apps people already
+use.
 
 > [!NOTE]
 > Verso is in early development and isn't ready for production yet.
 
 ## Features
 
-- **Versia 0.6 federation**: statuses, follows, shares, reactions and custom emoji
-- **Mastodon client API**: works with existing apps, including streaming, notifications and Web
-  Push; see [what's supported](docs/api/compatibility.md)
-- **Search** across statuses, accounts and hashtags
-- **Sign-in** through OpenID Connect
-- **Media storage** on local disk or any S3-compatible service
-- **PostgreSQL or SQLite** as the database
-- **Scales out** by running web nodes and job workers separately
+- Federates over Versia 0.6: statuses, follows, shares, reactions and custom emoji
+- Works with Mastodon apps, including streaming, notifications and Web Push
+  ([what's supported](docs/api/compatibility.md))
+- Searches statuses, accounts and hashtags
+- Logs users in through OpenID Connect
+- Stores media on disk or in any S3-compatible service
+- Runs on PostgreSQL or SQLite
+- Scales out by running web nodes and job workers separately
 
 ## Running Verso
 
 [Installing Verso](docs/admin/installing.md) covers NixOS, the container image and the package, and
-[Configuring](docs/admin/configuring.md) the settings most instances change. To run it locally for
-development, see [Running Verso locally](CONTRIBUTING.md#running-verso-locally).
+[Configuring](docs/admin/configuring.md) covers the settings most instances change. To run it
+locally for development, see [Running Verso locally](CONTRIBUTING.md#running-verso-locally).
 
 ## Documentation
 

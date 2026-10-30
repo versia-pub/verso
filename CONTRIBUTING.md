@@ -1,7 +1,7 @@
 # Contributing to Verso
 
-Thanks for helping out. This file covers how to set up, how to run things, and what we look for in a
-pull request. To learn how Verso works and how to change it, read [the docs](docs/README.md).
+Thanks for helping out! This file covers setting up, running things, and what we look for in a pull
+request. To learn how Verso works and how to change it, read [the docs](docs/README.md).
 
 ## Setup
 
@@ -16,8 +16,8 @@ deno install   # downloads dependencies into vendor/ and node_modules/
 
 The dev shell gives you Deno, nixfmt and PostgreSQL. You don't need to install anything else.
 
-Nix only sees files that git knows about. If you add a file, `git add` it before running `nix build`
-or `nix flake check`, or Nix will act as if it isn't there.
+Nix only sees files that git knows about, so `git add` new files before running `nix build` or
+`nix flake check`.
 
 ## Commands
 
@@ -38,8 +38,8 @@ or `nix flake check`, or Nix will act as if it isn't there.
 | `nix run .#dev-services`        | Run a throwaway PostgreSQL in `.dev/`                      |
 | `nix run .#banner -- --help`    | Make a Versia-branded README banner                        |
 
-CI runs `nix flake check` and nothing else. It runs the same Deno tasks inside the Nix sandbox,
-without network access. If it passes on your machine, it should pass in CI.
+CI only runs `nix flake check`, which runs the same Deno tasks inside the Nix sandbox without
+network access. If it passes on your machine, it should pass in CI.
 
 Tests run on PGlite, an in-process PostgreSQL, by default. `VERSO_TEST_DATABASE` runs them on SQLite
 or a real PostgreSQL server instead, and `nix flake check` runs all three. See
@@ -75,14 +75,14 @@ The API is at `http://localhost:8080`, and its documentation at `/docs`. `config
 
 ## Dependencies
 
-Every dependency is code we don't control, so add one only when it pays for itself. In the pull
-request, say what it replaces, how big it is, how well it's maintained, and why the standard library
-or Deno's built-ins aren't enough. [Maintenance](docs/maintenance.md#dependencies) says how to add
+Every dependency is code we don't control, so only add one when it's worth it. In the pull request,
+say what it replaces, how big it is, how well it's maintained, and why the standard library or
+Deno's built-ins aren't enough. [Maintenance](docs/maintenance.md#dependencies) explains how to add
 and upgrade them.
 
 ## Writing code
 
-- Formatting is whatever `deno fmt` does. There's nothing to argue about.
+- Formatting is whatever `deno fmt` does.
 - The lint rules are strict on purpose: no `any`, no `@ts-ignore`, no non-null `!`, and exported
   functions declare their return types. If you really need to break a rule, add a `deno-lint-ignore`
   comment with the reason after `--`.
@@ -124,5 +124,5 @@ Every pull request should answer these questions, in its description or during r
 ## No AI agent files
 
 Don't add `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.claude/` or any other file meant for AI tools.
-This project is for humans: even if that wasn't the case, if a tool needs to know something, a
-person probably does too, so write it here or in `docs/`. The `agent-files` check enforces this.
+If a tool needs to know something, a person probably does too, so write it here or in `docs/`. The
+`agent-files` check enforces this.

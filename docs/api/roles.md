@@ -1,8 +1,9 @@
 # Roles
 
 Roles give accounts [permissions](../admin/configuring.md#permissions) beyond what every user has.
-Verso's role methods are [Versia Server's](https://github.com/versia-pub/server), so apps made for
-it work. Admins can also manage roles with [`verso admin`](../admin/commands.md#verso-admin-roles).
+Verso's role methods are the same as [Versia Server's](https://github.com/versia-pub/server), so
+apps made for it work. Admins can also manage roles with
+[`verso admin`](../admin/commands.md#verso-admin-roles).
 
 ## The Role entity
 
@@ -32,19 +33,17 @@ it work. Admins can also manage roles with [`verso admin`](../admin/commands.md#
 
 ## Who may manage roles
 
-A user with the `roles` permission manages roles below their own highest role:
+A user with the `roles` permission can manage roles below their own highest role. When creating or
+changing a role, they can only set a priority below their own highest, and only give permissions
+they have themselves, though a role keeps the permissions it already had.
 
-- **Creating or changing** a role, they may set its priority only below their own highest, and give
-  it only permissions they have themselves. A role keeps the permissions it already had.
-- **Granting or taking away** a role, the role must be below their highest, and the account must be
-  their own or rank below them. They may grant a role only if they have all its permissions.
-- **A user without roles** manages none, even with the `roles` permission.
-
-Anything else is a `403`, saying why.
+To grant or take away a role, it must be below their highest, and the account must be their own or
+rank below them. They can only grant a role if they have all of its permissions. A user without any
+roles can't manage roles, even with the `roles` permission. Anything else gets a `403` saying why.
 
 ## Methods
 
-Every method needs a user's token. Reading needs the `read:accounts` scope, and changing needs
+Every method needs a user's token. Reading needs the `read:accounts` scope, and changes need
 `write:accounts` and the `roles` permission.
 
 ### `GET /api/v1/roles`
@@ -53,11 +52,11 @@ Every role, highest priority first.
 
 ### `GET /api/v1/roles/:id`
 
-A role. `404` if there is none.
+A role, or `404` if there's none.
 
 ### `POST /api/v1/roles`
 
-Creates a role, and answers `201` with it. Every field but `name` is optional:
+Creates a role and returns it with a `201`. Every field except `name` is optional:
 
 | Field         | Default |
 | ------------- | ------- |
@@ -75,36 +74,34 @@ curl -X POST https://social.example/api/v1/roles \
   -d '{"name": "Moderator", "permissions": ["blocks", "emojis"], "priority": 50}'
 ```
 
-A name already taken is a `422`.
+A name that's already taken gets a `422`.
 
 ### `PATCH /api/v1/roles/:id`
 
-Changes the fields given, and answers with the role. `icon: null` removes the icon.
+Changes the given fields and returns the role. `icon: null` removes the icon.
 
 ### `DELETE /api/v1/roles/:id`
 
-Deletes a role, taking it from everyone who has it. Answers with `{}`.
+Deletes a role, taking it away from everyone who has it, and returns `{}`.
 
 ### `GET /api/v1/accounts/:id/roles`
 
-A local account's roles, highest priority first, including those not shown on its profile. `404` for
-a remote account, which has no roles here.
+A local account's roles, highest priority first, including hidden ones. Remote accounts have no
+roles here, so they get a `404`.
 
 ### `POST /api/v1/accounts/:id/roles/:role_id`
 
-Gives a local account a role. Answers with `{}`, also when it already had the role.
+Gives a local account a role, and returns `{}`, even if it already had the role.
 
 ### `DELETE /api/v1/accounts/:id/roles/:role_id`
 
-Takes a role from a local account, if it was granted by hand. Roles a login provider grants come and
-go with its claims, as [Roles from your provider](../admin/configuring.md#roles-from-your-provider)
-explains. Answers with `{}`.
+Takes a role away from a local account, if it was granted by hand, and returns `{}`. Roles from a
+login provider follow its claims, as
+[Roles from your provider](../admin/configuring.md#roles-from-your-provider) explains.
 
 ## Roles on accounts
 
-Mastodon's own entities show roles too:
-
-- **`roles` on an Account** lists its visible roles, as `{ id, name, color }`.
-- **`role` on the user's own Account**, from `verify_credentials`, is their highest role, with
-  `permissions` as Mastodon's bitmask of what they may do. Mastodon apps read it to show admin
-  tools, as [Moderating](../admin/moderating.md#moderators) explains.
+Mastodon's own entities show roles too. `roles` on an Account lists its visible roles, as
+`{ id, name, color }`. `role` on the user's own Account, from `verify_credentials`, is their highest
+role, with `permissions` as Mastodon's bitmask. Mastodon apps use it to decide whether to show admin
+tools, as [Moderating](../admin/moderating.md#moderators) explains.

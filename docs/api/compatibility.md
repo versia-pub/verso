@@ -1,14 +1,13 @@
 # Mastodon API compatibility
 
-Verso speaks the Mastodon client API, and reports itself as Mastodon 4.3.0, so apps turn on the
-features that version has. This page compares Verso with
-[Mastodon 4.3's API](https://docs.joinmastodon.org/methods/), method by method.
+Verso reports itself as Mastodon 4.3.0, so apps enable that version's features. This page compares
+Verso with [Mastodon 4.3's API](https://docs.joinmastodon.org/methods/), method by method.
 
 - ✅ works as on Mastodon.
-- 🟡 works, with what is missing or different in the notes.
+- 🟡 works, with what's missing or different in the notes.
 - ❌ isn't there yet. Apps get a `404`.
 
-[Differences from Mastodon](differences.md) says more about the methods marked 🟡, and others that
+[Differences from Mastodon](differences.md) has more on the methods marked 🟡, and on others that
 behave differently.
 
 ## Summary
@@ -25,8 +24,8 @@ behave differently.
 | Search                     | accounts, statuses and hashtags                                |
 | Instance                   | the instance, rules, policies, custom emoji                    |
 
-Missing so far: bookmarks, lists, filters, polls, scheduled statuses, reports, conversations,
-trends, announcements and the admin API.
+Missing so far: bookmarks, lists, filters, polls, scheduled statuses, reports, conversations, trends
+and announcements. There's no admin API: admins use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -190,15 +189,15 @@ trends, announcements and the admin API.
 
 ## Admin
 
-None of Mastodon's admin API (`/api/v1/admin/…`, `/api/v2/admin/…`) is there. Admins use the
-[`verso admin` commands](../admin/commands.md) instead.
+Verso doesn't implement Mastodon's admin API (`/api/v1/admin/…` and `/api/v2/admin/…`). Admins use
+the [`verso admin` commands](../admin/commands.md) instead.
 
 ## Beyond Mastodon 4.3
 
 Verso also has:
 
-- **`GET /api/v1/instance/terms_of_service`**, and by date, from Mastodon 4.4.
-- **Roles**, with `/api/v1/roles` and `/api/v1/accounts/:id/roles`, from Versia Server.
-- **Custom emoji management**, with `/api/v1/emojis`, from Versia Server.
-- **Reactions** to statuses, with `reactions` on each status and `/api/v1/statuses/:id/reactions`,
-  from Versia Server.
+- `GET /api/v1/instance/terms_of_service`, also by date, from Mastodon 4.4
+- roles, with `/api/v1/roles` and `/api/v1/accounts/:id/roles`, from Versia Server
+- custom emoji management, with `/api/v1/emojis`, from Versia Server
+- reactions to statuses, with `reactions` on each status and `/api/v1/statuses/:id/reactions`, from
+  Versia Server

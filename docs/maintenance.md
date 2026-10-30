@@ -5,10 +5,7 @@ How to keep Verso's code and tools up to date. For looking after a running insta
 
 ## Dependencies
 
-Every dependency is code we don't control, so only add one when it's worth it. In the pull request,
-say what it replaces, how big it is, how well it's maintained, and why the standard library or
-Deno's built-ins aren't enough.
-
+Before adding a dependency, read the policy in [CONTRIBUTING.md](../CONTRIBUTING.md#dependencies).
 To add or upgrade one:
 
 ```sh
