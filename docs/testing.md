@@ -1,7 +1,7 @@
 # Testing
 
-Tests are `*.test.ts` files beside the code they test, run with `deno task test`. They use real
-databases and real vips, and fakes only for what is outside Verso: the clock, the network, identity
+Tests are `*.test.ts` files next to the code they test, run with `deno task test`. They use real
+databases and the real vips, and only fake what's outside Verso: the clock, the network, identity
 providers and S3.
 
 ## Running them
@@ -15,8 +15,8 @@ providers and S3.
 | `VERSO_TEST_DATABASE=postgresql://… deno task test --allow-net=…` | on a real Postgres server   |
 
 `nix flake check` runs the whole suite three times, as `test-pglite`, `test-sqlite` and
-`test-postgres`. A test must pass on all three. See [Database](database.md#tests) for how each gets
-a database.
+`test-postgres`. Tests have to pass on all three. See [Database](database.md#tests) for how each
+gets a database.
 
 ## A test's context
 
@@ -34,12 +34,12 @@ a database.
 | `pubsub`    | in memory                                                        |
 | `settings`  | `defaultSettings`, with any the test gives                       |
 
-Use it with `await using`, so the database closes when the test ends. Any part can be replaced
+Use it with `await using`, so the database is closed when the test ends. Any part can be replaced
 through its options.
 
 ## Testing a route
 
-Most tests call routes, as a client would. `createTestApp`, in
+Most tests call routes, like a client would. `createTestApp`, in
 [`app/testing/app.ts`](../app/testing/app.ts), makes the HTTP app for some routes, and `app.request`
 sends it a request without a server:
 
@@ -59,17 +59,19 @@ Deno.test("a marker is saved", async () => {
 });
 ```
 
-- **`checkResponses: true`** checks every response against the route's declared schemas, so a route
-  can't answer with something its OpenAPI doesn't say.
-- **Modules' `testing.ts` files** make what tests need, such as `createLocalAccount` in
-  `app/accounts/testing.ts` and `tokenFor` in `app/auth/testing.ts`. Add one beside a module when
-  its tests and others' need the same setup.
-- **Jobs don't run by themselves.** Call `drain(ctx, queues)` to run every due job. See
-  [Events, jobs and messages](events-and-jobs.md#tests).
+`checkResponses: true` checks every response against the route's declared schemas, so a route can't
+return something its OpenAPI doesn't describe.
+
+Each module's `testing.ts` has helpers for setting up tests, such as `createLocalAccount` in
+`app/accounts/testing.ts` and `tokenFor` in `app/auth/testing.ts`. Add one to a module when its
+tests and others' need the same setup.
+
+Jobs don't run on their own in tests. Call `drain(ctx, queues)` to run every due job, as
+[Events, jobs and messages](events-and-jobs.md#tests) explains.
 
 ## Several instances
 
-Federation is tested between complete instances in one process. `createNetwork`, in
+Federation is tested with complete instances in one process. `createNetwork`, in
 [`app/testing/network.ts`](../app/testing/network.ts), starts one per domain, each with its own
 database and every route, on a shared fake network and clock:
 
@@ -82,43 +84,43 @@ await followAddress(bob, "alice@a.test");
 await network.drain(); // every instance's jobs, until none are left
 ```
 
-- **[`app/testing/clients.ts`](../app/testing/clients.ts)** calls an instance's client API as a
-  user, and counts what each instance was sent.
-- **`network.transport.down.add(host)`** takes an instance off the network, to test retries and the
-  circuit breaker.
-- **[`app/testing/evil.ts`](../app/testing/evil.ts)** adds an instance that misbehaves on purpose.
-- The `scenarios.test.ts` files in modules use these to test whole stories, such as a status being
-  posted, edited and deleted everywhere it went.
+[`app/testing/clients.ts`](../app/testing/clients.ts) calls an instance's client API as a user, and
+counts what each instance was sent. `network.transport.down.add(host)` takes an instance off the
+network, to test retries and the circuit breaker. [`app/testing/evil.ts`](../app/testing/evil.ts)
+adds an instance that misbehaves on purpose.
+
+The `scenarios.test.ts` files in modules use these to test whole stories, such as a status being
+posted, edited and deleted everywhere it went.
 
 ## Other fakes
 
-- **[`app/testing/fake_idp.ts`](../app/testing/fake_idp.ts)** is an OpenID Connect provider, for
-  testing the whole login.
-- **[`app/testing/fake_s3.ts`](../app/testing/fake_s3.ts)** is an S3 server, for the S3 store.
-- **`fakeTransport`**, in [`app/kernel/fake_transport.ts`](../app/kernel/fake_transport.ts), routes
+- [`app/testing/fake_idp.ts`](../app/testing/fake_idp.ts) is an OpenID Connect provider, for testing
+  the whole login.
+- [`app/testing/fake_s3.ts`](../app/testing/fake_s3.ts) is an S3 server, for the S3 store.
+- `fakeTransport`, in [`app/kernel/fake_transport.ts`](../app/kernel/fake_transport.ts), routes
   requests by host to any `(request) => Response`, so a test can answer as a remote instance would.
 
 ## The OpenAPI snapshot
 
 [`app/http/routes.test.ts`](../app/http/routes.test.ts) compares the OpenAPI document with
-`app/http/openapi.json`, so a change to the API shows up in review. After a change you meant, run
+`app/http/openapi.json`, so API changes show up in review. After an intended change, run
 `deno task update-openapi` and commit the new snapshot. See [HTTP](http.md#openapi).
 
 ## Beyond `deno task test`
 
-- **`nixos-module`** starts the NixOS module in a VM, and checks it serves.
-- **`federation-vms`** runs instances in NixOS VMs that federate over a real network, with Postgres
-  and Garage.
-- **`image`** runs the container image's entrypoint, and checks it prints Verso's version.
+- `nixos-module` starts the NixOS module in a VM and checks that it serves.
+- `federation-vms` runs instances in NixOS VMs that federate over a real network, with Postgres and
+  Garage.
+- `image` runs the container image's entrypoint and checks that it prints Verso's version.
 
 All three run in `nix flake check`. See [Build and CI](build-and-ci.md).
 
 ## Writing tests
 
-- **Name a test by what it shows**, as a sentence: "markers are saved, a version on each time, and
-  read for the timelines asked for".
-- **Test through the route or the service**, not a module's private helpers, so tests survive a
-  refactor.
-- **Each test sets up its own data**, so tests run in any order and in parallel.
-- **Advance the clock** rather than waiting, for anything about time.
-- **Write a test that fails without your change**, as CONTRIBUTING.md asks.
+- Name each test with a sentence saying what it shows, such as "markers are saved, a version on each
+  time, and read for the timelines asked for".
+- Test through the route or the service, not a module's private helpers, so tests survive
+  refactoring.
+- Each test sets up its own data, so tests can run in any order and in parallel.
+- For anything involving time, advance the clock instead of waiting.
+- Write a test that fails without your change, as CONTRIBUTING.md asks.

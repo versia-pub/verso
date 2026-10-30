@@ -15,8 +15,8 @@ Each table's columns are in its module's `tables.ts`.
 
 ## Writing queries
 
-Queries live in `*_queries.ts` files, and only there. Each is a function named for what it does,
-that takes the context first:
+Queries live in `*_queries.ts` files, and nowhere else. Each one is a function named for what it
+does, taking the context first:
 
 ```ts
 /** The markers of `accountId` in those of `timelines` it has one in. */
@@ -34,18 +34,20 @@ export const markersOf = async (
 };
 ```
 
-- **Use `ctx.db`.** Inside `ctx.transaction` it is the transaction, so the same function works in
-  and out of one.
-- **Take the time from `ctx.clock.now()`**, never from `now()` or a column default. SQLite stores
-  times as text, and its own format would sort wrongly against Verso's.
-- **Write only your module's tables.** To filter by another module's data, call its subquery helper,
-  such as `followerIdsQuery(ctx, accountId)` from `graph`, and use it in `where … in`.
-- **Reading another module's table directly** is allowed when it saves a query. Say so in the file's
-  comment, as the search module's query files do.
-- **Split long lists.** A query may bind only so many values, so pass ids through `batchesOf` from
-  [`app/db/batches.ts`](../app/db/batches.ts), 1,000 at a time.
-- **Don't pass an array as one value**, as in `= any(${ids})`. The `jsonValues` plugin sends arrays
-  as JSON. Use `in` instead.
+Always use `ctx.db`. Inside `ctx.transaction` it's the transaction, so the same function works both
+in and out of one.
+
+Take the time from `ctx.clock.now()`, never from `now()` or a column default. SQLite stores times as
+text, and its own format would sort wrongly against Verso's.
+
+Only write your own module's tables. To filter by another module's data, use its subquery helper,
+such as `followerIdsQuery(ctx, accountId)` from `graph`, in a `where … in`. Reading another module's
+table directly is fine when it saves a query, as long as the file's comment says so, as the search
+module's query files do.
+
+Databases limit how many values a query can bind, so split long lists of ids with `batchesOf` from
+[`app/db/batches.ts`](../app/db/batches.ts), 1,000 at a time. Don't pass an array as a single value,
+as in `= any(${ids})`: the `jsonValues` plugin sends arrays as JSON. Use `in` instead.
 
 ## Helpers
 
@@ -64,20 +66,20 @@ All of these are in [`app/db/`](../app/db/).
 
 ## Postgres and SQLite differences
 
-The schema is the same on both. These are the differences:
+The schema is the same on both, with these differences:
 
-- **Times** are `timestamptz` on Postgres and ISO 8601 text on SQLite. **JSON** is `jsonb` on
-  Postgres and text on SQLite. Migrations use `columnTypes(db).timestamp` and `.json` from
-  `columns.ts`, and the SQLite dialect turns them back into `Date`s and objects when reading, by the
-  column's declared type. Booleans are 1 and 0 on SQLite, converted the same way.
-- **There are no array columns.** Lists are join tables, such as `note_tags`.
-- **Locks.** On Postgres, workers claim jobs with `FOR UPDATE SKIP LOCKED`, and `lockKey` takes an
-  advisory lock. SQLite lets one writer in at a time, so both do nothing there. SQLite transactions
-  begin with `begin immediate`, so a writer waits for another instead of failing.
-- **Search** uses Postgres full-text search and SQLite's FTS5, in
+- Times are `timestamptz` on Postgres and ISO 8601 text on SQLite. JSON is `jsonb` on Postgres and
+  text on SQLite. Migrations use `columnTypes(db).timestamp` and `.json` from `columns.ts`, and the
+  SQLite dialect turns them back into `Date`s and objects when reading, by the column's declared
+  type. Booleans are 1 and 0 on SQLite, converted the same way.
+- There are no array columns. Lists are join tables, such as `note_tags`.
+- On Postgres, workers claim jobs with `FOR UPDATE SKIP LOCKED`, and `lockKey` takes an advisory
+  lock. SQLite lets one writer in at a time, so both do nothing there. SQLite transactions begin
+  with `begin immediate`, so a writer waits for another instead of failing.
+- Search uses Postgres full-text search and SQLite's FTS5, in
   [`app/search/index_queries.ts`](../app/search/index_queries.ts).
-- **Messages between processes** use `LISTEN` and `NOTIFY`. SQLite has none, so each process hears
-  only its own messages, and workers poll for jobs. SQLite suits one process running `verso all`.
+- Messages between processes use `LISTEN` and `NOTIFY`. SQLite has neither, so each process only
+  hears its own messages, and workers poll for jobs.
 
 Branch on `usesSqlite(ctx.db)` only when you must, and keep the branch inside a query file or
 migration.
@@ -107,27 +109,28 @@ export const markers: Migration = {
 };
 ```
 
-- **Migrations only go forward.** There is no `down`. To undo one, write another.
-- **All pending migrations run in one transaction**, on both databases. If one fails, none are
-  applied.
-- **Never change a migration that has been released.** Instances have already run it.
-- **Ids are `text`**, holding a UUIDv7 from `ctx.ids`.
-- **Rebuilding a table on SQLite.** SQLite changes most things about a table by copying it to a new
-  one. Foreign keys are off while migrating there, since dropping the old table would delete the
-  rows that refer to it. A migration that rebuilds a table calls `checkForeignKeys` before it ends.
-- **Migrations have no time limit.** Queries are held to `statement_timeout_seconds` on Postgres,
-  but `verso migrate` opens the database without one.
+Migrations only go forward: there's no `down`, so to undo one, write another. Never change a
+migration once it's released, because instances have already run it. All pending migrations run in
+one transaction, on both databases, so if one fails, none are applied. Ids are `text` columns,
+holding a UUIDv7 from `ctx.ids`.
 
-After the schema, `verso migrate` also makes the instance's keys and indexes for search any statuses
-and accounts that aren't yet.
+SQLite changes most things about a table by copying it to a new one. Foreign keys are off while
+migrating on SQLite, since dropping the old table would otherwise delete the rows that refer to it,
+so a migration that rebuilds a table calls `checkForeignKeys` before it ends.
+
+Migrations have no time limit. Queries are held to `statement_timeout_seconds` on Postgres, but
+`verso migrate` opens the database without one.
+
+After the schema, `verso migrate` also creates the instance's keys, and indexes any statuses and
+accounts that search hasn't indexed yet.
 
 To add a table, see [Adding a table](guides/adding-a-table.md).
 
 ## Tests
 
 Each test gets a new database with every migration run, from `migratedTestDatabase` in
-[`app/db/testing.ts`](../app/db/testing.ts). On PGlite, it is a copy of one migrated once per test
-worker, which is several times faster. `VERSO_TEST_DATABASE` picks the database:
+[`app/db/testing.ts`](../app/db/testing.ts). On PGlite, it's a copy of a database migrated once per
+test worker, which is several times faster. `VERSO_TEST_DATABASE` picks the database:
 
 | Value             | Database                                          |
 | ----------------- | ------------------------------------------------- |
