@@ -1,23 +1,22 @@
 # Installing Verso
 
-This sets up a Verso instance: on NixOS, in a container, or from the package on another Linux
+This page sets up a Verso instance on NixOS, in a container, or from the package on another Linux
 system. To work on Verso itself, see [CONTRIBUTING.md](../../CONTRIBUTING.md) instead.
 
 ## What you need
 
-- **A Linux server**, x86_64 or aarch64, with [Nix](https://nixos.org) and flakes enabled to build
-  Verso.
-- **A domain, served over HTTPS**, which [can't change later](configuring.md#main-options). Verso
-  must answer at `https://<domain>/` itself, as other instances look for it there.
-- **A database**: PostgreSQL, tested with version 18, with a UTF-8 database. SQLite also works, for
-  a small instance in one process.
-- **An OpenID Connect provider**, such as Keycloak, Authentik or Kanidm. Verso has no passwords:
-  users log in there. Register Verso with it as a confidential client, with
+- A Linux server, x86_64 or aarch64, with [Nix](https://nixos.org) and flakes enabled.
+- A domain served over HTTPS, which [can't change later](configuring.md#main-options). Verso has to
+  answer at `https://<domain>/` itself, because other instances look for it there.
+- PostgreSQL, tested with version 18, and a UTF-8 database. SQLite works too, for a small instance
+  in one process.
+- An OpenID Connect provider, such as Keycloak, Authentik or Kanidm. Verso has no passwords of its
+  own; users log in with the provider. Register Verso there as a confidential client, with
   `https://<domain>/oauth/callback` as the redirect URI.
-- **Optionally, an S3 bucket** for media, on AWS, Garage, MinIO or any other server that speaks S3.
-  Otherwise, media is kept in a directory.
+- Optionally, an S3 bucket for media, on AWS, Garage, MinIO or anything else that speaks S3.
+  Otherwise media is stored in a directory.
 
-Verso brings libraries it needs, such as vips for processing images.
+Verso comes with the libraries it needs, such as vips for images.
 
 ## On NixOS
 
@@ -63,13 +62,15 @@ services.verso = {
 | `database.createLocally` | runs PostgreSQL on the machine for Verso, `true` by default |
 | `package`                | the Verso package to run                                    |
 
-- **Settings** are the same as in `config.toml`. See [Configuring](configuring.md).
-- **Secrets** go in `credentials` (never in `settings`, which ends up in the world-readable Nix
-  store). The module refuses a client secret, S3 secret key or database password written there.
-  Refer to a credential as `${file:/run/credentials/verso.service/<name>}`, written `\${…}` in Nix.
-- **Media** is kept in `/var/lib/verso/media`, unless `settings.media.storage` says otherwise.
-- **The service** runs `verso migrate`, then `verso all`, as an unprivileged dynamic user.
-- **Admin commands** run with `sudo verso-admin …`. See [Commands](commands.md).
+`settings` takes the same options as `config.toml`, described in [Configuring](configuring.md).
+
+Secrets go in `credentials`, never in `settings`, which ends up in the world-readable Nix store. The
+module refuses a client secret, S3 secret key or database password written in `settings`. Refer to a
+credential as `${file:/run/credentials/verso.service/<name>}`, escaped as `\${…}` in Nix.
+
+Media is stored in `/var/lib/verso/media`, unless `settings.media.storage` says otherwise. The
+service runs `verso migrate` and then `verso all`, as an unprivileged dynamic user. Run admin
+commands with `sudo verso-admin …`, as described in [Commands](commands.md).
 
 ## In a container
 
@@ -87,8 +88,8 @@ docker run --rm -v ./config.toml:/config.toml:ro -e DB_PASSWORD verso:0.0.0 migr
 docker run -d -p 8080:8080 -v ./config.toml:/config.toml:ro -e DB_PASSWORD verso:0.0.0
 ```
 
-The first command sets up the database, and the second runs Verso. Use S3 for media in a container,
-or mount a volume writable by user 65534 and point `[media] storage` at it.
+The first command sets up the database, and the second runs Verso. In a container, use S3 for media,
+or mount a volume that user 65534 can write to and point `[media] storage` at it.
 
 ## From the package
 
@@ -100,16 +101,16 @@ nix build --out-link /opt/verso github:versia-pub/verso
 /opt/verso/bin/verso --config /etc/verso/config.toml all
 ```
 
-The link in `/opt/verso` keeps the build from being garbage-collected. Run `verso all` as a service,
-under its own user, such as with systemd.
+The `/opt/verso` link stops the build from being garbage-collected. Run `verso all` as a service
+under its own user, for example with systemd.
 
 ## Behind a reverse proxy
 
-Verso serves plain HTTP, on port 8080 by default. Put a reverse proxy in front of it for HTTPS. It
-must pass WebSocket upgrades, for streaming, and allow uploads as large as
+Verso serves plain HTTP, on port 8080 by default, so put a reverse proxy in front of it for HTTPS.
+The proxy has to pass WebSocket upgrades for streaming, and allow uploads as large as
 `[media] max_upload_bytes`, 16 MiB by default.
 
-With [Caddy](https://caddyserver.com), which gets certificates and does the rest by itself:
+[Caddy](https://caddyserver.com) gets certificates and handles the rest on its own:
 
 ```
 social.example {
@@ -144,9 +145,9 @@ proxy isn't on the same machine, add its address to
 
 ## First steps
 
-1. **Log in.** Verso has no web interface of its own: add your domain to a Mastodon app, and log in
-   through your provider. Your account is made at your first login.
-2. **Make an admin role**, and give it to yourself:
+1. Log in. Verso has no web interface of its own, so add your domain to a Mastodon app and log in
+   through your provider. Your account is created the first time you log in.
+2. Create an admin role and give it to yourself:
 
    ```sh
    verso admin roles create Admin --permissions roles,emojis,blocks --priority 100
@@ -155,7 +156,7 @@ proxy isn't on the same machine, add its address to
 
    On NixOS, run `sudo verso-admin` instead of `verso admin`. To grant roles from your provider's
    groups instead, see [Roles from your provider](configuring.md#roles-from-your-provider).
-3. **Check federation**, by searching for an account on another Versia instance.
+3. Check that federation works by searching for an account on another Versia instance.
 
 [Commands](commands.md) lists every command, and [Running an instance](running.md) covers upgrades,
 backups and logs. Each instance serves its API reference at `/docs`.

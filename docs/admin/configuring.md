@@ -1,16 +1,17 @@
 # Configuring Verso
 
-Verso reads one TOML file, `config.toml`, in the directory it runs from, or the file given with
+Verso reads one TOML file: `config.toml` in the directory it runs from, or the file given with
 `--config`. On NixOS, `services.verso.settings` is that file, written as Nix.
-[`config.example.toml`](../config.example.toml) lists every setting, with its default. This page
+
+[`config.example.toml`](../config.example.toml) lists every setting with its default. This page
 covers the ones most instances change.
 
 Verso checks the whole file when it starts. A typo, an unknown key or a value out of range stops it,
-with a message saying where the problem is. Settings changes take effect when Verso restarts.
+with a message saying what's wrong and where. Changes take effect when Verso restarts.
 
 ## Secrets
 
-Any string can come from an environment variable or a file, so secrets stay out of the config:
+Any string can come from an environment variable or a file, which keeps secrets out of the config:
 
 ```toml
 database = { postgres = "postgresql://verso:${env:DB_PASSWORD}@db.internal/verso" }
@@ -20,8 +21,8 @@ client_secret = "${file:/run/secrets/oidc}"
 # …
 ```
 
-A file's trailing newline is dropped. Write `$${` for a literal `${`. A missing variable or file
-stops Verso, and the error names the setting, never the value.
+A file's trailing newline is dropped, and `$${` gives a literal `${`. If a variable or file is
+missing, Verso won't start, and the error names the setting but never shows the value.
 
 ## Main options
 
@@ -34,17 +35,15 @@ port = 8080
 trusted_proxies = ["127.0.0.1", "::1"]
 ```
 
-- **`domain`** can't change later, as accounts and federation are tied to it.
-- **`database`** is a PostgreSQL connection string, or `{ sqlite = "verso.db" }`. SQLite suits one
-  `verso all` process: with several, they can't tell each other what changed. With PostgreSQL,
-  `pool_size` (30), `connect_timeout_seconds` (10) and `statement_timeout_seconds` (60) tune each
-  process's connections.
-- **`trusted_proxies`** are the addresses, or CIDR ranges, of your reverse proxies. Only they may
-  say who the client is, in `X-Forwarded-For`, which rate limits use.
+`domain` can't change later, because accounts and federation are tied to it.
+
+`database` is a PostgreSQL connection string, or `{ sqlite = "verso.db" }`. SQLite only suits a
+single `verso all` process, since several processes on it can't tell each other what changed.
+
+`trusted_proxies` lists your reverse proxies, as addresses or CIDR ranges. Only they are trusted to
+give the client's address in `X-Forwarded-For`, which rate limits use.
 
 ## The instance
-
-Instance metadata:
 
 ```toml
 [instance]
@@ -61,14 +60,15 @@ text = "${file:/etc/verso/privacy.txt}"
 updated = 2026-10-01
 ```
 
-- **`contact.account`** is a local username, shown as the instance's contact.
-- **Long texts** are `extended_description`, `privacy_policy` and `terms_of_service`. Each is plain
-  text, with a blank line between paragraphs, and the day it last changed, written without quotes.
-  Keep them in files, read with `${file:…}`.
+`contact.account` is the username of a local account to show as the instance's contact.
+
+`extended_description`, `privacy_policy` and `terms_of_service` are plain text, with a blank line
+between paragraphs, and the date they last changed, unquoted. It's easiest to keep them in files and
+read them with `${file:…}`.
 
 ## Logging in
 
-Users log in through one or more OpenID Connect providers. Each is an `[[auth.issuers]]` entry:
+Users log in through one or more OpenID Connect providers, each an `[[auth.issuers]]` entry:
 
 ```toml
 [[auth.issuers]]
@@ -79,23 +79,23 @@ client_secret = "${file:/run/secrets/oidc}"
 registration = "open"
 ```
 
-- **`registration`** controls who gets an account at their first login: `"open"` for anyone the
-  provider lets in, `"closed"` for nobody, or anyone whose claim holds a value, such as
-  `{ claim = "groups", contains = "social-users" }`. It is `"closed"` by default, so set it before
-  the first login.
-- **`url`** links the accounts to the provider, so changing it cuts them off.
-- **`username_claim`** is the claim a new account's username comes from, `preferred_username` by
-  default. If it is taken, Verso adds a number, e.g. `username2`.
-- **`scopes`** are requested besides `openid` and `profile`, such as `["groups"]` for a groups
-  claim.
-- **`name`** is shown on the login page, when there is more than one provider.
+`registration` decides who gets an account when they first log in. `"open"` lets in anyone the
+provider does, and `"closed"` lets in nobody. It can also require a claim to hold a value, as in
+`{ claim = "groups", contains = "social-users" }`. The default is `"closed"`, so set this before
+anyone logs in.
 
-Logins are matched to accounts by provider and user id only, never by email address.
+Accounts are linked to the provider's `url`, so changing it cuts them off. Logins are matched to
+accounts by provider and user id only, never by email address.
+
+A new account's username comes from `username_claim`, `preferred_username` by default. If that
+username is taken, Verso adds a number, such as `username2`. Use `scopes` to request more than
+`openid` and `profile`, such as `["groups"]` for a groups claim. `name` is shown on the login page
+when there's more than one provider.
 
 ## Roles from your provider
 
-Roles give accounts more permissions. Instead of granting them by hand, a provider can grant them
-from a claim, at every login:
+Roles give accounts extra permissions. Instead of granting them by hand, you can have the provider
+grant them from a claim at each login:
 
 ```toml
 [[auth.issuers]]
@@ -104,13 +104,13 @@ scopes = ["groups"]
 roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
 ```
 
-The role must already exist: create it with `verso admin roles create`. A role the provider granted
-is taken back at the next login without the claim. Roles granted by hand stay.
+The role has to exist already, so create it first with `verso admin roles create`. When a user logs
+in without the claim, the role is taken away again. Roles granted by hand aren't affected.
 
 ## Permissions
 
-`[permissions]` sets what everyone may do before roles add more: `anonymous` for logged-out
-visitors, and `default` for every user. For example, to keep logged-out visitors from browsing the
+`[permissions]` sets what everyone can do before roles add more: `anonymous` for logged-out
+visitors, and `default` for every user. For example, to stop logged-out visitors from browsing the
 instance through the API:
 
 ```toml
@@ -118,38 +118,37 @@ instance through the API:
 anonymous = []
 ```
 
-Permissions apply to the client API. Other instances still fetch public statuses over Versia.
+Setting a list replaces the default, so include everything you want to keep. Permissions only apply
+to the client API: other instances can still fetch public statuses over Versia.
 
-| Permission             | Lets one                                                       |
-| ---------------------- | -------------------------------------------------------------- |
-| `read:account`         | view accounts and their profiles                               |
-| `read:account_follows` | view who accounts follow, and who follows them                 |
-| `read:note`            | view statuses, as their visibility allows                      |
-| `read:note_likes`      | view who likes the statuses one may see                        |
-| `read:note_boosts`     | view who boosts the statuses one may see                       |
-| `read:reaction`        | view who reacts to the statuses one may see                    |
-| `read:emoji`           | view global custom emojis and one's own                        |
-| `search`               | search accounts, statuses and hashtags                         |
-| `owner:account`        | change one's own profile and settings                          |
-| `owner:follow`         | follow and unfollow accounts                                   |
-| `owner:block`          | block and unblock accounts                                     |
-| `owner:mute`           | mute and unmute accounts                                       |
-| `owner:like`           | like statuses                                                  |
-| `owner:boost`          | boost statuses                                                 |
-| `owner:reaction`       | react to statuses                                              |
-| `owner:note`           | post and delete one's own statuses                             |
-| `owner:media`          | upload media                                                   |
-| `owner:emoji`          | add one's own custom emojis                                    |
-| `owner:notification`   | view and dismiss one's own notifications                       |
-| `blocks`               | see who blocks each account, as moderators may need to         |
-| `emojis`               | add, change and delete any custom emoji, and make them global  |
-| `roles`                | create, change and grant lower roles, with permissions one has |
-
-Setting a list replaces the default, so list everything you want to keep.
+| Permission             | Lets a user                                                      |
+| ---------------------- | ---------------------------------------------------------------- |
+| `read:account`         | view accounts and their profiles                                 |
+| `read:account_follows` | view who accounts follow, and who follows them                   |
+| `read:note`            | view statuses, as their visibility allows                        |
+| `read:note_likes`      | view who liked the statuses they can see                         |
+| `read:note_boosts`     | view who boosted the statuses they can see                       |
+| `read:reaction`        | view who reacted to the statuses they can see                    |
+| `read:emoji`           | view global custom emoji and their own                           |
+| `search`               | search accounts, statuses and hashtags                           |
+| `owner:account`        | change their own profile and settings                            |
+| `owner:follow`         | follow and unfollow accounts                                     |
+| `owner:block`          | block and unblock accounts                                       |
+| `owner:mute`           | mute and unmute accounts                                         |
+| `owner:like`           | like statuses                                                    |
+| `owner:boost`          | boost statuses                                                   |
+| `owner:reaction`       | react to statuses                                                |
+| `owner:note`           | post and delete their own statuses                               |
+| `owner:media`          | upload media                                                     |
+| `owner:emoji`          | add their own custom emoji                                       |
+| `owner:notification`   | view and dismiss their own notifications                         |
+| `blocks`               | see who blocks each account, which moderators may need           |
+| `emojis`               | add, change and delete any custom emoji, and make them global    |
+| `roles`                | create, change and grant lower roles, with permissions they have |
 
 ## Media
 
-Uploads are kept in a directory, or in an S3 bucket:
+Uploads are stored in a directory, or in an S3 bucket:
 
 ```toml
 [media]
@@ -165,40 +164,27 @@ secret_access_key = "${file:/run/secrets/s3}"
 public_url = "https://media.social.example"
 ```
 
-- **`public_url`** is where the bucket's files are public, such as a CDN in front of it. Without it,
-  Verso serves them itself.
-- **`prefix`** shares the bucket with other data.
-- **Limits**: `max_upload_bytes` (16 MiB), `max_pixels` (3840×2160, larger images are scaled down)
-  and `max_emoji_bytes` (256 KiB). Uploads not attached to a status within `unattached_hours` (24)
-  are deleted.
+Set `public_url` if the bucket's files are public, for example behind a CDN. Without it, Verso
+serves the files itself. `prefix` lets the bucket hold other data too.
+
+Uploads are limited to 16 MiB, images over 3840×2160 are scaled down, and custom emoji are limited
+to 256 KiB. Uploads that aren't attached to a status within 24 hours are deleted. The `[media]`
+section in the example config has the settings for each.
 
 ## Federation
 
 `blocked_domains` and `silent_blocks` block instances, as [Moderating](moderating.md) explains.
 
-- **`delivery_hours`** (48) is how long a delivery is retried before it is given up on.
-- **`unreachable_days`** (7) is how long an instance can go unreached before Verso stops sending it
-  anything, until it hears from it again.
-- **`[federation.fetch_limit]`** and **`[federation.rate_limit]`** limit how much Verso fetches from
-  one instance, and how much one instance may send.
+Deliveries are retried for `delivery_hours`, 48 by default. Verso stops sending to an instance it
+hasn't reached for `unreachable_days`, 7 by default, until it hears from it again.
+`[federation.fetch_limit]` limits how much Verso fetches from any one instance, and
+`[federation.rate_limit]` limits how much one instance can send.
 
 ## Limits
 
-`[limits]` sets how long what users write may be, in characters, and how many of each:
-
-| Setting             | Default | Limits                                  |
-| ------------------- | ------- | --------------------------------------- |
-| `status`            | 10000   | a status, with its content warning      |
-| `attachments`       | 16      | media attachments on a status           |
-| `mentions`          | 100     | accounts a status mentions, at most 150 |
-| `media_description` | 4000    | a media attachment's alt text           |
-| `display_name`      | 60      | a display name                          |
-| `note`              | 10000   | a bio                                   |
-| `fields`            | 16      | profile fields                          |
-| `field_name`        | 255     | a profile field's name                  |
-| `field_value`       | 255     | a profile field's value                 |
-
-Links in a status count as 23 characters, whatever their length, as on Mastodon.
+`[limits]` sets the maximum length of what users write, such as statuses, bios and alt text, and how
+many attachments, mentions and profile fields they can have. The example config lists each one with
+its default. Links in a status count as 23 characters, however long they are.
 
 ## Rate limits
 
@@ -209,9 +195,9 @@ window_seconds = 300
 store = "memory"
 ```
 
-Each client may make `limit` requests in each window: counted per account, or per IP address without
-one. Counts are kept in each process's `"memory"`, or in the `"database"`, which several web nodes
-share.
+Each client can make `limit` requests per window, counted per account, or per IP address when
+there's no account. Counts are kept in each process's `"memory"`, or in the `"database"`, so that
+several web nodes share them.
 
 ## Logging
 
