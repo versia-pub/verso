@@ -83,8 +83,8 @@ Without signing in, a query shorter than 5 characters only finds the account at 
 
 ## Hashtags and URLs
 
-Hashtags are matched by prefix, shortest first, among those used by public or unlisted statuses.
-There's no hashtags table: a hashtag is just its name in `note_tags`. See
+Hashtags are matched by prefix in `tags`, shortest first, among those used by public or unlisted
+statuses. `tags` has each hashtag once, in lower case, and shown as it was first written. See
 [`app/search/hashtag_queries.ts`](../app/search/hashtag_queries.ts).
 
 With `resolve`, a query that is the URL of a Versia `User` or `Note` (the `uri` Verso shows for an

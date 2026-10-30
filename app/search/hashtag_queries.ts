@@ -1,6 +1,6 @@
 /**
- * Finding hashtags, and how much they were used. There is no table of hashtags, so its queries read
- * the hashtags statuses use, and the statuses, directly.
+ * Finding hashtags, and how much they were used. Its queries read the hashtags, the hashtags
+ * statuses use, and the statuses, directly.
  * @module
  */
 import { type Expression, sql, type SqlBool } from "kysely";
@@ -16,11 +16,11 @@ import { firstIdAt } from "../kernel/ids.ts";
 const startsWith = (ctx: Pick<Context, "db">, start: string): Expression<SqlBool> => {
     if (usesSqlite(ctx.db)) {
         const pattern = `${start.replaceAll(/[*?[]/g, (character) => `[${character}]`)}*`;
-        return sql<SqlBool>`note_tags.name GLOB ${pattern}`;
+        return sql<SqlBool>`tags.name GLOB ${pattern}`;
     }
 
     const pattern = `${start.replaceAll(/[\\%_]/g, (character) => `\\${character}`)}%`;
-    return sql<SqlBool>`note_tags.name LIKE ${pattern} ESCAPE '\\'`;
+    return sql<SqlBool>`tags.name LIKE ${pattern} ESCAPE '\\'`;
 };
 
 /**
@@ -35,14 +35,20 @@ export const hashtagsStartingWith = async (
     limit: number,
     offset: number,
 ): Promise<string[]> => {
-    const rows = await ctx.db.selectFrom("note_tags")
-        .innerJoin("notes", "notes.id", "note_tags.note_id")
-        .select("note_tags.name")
+    const rows = await ctx.db.selectFrom("tags")
+        .select("tags.name")
         .where(startsWith(ctx, start))
-        .where("notes.visibility", "in", ["public", "unlisted"])
-        .groupBy("note_tags.name")
-        .orderBy(sql`length(note_tags.name)`)
-        .orderBy("note_tags.name")
+        .where(({ exists, selectFrom }) =>
+            exists(
+                selectFrom("note_tags")
+                    .innerJoin("notes", "notes.id", "note_tags.note_id")
+                    .select("note_tags.note_id")
+                    .whereRef("note_tags.name", "=", "tags.name")
+                    .where("notes.visibility", "in", ["public", "unlisted"]),
+            )
+        )
+        .orderBy(sql`length(tags.name)`)
+        .orderBy("tags.name")
         .limit(limit)
         .offset(offset)
         .execute();

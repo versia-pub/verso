@@ -5,6 +5,7 @@
  */
 import type { Tag } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
+import { displayNamesOf } from "../tags/tag_queries.ts";
 import { hashtagsStartingWith, hashtagUses } from "./hashtag_queries.ts";
 
 /** A search for hashtags. */
@@ -27,18 +28,20 @@ const dayLength = 24 * 60 * 60 * 1000;
 
 /**
  * The hashtags `names`, with how they were used on each of the past week's days, today first, in
- * UTC, as Mastodon shows them. Verso keeps no table of hashtags, so each one's id is its name.
+ * UTC, as Mastodon shows them, by the names they were first written with. Each one's id is its name
+ * in lower case.
  */
 export const renderHashtags = async (ctx: Context, names: readonly string[]): Promise<Tag[]> => {
     const today = Math.floor(ctx.clock.now().getTime() / dayLength) * dayLength;
     const days = Array.from({ length: 7 }, (_, i) => new Date(today - i * dayLength));
+    const displayNames = await displayNamesOf(ctx, names);
     const uses = new Map(
         (await hashtagUses(ctx, names, days)).map((used) => [`${used.name} ${used.day}`, used]),
     );
 
     return names.map((name) => ({
         id: name,
-        name,
+        name: displayNames.get(name) ?? name,
         url: ctx.urls.url`/tags/${name}`,
         history: days.map((day, i) => {
             const used = uses.get(`${name} ${i}`);

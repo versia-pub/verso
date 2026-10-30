@@ -200,3 +200,43 @@ Deno.test("existing statuses are put in the thread of the status they reply to",
         { id: "d", thread_id: "d" },
     ]);
 });
+
+Deno.test("the hashtags statuses used become known, and statuses' hashtags refer to them", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0062_tags"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    const now = new Date("2026-01-01T00:00:00Z");
+    await db.insertInto("accounts")
+        .values({
+            id: "alice",
+            username: "alice",
+            instance_id: null,
+            remote_id: null,
+            created_at: now,
+        })
+        .execute();
+    for (const [id, tags] of [["a", ["verso", "deno"]], ["b", ["verso"]]] as const) {
+        await sql`
+            insert into notes
+                (id, account_id, visibility, content, content_format, content_html, created_at,
+                    thread_id)
+            values (${id}, 'alice', 'public', 'Hi', 'text/plain', '<p>Hi</p>', ${now}, ${id})
+        `.execute(db);
+        for (const name of tags) {
+            await sql`insert into note_tags (note_id, name) values (${id}, ${name})`.execute(db);
+        }
+    }
+
+    assertEquals((await migrate(db)).ok, true);
+    assertEquals(await db.selectFrom("tags").selectAll().orderBy("name").execute(), [
+        { name: "deno", display_name: "deno" },
+        { name: "verso", display_name: "verso" },
+    ]);
+    assertEquals((await db.selectFrom("note_tags").selectAll().execute()).length, 3);
+    await assertRejects(() =>
+        db.insertInto("note_tags").values({ note_id: "a", name: "unknown" }).execute()
+    );
+});

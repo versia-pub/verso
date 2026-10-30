@@ -53,7 +53,7 @@ Deno.test("a local note is a status, with its mentions, hashtags and the note it
         spoiler_text: "Hello",
         media_attachments: [],
         mentions: [{ id: "carol", username: "carol", url: carol.uri, acct: "carol@b.example" }],
-        tags: [{ name: "verso", url: "https://social.example/tags/verso" }],
+        tags: [{ name: "Verso", url: "https://social.example/tags/verso" }],
         emojis: [],
         reactions: [],
         reblogs_count: 0,

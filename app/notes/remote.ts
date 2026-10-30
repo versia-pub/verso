@@ -203,7 +203,8 @@ export const receiveNote = async (
     const hashtags = content.text === ""
         ? scanText(textOfHtml(content.html), "text/plain").hashtags
         : scanText(content.text, content.format).hashtags;
-    const tags = [...new Set(hashtags.map((tag) => tag.toLowerCase()))].slice(0, remoteTags);
+    // They differ in more than case already.
+    const tags = hashtags.slice(0, remoteTags);
     const emojiIds = await keepRemoteEmojis(
         ctx,
         sender.instanceId,

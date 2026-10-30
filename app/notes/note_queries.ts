@@ -6,6 +6,7 @@ import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { attachmentsOf, hasAttachments } from "../media/attachment_queries.ts";
+import { insertTags } from "../tags/tag_queries.ts";
 import type { NoteIdQuery } from "./removal_queries.ts";
 import type { NotesTable, NoteVersionsTable } from "./tables.ts";
 
@@ -13,7 +14,10 @@ export type NoteRow = Selectable<NotesTable>;
 
 export type NoteVersionRow = Selectable<NoteVersionsTable>;
 
-/** Adds the users a status mentions and its hashtags, in lower case. */
+/**
+ * Adds the users a status mentions and its hashtags, in lower case, adding the hashtags that
+ * aren't known yet as they are written.
+ */
 const insertMentionsAndTags = async (
     ctx: Context,
     noteId: string,
@@ -26,6 +30,7 @@ const insertMentionsAndTags = async (
             .execute();
     }
 
+    await insertTags(ctx, tags);
     for (const batch of batchesOf([...new Set(tags.map((tag) => tag.toLowerCase()))])) {
         await ctx.db.insertInto("note_tags")
             .values(batch.map((name) => ({ note_id: noteId, name })))

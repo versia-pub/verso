@@ -26,6 +26,7 @@ import { mutedThreadsAmong } from "./thread_mute_queries.ts";
 import { isPinnable } from "./pins.ts";
 import { totalsOf } from "./total_queries.ts";
 import { onlookerOf } from "./visibility.ts";
+import { displayNamesOf } from "../tags/tag_queries.ts";
 
 /**
  * The status's id in Versia: the URL its Note entity is fetched from, or for a local boost, its
@@ -112,6 +113,7 @@ export const renderStatuses = async (
     const noteIds = notes.map((note) => note.id);
     const mentions = await mentionsOf(ctx, noteIds);
     const tags = await tagsOf(ctx, noteIds);
+    const tagNames = await displayNamesOf(ctx, [...tags.values()].flat());
     const attachments = await attachmentsOf(ctx, noteIds);
     const emojis = await emojisOfNotes(ctx, noteIds);
     const blocked = viewerBlocks(ctx, viewerId);
@@ -169,7 +171,7 @@ export const renderStatuses = async (
                     : [];
             }),
             tags: (tags.get(note.id) ?? []).map((name) => ({
-                name,
+                name: tagNames.get(name) ?? name,
                 url: ctx.urls.url`/tags/${name}`,
             })),
             emojis: renderEmojis(ctx, [
