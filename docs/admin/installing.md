@@ -7,8 +7,8 @@ system. To work on Verso itself, see [CONTRIBUTING.md](../../CONTRIBUTING.md) in
 
 - **A Linux server**, x86_64 or aarch64, with [Nix](https://nixos.org) and flakes enabled to build
   Verso.
-- **A domain, served over HTTPS**, which [can't change later](configuring.md#the-basics). Verso must
-  answer at `https://<domain>/` itself, as other instances look for it there.
+- **A domain, served over HTTPS**, which [can't change later](configuring.md#main-options). Verso
+  must answer at `https://<domain>/` itself, as other instances look for it there.
 - **A database**: PostgreSQL, tested with version 18, with a UTF-8 database. SQLite also works, for
   a small instance in one process.
 - **An OpenID Connect provider**, such as Keycloak, Authentik or Kanidm. Verso has no passwords:
@@ -140,7 +140,7 @@ server {
 
 `$connection_upgrade` comes from the usual `map $http_upgrade $connection_upgrade` block. If the
 proxy isn't on the same machine, add its address to
-[`[http] trusted_proxies`](configuring.md#the-basics).
+[`[http] trusted_proxies`](configuring.md#main-options).
 
 ## First steps
 

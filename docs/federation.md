@@ -1,7 +1,7 @@
 # Federation
 
-Verso federates over [Versia 0.6](https://versia.pub). Instances send each other signed JSON
-entities, such as a `User` or a `Note`, over HTTPS. Entities travel in four ways:
+This is how Verso implements [Versia 0.6](https://versia.pub). This document assumes you know the
+spec, and covers only Verso's side of it. Entities move in four ways:
 
 ```
 Receiving   remote ── POST inbox ──► inbox route ── job ──► inbox worker ──► type.receive
@@ -10,23 +10,15 @@ Fetching    resolver ── GET entity ──► remote ──► type.receive
 Serving     remote ── GET entity ──► entity routes ──► type.find
 ```
 
-- **Receiving.** A remote instance posts an entity to Verso's inbox. Verso checks it, queues it, and
-  a worker applies it.
-- **Sending.** A local change emits an event. A subscriber queues a delivery job for each instance
-  that should get it, and a worker signs and sends it.
-- **Fetching.** When Verso meets a reference it doesn't have, such as a reply's parent, the resolver
-  fetches it.
-- **Serving.** Other instances fetch Verso's entities the same way, from its entity routes.
-
-The code is in [`app/federation/`](../app/federation/), with each module's own entities in its
-`federation.ts` or `versia.ts`. Versia's schemas, references and signing are in
+The shared code is in [`app/federation/`](../app/federation/). Each module keeps its own entities in
+its `federation.ts` or `versia.ts`. Versia's schemas, references and signing live in
 [`packages/protocol`](../packages/protocol/), which does no I/O.
 
 ## The entity registry
 
-[`app/registry.ts`](../app/registry.ts) lists every entity type Verso supports. Each is an
-`EntityType` from [`app/federation/registry.ts`](../app/federation/registry.ts), which the inbox,
-the resolver and the entity routes all read:
+[`app/registry.ts`](../app/registry.ts) lists every entity type Verso supports. Each one is an
+`EntityType` from [`app/federation/registry.ts`](../app/federation/registry.ts), and the inbox, the
+resolver and the entity routes all work from it:
 
 | Field           | What it does                                                           |
 | --------------- | ---------------------------------------------------------------------- |
@@ -43,9 +35,9 @@ the resolver and the entity routes all read:
 | `collections`   | its collections, such as a user's followers, by name                   |
 | `resendable`    | whether the same entity may be sent again on purpose                   |
 
-Modules add collections to `User` and `Note` in `app/registry.ts`, so `notes` doesn't need to know
-about likes, nor `accounts` about follows. The registry also lists the extensions Verso supports,
-for `/.versia/v0.6/instance`. To add a type, see
+Modules add their collections to `User` and `Note` in `app/registry.ts`, so `notes` doesn't need to
+know about likes, and `accounts` doesn't need to know about follows. The registry also lists the
+extensions Verso supports, for `/.versia/v0.6/instance`. To add a type, see
 [Adding a Versia type](guides/adding-a-versia-type.md).
 
 ## Receiving
@@ -71,146 +63,153 @@ inboxHandler (inbox_worker.ts)
 ctx.transaction(tx ⇒ type.receive(tx, entity, sender))
 ```
 
-- The inbox answers 202 once the entity is queued. Anything slow happens in the worker.
-- An entity that is invalid, or sent by an instance that may not send it, is given up on with
-  `PermanentFailure`, and the sender is told why through instance messaging, if it accepts it.
-- The dedupe key stops a replayed request being applied twice. For a `resendable` type, such as a
-  user whose profile changed back, the key includes the signature, so only an identical request is a
-  duplicate.
-- `Delete` is a type of its own, in [`app/federation/delete.ts`](../app/federation/delete.ts). It
-  calls the deleted entity's type's `prepareDelete` and `deleteRemote`.
+If an entity is invalid, or comes from an instance that isn't allowed to send it, the job fails with
+`PermanentFailure`. Verso then tells the sender why over instance messaging, if the sender supports
+it.
+
+The dedupe key stops a replayed request from being applied twice. Some types are `resendable`, such
+as a user whose profile changed and then changed back. For those, the key includes the signature, so
+only an identical request counts as a duplicate.
+
+`Delete` is handled in [`app/federation/delete.ts`](../app/federation/delete.ts), which calls
+`prepareDelete` and `deleteRemote` on the deleted entity's type.
 
 ## Sending
 
-A module's subscriber decides who should get an entity, and calls
-`queueDeliveriesTo(ctx, entity,
-instanceIds)` from
-[`app/federation/deliver.ts`](../app/federation/deliver.ts). For example, `noteDeliveries` sends a
-new status to the instances of its audience, which
+Each module's subscribers decide who gets an entity, and pass it to `queueDeliveriesTo` in
+[`app/federation/deliver.ts`](../app/federation/deliver.ts) with the instances to send it to. For a
+new status, `noteDeliveries` sends it to the instances of its audience, which
 [`app/notes/audience.ts`](../app/notes/audience.ts) works out.
 
-- **One job per instance**, in the `versia-deliver` queue, grouped by domain. The entity is
-  serialised once, when queued, so later changes can't alter what is sent.
-- **Blocked instances** get nothing. **Unreachable instances**, which haven't answered for
-  `[federation] unreachable_days`, get nothing until Verso hears from them again.
-- **The worker** signs the body and posts it. A 2xx is done. A 4xx other than 408 and 429 is given
-  up on. Anything else is retried for `[federation] delivery_hours`, 48 by default.
-- **An instance that asks to wait**, with `Retry-After` or `RateLimit-Remaining: 0`, has its whole
-  group of deliveries paused until then.
-- **A circuit breaker** in [`app/instances/reachability.ts`](../app/instances/reachability.ts) parks
-  an instance that fails too often in a row. Its deliveries wait, and one request at a time probes
-  whether it is back. Any request from it, or any answer other than a server error, resumes them.
+Each instance gets its own job in the `versia-deliver` queue, grouped by domain. The entity is
+serialised once, when the job is queued, so later changes don't alter what is sent. Nothing is sent
+to blocked instances, or to instances that haven't answered for `[federation] unreachable_days`,
+until Verso hears from them again.
+
+The worker signs the body and posts it:
+
+- A 2xx answer means it's delivered.
+- A 4xx answer, other than 408 and 429, fails the job permanently.
+- Anything else is retried for `[federation] delivery_hours`, 48 by default.
+- If the instance sends `Retry-After` or `RateLimit-Remaining: 0`, the whole group of deliveries to
+  it waits until then.
+
+A circuit breaker in [`app/instances/reachability.ts`](../app/instances/reachability.ts) parks an
+instance after 5 failures in a row. Its deliveries wait, and a single request at a time checks
+whether it's back. Any request from that instance, or any answer that isn't a server error, resumes
+them.
 
 ## Fetching
 
-`ctx.federation.resolve(ctx, reference, type, budget)`, built in
-[`app/federation/resolver.ts`](../app/federation/resolver.ts), returns Verso's id for what a
-reference points at:
+`ctx.federation.resolve(ctx, reference, type, budget)` returns Verso's id for whatever a reference
+points at. It's built in [`app/federation/resolver.ts`](../app/federation/resolver.ts):
 
 1. A local reference is looked up with the type's `known`.
-2. A remote one that Verso has, fetched in the last day, is used as it is.
-3. Otherwise, it is fetched from its instance, its signature checked, and stored with `receive`. If
-   fetching fails, the stored copy is used, if there is one.
+2. A remote entity that Verso fetched in the last day is used as it is.
+3. Anything else is fetched from its instance, its signature checked, and stored with `receive`. If
+   the fetch fails, Verso falls back to the stored copy, if it has one.
 
-Fetches are limited so remote content can't make Verso fetch without end:
+Remote content could otherwise make Verso fetch forever, so fetches are limited:
 
-- **A budget** per request or job: by default 20 fetches, shared by every resolve it does, and
-  optionally a deadline, after which requests in flight are aborted.
-- **A limit per instance**: 600 fetches every 5 minutes from each process, by default, as
-  `[federation.fetch_limit]` says.
-- **Missing entities** are remembered for an hour, so a reference to one that is gone isn't fetched
-  again and again.
-- **Blocked instances** are never fetched from.
+- Each request or job gets a budget, by default 20 fetches shared by all its resolves, and
+  optionally a deadline. Requests still in flight at the deadline are aborted.
+- Each process makes at most 600 fetches every 5 minutes to any one instance, by default. This is
+  `[federation.fetch_limit]`.
+- An entity that turned out to be missing is remembered for an hour, so it isn't fetched again and
+  again.
+- Nothing is fetched from blocked instances.
 
-A process makes one resolver and shares it, so two resolves of the same reference share one fetch.
+Each process shares one resolver, so two resolves of the same reference make one fetch.
 
-Remote instances fetch Verso's entities from `/.versia/v0.6/entities/<type>/<id>`, and their
-collections from `…/collections/<name>`. `entityRoutes` in `app/federation/registry.ts` makes these
-routes from the registry, using each type's `find` and `collections`, which check what the
-requesting instance may see. `/.well-known/versia` and `/.versia/v0.6/instance`, which tell peers
-the instance's versions and key, are in
+## Serving
+
+`entityRoutes` in `app/federation/registry.ts` builds the entity and collection routes from the
+registry. They use each type's `find` and `collections`, which check what the requesting instance
+may see. The discovery and instance metadata routes are in
 [`app/instances/versia_routes.ts`](../app/instances/versia_routes.ts).
 
 ## Signatures and keys
 
-Every request between instances, and every response to one, is signed with Ed25519 over the method,
-the path, a timestamp and the SHA-256 of the body. `@versia/protocol`'s `signing.ts` signs and
-verifies. Verify the body exactly as it arrived: parsing and serialising it again breaks the
-signature.
+`signing.ts` in `@versia/protocol` signs and verifies. Always verify the body exactly as it arrived:
+parsing it and serialising it again breaks the signature.
 
-- **This instance's key pair** is made by `verso migrate`, kept in `instance_keys`, and replaced
-  with `verso admin keys rotate`. See [`app/instances/keys.ts`](../app/instances/keys.ts).
-- **Remote instances' keys** come from their `/.versia/v0.6/instance`, and are kept in `instances`
-  and in memory. When a signature fails, the key is fetched again, at most so often, in case the
-  instance rotated it. See [`app/instances/remote_keys.ts`](../app/instances/remote_keys.ts).
-- **Signed routes** have `signed: true`. The HTTP app checks the signature before anything else,
-  gives the handler the signer's domain, and signs the response.
-- **Requests Verso sends** go through `sendSigned` in
-  [`app/federation/request.ts`](../app/federation/request.ts).
+`verso migrate` makes the instance's key pair and keeps it in `instance_keys`.
+`verso admin keys rotate` replaces it. See [`app/instances/keys.ts`](../app/instances/keys.ts).
+
+Remote instances' keys are kept in `instances`, and in memory. When a signature doesn't verify,
+Verso fetches the key again in case the instance rotated it, at most once every 5 minutes per
+instance. See [`app/instances/remote_keys.ts`](../app/instances/remote_keys.ts).
+
+For routes with `signed: true`, the HTTP app checks the signature before anything else, passes the
+signer's domain to the handler, and signs the response. Requests Verso sends go through `sendSigned`
+in [`app/federation/request.ts`](../app/federation/request.ts).
 
 ## Blocking instances
 
-Admins block instances with `[federation] blocked_domains` in config, or
-`verso admin domains
-block`. A blocked domain's subdomains are blocked too. Verso then refuses what
-it sends, sends it nothing, and fetches nothing from it. With `silent_blocks`, it answers as if
-nothing were wrong, so the instance can't tell. See
+Admins block instances in config, with `[federation] blocked_domains`, or with
+`verso admin domains block`. Blocking a domain blocks its subdomains too. Verso then refuses
+everything the instance sends, sends it nothing, and fetches nothing from it. With `silent_blocks`,
+Verso answers as if nothing were wrong, so the instance can't tell it's blocked. See
 [`app/moderation/domain_blocks.ts`](../app/moderation/domain_blocks.ts).
 
-Users' own domain blocks are different: they hide an instance from one user, and live in `graph`.
+Users' own domain blocks are a different thing. They hide an instance from one user, and live in
+`graph`.
 
 ## Safety
 
-- **No internal addresses.** The transport refuses to connect to private, loopback and link-local
-  addresses, after resolving DNS, so remote content can't make Verso call its own network.
-  `[federation] allow_internal_addresses` turns this off, for development only.
-- **Remote HTML is sanitised** when it is rendered, by
-  [`app/kernel/html.ts`](../app/kernel/html.ts). Images and other things that load from elsewhere
-  are removed, since Verso doesn't proxy remote media and loading it would reveal readers'
-  addresses.
-- **Rate limits.** Signed routes are limited per instance, as in [HTTP](http.md#rate-limits).
+The transport won't connect to private, loopback or link-local addresses, and checks after resolving
+DNS. This stops remote content from making Verso call into its own network.
+`[federation] allow_internal_addresses` turns the check off, for development only.
+
+Remote HTML is sanitised when it's rendered, by [`app/kernel/html.ts`](../app/kernel/html.ts).
+Images and anything else that loads from elsewhere are removed: Verso doesn't proxy remote media,
+and loading it would reveal readers' IP addresses.
+
+Signed routes are rate limited per instance, as described in [HTTP](http.md#rate-limits).
 
 ## Instance messaging
 
-Versia lets instances tell each other, in plain text, why something failed. Verso sends a message
-when it gives up on an entity, if the sender supports it, and logs the messages it receives, for
-admins to read. See [`app/federation/messaging.ts`](../app/federation/messaging.ts).
+Verso sends a message when it drops an entity, if the sender supports instance messaging, and logs
+the messages it receives for admins to read. See
+[`app/federation/messaging.ts`](../app/federation/messaging.ts).
 
 ## Where the spec is unclear
 
-Where the Versia 0.6 spec is unclear or wrong, Verso does as follows. Each will be raised upstream.
+Here is what Verso does where the Versia 0.6 spec is unclear or wrong. Each of these will be raised
+upstream.
 
-- **[Signing](https://versia.pub/signatures)**: the example code uses milliseconds; the text says
+- [Signing](https://versia.pub/signatures): the example code uses milliseconds, but the text says
   seconds. Verso uses seconds.
-- **The query string isn't signed.** Verso uses it only for paging.
-- **The destination host isn't signed**, so a request can be replayed to another instance for 5
-  minutes. Nothing can be done without a spec change.
-- **Optional fields** must be `null` ([entities](https://versia.pub/entities#entity-definition)), or
-  may be left out ([JSON](https://versia.pub/json#optional-fields)). Verso accepts both, and leaves
-  unset fields out when sending.
-- **`remote` is required**, but the User, InstanceMetadata and Collection examples leave it out.
-  Verso requires it.
-- **The Note example is invalid JSON**, missing a comma. Verso's tests use a fixed copy.
-- **Delete's `author`** is required in its table, and optional in the changelog. Verso takes it as
-  optional: missing means the signing instance.
-- **`compatibility.versions`** should hold `0.X`, but every example says `0.6.0`. Verso sends
-  `0.6.0` and accepts any string.
-- **Note `group` keywords** `public` and `followers` are also valid bare ids. Verso treats them as
+- The query string isn't signed. Verso only uses it for paging.
+- The destination host isn't signed, so a request can be replayed to another instance for 5 minutes.
+  This needs a spec change to fix.
+- Optional fields must be `null` according to
+  [entities](https://versia.pub/entities#entity-definition), but may be left out according to
+  [JSON](https://versia.pub/json#optional-fields). Verso accepts both, and leaves unset fields out
+  when sending.
+- `remote` is required, but the User, InstanceMetadata and Collection examples leave it out. Verso
+  requires it.
+- The Note example is invalid JSON: it's missing a comma. Verso's tests use a fixed copy.
+- Delete's `author` is required in its table, but optional in the changelog. Verso treats it as
+  optional, and a missing author means the signing instance.
+- `compatibility.versions` should hold `0.X`, but every example says `0.6.0`. Verso sends `0.6.0`
+  and accepts any string.
+- The Note `group` keywords `public` and `followers` are also valid bare ids. Verso treats them as
   the keywords.
-- **Rules written in prose**, such as an avatar being `image/*` and attachments being remote. Verso
-  enforces them.
-- **Domains can't have a port**, but references don't say. Verso lets references have one, for local
-  testing.
-- **Reference hostnames have no canonical form.** Verso lowercases them, drops port 443, compresses
-  IPv6 and uses ASCII only.
-- **Extension keys that break the naming rules** are rejected with 422.
-- **[JSON](https://versia.pub/json) keys can't have `$` or `+`**, but entities have `$schema`, and
-  content formats such as `image/svg+xml`. Verso also allows `+`, and `$` at the start.
+- Some rules are only written in prose, such as avatars being `image/*` and attachments being
+  remote. Verso enforces them.
+- Domains can't have a port, but the spec doesn't say whether references can. Verso allows a port in
+  references, for local testing.
+- Reference hostnames have no canonical form. Verso lowercases them, drops port 443, compresses IPv6
+  and uses ASCII only.
+- Extension keys that break the naming rules are rejected with a 422.
+- [JSON](https://versia.pub/json) keys can't contain `$` or `+`, but entities have `$schema`, and
+  content types such as `image/svg+xml`. Verso allows `+` anywhere and `$` at the start.
 
 ## Tests
 
-Federation is tested with complete instances talking to each other in one process.
+Federation tests run complete instances that talk to each other in one process.
 [`app/testing/network.ts`](../app/testing/network.ts) gives each instance a domain on a fake
 network, and `drain` runs every instance's jobs. [`app/testing/evil.ts`](../app/testing/evil.ts) is
 an instance that misbehaves on purpose, with bad signatures, rotated keys or unexpected answers.
-`nix flake check` also runs `federation-vms`, NixOS VMs that federate over a real network.
+`nix flake check` also runs `federation-vms`, which federates NixOS VMs over a real network.
