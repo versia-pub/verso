@@ -31,6 +31,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   subdomains, just like blocking each one would. It isn't federated either, and the user's followers
   there stay, and can still be followed. The domain must be a domain name.
 - Muting an account that's already muted updates the mute. A mute lasts at most five years.
+- Featured hashtags aren't federated, since Versia has none, so remote accounts don't have any.
+  Their `url` is the hashtag's, since Verso has no page of an account's statuses with it.
 - Users with the `blocks` permission, usually moderators, see in `blocked_by` whether the account
   blocks them. For everyone else it's always `false`.
 - `GET /api/v1/preferences` returns the user's posting defaults, which

@@ -52,6 +52,11 @@ const calls: Record<string, (client: Client) => unknown> = {
     "POST /api/v1/accounts/{id}/pin": (c) => c.accounts.pin("1"),
     "POST /api/v1/accounts/{id}/unpin": (c) => c.accounts.unpin("1"),
     "GET /api/v1/endorsements": (c) => c.endorsements.list(),
+    "GET /api/v1/featured_tags": (c) => c.featuredTags.list(),
+    "POST /api/v1/featured_tags": (c) => c.featuredTags.feature("cats"),
+    "DELETE /api/v1/featured_tags/{id}": (c) => c.featuredTags.unfeature("1"),
+    "GET /api/v1/featured_tags/suggestions": (c) => c.featuredTags.suggestions(),
+    "GET /api/v1/accounts/{id}/featured_tags": (c) => c.accounts.featuredTags("1"),
 
     "GET /api/v1/follow_requests": (c) => c.followRequests.list(),
     "POST /api/v1/follow_requests/{id}/authorize": (c) => c.followRequests.authorize("1"),

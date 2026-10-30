@@ -23,6 +23,7 @@ import { moderationRoutes } from "../moderation/routes.ts";
 import { registry } from "../registry.ts";
 import { searchRoutes } from "../search/routes.ts";
 import { streamingRoutes } from "../streaming/routes.ts";
+import { tagRoutes } from "../tags/routes.ts";
 import { docsRoute } from "./docs.ts";
 import { openApiRoute } from "./openapi.ts";
 import type { Route } from "./route.ts";
@@ -38,6 +39,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         // Before the account routes, whose `/api/v1/accounts/:id` would otherwise match their
         // paths.
         ...graphRoutes,
+        ...tagRoutes,
         ...searchRoutes(settings.search),
         ...accountRoutes(settings.media, settings.limits),
         ...directoryRoutes,

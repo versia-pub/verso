@@ -30,6 +30,13 @@ export type Links = {
 /** A custom emoji's name, without the colons around it, as Mastodon finds it in text. */
 export const shortcodePattern = "[a-zA-Z0-9_]{2,}";
 
+/** A hashtag's name, without its `#`, as Mastodon finds it: not all digits. */
+const hashtagPattern = String.raw`[\p{L}\p{M}\p{N}_·‌]*[\p{L}\p{M}_·‌][\p{L}\p{M}\p{N}_·‌]*`;
+
+/** Whether `name` is a hashtag's name, without its `#`. */
+export const isHashtagName = (name: string): boolean =>
+    new RegExp(`^${hashtagPattern}$`, "u").test(name);
+
 /**
  * Mentions, hashtags and shortcodes, as Mastodon finds them: none straight after a letter or a
  * slash, so addresses and links aren't mistaken for them, and hashtags not all digits.
@@ -40,8 +47,7 @@ const pattern = new RegExp(
     [
         String.raw`(?<![\p{L}\p{N}_/])@(?<username>[a-z0-9_]+(?:[a-z0-9_.-]*[a-z0-9_])?)` +
         String.raw`(?:@(?<domain>[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+))?`,
-        String.raw`(?<![\p{L}\p{M}\p{N}_/)])#(?<tag>[\p{L}\p{M}\p{N}_·‌]*` +
-        String.raw`[\p{L}\p{M}_·‌][\p{L}\p{M}\p{N}_·‌]*)`,
+        String.raw`(?<![\p{L}\p{M}\p{N}_/)])#(?<tag>${hashtagPattern})`,
         String.raw`(?<![\p{L}\p{N}:]):(?<shortcode>${shortcodePattern}):(?![\p{L}\p{N}:])`,
     ].join("|"),
     "giu",

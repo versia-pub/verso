@@ -414,6 +414,22 @@ Deno.test("a user features an account they follow, lists it, and stops featuring
     assertEquals((await alice.accounts.unpin(id)).endorsed, false);
 });
 
+Deno.test("a user features a hashtag, lists it, and stops featuring it", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    await alice.statuses.post({ status: "Hello #cats" });
+    const { id } = await test.client.accounts.lookup("alice");
+
+    assertEquals((await alice.featuredTags.suggestions()).map((tag) => tag.name), ["cats"]);
+    const featured = await alice.featuredTags.feature("cats");
+    assertEquals(featured.statuses_count, "1");
+    assertEquals((await alice.featuredTags.list()).map((tag) => tag.id), [featured.id]);
+    assertEquals((await test.client.accounts.featuredTags(id)).map((tag) => tag.name), ["cats"]);
+
+    await alice.featuredTags.unfeature(featured.id);
+    assertEquals(await alice.featuredTags.list(), []);
+});
+
 Deno.test("a user mutes the thread of a status, and unmutes it", async () => {
     await using test = await open();
     const alice = await test.as("alice");

@@ -2441,6 +2441,235 @@
                 }
             }
         },
+        "/api/v1/featured_tags": {
+            "get": {
+                "summary": "View your featured tags",
+                "description": "List all hashtags featured on your profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/featured_tags/#get"
+                },
+                "tags": [
+                    "featured_tags"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FeaturedTag"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Feature a tag",
+                "description": "Promote a hashtag on your profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/featured_tags/#feature"
+                },
+                "tags": [
+                    "featured_tags"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "The hashtag to be featured, without the hash sign."
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "The hashtag to be featured, without the hash sign."
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "The hashtag to be featured, without the hash sign."
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FeaturedTag"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/featured_tags/{id}": {
+            "delete": {
+                "summary": "Unfeature a tag",
+                "description": "Stop promoting a hashtag on your profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/featured_tags/#unfeature"
+                },
+                "tags": [
+                    "featured_tags"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/featured_tags/suggestions": {
+            "get": {
+                "summary": "View suggested tags to feature",
+                "description": "Shows up to 10 recently-used tags.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/featured_tags/#suggestions"
+                },
+                "tags": [
+                    "featured_tags"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Tag"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}/featured_tags": {
+            "get": {
+                "summary": "Get account's featured tags",
+                "description": "Tags featured by this account.\n\nNeeds the `read:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#featured_tags"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FeaturedTag"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/search": {
             "get": {
                 "summary": "Search for matching accounts",
@@ -12846,6 +13075,43 @@
                     "automatic",
                     "manual",
                     "current_user"
+                ]
+            },
+            "FeaturedTag": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "statuses_count": {
+                        "type": "string"
+                    },
+                    "last_status_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "url",
+                    "statuses_count",
+                    "last_status_at"
                 ]
             },
             "Field": {

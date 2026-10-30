@@ -35,7 +35,7 @@ import type {
 } from "../notes/tables.ts";
 import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { MarkersTable } from "../markers/tables.ts";
-import type { TagsTable } from "../tags/tables.ts";
+import type { FeaturedTagsTable, TagsTable } from "../tags/tables.ts";
 import type { NotificationsTable } from "../notifications/tables.ts";
 import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
 import type { AccountSearchTable, NoteSearchTable } from "../search/tables.ts";
@@ -56,6 +56,7 @@ export type Database = {
     domain_blocks: DomainBlocksTable;
     emojis: EmojisTable;
     endorsements: EndorsementsTable;
+    featured_tags: FeaturedTagsTable;
     follows: FollowsTable;
     blocks: BlocksTable;
     bookmarks: BookmarksTable;

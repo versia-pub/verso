@@ -52,7 +52,7 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/accounts/:id/statuses`               | ✅    |                                   |
 | `GET /api/v1/accounts/:id/followers`              | ✅    |                                   |
 | `GET /api/v1/accounts/:id/following`              | ✅    |                                   |
-| `GET /api/v1/accounts/:id/featured_tags`          | ❌    |                                   |
+| `GET /api/v1/accounts/:id/featured_tags`          | 🟡    | Remote accounts have none         |
 | `GET /api/v1/accounts/:id/lists`                  | ❌    |                                   |
 | `POST /api/v1/accounts/:id/follow`                | ✅    |                                   |
 | `POST /api/v1/accounts/:id/unfollow`              | ✅    |                                   |
@@ -82,7 +82,7 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `POST /api/v1/follow_requests/:id/authorize`      | ✅    |                                   |
 | `POST /api/v1/follow_requests/:id/reject`         | ✅    |                                   |
 | `GET /api/v1/endorsements`                        | ✅    |                                   |
-| Featured tags (4 methods)                         | ❌    |                                   |
+| Featured tags (4 methods)                         | ✅    |                                   |
 | Tags and followed tags                            | ❌    |                                   |
 | `GET /api/v1/preferences`                         | 🟡    | Only the defaults for posting     |
 | Suggestions (v1 and v2)                           | ❌    |                                   |

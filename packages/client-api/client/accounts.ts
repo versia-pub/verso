@@ -3,6 +3,7 @@ import { Account, CredentialAccount, FamiliarFollowers, type Visibility } from "
 import { Preferences } from "../preferences.ts";
 import { Relationship } from "../relationship.ts";
 import { Status } from "../status.ts";
+import { FeaturedTag } from "../tag.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
 import { Page, type PageQuery } from "./pages.ts";
 
@@ -233,6 +234,19 @@ export class AccountMethods {
             ...options,
             query: { id: ids },
         });
+    }
+
+    /**
+     * The hashtags an account features on its profile. Remote accounts have none.
+     * @see https://docs.joinmastodon.org/methods/accounts/#featured_tags
+     */
+    featuredTags(id: string, options?: CallOptions): Promise<FeaturedTag[]> {
+        return this.http.json(
+            z.array(FeaturedTag),
+            "GET",
+            path`/api/v1/accounts/${id}/featured_tags`,
+            options,
+        );
     }
 
     /**
