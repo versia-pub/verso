@@ -23,6 +23,7 @@ import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
 import type { JobPausesTable, JobsTable } from "../jobs/tables.ts";
 import type { MediaTable, NoteMediaTable } from "../media/tables.ts";
 import type {
+    BookmarksTable,
     NoteMentionsTable,
     NotePinsTable,
     NotesTable,
@@ -53,6 +54,7 @@ export type Database = {
     emojis: EmojisTable;
     follows: FollowsTable;
     blocks: BlocksTable;
+    bookmarks: BookmarksTable;
     mutes: MutesTable;
     identities: IdentitiesTable;
     instance_keys: InstanceKeysTable;

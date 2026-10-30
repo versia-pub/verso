@@ -15,6 +15,7 @@ import { refreshTotals } from "./totals.ts";
 import { renderHistory, renderStatuses } from "./render.ts";
 import { accountStatusesRoute } from "./account_status_routes.ts";
 import { pinRoute, unpinRoute } from "./pin_routes.ts";
+import { bookmarkRoutes } from "./bookmark_routes.ts";
 
 /**
  * Features Verso can't post yet. If empty or omitted they are accepted; if given a value they are
@@ -240,6 +241,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     accountStatusesRoute,
     pinRoute,
     unpinRoute,
+    ...bookmarkRoutes,
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/history",

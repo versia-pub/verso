@@ -28,6 +28,8 @@ export const permissions = [
     "owner:mute",
     /** Like statuses, and undo it. */
     "owner:like",
+    /** Bookmark statuses, and see one's bookmarks. */
+    "owner:bookmark",
     /** Boost statuses, and undo it. */
     "owner:boost",
     /** React to statuses, and undo it. */

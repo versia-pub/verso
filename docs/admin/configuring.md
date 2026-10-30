@@ -141,6 +141,7 @@ to the client API: other instances can still fetch public statuses over Versia.
 | `owner:block`          | block and unblock accounts                                       |
 | `owner:mute`           | mute and unmute accounts                                         |
 | `owner:like`           | like statuses                                                    |
+| `owner:bookmark`       | bookmark statuses                                                |
 | `owner:boost`          | boost statuses                                                   |
 | `owner:reaction`       | react to statuses                                                |
 | `owner:note`           | post and delete their own statuses                               |

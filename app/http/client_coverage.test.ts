@@ -80,6 +80,9 @@ const calls: Record<string, (client: Client) => unknown> = {
     "DELETE /api/v1/statuses/{id}/reactions/{name}": (c) => c.statuses.unreact("1", "👍"),
     "GET /api/v1/statuses/{id}/reactions/{name}": (c) => c.statuses.reactedBy("1", "👍"),
     "GET /api/v1/favourites": (c) => c.favourites.list(),
+    "POST /api/v1/statuses/{id}/bookmark": (c) => c.statuses.bookmark("1"),
+    "POST /api/v1/statuses/{id}/unbookmark": (c) => c.statuses.unbookmark("1"),
+    "GET /api/v1/bookmarks": (c) => c.bookmarks.list(),
 
     "POST /api/v2/media": (c) => c.media.upload({ file: new Blob([]) }),
     "PUT /api/v1/media/{id}": (c) => c.media.update("1", {}),

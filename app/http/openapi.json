@@ -4380,6 +4380,175 @@
                 }
             }
         },
+        "/api/v1/statuses/{id}/bookmark": {
+            "post": {
+                "summary": "Bookmark a status",
+                "description": "Privately bookmark a status.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:bookmark` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#bookmark"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:bookmarks"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/unbookmark": {
+            "post": {
+                "summary": "Undo bookmark of a status",
+                "description": "Remove a status from your private bookmarks.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:bookmark` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#unbookmark"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:bookmarks"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/bookmarks": {
+            "get": {
+                "summary": "View bookmarked statuses",
+                "description": "Statuses the user has bookmarked.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:bookmark` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/bookmarks/#get"
+                },
+                "tags": [
+                    "bookmarks"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:bookmarks"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Status"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses/{id}/history": {
             "get": {
                 "summary": "View edit history of a status",
@@ -8313,6 +8482,7 @@
                                                 "owner:block",
                                                 "owner:mute",
                                                 "owner:like",
+                                                "owner:bookmark",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -8401,6 +8571,7 @@
                                                 "owner:block",
                                                 "owner:mute",
                                                 "owner:like",
+                                                "owner:bookmark",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -8489,6 +8660,7 @@
                                                 "owner:block",
                                                 "owner:mute",
                                                 "owner:like",
+                                                "owner:bookmark",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -8656,6 +8828,7 @@
                                                 "owner:block",
                                                 "owner:mute",
                                                 "owner:like",
+                                                "owner:bookmark",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -8741,6 +8914,7 @@
                                                 "owner:block",
                                                 "owner:mute",
                                                 "owner:like",
+                                                "owner:bookmark",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -8826,6 +9000,7 @@
                                                 "owner:block",
                                                 "owner:mute",
                                                 "owner:like",
+                                                "owner:bookmark",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",

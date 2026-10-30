@@ -183,6 +183,7 @@ updated = 2026-10-01
 #     "search",
 #     "owner:account",
 #     "owner:block",
+#     "owner:bookmark",
 #     "owner:boost",
 #     "owner:emoji",
 #     "owner:follow",

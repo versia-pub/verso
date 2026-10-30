@@ -207,6 +207,22 @@ export class StatusMethods {
     }
 
     /**
+     * Bookmarks a status, or the status a boost boosts, for the viewer alone.
+     * @see https://docs.joinmastodon.org/methods/statuses/#bookmark
+     */
+    bookmark(id: string, options?: CallOptions): Promise<Status> {
+        return this.act(id, "bookmark", options);
+    }
+
+    /**
+     * Removes the viewer's bookmark of a status.
+     * @see https://docs.joinmastodon.org/methods/statuses/#unbookmark
+     */
+    unbookmark(id: string, options?: CallOptions): Promise<Status> {
+        return this.act(id, "unbookmark", options);
+    }
+
+    /**
      * The reactions to a status, by emoji, with how many made each. Mastodon has no reactions to
      * statuses.
      */
@@ -282,5 +298,18 @@ export class FavouriteMethods {
      */
     list(query: PageQuery = {}, options?: CallOptions): Promise<Page<Status>> {
         return Page.get(this.http, Status, "/api/v1/favourites", query, options);
+    }
+}
+
+/** The statuses the viewer bookmarked. Bookmark and unbookmark them with `statuses`. */
+export class BookmarkMethods {
+    constructor(private readonly http: Http) {}
+
+    /**
+     * The statuses the viewer bookmarked and may still see, the latest bookmarked first.
+     * @see https://docs.joinmastodon.org/methods/bookmarks/#get
+     */
+    list(query: PageQuery = {}, options?: CallOptions): Promise<Page<Status>> {
+        return Page.get(this.http, Status, "/api/v1/bookmarks", query, options);
     }
 }

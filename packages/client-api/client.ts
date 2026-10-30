@@ -29,7 +29,7 @@ import { PushMethods } from "./client/push.ts";
 import { RoleMethods } from "./client/roles.ts";
 import { search, type SearchQuery } from "./client/search.ts";
 import { StreamingMethods } from "./client/streaming.ts";
-import { FavouriteMethods, StatusMethods } from "./client/statuses.ts";
+import { BookmarkMethods, FavouriteMethods, StatusMethods } from "./client/statuses.ts";
 import { TimelineMethods } from "./client/timelines.ts";
 
 export type {
@@ -101,10 +101,12 @@ export class Client {
     readonly mutes: MuteMethods;
     /** The domains the viewer blocks. */
     readonly domainBlocks: DomainBlockMethods;
-    /** Posting, viewing, editing and deleting statuses, and liking, sharing and reacting to them. */
+    /** Posting, viewing, editing and deleting statuses, and liking, sharing, reacting to and bookmarking them. */
     readonly statuses: StatusMethods;
     /** The statuses the viewer likes. */
     readonly favourites: FavouriteMethods;
+    /** The statuses the viewer bookmarked. */
+    readonly bookmarks: BookmarkMethods;
     /** Lists of statuses, newest first. */
     readonly timelines: TimelineMethods;
     /** The viewer's notifications, each on its own. */
@@ -138,6 +140,7 @@ export class Client {
         this.domainBlocks = new DomainBlockMethods(this.#http);
         this.statuses = new StatusMethods(this.#http);
         this.favourites = new FavouriteMethods(this.#http);
+        this.bookmarks = new BookmarkMethods(this.#http);
         this.timelines = new TimelineMethods(this.#http);
         this.notifications = new NotificationMethods(this.#http);
         this.groupedNotifications = new GroupedNotificationMethods(this.#http);

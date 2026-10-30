@@ -87,6 +87,15 @@ export type NotePinsTable = {
     created_at: Date;
 };
 
+/** A status that a local account bookmarked, which only that account sees. */
+export type BookmarksTable = {
+    /** Orders bookmarks by creation time. */
+    id: string;
+    account_id: string;
+    note_id: string;
+    created_at: Date;
+};
+
 /**
  * How many likes, boosts and replies a remote status has, as its instance reports, each `null` if
  * the instance doesn't report it. Verso shows the larger of these and what it counted itself.

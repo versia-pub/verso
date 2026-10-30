@@ -12,20 +12,20 @@ behave differently.
 
 ## Summary
 
-| Area                       | Supported                                                      |
-| -------------------------- | -------------------------------------------------------------- |
-| Logging in and apps        | all but email confirmation, through OpenID Connect             |
-| Accounts and relationships | most: profiles, follows, blocks, mutes, notes, search          |
-| Statuses                   | most: posting, editing, deleting, likes, shares, pins, threads |
-| Media                      | images; other files kept as they are                           |
-| Timelines                  | home, public and hashtag                                       |
-| Notifications and Web Push | all, grouped and ungrouped, without notification requests      |
-| Streaming                  | WebSocket, without the list and direct streams                 |
-| Search                     | accounts, statuses and hashtags                                |
-| Instance                   | the instance, rules, policies, custom emoji                    |
+| Area                       | Supported                                                                 |
+| -------------------------- | ------------------------------------------------------------------------- |
+| Logging in and apps        | all but email confirmation, through OpenID Connect                        |
+| Accounts and relationships | most: profiles, follows, blocks, mutes, notes, search                     |
+| Statuses                   | most: posting, editing, deleting, likes, shares, pins, bookmarks, threads |
+| Media                      | images; other files kept as they are                                      |
+| Timelines                  | home, public and hashtag                                                  |
+| Notifications and Web Push | all, grouped and ungrouped, without notification requests                 |
+| Streaming                  | WebSocket, without the list and direct streams                            |
+| Search                     | accounts, statuses and hashtags                                           |
+| Instance                   | the instance, rules, policies, custom emoji                               |
 
-Missing so far: bookmarks, lists, filters, polls, scheduled statuses, reports, conversations, trends
-and announcements. There's no admin API: admins use `verso admin` instead.
+Missing so far: lists, filters, polls, scheduled statuses, reports, conversations, trends and
+announcements. There's no admin API: admins use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -71,7 +71,7 @@ and announcements. There's no admin API: admins use `verso admin` instead.
 | `DELETE /api/v1/profile/avatar`                   | ✅    |                                   |
 | `DELETE /api/v1/profile/header`                   | ✅    |                                   |
 | `GET /api/v1/favourites`                          | ✅    |                                   |
-| `GET /api/v1/bookmarks`                           | ❌    |                                   |
+| `GET /api/v1/bookmarks`                           | ✅    |                                   |
 | `GET /api/v1/blocks`                              | ✅    |                                   |
 | `GET /api/v1/mutes`                               | ✅    |                                   |
 | `GET /api/v1/domain_blocks`                       | ✅    |                                   |
@@ -109,8 +109,8 @@ and announcements. There's no admin API: admins use `verso admin` instead.
 | `POST /api/v1/statuses/:id/unreblog`     | ✅    |                                |
 | `POST /api/v1/statuses/:id/pin`          | ✅    |                                |
 | `POST /api/v1/statuses/:id/unpin`        | ✅    |                                |
-| `POST /api/v1/statuses/:id/bookmark`     | ❌    |                                |
-| `POST /api/v1/statuses/:id/unbookmark`   | ❌    |                                |
+| `POST /api/v1/statuses/:id/bookmark`     | ✅    |                                |
+| `POST /api/v1/statuses/:id/unbookmark`   | ✅    |                                |
 | `POST /api/v1/statuses/:id/mute`         | ❌    | Muting a conversation          |
 | `POST /api/v1/statuses/:id/unmute`       | ❌    |                                |
 | `POST /api/v1/statuses/:id/translate`    | ❌    |                                |

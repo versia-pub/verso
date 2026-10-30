@@ -21,6 +21,7 @@ import { findNotes, mentionsOf, type NoteRow, tagsOf, versionsOf } from "./note_
 import { notesSeenBy } from "./thread_queries.ts";
 import { countSharesBy, sharedAmong } from "./share_queries.ts";
 import { pinnedAmong } from "./pin_queries.ts";
+import { bookmarkedAmong } from "./bookmark_queries.ts";
 import { isPinnable } from "./pins.ts";
 import { totalsOf } from "./total_queries.ts";
 import { onlookerOf } from "./visibility.ts";
@@ -40,14 +41,19 @@ const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
 };
 
 /**
- * What only a logged-in viewer is told: whether they like and boost the status and, for their own
- * statuses that they can pin, whether they pin it. The rest isn't supported yet.
+ * What only a logged-in viewer is told: whether they like, boost and bookmark the status and, for
+ * their own statuses that they can pin, whether they pin it. Muting threads isn't supported yet.
  */
-const viewerFlags = (liked: boolean, shared: boolean, pinned: boolean | undefined) => ({
+const viewerFlags = (
+    liked: boolean,
+    shared: boolean,
+    bookmarked: boolean,
+    pinned: boolean | undefined,
+) => ({
     favourited: liked,
     reblogged: shared,
     muted: false,
-    bookmarked: false,
+    bookmarked,
     ...pinned === undefined ? {} : { pinned },
 });
 
@@ -113,6 +119,9 @@ export const renderStatuses = async (
     const liked = viewerId === null ? new Set() : await likedAmong(ctx, viewerId, noteIds);
     const shared = viewerId === null ? new Set() : await sharedAmong(ctx, viewerId, noteIds);
     const pinned = viewerId === null ? new Set() : await pinnedAmong(ctx, viewerId, noteIds);
+    const bookmarked = viewerId === null
+        ? new Set()
+        : await bookmarkedAmong(ctx, viewerId, noteIds);
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
 
     const accountIds = [
@@ -181,6 +190,7 @@ export const renderStatuses = async (
             ...(viewerId === null ? {} : viewerFlags(
                 liked.has(note.id),
                 shared.has(note.id),
+                bookmarked.has(note.id),
                 isPinnable(note, viewerId) ? pinned.has(note.id) : undefined,
             )),
         }];

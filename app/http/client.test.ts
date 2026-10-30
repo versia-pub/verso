@@ -388,6 +388,20 @@ Deno.test("a user likes, shares and reacts to a status, and undoes each", async 
     assertEquals((await bob.statuses.unreact(id, "👍")).reactions ?? [], []);
 });
 
+Deno.test("a user bookmarks a status, lists it, and removes the bookmark", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const { id } = await alice.statuses.post({ status: "Hello" });
+
+    assertEquals((await bob.statuses.bookmark(id)).bookmarked, true);
+    assertEquals((await bob.bookmarks.list()).items.map((status) => status.id), [id]);
+    assertEquals((await alice.bookmarks.list()).items, []);
+
+    assertEquals((await bob.statuses.unbookmark(id)).bookmarked, false);
+    assertEquals((await bob.bookmarks.list()).items, []);
+});
+
 Deno.test("a user reads a thread and a status's edits, and pins a status", async () => {
     await using test = await open();
     const alice = await test.as("alice");
