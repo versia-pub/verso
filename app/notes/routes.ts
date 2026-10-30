@@ -2,14 +2,14 @@ import { Context, Status, StatusEdit, StatusSource } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { Flag } from "../http/schemas.ts";
+import { Flag, Ids } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config_sections.ts";
 import { countText } from "../kernel/markup.ts";
 import { FocusPoint, MediaDescription } from "../media/routes.ts";
 import { unshare } from "../interactions/shares.ts";
 import { editNote, postNote } from "./notes.ts";
 import { removeNote } from "./removal.ts";
-import { visibleNote, visibleOriginal } from "./visibility.ts";
+import { visibleNote, visibleNotes, visibleOriginal } from "./visibility.ts";
 import { threadOf } from "./threads.ts";
 import { refreshTotals } from "./totals.ts";
 import { renderHistory, renderStatuses } from "./render.ts";
@@ -138,6 +138,28 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
 
             const [status] = await renderStatuses(ctx, [note], viewer.accountId);
             return { status: 200, body: status };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/statuses",
+        summary: "View multiple statuses",
+        description: "Obtain information about multiple statuses.\n\nVerso takes at most 20 ids, " +
+            "as Mastodon does, and leaves out statuses that don't exist or the viewer may not see.",
+        docs: "https://docs.joinmastodon.org/methods/statuses/#index",
+        tags: ["statuses"],
+        auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
+        query: z.object({
+            id: Ids(20).default([]).meta({
+                description: "The IDs of the Statuses in the database.",
+            }),
+        }),
+        responses: { 200: z.array(Status) },
+        handler: async (ctx, { query, viewer }) => {
+            const viewerId = viewer?.accountId ?? null;
+            const notes = await visibleNotes(ctx, query.id, viewerId);
+
+            return { status: 200, body: await renderStatuses(ctx, notes, viewerId) };
         },
     }),
     defineRoute({

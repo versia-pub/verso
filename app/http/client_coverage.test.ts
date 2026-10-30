@@ -26,6 +26,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "PATCH /api/v1/accounts/update_credentials": (c) => c.accounts.updateCredentials({}),
     "DELETE /api/v1/profile/avatar": (c) => c.accounts.deleteAvatar(),
     "DELETE /api/v1/profile/header": (c) => c.accounts.deleteHeader(),
+    "GET /api/v1/accounts": (c) => c.accounts.getMany(["1"]),
     "GET /api/v1/accounts/{id}": (c) => c.accounts.get("1"),
     "GET /api/v1/accounts/lookup": (c) => c.accounts.lookup("alice"),
     "GET /api/v1/accounts/search": (c) => c.accounts.search({ q: "alice" }),
@@ -33,6 +34,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/accounts/{id}/followers": (c) => c.accounts.followers("1"),
     "GET /api/v1/accounts/{id}/following": (c) => c.accounts.following("1"),
     "GET /api/v1/accounts/relationships": (c) => c.accounts.relationships(["1"]),
+    "GET /api/v1/accounts/familiar_followers": (c) => c.accounts.familiarFollowers(["1"]),
     "POST /api/v1/accounts/{id}/follow": (c) => c.accounts.follow("1"),
     "POST /api/v1/accounts/{id}/unfollow": (c) => c.accounts.unfollow("1"),
     "POST /api/v1/accounts/{id}/remove_from_followers": (c) => c.accounts.removeFromFollowers("1"),
@@ -52,6 +54,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "DELETE /api/v1/domain_blocks": (c) => c.domainBlocks.unblock("b.example"),
 
     "POST /api/v1/statuses": (c) => c.statuses.post({ status: "Hi" }),
+    "GET /api/v1/statuses": (c) => c.statuses.getMany(["1"]),
     "GET /api/v1/statuses/{id}": (c) => c.statuses.get("1"),
     "PUT /api/v1/statuses/{id}": (c) => c.statuses.edit("1", { status: "Hi" }),
     "DELETE /api/v1/statuses/{id}": (c) => c.statuses.delete("1"),

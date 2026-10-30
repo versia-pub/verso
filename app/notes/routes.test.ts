@@ -167,6 +167,36 @@ Deno.test("a status is given to whoever may see it, and is missing to anyone els
     assertEquals(await status("missing", "alice"), 404);
 });
 
+Deno.test("several statuses are given in the order asked, without those the viewer may not see", async () => {
+    await using test = await open();
+    const everyone = await createNote(test.ctx, "alice", { visibility: "public" });
+    const followers = await createNote(test.ctx, "alice", { visibility: "private" });
+    const direct = await createNote(test.ctx, "alice", { visibility: "direct" }, ["dave"]);
+    const ids = async (query: string, as: string | null) => {
+        const reply = await test.request("GET", `/api/v1/statuses?${query}`, as);
+        return [reply.status, reply.body.map((status: { id: string }) => status.id)];
+    };
+
+    const all = [direct, followers, everyone, direct].map((note) => `id[]=${note.id}`).join("&");
+    assertEquals(await ids(`${all}&id[]=missing`, "dave"), [200, [direct.id, everyone.id]]);
+    assertEquals(await ids(all, "bob"), [200, [followers.id, everyone.id]]);
+    assertEquals(await ids(all, null), [200, [everyone.id]]);
+    assertEquals(await ids("", null), [200, []]);
+
+    // A share is seen only by those who may see the status it shares.
+    const shared = await share(test.ctx, "bob", everyone.id);
+    if (typeof shared !== "object") throw new Error(`Not shared: ${shared}`);
+    await test.ctx.db.updateTable("notes").set({ visibility: "private" })
+        .where("id", "=", everyone.id).execute();
+    assertEquals(await ids(`id[]=${shared.id}`, "dave"), [200, []]);
+    assertEquals(await ids(`id[]=${shared.id}`, "bob"), [200, [shared.id]]);
+
+    // At most 20 at once, as on Mastodon.
+    const asking = (n: number) => Array.from({ length: n }, (_, i) => `id[]=${i}`).join("&");
+    assertEquals((await test.request("GET", `/api/v1/statuses?${asking(20)}`)).status, 200);
+    assertEquals((await test.request("GET", `/api/v1/statuses?${asking(21)}`)).status, 422);
+});
+
 Deno.test("deleting a status gives it back as written, and only its author may", async () => {
     await using test = await open();
     const note = await createNote(test.ctx, "alice", { content: "Hi *there*" });

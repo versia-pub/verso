@@ -62,6 +62,18 @@ export class StatusMethods {
     }
 
     /**
+     * Several statuses, by their ids, in the same order, without those that don't exist or the
+     * viewer may not see. Mastodon and Verso take at most 20 ids.
+     * @see https://docs.joinmastodon.org/methods/statuses/#index
+     */
+    getMany(ids: readonly string[], options?: CallOptions): Promise<Status[]> {
+        return this.http.json(z.array(Status), "GET", "/api/v1/statuses", {
+            ...options,
+            query: { id: ids },
+        });
+    }
+
+    /**
      * Posts a status.
      * @see https://docs.joinmastodon.org/methods/statuses/#create
      */

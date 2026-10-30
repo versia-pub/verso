@@ -198,6 +198,9 @@ Deno.test("a user posts, edits, reads back and deletes a status", async () => {
 
     assertEquals((await test.client.statuses.get(posted.id)).content, edited.content);
     assertEquals([source.text, source.content_type], ["Hello again", "text/markdown"]);
+    assertEquals((await test.client.statuses.getMany([posted.id, "missing"])).map((s) => s.id), [
+        posted.id,
+    ]);
     assertEquals((await alice.statuses.delete(posted.id)).text, "Hello again");
     assertEquals(
         (await assertRejects(() => test.client.statuses.get(posted.id), ApiError)).status,
@@ -294,6 +297,13 @@ Deno.test("a user follows, is followed back on request, and sees both sides", as
         (await alice.accounts.relationships([bobId, aliceId])).map((r) => r.id),
         [bobId, aliceId],
     );
+    assertEquals((await test.client.accounts.getMany([bobId, aliceId])).map((a) => a.id), [
+        bobId,
+        aliceId,
+    ]);
+    // alice follows bob, who follows her.
+    const [familiar] = await alice.accounts.familiarFollowers([aliceId]);
+    assertEquals([familiar.id, familiar.accounts.map((a) => a.id)], [aliceId, [bobId]]);
 
     assertEquals((await alice.accounts.removeFromFollowers(bobId)).followed_by, false);
     assertEquals((await alice.accounts.unfollow(bobId)).following, false);

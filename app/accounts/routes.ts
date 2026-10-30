@@ -4,7 +4,7 @@ import { emojisOfAccounts } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
-import { Flag, Text } from "../http/schemas.ts";
+import { Flag, Ids, Text } from "../http/schemas.ts";
 import type { Limits, MediaLimits } from "../kernel/config_sections.ts";
 import { countFollowRequests } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
@@ -13,7 +13,7 @@ import { type AccountRow, findAccount } from "./account_queries.ts";
 import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { pictureRoutes } from "./picture_routes.ts";
 import { updateProfile } from "./profile.ts";
-import { publicAccount } from "./public.ts";
+import { publicAccount, publicAccounts } from "./public.ts";
 import { renderCredentialAccount } from "./render.ts";
 import { rolesOf } from "./role_queries.ts";
 
@@ -145,6 +145,24 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
 
             return { status: 200, body: await publicAccount(ctx, found(row)) };
         },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/accounts",
+        summary: "Get multiple accounts",
+        description: "View information about multiple profiles.\n\nVerso takes at most 40 ids, " +
+            "as Mastodon does, and leaves out accounts that don't exist.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#index",
+        tags: ["accounts"],
+        auth: { require: "optional", permission: "read:account" },
+        query: z.object({
+            id: Ids(40).default([]).meta({ description: "The IDs of the accounts." }),
+        }),
+        responses: { 200: z.array(Account) },
+        handler: async (ctx, { query }) => ({
+            status: 200,
+            body: await publicAccounts(ctx, query.id),
+        }),
     }),
     defineRoute({
         method: "GET",

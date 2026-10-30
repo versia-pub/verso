@@ -1,4 +1,5 @@
 import type { Selectable, SelectQueryBuilder } from "kysely";
+import { batchesOf } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Database } from "../db/database.ts";
@@ -256,6 +257,36 @@ export const followerIdsQuery = (ctx: Context, accountId: string): AccountIdQuer
 export const sharingIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     listed(ctx, "following", accountId).where("show_reblogs", "=", true)
         .select("followee_id as account_id");
+
+/**
+ * The accounts `viewerId` follows that follow any of `accountIds`, oldest follow first, each with
+ * the account it follows. Those that hide whom they follow are left out, as on Mastodon.
+ */
+export const familiarFollows = async (
+    ctx: Context,
+    viewerId: string,
+    accountIds: readonly string[],
+): Promise<{ follower_id: string; followee_id: string }[]> => {
+    const rows = [];
+    for (const batch of batchesOf(accountIds)) {
+        rows.push(
+            ...await ctx.db.selectFrom("follows as theirs")
+                .innerJoin("follows as mine", "mine.followee_id", "theirs.follower_id")
+                // Reads `accounts`, the accounts module's, to be one query.
+                .innerJoin("accounts", "accounts.id", "theirs.follower_id")
+                .select(["theirs.follower_id", "theirs.followee_id"])
+                .where("mine.follower_id", "=", viewerId)
+                .where("mine.accepted", "=", true)
+                .where("theirs.followee_id", "in", batch)
+                .where("theirs.accepted", "=", true)
+                .where("accounts.hide_collections", "=", false)
+                .orderBy("theirs.id")
+                .execute(),
+        );
+    }
+
+    return rows;
+};
 
 /** How many accounts are on one of an account's lists. */
 export const countFollows = async (

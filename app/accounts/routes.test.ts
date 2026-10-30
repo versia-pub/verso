@@ -157,6 +157,29 @@ Deno.test("anyone sees an account by its id, without its settings", async () => 
     }
 });
 
+Deno.test("anyone sees several accounts by their ids, in the order asked, without missing ones", async () => {
+    await using test = await openApi();
+    const accts = async (query: string) => {
+        const reply = await test.get(`/api/v1/accounts?${query}`);
+        return [
+            reply.status,
+            reply.status === 200 ? reply.body.map((a: { acct: string }) => a.acct) : reply.body,
+        ];
+    };
+
+    assertEquals(await accts("id[]=bob&id[]=missing&id[]=alice&id[]=bob"), [200, [
+        "bob@b.example",
+        "alice",
+    ]]);
+    assertEquals(await accts("id=alice"), [200, ["alice"]]);
+    assertEquals(await accts(""), [200, []]);
+
+    // At most 40 at once, as on Mastodon.
+    const asking = (n: number) => Array.from({ length: n }, (_, i) => `id[]=${i}`).join("&");
+    assertEquals((await accts(asking(40)))[0], 200);
+    assertEquals((await accts(asking(41)))[0], 422);
+});
+
 Deno.test("an account is looked up by its username or address", async () => {
     await using test = await openApi();
     const lookup = (acct: string) =>

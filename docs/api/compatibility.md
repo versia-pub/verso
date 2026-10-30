@@ -49,7 +49,7 @@ trends, announcements and the admin API.
 | `GET /api/v1/accounts/verify_credentials`         | ✅    |                                   |
 | `PATCH /api/v1/accounts/update_credentials`       | ✅    |                                   |
 | `GET /api/v1/accounts/:id`                        | ✅    |                                   |
-| `GET /api/v1/accounts`                            | ❌    | Several accounts by id            |
+| `GET /api/v1/accounts`                            | ✅    | Several accounts by id            |
 | `GET /api/v1/accounts/:id/statuses`               | ✅    |                                   |
 | `GET /api/v1/accounts/:id/followers`              | ✅    |                                   |
 | `GET /api/v1/accounts/:id/following`              | ✅    |                                   |
@@ -66,7 +66,7 @@ trends, announcements and the admin API.
 | `POST /api/v1/accounts/:id/unpin`                 | ❌    |                                   |
 | `POST /api/v1/accounts/:id/note`                  | ✅    |                                   |
 | `GET /api/v1/accounts/relationships`              | ✅    |                                   |
-| `GET /api/v1/accounts/familiar_followers`         | ❌    |                                   |
+| `GET /api/v1/accounts/familiar_followers`         | ✅    |                                   |
 | `GET /api/v1/accounts/search`                     | ✅    |                                   |
 | `GET /api/v1/accounts/lookup`                     | ✅    |                                   |
 | `DELETE /api/v1/profile/avatar`                   | ✅    |                                   |
@@ -96,7 +96,7 @@ trends, announcements and the admin API.
 | ---------------------------------------- | ----- | ------------------------------ |
 | `POST /api/v1/statuses`                  | 🟡    | No polls or scheduling         |
 | `GET /api/v1/statuses/:id`               | ✅    |                                |
-| `GET /api/v1/statuses`                   | ❌    | Several statuses by id         |
+| `GET /api/v1/statuses`                   | ✅    | Several statuses by id         |
 | `PUT /api/v1/statuses/:id`               | 🟡    | No polls                       |
 | `DELETE /api/v1/statuses/:id`            | ✅    |                                |
 | `GET /api/v1/statuses/:id/context`       | 🟡    | Only replies Verso has         |

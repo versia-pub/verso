@@ -172,3 +172,14 @@ export const MutedAccount = Account.extend({
     mute_expires_at: z.iso.datetime().nullable(),
 });
 export type MutedAccount = z.infer<typeof MutedAccount>;
+
+/**
+ * The accounts the viewer follows that follow an account.
+ * @see https://docs.joinmastodon.org/entities/FamiliarFollowers/
+ */
+export const FamiliarFollowers = z.object({
+    /** The id of the account they follow. */
+    id: z.string(),
+    accounts: z.array(Account),
+});
+export type FamiliarFollowers = z.infer<typeof FamiliarFollowers>;

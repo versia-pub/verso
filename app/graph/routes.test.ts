@@ -315,6 +315,50 @@ Deno.test("follows are listed to whoever may see them", async () => {
     );
 });
 
+Deno.test("familiar followers are the accounts the viewer follows that follow each account", async () => {
+    await using test = await openLists();
+    await createLocalAccount(test.ctx, "frank");
+    await test.follows([
+        ["alice", "bob"],
+        ["alice", "erin"],
+        ["alice", "frank"],
+        // Not accepted yet, as carol's instance hasn't answered.
+        ["alice", "carol"],
+        ["frank", "dave"],
+        ["bob", "dave"],
+        ["erin", "dave"],
+        ["carol", "dave"],
+        ["bob", "erin"],
+    ]);
+    // erin hides whom it follows, and so also which accounts it follows, and its followers.
+    await test.ctx.db.updateTable("accounts").set({ hide_collections: true })
+        .where("id", "=", "erin").execute();
+
+    const response = await test.app.request(
+        "/api/v1/accounts/familiar_followers?id[]=dave&id[]=missing&id[]=erin&id[]=dave",
+        { headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` } },
+    );
+    const body: { id: string; accounts: { id: string }[] }[] = await response.json();
+
+    assertEquals(response.status, 200);
+    assertEquals(
+        body.map(({ id, accounts }) => ({ id, accounts: accounts.map((account) => account.id) })),
+        [{ id: "dave", accounts: ["frank", "bob"] }, { id: "erin", accounts: [] }],
+    );
+});
+
+Deno.test("familiar followers need a user's token that may read follows", async () => {
+    await using test = await open();
+    const path = "/api/v1/accounts/familiar_followers?id=bob";
+
+    assertEquals((await test.request("GET", path, { scopes: ["read:follows"] })).status, 200);
+    assertEquals((await test.request("GET", path, { scopes: ["read:accounts"] })).status, 403);
+    assertEquals(
+        (await test.request("GET", path, { token: await tokenFor(test.ctx, null) })).status,
+        422,
+    );
+});
+
 Deno.test("the accounts asking to follow the viewer are listed newest first, a page at a time", async () => {
     await using test = await openLists();
     await test.ctx.db.updateTable("accounts").set({ locked: true }).where("id", "=", "alice")

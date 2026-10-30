@@ -1968,6 +1968,61 @@
                 }
             }
         },
+        "/api/v1/accounts/familiar_followers": {
+            "get": {
+                "summary": "Find familiar followers",
+                "description": "Obtain a list of all accounts that follow a given account, filtered for accounts you follow.\n\nVerso takes at most 80 ids. Accounts that don't exist are left out, as are followers who hide whom they follow.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:account_follows` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#familiar_followers"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:follows"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Find familiar followers for the provided account IDs."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FamiliarFollowers"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/{id}/follow": {
             "post": {
                 "summary": "Follows an account, or asks to, or changes how the viewer sees one they follow",
@@ -2930,6 +2985,60 @@
                 }
             }
         },
+        "/api/v1/accounts": {
+            "get": {
+                "summary": "Get multiple accounts",
+                "description": "View information about multiple profiles.\n\nVerso takes at most 40 ids, as Mastodon does, and leaves out accounts that don't exist.\n\nNeeds the `read:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#index"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "The IDs of the accounts."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/{id}": {
             "get": {
                 "summary": "An account",
@@ -3352,6 +3461,60 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "View multiple statuses",
+                "description": "Obtain information about multiple statuses.\n\nVerso takes at most 20 ids, as Mastodon does, and leaves out statuses that don't exist or the viewer may not see.\n\nNeeds the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/statuses/#index"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "The IDs of the Statuses in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Status"
+                                    }
                                 }
                             }
                         }
@@ -11769,6 +11932,24 @@
                 "required": [
                     "updated_at",
                     "content"
+                ]
+            },
+            "FamiliarFollowers": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "accounts": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Account"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "accounts"
                 ]
             },
             "FeatureApproval": {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Account, CredentialAccount, type Visibility } from "../account.ts";
+import { Account, CredentialAccount, FamiliarFollowers, type Visibility } from "../account.ts";
 import { Relationship } from "../relationship.ts";
 import { Status } from "../status.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
@@ -132,6 +132,18 @@ export class AccountMethods {
     }
 
     /**
+     * Several accounts, by their ids, in the same order, without those that don't exist. Mastodon
+     * and Verso take at most 40 ids.
+     * @see https://docs.joinmastodon.org/methods/accounts/#index
+     */
+    getMany(ids: readonly string[], options?: CallOptions): Promise<Account[]> {
+        return this.http.json(z.array(Account), "GET", "/api/v1/accounts", {
+            ...options,
+            query: { id: ids },
+        });
+    }
+
+    /**
      * An account, by its username, or `username@domain` for a remote one, which the instance may
      * fetch.
      * @see https://docs.joinmastodon.org/methods/accounts/#lookup
@@ -193,6 +205,19 @@ export class AccountMethods {
             ...options,
             query: { id: ids },
         });
+    }
+
+    /**
+     * For each of some accounts, the accounts the viewer follows that follow it.
+     * @see https://docs.joinmastodon.org/methods/accounts/#familiar_followers
+     */
+    familiarFollowers(ids: readonly string[], options?: CallOptions): Promise<FamiliarFollowers[]> {
+        return this.http.json(
+            z.array(FamiliarFollowers),
+            "GET",
+            "/api/v1/accounts/familiar_followers",
+            { ...options, query: { id: ids } },
+        );
     }
 
     /**

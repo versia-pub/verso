@@ -1,14 +1,15 @@
-import { Account, Relationship } from "@versia/client-api";
+import { Account, FamiliarFollowers, Relationship } from "@versia/client-api";
 import { z } from "zod";
-import { findAccount } from "../accounts/account_queries.ts";
-import { publicAccounts } from "../accounts/public.ts";
+import { findAccount, findAccounts } from "../accounts/account_queries.ts";
+import { publicAccounts, publicAccountsOf } from "../accounts/public.ts";
 import { NotFound, NotPermitted } from "../http/errors.ts";
+import type { Context } from "../kernel/context.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Paged } from "../http/responses.ts";
-import { Flag, Text } from "../http/schemas.ts";
+import { Flag, Ids, Text } from "../http/schemas.ts";
 import { accountNoteLimit, noteAccount } from "./account_notes.ts";
-import { followPage, type FollowSide } from "./follow_queries.ts";
+import { familiarFollows, followPage, type FollowSide } from "./follow_queries.ts";
 import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
 import { blockRoutes } from "./block_routes.ts";
 import { relationship, relationships } from "./relationships.ts";
@@ -108,6 +109,33 @@ const noteRoute = defineRoute({
     },
 });
 
+/** For each of `accountIds` that exists, the accounts `viewerId` follows that follow it. */
+const familiarFollowers = async (
+    ctx: Context,
+    viewerId: string,
+    accountIds: readonly string[],
+): Promise<FamiliarFollowers[]> => {
+    const accounts = new Map((await findAccounts(ctx, accountIds)).map((row) => [row.id, row]));
+    const follows = await familiarFollows(ctx, viewerId, accountIds);
+    const followers = await publicAccountsOf(
+        ctx,
+        await findAccounts(ctx, [...new Set(follows.map((follow) => follow.follower_id))]),
+    );
+
+    return accountIds.flatMap((id) => {
+        const account = accounts.get(id);
+        if (account === undefined) return [];
+        // As its followers are hidden, so is which of them the viewer follows.
+        if (account.hide_collections) return [{ id, accounts: [] }];
+
+        return [{
+            id,
+            accounts: follows.filter((follow) => follow.followee_id === id)
+                .flatMap((follow) => followers.get(follow.follower_id) ?? []),
+        }];
+    });
+};
+
 /**
  * Who follows, blocks and mutes whom. Before the account routes, whose `/api/v1/accounts/:id` would
  * otherwise match these paths.
@@ -152,6 +180,27 @@ export const graphRoutes: readonly Route[] = [
         handler: async (ctx, { query, viewer }) => ({
             status: 200,
             body: await relationships(ctx, viewer, query.id),
+        }),
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/accounts/familiar_followers",
+        summary: "Find familiar followers",
+        description: "Obtain a list of all accounts that follow a given account, filtered for " +
+            "accounts you follow.\n\nVerso takes at most 80 ids. Accounts that don't exist are " +
+            "left out, as are followers who hide whom they follow.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#familiar_followers",
+        tags: ["accounts"],
+        auth: { require: "user", scope: "read:follows", permission: "read:account_follows" },
+        query: z.object({
+            id: Ids(80).default([]).meta({
+                description: "Find familiar followers for the provided account IDs.",
+            }),
+        }),
+        responses: { 200: z.array(FamiliarFollowers) },
+        handler: async (ctx, { query, viewer }) => ({
+            status: 200,
+            body: await familiarFollowers(ctx, viewer.accountId, query.id),
         }),
     }),
     defineRoute({

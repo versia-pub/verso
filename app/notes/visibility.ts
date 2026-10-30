@@ -1,7 +1,7 @@
 import type { Visibility } from "../kernel/visibility.ts";
 import { followedSubquery, isFollowing } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
-import { findNote, isMentioned, type NoteRow } from "./note_queries.ts";
+import { findNote, findNotes, isMentioned, type NoteRow } from "./note_queries.ts";
 import { notesSeenBy, type Onlooker } from "./thread_queries.ts";
 
 /**
@@ -73,6 +73,30 @@ export const visibleNote = async (
 ): Promise<NoteRow | undefined> => {
     const note = await findNote(ctx, id);
     return note && await canSee(ctx, note, viewerId) ? note : undefined;
+};
+
+/**
+ * The statuses of `ids` that exist and `viewerId` may see, as {@link visibleNote} finds each, in the
+ * order of `ids`.
+ */
+export const visibleNotes = async (
+    ctx: Context,
+    ids: readonly string[],
+    viewerId: string | null,
+): Promise<NoteRow[]> => {
+    const notes = await findNotes(ctx, ids);
+    const asked = notes.flatMap((note) =>
+        note.reblog_of_id === null ? [note.id] : [note.id, note.reblog_of_id]
+    );
+    const seen = await seenAmong(ctx, [...new Set(asked)], viewerId);
+
+    // A boost is seen only by those who may also see the status it boosts.
+    const visible = new Map(
+        notes.filter((note) => seen.has(note.id) && seen.has(note.reblog_of_id ?? note.id))
+            .map((note) => [note.id, note]),
+    );
+
+    return ids.flatMap((id) => visible.get(id) ?? []);
 };
 
 /**

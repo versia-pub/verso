@@ -25,3 +25,9 @@ export const Strings: z.ZodType<string[], string | string[]> = z.union([
     z.string().transform((one) => [one]),
     z.array(z.string()),
 ]);
+
+/** A query's list of ids, as {@link Strings} takes it, each once, and at most `max` of them. */
+export const Ids = (max: number): z.ZodType<string[], string | string[]> =>
+    Strings.transform((ids) => [...new Set(ids)]).pipe(
+        z.array(z.string()).max(max, { error: `Must be at most ${max} ids` }),
+    );
