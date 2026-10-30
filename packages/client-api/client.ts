@@ -18,7 +18,8 @@ import { Http, type RateLimit } from "./client/http.ts";
 import { InstanceMethods } from "./client/instance.ts";
 import { MediaMethods } from "./client/media.ts";
 import { OAuth } from "./client/oauth.ts";
-import { StatusMethods } from "./client/statuses.ts";
+import { FavouriteMethods, StatusMethods } from "./client/statuses.ts";
+import { TimelineMethods } from "./client/timelines.ts";
 
 export type {
     AccountSearchQuery,
@@ -38,7 +39,8 @@ export {
     type Pkce,
 } from "./client/oauth.ts";
 export { Page, type PageQuery } from "./client/pages.ts";
-export type { ContentType, StatusChanges, StatusDraft } from "./client/statuses.ts";
+export type { ContentType, ReblogOptions, StatusChanges, StatusDraft } from "./client/statuses.ts";
+export type { HashtagTimelineQuery, PublicTimelineQuery } from "./client/timelines.ts";
 
 export type ClientOptions = {
     /** The user's or app's access token. Without one, requests are made as nobody. */
@@ -66,8 +68,12 @@ export class Client {
     readonly mutes: MuteMethods;
     /** The domains the viewer blocks. */
     readonly domainBlocks: DomainBlockMethods;
-    /** Posting, viewing, editing and deleting statuses. */
+    /** Posting, viewing, editing and deleting statuses, and liking, sharing and reacting to them. */
     readonly statuses: StatusMethods;
+    /** The statuses the viewer likes. */
+    readonly favourites: FavouriteMethods;
+    /** Lists of statuses, newest first. */
+    readonly timelines: TimelineMethods;
     /** Uploading files to attach to statuses. */
     readonly media: MediaMethods;
 
@@ -84,6 +90,8 @@ export class Client {
         this.mutes = new MuteMethods(this.#http);
         this.domainBlocks = new DomainBlockMethods(this.#http);
         this.statuses = new StatusMethods(this.#http);
+        this.favourites = new FavouriteMethods(this.#http);
+        this.timelines = new TimelineMethods(this.#http);
         this.media = new MediaMethods(this.#http);
     }
 

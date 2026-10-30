@@ -1,6 +1,8 @@
-import type { Visibility } from "../account.ts";
-import { Status, StatusSource } from "../status.ts";
+import { z } from "zod";
+import { Account, type Visibility } from "../account.ts";
+import { Context, Status, StatusEdit, StatusReaction, StatusSource } from "../status.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
+import { Page, type PageQuery } from "./pages.ts";
 
 /** How a status's text is written. Plain text has its links, mentions and hashtags linked. */
 export type ContentType = "text/plain" | "text/markdown";
@@ -41,7 +43,13 @@ export type StatusChanges = {
     readonly language?: string;
 };
 
-/** Posting, viewing, editing and deleting statuses. */
+/** How to share a status. */
+export type ReblogOptions = {
+    /** Who sees the share. Defaults to the viewer's default, or followers only if that is direct. */
+    readonly visibility?: Exclude<Visibility, "direct">;
+};
+
+/** Posting, viewing, editing and deleting statuses, and liking, sharing and reacting to them. */
 export class StatusMethods {
     constructor(private readonly http: Http) {}
 
@@ -87,5 +95,180 @@ export class StatusMethods {
      */
     source(id: string, options?: CallOptions): Promise<StatusSource> {
         return this.http.json(StatusSource, "GET", path`/api/v1/statuses/${id}/source`, options);
+    }
+
+    /**
+     * The statuses a status replies to, and the replies under it, that the viewer may see.
+     * @see https://docs.joinmastodon.org/methods/statuses/#context
+     */
+    context(id: string, options?: CallOptions): Promise<Context> {
+        return this.http.json(Context, "GET", path`/api/v1/statuses/${id}/context`, options);
+    }
+
+    /**
+     * What a status said before each edit, oldest first, and what it says now.
+     * @see https://docs.joinmastodon.org/methods/statuses/#history
+     */
+    history(id: string, options?: CallOptions): Promise<StatusEdit[]> {
+        return this.http.json(
+            z.array(StatusEdit),
+            "GET",
+            path`/api/v1/statuses/${id}/history`,
+            options,
+        );
+    }
+
+    /**
+     * Likes a status.
+     * @see https://docs.joinmastodon.org/methods/statuses/#favourite
+     */
+    favourite(id: string, options?: CallOptions): Promise<Status> {
+        return this.act(id, "favourite", options);
+    }
+
+    /**
+     * Undoes the viewer's like of a status.
+     * @see https://docs.joinmastodon.org/methods/statuses/#unfavourite
+     */
+    unfavourite(id: string, options?: CallOptions): Promise<Status> {
+        return this.act(id, "unfavourite", options);
+    }
+
+    /**
+     * The accounts that like a status, newest first.
+     * @see https://docs.joinmastodon.org/methods/statuses/#favourited_by
+     */
+    favouritedBy(id: string, query: PageQuery = {}, options?: CallOptions): Promise<Page<Account>> {
+        return Page.get(
+            this.http,
+            Account,
+            path`/api/v1/statuses/${id}/favourited_by`,
+            query,
+            options,
+        );
+    }
+
+    /**
+     * Shares a public or unlisted status. Gives the share, with the status as its `reblog`.
+     * @see https://docs.joinmastodon.org/methods/statuses/#boost
+     */
+    reblog(id: string, reblog: ReblogOptions = {}, options?: CallOptions): Promise<Status> {
+        return this.act(id, "reblog", { ...options, json: reblog });
+    }
+
+    /**
+     * Undoes the viewer's share of a status. Gives the status.
+     * @see https://docs.joinmastodon.org/methods/statuses/#unreblog
+     */
+    unreblog(id: string, options?: CallOptions): Promise<Status> {
+        return this.act(id, "unreblog", options);
+    }
+
+    /**
+     * The accounts that share a status publicly, newest first.
+     * @see https://docs.joinmastodon.org/methods/statuses/#reblogged_by
+     */
+    rebloggedBy(id: string, query: PageQuery = {}, options?: CallOptions): Promise<Page<Account>> {
+        return Page.get(
+            this.http,
+            Account,
+            path`/api/v1/statuses/${id}/reblogged_by`,
+            query,
+            options,
+        );
+    }
+
+    /**
+     * Pins one of the viewer's public, unlisted or private statuses to their profile, up to 5.
+     * @see https://docs.joinmastodon.org/methods/statuses/#pin
+     */
+    pin(id: string, options?: CallOptions): Promise<Status> {
+        return this.act(id, "pin", options);
+    }
+
+    /**
+     * Unpins a status from the viewer's profile.
+     * @see https://docs.joinmastodon.org/methods/statuses/#unpin
+     */
+    unpin(id: string, options?: CallOptions): Promise<Status> {
+        return this.act(id, "unpin", options);
+    }
+
+    /**
+     * The reactions to a status, by emoji, with how many made each. Mastodon has no reactions to
+     * statuses.
+     */
+    reactions(id: string, options?: CallOptions): Promise<StatusReaction[]> {
+        return this.http.json(
+            z.array(StatusReaction),
+            "GET",
+            path`/api/v1/statuses/${id}/reactions`,
+            options,
+        );
+    }
+
+    /**
+     * Reacts to a status with an emoji: a Unicode one, or one of the instance's custom ones, by its
+     * shortcode in colons, such as `:blobcat:`. Another instance's custom emojis can't be used.
+     */
+    react(id: string, emoji: string, options?: CallOptions): Promise<Status> {
+        return this.http.json(
+            Status,
+            "PUT",
+            path`/api/v1/statuses/${id}/reactions/${emoji}`,
+            options,
+        );
+    }
+
+    /** Undoes the viewer's reaction to a status with an emoji, named as `react` names it. */
+    unreact(id: string, emoji: string, options?: CallOptions): Promise<Status> {
+        return this.http.json(
+            Status,
+            "DELETE",
+            path`/api/v1/statuses/${id}/reactions/${emoji}`,
+            options,
+        );
+    }
+
+    /**
+     * The accounts that reacted to a status with an emoji, newest first. The emoji is named as the
+     * status's reactions name it, which for another instance's custom one adds its domain, such as
+     * `:blob@b.example:`.
+     */
+    reactedBy(
+        id: string,
+        emoji: string,
+        query: PageQuery = {},
+        options?: CallOptions,
+    ): Promise<Page<Account>> {
+        return Page.get(
+            this.http,
+            Account,
+            path`/api/v1/statuses/${id}/reactions/${emoji}`,
+            query,
+            options,
+        );
+    }
+
+    /** Does `action` to a status, and gives it. */
+    private act(
+        id: string,
+        action: string,
+        options?: CallOptions & { readonly json?: unknown },
+    ): Promise<Status> {
+        return this.http.json(Status, "POST", path`/api/v1/statuses/${id}/${action}`, options);
+    }
+}
+
+/** The statuses the viewer likes. Like and unlike them with `statuses`. */
+export class FavouriteMethods {
+    constructor(private readonly http: Http) {}
+
+    /**
+     * The statuses the viewer likes and may still see, the latest liked first.
+     * @see https://docs.joinmastodon.org/methods/favourites/#get
+     */
+    list(query: PageQuery = {}, options?: CallOptions): Promise<Page<Status>> {
+        return Page.get(this.http, Status, "/api/v1/favourites", query, options);
     }
 }

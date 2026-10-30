@@ -324,3 +324,69 @@ Deno.test("a user searches for accounts", async () => {
 
     assertEquals(found.map((account) => account.username).sort(), ["alice", "alicia"]);
 });
+
+Deno.test("a user likes, shares and reacts to a status, and undoes each", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const { id: bobId } = await test.client.accounts.lookup("bob");
+    const { id } = await alice.statuses.post({ status: "Hello" });
+
+    assertEquals((await bob.statuses.favourite(id)).favourited, true);
+    const share = await bob.statuses.reblog(id, { visibility: "public" });
+    assertEquals((await bob.statuses.react(id, "👍")).reactions?.map((r) => r.name), ["👍"]);
+
+    assertEquals(share.reblog?.id, id);
+    assertEquals((await alice.statuses.favouritedBy(id)).items.map((a) => a.id), [bobId]);
+    assertEquals((await alice.statuses.rebloggedBy(id)).items.map((a) => a.id), [bobId]);
+    assertEquals((await alice.statuses.reactions(id)).map((r) => [r.name, r.count]), [["👍", 1]]);
+    assertEquals((await alice.statuses.reactedBy(id, "👍")).items.map((a) => a.id), [bobId]);
+    assertEquals((await bob.favourites.list()).items.map((status) => status.id), [id]);
+
+    assertEquals((await bob.statuses.unfavourite(id)).favourited, false);
+    assertEquals((await bob.statuses.unreblog(id)).reblogged, false);
+    assertEquals((await bob.statuses.unreact(id, "👍")).reactions ?? [], []);
+});
+
+Deno.test("a user reads a thread and a status's edits, and pins a status", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const { id: aliceId } = await test.client.accounts.lookup("alice");
+
+    const { id } = await alice.statuses.post({ status: "First" });
+    const reply = await bob.statuses.post({ status: "Second", in_reply_to_id: id });
+    await alice.statuses.edit(id, { status: "First, edited" });
+
+    assertEquals((await alice.statuses.context(reply.id)).ancestors.map((s) => s.id), [id]);
+    assertEquals((await alice.statuses.context(id)).descendants.map((s) => s.id), [reply.id]);
+    assertEquals((await alice.statuses.history(id)).map((edit) => edit.content), [
+        "<p>First</p>",
+        "<p>First, edited</p>",
+    ]);
+
+    assertEquals((await alice.statuses.pin(id)).pinned, true);
+    const pinned = await test.client.accounts.statuses(aliceId, { pinned: true });
+    assertEquals(pinned.items.map((status) => status.id), [id]);
+    assertEquals((await alice.statuses.unpin(id)).pinned, false);
+});
+
+Deno.test("a user reads the home, public and hashtag timelines", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const { id: aliceId } = await test.client.accounts.lookup("alice");
+    await bob.accounts.follow(aliceId);
+
+    const both = await alice.statuses.post({ status: "Look #cats #dogs" });
+    const cats = await alice.statuses.post({ status: "Just #cats" });
+    const ids = async (page: Promise<{ items: readonly { id: string }[] }>) =>
+        (await page).items.map((status) => status.id);
+
+    assertEquals(await ids(bob.timelines.home()), [cats.id, both.id]);
+    assertEquals(await ids(test.client.timelines.public({ local: true })), [cats.id, both.id]);
+    assertEquals(await ids(test.client.timelines.public({ remote: true })), []);
+    assertEquals(await ids(test.client.timelines.tag("cats")), [cats.id, both.id]);
+    assertEquals(await ids(test.client.timelines.tag("cats", { all: ["dogs"] })), [both.id]);
+    assertEquals(await ids(test.client.timelines.tag("cats", { none: ["dogs"] })), [cats.id]);
+});
