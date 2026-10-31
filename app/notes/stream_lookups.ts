@@ -5,13 +5,11 @@
  * @module
  */
 import type { Status } from "@versia/client-api";
-import { followedSubquery, sharingSubquery } from "../graph/follows.ts";
-import { hiddenFrom } from "../graph/hidden.ts";
-import { followedTagsSubquery } from "../tags/tag_follow_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, type NoteRow, tagsOf } from "./note_queries.ts";
 import { renderStatuses } from "./render.ts";
 import { findHashtagNote, findHomeNote, findPublicNote } from "./timeline_queries.ts";
+import { homeSourcesOf } from "./timeline_sources.ts";
 
 /** A status of a public or hashtag timeline. */
 export type PublicStatus = {
@@ -82,15 +80,7 @@ export const homeStatus = async (
     viewerId: string,
     noteId: string,
 ): Promise<Status | undefined> => {
-    const note = await findHomeNote(
-        ctx,
-        viewerId,
-        followedSubquery(ctx, viewerId),
-        sharingSubquery(ctx, viewerId),
-        followedTagsSubquery(ctx, viewerId),
-        hiddenFrom(ctx, viewerId),
-        noteId,
-    );
+    const note = await findHomeNote(ctx, viewerId, homeSourcesOf(ctx, viewerId), noteId);
 
     return note && (await renderStatuses(ctx, [note], viewerId))[0];
 };

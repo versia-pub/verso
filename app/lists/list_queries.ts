@@ -1,6 +1,7 @@
 import type { Selectable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
+import type { AccountIdQuery } from "../graph/follow_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import type { ListsTable, RepliesPolicy } from "./tables.ts";
 
@@ -160,3 +161,29 @@ export const listAccountPage = async (
         ? await query.orderBy("id", "desc").execute()
         : await readPage(query, "list_accounts.id", page);
 };
+
+/**
+ * The accounts in the list `listId` of `ownerId` whose statuses the owner sees there, as a
+ * subquery: those they follow, and were accepted by, and the owner, as on Mastodon. The others are
+ * in it while the owner's request to follow them waits.
+ */
+export const listMembersSubquery = (
+    ctx: Context,
+    ownerId: string,
+    listId: string,
+): AccountIdQuery =>
+    ctx.db.selectFrom("list_accounts")
+        .leftJoin("follows", "follows.id", "list_accounts.follow_id")
+        .select("list_accounts.account_id")
+        .where("list_accounts.list_id", "=", listId)
+        .where((eb) =>
+            eb.or([eb("follows.accepted", "=", true), eb("list_accounts.account_id", "=", ownerId)])
+        );
+
+/** The accounts in `accountId`'s exclusive lists, as a subquery, to leave out of its home. */
+export const exclusiveMembersSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
+    ctx.db.selectFrom("list_accounts")
+        .innerJoin("lists", "lists.id", "list_accounts.list_id")
+        .select("list_accounts.account_id")
+        .where("lists.account_id", "=", accountId)
+        .where("lists.exclusive", "=", true);

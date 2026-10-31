@@ -8,6 +8,7 @@ import { mute } from "../graph/mutes.ts";
 import { routes } from "../http/routes.ts";
 import { share } from "../interactions/shares.ts";
 import { createInstance, defaultSettings } from "../instances/testing.ts";
+import { addListAccounts, createList } from "../lists/lists.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -266,4 +267,31 @@ Deno.test("a hashtag's timeline is from here, elsewhere or both, and without wha
     await block(test.ctx, "alice", "bob");
     assertEquals((await test.tagged("verso", "", "alice")).ids, [remote.id]);
     assertEquals((await test.tagged("verso")).ids, [remote.id, local.id]);
+});
+
+Deno.test("a list's timeline is only its owner's, with a token that may read lists", async () => {
+    await using test = await open();
+    const list = await createList(test.ctx, "alice", {
+        title: "Friends",
+        replies_policy: "list",
+        exclusive: false,
+    });
+    if (list === "full") throw new Error("Too many lists");
+    await addListAccounts(test.ctx, "alice", list.id, ["bob"]);
+    const note = await createNote(test.ctx, "bob");
+    const app = createTestApp(test.ctx, timelineRoutes, { checkResponses: true });
+
+    const read = async (as: string, scopes?: Scope[]) => {
+        const response = await app.request(`/api/v1/timelines/list/${list.id}`, {
+            headers: { authorization: `Bearer ${await tokenFor(test.ctx, as, scopes)}` },
+        });
+        return { status: response.status, body: await response.json() };
+    };
+
+    const own = await read("alice");
+    assertEquals([own.status, own.body.map((status: { id: string }) => status.id)], [200, [
+        note.id,
+    ]]);
+    assertEquals((await read("bob")).status, 404);
+    assertEquals((await read("alice", ["read:statuses"])).status, 403);
 });

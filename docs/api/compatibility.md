@@ -18,14 +18,14 @@ behave differently.
 | Accounts and relationships | most: profiles, follows, blocks, mutes, notes, endorsements, search       |
 | Statuses                   | most: posting, editing, deleting, likes, shares, pins, bookmarks, threads |
 | Media                      | images; other files kept as they are                                      |
-| Timelines                  | home, with followed hashtags, public and hashtag                          |
+| Timelines                  | home, with followed hashtags, lists, public and hashtag                   |
 | Notifications and Web Push | all, grouped and ungrouped, without notification requests                 |
 | Streaming                  | WebSocket, without the list and direct streams                            |
 | Search                     | accounts, statuses and hashtags                                           |
 | Instance                   | the instance, rules, policies, custom emoji                               |
 
-Missing so far: list timelines, filters, polls, scheduled statuses, reports, conversations, trends
-and announcements. There's no admin API: admins use `verso admin` instead.
+Missing so far: filters, polls, scheduled statuses, reports, conversations, trends and
+announcements. There's no admin API: admins use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -132,13 +132,13 @@ and announcements. There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/timelines/public`        | ✅    |                                       |
 | `GET /api/v1/timelines/tag/:hashtag`  | ✅    |                                       |
 | `GET /api/v1/timelines/link`          | ❌    |                                       |
-| `GET /api/v1/timelines/list/:list_id` | ❌    |                                       |
+| `GET /api/v1/timelines/list/:list_id` | ✅    |                                       |
 | `GET /api/v1/markers`                 | ✅    |                                       |
 | `POST /api/v1/markers`                | ✅    |                                       |
 | `GET /api/v1/lists`                   | ✅    |                                       |
 | `GET /api/v1/lists/:id`               | ✅    |                                       |
-| `POST /api/v1/lists`                  | 🟡    | `exclusive` has no effect yet         |
-| `PUT /api/v1/lists/:id`               | 🟡    | `exclusive` has no effect yet         |
+| `POST /api/v1/lists`                  | ✅    |                                       |
+| `PUT /api/v1/lists/:id`               | ✅    |                                       |
 | `DELETE /api/v1/lists/:id`            | ✅    |                                       |
 | `GET /api/v1/lists/:id/accounts`      | ✅    |                                       |
 | `POST /api/v1/lists/:id/accounts`     | ✅    |                                       |

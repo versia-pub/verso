@@ -61,6 +61,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "POST /api/v1/tags/{name}/follow": (c) => c.tags.follow("cats"),
     "POST /api/v1/tags/{name}/unfollow": (c) => c.tags.unfollow("cats"),
     "GET /api/v1/followed_tags": (c) => c.followedTags.list(),
+    "GET /api/v1/timelines/list/{list_id}": (c) => c.timelines.list("1"),
     "GET /api/v1/lists": (c) => c.lists.list(),
     "GET /api/v1/lists/{id}": (c) => c.lists.get("1"),
     "POST /api/v1/lists": (c) => c.lists.create({ title: "Friends" }),

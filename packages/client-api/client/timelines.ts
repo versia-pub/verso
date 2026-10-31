@@ -53,4 +53,12 @@ export class TimelineMethods {
     ): Promise<Page<Status>> {
         return Page.get(this.http, Status, path`/api/v1/timelines/tag/${hashtag}`, query, options);
     }
+
+    /**
+     * The statuses of the accounts in one of the viewer's lists.
+     * @see https://docs.joinmastodon.org/methods/timelines/#list
+     */
+    list(id: string, query: PageQuery = {}, options?: CallOptions): Promise<Page<Status>> {
+        return Page.get(this.http, Status, path`/api/v1/timelines/list/${id}`, query, options);
+    }
 }

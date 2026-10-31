@@ -1,14 +1,15 @@
 import { Status } from "@versia/client-api";
 import { z } from "zod";
-import { hiddenFrom, viewerHidden } from "../graph/hidden.ts";
-import { followedSubquery, sharingSubquery } from "../graph/follows.ts";
-import { followedTagsSubquery } from "../tags/tag_follow_queries.ts";
+import { viewerHidden } from "../graph/hidden.ts";
+import { NotFound } from "../http/errors.ts";
+import { findList } from "../lists/list_queries.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Paged } from "../http/responses.ts";
 import { Flag, Strings } from "../http/schemas.ts";
 import { renderStatuses } from "./render.ts";
-import { hashtagPage, homePage, type Origin, publicPage } from "./timeline_queries.ts";
+import { hashtagPage, homePage, listPage, type Origin, publicPage } from "./timeline_queries.ts";
+import { homeSourcesOf, listSourcesOf } from "./timeline_sources.ts";
 
 /**
  * Which public statuses to return. `local` wins over `remote`, as on Mastodon.
@@ -67,10 +68,7 @@ export const timelineRoutes: readonly Route[] = [
             const notes = await homePage(
                 ctx,
                 viewer.accountId,
-                followedSubquery(ctx, viewer.accountId),
-                sharingSubquery(ctx, viewer.accountId),
-                followedTagsSubquery(ctx, viewer.accountId),
-                hiddenFrom(ctx, viewer.accountId),
+                homeSourcesOf(ctx, viewer.accountId),
                 query,
             );
             return {
@@ -142,6 +140,31 @@ export const timelineRoutes: readonly Route[] = [
             return {
                 status: 200,
                 body: await renderStatuses(ctx, notes, viewerId),
+                cursors: cursorsOf(notes, query, (note) => note.id),
+            };
+        },
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/timelines/list/:list_id",
+        summary: "View list timeline",
+        description: "View statuses in the given list timeline.",
+        docs: "https://docs.joinmastodon.org/methods/timelines/#list",
+        tags: ["timelines"],
+        auth: { require: "user", scope: "read:lists", permission: "read:note" },
+        params: z.object({
+            list_id: z.string().meta({ description: "Local ID of the List in the database." }),
+        }),
+        query: PageQuery({ default: 20, max: 40 }),
+        responses: { 200: Paged(Status) },
+        handler: async (ctx, { params, query, viewer }) => {
+            const list = await findList(ctx, viewer.accountId, params.list_id);
+            if (list === undefined) throw new NotFound();
+
+            const notes = await listPage(ctx, viewer.accountId, listSourcesOf(ctx, list), query);
+            return {
+                status: 200,
+                body: await renderStatuses(ctx, notes, viewer.accountId),
                 cursors: cursorsOf(notes, query, (note) => note.id),
             };
         },
