@@ -21,11 +21,12 @@ behave differently.
 | Timelines                  | home, with followed hashtags, lists, public and hashtag                   |
 | Notifications and Web Push | all, grouped and ungrouped, without notification requests                 |
 | Streaming                  | WebSocket, without the direct stream                                      |
+| Filters                    | v2, by keyword and by status                                              |
 | Search                     | accounts, statuses and hashtags                                           |
 | Instance                   | the instance, rules, policies, custom emoji                               |
 
-Missing so far: filters v1, polls, scheduled statuses, reports, conversations, trends and
-announcements. There's no admin API: admins use `verso admin` instead.
+Missing so far: polls, scheduled statuses, reports, conversations, trends and announcements. There's
+no admin API: admins use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -92,7 +93,7 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `/api/v2/filters` (5 methods)                     | ✅    |                                   |
 | Filter keywords (5 methods)                       | ✅    |                                   |
 | Filter statuses (4 methods)                       | ✅    |                                   |
-| Filters v1 (5 methods)                            | ❌    |                                   |
+| Filters v1 (5 methods)                            | ❌    | Deprecated; use v2                |
 | `POST /api/v1/reports`                            | ❌    |                                   |
 
 ## Statuses
