@@ -1,5 +1,6 @@
 export * from "./account.ts";
 export * from "./application.ts";
+export * from "./conversation.ts";
 export * from "./custom_emoji.ts";
 export * from "./filter.ts";
 export * from "./instance.ts";

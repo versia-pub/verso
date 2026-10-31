@@ -470,6 +470,25 @@ Deno.test("a user makes an exclusive list, reads it, changes it, and deletes it"
     assertEquals(await alice.lists.list(), []);
 });
 
+Deno.test("a user reads their direct conversations, marks one read, and removes it", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const { id: aliceId } = await test.client.accounts.lookup("alice");
+
+    const posted = await bob.statuses.post({ status: "@alice Hi", visibility: "direct" });
+    const [conversation] = (await alice.conversations.list()).items;
+    assertEquals([conversation.unread, conversation.last_status?.id], [true, posted.id]);
+    assertEquals((await bob.conversations.list()).items[0].accounts.map((each) => each.id), [
+        aliceId,
+    ]);
+
+    assertEquals((await alice.conversations.read(conversation.id)).unread, false);
+    assertEquals((await alice.conversations.unread(conversation.id)).unread, true);
+    await alice.conversations.delete(conversation.id);
+    assertEquals((await alice.conversations.list()).items, []);
+});
+
 Deno.test("a user makes a filter, sees what it matches, changes it, and deletes it", async () => {
     await using test = await open();
     const alice = await test.as("alice");

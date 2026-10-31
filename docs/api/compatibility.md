@@ -18,15 +18,15 @@ behave differently.
 | Accounts and relationships | most: profiles, follows, blocks, mutes, notes, endorsements, search       |
 | Statuses                   | most: posting, editing, deleting, likes, shares, pins, bookmarks, threads |
 | Media                      | images; other files kept as they are                                      |
-| Timelines                  | home, with followed hashtags, lists, public and hashtag                   |
+| Timelines                  | home, with followed hashtags, lists, public, hashtag and conversations    |
 | Notifications and Web Push | all, grouped and ungrouped, without notification requests                 |
 | Streaming                  | WebSocket, without the direct stream                                      |
 | Filters                    | v2, by keyword and by status                                              |
 | Search                     | accounts, statuses and hashtags                                           |
 | Instance                   | the instance, rules, policies, custom emoji                               |
 
-Missing so far: polls, scheduled statuses, reports, conversations, trends and announcements. There's
-no admin API: admins use `verso admin` instead.
+Missing so far: polls, scheduled statuses, reports, trends and announcements. There's no admin API:
+admins use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -130,27 +130,30 @@ no admin API: admins use `verso admin` instead.
 
 ## Timelines
 
-| Method                                | Verso | Notes                                 |
-| ------------------------------------- | ----- | ------------------------------------- |
-| `GET /api/v1/timelines/home`          | ✅    |                                       |
-| `GET /api/v1/timelines/public`        | ✅    |                                       |
-| `GET /api/v1/timelines/tag/:hashtag`  | ✅    |                                       |
-| `GET /api/v1/timelines/link`          | ❌    |                                       |
-| `GET /api/v1/timelines/list/:list_id` | ✅    |                                       |
-| `GET /api/v1/markers`                 | ✅    |                                       |
-| `POST /api/v1/markers`                | ✅    |                                       |
-| `GET /api/v1/lists`                   | ✅    |                                       |
-| `GET /api/v1/lists/:id`               | ✅    |                                       |
-| `POST /api/v1/lists`                  | ✅    |                                       |
-| `PUT /api/v1/lists/:id`               | ✅    |                                       |
-| `DELETE /api/v1/lists/:id`            | ✅    |                                       |
-| `GET /api/v1/lists/:id/accounts`      | ✅    |                                       |
-| `POST /api/v1/lists/:id/accounts`     | ✅    |                                       |
-| `DELETE /api/v1/lists/:id/accounts`   | ✅    |                                       |
-| Conversations (4 methods)             | ❌    |                                       |
-| `GET /api/v1/streaming` (WebSocket)   | 🟡    | No `direct` stream                    |
-| `GET /api/v1/streaming/:stream` (SSE) | ❌    | Server-sent events; use the WebSocket |
-| `GET /api/v1/streaming/health`        | ✅    |                                       |
+| Method                                  | Verso | Notes                                 |
+| --------------------------------------- | ----- | ------------------------------------- |
+| `GET /api/v1/timelines/home`            | ✅    |                                       |
+| `GET /api/v1/timelines/public`          | ✅    |                                       |
+| `GET /api/v1/timelines/tag/:hashtag`    | ✅    |                                       |
+| `GET /api/v1/timelines/link`            | ❌    |                                       |
+| `GET /api/v1/timelines/list/:list_id`   | ✅    |                                       |
+| `GET /api/v1/markers`                   | ✅    |                                       |
+| `POST /api/v1/markers`                  | ✅    |                                       |
+| `GET /api/v1/lists`                     | ✅    |                                       |
+| `GET /api/v1/lists/:id`                 | ✅    |                                       |
+| `POST /api/v1/lists`                    | ✅    |                                       |
+| `PUT /api/v1/lists/:id`                 | ✅    |                                       |
+| `DELETE /api/v1/lists/:id`              | ✅    |                                       |
+| `GET /api/v1/lists/:id/accounts`        | ✅    |                                       |
+| `POST /api/v1/lists/:id/accounts`       | ✅    |                                       |
+| `DELETE /api/v1/lists/:id/accounts`     | ✅    |                                       |
+| `GET /api/v1/conversations`             | ✅    |                                       |
+| `DELETE /api/v1/conversations/:id`      | ✅    |                                       |
+| `POST /api/v1/conversations/:id/read`   | ✅    |                                       |
+| `POST /api/v1/conversations/:id/unread` | ✅    |                                       |
+| `GET /api/v1/streaming` (WebSocket)     | 🟡    | No `direct` stream                    |
+| `GET /api/v1/streaming/:stream` (SSE)   | ❌    | Server-sent events; use the WebSocket |
+| `GET /api/v1/streaming/health`          | ✅    |                                       |
 
 ## Notifications
 

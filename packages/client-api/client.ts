@@ -35,6 +35,7 @@ import { FeaturedTagMethods, FollowedTagMethods, TagMethods } from "./client/tag
 import { ListMethods } from "./client/lists.ts";
 import { FilterMethods } from "./client/filters.ts";
 import { TimelineMethods } from "./client/timelines.ts";
+import { ConversationMethods } from "./client/conversations.ts";
 
 export type {
     AccountSearchQuery,
@@ -129,6 +130,8 @@ export class Client {
     readonly bookmarks: BookmarkMethods;
     /** Lists of statuses, newest first. */
     readonly timelines: TimelineMethods;
+    /** The viewer's direct conversations. */
+    readonly conversations: ConversationMethods;
     /** The viewer's notifications, each on its own. */
     readonly notifications: NotificationMethods;
     /** The viewer's notifications in groups, such as the likes of a status. */
@@ -168,6 +171,7 @@ export class Client {
         this.favourites = new FavouriteMethods(this.#http);
         this.bookmarks = new BookmarkMethods(this.#http);
         this.timelines = new TimelineMethods(this.#http);
+        this.conversations = new ConversationMethods(this.#http);
         this.notifications = new NotificationMethods(this.#http);
         this.groupedNotifications = new GroupedNotificationMethods(this.#http);
         this.markers = new MarkerMethods(this.#http);

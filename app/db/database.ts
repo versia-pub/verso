@@ -36,6 +36,7 @@ import type {
 import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { MarkersTable } from "../markers/tables.ts";
 import type { ListAccountsTable, ListsTable } from "../lists/tables.ts";
+import type { ConversationNotesTable, ConversationsTable } from "../conversations/tables.ts";
 import type { FilterKeywordsTable, FiltersTable, FilterStatusesTable } from "../filters/tables.ts";
 import type { FeaturedTagsTable, TagFollowsTable, TagsTable } from "../tags/tables.ts";
 import type { NotificationsTable } from "../notifications/tables.ts";
@@ -55,6 +56,8 @@ export type Database = {
     account_search: AccountSearchTable;
     accounts: AccountsTable;
     apps: AppsTable;
+    conversation_notes: ConversationNotesTable;
+    conversations: ConversationsTable;
     domain_blocks: DomainBlocksTable;
     emojis: EmojisTable;
     endorsements: EndorsementsTable;

@@ -13,6 +13,7 @@ import { undoReactionsWithDeletedEmoji } from "./interactions/reactions.ts";
 import { shareDeliveries } from "./interactions/share_federation.ts";
 import { remoteKeys } from "./instances/remote_keys.ts";
 import { cached } from "./kernel/cache.ts";
+import { trackConversations } from "./conversations/conversations.ts";
 import type { Context, Federation, Subscriber } from "./kernel/context.ts";
 import { domainBlocks } from "./moderation/domain_blocks.ts";
 import { blockedDomainNames } from "./moderation/domain_block_queries.ts";
@@ -45,6 +46,7 @@ export const subscribers: readonly Subscriber[] = [
     reactionDeliveries,
     undoReactionsWithDeletedEmoji,
     notifyOf,
+    trackConversations,
     uncountFollowsOf,
     uncountNotesOf,
     uncountLikesOf,

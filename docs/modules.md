@@ -14,6 +14,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `tags`          | hashtags, and those users feature and follow | `tag_queries.ts`              |
 | `lists`         | users' lists of accounts                     | `lists.ts`                    |
 | `filters`       | users' filters of keywords and statuses      | `filters.ts`, `matching.ts`   |
+| `conversations` | users' direct conversations                  | `conversations.ts`            |
 | `interactions`  | likes, boosts and reactions                  | `likes.ts`, `shares.ts`       |
 | `emojis`        | custom emojis, local and remote              | `emojis.ts`                   |
 | `media`         | uploads, processing, attachments, cleanup    | `uploads.ts`, `processing.ts` |
@@ -60,6 +61,7 @@ their own.
 | `tags`, `featured_tags`, `tag_follows`                                 | `tags`          |
 | `lists`, `list_accounts`                                               | `lists`         |
 | `filters`, `filter_keywords`, `filter_statuses`                        | `filters`       |
+| `conversations`, `conversation_notes`                                  | `conversations` |
 | `instances`, `instance_keys`                                           | `instances`     |
 | `domain_blocks`                                                        | `moderation`    |
 | `rate_limits`                                                          | `http`          |
