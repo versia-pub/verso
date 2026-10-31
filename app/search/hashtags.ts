@@ -5,6 +5,7 @@
  */
 import type { Tag } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
+import { followedTagsAmong } from "../tags/tag_follow_queries.ts";
 import { displayNamesOf } from "../tags/tag_queries.ts";
 import { hashtagsStartingWith, hashtagUses } from "./hashtag_queries.ts";
 
@@ -29,15 +30,20 @@ const dayLength = 24 * 60 * 60 * 1000;
 /**
  * The hashtags `names`, with how they were used on each of the past week's days, today first, in
  * UTC, as Mastodon shows them, by the names they were first written with. Each one's id is its name
- * in lower case.
+ * in lower case. A signed-in viewer, `viewerId`, is told whether they follow each.
  */
-export const renderHashtags = async (ctx: Context, names: readonly string[]): Promise<Tag[]> => {
+export const renderHashtags = async (
+    ctx: Context,
+    names: readonly string[],
+    viewerId: string | null,
+): Promise<Tag[]> => {
     const today = Math.floor(ctx.clock.now().getTime() / dayLength) * dayLength;
     const days = Array.from({ length: 7 }, (_, i) => new Date(today - i * dayLength));
     const displayNames = await displayNamesOf(ctx, names);
     const uses = new Map(
         (await hashtagUses(ctx, names, days)).map((used) => [`${used.name} ${used.day}`, used]),
     );
+    const followed = viewerId === null ? null : await followedTagsAmong(ctx, viewerId, names);
 
     return names.map((name) => ({
         id: name,
@@ -51,5 +57,6 @@ export const renderHashtags = async (ctx: Context, names: readonly string[]): Pr
                 accounts: String(used?.accounts ?? 0),
             };
         }),
+        ...followed && { following: followed.has(name) },
     }));
 };

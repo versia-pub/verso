@@ -33,6 +33,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - Muting an account that's already muted updates the mute. A mute lasts at most five years.
 - Featured hashtags aren't federated, since Versia has none, so remote accounts don't have any.
   Their `url` is the hashtag's, since Verso has no page of an account's statuses with it.
+- Following a hashtag puts its earlier public statuses on the home timeline too, not just new ones,
+  and unfollowing it takes them all off again. Verso puts the home timeline together when it's read.
 - Users with the `blocks` permission, usually moderators, see in `blocked_by` whether the account
   blocks them. For everyone else it's always `false`.
 - `GET /api/v1/preferences` returns the user's posting defaults, which

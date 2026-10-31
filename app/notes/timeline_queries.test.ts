@@ -6,6 +6,8 @@ import { follow, followedSubquery, sharingSubquery } from "../graph/follows.ts";
 import { hiddenFrom } from "../graph/hidden.ts";
 import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
+import { followedTagsSubquery } from "../tags/tag_follow_queries.ts";
+import { followTag } from "../tags/tag_follows.ts";
 import { createTestContext } from "../testing/context.ts";
 import type { NotesTable } from "./tables.ts";
 import { createNote, createShare } from "./testing.ts";
@@ -35,15 +37,16 @@ const open = async () => {
         .execute();
     const names = new Map<string, string>();
 
-    /** Adds a status called `name` by `accountId`, mentioning `mentionIds`. */
+    /** Adds a status called `name` by `accountId`, mentioning `mentionIds`, using `tags`. */
     const add = async (
         name: string,
         accountId: string,
         note: Partial<Insertable<NotesTable>> = {},
         mentionIds: string[] = [],
+        tags: string[] = [],
     ) => {
         test.clock.advance(1);
-        names.set((await createNote(test.ctx, accountId, note, mentionIds)).id, name);
+        names.set((await createNote(test.ctx, accountId, note, mentionIds, tags)).id, name);
     };
 
     /** Alice's home timeline, by name. */
@@ -53,6 +56,7 @@ const open = async () => {
             "alice",
             followedSubquery(test.ctx, "alice"),
             sharingSubquery(test.ctx, "alice"),
+            followedTagsSubquery(test.ctx, "alice"),
             hiddenFrom(test.ctx, "alice"),
             { limit: 40, ...page },
         ))
@@ -150,6 +154,21 @@ Deno.test("home has nothing of the accounts the viewer blocks, nor others' share
     await block(test.ctx, "bob", "carol");
 
     assertEquals(await test.home(), ["carol's", "carol's other share"]);
+});
+
+Deno.test("home has the public statuses with the hashtags the viewer follows, each once", async () => {
+    await using test = await open();
+    await followTag(test.ctx, "alice", "Cats");
+    await test.add("dave's", "dave", {}, [], ["cats"]);
+    await test.add("dave's reply", "dave", replyTo("erin"), [], ["cats", "dogs"]);
+    await test.add("dave's unlisted", "dave", { visibility: "unlisted" }, [], ["cats"]);
+    await test.add("dave's dogs", "dave", {}, [], ["dogs"]);
+    await test.add("bob's", "bob", {}, [], ["cats"]);
+    await test.add("erin's", "erin", {}, [], ["cats"]);
+    await mute(test.ctx, "alice", "erin", { notifications: false, duration: 0 });
+
+    assertEquals(await test.home(), ["bob's", "dave's reply", "dave's"]);
+    assertEquals(await test.home({ limit: 2 }), ["bob's", "dave's reply"]);
 });
 
 Deno.test("home is paged by id", async () => {

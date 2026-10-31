@@ -35,7 +35,7 @@ import type {
 } from "../notes/tables.ts";
 import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { MarkersTable } from "../markers/tables.ts";
-import type { FeaturedTagsTable, TagsTable } from "../tags/tables.ts";
+import type { FeaturedTagsTable, TagFollowsTable, TagsTable } from "../tags/tables.ts";
 import type { NotificationsTable } from "../notifications/tables.ts";
 import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
 import type { AccountSearchTable, NoteSearchTable } from "../search/tables.ts";
@@ -84,6 +84,7 @@ export type Database = {
     reactions: ReactionsTable;
     remote_note_totals: RemoteNoteTotalsTable;
     roles: RolesTable;
+    tag_follows: TagFollowsTable;
     tags: TagsTable;
     thread_mutes: ThreadMutesTable;
     vapid_keys: VapidKeysTable;

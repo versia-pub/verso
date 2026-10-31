@@ -26,6 +26,8 @@ export const Tag = z.object({
     url: z.url(),
     /** Each of the past week's days, today first. */
     history: z.array(TagHistory),
+    /** Whether the viewer follows it, given only to a signed-in viewer. */
+    following: z.boolean().optional(),
 });
 export type Tag = z.infer<typeof Tag>;
 

@@ -7,8 +7,9 @@
 import type { Status } from "@versia/client-api";
 import { followedSubquery, sharingSubquery } from "../graph/follows.ts";
 import { hiddenFrom } from "../graph/hidden.ts";
+import { followedTagsSubquery } from "../tags/tag_follow_queries.ts";
 import type { Context } from "../kernel/context.ts";
-import { findNote, type NoteRow } from "./note_queries.ts";
+import { findNote, type NoteRow, tagsOf } from "./note_queries.ts";
 import { renderStatuses } from "./render.ts";
 import { findHashtagNote, findHomeNote, findPublicNote } from "./timeline_queries.ts";
 
@@ -56,12 +57,24 @@ export const hashtagStatus = async (
     return note && publicStatusOf(ctx, note);
 };
 
-/**
- * Who posted the status or boost `noteId`, if it exists. It can be on the home timelines of them
- * and their followers only.
- */
-export const homeAuthorOf = async (ctx: Context, noteId: string): Promise<string | undefined> =>
-    (await findNote(ctx, noteId))?.account_id;
+/** Who could have a status on their home timeline: its author, their followers, and more. */
+export type HomeReach = {
+    readonly authorId: string;
+    /** If it is public, its hashtags, in lower case, whose followers could have it too. */
+    readonly tags: readonly string[];
+};
+
+/** Who could have the status or boost `noteId` on their home timeline, if it exists. */
+export const homeReachOf = async (
+    ctx: Context,
+    noteId: string,
+): Promise<HomeReach | undefined> => {
+    const note = await findNote(ctx, noteId);
+    if (note === undefined) return;
+
+    const tags = note.visibility === "public" ? (await tagsOf(ctx, [noteId])).get(noteId) : [];
+    return { authorId: note.account_id, tags: tags ?? [] };
+};
 
 /** The status `noteId` as `viewerId` sees it, if it is on their home timeline. */
 export const homeStatus = async (
@@ -74,6 +87,7 @@ export const homeStatus = async (
         viewerId,
         followedSubquery(ctx, viewerId),
         sharingSubquery(ctx, viewerId),
+        followedTagsSubquery(ctx, viewerId),
         hiddenFrom(ctx, viewerId),
         noteId,
     );

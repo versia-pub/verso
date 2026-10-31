@@ -2,6 +2,7 @@ import { Status } from "@versia/client-api";
 import { z } from "zod";
 import { hiddenFrom, viewerHidden } from "../graph/hidden.ts";
 import { followedSubquery, sharingSubquery } from "../graph/follows.ts";
+import { followedTagsSubquery } from "../tags/tag_follow_queries.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Paged } from "../http/responses.ts";
@@ -68,6 +69,7 @@ export const timelineRoutes: readonly Route[] = [
                 viewer.accountId,
                 followedSubquery(ctx, viewer.accountId),
                 sharingSubquery(ctx, viewer.accountId),
+                followedTagsSubquery(ctx, viewer.accountId),
                 hiddenFrom(ctx, viewer.accountId),
                 query,
             );

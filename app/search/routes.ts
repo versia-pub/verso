@@ -106,7 +106,7 @@ const rendered = async (
     // In the order of `accounts`.
     accounts: [...(await publicAccountsOf(ctx, found.accounts)).values()],
     statuses: await renderStatuses(ctx, found.statuses, viewerId),
-    hashtags: await renderHashtags(ctx, found.hashtags),
+    hashtags: await renderHashtags(ctx, found.hashtags, viewerId),
 });
 
 /**

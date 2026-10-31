@@ -430,6 +430,21 @@ Deno.test("a user features a hashtag, lists it, and stops featuring it", async (
     assertEquals(await alice.featuredTags.list(), []);
 });
 
+Deno.test("a user follows a hashtag, sees its statuses at home, lists it, and unfollows it", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+
+    assertEquals((await alice.tags.follow("Cats")).following, true);
+    const { id } = await bob.statuses.post({ status: "Hello #cats" });
+    assertEquals((await alice.timelines.home()).items.map((status) => status.id), [id]);
+    assertEquals((await alice.followedTags.list()).items.map((tag) => tag.name), ["Cats"]);
+    assertEquals((await test.client.tags.get("cats")).following, undefined);
+
+    assertEquals((await alice.tags.unfollow("cats")).following, false);
+    assertEquals((await alice.followedTags.list()).items, []);
+});
+
 Deno.test("a user mutes the thread of a status, and unmutes it", async () => {
     await using test = await open();
     const alice = await test.as("alice");

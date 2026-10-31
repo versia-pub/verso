@@ -8,6 +8,7 @@ import type { Scope } from "../kernel/scopes.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { publish } from "../kernel/pubsub.ts";
+import { followTag } from "../tags/tag_follows.ts";
 import { createTestContext } from "../testing/context.ts";
 import { openSession } from "./session.ts";
 import { dispatcher, type Sessions } from "./dispatcher.ts";
@@ -77,7 +78,11 @@ const open = async () => {
         };
     };
 
-    const post = async (accountId: string, text: string, visibility?: "direct" | "private") => {
+    const post = async (
+        accountId: string,
+        text: string,
+        visibility?: "direct" | "private" | "unlisted",
+    ) => {
         const note = await postNote(test.ctx, accountId, {
             text,
             format: "text/plain",
@@ -224,6 +229,21 @@ Deno.test("a user isn't told of the statuses of those they only asked to follow,
     await test.dispatch.idle();
 
     assertEquals(bob.sent, []);
+    assertEquals(test.failed, []);
+});
+
+Deno.test("a user is sent the public statuses with the hashtags they follow, and told of those deleted", async () => {
+    await using test = await open();
+    await followTag(test.ctx, "carol", "cats");
+    const carol = test.streaming("carol", ["user"]);
+
+    const shown = await test.post("bob", "Hi #Cats");
+    const unlisted = await test.post("bob", "Hi #cats", "unlisted");
+    await test.post("bob", "Hi #dogs");
+    for (const note of [shown, unlisted]) await removeNote(test.ctx, note);
+    await test.dispatch.idle();
+
+    assertEquals(carol.sent, [["user", "update", shown], ["user", "delete", shown]]);
     assertEquals(test.failed, []);
 });
 

@@ -22,7 +22,7 @@ Deno.test("a status's hashtags become known, and are shown as first written", as
     await createNote(test.ctx, "alice", {}, [], ["VersoDev"]);
     await createNote(test.ctx, "alice", {}, [], ["versodev"]);
 
-    const [tag] = await renderHashtags(test.ctx, ["versodev"]);
+    const [tag] = await renderHashtags(test.ctx, ["versodev"], null);
     assertEquals([tag?.id, tag?.name, tag?.url], [
         "versodev",
         "VersoDev",

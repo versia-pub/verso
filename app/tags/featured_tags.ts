@@ -59,4 +59,5 @@ export const suggestedTags = async (ctx: Context, accountId: string): Promise<Ta
     await renderHashtags(
         ctx,
         await recentlyUsedTags(ctx, accountId, suggestedFrom, featuredTagLimit),
+        accountId,
     );

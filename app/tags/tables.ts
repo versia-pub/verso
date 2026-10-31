@@ -17,3 +17,13 @@ export type FeaturedTagsTable = {
     name: string;
     created_at: Date;
 };
+
+/** A hashtag that a local user follows, whose public statuses are on their home timeline. */
+export type TagFollowsTable = {
+    /** Orders followed hashtags by when they were followed. */
+    id: string;
+    account_id: string;
+    /** The hashtag, in `tags`. */
+    tag: string;
+    created_at: Date;
+};

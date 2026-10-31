@@ -58,9 +58,13 @@ statuses are rendered once for everyone, in [`app/streaming/shared.ts`](../app/s
 and aren't sent to viewers who block or mute the author. Permissions are checked for each message,
 so a viewer whose roles no longer give `read:note` stops getting statuses.
 
+A home status goes to its author, their followers, and the users who follow one of its hashtags, if
+it's on their home timeline.
+
 Deletes go to everyone who could have had the status: its author, the accounts it mentions and,
-unless it was direct, the author's followers. On public streams, every public status's delete is
-sent, since clients ignore ids they don't have.
+unless it was direct, the author's followers. A public status's delete also goes to every user who
+follows a hashtag, because its hashtags are gone with it. On public streams, every public status's
+delete is sent. Clients ignore ids they don't have.
 
 Mastodon's `direct` and `list` streams aren't supported yet.
 

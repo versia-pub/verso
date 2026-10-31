@@ -82,7 +82,7 @@ Deno.test("a hashtag shows how public and unlisted statuses used it each day of 
             uses: String(used[i]?.[0] ?? 0),
             accounts: String(used[i]?.[1] ?? 0),
         }));
-    assertEquals(await renderHashtags(test.ctx, ["verso", "versia", "old"]), [
+    assertEquals(await renderHashtags(test.ctx, ["verso", "versia", "old"], null), [
         {
             id: "verso",
             name: "verso",
@@ -102,5 +102,5 @@ Deno.test("a hashtag shows how public and unlisted statuses used it each day of 
             history: history({}),
         },
     ]);
-    assertEquals(await renderHashtags(test.ctx, []), []);
+    assertEquals(await renderHashtags(test.ctx, [], null), []);
 });

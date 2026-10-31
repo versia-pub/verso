@@ -8,8 +8,9 @@ import { followersAmong } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { grants } from "../kernel/scopes.ts";
-import { homeAuthorOf, homeStatus } from "../notes/stream_lookups.ts";
+import { homeReachOf, homeStatus } from "../notes/stream_lookups.ts";
 import { shownNotification } from "../notifications/render.ts";
+import { followingAnyTagAmong, tagFollowersAmong } from "../tags/tag_follow_queries.ts";
 import { atMost, type Sessions, type StreamViewer } from "./dispatcher.ts";
 import type { Session } from "./session.ts";
 import type { StatusMessage } from "./statuses.ts";
@@ -41,7 +42,8 @@ const allowed = async (entries: readonly Entry[], permission: Permission) => {
 /**
  * Of `entries`, those whose viewers could have the status `deleted` on their home timelines, so
  * are told it went: its author, those it mentions, and unless it was direct, its author's
- * followers.
+ * followers. A public status could also be there through the hashtags they follow, which are gone
+ * with it, so all who follow any hashtag are told too, as clients ignore statuses they don't have.
  */
 const couldSee = async (
     ctx: Context,
@@ -52,19 +54,22 @@ const couldSee = async (
     const followers = deleted.visibility === "direct"
         ? new Set()
         : await followersAmong(ctx, deleted.accountId, [...viewerIds]);
+    const tagFollowers = deleted.visibility === "public"
+        ? await followingAnyTagAmong(ctx, [...viewerIds])
+        : new Set();
 
     return entries.filter(({ viewer }) =>
         viewer.accountId === deleted.accountId || deleted.mentionIds.includes(viewer.accountId) ||
-        followers.has(viewer.accountId)
+        followers.has(viewer.accountId) || tagFollowers.has(viewer.accountId)
     );
 };
 
 /**
  * What the sessions of the process `ctx` belongs to are sent of their viewers' `user` streams. A
- * status is looked up for the viewers it could reach, its author and their followers, and sent if
- * it is on their home timeline when it is heard of, rendered once for each of them, as they see it.
- * A notification is rendered once for its viewer. Each is sent as long as they may read statuses
- * and their notifications, as on the routes for them.
+ * status is looked up for the viewers it could reach, its author, their followers and those who
+ * follow its hashtags, and sent if it is on their home timeline when it is heard of, rendered once
+ * for each of them, as they see it. A notification is rendered once for its viewer. Each is sent as
+ * long as they may read statuses and their notifications, as on the routes for them.
  */
 export const userStreams = (ctx: Context): Sessions => {
     const sessions = new Set<Entry>();
@@ -98,13 +103,16 @@ export const userStreams = (ctx: Context): Sessions => {
                 return;
             }
 
-            const authorId = await homeAuthorOf(ctx, message.noteId);
-            if (authorId === undefined) return;
+            const reach = await homeReachOf(ctx, message.noteId);
+            if (reach === undefined) return;
+            const { authorId, tags } = reach;
             const viewerIds = new Set(subscribed.map((entry) => entry.viewer.accountId));
             const followers = await followersAmong(ctx, authorId, [...viewerIds]);
+            const tagFollowers = await tagFollowersAmong(ctx, tags, [...viewerIds]);
             const reached = await allowed(
                 subscribed.filter(({ viewer }) =>
-                    viewer.accountId === authorId || followers.has(viewer.accountId)
+                    viewer.accountId === authorId || followers.has(viewer.accountId) ||
+                    tagFollowers.has(viewer.accountId)
                 ),
                 "read:note",
             );

@@ -5,6 +5,7 @@ import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
+import type { TagNameQuery } from "../tags/tag_follow_queries.ts";
 import type { NoteRow } from "./note_queries.ts";
 
 /** Excludes the statuses and boosts of the accounts `hidden`, and any boosts of their statuses. */
@@ -22,11 +23,12 @@ const without = (hidden: Excluded) => (eb: ExpressionBuilder<Database, "notes">)
     ]);
 
 /**
- * Given pages with the same bounds, whose rows are all distinct, returns the page of all their rows
- * combined, as `readPage` would read it.
+ * Given pages with the same bounds, returns the page of all their rows combined, each once, as
+ * `readPage` would read it.
  */
 const mergePages = (pages: readonly NoteRow[][], page: PageBounds) => {
-    const newestFirst = pages.flat().toSorted((a, b) => b.id.localeCompare(a.id));
+    const distinct = new Map(pages.flat().map((note) => [note.id, note]));
+    const newestFirst = [...distinct.values()].toSorted((a, b) => b.id.localeCompare(a.id));
 
     // Just after `min_id` are its oldest rows.
     return page.min_id === undefined
@@ -39,15 +41,17 @@ const mergePages = (pages: readonly NoteRow[][], page: PageBounds) => {
  * `followed` that they may see, and the boosts of `sharing`, the accounts of `followed` whose
  * boosts they see. Of those statuses, a direct one must mention them, and a reply must be to them
  * or to someone they follow, with its author among them, as on Mastodon. Nothing from the accounts
- * they block or mute, `hidden`, is included, nor anyone's boosts of their statuses. They are three
- * queries, so each can use the index that suits it, however many accounts they follow. No status
- * is in two of them, as no one follows themselves.
+ * they block or mute, `hidden`, is included, nor anyone's boosts of their statuses. The public
+ * statuses that use the hashtags they follow, `followedTags`, are included too, replies as well, as
+ * on Mastodon. They are four queries, so each can use the index that suits it, however many
+ * accounts and hashtags they follow. A status can be in more than one of them.
  */
 const homeQueries = (
     ctx: Context,
     viewerId: string,
     followed: AccountIdQuery,
     sharing: AccountIdQuery,
+    followedTags: TagNameQuery,
     hidden: Excluded,
 ) => {
     const notes = ctx.db.selectFrom("notes").selectAll().where(without(hidden));
@@ -76,8 +80,14 @@ const homeQueries = (
                 ]),
             ])
         );
+    const tagged = notes
+        .where("visibility", "=", "public")
+        .where("reblog_of_id", "is", null)
+        .where("notes.id", "in", (eb) =>
+            eb.selectFrom("note_tags").select("note_tags.note_id")
+                .where("note_tags.name", "in", followedTags));
 
-    return [own, shares, others];
+    return [own, shares, others, tagged];
 };
 
 /**
@@ -88,11 +98,12 @@ export const homePage = async (
     viewerId: string,
     followed: AccountIdQuery,
     sharing: AccountIdQuery,
+    followedTags: TagNameQuery,
     hidden: Excluded,
     page: PageBounds,
 ): Promise<NoteRow[]> => {
     const pages = [];
-    for (const query of homeQueries(ctx, viewerId, followed, sharing, hidden)) {
+    for (const query of homeQueries(ctx, viewerId, followed, sharing, followedTags, hidden)) {
         pages.push(await readPage(query, "notes.id", page));
     }
 
@@ -105,10 +116,11 @@ export const findHomeNote = async (
     viewerId: string,
     followed: AccountIdQuery,
     sharing: AccountIdQuery,
+    followedTags: TagNameQuery,
     hidden: Excluded,
     noteId: string,
 ): Promise<NoteRow | undefined> => {
-    for (const query of homeQueries(ctx, viewerId, followed, sharing, hidden)) {
+    for (const query of homeQueries(ctx, viewerId, followed, sharing, followedTags, hidden)) {
         const note = await query.where("notes.id", "=", noteId).executeTakeFirst();
         if (note) return note;
     }

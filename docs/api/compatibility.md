@@ -18,7 +18,7 @@ behave differently.
 | Accounts and relationships | most: profiles, follows, blocks, mutes, notes, endorsements, search       |
 | Statuses                   | most: posting, editing, deleting, likes, shares, pins, bookmarks, threads |
 | Media                      | images; other files kept as they are                                      |
-| Timelines                  | home, public and hashtag                                                  |
+| Timelines                  | home, with followed hashtags, public and hashtag                          |
 | Notifications and Web Push | all, grouped and ungrouped, without notification requests                 |
 | Streaming                  | WebSocket, without the list and direct streams                            |
 | Search                     | accounts, statuses and hashtags                                           |
@@ -83,7 +83,10 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `POST /api/v1/follow_requests/:id/reject`         | ✅    |                                   |
 | `GET /api/v1/endorsements`                        | ✅    |                                   |
 | Featured tags (4 methods)                         | ✅    |                                   |
-| Tags and followed tags                            | ❌    |                                   |
+| `GET /api/v1/tags/:name`                          | ✅    |                                   |
+| `POST /api/v1/tags/:name/follow`                  | ✅    |                                   |
+| `POST /api/v1/tags/:name/unfollow`                | ✅    |                                   |
+| `GET /api/v1/followed_tags`                       | ✅    |                                   |
 | `GET /api/v1/preferences`                         | 🟡    | Only the defaults for posting     |
 | Suggestions (v1 and v2)                           | ❌    |                                   |
 | Filters (v1 and v2)                               | ❌    |                                   |

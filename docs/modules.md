@@ -11,7 +11,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `auth`          | apps, logging in with OpenID Connect, tokens | `authorize.ts`, `tokens.ts`   |
 | `notes`         | statuses, who sees them, threads, timelines  | `notes.ts`, `visibility.ts`   |
 | `graph`         | follows, blocks, mutes, account notes        | `follows.ts`, `hidden.ts`     |
-| `tags`          | hashtags, and those users feature            | `tag_queries.ts`              |
+| `tags`          | hashtags, and those users feature and follow | `tag_queries.ts`              |
 | `interactions`  | likes, boosts and reactions                  | `likes.ts`, `shares.ts`       |
 | `emojis`        | custom emojis, local and remote              | `emojis.ts`                   |
 | `media`         | uploads, processing, attachments, cleanup    | `uploads.ts`, `processing.ts` |
@@ -55,7 +55,7 @@ their own.
 | `push_subscriptions`, `vapid_keys`                                     | `push`          |
 | `note_search`, `account_search`                                        | `search`        |
 | `markers`                                                              | `markers`       |
-| `tags`, `featured_tags`                                                | `tags`          |
+| `tags`, `featured_tags`, `tag_follows`                                 | `tags`          |
 | `instances`, `instance_keys`                                           | `instances`     |
 | `domain_blocks`                                                        | `moderation`    |
 | `rate_limits`                                                          | `http`          |

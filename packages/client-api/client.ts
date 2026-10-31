@@ -31,7 +31,7 @@ import { RoleMethods } from "./client/roles.ts";
 import { search, type SearchQuery } from "./client/search.ts";
 import { StreamingMethods } from "./client/streaming.ts";
 import { BookmarkMethods, FavouriteMethods, StatusMethods } from "./client/statuses.ts";
-import { FeaturedTagMethods } from "./client/tags.ts";
+import { FeaturedTagMethods, FollowedTagMethods, TagMethods } from "./client/tags.ts";
 import { TimelineMethods } from "./client/timelines.ts";
 
 export type {
@@ -107,6 +107,10 @@ export class Client {
     readonly endorsements: EndorsementMethods;
     /** The hashtags the viewer features on their profile. */
     readonly featuredTags: FeaturedTagMethods;
+    /** Hashtags, and following them. */
+    readonly tags: TagMethods;
+    /** The hashtags the viewer follows. */
+    readonly followedTags: FollowedTagMethods;
     /**
      * Posting, viewing, editing and deleting statuses, and liking, sharing, reacting to,
      * bookmarking and muting them.
@@ -149,6 +153,8 @@ export class Client {
         this.domainBlocks = new DomainBlockMethods(this.#http);
         this.endorsements = new EndorsementMethods(this.#http);
         this.featuredTags = new FeaturedTagMethods(this.#http);
+        this.tags = new TagMethods(this.#http);
+        this.followedTags = new FollowedTagMethods(this.#http);
         this.statuses = new StatusMethods(this.#http);
         this.favourites = new FavouriteMethods(this.#http);
         this.bookmarks = new BookmarkMethods(this.#http);
