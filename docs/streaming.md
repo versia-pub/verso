@@ -1,11 +1,11 @@
 # Streaming
 
-Clients open a WebSocket to `/api/v1/streaming` and get statuses and notifications as they happen.
-Unlike Mastodon, there's no separate streaming server: any `verso serve` or `verso all` process
-takes streaming clients, on the same port as the API.
+Clients open a WebSocket to `/api/v1/streaming` and get statuses, notifications and conversations as
+they happen. Unlike Mastodon, there's no separate streaming server: any `verso serve` or `verso all`
+process takes streaming clients, on the same port as the API.
 
 The code is in [`app/streaming/`](../app/streaming/), with each kind of stream in its own file:
-`user.ts`, `lists.ts`, `public.ts` and `hashtags.ts`.
+`user.ts`, `lists.ts`, `public.ts`, `hashtags.ts` and `direct.ts`.
 
 ## How a status reaches a client
 
@@ -36,6 +36,11 @@ the status up itself for its own sessions. Notifications arrive the same way, on
 `notifications.created`, and only go to their user's sessions. So do changes to a user's filters, on
 `filters.changed`, which go to their `user` streams as `filters_changed`, with no payload.
 
+A user's conversations arrive on `conversations.changed` and go to their `direct` streams as
+`conversation`. That happens when a conversation gets a status, is marked read or unread, or loses
+its latest status but still has others. A conversation that loses all its statuses is gone, so
+nothing is sent, as on Mastodon.
+
 The dispatcher, in [`app/streaming/dispatcher.ts`](../app/streaming/dispatcher.ts), subscribes once
 to each channel per process, rather than once per WebSocket, and hands each message to each kind of
 stream. It handles messages one at a time, so a client never gets a status's delete before its
@@ -52,10 +57,11 @@ dropped and a warning is logged.
 | the same, with `:media`                   | those with media attached               |
 | `hashtag`, `hashtag:local`                | public statuses with the hashtag `tag`  |
 | `list`                                    | the list `list`, one of the viewer's    |
+| `direct`                                  | the viewer's direct conversations       |
 
-`user` and `list` need `read:statuses`, and `user:notification` needs `read:notifications`. The
-`user` stream only includes notifications if the token can read them. Whose list it is takes a
-query, so a `list` subscription starts once that's known.
+`user`, `list` and `direct` need `read:statuses`, and `user:notification` needs
+`read:notifications`. The `user` stream only includes notifications if the token can read them.
+Whose list it is takes a query, so a `list` subscription starts once that's known.
 
 Home statuses are rendered separately for each viewer, 8 viewers at a time. Public and hashtag
 statuses are rendered once for everyone, in [`app/streaming/shared.ts`](../app/streaming/shared.ts),
@@ -72,8 +78,6 @@ unless it was direct, the author's followers. A public status's delete also goes
 follows a hashtag, because its hashtags are gone with it. On public streams, every public status's
 delete is sent. On list streams, the delete of every status but a direct one goes to the lists its
 author is in. Clients ignore ids they don't have.
-
-Mastodon's `direct` stream isn't supported yet.
 
 ## A WebSocket's life
 

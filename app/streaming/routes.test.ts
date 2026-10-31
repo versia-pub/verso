@@ -208,17 +208,17 @@ Deno.test("a WebSocket closes once its token is revoked, and stops watching it o
 
     const kept = await connect(url, test.token);
     const revoked = await connect(url, issued.token);
-    // Watching each token and its user's roles, and the process hearing statuses, notifications and
-    // filter changes, once for every WebSocket, which it does until it stops.
-    assertEquals(test.pubsub.live(), before + 3 + 8);
+    // Watching each token and its user's roles, and the process hearing statuses, notifications,
+    // filter changes and conversations, once for every WebSocket, which it does until it stops.
+    assertEquals(test.pubsub.live(), before + 4 + 8);
 
     await revokeToken(test.ctx, app, issued.token);
     assertEquals(await revoked.closed(), [1000, "The access token was revoked"]);
-    await until(() => test.pubsub.live() === before + 3 + 4);
+    await until(() => test.pubsub.live() === before + 4 + 4);
 
     kept.socket.close();
     await kept.closed();
-    await until(() => test.pubsub.live() === before + 3);
+    await until(() => test.pubsub.live() === before + 4);
 });
 
 Deno.test("a WebSocket streams what its user may read once their roles change, without reconnecting", async () => {
@@ -331,8 +331,9 @@ Deno.test("WebSockets close, and stop watching their tokens, once Verso stops", 
 
     await server.shutdown();
     await closed();
-    // Only the process still hears statuses, notifications and filter changes, until it stops.
-    assertEquals(test.pubsub.live(), before + 3);
+    // Only the process still hears statuses, notifications, filter changes and conversations, until
+    // it stops.
+    assertEquals(test.pubsub.live(), before + 4);
 });
 
 Deno.test("a WebSocket on the user stream is sent the user's statuses, in Mastodon's format", async () => {

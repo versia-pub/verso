@@ -1,12 +1,16 @@
 /**
- * Giving a process's streaming sessions the statuses, notifications and filter changes they stream,
- * from one subscription to each channel rather than one for every session, through a listener for
- * each kind of stream. Messages are handled one at a time, in the order they are heard, so a session is never
- * sent a status's delete before its update, and what published them doesn't wait for them to be
+ * Giving a process's streaming sessions the statuses, notifications, filter changes and
+ * conversations they stream, from one subscription to each channel rather than one for every
+ * session, through a listener for each kind of stream. Messages are handled one at a time, in the
+ * order they are heard, so a session is never sent a status's delete before its update, and what published them doesn't wait for them to be
  * streamed.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
+import {
+    conversationChanged,
+    type ConversationChangedMessage,
+} from "../conversations/conversations.ts";
 import type { RouteViewer } from "../http/route.ts";
 import { filtersChanged, type FiltersChangedMessage } from "../filters/filters.ts";
 import type { Context } from "../kernel/context.ts";
@@ -20,6 +24,7 @@ export type Listener = {
     readonly statuses?: (message: StatusMessage) => Promise<void>;
     readonly notifications?: (message: NotifiedMessage) => Promise<void>;
     readonly filtersChanged?: (message: FiltersChangedMessage) => Promise<void>;
+    readonly conversations?: (message: ConversationChangedMessage) => Promise<void>;
 };
 
 /** A session's viewer, who is logged in. */
@@ -104,6 +109,11 @@ export const dispatcher = (ctx: Context): Dispatcher => {
         ctx,
         filtersChanged,
         (message) => handle(async (listener) => await listener.filtersChanged?.(message)),
+    );
+    subscribe(
+        ctx,
+        conversationChanged,
+        (message) => handle(async (listener) => await listener.conversations?.(message)),
     );
 
     return {

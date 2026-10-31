@@ -799,6 +799,8 @@ const describe = (event: StreamEvent) => {
             return `${event.stream.join(",")} notification ${event.notification.type}`;
         case "filters_changed":
             return `${event.stream.join(",")} filters_changed`;
+        case "conversation":
+            return `${event.stream.join(",")} conversation ${event.conversation.last_status?.id}`;
         case "unknown":
             return `${event.stream.join(",")} ${event.name}`;
         case "error":
@@ -862,6 +864,28 @@ Deno.test("a user streams the statuses of one of their lists", async () => {
 
     const posted = await bob.statuses.post({ status: "Hi" });
     assertEquals(await next(stream, 1), [`list,${list.id} update ${posted.id}`]);
+});
+
+Deno.test("a user streams their direct conversations as they change", async () => {
+    await using test = await open();
+    await using server = test.listen();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+
+    await using stream = await alice.streaming.connect({
+        url: server.url,
+        subscribe: [{ stream: "direct" }],
+    });
+    // Once its error is back, the subscription before it has been handled.
+    stream.subscribe({ stream: "list" });
+    assertEquals(await next(stream, 1), ["error 400 Missing list name parameter"]);
+
+    const posted = await bob.statuses.post({ status: "@alice Hi", visibility: "direct" });
+    assertEquals(await next(stream, 1), [`direct conversation ${posted.id}`]);
+
+    const [conversation] = (await alice.conversations.list()).items;
+    await alice.conversations.read(conversation.id);
+    assertEquals(await next(stream, 1), [`direct conversation ${posted.id}`]);
 });
 
 Deno.test("a stream without a user's token doesn't open", async () => {

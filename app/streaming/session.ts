@@ -39,7 +39,7 @@ export type Session = {
  */
 type Stream = { readonly scope?: Scope; readonly param?: "tag" | "list" };
 
-/** The streams Verso has. Mastodon's `direct` stream isn't among them yet. */
+/** The streams Verso has, which are Mastodon's. */
 const streams = new Map<string, Stream>([
     ["user", { scope: "read:statuses" }],
     ["user:notification", { scope: "read:notifications" }],
@@ -52,6 +52,7 @@ const streams = new Map<string, Stream>([
     ["hashtag", { param: "tag" }],
     ["hashtag:local", { param: "tag" }],
     ["list", { scope: "read:statuses", param: "list" }],
+    ["direct", { scope: "read:statuses" }],
 ]);
 
 /**

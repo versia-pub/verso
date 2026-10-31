@@ -84,7 +84,7 @@ Deno.test("a client subscribes only to streams its token's scopes allow, and pub
 
 Deno.test("a client is told of streams that don't exist, once its token could read one", () => {
     const unknown = { error: "Unknown stream type", status: 400 };
-    const reading = open(["read:statuses"], { stream: "direct" });
+    const reading = open(["read:statuses"], { stream: "conversations" });
     reading.send({ type: "subscribe" }, { type: "subscribe", stream: [] }, {
         type: "subscribe",
         stream: "constructor",

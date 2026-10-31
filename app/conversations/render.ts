@@ -3,7 +3,7 @@ import { publicAccounts } from "../accounts/public.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNotes } from "../notes/note_queries.ts";
 import { renderStatuses } from "../notes/render.ts";
-import type { ConversationRow } from "./conversation_queries.ts";
+import { type ConversationRow, findConversation } from "./conversation_queries.ts";
 
 /**
  * Conversations as Mastodon renders them for their owner, `viewerId`: with the other accounts in
@@ -42,3 +42,18 @@ export const renderConversation = async (
     ctx: Context,
     row: ConversationRow,
 ): Promise<Conversation> => (await renderConversations(ctx, [row], row.account_id))[0];
+
+/**
+ * `accountId`'s conversation `id` as Mastodon renders it for them, if they still have it and it has
+ * a latest status.
+ */
+export const shownConversation = async (
+    ctx: Context,
+    accountId: string,
+    id: string,
+): Promise<Conversation | undefined> => {
+    const row = await findConversation(ctx, accountId, id);
+    if (row === undefined || row.last_note_id === null) return undefined;
+
+    return await renderConversation(ctx, row);
+};

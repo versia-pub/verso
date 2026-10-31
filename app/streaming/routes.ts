@@ -7,6 +7,7 @@ import { Binary, Upgrade } from "../http/responses.ts";
 import type { StreamingLimits } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import { findList } from "../lists/list_queries.ts";
+import { directStreams } from "./direct.ts";
 import { dispatcher, type Sessions } from "./dispatcher.ts";
 import { hashtagStreams } from "./hashtags.ts";
 import { listStreams } from "./lists.ts";
@@ -34,7 +35,13 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
         if (streams) return streams;
 
         const dispatch = dispatcher(ctx);
-        streams = [userStreams(ctx), publicStreams(ctx), hashtagStreams(ctx), listStreams(ctx)];
+        streams = [
+            userStreams(ctx),
+            publicStreams(ctx),
+            hashtagStreams(ctx),
+            listStreams(ctx),
+            directStreams(ctx),
+        ];
         for (const sessions of streams) dispatch.listen(sessions);
         return streams;
     };

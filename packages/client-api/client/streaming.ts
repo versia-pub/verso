@@ -4,11 +4,12 @@
  * @module
  */
 import { z } from "zod";
+import { Conversation } from "../conversation.ts";
 import { Notification } from "../notification.ts";
 import { Status } from "../status.ts";
 import { ApiError, type CallOptions, type Http, UnexpectedResponse } from "./http.ts";
 
-/** The streams Verso has. Mastodon's `direct` stream isn't among them yet. */
+/** The streams Verso has, which are Mastodon's. */
 export type StreamName =
     | "user"
     | "user:notification"
@@ -20,7 +21,8 @@ export type StreamName =
     | "public:remote:media"
     | "hashtag"
     | "hashtag:local"
-    | "list";
+    | "list"
+    | "direct";
 
 /**
  * A stream to subscribe to, with its hashtag, without the `#`, if it is a hashtag's, or its list's
@@ -59,6 +61,12 @@ export type StreamEvent =
         /** The viewer's filters changed, so the statuses an app has may match others now. */
         readonly event: "filters_changed";
         readonly stream: readonly string[];
+    }
+    | {
+        /** A direct conversation has a new status, lost its latest, or was marked read or unread. */
+        readonly event: "conversation";
+        readonly stream: readonly string[];
+        readonly conversation: Conversation;
     }
     | {
         /** An event this client doesn't know, which Mastodon may have and Verso may later. */
@@ -131,6 +139,8 @@ const eventOf = (data: unknown): StreamEvent => {
             return { event, stream, notification: parsed(Notification) };
         case "filters_changed":
             return { event, stream };
+        case "conversation":
+            return { event, stream, conversation: parsed(Conversation) };
         default:
             return { event: "unknown", stream, name: event, payload };
     }

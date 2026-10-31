@@ -61,15 +61,15 @@ export const addToConversation = async (
 
 /**
  * Finds the latest status again of the conversations of `accountIds` whose latest was deleted, and
- * removes those left with none.
+ * removes those left with none. Returns those that are left, with the latest they have now.
  */
 export const refreshConversations = async (
     ctx: Context,
     accountIds: readonly string[],
-): Promise<void> => {
-    if (accountIds.length === 0) return;
+): Promise<ConversationRow[]> => {
+    if (accountIds.length === 0) return [];
 
-    await ctx.db.updateTable("conversations")
+    const refreshed = await ctx.db.updateTable("conversations")
         .set((eb) => ({
             last_note_id: eb.selectFrom("conversation_notes")
                 .select((inner) => inner.fn.max("conversation_notes.note_id").as("latest"))
@@ -77,12 +77,15 @@ export const refreshConversations = async (
         }))
         .where("account_id", "in", accountIds)
         .where("last_note_id", "is", null)
+        .returningAll()
         .execute();
 
     await ctx.db.deleteFrom("conversations")
         .where("account_id", "in", accountIds)
         .where("last_note_id", "is", null)
         .execute();
+
+    return refreshed.filter((row) => row.last_note_id !== null);
 };
 
 /** `accountId`'s conversation `id`, if they have it. */

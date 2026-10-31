@@ -20,7 +20,7 @@ behave differently.
 | Media                      | images; other files kept as they are                                      |
 | Timelines                  | home, with followed hashtags, lists, public, hashtag and conversations    |
 | Notifications and Web Push | all, grouped and ungrouped, without notification requests                 |
-| Streaming                  | WebSocket, without the direct stream                                      |
+| Streaming                  | WebSocket, with every stream                                              |
 | Filters                    | v2, by keyword and by status                                              |
 | Search                     | accounts, statuses and hashtags                                           |
 | Instance                   | the instance, rules, policies, custom emoji                               |
@@ -151,7 +151,7 @@ admins use `verso admin` instead.
 | `DELETE /api/v1/conversations/:id`      | ✅    |                                       |
 | `POST /api/v1/conversations/:id/read`   | ✅    |                                       |
 | `POST /api/v1/conversations/:id/unread` | ✅    |                                       |
-| `GET /api/v1/streaming` (WebSocket)     | 🟡    | No `direct` stream                    |
+| `GET /api/v1/streaming` (WebSocket)     | ✅    |                                       |
 | `GET /api/v1/streaming/:stream` (SSE)   | ❌    | Server-sent events; use the WebSocket |
 | `GET /api/v1/streaming/health`          | ✅    |                                       |
 

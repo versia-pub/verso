@@ -4,7 +4,8 @@ import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { Paged } from "../http/responses.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { conversationPage, deleteConversation, markConversation } from "./conversation_queries.ts";
+import { conversationPage, deleteConversation } from "./conversation_queries.ts";
+import { markConversationAs } from "./conversations.ts";
 import { renderConversation, renderConversations } from "./render.ts";
 
 const ConversationId = z.object({
@@ -60,7 +61,7 @@ export const conversationRoutes: readonly Route[] = [
         params: ConversationId,
         responses: { 200: Conversation },
         handler: async (ctx, { params, viewer }) => {
-            const row = await markConversation(ctx, viewer.accountId, params.id, false);
+            const row = await markConversationAs(ctx, viewer.accountId, params.id, false);
             if (row === undefined) throw new NotFound();
 
             return { status: 200, body: await renderConversation(ctx, row) };
@@ -76,7 +77,7 @@ export const conversationRoutes: readonly Route[] = [
         params: ConversationId,
         responses: { 200: Conversation },
         handler: async (ctx, { params, viewer }) => {
-            const row = await markConversation(ctx, viewer.accountId, params.id, true);
+            const row = await markConversationAs(ctx, viewer.accountId, params.id, true);
             if (row === undefined) throw new NotFound();
 
             return { status: 200, body: await renderConversation(ctx, row) };
