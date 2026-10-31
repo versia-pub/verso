@@ -24,8 +24,8 @@ behave differently.
 | Search                     | accounts, statuses and hashtags                                           |
 | Instance                   | the instance, rules, policies, custom emoji                               |
 
-Missing so far: lists, filters, polls, scheduled statuses, reports, conversations, trends and
-announcements. There's no admin API: admins use `verso admin` instead.
+Missing so far: list timelines, filters, polls, scheduled statuses, reports, conversations, trends
+and announcements. There's no admin API: admins use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -53,7 +53,7 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/accounts/:id/followers`              | ✅    |                                   |
 | `GET /api/v1/accounts/:id/following`              | ✅    |                                   |
 | `GET /api/v1/accounts/:id/featured_tags`          | 🟡    | Remote accounts have none         |
-| `GET /api/v1/accounts/:id/lists`                  | ❌    |                                   |
+| `GET /api/v1/accounts/:id/lists`                  | ✅    |                                   |
 | `POST /api/v1/accounts/:id/follow`                | ✅    |                                   |
 | `POST /api/v1/accounts/:id/unfollow`              | ✅    |                                   |
 | `POST /api/v1/accounts/:id/remove_from_followers` | ✅    |                                   |
@@ -135,7 +135,14 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/timelines/list/:list_id` | ❌    |                                       |
 | `GET /api/v1/markers`                 | ✅    |                                       |
 | `POST /api/v1/markers`                | ✅    |                                       |
-| Lists (8 methods)                     | ❌    |                                       |
+| `GET /api/v1/lists`                   | ✅    |                                       |
+| `GET /api/v1/lists/:id`               | ✅    |                                       |
+| `POST /api/v1/lists`                  | 🟡    | `exclusive` has no effect yet         |
+| `PUT /api/v1/lists/:id`               | 🟡    | `exclusive` has no effect yet         |
+| `DELETE /api/v1/lists/:id`            | ✅    |                                       |
+| `GET /api/v1/lists/:id/accounts`      | ✅    |                                       |
+| `POST /api/v1/lists/:id/accounts`     | ✅    |                                       |
+| `DELETE /api/v1/lists/:id/accounts`   | ✅    |                                       |
 | Conversations (4 methods)             | ❌    |                                       |
 | `GET /api/v1/streaming` (WebSocket)   | 🟡    | No `list` or `direct` streams         |
 | `GET /api/v1/streaming/:stream` (SSE) | ❌    | Server-sent events; use the WebSocket |

@@ -2882,6 +2882,754 @@
                 }
             }
         },
+        "/api/v1/lists": {
+            "get": {
+                "summary": "View your lists",
+                "description": "Fetch all lists that the user owns.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:list` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/lists/#get"
+                },
+                "tags": [
+                    "lists"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:lists"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/List"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a list",
+                "description": "Create a new list.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:list` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/lists/#create"
+                },
+                "tags": [
+                    "lists"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:lists"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The title of the list to be created."
+                                    },
+                                    "replies_policy": {
+                                        "default": "list",
+                                        "type": "string",
+                                        "enum": [
+                                            "followed",
+                                            "list",
+                                            "none"
+                                        ],
+                                        "description": "One of `followed`, `list`, or `none`. Defaults to `list`."
+                                    },
+                                    "exclusive": {
+                                        "description": "Whether members of this list need to get removed from the “Home” feed.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The title of the list to be created."
+                                    },
+                                    "replies_policy": {
+                                        "default": "list",
+                                        "type": "string",
+                                        "enum": [
+                                            "followed",
+                                            "list",
+                                            "none"
+                                        ],
+                                        "description": "One of `followed`, `list`, or `none`. Defaults to `list`."
+                                    },
+                                    "exclusive": {
+                                        "description": "Whether members of this list need to get removed from the “Home” feed.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The title of the list to be created."
+                                    },
+                                    "replies_policy": {
+                                        "default": "list",
+                                        "type": "string",
+                                        "enum": [
+                                            "followed",
+                                            "list",
+                                            "none"
+                                        ],
+                                        "description": "One of `followed`, `list`, or `none`. Defaults to `list`."
+                                    },
+                                    "exclusive": {
+                                        "description": "Whether members of this list need to get removed from the “Home” feed.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/List"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/lists/{id}": {
+            "get": {
+                "summary": "Show a single list",
+                "description": "Fetch the list with the given ID.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:list` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/lists/#get-one"
+                },
+                "tags": [
+                    "lists"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:lists"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the list."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/List"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update a list",
+                "description": "Change the properties of a list.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:list` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/lists/#update"
+                },
+                "tags": [
+                    "lists"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:lists"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the list."
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The title of the list to be created."
+                                    },
+                                    "replies_policy": {
+                                        "type": "string",
+                                        "enum": [
+                                            "followed",
+                                            "list",
+                                            "none"
+                                        ],
+                                        "description": "One of `followed`, `list`, or `none`. Defaults to `list`."
+                                    },
+                                    "exclusive": {
+                                        "description": "Whether members of this list need to get removed from the “Home” feed.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The title of the list to be created."
+                                    },
+                                    "replies_policy": {
+                                        "type": "string",
+                                        "enum": [
+                                            "followed",
+                                            "list",
+                                            "none"
+                                        ],
+                                        "description": "One of `followed`, `list`, or `none`. Defaults to `list`."
+                                    },
+                                    "exclusive": {
+                                        "description": "Whether members of this list need to get removed from the “Home” feed.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The title of the list to be created."
+                                    },
+                                    "replies_policy": {
+                                        "type": "string",
+                                        "enum": [
+                                            "followed",
+                                            "list",
+                                            "none"
+                                        ],
+                                        "description": "One of `followed`, `list`, or `none`. Defaults to `list`."
+                                    },
+                                    "exclusive": {
+                                        "description": "Whether members of this list need to get removed from the “Home” feed.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/List"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a list",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:list` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/lists/#delete"
+                },
+                "tags": [
+                    "lists"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:lists"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the list."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/lists/{id}/accounts": {
+            "get": {
+                "summary": "View accounts in a list",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:list` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/lists/#accounts"
+                },
+                "tags": [
+                    "lists"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:lists"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the list."
+                        }
+                    },
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Maximum number of results. Defaults to 40 accounts. Max 80 accounts. Set to 0 in order to get all accounts without pagination."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Add accounts to a list",
+                "description": "Add accounts to the given list. Note that the user must be following these accounts.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:list` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/lists/#accounts-add"
+                },
+                "tags": [
+                    "lists"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:lists"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the list."
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "account_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The accounts that should be added to the list."
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "account_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The accounts that should be added to the list."
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "account_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The accounts that should be added to the list."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove accounts from list",
+                "description": "Remove accounts from the given list.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:list` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/lists/#accounts-remove"
+                },
+                "tags": [
+                    "lists"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:lists"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the list."
+                        }
+                    },
+                    {
+                        "name": "account_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "account_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The accounts that should be removed from the list."
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "account_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The accounts that should be removed from the list."
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "account_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The accounts that should be removed from the list."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}/lists": {
+            "get": {
+                "summary": "Get lists containing this account",
+                "description": "User lists that you have added this account to.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:list` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#lists"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:lists"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the account."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/List"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/search": {
             "get": {
                 "summary": "Search for matching accounts",
@@ -9175,6 +9923,7 @@
                                                 "owner:mute",
                                                 "owner:like",
                                                 "owner:bookmark",
+                                                "owner:list",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -9264,6 +10013,7 @@
                                                 "owner:mute",
                                                 "owner:like",
                                                 "owner:bookmark",
+                                                "owner:list",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -9353,6 +10103,7 @@
                                                 "owner:mute",
                                                 "owner:like",
                                                 "owner:bookmark",
+                                                "owner:list",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -9521,6 +10272,7 @@
                                                 "owner:mute",
                                                 "owner:like",
                                                 "owner:bookmark",
+                                                "owner:list",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -9607,6 +10359,7 @@
                                                 "owner:mute",
                                                 "owner:like",
                                                 "owner:bookmark",
+                                                "owner:list",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -9693,6 +10446,7 @@
                                                 "owner:mute",
                                                 "owner:like",
                                                 "owner:bookmark",
+                                                "owner:list",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -13946,6 +14700,34 @@
                 "required": [
                     "code",
                     "name"
+                ]
+            },
+            "List": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "replies_policy": {
+                        "type": "string",
+                        "enum": [
+                            "followed",
+                            "list",
+                            "none"
+                        ]
+                    },
+                    "exclusive": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "replies_policy",
+                    "exclusive"
                 ]
             },
             "Marker": {

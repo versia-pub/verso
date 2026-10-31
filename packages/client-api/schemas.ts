@@ -2,6 +2,7 @@ export * from "./account.ts";
 export * from "./application.ts";
 export * from "./custom_emoji.ts";
 export * from "./instance.ts";
+export * from "./list.ts";
 export * from "./marker.ts";
 export * from "./media_attachment.ts";
 export * from "./notification.ts";

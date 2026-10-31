@@ -26,7 +26,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 ## Accounts
 
 - Blocking an account isn't federated, and doesn't remove follows. It hides the account from the
-  blocker in timelines, notifications, and lists of likes and boosts.
+  blocker in timelines, notifications, and lists of likes and boosts. A blocked account stays in the
+  blocker's lists.
 - Blocking a domain with `POST /api/v1/domain_blocks` blocks every account on that domain and its
   subdomains, just like blocking each one would. It isn't federated either, and the user's followers
   there stay, and can still be followed. The domain must be a domain name.
@@ -35,6 +36,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   Their `url` is the hashtag's, since Verso has no page of an account's statuses with it.
 - Following a hashtag puts its earlier public statuses on the home timeline too, not just new ones,
   and unfollowing it takes them all off again. Verso puts the home timeline together when it's read.
+- A list's title is at most 256 characters, and a request adds or removes at most 100 of its
+  accounts. Lists aren't federated.
 - Users with the `blocks` permission, usually moderators, see in `blocked_by` whether the account
   blocks them. For everyone else it's always `false`.
 - `GET /api/v1/preferences` returns the user's posting defaults, which

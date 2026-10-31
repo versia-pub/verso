@@ -35,6 +35,7 @@ import type {
 } from "../notes/tables.ts";
 import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { MarkersTable } from "../markers/tables.ts";
+import type { ListAccountsTable, ListsTable } from "../lists/tables.ts";
 import type { FeaturedTagsTable, TagFollowsTable, TagsTable } from "../tags/tables.ts";
 import type { NotificationsTable } from "../notifications/tables.ts";
 import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
@@ -67,6 +68,8 @@ export type Database = {
     jobs: JobsTable;
     job_pauses: JobPausesTable;
     likes: LikesTable;
+    list_accounts: ListAccountsTable;
+    lists: ListsTable;
     markers: MarkersTable;
     media: MediaTable;
     note_emojis: NoteEmojisTable;

@@ -445,6 +445,28 @@ Deno.test("a user follows a hashtag, sees its statuses at home, lists it, and un
     assertEquals((await alice.followedTags.list()).items, []);
 });
 
+Deno.test("a user makes a list, adds an account they follow, changes it, and deletes it", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    await test.as("bob");
+    const { id: bob } = await test.client.accounts.lookup("bob");
+    await alice.accounts.follow(bob);
+
+    const list = await alice.lists.create({ title: "Friends", exclusive: true });
+    assertEquals([list.title, list.replies_policy, list.exclusive], ["Friends", "list", true]);
+    await alice.lists.addAccounts(list.id, [bob]);
+    assertEquals((await alice.lists.accounts(list.id)).items.map((account) => account.id), [bob]);
+    assertEquals((await alice.accounts.lists(bob)).map((each) => each.id), [list.id]);
+
+    assertEquals((await alice.lists.update(list.id, { title: "Pals" })).title, "Pals");
+    assertEquals((await alice.lists.get(list.id)).title, "Pals");
+    await alice.lists.removeAccounts(list.id, [bob]);
+    assertEquals((await alice.lists.accounts(list.id)).items, []);
+
+    await alice.lists.delete(list.id);
+    assertEquals(await alice.lists.list(), []);
+});
+
 Deno.test("a user mutes the thread of a status, and unmutes it", async () => {
     await using test = await open();
     const alice = await test.as("alice");

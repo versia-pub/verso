@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Account, CredentialAccount, FamiliarFollowers, type Visibility } from "../account.ts";
 import { Preferences } from "../preferences.ts";
 import { Relationship } from "../relationship.ts";
+import { List } from "../list.ts";
 import { Status } from "../status.ts";
 import { FeaturedTag } from "../tag.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
@@ -234,6 +235,14 @@ export class AccountMethods {
             ...options,
             query: { id: ids },
         });
+    }
+
+    /**
+     * The viewer's lists that an account is in.
+     * @see https://docs.joinmastodon.org/methods/accounts/#lists
+     */
+    lists(id: string, options?: CallOptions): Promise<List[]> {
+        return this.http.json(z.array(List), "GET", path`/api/v1/accounts/${id}/lists`, options);
     }
 
     /**

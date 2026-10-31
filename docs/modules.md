@@ -12,6 +12,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `notes`         | statuses, who sees them, threads, timelines  | `notes.ts`, `visibility.ts`   |
 | `graph`         | follows, blocks, mutes, account notes        | `follows.ts`, `hidden.ts`     |
 | `tags`          | hashtags, and those users feature and follow | `tag_queries.ts`              |
+| `lists`         | users' lists of accounts                     | `lists.ts`                    |
 | `interactions`  | likes, boosts and reactions                  | `likes.ts`, `shares.ts`       |
 | `emojis`        | custom emojis, local and remote              | `emojis.ts`                   |
 | `media`         | uploads, processing, attachments, cleanup    | `uploads.ts`, `processing.ts` |
@@ -56,6 +57,7 @@ their own.
 | `note_search`, `account_search`                                        | `search`        |
 | `markers`                                                              | `markers`       |
 | `tags`, `featured_tags`, `tag_follows`                                 | `tags`          |
+| `lists`, `list_accounts`                                               | `lists`         |
 | `instances`, `instance_keys`                                           | `instances`     |
 | `domain_blocks`                                                        | `moderation`    |
 | `rate_limits`                                                          | `http`          |

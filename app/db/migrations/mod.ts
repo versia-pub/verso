@@ -63,6 +63,7 @@ import { endorsements } from "./0061_endorsements.ts";
 import { tags } from "./0062_tags.ts";
 import { featuredTags } from "./0063_featured_tags.ts";
 import { tagFollows } from "./0064_tag_follows.ts";
+import { lists } from "./0065_lists.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -133,4 +134,5 @@ export const migrations: Record<string, Migration> = {
     "0062_tags": tags,
     "0063_featured_tags": featuredTags,
     "0064_tag_follows": tagFollows,
+    "0065_lists": lists,
 };

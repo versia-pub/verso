@@ -188,6 +188,7 @@ updated = 2026-10-01
 #     "owner:emoji",
 #     "owner:follow",
 #     "owner:like",
+#     "owner:list",
 #     "owner:media",
 #     "owner:mute",
 #     "owner:note",

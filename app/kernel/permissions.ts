@@ -30,6 +30,8 @@ export const permissions = [
     "owner:like",
     /** Bookmark statuses, and see one's bookmarks. */
     "owner:bookmark",
+    /** Make lists of accounts, and change them. */
+    "owner:list",
     /** Boost statuses, and undo it. */
     "owner:boost",
     /** React to statuses, and undo it. */
