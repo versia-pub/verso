@@ -9209,6 +9209,15 @@
                         }
                     },
                     {
+                        "name": "list",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "When `stream` is set to `list`, use this parameter to specify the list ID."
+                        }
+                    },
+                    {
                         "name": "upgrade",
                         "in": "header",
                         "required": false,

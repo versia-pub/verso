@@ -782,6 +782,27 @@ Deno.test("a user streams statuses and notifications as they happen", async () =
     assertEquals(await next(stream, 0), []);
 });
 
+Deno.test("a user streams the statuses of one of their lists", async () => {
+    await using test = await open();
+    await using server = test.listen();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const { id: bobId } = await test.client.accounts.lookup("bob");
+    await alice.accounts.follow(bobId);
+    const list = await alice.lists.create({ title: "Friends" });
+    await alice.lists.addAccounts(list.id, [bobId]);
+
+    await using stream = await alice.streaming.connect({
+        url: server.url,
+        subscribe: [{ stream: "list", list: list.id }],
+    });
+    stream.subscribe({ stream: "list", list: "missing" });
+    assertEquals(await next(stream, 1), ["error 401 Not authorized to stream this list"]);
+
+    const posted = await bob.statuses.post({ status: "Hi" });
+    assertEquals(await next(stream, 1), [`list,${list.id} update ${posted.id}`]);
+});
+
 Deno.test("a stream without a user's token doesn't open", async () => {
     await using test = await open();
     await using server = test.listen();

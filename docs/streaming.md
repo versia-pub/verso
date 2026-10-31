@@ -5,7 +5,7 @@ Unlike Mastodon, there's no separate streaming server: any `verso serve` or `ver
 takes streaming clients, on the same port as the API.
 
 The code is in [`app/streaming/`](../app/streaming/), with each kind of stream in its own file:
-`user.ts`, `public.ts` and `hashtags.ts`.
+`user.ts`, `lists.ts`, `public.ts` and `hashtags.ts`.
 
 ## How a status reaches a client
 
@@ -23,6 +23,7 @@ every process hears it
 dispatcher: one per process, one message at a time
   │
   ├──► user streams      the author and their followers, each rendered as they see it
+  ├──► list streams      the lists the author is in, each rendered as its owner sees it
   ├──► public streams    rendered once, as anyone sees it
   └──► hashtag streams   rendered once, as anyone sees it
          │
@@ -49,9 +50,11 @@ dropped and a warning is logged.
 | `public`, `public:local`, `public:remote` | the public timeline: all, local, remote |
 | the same, with `:media`                   | those with media attached               |
 | `hashtag`, `hashtag:local`                | public statuses with the hashtag `tag`  |
+| `list`                                    | the list `list`, one of the viewer's    |
 
-`user` needs `read:statuses`, and `user:notification` needs `read:notifications`. The `user` stream
-only includes notifications if the token can read them.
+`user` and `list` need `read:statuses`, and `user:notification` needs `read:notifications`. The
+`user` stream only includes notifications if the token can read them. Whose list it is takes a
+query, so a `list` subscription starts once that's known.
 
 Home statuses are rendered separately for each viewer, 8 viewers at a time. Public and hashtag
 statuses are rendered once for everyone, in [`app/streaming/shared.ts`](../app/streaming/shared.ts),
@@ -59,14 +62,16 @@ and aren't sent to viewers who block or mute the author. Permissions are checked
 so a viewer whose roles no longer give `read:note` stops getting statuses.
 
 A home status goes to its author, their followers, and the users who follow one of its hashtags, if
-it's on their home timeline.
+it's on their home timeline. A list's status goes to its owner if its author is in the list and it's
+on the list's timeline.
 
 Deletes go to everyone who could have had the status: its author, the accounts it mentions and,
 unless it was direct, the author's followers. A public status's delete also goes to every user who
 follows a hashtag, because its hashtags are gone with it. On public streams, every public status's
-delete is sent. Clients ignore ids they don't have.
+delete is sent. On list streams, the delete of every status but a direct one goes to the lists its
+author is in. Clients ignore ids they don't have.
 
-Mastodon's `direct` and `list` streams aren't supported yet.
+Mastodon's `direct` stream isn't supported yet.
 
 ## A WebSocket's life
 

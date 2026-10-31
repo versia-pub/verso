@@ -8,7 +8,7 @@ import { Notification } from "../notification.ts";
 import { Status } from "../status.ts";
 import { ApiError, type CallOptions, type Http, UnexpectedResponse } from "./http.ts";
 
-/** The streams Verso has. Mastodon's `direct` and `list` streams aren't among them yet. */
+/** The streams Verso has. Mastodon's `direct` stream isn't among them yet. */
 export type StreamName =
     | "user"
     | "user:notification"
@@ -19,13 +19,22 @@ export type StreamName =
     | "public:remote"
     | "public:remote:media"
     | "hashtag"
-    | "hashtag:local";
-
-/** A stream to subscribe to, with its hashtag, without the `#`, if it is a hashtag's. */
-export type Subscription = { readonly stream: StreamName; readonly tag?: string };
+    | "hashtag:local"
+    | "list";
 
 /**
- * What happened, and in which stream, as its name and, for a hashtag's, the hashtag. An event in
+ * A stream to subscribe to, with its hashtag, without the `#`, if it is a hashtag's, or its list's
+ * id, if it is a list's.
+ */
+export type Subscription = {
+    readonly stream: StreamName;
+    readonly tag?: string;
+    readonly list?: string;
+};
+
+/**
+ * What happened, and in which stream, as its name and, for a hashtag's or a list's, the hashtag or
+ * the list's id. An event in
  * several streams the client subscribed to comes once for each.
  */
 export type StreamEvent =

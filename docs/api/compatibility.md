@@ -20,7 +20,7 @@ behave differently.
 | Media                      | images; other files kept as they are                                      |
 | Timelines                  | home, with followed hashtags, lists, public and hashtag                   |
 | Notifications and Web Push | all, grouped and ungrouped, without notification requests                 |
-| Streaming                  | WebSocket, without the list and direct streams                            |
+| Streaming                  | WebSocket, without the direct stream                                      |
 | Search                     | accounts, statuses and hashtags                                           |
 | Instance                   | the instance, rules, policies, custom emoji                               |
 
@@ -144,7 +144,7 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `POST /api/v1/lists/:id/accounts`     | ✅    |                                       |
 | `DELETE /api/v1/lists/:id/accounts`   | ✅    |                                       |
 | Conversations (4 methods)             | ❌    |                                       |
-| `GET /api/v1/streaming` (WebSocket)   | 🟡    | No `list` or `direct` streams         |
+| `GET /api/v1/streaming` (WebSocket)   | 🟡    | No `direct` stream                    |
 | `GET /api/v1/streaming/:stream` (SSE) | ❌    | Server-sent events; use the WebSocket |
 | `GET /api/v1/streaming/health`        | ✅    |                                       |
 

@@ -98,6 +98,18 @@ export const listsWith = async (
         .orderBy("lists.id")
         .execute();
 
+/** Of the lists `listIds`, those `memberId` is in. */
+export const listsWithAmong = async (
+    ctx: Context,
+    listIds: readonly string[],
+    memberId: string,
+): Promise<ListRow[]> =>
+    listIds.length === 0 ? [] : await ctx.db.selectFrom("lists").selectAll("lists")
+        .innerJoin("list_accounts", "list_accounts.list_id", "lists.id")
+        .where("lists.id", "in", listIds)
+        .where("list_accounts.account_id", "=", memberId)
+        .execute();
+
 /** Adds an account to a list, through the owner's follow of it, `followId`, if it isn't theirs. */
 export const insertListAccount = async (
     ctx: Context,

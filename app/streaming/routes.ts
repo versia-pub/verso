@@ -6,8 +6,10 @@ import { defineRoute, type Route } from "../http/route.ts";
 import { Binary, Upgrade } from "../http/responses.ts";
 import type { StreamingLimits } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
+import { findList } from "../lists/list_queries.ts";
 import { dispatcher, type Sessions } from "./dispatcher.ts";
 import { hashtagStreams } from "./hashtags.ts";
+import { listStreams } from "./lists.ts";
 import { publicStreams } from "./public.ts";
 import { openSession } from "./session.ts";
 import { userStreams } from "./user.ts";
@@ -32,7 +34,7 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
         if (streams) return streams;
 
         const dispatch = dispatcher(ctx);
-        streams = [userStreams(ctx), publicStreams(ctx), hashtagStreams(ctx)];
+        streams = [userStreams(ctx), publicStreams(ctx), hashtagStreams(ctx), listStreams(ctx)];
         for (const sessions of streams) dispatch.listen(sessions);
         return streams;
     };
@@ -69,6 +71,10 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
                     description: "When `stream` is set to `hashtag` or `hashtag:local`, use " +
                         "this parameter to specify the tag name.",
                 }),
+                list: z.string().optional().meta({
+                    description: "When `stream` is set to `list`, use this parameter to specify " +
+                        "the list ID.",
+                }),
             }),
             headers: z.object({
                 upgrade: z.string().optional(),
@@ -96,7 +102,14 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
 
                             // Events still rendering when it closes are dropped, as Deno doesn't send
                             // on a closed WebSocket.
-                            const session = openSession(viewer, socket, query, limits);
+                            const session = openSession(
+                                viewer,
+                                socket,
+                                query,
+                                limits,
+                                async (listId) =>
+                                    await findList(ctx, viewer.accountId, listId) !== undefined,
+                            );
                             socket.onmessage = ({ data }) => session.receive(data);
 
                             // Mastodon closes it too, though without saying why.

@@ -5,8 +5,9 @@ import { openSession } from "./session.ts";
 /** A session for a token with `scopes`, on a socket that keeps what it's sent. */
 const open = (
     scopes: readonly Scope[],
-    query: { readonly stream?: string; readonly tag?: string } = {},
+    query: { readonly stream?: string; readonly tag?: string; readonly list?: string } = {},
     limits?: { readonly subscriptions: number; readonly tag_length: number },
+    ownsList?: (listId: string) => Promise<boolean>,
 ) => {
     const sent: unknown[] = [];
     const closed: [number, string][] = [];
@@ -19,6 +20,7 @@ const open = (
         },
         query,
         limits,
+        ownsList,
     );
 
     const send = (...messages: unknown[]) => {
@@ -196,4 +198,47 @@ Deno.test("a client's streams are limited as config is by default", () => {
         { error: "Too many subscriptions", status: 400 },
         { error: "Tag name is too long", status: 400 },
     ]);
+});
+
+Deno.test("a client subscribes to the streams of its viewer's lists, if it names them", async () => {
+    const owns = (listId: string) => Promise.resolve(listId !== "bobs");
+    const { session, sent, send } = open(
+        ["read:statuses"],
+        { stream: "list", list: "1" },
+        undefined,
+        owns,
+    );
+
+    send(
+        { type: "subscribe", stream: "list", list: "2" },
+        { type: "subscribe", stream: "list", list: "bobs" },
+        { type: "subscribe", stream: "list" },
+    );
+    // Whose list it is takes a query to know.
+    await Promise.resolve();
+    assertEquals(session.streams(), ["list#1", "list#2"]);
+    assertEquals(sent, [
+        { error: "Missing list name parameter", status: 400 },
+        { error: "Not authorized to stream this list", status: 401 },
+    ]);
+
+    session.deliver(["list#2"], "update", "{}");
+    assertEquals(sent.at(-1), { stream: ["list", "2"], event: "update", payload: "{}" });
+
+    send({ type: "unsubscribe", stream: "list", list: "1" });
+    assertEquals(session.streams(), ["list#2"]);
+});
+
+Deno.test("a client subscribes to lists' streams only with a token that may read statuses", async () => {
+    const owns = () => Promise.resolve(true);
+    const { session, sent } = open(
+        ["read:notifications"],
+        { stream: "list", list: "1" },
+        undefined,
+        owns,
+    );
+    await Promise.resolve();
+
+    assertEquals(session.streams(), []);
+    assertEquals(sent, [{ error: "Access token does not have the required scopes", status: 401 }]);
 });

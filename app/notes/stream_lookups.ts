@@ -1,15 +1,16 @@
 /**
  * Single statuses of timelines, looked up for streaming them as they appear. Those of the public
  * and hashtag timelines are rendered as anyone sees them, as Mastodon streams them, so that each is
- * rendered once for every viewer. Those of home timelines are rendered for each viewer.
+ * rendered once for every viewer. Those of home timelines and lists are rendered for each viewer.
  * @module
  */
 import type { Status } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import { findNote, type NoteRow, tagsOf } from "./note_queries.ts";
 import { renderStatuses } from "./render.ts";
-import { findHashtagNote, findHomeNote, findPublicNote } from "./timeline_queries.ts";
-import { homeSourcesOf } from "./timeline_sources.ts";
+import type { ListRow } from "../lists/list_queries.ts";
+import { findHashtagNote, findHomeNote, findListNote, findPublicNote } from "./timeline_queries.ts";
+import { homeSourcesOf, listSourcesOf } from "./timeline_sources.ts";
 
 /** A status of a public or hashtag timeline. */
 export type PublicStatus = {
@@ -83,4 +84,19 @@ export const homeStatus = async (
     const note = await findHomeNote(ctx, viewerId, homeSourcesOf(ctx, viewerId), noteId);
 
     return note && (await renderStatuses(ctx, [note], viewerId))[0];
+};
+
+/** Who posted or boosted `noteId`, whose lists could have it, if it exists. */
+export const listReachOf = async (ctx: Context, noteId: string): Promise<string | undefined> =>
+    (await findNote(ctx, noteId))?.account_id;
+
+/** The status `noteId` as the owner of `list` sees it, if it is on the list. */
+export const listStatus = async (
+    ctx: Context,
+    list: ListRow,
+    noteId: string,
+): Promise<Status | undefined> => {
+    const note = await findListNote(ctx, list.account_id, listSourcesOf(ctx, list), noteId);
+
+    return note && (await renderStatuses(ctx, [note], list.account_id))[0];
 };
