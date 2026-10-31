@@ -6304,7 +6304,6 @@
                                             }
                                         ]
                                     },
-                                    "poll": {},
                                     "status": {
                                         "default": "",
                                         "type": "string"
@@ -6336,6 +6335,64 @@
                                     "spoiler_text": {
                                         "default": "",
                                         "type": "string"
+                                    },
+                                    "poll": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "properties": {
+                                                    "options": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        ],
+                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                    },
+                                                    "expires_in": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "integer",
+                                                                "minimum": -9007199254740991,
+                                                                "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                                "type": "string",
+                                                                "pattern": "^-?\\d+$"
+                                                            }
+                                                        ],
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                    },
+                                                    "multiple": {
+                                                        "description": "Allow multiple choices? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "hide_totals": {
+                                                        "description": "Hide vote counts until the poll ends? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "options",
+                                                    "expires_in"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
                                     },
                                     "visibility": {
                                         "type": "string",
@@ -6385,7 +6442,6 @@
                                             }
                                         ]
                                     },
-                                    "poll": {},
                                     "status": {
                                         "default": "",
                                         "type": "string"
@@ -6417,6 +6473,64 @@
                                     "spoiler_text": {
                                         "default": "",
                                         "type": "string"
+                                    },
+                                    "poll": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "properties": {
+                                                    "options": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        ],
+                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                    },
+                                                    "expires_in": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "integer",
+                                                                "minimum": -9007199254740991,
+                                                                "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                                "type": "string",
+                                                                "pattern": "^-?\\d+$"
+                                                            }
+                                                        ],
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                    },
+                                                    "multiple": {
+                                                        "description": "Allow multiple choices? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "hide_totals": {
+                                                        "description": "Hide vote counts until the poll ends? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "options",
+                                                    "expires_in"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
                                     },
                                     "visibility": {
                                         "type": "string",
@@ -6466,7 +6580,6 @@
                                             }
                                         ]
                                     },
-                                    "poll": {},
                                     "status": {
                                         "default": "",
                                         "type": "string"
@@ -6498,6 +6611,64 @@
                                     "spoiler_text": {
                                         "default": "",
                                         "type": "string"
+                                    },
+                                    "poll": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "properties": {
+                                                    "options": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        ],
+                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                    },
+                                                    "expires_in": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "integer",
+                                                                "minimum": -9007199254740991,
+                                                                "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                                "type": "string",
+                                                                "pattern": "^-?\\d+$"
+                                                            }
+                                                        ],
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                    },
+                                                    "multiple": {
+                                                        "description": "Allow multiple choices? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "hide_totals": {
+                                                        "description": "Hide vote counts until the poll ends? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "options",
+                                                    "expires_in"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
                                     },
                                     "visibility": {
                                         "type": "string",
@@ -6687,7 +6858,6 @@
                                             }
                                         ]
                                     },
-                                    "poll": {},
                                     "status": {
                                         "type": "string"
                                     },
@@ -6739,6 +6909,64 @@
                                     },
                                     "spoiler_text": {
                                         "type": "string"
+                                    },
+                                    "poll": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "properties": {
+                                                    "options": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        ],
+                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                    },
+                                                    "expires_in": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "integer",
+                                                                "minimum": -9007199254740991,
+                                                                "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                                "type": "string",
+                                                                "pattern": "^-?\\d+$"
+                                                            }
+                                                        ],
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                    },
+                                                    "multiple": {
+                                                        "description": "Allow multiple choices? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "hide_totals": {
+                                                        "description": "Hide vote counts until the poll ends? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "options",
+                                                    "expires_in"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
                                     }
                                 },
                                 "required": [
@@ -6775,7 +7003,6 @@
                                             }
                                         ]
                                     },
-                                    "poll": {},
                                     "status": {
                                         "type": "string"
                                     },
@@ -6827,6 +7054,64 @@
                                     },
                                     "spoiler_text": {
                                         "type": "string"
+                                    },
+                                    "poll": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "properties": {
+                                                    "options": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        ],
+                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                    },
+                                                    "expires_in": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "integer",
+                                                                "minimum": -9007199254740991,
+                                                                "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                                "type": "string",
+                                                                "pattern": "^-?\\d+$"
+                                                            }
+                                                        ],
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                    },
+                                                    "multiple": {
+                                                        "description": "Allow multiple choices? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "hide_totals": {
+                                                        "description": "Hide vote counts until the poll ends? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "options",
+                                                    "expires_in"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
                                     }
                                 },
                                 "required": [
@@ -6863,7 +7148,6 @@
                                             }
                                         ]
                                     },
-                                    "poll": {},
                                     "status": {
                                         "type": "string"
                                     },
@@ -6915,6 +7199,64 @@
                                     },
                                     "spoiler_text": {
                                         "type": "string"
+                                    },
+                                    "poll": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "properties": {
+                                                    "options": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        ],
+                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                    },
+                                                    "expires_in": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "integer",
+                                                                "minimum": -9007199254740991,
+                                                                "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                                "type": "string",
+                                                                "pattern": "^-?\\d+$"
+                                                            }
+                                                        ],
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                    },
+                                                    "multiple": {
+                                                        "description": "Allow multiple choices? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "hide_totals": {
+                                                        "description": "Hide vote counts until the poll ends? Defaults to false.",
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "options",
+                                                    "expires_in"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
                                     }
                                 },
                                 "required": [
@@ -7579,6 +7921,228 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/StatusSource"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/polls/{id}": {
+            "get": {
+                "summary": "View a poll",
+                "description": "View a poll attached to a status.\n\nNeeds the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/polls/#get"
+                },
+                "tags": [
+                    "polls"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Poll in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Poll"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/polls/{id}/votes": {
+            "post": {
+                "summary": "Vote on a poll",
+                "description": "Vote on a poll attached to a status.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/polls/#vote"
+                },
+                "tags": [
+                    "polls"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Poll in the database."
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "choices": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^-?\\d+$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "integer",
+                                                            "minimum": -9007199254740991,
+                                                            "maximum": 9007199254740991
+                                                        },
+                                                        {
+                                                            "type": "string",
+                                                            "pattern": "^-?\\d+$"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        ],
+                                        "description": "Provide your own votes as an index for each option (starting from 0)."
+                                    }
+                                },
+                                "required": [
+                                    "choices"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "choices": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^-?\\d+$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "integer",
+                                                            "minimum": -9007199254740991,
+                                                            "maximum": 9007199254740991
+                                                        },
+                                                        {
+                                                            "type": "string",
+                                                            "pattern": "^-?\\d+$"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        ],
+                                        "description": "Provide your own votes as an index for each option (starting from 0)."
+                                    }
+                                },
+                                "required": [
+                                    "choices"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "choices": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^-?\\d+$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "integer",
+                                                            "minimum": -9007199254740991,
+                                                            "maximum": 9007199254740991
+                                                        },
+                                                        {
+                                                            "type": "string",
+                                                            "pattern": "^-?\\d+$"
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        ],
+                                        "description": "Provide your own votes as an index for each option (starting from 0)."
+                                    }
+                                },
+                                "required": [
+                                    "choices"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Poll"
                                 }
                             }
                         }
@@ -18209,6 +18773,103 @@
                     "drop"
                 ]
             },
+            "Poll": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "expires_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "expired": {
+                        "type": "boolean"
+                    },
+                    "multiple": {
+                        "type": "boolean"
+                    },
+                    "votes_count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    },
+                    "voters_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "options": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "votes_count": {
+                                    "anyOf": [
+                                        {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "title",
+                                "votes_count"
+                            ]
+                        }
+                    },
+                    "emojis": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CustomEmoji"
+                        }
+                    },
+                    "voted": {
+                        "type": "boolean"
+                    },
+                    "own_votes": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "expires_at",
+                    "expired",
+                    "multiple",
+                    "votes_count",
+                    "voters_count",
+                    "options",
+                    "emojis"
+                ]
+            },
             "Preferences": {
                 "type": "object",
                 "properties": {
@@ -18870,7 +19531,14 @@
                         ]
                     },
                     "poll": {
-                        "type": "null"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Poll"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "card": {
                         "anyOf": [
@@ -19006,6 +19674,28 @@
                         "items": {
                             "$ref": "#/components/schemas/CustomEmoji"
                         }
+                    },
+                    "poll": {
+                        "type": "object",
+                        "properties": {
+                            "options": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "title"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "options"
+                        ]
                     }
                 },
                 "required": [

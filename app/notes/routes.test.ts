@@ -130,12 +130,11 @@ Deno.test("a status and its warning are held to the limit, with links counting a
     assertEquals((await test.post({ status: "a".repeat(10_001) })).status, 422);
 });
 
-Deno.test("polls and schedules are refused, until Verso has them", async () => {
+Deno.test("schedules are refused, until Verso has them", async () => {
     await using test = await open();
     const fields = async (body: Record<string, unknown> | string) =>
         Object.keys((await test.post(body)).body.details ?? {});
 
-    assertEquals(await fields("status=Hi&poll[options][]=a&poll[options][]=b"), ["body.poll"]);
     assertEquals(await fields({ status: "Hi", scheduled_at: "2030-01-01T00:00:00Z" }), [
         "body.scheduled_at",
     ]);
@@ -259,7 +258,8 @@ Deno.test("a status is edited by its author, and keeps what the edit leaves out"
         "body.status": ["Can't be blank without attachments"],
     });
     assertEquals(Object.keys((await test.edit(id, { status: "Hi", poll: {} })).body.details), [
-        "body.poll",
+        "body.poll.options",
+        "body.poll.expires_in",
     ]);
 });
 

@@ -6,6 +6,7 @@ import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { attachmentsOf, hasAttachments } from "../media/attachment_queries.ts";
+import { pollOf } from "../polls/poll_queries.ts";
 import { insertTags } from "../tags/tag_queries.ts";
 import type { NoteIdQuery } from "./removal_queries.ts";
 import type { NotesTable, NoteVersionsTable } from "./tables.ts";
@@ -78,9 +79,13 @@ export const updateNote = async (
     await insertMentionsAndTags(ctx, id, mentionIds, tags);
 };
 
-/** Saves the current text and media of `note`, before it is edited, as a version in its history. */
+/**
+ * Saves the current text, media and poll options of `note`, before it is edited, as a version in its
+ * history.
+ */
 export const keepVersion = async (ctx: Context, note: NoteRow): Promise<void> => {
     const media = (await attachmentsOf(ctx, [note.id])).get(note.id) ?? [];
+    const poll = await pollOf(ctx, note.id);
 
     await ctx.db.insertInto("note_versions")
         .values({
@@ -90,6 +95,7 @@ export const keepVersion = async (ctx: Context, note: NoteRow): Promise<void> =>
             spoiler_text: note.spoiler_text,
             sensitive: note.sensitive,
             media: media.map((row) => ({ id: row.id, description: row.description })),
+            poll_options: poll ? poll.options.map((option) => option.title) : null,
             created_at: note.edited_at ?? note.created_at,
         })
         .execute();

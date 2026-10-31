@@ -3,6 +3,7 @@ import { Account, ApprovedAudiences, Visibility } from "./account.ts";
 import { CustomEmoji } from "./custom_emoji.ts";
 import { FilterResult } from "./filter.ts";
 import { MediaAttachment } from "./media_attachment.ts";
+import { Poll } from "./poll.ts";
 import { PreviewCard } from "./preview_card.ts";
 
 /**
@@ -126,8 +127,7 @@ export const Status = z.object({
     get reblog(): z.ZodNullable<typeof Status> {
         return Status.nullable();
     },
-    /** Verso has no polls yet. */
-    poll: z.null(),
+    poll: Poll.nullable(),
     card: PreviewCard.nullable(),
     /** An ISO 639-1 code, or `null` if unknown. */
     language: z.string().nullable(),
@@ -193,7 +193,7 @@ export const StatusSource = z.object({
 export type StatusSource = z.infer<typeof StatusSource>;
 
 /**
- * A version of a status, in its edit history. Polls are omitted, as Verso has none.
+ * A version of a status, in its edit history.
  * @see https://docs.joinmastodon.org/entities/StatusEdit/
  */
 export const StatusEdit = z.object({
@@ -206,5 +206,7 @@ export const StatusEdit = z.object({
     account: Account,
     media_attachments: z.array(MediaAttachment),
     emojis: z.array(CustomEmoji),
+    /** Its poll's options, if it had a poll. */
+    poll: z.object({ options: z.array(z.object({ title: z.string() })) }).optional(),
 });
 export type StatusEdit = z.infer<typeof StatusEdit>;

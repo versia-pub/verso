@@ -78,6 +78,8 @@ export type NoteVersionsTable = {
     sensitive: boolean;
     /** The media it had attached, in order, with their descriptions at the time. */
     media: Generated<VersionMedia[]>;
+    /** Its poll's options, or `null` if it had no poll. */
+    poll_options: Generated<string[] | null>;
     /** When the status came to say this: when it was created, or the previous edit. */
     created_at: Date;
 };

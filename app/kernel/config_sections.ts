@@ -53,8 +53,8 @@ export const Origin = z.url({ protocol: /^https?$/ })
     .transform((url) => new URL(url).origin);
 
 /**
- * How long and how many of what users write may be, in characters, counted by code point, and how
- * many media attachments they may add.
+ * How long and how many of what users write may be, in characters, counted by code point, how many
+ * media attachments they may add, and how polls are limited.
  */
 export const Limits = z.strictObject({
     display_name: z.int().min(1).default(60),
@@ -76,7 +76,19 @@ export const Limits = z.strictObject({
     mentions: z.int().min(0).max(150).default(100),
     /** A media attachment's description, its alt text. Mastodon's limit by default. */
     media_description: z.int().min(1).default(4000),
-}).prefault({});
+    /** How many options a poll may have, at least 2. */
+    poll_options: z.int().min(2).default(20),
+    /** A poll's option. */
+    poll_option: z.int().min(1).default(60),
+    /** How long a poll may run, at least and at most, in seconds. Mastodon's limits by default. */
+    poll_min_seconds: z.int().min(1).default(300),
+    poll_max_seconds: z.int().min(1).default(2_629_746),
+})
+    .refine((limits) => limits.poll_min_seconds <= limits.poll_max_seconds, {
+        error: "poll_min_seconds can't be more than poll_max_seconds",
+        path: ["poll_min_seconds"],
+    })
+    .prefault({});
 
 export type Limits = z.infer<typeof Limits>;
 

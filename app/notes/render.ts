@@ -27,6 +27,8 @@ import { mutedThreadsAmong } from "./thread_mute_queries.ts";
 import { isPinnable } from "./pins.ts";
 import { totalsOf } from "./total_queries.ts";
 import { onlookerOf } from "./visibility.ts";
+import { pollOf } from "../polls/poll_queries.ts";
+import { renderPolls } from "../polls/render.ts";
 import { displayNamesOf } from "../tags/tag_queries.ts";
 
 /**
@@ -132,6 +134,7 @@ export const renderStatuses = async (
         ? new Set()
         : await mutedThreadsAmong(ctx, viewerId, notes.map((note) => note.thread_id));
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
+    const polls = await renderPolls(ctx, notes, viewerId);
     const filters = viewerId === null
         ? undefined
         : (await activeFiltersAmong(ctx, [viewerId])).get(viewerId) ?? [];
@@ -194,7 +197,7 @@ export const renderStatuses = async (
             in_reply_to_id: note.in_reply_to_id,
             in_reply_to_account_id: note.in_reply_to_account_id,
             reblog,
-            poll: null,
+            poll: polls.get(note.id) ?? null,
             card: null,
             language: note.language,
             text: options.source ? note.content : null,
@@ -233,6 +236,7 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
     const current = {
         ...note,
         media: asVersionMedia(await attachedTo(ctx, note.id)),
+        poll_options: (await pollOf(ctx, note.id))?.options.map((option) => option.title) ?? null,
         created_at: note.edited_at ?? note.created_at,
     };
     const versions = [...await versionsOf(ctx, note.id), current];
@@ -256,5 +260,8 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
             return row ? [renderAttachment(ctx, { ...row, description })] : [];
         }),
         emojis,
+        ...version.poll_options === null
+            ? {}
+            : { poll: { options: version.poll_options.map((title) => ({ title })) } },
     }));
 };

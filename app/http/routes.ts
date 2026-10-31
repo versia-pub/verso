@@ -15,6 +15,7 @@ import { mediaRoutes } from "../media/routes.ts";
 import { entityRoutes } from "../federation/registry.ts";
 import { graphRoutes } from "../graph/routes.ts";
 import { noteRoutes } from "../notes/routes.ts";
+import { pollRoutes } from "../polls/routes.ts";
 import { groupedNotificationRoutes } from "../notifications/grouped_routes.ts";
 import { notificationPolicyRoutes } from "../notifications/policy_routes.ts";
 import { notificationRequestRoutes } from "../notifications/request_routes.ts";
@@ -51,6 +52,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...accountRoutes(settings.media, settings.limits),
         ...directoryRoutes,
         ...noteRoutes(settings.limits),
+        ...pollRoutes,
         ...interactionRoutes,
         ...timelineRoutes,
         ...conversationRoutes,

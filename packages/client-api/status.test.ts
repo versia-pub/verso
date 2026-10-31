@@ -1,5 +1,6 @@
 import { assertEquals, assertFalse } from "@std/assert";
 import { Context, Status } from "./status.ts";
+import { Poll } from "./poll.ts";
 import { account } from "./testing.ts";
 
 /** A status as a server claiming Mastodon 4.3 sends it. */
@@ -87,4 +88,22 @@ Deno.test("what Mastodon 4.3 had is required", () => {
     }
 
     assertFalse(Status.safeParse({ ...status, poll: {} }).success);
+});
+
+Deno.test("a poll is read as Mastodon's documentation gives it", () => {
+    const poll = {
+        id: "34830",
+        expires_at: "2019-12-05T04:05:08.302Z",
+        expired: true,
+        multiple: false,
+        votes_count: 10,
+        voters_count: null,
+        voted: true,
+        own_votes: [1],
+        options: [{ title: "accept", votes_count: 6 }, { title: "deny", votes_count: 4 }],
+        emojis: [],
+    };
+
+    assertEquals(Status.parse({ ...status, poll }).poll, poll);
+    assertFalse(Poll.safeParse({ ...poll, own_votes: [-1] }).success);
 });

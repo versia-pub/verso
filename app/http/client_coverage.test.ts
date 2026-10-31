@@ -108,6 +108,8 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/statuses/{id}/source": (c) => c.statuses.source("1"),
     "GET /api/v1/statuses/{id}/context": (c) => c.statuses.context("1"),
     "GET /api/v1/statuses/{id}/history": (c) => c.statuses.history("1"),
+    "GET /api/v1/polls/{id}": (c) => c.polls.get("1"),
+    "POST /api/v1/polls/{id}/votes": (c) => c.polls.vote("1", [0]),
     "POST /api/v1/statuses/{id}/favourite": (c) => c.statuses.favourite("1"),
     "POST /api/v1/statuses/{id}/unfavourite": (c) => c.statuses.unfavourite("1"),
     "GET /api/v1/statuses/{id}/favourited_by": (c) => c.statuses.favouritedBy("1"),

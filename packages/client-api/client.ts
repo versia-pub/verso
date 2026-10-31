@@ -36,6 +36,7 @@ import { ListMethods } from "./client/lists.ts";
 import { FilterMethods } from "./client/filters.ts";
 import { TimelineMethods } from "./client/timelines.ts";
 import { ConversationMethods } from "./client/conversations.ts";
+import { PollMethods } from "./client/polls.ts";
 
 export type {
     AccountSearchQuery,
@@ -71,7 +72,13 @@ export { Page, type PageQuery } from "./client/pages.ts";
 export type { PushData, PushEndpoint } from "./client/push.ts";
 export type { RoleChanges, RoleDraft } from "./client/roles.ts";
 export type { SearchQuery } from "./client/search.ts";
-export type { ContentType, ReblogOptions, StatusChanges, StatusDraft } from "./client/statuses.ts";
+export type {
+    ContentType,
+    PollDraft,
+    ReblogOptions,
+    StatusChanges,
+    StatusDraft,
+} from "./client/statuses.ts";
 export {
     type Closed,
     type ConnectOptions,
@@ -129,6 +136,8 @@ export class Client {
     readonly favourites: FavouriteMethods;
     /** The statuses the viewer bookmarked. */
     readonly bookmarks: BookmarkMethods;
+    /** The polls attached to statuses. */
+    readonly polls: PollMethods;
     /** Lists of statuses, newest first. */
     readonly timelines: TimelineMethods;
     /** The viewer's direct conversations. */
@@ -171,6 +180,7 @@ export class Client {
         this.statuses = new StatusMethods(this.#http);
         this.favourites = new FavouriteMethods(this.#http);
         this.bookmarks = new BookmarkMethods(this.#http);
+        this.polls = new PollMethods(this.#http);
         this.timelines = new TimelineMethods(this.#http);
         this.conversations = new ConversationMethods(this.#http);
         this.notifications = new NotificationMethods(this.#http);

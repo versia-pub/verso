@@ -2,7 +2,7 @@ import { Context, Status, StatusEdit, StatusSource } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { Flag, Ids } from "../http/schemas.ts";
+import { Flag, Ids, Integer, Strings, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config_sections.ts";
 import { countText } from "../kernel/markup.ts";
 import { FocusPoint, MediaDescription } from "../media/routes.ts";
@@ -35,8 +35,54 @@ const text = {
     sensitive: Flag.optional(),
     /** Empty or `null` for the author's default, or for an edit, the status's own. */
     language: z.union([z.literal(""), z.string().regex(/^[a-z]{2}$/)]).nullish(),
-    poll: NotYet("Polls"),
 };
+
+/**
+ * A poll, limited by `limits`. Its options are trimmed, and blank ones left out, as on Mastodon.
+ * @see https://docs.joinmastodon.org/methods/statuses/#form-data-parameters
+ */
+const PollDraft = (limits: Limits) =>
+    z.object({
+        options: Strings
+            .transform((options) => options.map((option) => option.trim()).filter(Boolean))
+            .pipe(
+                z.array(Text(limits.poll_option))
+                    .min(2, { error: "Must have at least 2 options" })
+                    .max(limits.poll_options, {
+                        error: `Must have at most ${limits.poll_options} options`,
+                    })
+                    .refine((options) => new Set(options).size === options.length, {
+                        error: "Must not have the same option twice",
+                    }),
+            )
+            .meta({
+                description: "Possible answers to the poll. If provided, `media_ids` cannot be " +
+                    "used, and `poll[expires_in]` must be provided.",
+            }),
+        expires_in: Integer.pipe(
+            z.int()
+                .min(limits.poll_min_seconds, {
+                    error: `Must be at least ${limits.poll_min_seconds} seconds`,
+                })
+                .max(limits.poll_max_seconds, {
+                    error: `Must be at most ${limits.poll_max_seconds} seconds`,
+                }),
+        ).meta({
+            description: "Duration that the poll should be open, in seconds. If provided, " +
+                "`media_ids` cannot be used, and `poll[options]` must be provided.",
+        }),
+        multiple: Flag.default(false).meta({
+            description: "Allow multiple choices? Defaults to false.",
+        }),
+        hide_totals: Flag.default(false).meta({
+            description: "Hide vote counts until the poll ends? Defaults to false.",
+        }),
+    }).transform((poll) => ({
+        options: poll.options,
+        expiresIn: poll.expires_in,
+        multiple: poll.multiple,
+        hideTotals: poll.hide_totals,
+    }));
 
 /** The uploads attached to a status, in order, at most `limits.attachments` of them. */
 const MediaIds = (limits: Limits) =>
@@ -86,6 +132,7 @@ const draft = (limits: Limits) =>
         media_ids: MediaIds(limits).default([]),
         content_type: z.enum(["text/plain", "text/markdown"]).default("text/plain"),
         spoiler_text: z.string().default(""),
+        poll: PollDraft(limits).nullish(),
         visibility: z.enum(["public", "unlisted", "private", "direct"]).optional(),
         in_reply_to_id: z.string().nullish(),
         scheduled_at: NotYet("Scheduled statuses"),
@@ -107,6 +154,8 @@ const edit = (limits: Limits) =>
         media_attributes: z.array(MediaAttribute(limits)).default([]),
         content_type: z.enum(["text/plain", "text/markdown"]).optional(),
         spoiler_text: z.string().optional(),
+        /** Replaces the status's poll, or with `null`, removes it. If omitted, it stays. */
+        poll: PollDraft(limits).nullable().optional(),
     })
         .refine(notBlank.check, notBlank.error)
         .refine(limited(limits).check, limited(limits).error);
@@ -136,6 +185,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 language: body.language || undefined,
                 inReplyToId: body.in_reply_to_id ?? undefined,
                 mediaIds: body.media_ids,
+                poll: body.poll ?? undefined,
             });
             // As Mastodon responds when the status replied to can't be seen.
             if (note === undefined) throw new NotFound("The status replied to doesn't exist");
@@ -206,6 +256,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 language: body.language || undefined,
                 mediaIds: body.media_ids,
                 mediaChanges: body.media_attributes,
+                poll: body.poll,
             });
             if (note === undefined) throw new NotFound();
 

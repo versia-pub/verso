@@ -160,6 +160,11 @@ updated = 2026-10-01
 # mentions = 100
 # A media attachment's description, its alt text.
 # media_description = 4000
+# How many options a poll may have, how long each may be, and how long a poll may run, in seconds.
+# poll_options = 20
+# poll_option = 60
+# poll_min_seconds = 300
+# poll_max_seconds = 2629746
 
 [permissions]
 # What everyone may do, before roles add more: logged-out visitors, and every user.

@@ -60,6 +60,10 @@ Deno.test("a minimal config gets the defaults", async () => {
                 attachments: 16,
                 mentions: 100,
                 media_description: 4000,
+                poll_options: 20,
+                poll_option: 60,
+                poll_min_seconds: 300,
+                poll_max_seconds: 2_629_746,
             },
             permissions: {
                 anonymous: [
@@ -168,6 +172,7 @@ note = 500
 fields = 4
 mentions = 20
 media_description = 1500
+poll_options = 10
 
 [permissions]
 anonymous = []
@@ -279,6 +284,10 @@ level = "debug"
                 attachments: 16,
                 mentions: 20,
                 media_description: 1500,
+                poll_options: 10,
+                poll_option: 60,
+                poll_min_seconds: 300,
+                poll_max_seconds: 2_629_746,
             },
             permissions: { anonymous: [], default: ["owner:account"] },
             streaming: { sockets_per_account: 4, subscriptions: 20, tag_length: 50 },
@@ -308,6 +317,10 @@ Deno.test("bad configs explain what is wrong", async () => {
     assertStringIncludes(
         await errors(minimal + '[logging]\nlevel = "loud"'),
         "logging.level",
+    );
+    assertStringIncludes(
+        await errors(minimal + "[limits]\npoll_min_seconds = 600\npoll_max_seconds = 300"),
+        "limits.poll_min_seconds",
     );
     assertStringIncludes(
         await errors(minimal + '[permissions]\ndefault = ["owner:poll"]'),

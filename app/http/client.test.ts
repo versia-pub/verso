@@ -388,6 +388,31 @@ Deno.test("a user likes, shares and reacts to a status, and undoes each", async 
     assertEquals((await bob.statuses.unreact(id, "👍")).reactions ?? [], []);
 });
 
+Deno.test("a user asks a question with a poll, another votes, and the poll is changed", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const posted = await alice.statuses.post({
+        status: "Which?",
+        poll: { options: ["Red", "Blue"], expires_in: 600, multiple: true },
+    });
+    const id = posted.poll?.id ?? "";
+
+    const voted = await bob.polls.vote(id, [0, 1]);
+    assertEquals([voted.own_votes, voted.votes_count, voted.voters_count], [[0, 1], 2, 1]);
+    assertEquals((await alice.polls.get(id)).options.map((option) => option.votes_count), [1, 1]);
+
+    const edited = await alice.statuses.edit(posted.id, {
+        status: "Which?",
+        poll: { options: ["Red", "Green"], expires_in: 600 },
+    });
+    assertEquals(edited.poll?.votes_count, 0);
+    assertEquals(
+        (await alice.statuses.edit(posted.id, { status: "Which?", poll: null })).poll,
+        null,
+    );
+});
+
 Deno.test("a user bookmarks a status, lists it, and removes the bookmark", async () => {
     await using test = await open();
     const alice = await test.as("alice");

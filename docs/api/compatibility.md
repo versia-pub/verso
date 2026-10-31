@@ -12,21 +12,21 @@ behave differently.
 
 ## Summary
 
-| Area                       | Supported                                                                 |
-| -------------------------- | ------------------------------------------------------------------------- |
-| Logging in and apps        | all but email confirmation, through OpenID Connect                        |
-| Accounts and relationships | most: profiles, follows, blocks, mutes, notes, endorsements, search       |
-| Statuses                   | most: posting, editing, deleting, likes, shares, pins, bookmarks, threads |
-| Media                      | images; other files kept as they are                                      |
-| Timelines                  | home, with followed hashtags, lists, public, hashtag and conversations    |
-| Notifications and Web Push | all, grouped and ungrouped, with policies and requests                    |
-| Streaming                  | WebSocket, with every stream                                              |
-| Filters                    | v2, by keyword and by status                                              |
-| Search                     | accounts, statuses and hashtags                                           |
-| Instance                   | the instance, rules, policies, custom emoji                               |
+| Area                       | Supported                                                               |
+| -------------------------- | ----------------------------------------------------------------------- |
+| Logging in and apps        | all but email confirmation, through OpenID Connect                      |
+| Accounts and relationships | most: profiles, follows, blocks, mutes, notes, endorsements, search     |
+| Statuses                   | most: posting, editing, deleting, polls, likes, shares, pins, bookmarks |
+| Media                      | images; other files kept as they are                                    |
+| Timelines                  | home, with followed hashtags, lists, public, hashtag and conversations  |
+| Notifications and Web Push | all, grouped and ungrouped, with policies and requests                  |
+| Streaming                  | WebSocket, with every stream                                            |
+| Filters                    | v2, by keyword and by status                                            |
+| Search                     | accounts, statuses and hashtags                                         |
+| Instance                   | the instance, rules, policies, custom emoji                             |
 
-Missing so far: polls, scheduled statuses, reports, trends and announcements. There's no admin API:
-admins use `verso admin` instead.
+Missing so far: scheduled statuses, reports, trends and announcements. There's no admin API: admins
+use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -100,10 +100,10 @@ admins use `verso admin` instead.
 
 | Method                                   | Verso | Notes                          |
 | ---------------------------------------- | ----- | ------------------------------ |
-| `POST /api/v1/statuses`                  | 🟡    | No polls or scheduling         |
+| `POST /api/v1/statuses`                  | 🟡    | No scheduling                  |
 | `GET /api/v1/statuses/:id`               | ✅    |                                |
 | `GET /api/v1/statuses`                   | ✅    | Several statuses by id         |
-| `PUT /api/v1/statuses/:id`               | 🟡    | No polls                       |
+| `PUT /api/v1/statuses/:id`               | ✅    |                                |
 | `DELETE /api/v1/statuses/:id`            | ✅    |                                |
 | `GET /api/v1/statuses/:id/context`       | 🟡    | Only replies Verso has         |
 | `GET /api/v1/statuses/:id/history`       | ✅    |                                |
@@ -125,7 +125,7 @@ admins use `verso admin` instead.
 | `GET /api/v1/media/:id`                  | ✅    |                                |
 | `PUT /api/v1/media/:id`                  | ✅    |                                |
 | `POST /api/v1/media`                     | ❌    | Deprecated by Mastodon; use v2 |
-| Polls (2 methods)                        | ❌    |                                |
+| Polls (2 methods)                        | 🟡    | Local polls only, for now      |
 | Scheduled statuses (4 methods)           | ❌    |                                |
 
 ## Timelines

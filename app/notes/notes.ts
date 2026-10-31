@@ -10,6 +10,7 @@ import type { TextFormat } from "../accounts/tables.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { setNoteEmojis, usableEmojiIds } from "../emojis/emoji_queries.ts";
 import { fetchBudget } from "../federation/resolver.ts";
+import { Unprocessable } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type Found, type Mention, renderText, scanText } from "../kernel/markup.ts";
@@ -20,6 +21,8 @@ import {
     changesAttachments,
     reattach,
 } from "../media/attachments.ts";
+import { pollOf } from "../polls/poll_queries.ts";
+import { addPoll, changePoll, changesPoll, type PollDraft } from "../polls/polls.ts";
 import type { NoteEdited, NotePosted } from "./events.ts";
 import {
     countReply,
@@ -69,6 +72,8 @@ export type Draft = {
     readonly inReplyToId?: string;
     /** The uploads attached to it, in order, which {@link attach} validates. */
     readonly mediaIds?: readonly string[];
+    /** A poll, which a status with media can't have. */
+    readonly poll?: PollDraft;
 };
 
 const mentionKey = (mention: Mention) => `${mention.username}@${mention.domain}`.toLowerCase();
@@ -115,15 +120,26 @@ const renderDraft = (
 });
 
 /**
- * Links the custom emojis named in a local status's text and content warning, as `found`, that its
- * author may use, replacing the ones it linked before.
+ * Links the custom emojis named in a local status's text, as `found`, and in its content warning and
+ * poll options, that its author may use, replacing the ones it linked before.
  */
-const useEmojis = async (ctx: Context, note: NoteRow, found: Found, spoilerText: string) => {
+const useEmojis = async (
+    ctx: Context,
+    note: NoteRow,
+    found: Found,
+    spoilerText: string,
+    options: readonly string[],
+) => {
     const shortcodes = new Set([
         ...found.shortcodes,
-        ...scanText(spoilerText, "text/plain").shortcodes,
+        ...[spoilerText, ...options].flatMap((text) => scanText(text, "text/plain").shortcodes),
     ]);
     await setNoteEmojis(ctx, note.id, await usableEmojiIds(ctx, note.account_id, [...shortcodes]));
+};
+
+/** Refuses a status that would have both media and a poll, as Mastodon does. */
+const mediaOrPoll = (media: boolean, poll: boolean) => {
+    if (media && poll) throw new Unprocessable("A status can't have both media and a poll");
 };
 
 /**
@@ -136,6 +152,7 @@ export const postNote = async (
     accountId: string,
     draft: Draft,
 ): Promise<NoteRow | undefined> => {
+    mediaOrPoll((draft.mediaIds ?? []).length > 0, draft.poll !== undefined);
     const found = scanText(draft.text, draft.format);
     const accounts = await mentioned(ctx, found.mentions);
 
@@ -173,8 +190,9 @@ export const postNote = async (
             [...accounts.values()].map((row) => row.id),
             found.hashtags,
         );
-        await useEmojis(tx, note, found, draft.spoilerText);
+        await useEmojis(tx, note, found, draft.spoilerText, draft.poll?.options ?? []);
         await attach(tx, accountId, note.id, draft.mediaIds ?? []);
+        if (draft.poll) await addPoll(tx, note.id, draft.poll);
 
         await countPosted(tx, note, 1);
 
@@ -200,6 +218,8 @@ export type Edit = {
     readonly mediaIds?: readonly string[];
     /** Changes to the descriptions of the media attached after the edit. */
     readonly mediaChanges?: readonly AttachmentChange[];
+    /** A poll in place of its current one, or `null` to remove it, as {@link changesPoll} says. */
+    readonly poll?: PollDraft | null;
 };
 
 /**
@@ -239,11 +259,17 @@ export const editNote = async (
         };
         const media = await attachedTo(tx, note.id);
         const mediaChanges = edit.mediaChanges ?? [];
+        const poll = await pollOf(tx, note.id);
+        mediaOrPoll(
+            (edit.mediaIds ?? media).length > 0,
+            edit.poll === undefined ? poll !== undefined : edit.poll !== null,
+        );
         const same = changes.content === note.content &&
             changes.content_format === note.content_format &&
             changes.spoiler_text === note.spoiler_text && changes.sensitive === note.sensitive &&
             changes.language === note.language &&
-            !changesAttachments(media, edit.mediaIds, mediaChanges);
+            !changesAttachments(media, edit.mediaIds, mediaChanges) &&
+            !changesPoll(tx, poll, edit.poll);
         if (same) return note;
 
         await keepVersion(tx, note);
@@ -258,8 +284,10 @@ export const editNote = async (
             [...accounts.values()].map((row) => row.id),
             found.hashtags,
         );
-        await useEmojis(tx, note, found, spoilerText);
         await reattach(tx, accountId, note.id, edit.mediaIds, mediaChanges);
+        await changePoll(tx, note.id, poll, edit.poll);
+        const options = (await pollOf(tx, note.id))?.options.map((option) => option.title);
+        await useEmojis(tx, note, found, spoilerText, options ?? []);
 
         const event: NoteEdited = { type: "notes.edited", noteId: note.id };
         await emit(tx, event);

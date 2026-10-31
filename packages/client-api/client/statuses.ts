@@ -7,6 +7,18 @@ import { Page, type PageQuery } from "./pages.ts";
 /** How a status's text is written. Plain text has its links, mentions and hashtags linked. */
 export type ContentType = "text/plain" | "text/markdown";
 
+/** A poll to attach to a status. */
+export type PollDraft = {
+    /** The options, in order. */
+    readonly options: readonly string[];
+    /** How long it runs, in seconds. */
+    readonly expires_in: number;
+    /** Whether voters may choose more than one option. */
+    readonly multiple?: boolean;
+    /** Whether the votes are hidden until it ends. */
+    readonly hide_totals?: boolean;
+};
+
 /** A new status. It needs text, media, or both. */
 export type StatusDraft = {
     readonly status?: string;
@@ -23,6 +35,8 @@ export type StatusDraft = {
     /** Defaults to the author's. */
     readonly visibility?: Visibility;
     readonly in_reply_to_id?: string;
+    /** A poll, which a status with media can't have. */
+    readonly poll?: PollDraft;
 };
 
 /** A change to a status. What is omitted stays as it was, but the text must always be given. */
@@ -41,6 +55,8 @@ export type StatusChanges = {
     readonly spoiler_text?: string;
     readonly sensitive?: boolean;
     readonly language?: string;
+    /** Replaces the poll, or with `null`, removes it. A poll that asks anew loses its votes. */
+    readonly poll?: PollDraft | null;
 };
 
 /** How to share a status. */

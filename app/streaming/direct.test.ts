@@ -85,7 +85,9 @@ Deno.test("a user is sent their conversation as it gets a status and is marked r
     assertEquals(carol, []);
 
     const [conversation] = await conversationPage(test.ctx, "alice", { limit: 1 });
+    // Each is sent as it is when streamed, so the second waits for the first.
     await markConversationAs(test.ctx, "alice", conversation.id, true);
+    await test.idle();
     await markConversationAs(test.ctx, "alice", conversation.id, false);
     await test.idle();
     assertEquals(alice.slice(2), [

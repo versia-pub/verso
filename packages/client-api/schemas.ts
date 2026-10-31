@@ -11,6 +11,7 @@ export * from "./notification.ts";
 export * from "./notification_policy.ts";
 export * from "./notification_request.ts";
 export * from "./oauth_metadata.ts";
+export * from "./poll.ts";
 export * from "./preferences.ts";
 export * from "./preview_card.ts";
 export * from "./relationship.ts";

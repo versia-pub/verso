@@ -92,7 +92,7 @@ const configuration = (
 ): Instance["configuration"] => ({
     urls: { streaming: ctx.urls.origin.replace(/^http/, "ws") },
     vapid: { public_key: vapidKey },
-    // Featured tags and polls arrive in later steps.
+    // Featured tags arrive in a later step.
     accounts: {
         max_featured_tags: 0,
         max_pinned_statuses: 0,
@@ -117,10 +117,10 @@ const configuration = (
         video_matrix_limit: 0,
     },
     polls: {
-        max_options: 0,
-        max_characters_per_option: 0,
-        min_expiration: 0,
-        max_expiration: 0,
+        max_options: limits.poll_options,
+        max_characters_per_option: limits.poll_option,
+        min_expiration: limits.poll_min_seconds,
+        max_expiration: limits.poll_max_seconds,
     },
     translation: { enabled: false },
 });
