@@ -9128,6 +9128,18 @@
                             "type": "string",
                             "description": "Return only notifications received from the specified account."
                         }
+                    },
+                    {
+                        "name": "include_filtered",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Whether to include notifications filtered by the user's NotificationPolicy. Defaults to false.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
                     }
                 ],
                 "responses": {
@@ -9270,6 +9282,18 @@
                             "type": "string",
                             "description": "Only count unread notifications received from the specified account."
                         }
+                    },
+                    {
+                        "name": "include_filtered",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Whether to include notifications filtered by the user's NotificationPolicy. Defaults to false.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
                     }
                 ],
                 "responses": {
@@ -9372,6 +9396,227 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/notifications/policy": {
+            "get": {
+                "summary": "Get the filtering policy for notifications",
+                "description": "Notifications filtering policy for the user.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#get-policy"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationPolicy"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Update the filtering policy for notifications",
+                "description": "Update the user's notifications filtering policy.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#update-the-filtering-policy-for-notifications"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "for_not_following": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts the user is not following. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_not_followers": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that are not following the user. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_new_accounts": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts created in the past 30 days. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_private_mentions": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from private mentions. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing. Replies to private mentions initiated by the user, as well as accounts the user follows, are always allowed, regardless of this value."
+                                    },
+                                    "for_limited_accounts": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that were limited by a moderator. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "for_not_following": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts the user is not following. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_not_followers": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that are not following the user. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_new_accounts": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts created in the past 30 days. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_private_mentions": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from private mentions. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing. Replies to private mentions initiated by the user, as well as accounts the user follows, are always allowed, regardless of this value."
+                                    },
+                                    "for_limited_accounts": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that were limited by a moderator. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "for_not_following": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts the user is not following. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_not_followers": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that are not following the user. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_new_accounts": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts created in the past 30 days. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_private_mentions": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from private mentions. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing. Replies to private mentions initiated by the user, as well as accounts the user follows, are always allowed, regardless of this value."
+                                    },
+                                    "for_limited_accounts": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that were limited by a moderator. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationPolicy"
                                 }
                             }
                         }
@@ -9484,6 +9729,18 @@
                         "schema": {
                             "type": "string",
                             "description": "Return only notifications received from the specified account."
+                        }
+                    },
+                    {
+                        "name": "include_filtered",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Whether to include notifications filtered by the user's NotificationPolicy. Defaults to false.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
                         }
                     },
                     {
@@ -9624,6 +9881,18 @@
                         "schema": {
                             "type": "string",
                             "description": "Only count unread notifications received from the specified account."
+                        }
+                    },
+                    {
+                        "name": "include_filtered",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Whether to include notifications filtered by the user's NotificationPolicy. Defaults to false.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
                         }
                     },
                     {
@@ -17233,6 +17502,53 @@
                     "sample_account_ids"
                 ]
             },
+            "NotificationPolicy": {
+                "type": "object",
+                "properties": {
+                    "for_not_following": {
+                        "$ref": "#/components/schemas/PolicyAction"
+                    },
+                    "for_not_followers": {
+                        "$ref": "#/components/schemas/PolicyAction"
+                    },
+                    "for_new_accounts": {
+                        "$ref": "#/components/schemas/PolicyAction"
+                    },
+                    "for_private_mentions": {
+                        "$ref": "#/components/schemas/PolicyAction"
+                    },
+                    "for_limited_accounts": {
+                        "$ref": "#/components/schemas/PolicyAction"
+                    },
+                    "summary": {
+                        "type": "object",
+                        "properties": {
+                            "pending_requests_count": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                            },
+                            "pending_notifications_count": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                            }
+                        },
+                        "required": [
+                            "pending_requests_count",
+                            "pending_notifications_count"
+                        ]
+                    }
+                },
+                "required": [
+                    "for_not_following",
+                    "for_not_followers",
+                    "for_new_accounts",
+                    "for_private_mentions",
+                    "for_limited_accounts",
+                    "summary"
+                ]
+            },
             "NotificationType": {
                 "type": "string",
                 "enum": [
@@ -17370,6 +17686,14 @@
                     "avatar_static",
                     "locked",
                     "bot"
+                ]
+            },
+            "PolicyAction": {
+                "type": "string",
+                "enum": [
+                    "accept",
+                    "filter",
+                    "drop"
                 ]
             },
             "Preferences": {

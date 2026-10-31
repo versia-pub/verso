@@ -33,6 +33,13 @@ own actions, and a follower who is mentioned doesn't also get a `status` notific
 mutes a thread isn't notified about any status in it, and unlike blocks, these notifications are
 never created. Each notification emits `notifications.created`, which push and streaming listen for.
 
+## Policies
+
+Policies are checked in [`app/notifications/policies.ts`](../app/notifications/policies.ts) as each
+notification is created. A filtered notification is stored with `filtered` set, and isn't grouped,
+pushed, streamed or added to a conversation. Filtered mentions are counted per account in
+`notification_requests`.
+
 ## Reading them
 
 `/api/v1/notifications` lists them one by one, newest first, with Mastodon's `types`,

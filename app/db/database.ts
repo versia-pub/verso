@@ -39,7 +39,11 @@ import type { ListAccountsTable, ListsTable } from "../lists/tables.ts";
 import type { ConversationNotesTable, ConversationsTable } from "../conversations/tables.ts";
 import type { FilterKeywordsTable, FiltersTable, FilterStatusesTable } from "../filters/tables.ts";
 import type { FeaturedTagsTable, TagFollowsTable, TagsTable } from "../tags/tables.ts";
-import type { NotificationsTable } from "../notifications/tables.ts";
+import type {
+    NotificationPoliciesTable,
+    NotificationRequestsTable,
+    NotificationsTable,
+} from "../notifications/tables.ts";
 import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
 import type { AccountSearchTable, NoteSearchTable } from "../search/tables.ts";
 import type { Config } from "../kernel/config.ts";
@@ -87,6 +91,8 @@ export type Database = {
     note_tags: NoteTagsTable;
     note_versions: NoteVersionsTable;
     notes: NotesTable;
+    notification_policies: NotificationPoliciesTable;
+    notification_requests: NotificationRequestsTable;
     notifications: NotificationsTable;
     oauth_flows: OAuthFlowsTable;
     push_subscriptions: PushSubscriptionsTable;

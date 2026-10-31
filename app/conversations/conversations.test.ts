@@ -5,15 +5,19 @@ import { block } from "../graph/blocks.ts";
 import { postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { setThreadMuted } from "../notes/thread_mutes.ts";
+import { defaultPolicy, savePolicy } from "../notifications/policy_queries.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { conversationRoutes } from "./routes.ts";
 
-/** alice, bob, carol and dave, local users. */
+/** alice, bob, carol and dave, local users, whose policies accept direct statuses from anyone. */
 const open = async () => {
     const test = await createTestContext();
     const app = createTestApp(test.ctx, conversationRoutes, { checkResponses: true });
-    for (const id of ["alice", "bob", "carol", "dave"]) await createLocalAccount(test.ctx, id);
+    for (const id of ["alice", "bob", "carol", "dave"]) {
+        await createLocalAccount(test.ctx, id);
+        await savePolicy(test.ctx, id, { ...defaultPolicy, for_private_mentions: "accept" });
+    }
 
     /** Posts a direct status as `accountId`, mentioning whoever `text` does. */
     const post = async (accountId: string, text: string, inReplyToId?: string) => {
@@ -97,6 +101,15 @@ Deno.test("a user who hides the author or mutes the thread isn't added to the co
     await setThreadMuted(test.ctx, "bob", first, true);
 
     await test.post("alice", "@bob @carol Again", first);
+    assertEquals(await test.conversations("carol"), []);
+    assertEquals(await test.conversations("bob"), [[true, ["alice", "carol"], first]]);
+});
+
+Deno.test("a user whose policy filters the mention isn't added to the conversation", async () => {
+    await using test = await open();
+    await savePolicy(test.ctx, "carol", defaultPolicy);
+
+    const first = await test.post("alice", "@bob @carol Hi");
     assertEquals(await test.conversations("carol"), []);
     assertEquals(await test.conversations("bob"), [[true, ["alice", "carol"], first]]);
 });

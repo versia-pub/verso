@@ -8,6 +8,7 @@ export * from "./list.ts";
 export * from "./marker.ts";
 export * from "./media_attachment.ts";
 export * from "./notification.ts";
+export * from "./notification_policy.ts";
 export * from "./oauth_metadata.ts";
 export * from "./preferences.ts";
 export * from "./preview_card.ts";

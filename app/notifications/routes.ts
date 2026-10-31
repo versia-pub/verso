@@ -4,7 +4,7 @@ import { NotFound } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Paged } from "../http/responses.ts";
-import { Strings } from "../http/schemas.ts";
+import { Flag, Strings } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
 import { markersOf } from "../markers/marker_queries.ts";
 import {
@@ -26,6 +26,12 @@ export const NotificationTypes = Strings.transform((types) => types.filter(isNot
 /** How many unread notifications to count up to, as on Mastodon. */
 export const CountQuery = PageQuery({ default: 100, max: 1000 }).pick({ limit: true });
 
+/** Whether to list or count the notifications the user's policy filtered. */
+export const IncludeFiltered = Flag.default(false).meta({
+    description: "Whether to include notifications filtered by the user's NotificationPolicy. " +
+        "Defaults to false.",
+});
+
 /** Which unread notifications to count. */
 export const countFilters = {
     types: NotificationTypes.meta({
@@ -37,6 +43,7 @@ export const countFilters = {
     account_id: z.string().optional().meta({
         description: "Only count unread notifications received from the specified account.",
     }),
+    include_filtered: IncludeFiltered,
 };
 
 /** What `accountId` last read of their notifications, if they saved where. */
@@ -77,6 +84,7 @@ export const notificationRoutes: readonly Route[] = [
             account_id: z.string().optional().meta({
                 description: "Return only notifications received from the specified account.",
             }),
+            include_filtered: IncludeFiltered,
         }),
         responses: { 200: Paged(Notification) },
         handler: async (ctx, { query, viewer }) => {
@@ -84,7 +92,12 @@ export const notificationRoutes: readonly Route[] = [
                 ctx,
                 viewer.accountId,
                 shownOf(ctx, viewer.accountId),
-                { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
+                {
+                    types: query.types,
+                    excludeTypes: query.exclude_types,
+                    fromId: query.account_id,
+                    includeFiltered: query.include_filtered,
+                },
                 query,
             );
 
@@ -125,7 +138,12 @@ export const notificationRoutes: readonly Route[] = [
                 ctx,
                 viewer.accountId,
                 shownOf(ctx, viewer.accountId),
-                { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
+                {
+                    types: query.types,
+                    excludeTypes: query.exclude_types,
+                    fromId: query.account_id,
+                    includeFiltered: query.include_filtered,
+                },
                 await lastReadOf(ctx, viewer.accountId),
                 query.limit,
             );

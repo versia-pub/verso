@@ -49,7 +49,7 @@ export const deleteFollowNotifications = async (
     return numDeletedRows > 0n;
 };
 
-/** The accounts notified that `noteId` mentions them. */
+/** The accounts notified that `noteId` mentions them, whether their policies filtered it or not. */
 export const mentionNotifiedIds = async (ctx: Context, noteId: string): Promise<Set<string>> =>
     new Set(
         (await ctx.db.selectFrom("notifications").select("account_id")
@@ -74,6 +74,11 @@ export type NotificationFilter = {
     readonly excludeTypes?: readonly NotificationType[];
     /** Only those from this account, if given. */
     readonly fromId?: string;
+    /**
+     * Whether to include those the user's policy filtered, as they are when listing one account's,
+     * as on Mastodon.
+     */
+    readonly includeFiltered?: boolean;
 };
 
 /** A query of the notifications a user is shown, to select from. */
@@ -105,6 +110,9 @@ export const filtered = (
     if (filter.types) query = query.where("type", "in", filter.types);
     if (filter.excludeTypes?.length) query = query.where("type", "not in", filter.excludeTypes);
     if (filter.fromId !== undefined) query = query.where("from_account_id", "=", filter.fromId);
+    if (!filter.includeFiltered && filter.fromId === undefined) {
+        query = query.where("filtered", "=", false);
+    }
 
     return query;
 };
@@ -174,3 +182,21 @@ export const deleteNotification = async (
 export const deleteNotificationsOf = async (ctx: Context, accountId: string): Promise<void> => {
     await ctx.db.deleteFrom("notifications").where("account_id", "=", accountId).execute();
 };
+
+/** Of `accountIds`, those notified that `noteId` mentions them, whose policies didn't filter it. */
+export const mentionedAmong = async (
+    ctx: Context,
+    noteId: string,
+    accountIds: readonly string[],
+): Promise<Set<string>> =>
+    new Set(
+        accountIds.length === 0
+            ? []
+            : (await ctx.db.selectFrom("notifications").select("account_id")
+                .where("type", "=", "mention")
+                .where("note_id", "=", noteId)
+                .where("filtered", "=", false)
+                .where("account_id", "in", accountIds)
+                .execute())
+                .map((row) => row.account_id),
+    );

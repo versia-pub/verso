@@ -56,6 +56,7 @@ export type {
     MarkerTimeline,
     NotificationFilter,
     NotificationsQuery,
+    PolicyChanges,
     UnreadCountQuery,
 } from "./client/notifications.ts";
 export {

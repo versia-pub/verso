@@ -13,7 +13,7 @@ import type { Context, DomainEvent } from "../kernel/context.ts";
 import { type Channel, publish } from "../kernel/pubsub.ts";
 import { isNoteDeleted, isNotePosted, isNoteReceived } from "../notes/events.ts";
 import { findNote, mentionsOf } from "../notes/note_queries.ts";
-import { threadMutersAmong } from "../notes/thread_mute_queries.ts";
+import { mentionedAmong } from "../notifications/notification_queries.ts";
 import {
     addToConversation,
     type ConversationRow,
@@ -41,7 +41,8 @@ const changed = (ctx: Context, row: ConversationRow) =>
 
 /**
  * Adds the direct status `noteId` to the conversations of its local author and the local users it
- * mentions, but not of those who hide its author or mute its thread, whom it doesn't notify.
+ * mentions, as on Mastodon: those it notified, unless their policies filtered the mention, and who
+ * don't hide its author.
  */
 const addNote = async (ctx: Context, noteId: string) => {
     const note = await findNote(ctx, noteId);
@@ -55,9 +56,9 @@ const addNote = async (ctx: Context, noteId: string) => {
 
     const mentioned = locals.filter((id) => id !== note.account_id);
     const hiding = await hidingAmong(ctx, note.account_id, mentioned);
-    const muting = await threadMutersAmong(ctx, note.thread_id, mentioned);
+    const notified = await mentionedAmong(ctx, note.id, mentioned);
     const recipients = locals.filter((id) =>
-        id === note.account_id || (!hiding.has(id) && !muting.has(id))
+        id === note.account_id || (!hiding.has(id) && notified.has(id))
     );
 
     for (const accountId of recipients) {

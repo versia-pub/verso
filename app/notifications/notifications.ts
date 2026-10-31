@@ -34,6 +34,8 @@ import {
     mentionNotifiedIds,
 } from "./notification_queries.ts";
 import type { NotificationCreated } from "./events.ts";
+import { verdictsOf } from "./policies.ts";
+import { saveRequest } from "./policy_queries.ts";
 import type { NotificationType } from "./tables.ts";
 
 /** Who was notified, and of which notification. */
@@ -106,8 +108,9 @@ const mutingThread = async (
 };
 
 /**
- * Notifies each of `accountIds`, local users, of what `fromId` did, unless it is themselves or
- * they mute the thread of the status it is about.
+ * Notifies each of `accountIds`, local users, of what `fromId` did, unless it is themselves, they
+ * mute the thread of the status it is about, or their policy drops it. A notification their policy
+ * filters isn't grouped, streamed or pushed, and a filtered mention is kept in a request.
  */
 const notifyAll = async (
     ctx: Context,
@@ -119,9 +122,15 @@ const notifyAll = async (
     const now = ctx.clock.now();
     const others = accountIds.filter((id) => id !== fromId);
     const muting = await mutingThread(ctx, links.noteId, others);
+    const unmuted = others.filter((id) => !muting.has(id));
+    const verdicts = await verdictsOf(ctx, unmuted, type, fromId, links.noteId);
 
     const rows = [];
-    for (const accountId of others.filter((id) => !muting.has(id))) {
+    for (const accountId of unmuted) {
+        const verdict = verdicts.get(accountId);
+        if (verdict === "drop") continue;
+
+        const filtered = verdict === "filter";
         rows.push({
             id: ctx.ids(),
             account_id: accountId,
@@ -132,13 +141,21 @@ const notifyAll = async (
             like_id: links.likeId ?? null,
             reaction_id: links.reactionId ?? null,
             follow_id: links.followId ?? null,
-            group_key: await groupOf(ctx, accountId, type, links.noteId, now),
+            group_key: filtered ? null : await groupOf(ctx, accountId, type, links.noteId, now),
+            filtered,
             created_at: now,
         });
     }
 
     await insertNotifications(ctx, rows);
     for (const row of rows) {
+        if (row.filtered) {
+            if (type === "mention" && links.noteId !== undefined) {
+                await saveRequest(ctx, row.account_id, fromId, links.noteId);
+            }
+            continue;
+        }
+
         const created: NotificationCreated = {
             type: "notifications.created",
             notificationId: row.id,

@@ -7,6 +7,7 @@ import {
     type NotificationGroup,
     type NotificationType,
 } from "../notification.ts";
+import { NotificationPolicy, type PolicyAction } from "../notification_policy.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
 import { Page, type PageQuery } from "./pages.ts";
 
@@ -18,6 +19,16 @@ export type NotificationFilter = {
     readonly exclude_types?: readonly NotificationType[];
     /** Only those from this account. */
     readonly account_id?: string;
+    /**
+     * Whether to include those the viewer's policy filtered. Defaults to `false`, unless
+     * `account_id` is given.
+     */
+    readonly include_filtered?: boolean;
+};
+
+/** What to change of the viewer's notification policy. Parts omitted stay as they are. */
+export type PolicyChanges = {
+    readonly [part in Exclude<keyof NotificationPolicy, "summary">]?: PolicyAction;
 };
 
 /** Which notifications to list. */
@@ -109,6 +120,25 @@ export class NotificationMethods {
      */
     async clear(options?: CallOptions): Promise<void> {
         await this.http.send("POST", "/api/v1/notifications/clear", options);
+    }
+
+    /**
+     * The viewer's notification policy, with how many accounts they have filtered mentions from.
+     * @see https://docs.joinmastodon.org/methods/notifications/#get-policy
+     */
+    policy(options?: CallOptions): Promise<NotificationPolicy> {
+        return this.http.json(NotificationPolicy, "GET", "/api/v2/notifications/policy", options);
+    }
+
+    /**
+     * Changes the viewer's notification policy.
+     * @see https://docs.joinmastodon.org/methods/notifications/#update-the-filtering-policy-for-notifications
+     */
+    updatePolicy(changes: PolicyChanges, options?: CallOptions): Promise<NotificationPolicy> {
+        return this.http.json(NotificationPolicy, "PATCH", "/api/v2/notifications/policy", {
+            ...options,
+            json: changes,
+        });
     }
 }
 

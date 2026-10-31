@@ -140,6 +140,8 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/notifications/unread_count": (c) => c.notifications.unreadCount(),
     "POST /api/v1/notifications/{id}/dismiss": (c) => c.notifications.dismiss("1"),
     "POST /api/v1/notifications/clear": (c) => c.notifications.clear(),
+    "GET /api/v2/notifications/policy": (c) => c.notifications.policy(),
+    "PATCH /api/v2/notifications/policy": (c) => c.notifications.updatePolicy({}),
     "GET /api/v2/notifications": (c) => c.groupedNotifications.list(),
     "GET /api/v2/notifications/{group_key}": (c) => c.groupedNotifications.get("1"),
     "GET /api/v2/notifications/{group_key}/accounts": (c) => c.groupedNotifications.accounts("1"),

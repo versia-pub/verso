@@ -23,6 +23,7 @@ import {
     Count,
     countFilters,
     CountQuery,
+    IncludeFiltered,
     lastReadOf,
     NotificationTypes,
     unreadDescription,
@@ -63,6 +64,7 @@ export const groupedNotificationRoutes: readonly Route[] = [
             account_id: z.string().optional().meta({
                 description: "Return only notifications received from the specified account.",
             }),
+            include_filtered: IncludeFiltered,
             expand_accounts: z.enum(["full", "partial_avatars"]).default("full").meta({
                 description: "One of `full` (default) or `partial_avatars`. When set to " +
                     "`partial_avatars`, some accounts will not be rendered in full in the " +
@@ -78,7 +80,12 @@ export const groupedNotificationRoutes: readonly Route[] = [
                 ctx,
                 viewer.accountId,
                 shownOf(ctx, viewer.accountId),
-                { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
+                {
+                    types: query.types,
+                    excludeTypes: query.exclude_types,
+                    fromId: query.account_id,
+                    includeFiltered: query.include_filtered,
+                },
                 query.grouped_types,
                 query,
             );
@@ -112,7 +119,12 @@ export const groupedNotificationRoutes: readonly Route[] = [
                 ctx,
                 viewer.accountId,
                 shownOf(ctx, viewer.accountId),
-                { types: query.types, excludeTypes: query.exclude_types, fromId: query.account_id },
+                {
+                    types: query.types,
+                    excludeTypes: query.exclude_types,
+                    fromId: query.account_id,
+                    includeFiltered: query.include_filtered,
+                },
                 query.grouped_types,
                 { min_id: await lastReadOf(ctx, viewer.accountId), limit: query.limit },
             );

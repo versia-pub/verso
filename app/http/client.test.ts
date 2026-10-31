@@ -475,6 +475,9 @@ Deno.test("a user reads their direct conversations, marks one read, and removes 
     const alice = await test.as("alice");
     const bob = await test.as("bob");
     const { id: aliceId } = await test.client.accounts.lookup("alice");
+    const { id: bobId } = await test.client.accounts.lookup("bob");
+    // Or her policy would filter bob's direct status.
+    await alice.accounts.follow(bobId);
 
     const posted = await bob.statuses.post({ status: "@alice Hi", visibility: "direct" });
     const [conversation] = (await alice.conversations.list()).items;
@@ -487,6 +490,28 @@ Deno.test("a user reads their direct conversations, marks one read, and removes 
     assertEquals((await alice.conversations.unread(conversation.id)).unread, true);
     await alice.conversations.delete(conversation.id);
     assertEquals((await alice.conversations.list()).items, []);
+});
+
+Deno.test("a user's policy filters direct mentions from strangers until they accept them", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+
+    const filtered = await bob.statuses.post({ status: "@alice Hi", visibility: "direct" });
+    assertEquals((await alice.notifications.list()).items, []);
+    assertEquals(
+        (await alice.notifications.list({ include_filtered: true })).items.map((n) => n.status?.id),
+        [filtered.id],
+    );
+    assertEquals((await alice.notifications.policy()).summary, {
+        pending_requests_count: 1,
+        pending_notifications_count: 1,
+    });
+
+    const policy = await alice.notifications.updatePolicy({ for_private_mentions: "accept" });
+    assertEquals([policy.for_private_mentions, policy.for_not_following], ["accept", "accept"]);
+    const accepted = await bob.statuses.post({ status: "@alice Again", visibility: "direct" });
+    assertEquals((await alice.notifications.list()).items.map((n) => n.status?.id), [accepted.id]);
 });
 
 Deno.test("a user makes a filter, sees what it matches, changes it, and deletes it", async () => {
@@ -871,6 +896,9 @@ Deno.test("a user streams their direct conversations as they change", async () =
     await using server = test.listen();
     const alice = await test.as("alice");
     const bob = await test.as("bob");
+
+    const { id: bobId } = await test.client.accounts.lookup("bob");
+    await alice.accounts.follow(bobId);
 
     await using stream = await alice.streaming.connect({
         url: server.url,

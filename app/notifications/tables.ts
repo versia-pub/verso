@@ -1,3 +1,5 @@
+import type { Generated } from "kysely";
+
 /**
  * What a notification is about, by Mastodon's names, and Versia Server's for reactions.
  * @see https://docs.joinmastodon.org/entities/Notification/#type
@@ -47,7 +49,54 @@ export type NotificationsTable = {
      * status id for follows, as on Mastodon. `null` for the others.
      */
     group_key: string | null;
+    /**
+     * Whether the user's policy filtered it, so it is only listed when asked for, and wasn't
+     * streamed or pushed.
+     */
+    filtered: Generated<boolean>;
     created_at: Date;
+};
+
+/** What a policy does with the notifications it applies to, as on Mastodon. */
+export const policyActions = ["accept", "filter", "drop"] as const;
+export type PolicyAction = (typeof policyActions)[number];
+
+/**
+ * A local user's notification policy, as Mastodon's: what is done with notifications from
+ * accounts of each kind. Users without one have the defaults.
+ * @see https://docs.joinmastodon.org/entities/NotificationPolicy/
+ */
+export type NotificationPoliciesTable = {
+    account_id: string;
+    /** From accounts the user doesn't follow. */
+    for_not_following: PolicyAction;
+    /** From accounts that don't follow the user, or only started to in the last 3 days. */
+    for_not_followers: PolicyAction;
+    /** From accounts made in the last 30 days, that the user doesn't follow. */
+    for_new_accounts: PolicyAction;
+    /** Of direct statuses that aren't replies to the user's own, from accounts they don't follow. */
+    for_private_mentions: PolicyAction;
+    /** From accounts a moderator limited, which Verso has none of yet. */
+    for_limited_accounts: PolicyAction;
+    updated_at: Date;
+};
+
+/**
+ * The filtered mentions of a local user from one account, which they may accept or dismiss, as
+ * Mastodon's notification requests.
+ * @see https://docs.joinmastodon.org/entities/NotificationRequest/
+ */
+export type NotificationRequestsTable = {
+    /** Orders requests by creation time, for paging through them. */
+    id: string;
+    account_id: string;
+    from_account_id: string;
+    /** The latest status that filtered mention is about, or `null` once it is deleted. */
+    last_note_id: string | null;
+    /** How many filtered mentions there are, counting up to 100. */
+    notifications_count: number;
+    created_at: Date;
+    updated_at: Date;
 };
 
 /** Every type of notification, which the type's own checks keep complete. */

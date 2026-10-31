@@ -5,18 +5,22 @@ import { conversationPage } from "../conversations/conversation_queries.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
+import { defaultPolicy, savePolicy } from "../notifications/policy_queries.ts";
 import { createTestContext } from "../testing/context.ts";
 import { directStreams } from "./direct.ts";
 import { dispatcher } from "./dispatcher.ts";
 import { openSession } from "./session.ts";
 
-/** alice, bob and carol, local users. */
+/** alice, bob and carol, local users, whose policies accept direct statuses from anyone. */
 const open = async () => {
     const test = await createTestContext();
     const dispatch = dispatcher(test.ctx);
     const direct = directStreams(test.ctx);
     dispatch.listen(direct);
-    for (const id of ["alice", "bob", "carol"]) await createLocalAccount(test.ctx, id);
+    for (const id of ["alice", "bob", "carol"]) {
+        await createLocalAccount(test.ctx, id);
+        await savePolicy(test.ctx, id, { ...defaultPolicy, for_private_mentions: "accept" });
+    }
 
     /**
      * What `accountId` is sent on their `direct` stream, as each event's type, whether the

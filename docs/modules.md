@@ -54,7 +54,7 @@ their own.
 | `likes`, `reactions`                                                   | `interactions`  |
 | `emojis`, `note_emojis`, `account_emojis`                              | `emojis`        |
 | `media`, `note_media`                                                  | `media`         |
-| `notifications`                                                        | `notifications` |
+| `notifications`, `notification_policies`, `notification_requests`      | `notifications` |
 | `push_subscriptions`, `vapid_keys`                                     | `push`          |
 | `note_search`, `account_search`                                        | `search`        |
 | `markers`                                                              | `markers`       |
