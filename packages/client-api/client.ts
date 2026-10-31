@@ -33,6 +33,7 @@ import { StreamingMethods } from "./client/streaming.ts";
 import { BookmarkMethods, FavouriteMethods, StatusMethods } from "./client/statuses.ts";
 import { FeaturedTagMethods, FollowedTagMethods, TagMethods } from "./client/tags.ts";
 import { ListMethods } from "./client/lists.ts";
+import { FilterMethods } from "./client/filters.ts";
 import { TimelineMethods } from "./client/timelines.ts";
 
 export type {
@@ -44,6 +45,7 @@ export type {
     ProfileChanges,
 } from "./client/accounts.ts";
 export type { EmojiChanges, EmojiDraft } from "./client/emojis.ts";
+export type { FilterInput, KeywordAttributes, KeywordInput } from "./client/filters.ts";
 export { ApiError, type CallOptions, type RateLimit, UnexpectedResponse } from "./client/http.ts";
 export type { Upload } from "./client/media.ts";
 export type {
@@ -114,6 +116,8 @@ export class Client {
     readonly followedTags: FollowedTagMethods;
     /** The viewer's lists of accounts. */
     readonly lists: ListMethods;
+    /** The viewer's filters, and the keywords and statuses they match. */
+    readonly filters: FilterMethods;
     /**
      * Posting, viewing, editing and deleting statuses, and liking, sharing, reacting to,
      * bookmarking and muting them.
@@ -159,6 +163,7 @@ export class Client {
         this.tags = new TagMethods(this.#http);
         this.followedTags = new FollowedTagMethods(this.#http);
         this.lists = new ListMethods(this.#http);
+        this.filters = new FilterMethods(this.#http);
         this.statuses = new StatusMethods(this.#http);
         this.favourites = new FavouriteMethods(this.#http);
         this.bookmarks = new BookmarkMethods(this.#http);

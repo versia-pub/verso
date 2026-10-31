@@ -13,6 +13,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `graph`         | follows, blocks, mutes, account notes        | `follows.ts`, `hidden.ts`     |
 | `tags`          | hashtags, and those users feature and follow | `tag_queries.ts`              |
 | `lists`         | users' lists of accounts                     | `lists.ts`                    |
+| `filters`       | users' filters of keywords and statuses      | `filters.ts`                  |
 | `interactions`  | likes, boosts and reactions                  | `likes.ts`, `shares.ts`       |
 | `emojis`        | custom emojis, local and remote              | `emojis.ts`                   |
 | `media`         | uploads, processing, attachments, cleanup    | `uploads.ts`, `processing.ts` |
@@ -58,6 +59,7 @@ their own.
 | `markers`                                                              | `markers`       |
 | `tags`, `featured_tags`, `tag_follows`                                 | `tags`          |
 | `lists`, `list_accounts`                                               | `lists`         |
+| `filters`, `filter_keywords`, `filter_statuses`                        | `filters`       |
 | `instances`, `instance_keys`                                           | `instances`     |
 | `domain_blocks`                                                        | `moderation`    |
 | `rate_limits`                                                          | `http`          |

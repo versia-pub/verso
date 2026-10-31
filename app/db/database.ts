@@ -36,6 +36,7 @@ import type {
 import type { DomainBlocksTable } from "../moderation/tables.ts";
 import type { MarkersTable } from "../markers/tables.ts";
 import type { ListAccountsTable, ListsTable } from "../lists/tables.ts";
+import type { FilterKeywordsTable, FiltersTable, FilterStatusesTable } from "../filters/tables.ts";
 import type { FeaturedTagsTable, TagFollowsTable, TagsTable } from "../tags/tables.ts";
 import type { NotificationsTable } from "../notifications/tables.ts";
 import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
@@ -58,6 +59,9 @@ export type Database = {
     emojis: EmojisTable;
     endorsements: EndorsementsTable;
     featured_tags: FeaturedTagsTable;
+    filter_keywords: FilterKeywordsTable;
+    filter_statuses: FilterStatusesTable;
+    filters: FiltersTable;
     follows: FollowsTable;
     blocks: BlocksTable;
     bookmarks: BookmarksTable;

@@ -24,7 +24,7 @@ behave differently.
 | Search                     | accounts, statuses and hashtags                                           |
 | Instance                   | the instance, rules, policies, custom emoji                               |
 
-Missing so far: filters, polls, scheduled statuses, reports, conversations, trends and
+Missing so far: applying filters, polls, scheduled statuses, reports, conversations, trends and
 announcements. There's no admin API: admins use `verso admin` instead.
 
 ## Apps and logging in
@@ -89,7 +89,10 @@ announcements. There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/followed_tags`                       | ✅    |                                   |
 | `GET /api/v1/preferences`                         | 🟡    | Only the defaults for posting     |
 | Suggestions (v1 and v2)                           | ❌    |                                   |
-| Filters (v1 and v2)                               | ❌    |                                   |
+| `/api/v2/filters` (5 methods)                     | 🟡    | Not applied to statuses yet       |
+| Filter keywords (5 methods)                       | ✅    |                                   |
+| Filter statuses (4 methods)                       | ✅    |                                   |
+| Filters v1 (5 methods)                            | ❌    |                                   |
 | `POST /api/v1/reports`                            | ❌    |                                   |
 
 ## Statuses

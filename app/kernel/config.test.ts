@@ -85,6 +85,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                     "owner:bookmark",
                     "owner:boost",
                     "owner:emoji",
+                    "owner:filter",
                     "owner:follow",
                     "owner:like",
                     "owner:list",

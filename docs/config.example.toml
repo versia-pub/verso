@@ -186,6 +186,7 @@ updated = 2026-10-01
 #     "owner:bookmark",
 #     "owner:boost",
 #     "owner:emoji",
+#     "owner:filter",
 #     "owner:follow",
 #     "owner:like",
 #     "owner:list",

@@ -3630,6 +3630,1517 @@
                 }
             }
         },
+        "/api/v2/filters": {
+            "get": {
+                "summary": "View all filters",
+                "description": "Obtain a list of all filter groups for the current user.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#get"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:filters"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Filter"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a filter",
+                "description": "Create a filter group with the given parameters.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#create"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:filters"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The name of the filter group."
+                                    },
+                                    "context": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "Where the filter should be applied. Specify at least one of `home`, `notifications`, `public`, `thread`, `account`."
+                                    },
+                                    "filter_action": {
+                                        "default": "warn",
+                                        "type": "string",
+                                        "enum": [
+                                            "warn",
+                                            "hide"
+                                        ],
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                    },
+                                    "expires_in": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^-?\\d+$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "string",
+                                                "const": ""
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "description": "How many seconds from now should the filter expire? Defaults to never expire."
+                                    },
+                                    "keywords_attributes": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "propertyNames": {
+                                                    "type": "string"
+                                                },
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "context"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The name of the filter group."
+                                    },
+                                    "context": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "Where the filter should be applied. Specify at least one of `home`, `notifications`, `public`, `thread`, `account`."
+                                    },
+                                    "filter_action": {
+                                        "default": "warn",
+                                        "type": "string",
+                                        "enum": [
+                                            "warn",
+                                            "hide"
+                                        ],
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                    },
+                                    "expires_in": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^-?\\d+$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "string",
+                                                "const": ""
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "description": "How many seconds from now should the filter expire? Defaults to never expire."
+                                    },
+                                    "keywords_attributes": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "propertyNames": {
+                                                    "type": "string"
+                                                },
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "context"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The name of the filter group."
+                                    },
+                                    "context": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "Where the filter should be applied. Specify at least one of `home`, `notifications`, `public`, `thread`, `account`."
+                                    },
+                                    "filter_action": {
+                                        "default": "warn",
+                                        "type": "string",
+                                        "enum": [
+                                            "warn",
+                                            "hide"
+                                        ],
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                    },
+                                    "expires_in": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^-?\\d+$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "string",
+                                                "const": ""
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "description": "How many seconds from now should the filter expire? Defaults to never expire."
+                                    },
+                                    "keywords_attributes": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "propertyNames": {
+                                                    "type": "string"
+                                                },
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "context"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Filter"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/filters/keywords/{id}": {
+            "get": {
+                "summary": "View a single keyword",
+                "description": "Get one filter keyword by the given id.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#keywords-get-one"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the FilterKeyword in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FilterKeyword"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Edit a keyword within a filter",
+                "description": "Update the given filter keyword.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#keywords-update"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the FilterKeyword in the database."
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "keyword": {
+                                        "type": "string",
+                                        "description": "The keyword to be added to the filter group."
+                                    },
+                                    "whole_word": {
+                                        "description": "Whether the keyword should consider word boundaries.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "keyword": {
+                                        "type": "string",
+                                        "description": "The keyword to be added to the filter group."
+                                    },
+                                    "whole_word": {
+                                        "description": "Whether the keyword should consider word boundaries.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "keyword": {
+                                        "type": "string",
+                                        "description": "The keyword to be added to the filter group."
+                                    },
+                                    "whole_word": {
+                                        "description": "Whether the keyword should consider word boundaries.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FilterKeyword"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove keywords from a filter",
+                "description": "Deletes the given filter keyword.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#keywords-delete"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the FilterKeyword in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/filters/statuses/{id}": {
+            "get": {
+                "summary": "View a single status filter",
+                "description": "Obtain a single status filter.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#statuses-get-one"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the FilterStatus in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FilterStatus"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove a status from a filter group",
+                "description": "Remove a status filter from the current filter group.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#statuses-remove"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the FilterStatus in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/filters/{id}": {
+            "get": {
+                "summary": "View a specific filter",
+                "description": "Obtain a single filter group owned by the current user.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#get-one"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Filter in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Filter"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update a filter",
+                "description": "Update a filter group with the given parameters.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#update"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Filter in the database."
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The name of the filter group."
+                                    },
+                                    "context": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "Where the filter should be applied. Specify at least one of `home`, `notifications`, `public`, `thread`, `account`."
+                                    },
+                                    "filter_action": {
+                                        "type": "string",
+                                        "enum": [
+                                            "warn",
+                                            "hide"
+                                        ],
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                    },
+                                    "expires_in": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^-?\\d+$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "string",
+                                                "const": ""
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "description": "How many seconds from now should the filter expire?"
+                                    },
+                                    "keywords_attributes": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "propertyNames": {
+                                                    "type": "string"
+                                                },
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The name of the filter group."
+                                    },
+                                    "context": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "Where the filter should be applied. Specify at least one of `home`, `notifications`, `public`, `thread`, `account`."
+                                    },
+                                    "filter_action": {
+                                        "type": "string",
+                                        "enum": [
+                                            "warn",
+                                            "hide"
+                                        ],
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                    },
+                                    "expires_in": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^-?\\d+$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "string",
+                                                "const": ""
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "description": "How many seconds from now should the filter expire?"
+                                    },
+                                    "keywords_attributes": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "propertyNames": {
+                                                    "type": "string"
+                                                },
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The name of the filter group."
+                                    },
+                                    "context": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "Where the filter should be applied. Specify at least one of `home`, `notifications`, `public`, `thread`, `account`."
+                                    },
+                                    "filter_action": {
+                                        "type": "string",
+                                        "enum": [
+                                            "warn",
+                                            "hide"
+                                        ],
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                    },
+                                    "expires_in": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "integer",
+                                                        "minimum": -9007199254740991,
+                                                        "maximum": 9007199254740991
+                                                    },
+                                                    {
+                                                        "type": "string",
+                                                        "pattern": "^-?\\d+$"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "string",
+                                                "const": ""
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ],
+                                        "description": "How many seconds from now should the filter expire?"
+                                    },
+                                    "keywords_attributes": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "propertyNames": {
+                                                    "type": "string"
+                                                },
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "description": "Provide the ID of an existing keyword to modify it, instead of creating a new keyword."
+                                                        },
+                                                        "keyword": {
+                                                            "type": "string",
+                                                            "description": "A keyword to be added to the newly-created filter group."
+                                                        },
+                                                        "whole_word": {
+                                                            "description": "Whether the keyword should consider word boundaries.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        },
+                                                        "_destroy": {
+                                                            "description": "If true, will remove the keyword with the given ID.",
+                                                            "type": [
+                                                                "boolean",
+                                                                "string"
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Filter"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a filter",
+                "description": "Delete a filter group with the given id.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#delete"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Filter in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/filters/{filter_id}/keywords": {
+            "get": {
+                "summary": "View keywords added to a filter",
+                "description": "List all keywords attached to the current filter group.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#keywords-get"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "filter_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Filter in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FilterKeyword"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Add a keyword to a filter",
+                "description": "Add the given keyword to the specified filter group\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#keywords-create"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "filter_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Filter in the database."
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "keyword": {
+                                        "type": "string",
+                                        "description": "The keyword to be added to the filter group."
+                                    },
+                                    "whole_word": {
+                                        "description": "Whether the keyword should consider word boundaries.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "keyword"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "keyword": {
+                                        "type": "string",
+                                        "description": "The keyword to be added to the filter group."
+                                    },
+                                    "whole_word": {
+                                        "description": "Whether the keyword should consider word boundaries.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "keyword"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "keyword": {
+                                        "type": "string",
+                                        "description": "The keyword to be added to the filter group."
+                                    },
+                                    "whole_word": {
+                                        "description": "Whether the keyword should consider word boundaries.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "keyword"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FilterKeyword"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/filters/{filter_id}/statuses": {
+            "get": {
+                "summary": "View all status filters",
+                "description": "Obtain a list of all status filters within this filter group.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#statuses-get"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "filter_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Filter in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/FilterStatus"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Add a status to a filter group",
+                "description": "Add a status filter to the current filter group.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:filter` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/filters/#statuses-add"
+                },
+                "tags": [
+                    "filters"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:filters"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "filter_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Filter in the database."
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status_id": {
+                                        "type": "string",
+                                        "description": "The status ID to be added to the filter group."
+                                    }
+                                },
+                                "required": [
+                                    "status_id"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status_id": {
+                                        "type": "string",
+                                        "description": "The status ID to be added to the filter group."
+                                    }
+                                },
+                                "required": [
+                                    "status_id"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status_id": {
+                                        "type": "string",
+                                        "description": "The status ID to be added to the filter group."
+                                    }
+                                },
+                                "required": [
+                                    "status_id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FilterStatus"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/search": {
             "get": {
                 "summary": "Search for matching accounts",
@@ -10029,6 +11540,7 @@
                                                 "owner:like",
                                                 "owner:bookmark",
                                                 "owner:list",
+                                                "owner:filter",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -10119,6 +11631,7 @@
                                                 "owner:like",
                                                 "owner:bookmark",
                                                 "owner:list",
+                                                "owner:filter",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -10209,6 +11722,7 @@
                                                 "owner:like",
                                                 "owner:bookmark",
                                                 "owner:list",
+                                                "owner:filter",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -10378,6 +11892,7 @@
                                                 "owner:like",
                                                 "owner:bookmark",
                                                 "owner:list",
+                                                "owner:filter",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -10465,6 +11980,7 @@
                                                 "owner:like",
                                                 "owner:bookmark",
                                                 "owner:list",
+                                                "owner:filter",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -10552,6 +12068,7 @@
                                                 "owner:like",
                                                 "owner:bookmark",
                                                 "owner:list",
+                                                "owner:filter",
                                                 "owner:boost",
                                                 "owner:reaction",
                                                 "owner:note",
@@ -14211,6 +15728,102 @@
                     "name",
                     "value",
                     "verified_at"
+                ]
+            },
+            "Filter": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "context": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "home",
+                                "notifications",
+                                "public",
+                                "thread",
+                                "account"
+                            ]
+                        }
+                    },
+                    "expires_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "filter_action": {
+                        "type": "string",
+                        "enum": [
+                            "warn",
+                            "hide"
+                        ]
+                    },
+                    "keywords": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FilterKeyword"
+                        }
+                    },
+                    "statuses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FilterStatus"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "context",
+                    "expires_at",
+                    "filter_action"
+                ]
+            },
+            "FilterKeyword": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "keyword": {
+                        "type": "string"
+                    },
+                    "whole_word": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "keyword",
+                    "whole_word"
+                ]
+            },
+            "FilterStatus": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "status_id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "status_id"
                 ]
             },
             "GroupedNotificationsResults": {

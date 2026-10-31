@@ -470,6 +470,42 @@ Deno.test("a user makes an exclusive list, reads it, changes it, and deletes it"
     assertEquals(await alice.lists.list(), []);
 });
 
+Deno.test("a user makes a filter, changes its keywords and statuses, and deletes it", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const { id: posted } = await alice.statuses.post({ status: "Cats" });
+
+    const filter = await alice.filters.create({
+        title: "Pets",
+        context: ["home", "public"],
+        keywords_attributes: [{ keyword: "cat" }],
+    });
+    assertEquals([filter.filter_action, filter.expires_at], ["warn", null]);
+    const [cat] = filter.keywords ?? [];
+    assertEquals([cat.keyword, cat.whole_word], ["cat", true]);
+
+    const changed = await alice.filters.update(filter.id, {
+        filter_action: "hide",
+        keywords_attributes: [{ id: cat.id, _destroy: true }, { keyword: "dog" }],
+    });
+    assertEquals(changed.filter_action, "hide");
+    const [dog] = await alice.filters.keywords(filter.id);
+    assertEquals(dog.keyword, "dog");
+    const kept = await alice.filters.updateKeyword(dog.id, { whole_word: false });
+    assertEquals(await alice.filters.keyword(dog.id), kept);
+    const bird = await alice.filters.addKeyword(filter.id, { keyword: "bird" });
+    await alice.filters.removeKeyword(bird.id);
+
+    const status = await alice.filters.addStatus(filter.id, posted);
+    assertEquals(await alice.filters.status(status.id), { id: status.id, status_id: posted });
+    assertEquals(await alice.filters.statuses(filter.id), [status]);
+    await alice.filters.removeStatus(status.id);
+
+    assertEquals((await alice.filters.get(filter.id)).keywords, [kept]);
+    await alice.filters.delete(filter.id);
+    assertEquals(await alice.filters.list(), []);
+});
+
 Deno.test("a user mutes the thread of a status, and unmutes it", async () => {
     await using test = await open();
     const alice = await test.as("alice");

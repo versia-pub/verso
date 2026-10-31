@@ -32,6 +32,8 @@ export const permissions = [
     "owner:bookmark",
     /** Make lists of accounts, and change them. */
     "owner:list",
+    /** Filter statuses by keyword or by id, and change one's filters. */
+    "owner:filter",
     /** Boost statuses, and undo it. */
     "owner:boost",
     /** React to statuses, and undo it. */

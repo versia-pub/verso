@@ -38,6 +38,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   and unfollowing it takes them all off again. Verso puts the home timeline together when it's read.
 - A list's title is at most 256 characters, and a request adds or removes at most 100 of its
   accounts. Lists aren't federated.
+- A filter's title and keywords are at most 256 characters each, a request adds or changes at most
+  100 of its keywords, and it expires at most 100 years from now. Filters aren't federated.
 - Users with the `blocks` permission, usually moderators, see in `blocked_by` whether the account
   blocks them. For everyone else it's always `false`.
 - `GET /api/v1/preferences` returns the user's posting defaults, which
