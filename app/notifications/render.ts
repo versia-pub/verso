@@ -6,10 +6,11 @@ import type {
     GroupedNotificationsResults,
     Notification,
     NotificationGroup,
+    NotificationRequest,
     PartialAccountWithAvatar,
 } from "@versia/client-api";
 import { findAccounts } from "../accounts/account_queries.ts";
-import { publicAccountsOf } from "../accounts/public.ts";
+import { publicAccounts, publicAccountsOf } from "../accounts/public.ts";
 import { notificationsHiddenFrom } from "../graph/hidden.ts";
 import { emojisOfReactions } from "../interactions/reaction_render_queries.ts";
 import { renderReactionEmoji } from "../interactions/render.ts";
@@ -20,6 +21,7 @@ import { isSeenBy } from "../notes/thread_queries.ts";
 import { onlookerOf } from "../notes/visibility.ts";
 import { groupKeyOf, groupStatsOf } from "./group_queries.ts";
 import { findNotification, type NotificationRow, type Shown } from "./notification_queries.ts";
+import type { NotificationRequestRow } from "./request_queries.ts";
 import type { NotificationType } from "./tables.ts";
 
 /**
@@ -182,4 +184,37 @@ export const renderNotificationGroups = async (
             .flatMap((id) => statuses.get(id) ?? []),
         notification_groups: notificationGroups,
     };
+};
+
+/**
+ * Notification requests as Mastodon renders them for their owner, `viewerId`, with the account
+ * each is from and its latest status, if it is still there.
+ */
+export const renderRequests = async (
+    ctx: Context,
+    rows: readonly NotificationRequestRow[],
+    viewerId: string,
+): Promise<NotificationRequest[]> => {
+    const accounts = new Map(
+        (await publicAccounts(ctx, rows.map((row) => row.from_account_id)))
+            .map((account) => [account.id, account]),
+    );
+    const notes = await findNotes(ctx, rows.flatMap((row) => row.last_note_id ?? []));
+    const statuses = new Map(
+        (await renderStatuses(ctx, notes, viewerId)).map((status) => [status.id, status]),
+    );
+
+    return rows.flatMap((row) => {
+        const account = accounts.get(row.from_account_id);
+        if (account === undefined) return [];
+
+        return [{
+            id: row.id,
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString(),
+            account,
+            notifications_count: String(row.notifications_count),
+            last_status: statuses.get(row.last_note_id ?? "") ?? null,
+        }];
+    });
 };

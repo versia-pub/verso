@@ -34,7 +34,8 @@ dispatcher: one per process, one message at a time
 Messages carry ids, not statuses, so nothing private travels between processes. Each process looks
 the status up itself for its own sessions. Notifications arrive the same way, on
 `notifications.created`, and only go to their user's sessions. So do changes to a user's filters, on
-`filters.changed`, which go to their `user` streams as `filters_changed`, with no payload.
+`filters.changed`, which go to their `user` streams as `filters_changed`, with no payload, and
+accepted notification requests, on `notifications.merged`, sent as `notifications_merged`.
 
 A user's conversations arrive on `conversations.changed` and go to their `direct` streams as
 `conversation`. That happens when a conversation gets a status, is marked read or unread, or loses

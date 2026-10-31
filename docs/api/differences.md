@@ -69,6 +69,7 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   left out of lists and counts.
 - Notification policies also apply to `reaction` notifications, as they do to likes.
   `for_limited_accounts` is kept but never applies, since moderators can't limit accounts yet.
+- Notification requests are accepted or dismissed at most 100 at a time.
 - Web Push only sends to `https` endpoints. `PUT /api/v1/push/subscription` resets anything it isn't
   given, the same way creating a subscription does.
 

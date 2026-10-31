@@ -12,7 +12,7 @@ import { hidingAmong } from "../graph/hidden.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { type Channel, publish } from "../kernel/pubsub.ts";
 import { isNoteDeleted, isNotePosted, isNoteReceived } from "../notes/events.ts";
-import { findNote, mentionsOf } from "../notes/note_queries.ts";
+import { findNote, findNotes, mentionsOf, type NoteRow } from "../notes/note_queries.ts";
 import { mentionedAmong } from "../notifications/notification_queries.ts";
 import {
     addToConversation,
@@ -61,15 +61,43 @@ const addNote = async (ctx: Context, noteId: string) => {
         id === note.account_id || (!hiding.has(id) && notified.has(id))
     );
 
-    for (const accountId of recipients) {
-        const participants = everyone.filter((id) => id !== accountId).toSorted().join(" ");
-        const row = await addToConversation(
-            ctx,
-            { accountId, threadId: note.thread_id, participants },
-            note.id,
-            note.account_id !== accountId,
-        );
-        await changed(ctx, row);
+    for (const accountId of recipients) await addFor(ctx, note, everyone, accountId);
+};
+
+/** Adds `note`, between `everyone`, to the conversation of `accountId`, one of them. */
+const addFor = async (
+    ctx: Context,
+    note: NoteRow,
+    everyone: readonly string[],
+    accountId: string,
+) => {
+    const participants = everyone.filter((id) => id !== accountId).toSorted().join(" ");
+    const row = await addToConversation(
+        ctx,
+        { accountId, threadId: note.thread_id, participants },
+        note.id,
+        note.account_id !== accountId,
+    );
+    await changed(ctx, row);
+};
+
+/**
+ * Adds those of the statuses `noteIds` that are direct to `accountId`'s conversations, as when they
+ * accept the mentions their policy filtered.
+ */
+export const addToConversationsOf = async (
+    ctx: Context,
+    accountId: string,
+    noteIds: readonly string[],
+): Promise<void> => {
+    const notes = (await findNotes(ctx, noteIds))
+        .filter((note) => note.visibility === "direct")
+        .toSorted((a, b) => a.id < b.id ? -1 : 1);
+    const mentions = await mentionsOf(ctx, notes.map((note) => note.id));
+
+    for (const note of notes) {
+        const everyone = [...new Set([note.account_id, ...mentions.get(note.id) ?? []])];
+        await addFor(ctx, note, everyone, accountId);
     }
 };
 

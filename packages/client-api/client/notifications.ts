@@ -8,6 +8,7 @@ import {
     type NotificationType,
 } from "../notification.ts";
 import { NotificationPolicy, type PolicyAction } from "../notification_policy.ts";
+import { NotificationRequest } from "../notification_request.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
 import { Page, type PageQuery } from "./pages.ts";
 
@@ -139,6 +140,88 @@ export class NotificationMethods {
             ...options,
             json: changes,
         });
+    }
+
+    /**
+     * The viewer's notification requests, newest first: for each account, the mentions their
+     * policy filtered.
+     * @see https://docs.joinmastodon.org/methods/notifications/#get-requests
+     */
+    requests(query: PageQuery = {}, options?: CallOptions): Promise<Page<NotificationRequest>> {
+        return Page.get(
+            this.http,
+            NotificationRequest,
+            "/api/v1/notifications/requests",
+            query,
+            options,
+        );
+    }
+
+    /**
+     * One of the viewer's notification requests.
+     * @see https://docs.joinmastodon.org/methods/notifications/#get-one-request
+     */
+    request(id: string, options?: CallOptions): Promise<NotificationRequest> {
+        return this.http.json(
+            NotificationRequest,
+            "GET",
+            path`/api/v1/notifications/requests/${id}`,
+            options,
+        );
+    }
+
+    /**
+     * Accepts a notification request: its account's filtered notifications are shown, and its
+     * later ones aren't filtered.
+     * @see https://docs.joinmastodon.org/methods/notifications/#accept-request
+     */
+    async acceptRequest(id: string, options?: CallOptions): Promise<void> {
+        await this.http.send("POST", path`/api/v1/notifications/requests/${id}/accept`, options);
+    }
+
+    /**
+     * Dismisses a notification request, and its account's filtered notifications.
+     * @see https://docs.joinmastodon.org/methods/notifications/#dismiss-request
+     */
+    async dismissRequest(id: string, options?: CallOptions): Promise<void> {
+        await this.http.send("POST", path`/api/v1/notifications/requests/${id}/dismiss`, options);
+    }
+
+    /**
+     * Accepts several notification requests, as {@link acceptRequest} does.
+     * @see https://docs.joinmastodon.org/methods/notifications/#accept-multiple-requests
+     */
+    async acceptRequests(ids: readonly string[], options?: CallOptions): Promise<void> {
+        await this.http.send("POST", "/api/v1/notifications/requests/accept", {
+            ...options,
+            json: { id: ids },
+        });
+    }
+
+    /**
+     * Dismisses several notification requests, as {@link dismissRequest} does.
+     * @see https://docs.joinmastodon.org/methods/notifications/#dismiss-multiple-requests
+     */
+    async dismissRequests(ids: readonly string[], options?: CallOptions): Promise<void> {
+        await this.http.send("POST", "/api/v1/notifications/requests/dismiss", {
+            ...options,
+            json: { id: ids },
+        });
+    }
+
+    /**
+     * Whether the requests the viewer accepted were merged into their notifications yet.
+     * @see https://docs.joinmastodon.org/methods/notifications/#requests-merged
+     */
+    async requestsMerged(options?: CallOptions): Promise<boolean> {
+        const { merged } = await this.http.json(
+            z.object({ merged: z.boolean() }),
+            "GET",
+            "/api/v1/notifications/requests/merged",
+            options,
+        );
+
+        return merged;
     }
 }
 

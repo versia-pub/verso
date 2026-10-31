@@ -99,6 +99,16 @@ export type NotificationRequestsTable = {
     updated_at: Date;
 };
 
+/**
+ * An account whose notifications a local user accepted, which their policy no longer filters or
+ * drops.
+ */
+export type NotificationPermissionsTable = {
+    account_id: string;
+    from_account_id: string;
+    created_at: Date;
+};
+
 /** Every type of notification, which the type's own checks keep complete. */
 const typeNames = {
     mention: true,

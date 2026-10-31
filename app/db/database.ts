@@ -40,6 +40,7 @@ import type { ConversationNotesTable, ConversationsTable } from "../conversation
 import type { FilterKeywordsTable, FiltersTable, FilterStatusesTable } from "../filters/tables.ts";
 import type { FeaturedTagsTable, TagFollowsTable, TagsTable } from "../tags/tables.ts";
 import type {
+    NotificationPermissionsTable,
     NotificationPoliciesTable,
     NotificationRequestsTable,
     NotificationsTable,
@@ -91,6 +92,7 @@ export type Database = {
     note_tags: NoteTagsTable;
     note_versions: NoteVersionsTable;
     notes: NotesTable;
+    notification_permissions: NotificationPermissionsTable;
     notification_policies: NotificationPoliciesTable;
     notification_requests: NotificationRequestsTable;
     notifications: NotificationsTable;

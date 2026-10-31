@@ -9022,6 +9022,478 @@
                 }
             }
         },
+        "/api/v1/notifications/requests": {
+            "get": {
+                "summary": "Get all notification requests",
+                "description": "Notification requests for notifications filtered by the user's policy. This API returns Link headers containing links to the next/previous page.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#get-requests"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/NotificationRequest"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/requests/accept": {
+            "post": {
+                "summary": "Accept multiple notification requests",
+                "description": "Accepts multiple notification requests, which merges the filtered notifications from those users back into the main notifications and accepts any future notification from them.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#accept-multiple-requests"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The IDs of the notification requests in the database."
+                                    }
+                                },
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The IDs of the notification requests in the database."
+                                    }
+                                },
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The IDs of the notification requests in the database."
+                                    }
+                                },
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/requests/dismiss": {
+            "post": {
+                "summary": "Dismiss multiple notification requests",
+                "description": "Dismiss multiple notification requests, which hides them and prevent them from contributing to the pending notification requests count.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#dismiss-multiple-requests"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The IDs of the notification requests in the database."
+                                    }
+                                },
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The IDs of the notification requests in the database."
+                                    }
+                                },
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ],
+                                        "description": "The IDs of the notification requests in the database."
+                                    }
+                                },
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/requests/merged": {
+            "get": {
+                "summary": "Check if accepted notification requests have been merged",
+                "description": "Check whether accepted notification requests have been merged.\n\nAccepting notification requests schedules a background job to merge the filtered notifications back into the normal notification list. When that process has finished, the client should refresh the notifications list at its earliest convenience. This is communicated by the `notifications_merged` streaming event but can also be polled using this endpoint.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#requests-merged"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "merged": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "merged"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/requests/{id}": {
+            "get": {
+                "summary": "Get a single notification request",
+                "description": "View information about a notification request with a given ID.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#get-one-request"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Notification in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NotificationRequest"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/requests/{id}/accept": {
+            "post": {
+                "summary": "Accept a single notification request",
+                "description": "Accept a notification request, which merges the filtered notifications from that user back into the main notification and accepts any future notification from them.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#accept-request"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Notification in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/requests/{id}/dismiss": {
+            "post": {
+                "summary": "Dismiss a single notification request",
+                "description": "Dismiss a notification request, which hides it and prevent it from contributing to the pending notification requests count.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:notification` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/notifications/#dismiss-request"
+                },
+                "tags": [
+                    "notifications"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:notifications"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Notification in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/notifications": {
             "get": {
                 "summary": "Get all notifications",
@@ -17547,6 +18019,47 @@
                     "for_private_mentions",
                     "for_limited_accounts",
                     "summary"
+                ]
+            },
+            "NotificationRequest": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "account": {
+                        "$ref": "#/components/schemas/Account"
+                    },
+                    "notifications_count": {
+                        "type": "string"
+                    },
+                    "last_status": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Status"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "created_at",
+                    "updated_at",
+                    "account",
+                    "notifications_count"
                 ]
             },
             "NotificationType": {

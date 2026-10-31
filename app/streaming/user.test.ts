@@ -10,6 +10,7 @@ import { removeNote } from "../notes/removal.ts";
 import { publish } from "../kernel/pubsub.ts";
 import { followTag } from "../tags/tag_follows.ts";
 import { createFilter, removeFilter } from "../filters/filters.ts";
+import { notificationsMerged } from "../notifications/requests.ts";
 import { createTestContext } from "../testing/context.ts";
 import { openSession } from "./session.ts";
 import { dispatcher, type Sessions } from "./dispatcher.ts";
@@ -210,6 +211,25 @@ Deno.test("a user is sent their notifications on each stream for them, if their 
         note,
     ]]);
     assertEquals(statuses.sent, []);
+});
+
+Deno.test("a user is told on each stream for notifications when their accepted requests are merged", async () => {
+    await using test = await open();
+    const both = test.streaming("alice", ["user:notification", "user"]);
+    const statuses = test.streaming("alice", ["user"], { scopes: ["read:statuses"] });
+    const unpermitted = test.streaming("alice", ["user:notification"], {
+        permissions: ["read:note"],
+    });
+    const other = test.streaming("bob", ["user:notification", "user"]);
+
+    await publish(test.ctx, notificationsMerged, { accountId: "alice" });
+    await test.dispatch.idle();
+
+    assertEquals(both.sent, [
+        ["user:notification", "notifications_merged", 1],
+        ["user", "notifications_merged", 1],
+    ]);
+    assertEquals([statuses.sent, unpermitted.sent, other.sent], [[], [], []]);
 });
 
 Deno.test("a user is sent no statuses unless they may read them, nor notifications unless they may read theirs", async () => {

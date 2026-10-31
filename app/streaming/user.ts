@@ -1,7 +1,7 @@
 /**
  * The `user` and `user:notification` streams: the statuses of a user's home timeline as they
- * appear, change or go, their notifications, and on `user`, when their filters change, as on
- * Mastodon.
+ * appear, change or go, their notifications, when the notification requests they accepted are
+ * merged, and on `user`, when their filters change, as on Mastodon.
  * @see https://docs.joinmastodon.org/methods/streaming/#user
  * @module
  */
@@ -137,6 +137,16 @@ export const userStreams = (ctx: Context): Sessions => {
                 ({ viewer, session }, payload) =>
                     session.deliver(notificationStreams(viewer), "notification", payload),
             );
+        },
+        notificationsMerged: async (message) => {
+            const subscribed = [...sessions].filter(({ viewer, session }) =>
+                viewer.accountId === message.accountId &&
+                session.subscribedTo(notificationStreams(viewer))
+            );
+
+            for (const { viewer, session } of await allowed(subscribed, "owner:notification")) {
+                session.deliver(notificationStreams(viewer), "notifications_merged", "1");
+            }
         },
         filtersChanged: (message) => {
             for (const { viewer, session } of sessions) {

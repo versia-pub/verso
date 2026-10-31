@@ -17,6 +17,7 @@ import { graphRoutes } from "../graph/routes.ts";
 import { noteRoutes } from "../notes/routes.ts";
 import { groupedNotificationRoutes } from "../notifications/grouped_routes.ts";
 import { notificationPolicyRoutes } from "../notifications/policy_routes.ts";
+import { notificationRequestRoutes } from "../notifications/request_routes.ts";
 import { notificationRoutes } from "../notifications/routes.ts";
 import { pushRoutes } from "../push/routes.ts";
 import { timelineRoutes } from "../notes/timeline_routes.ts";
@@ -53,6 +54,8 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...interactionRoutes,
         ...timelineRoutes,
         ...conversationRoutes,
+        // Before `/api/v1/notifications/:id`, which would take their paths.
+        ...notificationRequestRoutes,
         ...notificationRoutes,
         // Before `/api/v2/notifications/:group_key`, which would take its path.
         ...notificationPolicyRoutes,

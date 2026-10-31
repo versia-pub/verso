@@ -12,6 +12,7 @@ import { followersAmong } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, mentionsOf, type NoteRow } from "../notes/note_queries.ts";
 import { policiesOf, type Policy } from "./policy_queries.ts";
+import { permittingAmong } from "./request_queries.ts";
 import type { NotificationType, PolicyAction } from "./tables.ts";
 
 /**
@@ -90,7 +91,8 @@ const answeredAmong = async (
 /**
  * What the policies of `accountIds`, local users, do with a notification of `type` from `fromId`,
  * about the status `noteId` if it has one: `drop` or `filter`, for those it doesn't accept. As on
- * Mastodon, any policy that drops it wins over any that filters it.
+ * Mastodon, any policy that drops it wins over any that filters it, and none applies to an account
+ * whose request the user accepted.
  */
 export const verdictsOf = async (
     ctx: Context,
@@ -103,10 +105,13 @@ export const verdictsOf = async (
     if (!filterable.has(type)) return verdicts;
 
     const policies = await policiesOf(ctx, accountIds);
-    const strict = accountIds.filter((id) => {
+    const applying = accountIds.filter((id) => {
         const { for_limited_accounts: _, ...applied } = policies.get(id) ?? {};
         return Object.values(applied).some((action) => action !== "accept");
     });
+    // Those who accepted the account's request let all its notifications through.
+    const permitting = await permittingAmong(ctx, fromId, applying);
+    const strict = applying.filter((id) => !permitting.has(id));
     const from = strict.length === 0 ? undefined : await findAccount(ctx, fromId);
     if (from === undefined) return verdicts;
 

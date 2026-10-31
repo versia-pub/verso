@@ -824,6 +824,8 @@ const describe = (event: StreamEvent) => {
             return `${event.stream.join(",")} notification ${event.notification.type}`;
         case "filters_changed":
             return `${event.stream.join(",")} filters_changed`;
+        case "notifications_merged":
+            return `${event.stream.join(",")} notifications_merged`;
         case "conversation":
             return `${event.stream.join(",")} conversation ${event.conversation.last_status?.id}`;
         case "unknown":
@@ -914,6 +916,39 @@ Deno.test("a user streams their direct conversations as they change", async () =
     const [conversation] = (await alice.conversations.list()).items;
     await alice.conversations.read(conversation.id);
     assertEquals(await next(stream, 1), [`direct conversation ${posted.id}`]);
+});
+
+Deno.test("a user accepts one account's filtered mentions and dismisses another's", async () => {
+    await using test = await open();
+    await using server = test.listen();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const carol = await test.as("carol");
+    const { id: bobId } = await test.client.accounts.lookup("bob");
+
+    await using stream = await alice.streaming.connect({
+        url: server.url,
+        subscribe: [{ stream: "user:notification" }],
+    });
+    stream.subscribe({ stream: "list" });
+    assertEquals(await next(stream, 1), ["error 400 Missing list name parameter"]);
+
+    const posted = await bob.statuses.post({ status: "@alice Hi", visibility: "direct" });
+    await carol.statuses.post({ status: "@alice Hi", visibility: "direct" });
+    const [fromCarol, fromBob] = (await alice.notifications.requests()).items;
+    assertEquals([fromBob.account.id, fromBob.notifications_count], [bobId, "1"]);
+    assertEquals((await alice.notifications.request(fromBob.id)).last_status?.id, posted.id);
+
+    await alice.notifications.acceptRequest(fromBob.id);
+    assertEquals(await next(stream, 1), ["user:notification notifications_merged"]);
+    assertEquals(await alice.notifications.requestsMerged(), true);
+    assertEquals((await alice.notifications.list()).items.map((n) => n.status?.id), [posted.id]);
+    assertEquals((await alice.conversations.list()).items[0].last_status?.id, posted.id);
+
+    await alice.notifications.dismissRequests([fromCarol.id]);
+    assertEquals((await alice.notifications.requests()).items, []);
+    const again = await bob.statuses.post({ status: "@alice Again", visibility: "direct" });
+    assertEquals((await alice.notifications.list()).items[0].status?.id, again.id);
 });
 
 Deno.test("a stream without a user's token doesn't open", async () => {

@@ -63,6 +63,11 @@ export type StreamEvent =
         readonly stream: readonly string[];
     }
     | {
+        /** The notification requests the viewer accepted were merged into their notifications. */
+        readonly event: "notifications_merged";
+        readonly stream: readonly string[];
+    }
+    | {
         /** A direct conversation has a new status, lost its latest, or was marked read or unread. */
         readonly event: "conversation";
         readonly stream: readonly string[];
@@ -141,6 +146,8 @@ const eventOf = (data: unknown): StreamEvent => {
             return { event, stream };
         case "conversation":
             return { event, stream, conversation: parsed(Conversation) };
+        case "notifications_merged":
+            return { event, stream };
         default:
             return { event: "unknown", stream, name: event, payload };
     }
