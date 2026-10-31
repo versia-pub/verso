@@ -27,9 +27,10 @@ export type Session = {
     readonly subscribedTo: (streams: readonly string[]) => boolean;
     /**
      * Sends the client an event of `streams`, such as a status as JSON, or a deleted one's id, once
-     * for each of them it is subscribed to, as on Mastodon.
+     * for each of them it is subscribed to, as on Mastodon. Some events, such as `filters_changed`,
+     * have no payload.
      */
-    readonly deliver: (streams: readonly string[], event: string, payload: string) => void;
+    readonly deliver: (streams: readonly string[], event: string, payload?: string) => void;
 };
 
 /**

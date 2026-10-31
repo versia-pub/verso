@@ -1,13 +1,16 @@
 /**
  * Filters: the keywords and statuses that local users filter out of what they read, each group with
  * the places it applies and what is done with what it matches, as Mastodon's v2 filters. They
- * aren't federated.
+ * aren't federated. Each change is published, so that the user's apps are told on their streams.
  * @see https://docs.joinmastodon.org/methods/filters/
  * @module
  */
+import { z } from "zod";
 import type { Context } from "../kernel/context.ts";
+import { type Channel, publish } from "../kernel/pubsub.ts";
 import { visibleNote } from "../notes/visibility.ts";
 import {
+    deleteFilter,
     deleteFilterStatus,
     deleteKeywords,
     type FilterRow,
@@ -25,6 +28,17 @@ import {
     updateFilter,
     updateKeyword,
 } from "./filter_queries.ts";
+
+/** Whose filters changed. */
+export type FiltersChangedMessage = { readonly accountId: string };
+
+/** Says a user's filters, or their keywords or statuses, changed, so every process can stream it. */
+export const filtersChanged: Channel<FiltersChangedMessage> = {
+    name: "filters.changed",
+    schema: z.object({ accountId: z.string() }),
+};
+
+const changed = (ctx: Context, accountId: string) => publish(ctx, filtersChanged, { accountId });
 
 /** A filter's properties, with when it expires as seconds from now, or `null` for never. */
 export type NewFilter = Pick<FilterRow, "title" | "context" | "action"> & {
@@ -57,6 +71,7 @@ export const createFilter = (
         });
         for (const keyword of keywords) await insertKeyword(tx, row.id, keyword);
 
+        await changed(tx, accountId);
         return row;
     });
 
@@ -92,7 +107,17 @@ export const changeFilter = (
         }
         await deleteKeywords(tx, keywords.flatMap((each) => "remove" in each ? [each.remove] : []));
 
+        await changed(tx, accountId);
         return row;
+    });
+
+/** Removes `accountId`'s filter `filterId`. Returns whether they had it. */
+export const removeFilter = (ctx: Context, accountId: string, filterId: string): Promise<boolean> =>
+    ctx.transaction(async (tx) => {
+        if (!await deleteFilter(tx, accountId, filterId)) return false;
+
+        await changed(tx, accountId);
+        return true;
     });
 
 /** Adds a keyword to `accountId`'s filter `filterId`, if they have it. */
@@ -104,6 +129,8 @@ export const addKeyword = (
 ): Promise<KeywordRow | undefined> =>
     ctx.transaction(async (tx) => {
         if (await findFilter(tx, accountId, filterId) === undefined) return;
+
+        await changed(tx, accountId);
         return await insertKeyword(tx, filterId, keyword);
     });
 
@@ -116,6 +143,8 @@ export const changeKeyword = (
 ): Promise<KeywordRow | undefined> =>
     ctx.transaction(async (tx) => {
         if (await findKeyword(tx, accountId, keywordId) === undefined) return;
+
+        await changed(tx, accountId);
         return await updateKeyword(tx, keywordId, changes);
     });
 
@@ -129,6 +158,7 @@ export const removeKeyword = (
         if (await findKeyword(tx, accountId, keywordId) === undefined) return false;
 
         await deleteKeywords(tx, [keywordId]);
+        await changed(tx, accountId);
         return true;
     });
 
@@ -147,6 +177,7 @@ export const addFilterStatus = (
         if (await visibleNote(tx, noteId, accountId) === undefined) return "missing";
         if (await hasFilterStatus(tx, filterId, noteId)) return "taken";
 
+        await changed(tx, accountId);
         return await insertFilterStatus(tx, filterId, noteId);
     });
 
@@ -160,5 +191,6 @@ export const removeFilterStatus = (
         if (await findFilterStatus(tx, accountId, id) === undefined) return false;
 
         await deleteFilterStatus(tx, id);
+        await changed(tx, accountId);
         return true;
     });

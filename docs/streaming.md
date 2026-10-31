@@ -33,7 +33,8 @@ dispatcher: one per process, one message at a time
 
 Messages carry ids, not statuses, so nothing private travels between processes. Each process looks
 the status up itself for its own sessions. Notifications arrive the same way, on
-`notifications.created`, and only go to their user's sessions.
+`notifications.created`, and only go to their user's sessions. So do changes to a user's filters, on
+`filters.changed`, which go to their `user` streams as `filters_changed`, with no payload.
 
 The dispatcher, in [`app/streaming/dispatcher.ts`](../app/streaming/dispatcher.ts), subscribes once
 to each channel per process, rather than once per WebSocket, and hands each message to each kind of
@@ -58,8 +59,9 @@ query, so a `list` subscription starts once that's known.
 
 Home statuses are rendered separately for each viewer, 8 viewers at a time. Public and hashtag
 statuses are rendered once for everyone, in [`app/streaming/shared.ts`](../app/streaming/shared.ts),
-and aren't sent to viewers who block or mute the author. Permissions are checked for each message,
-so a viewer whose roles no longer give `read:note` stops getting statuses.
+and aren't sent to viewers who block or mute the author. Each viewer's copy gets `filtered`, the
+viewer's filters that the status matches. Permissions are checked for each message, so a viewer
+whose roles no longer give `read:note` stops getting statuses.
 
 A home status goes to its author, their followers, and the users who follow one of its hashtags, if
 it's on their home timeline. A list's status goes to its owner if its author is in the list and it's

@@ -6,6 +6,7 @@ import type { Status, StatusEdit } from "@versia/client-api";
 import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
+import { activeFiltersAmong, filterResults } from "../filters/matching.ts";
 import { renderEmojis } from "../emojis/render.ts";
 import { type Excluded, viewerBlocks } from "../graph/blocks.ts";
 import { countLikesBy, likedAmong } from "../interactions/like_queries.ts";
@@ -101,8 +102,9 @@ const blockedCounts = async (
  * `null`. Each status's author must exist, which the database guarantees. A boost has the status it
  * boosts as its `reblog`, and is omitted if the viewer may not see that. A remote status shows the
  * larger of Verso's own count and the count its instance reports, as Mastodon does. The likes,
- * boosts and reactions of the accounts the viewer blocks aren't counted. With `source`, statuses
- * carry the text their authors wrote, as Mastodon returns a deleted status for redrafting.
+ * boosts and reactions of the accounts the viewer blocks aren't counted. A viewer is told which of
+ * their filters each status matches. With `source`, statuses carry the text their authors wrote, as
+ * Mastodon returns a deleted status for redrafting.
  */
 export const renderStatuses = async (
     ctx: Context,
@@ -130,6 +132,9 @@ export const renderStatuses = async (
         ? new Set()
         : await mutedThreadsAmong(ctx, viewerId, notes.map((note) => note.thread_id));
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
+    const filters = viewerId === null
+        ? undefined
+        : (await activeFiltersAmong(ctx, [viewerId])).get(viewerId) ?? [];
 
     const accountIds = [
         ...new Set([...notes.map((note) => note.account_id), ...[...mentions.values()].flat()]),
@@ -138,7 +143,7 @@ export const renderStatuses = async (
     const domains = new Map(rows.map((row) => [row.id, row.domain]));
     const accounts = await publicAccountsOf(ctx, rows);
 
-    return notes.flatMap((note): Status[] => {
+    const rendered = notes.flatMap((note): Status[] => {
         const reblog = note.reblog_of_id === null ? null : reblogs.get(note.reblog_of_id);
         if (reblog === undefined) return [];
 
@@ -202,6 +207,17 @@ export const renderStatuses = async (
                 isPinnable(note, viewerId) ? pinned.has(note.id) : undefined,
             )),
         }];
+    });
+    if (filters === undefined) return rendered;
+
+    // A boost and the status it boosts match the same filters, as on Mastodon.
+    return rendered.map((status) => {
+        const filtered = filterResults(filters, status);
+        return {
+            ...status,
+            filtered,
+            reblog: status.reblog && { ...status.reblog, filtered },
+        };
     });
 };
 

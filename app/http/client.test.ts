@@ -470,10 +470,10 @@ Deno.test("a user makes an exclusive list, reads it, changes it, and deletes it"
     assertEquals(await alice.lists.list(), []);
 });
 
-Deno.test("a user makes a filter, changes its keywords and statuses, and deletes it", async () => {
+Deno.test("a user makes a filter, sees what it matches, changes it, and deletes it", async () => {
     await using test = await open();
     const alice = await test.as("alice");
-    const { id: posted } = await alice.statuses.post({ status: "Cats" });
+    const { id: posted } = await alice.statuses.post({ status: "A cat" });
 
     const filter = await alice.filters.create({
         title: "Pets",
@@ -483,6 +483,8 @@ Deno.test("a user makes a filter, changes its keywords and statuses, and deletes
     assertEquals([filter.filter_action, filter.expires_at], ["warn", null]);
     const [cat] = filter.keywords ?? [];
     assertEquals([cat.keyword, cat.whole_word], ["cat", true]);
+    const [matched] = (await alice.statuses.get(posted)).filtered ?? [];
+    assertEquals([matched.filter.title, matched.keyword_matches], ["Pets", ["cat"]]);
 
     const changed = await alice.filters.update(filter.id, {
         filter_action: "hide",
@@ -776,6 +778,8 @@ const describe = (event: StreamEvent) => {
             return `${event.stream.join(",")} delete ${event.id}`;
         case "notification":
             return `${event.stream.join(",")} notification ${event.notification.type}`;
+        case "filters_changed":
+            return `${event.stream.join(",")} filters_changed`;
         case "unknown":
             return `${event.stream.join(",")} ${event.name}`;
         case "error":
@@ -783,7 +787,7 @@ const describe = (event: StreamEvent) => {
     }
 };
 
-Deno.test("a user streams statuses and notifications as they happen", async () => {
+Deno.test("a user streams statuses, notifications and filter changes as they happen", async () => {
     await using test = await open();
     await using server = test.listen();
     const alice = await test.as("alice");
@@ -813,6 +817,8 @@ Deno.test("a user streams statuses and notifications as they happen", async () =
     await bob.accounts.follow(aliceId);
     await drain(test.ctx, queues);
     assertEquals(await next(stream, 1), ["user notification follow"]);
+    await alice.filters.create({ title: "Pets", context: ["home"] });
+    assertEquals(await next(stream, 1), ["user filters_changed"]);
 
     assertEquals((await stream.close()).code, 1000);
     assertEquals(await next(stream, 0), []);

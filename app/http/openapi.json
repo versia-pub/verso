@@ -15811,6 +15811,45 @@
                     "whole_word"
                 ]
             },
+            "FilterResult": {
+                "type": "object",
+                "properties": {
+                    "filter": {
+                        "$ref": "#/components/schemas/Filter"
+                    },
+                    "keyword_matches": {
+                        "anyOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "status_matches": {
+                        "anyOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "filter",
+                    "keyword_matches",
+                    "status_matches"
+                ]
+            },
             "FilterStatus": {
                 "type": "object",
                 "properties": {
@@ -17820,6 +17859,12 @@
                     },
                     "pinned": {
                         "type": "boolean"
+                    },
+                    "filtered": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FilterResult"
+                        }
                     }
                 },
                 "required": [

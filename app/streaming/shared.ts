@@ -1,11 +1,13 @@
 /**
  * Streams whose statuses are the same for every viewer who may see them, as the public and hashtag
  * streams are. Each status is looked up and rendered once for all of a process's sessions, as
- * anyone sees it, as Mastodon streams them, rather than once for each session. It is sent to the
- * sessions whose viewers may read statuses and don't hide its author.
+ * anyone sees it, as Mastodon streams them, rather than once for each session, with only the
+ * filters each viewer has that it matches added. It is sent to the sessions whose viewers may read
+ * statuses and don't hide its author.
  * @module
  */
 import type { Status } from "@versia/client-api";
+import { activeFiltersAmong, filterResults } from "../filters/matching.ts";
 import { hidingAmong } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
 import type { PublicStatus } from "../notes/stream_lookups.ts";
@@ -63,11 +65,16 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
             const hiding = await hidingAmong(ctx, shown.accountId, [...viewerIds]);
             const status = await shown.render();
             const on = streams.streamsOf(shown, status);
-            const payload = JSON.stringify(status);
-            for (const each of readers) {
-                if (!hiding.has(each.viewer.accountId)) {
-                    each.session.deliver(on, message.event, payload);
-                }
+            const filters = await activeFiltersAmong(ctx, [...viewerIds]);
+            const unfiltered = JSON.stringify({ ...status, filtered: [] });
+            for (const { viewer, session } of readers) {
+                if (hiding.has(viewer.accountId)) continue;
+
+                const filtered = filterResults(filters.get(viewer.accountId) ?? [], status);
+                const payload = filtered.length === 0
+                    ? unfiltered
+                    : JSON.stringify({ ...status, filtered });
+                session.deliver(on, message.event, payload);
             }
         },
         add: (viewer, session) => {

@@ -1,13 +1,14 @@
 /**
- * Giving a process's streaming sessions the statuses and notifications they stream, from one
- * subscription to each channel rather than one for every session, through a listener for each kind
- * of stream. Messages are handled one at a time, in the order they are heard, so a session is never
+ * Giving a process's streaming sessions the statuses, notifications and filter changes they stream,
+ * from one subscription to each channel rather than one for every session, through a listener for
+ * each kind of stream. Messages are handled one at a time, in the order they are heard, so a session is never
  * sent a status's delete before its update, and what published them doesn't wait for them to be
  * streamed.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
 import type { RouteViewer } from "../http/route.ts";
+import { filtersChanged, type FiltersChangedMessage } from "../filters/filters.ts";
 import type { Context } from "../kernel/context.ts";
 import { subscribe } from "../kernel/pubsub.ts";
 import { notified, type NotifiedMessage } from "../notifications/notifications.ts";
@@ -18,6 +19,7 @@ import { type StatusMessage, statusMessages } from "./statuses.ts";
 export type Listener = {
     readonly statuses?: (message: StatusMessage) => Promise<void>;
     readonly notifications?: (message: NotifiedMessage) => Promise<void>;
+    readonly filtersChanged?: (message: FiltersChangedMessage) => Promise<void>;
 };
 
 /** A session's viewer, who is logged in. */
@@ -97,6 +99,11 @@ export const dispatcher = (ctx: Context): Dispatcher => {
         ctx,
         notified,
         (message) => handle(async (listener) => await listener.notifications?.(message)),
+    );
+    subscribe(
+        ctx,
+        filtersChanged,
+        (message) => handle(async (listener) => await listener.filtersChanged?.(message)),
     );
 
     return {

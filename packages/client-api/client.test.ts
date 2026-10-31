@@ -292,7 +292,8 @@ const fakeSocket = (messages: readonly string[]) => {
 
 Deno.test("a stream gives events it doesn't know, and ends at a message that isn't one", async () => {
     const socket = fakeSocket([
-        JSON.stringify({ stream: ["user"], event: "filters_changed", payload: "" }),
+        JSON.stringify({ stream: ["user"], event: "announcement", payload: "{}" }),
+        JSON.stringify({ stream: ["user"], event: "filters_changed" }),
         JSON.stringify({ stream: ["user"], event: "update", payload: "{}" }),
         JSON.stringify({ stream: ["user"], event: "delete", payload: "1" }),
     ]);
@@ -304,7 +305,8 @@ Deno.test("a stream gives events it doesn't know, and ends at a message that isn
     }, UnexpectedResponse);
 
     assertEquals(events, [
-        { event: "unknown", stream: ["user"], name: "filters_changed", payload: "" },
+        { event: "unknown", stream: ["user"], name: "announcement", payload: "{}" },
+        { event: "filters_changed", stream: ["user"] },
     ]);
     assertEquals(error.status, 101);
     assertEquals(socket.closedWith, 1003);

@@ -42,3 +42,16 @@ export const Filter = z.object({
     statuses: z.array(FilterStatus).optional(),
 });
 export type Filter = z.infer<typeof Filter>;
+
+/**
+ * A filter that a status matches, and what of it matched.
+ * @see https://docs.joinmastodon.org/entities/FilterResult/
+ */
+export const FilterResult = z.object({
+    filter: Filter,
+    /** The keyword found, or `null` if none was. */
+    keyword_matches: z.array(z.string()).nullable(),
+    /** Of the filter's statuses, those it is or boosts, or `null` if the filter has none. */
+    status_matches: z.array(z.string()).nullable(),
+});
+export type FilterResult = z.infer<typeof FilterResult>;

@@ -40,6 +40,9 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   accounts. Lists aren't federated.
 - A filter's title and keywords are at most 256 characters each, a request adds or changes at most
   100 of its keywords, and it expires at most 100 years from now. Filters aren't federated.
+- A whole-word filter keyword counts the letters of every script as part of words, so `café` doesn't
+  match `cafés`. Statuses on the public and hashtag streams say which filters they match by id, as
+  well as by keyword.
 - Users with the `blocks` permission, usually moderators, see in `blocked_by` whether the account
   blocks them. For everyone else it's always `false`.
 - `GET /api/v1/preferences` returns the user's posting defaults, which

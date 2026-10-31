@@ -4,6 +4,7 @@ import type { Insertable } from "kysely";
 import type { Visibility } from "../kernel/visibility.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { block } from "../graph/blocks.ts";
+import { createFilter } from "../filters/filters.ts";
 import { blockDomainFor } from "../graph/domain_blocks.ts";
 import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -201,6 +202,34 @@ Deno.test("statuses are rendered as anyone sees them", async () => {
     // blocks.
     const [, edited] = alice.statuses;
     assertEquals(["favourited" in edited, edited.favourites_count], [false, 2]);
+});
+
+Deno.test("each viewer is told which of their filters a status matches", async () => {
+    await using test = await open();
+    const filter = await createFilter(test.ctx, "alice", {
+        title: "Greetings",
+        context: ["public"],
+        action: "hide",
+        expiresIn: null,
+    }, [{ keyword: "hello", whole_word: true }]);
+    const alice = test.streaming("alice", ["public"]);
+    const bob = test.streaming("bob", ["public"]);
+
+    await test.post("bob", { content_html: "<p>Hello there</p>" });
+
+    const [shown] = alice.statuses;
+    assertEquals(shown.filtered, [{
+        filter: {
+            id: filter.id,
+            title: "Greetings",
+            context: ["public"],
+            expires_at: null,
+            filter_action: "hide",
+        },
+        keyword_matches: ["Hello"],
+        status_matches: null,
+    }]);
+    assertEquals(bob.statuses.map((status) => status.filtered), [[]]);
 });
 
 Deno.test("the statuses of the accounts a viewer blocks or mutes aren't sent, but their deletes are", async () => {

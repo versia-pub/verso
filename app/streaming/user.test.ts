@@ -9,6 +9,7 @@ import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { publish } from "../kernel/pubsub.ts";
 import { followTag } from "../tags/tag_follows.ts";
+import { createFilter, removeFilter } from "../filters/filters.ts";
 import { createTestContext } from "../testing/context.ts";
 import { openSession } from "./session.ts";
 import { dispatcher, type Sessions } from "./dispatcher.ts";
@@ -63,8 +64,11 @@ const open = async () => {
         const session = openSession(viewer, {
             send: (data) => {
                 const { stream, event, payload } = JSON.parse(data);
-                const shown = event === "delete" ? payload : JSON.parse(payload);
-                sent.push([stream.join(), event, shown.status?.id ?? shown.id ?? shown]);
+                // A delete's payload is an id, and `filters_changed` has none.
+                const shown = event === "delete" || payload === undefined
+                    ? payload
+                    : JSON.parse(payload);
+                sent.push([stream.join(), event, shown?.status?.id ?? shown?.id ?? shown]);
             },
             close: () => {},
         });
@@ -144,6 +148,25 @@ Deno.test("a user is sent the statuses of their home timeline as they are posted
     ]];
     assertEquals([alice.sent, bob.sent], [told, told]);
     assertEquals([carol.sent, elsewhere.sent], [[], []]);
+});
+
+Deno.test("a user is told on the user stream when their filters change", async () => {
+    await using test = await open();
+    const alice = test.streaming("alice", ["user"]);
+    const notifications = test.streaming("alice", ["user:notification"]);
+    const bob = test.streaming("bob", ["user"]);
+
+    const filter = await createFilter(test.ctx, "alice", {
+        title: "Pets",
+        context: ["home"],
+        action: "warn",
+        expiresIn: null,
+    }, []);
+    await removeFilter(test.ctx, "alice", filter.id);
+    await test.dispatch.idle();
+
+    const told = ["user", "filters_changed", undefined];
+    assertEquals([alice.sent, notifications.sent, bob.sent], [[told, told], [], []]);
 });
 
 Deno.test("a user is told of statuses they may see, and those deleted that they could", async () => {

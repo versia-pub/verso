@@ -4,7 +4,6 @@ import { NotFound, Unprocessable } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Flag, Integer, Strings, Text } from "../http/schemas.ts";
 import {
-    deleteFilter,
     filtersOf,
     filterStatusesOf,
     findFilter,
@@ -19,6 +18,7 @@ import {
     changeKeyword,
     createFilter,
     type KeywordChange,
+    removeFilter,
     removeFilterStatus,
     removeKeyword,
 } from "./filters.ts";
@@ -343,7 +343,7 @@ export const filterRoutes: readonly Route[] = [
         params: FilterId,
         responses: { 200: z.object({}) },
         handler: async (ctx, { params, viewer }) => {
-            if (!await deleteFilter(ctx, viewer.accountId, params.id)) throw new NotFound();
+            if (!await removeFilter(ctx, viewer.accountId, params.id)) throw new NotFound();
             return { status: 200, body: {} };
         },
     }),

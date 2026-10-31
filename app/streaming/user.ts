@@ -1,6 +1,7 @@
 /**
  * The `user` and `user:notification` streams: the statuses of a user's home timeline as they
- * appear, change or go, and their notifications, as on Mastodon.
+ * appear, change or go, their notifications, and on `user`, when their filters change, as on
+ * Mastodon.
  * @see https://docs.joinmastodon.org/methods/streaming/#user
  * @module
  */
@@ -136,6 +137,14 @@ export const userStreams = (ctx: Context): Sessions => {
                 ({ viewer, session }, payload) =>
                     session.deliver(notificationStreams(viewer), "notification", payload),
             );
+        },
+        filtersChanged: (message) => {
+            for (const { viewer, session } of sessions) {
+                if (viewer.accountId === message.accountId) {
+                    session.deliver(["user"], "filters_changed");
+                }
+            }
+            return Promise.resolve();
         },
         add: (viewer, session) => {
             const entry = { viewer, session };

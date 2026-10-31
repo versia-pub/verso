@@ -56,6 +56,11 @@ export type StreamEvent =
         readonly notification: Notification;
     }
     | {
+        /** The viewer's filters changed, so the statuses an app has may match others now. */
+        readonly event: "filters_changed";
+        readonly stream: readonly string[];
+    }
+    | {
         /** An event this client doesn't know, which Mastodon may have and Verso may later. */
         readonly event: "unknown";
         readonly stream: readonly string[];
@@ -95,7 +100,8 @@ const jsonOf = (text: unknown): unknown => {
 /** What the instance sends: an event of the streams it is in, or why a subscription was refused. */
 const Message = z.union([
     z.object({ error: z.string(), status: z.int().optional() }),
-    z.object({ stream: z.array(z.string()), event: z.string(), payload: z.string() }),
+    // Events such as `filters_changed` have no payload.
+    z.object({ stream: z.array(z.string()), event: z.string(), payload: z.string().default("") }),
 ]);
 
 /** The event a message from the instance is, or throws if it isn't one. */
@@ -123,6 +129,8 @@ const eventOf = (data: unknown): StreamEvent => {
             return { event, stream, id: payload };
         case "notification":
             return { event, stream, notification: parsed(Notification) };
+        case "filters_changed":
+            return { event, stream };
         default:
             return { event: "unknown", stream, name: event, payload };
     }

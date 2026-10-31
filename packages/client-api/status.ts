@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Account, ApprovedAudiences, Visibility } from "./account.ts";
 import { CustomEmoji } from "./custom_emoji.ts";
+import { FilterResult } from "./filter.ts";
 import { MediaAttachment } from "./media_attachment.ts";
 import { PreviewCard } from "./preview_card.ts";
 
@@ -148,6 +149,8 @@ export const Status = z.object({
     bookmarked: z.boolean().optional(),
     /** Present only on the viewer's own statuses that can be pinned. */
     pinned: z.boolean().optional(),
+    /** The viewer's filters it matches, which apps warn of or hide it by. */
+    filtered: z.array(FilterResult).optional(),
 });
 export type Status = z.infer<typeof Status>;
 

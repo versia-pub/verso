@@ -77,6 +77,19 @@ export const filtersOf = async (ctx: Context, accountId: string): Promise<Filter
         .orderBy("id")
         .execute();
 
+/** The filters of `accountIds` that haven't expired, oldest first. */
+export const activeFiltersOf = async (
+    ctx: Context,
+    accountIds: readonly string[],
+): Promise<FilterRow[]> =>
+    accountIds.length === 0 ? [] : await ctx.db.selectFrom("filters").selectAll()
+        .where("account_id", "in", accountIds)
+        .where((eb) =>
+            eb.or([eb("expires_at", "is", null), eb("expires_at", ">", ctx.clock.now())])
+        )
+        .orderBy("id")
+        .execute();
+
 /** The keywords of the filters `filterIds`, oldest first. */
 export const keywordsOf = async (
     ctx: Context,
