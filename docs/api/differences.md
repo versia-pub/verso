@@ -19,8 +19,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   Verso keeps them off its own public timelines, but other instances may show them on theirs.
 - Scheduled statuses aren't supported yet. Posting a status with one fails with a `422`, rather than
   posting it without.
-- Polls aren't sent to other instances yet, so remote statuses have none, and other instances see
-  only a local poll's question.
+- Votes aren't sent to other instances yet. A vote in a remote poll only counts on Verso, and votes
+  from other instances in local polls aren't received.
 - An edit that leaves out `media_ids` or `poll` keeps the status's media or poll. Mastodon removes
   them. Send `poll: null` to remove a poll.
 - Quotes can't be restricted: statuses have no quote policy.

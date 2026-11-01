@@ -6,6 +6,7 @@ export * from "./follow.ts";
 export * from "./instance.ts";
 export * from "./likes.ts";
 export * from "./note.ts";
+export * from "./polls.ts";
 export * from "./reactions.ts";
 export * from "./share.ts";
 export * from "./user.ts";

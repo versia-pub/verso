@@ -24,8 +24,8 @@ const insertOptions = async (ctx: Context, pollId: string, titles: readonly stri
         .execute();
 };
 
-/** Adds a poll with no votes to the status `noteId`. */
-export const insertPoll = async (ctx: Context, noteId: string, poll: NewPoll): Promise<void> => {
+/** Adds a poll with no votes to the status `noteId`, and returns its id. */
+export const insertPoll = async (ctx: Context, noteId: string, poll: NewPoll): Promise<string> => {
     const id = ctx.ids();
 
     await ctx.db.insertInto("polls")
@@ -40,22 +40,28 @@ export const insertPoll = async (ctx: Context, noteId: string, poll: NewPoll): P
         })
         .execute();
     await insertOptions(ctx, id, poll.options);
+    return id;
 };
 
-/** Changes `poll` to ask what `changes` asks, and end anew, keeping its votes unless `reset`. */
+/**
+ * Changes `poll` to ask what `changes` asks, keeping its votes unless `reset`. If its end moves, it
+ * hasn't ended yet.
+ */
 export const updatePoll = async (
     ctx: Context,
     poll: PollRow,
     changes: NewPoll,
     reset: boolean,
 ): Promise<void> => {
+    const moves = poll.expires_at?.getTime() !== changes.expiresAt?.getTime();
+
     await ctx.db.updateTable("polls")
         .set({
             multiple: changes.multiple,
             hide_totals: changes.hideTotals,
             expires_at: changes.expiresAt,
-            // Its end moves, so its voters are told again when it comes.
-            ended_at: null,
+            // Its voters are told again when it comes.
+            ...moves ? { ended_at: null } : {},
             ...reset ? { voters_count: 0 } : {},
         })
         .where("id", "=", poll.id)
@@ -65,6 +71,27 @@ export const updatePoll = async (
     await ctx.db.deleteFrom("poll_votes").where("poll_id", "=", poll.id).execute();
     await ctx.db.deleteFrom("poll_options").where("poll_id", "=", poll.id).execute();
     await insertOptions(ctx, poll.id, changes.options);
+};
+
+/**
+ * Sets how many votes each option of the remote poll `pollId` has, in order, as its instance says.
+ * How many accounts voted is unknown, as Versia doesn't say.
+ */
+export const setRemoteVotes = async (
+    ctx: Context,
+    pollId: string,
+    votes: readonly number[],
+): Promise<void> => {
+    for (const [position, count] of votes.entries()) {
+        await ctx.db.updateTable("poll_options")
+            .set({ votes_count: count })
+            .where("poll_id", "=", pollId)
+            .where("position", "=", position)
+            .execute();
+    }
+
+    await ctx.db.updateTable("polls").set({ voters_count: null }).where("id", "=", pollId)
+        .execute();
 };
 
 export const deletePoll = async (ctx: Context, poll: PollRow): Promise<void> => {

@@ -41,5 +41,5 @@ const types = [user, note, ...likeTypes, shareType, reactionType];
  */
 export const registry = createRegistry(
     [...types, deleteType(types), ...followTypes],
-    [v0_6.customEmojisKey, messagingExtension],
+    [v0_6.customEmojisKey, v0_6.pollsKey, messagingExtension],
 );

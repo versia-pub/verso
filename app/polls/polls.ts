@@ -36,7 +36,7 @@ const asNewPoll = (ctx: Context, draft: PollDraft): NewPoll => ({
 });
 
 /** Whether a poll asks something else, which its votes don't answer. */
-const asksAnew = (poll: PollWithOptions, changes: NewPoll) =>
+export const asksAnew = (poll: PollWithOptions, changes: NewPoll): boolean =>
     poll.multiple !== changes.multiple ||
     poll.options.map((option) => option.title).join("\n") !== changes.options.join("\n");
 
@@ -79,7 +79,11 @@ export const changePoll = async (
     }
 
     const changes = asNewPoll(ctx, draft);
-    if (poll === undefined) return await insertPoll(ctx, noteId, changes);
+    if (poll === undefined) {
+        await insertPoll(ctx, noteId, changes);
+        return;
+    }
+
     await updatePoll(ctx, poll, changes, asksAnew(poll, changes));
 };
 

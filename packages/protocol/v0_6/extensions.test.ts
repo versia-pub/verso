@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { CustomEmojis } from "./custom_emojis.ts";
 import { Dislike, Like } from "./likes.ts";
+import { Polls } from "./polls.ts";
 import { Reaction } from "./reactions.ts";
 import { Share } from "./share.ts";
 
@@ -78,4 +79,27 @@ Deno.test("custom emojis are wrapped in one character each side that isn't in th
 Deno.test("a custom emoji must be an image", () => {
     assertEquals(CustomEmojis.safeParse(emoji(":wave_cat:", "text/plain")).success, false);
     assertEquals(CustomEmojis.safeParse({ emojis: [] }).success, true);
+});
+
+// The spec's example.
+const poll = {
+    options: [
+        { "text/plain": { content: "Red", remote: false } },
+        { "text/plain": { content: "Blue", remote: false } },
+        { "text/plain": { content: "Green", remote: false } },
+    ],
+    votes: [9, 5, 0],
+    multiple_choice: false,
+    expires_at: "2021-01-04T00:00:00.000Z",
+};
+
+Deno.test("a poll's options are text, and its votes are counts", () => {
+    assertEquals(Polls.safeParse(poll).success, true);
+    assertEquals(Polls.safeParse({ ...poll, expires_at: undefined }).success, true);
+
+    const image = { "image/png": { content: "https://cdn.example.org/red.png", remote: true } };
+    assertEquals(Polls.safeParse({ ...poll, options: [image] }).success, false);
+    assertEquals(Polls.safeParse({ ...poll, votes: [9, -1, 0] }).success, false);
+    assertEquals(Polls.safeParse({ ...poll, votes: undefined }).success, false);
+    assertEquals(Polls.safeParse({ ...poll, multiple_choice: undefined }).success, false);
 });

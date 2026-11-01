@@ -16,6 +16,8 @@ import { hasFollowers } from "../graph/follows.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import { attachedTo, attachRemote, changesRemoteAttachments } from "../media/attachments.ts";
 import { remoteFile } from "../media/versia.ts";
+import { pollOf } from "../polls/poll_queries.ts";
+import { editsRemotePoll, keepRemotePoll, remotePollOf } from "../polls/versia.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { textOfHtml } from "../kernel/html.ts";
@@ -150,14 +152,14 @@ export const knownNoteRow = async (
 };
 
 /**
- * Saves a remote status sent by `sender`, or updates the stored one, with its custom emojis and
- * media attachments (for each, the format clients can best display). Mentioned users, and the
+ * Saves a remote status sent by `sender`, or updates the stored one, with its custom emojis, media
+ * attachments (for each, the format clients can best display) and poll. Mentioned users, and the
  * statuses it replies to or quotes, are omitted if Verso doesn't have them.
  *
  * A new status is counted, and its totals are fetched later. What it replies to and quotes is never
  * changed by a newer version. A newer version with different content is marked as edited at the
  * time it is received, since Versia doesn't say when, and the previous content is saved in its edit
- * history. A new status, or an edited one, is emitted.
+ * history. A poll's counts changing isn't an edit, but its options changing is. A new status, or an edited one, is emitted.
  */
 export const receiveNote = async (
     ctx: Context,
@@ -211,14 +213,17 @@ export const receiveNote = async (
         remoteEmojisOf(note.extensions),
     );
     const files = note.attachments.flatMap((formats) => remoteFile(formats) ?? []);
+    const poll = remotePollOf(note.extensions);
 
     if (existing) {
+        const previousPoll = await pollOf(ctx, existing.id);
         const edited = changes.content !== existing.content ||
             changes.content_format !== existing.content_format ||
             changes.content_html !== existing.content_html ||
             changes.spoiler_text !== existing.spoiler_text ||
             changes.sensitive !== existing.sensitive ||
-            changesRemoteAttachments(ctx, await attachedTo(ctx, existing.id), files);
+            changesRemoteAttachments(ctx, await attachedTo(ctx, existing.id), files) ||
+            editsRemotePoll(previousPoll, poll);
         if (edited) await keepVersion(ctx, existing);
 
         // Its audience may change, and with it whether it is counted.
@@ -236,6 +241,7 @@ export const receiveNote = async (
         );
         await setNoteEmojis(ctx, existing.id, emojiIds);
         await attachRemote(ctx, sender.instanceId, existing.id, files);
+        await keepRemotePoll(ctx, existing.id, previousPoll, poll);
         if (!edited) return;
 
         const event: NoteReceived = {
@@ -269,6 +275,7 @@ export const receiveNote = async (
     );
     await setNoteEmojis(ctx, row.id, emojiIds);
     await attachRemote(ctx, sender.instanceId, row.id, files);
+    await keepRemotePoll(ctx, row.id, undefined, poll);
     await countPosted(ctx, row, 1);
     await fetchTotalsLater(ctx, row);
 
