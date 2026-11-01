@@ -125,7 +125,7 @@ use `verso admin` instead.
 | `GET /api/v1/media/:id`                  | ✅    |                                |
 | `PUT /api/v1/media/:id`                  | ✅    |                                |
 | `POST /api/v1/media`                     | ❌    | Deprecated by Mastodon; use v2 |
-| Polls (2 methods)                        | 🟡    | Votes aren't federated yet     |
+| Polls (2 methods)                        | ✅    |                                |
 | Scheduled statuses (4 methods)           | ❌    |                                |
 
 ## Timelines

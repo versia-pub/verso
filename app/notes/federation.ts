@@ -19,28 +19,36 @@ import { pinnedNotes } from "./pin_queries.ts";
 import { knownNote, prepareNote, receiveNote } from "./remote.ts";
 import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";
 import { deleteEntity } from "../federation/delete.ts";
+import { isPollEnded } from "../polls/events.ts";
+import { voterInstances } from "../polls/poll_queries.ts";
 
 /**
- * Sends a local status that was just posted or edited to the instances of its audience. Versia has
- * no edits, so an edited status is sent again in full and replaces the version the remote instance
- * has.
+ * Sends a local status that was just posted or edited to the instances of its audience, and to
+ * `others`. Versia has no edits, so an edited status is sent again in full and replaces the version
+ * the remote instance has.
  */
-const sendNote = async (ctx: Context, noteId: string) => {
+const sendNote = async (ctx: Context, noteId: string, others: readonly string[] = []) => {
     const note = await findNote(ctx, noteId);
-    if (note === undefined) return;
+    if (note === undefined || note.instance_id !== null) return;
 
     const mentionIds = (await mentionsOf(ctx, [note.id])).get(note.id) ?? [];
     const [entity] = await renderVersiaNotes(ctx, [note]);
-    await queueDeliveriesTo(ctx, entity, await audienceOf(ctx, note, mentionIds));
+    const audience = await audienceOf(ctx, note, mentionIds);
+    await queueDeliveriesTo(ctx, entity, [...new Set([...audience, ...others])].toSorted());
 };
 
 /**
  * Sends remote instances the statuses local users post and edit, and Deletes for the ones they
  * delete, to the instances of each status's audience. An edit and a Delete go to the author's
- * followers as they are now, and an edit to the users it mentions now.
+ * followers as they are now, and an edit to the users it mentions now. A local status whose poll
+ * ended is sent again, with its results, as on Mastodon, to its audience and the instances of those
+ * who voted.
  */
 export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (isNotePosted(event) || isNoteEdited(event)) return await sendNote(ctx, event.noteId);
+    if (isPollEnded(event)) {
+        return await sendNote(ctx, event.noteId, await voterInstances(ctx, event.pollId));
+    }
     if (!isNoteDeleted(event)) return;
 
     const author = await findAccount(ctx, event.accountId);

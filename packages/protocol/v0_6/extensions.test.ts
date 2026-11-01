@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { CustomEmojis } from "./custom_emojis.ts";
 import { Dislike, Like } from "./likes.ts";
-import { Polls } from "./polls.ts";
+import { Polls, Vote } from "./polls.ts";
 import { Reaction } from "./reactions.ts";
 import { Share } from "./share.ts";
 
@@ -18,6 +18,7 @@ const examples = [
     [Dislike, { ...base, type: "pub.versia:likes/Dislike", disliked: note }],
     [Share, { ...base, type: "pub.versia:share/Share", shared: note }],
     [Reaction, { ...base, type: "pub.versia:reactions/Reaction", object: note, content: "😀" }],
+    [Vote, { ...base, type: "pub.versia:polls/Vote", poll: note, option: 1 }],
 ] as const;
 
 Deno.test("the spec's examples are valid", () => {
@@ -102,4 +103,7 @@ Deno.test("a poll's options are text, and its votes are counts", () => {
     assertEquals(Polls.safeParse({ ...poll, votes: [9, -1, 0] }).success, false);
     assertEquals(Polls.safeParse({ ...poll, votes: undefined }).success, false);
     assertEquals(Polls.safeParse({ ...poll, multiple_choice: undefined }).success, false);
+
+    const [, vote] = examples[4];
+    assertEquals(Vote.safeParse({ ...vote, option: -1 }).success, false);
 });

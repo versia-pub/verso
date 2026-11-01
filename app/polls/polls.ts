@@ -6,7 +6,9 @@ import { lockKey } from "../db/locking.ts";
 import { blocksBetween } from "../graph/block_queries.ts";
 import { NotPermitted, Unprocessable } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
+import { emit } from "../kernel/events.ts";
 import { visibleNote } from "../notes/visibility.ts";
+import type { PollVoted } from "./events.ts";
 import {
     deletePoll,
     findPoll,
@@ -92,42 +94,63 @@ export const hasEnded = (ctx: Context, poll: PollRow): boolean =>
     poll.expires_at !== null && poll.expires_at <= ctx.clock.now();
 
 /**
- * Votes as `accountId` for the options `choices` of the poll `pollId`, as Mastodon allows: once, or
- * in a poll of several choices, once for each, before it ends, and not in one's own polls. Returns
- * the poll, or `undefined` if there is none or `accountId` may not see its status.
+ * Votes as `accountId` for the options `choices` of the poll `pollId`, in `ctx`'s transaction, as
+ * Mastodon allows: once, or in a poll of several choices, once for each, before it ends, and not in
+ * one's own polls. A vote that is `resent`, as remote instances may send one again, counts once.
+ * Returns the poll, or `undefined` if there is none or `accountId` may not see its status.
  */
+export const castVotes = async (
+    ctx: Context,
+    accountId: string,
+    pollId: string,
+    choices: readonly number[],
+    resent = false,
+): Promise<PollWithOptions | undefined> => {
+    // So that two votes by one account can't both count as its first.
+    await lockKey(ctx.db, `vote:${pollId}:${accountId}`);
+
+    const poll = await findPoll(ctx, pollId);
+    const note = poll && await visibleNote(ctx, poll.note_id, accountId);
+    if (poll === undefined || note === undefined) return undefined;
+
+    const { blocking, blockedBy } = await blocksBetween(ctx, accountId, [note.account_id]);
+    if (blocking.size > 0 || blockedBy.size > 0) throw new NotPermitted();
+
+    const voted = (await votesAmong(ctx, accountId, [poll.id])).get(poll.id) ?? [];
+    if (resent && choices.every((choice) => voted.includes(choice))) return poll;
+
+    // As Mastodon words its errors.
+    if (hasEnded(ctx, poll)) throw new Unprocessable("The poll has already ended");
+    if (choices.some((choice) => choice < 0 || choice >= poll.options.length)) {
+        throw new Unprocessable("The chosen vote option does not exist");
+    }
+    if (note.account_id === accountId) {
+        throw new Unprocessable("You cannot vote in your own polls");
+    }
+
+    const again = poll.multiple
+        ? new Set(choices).size < choices.length || choices.some((c) => voted.includes(c))
+        : voted.length > 0 || choices.length > 1;
+    if (again) throw new Unprocessable("You have already voted on this poll");
+
+    const voteIds = await insertVotes(ctx, poll, accountId, choices, voted.length > 0);
+    const event: PollVoted = {
+        type: "polls.voted",
+        pollId: poll.id,
+        noteId: note.id,
+        accountId,
+        voteIds,
+    };
+    await emit(ctx, event);
+
+    return await findPoll(ctx, poll.id);
+};
+
+/** {@link castVotes}, in a transaction of its own. */
 export const vote = (
     ctx: Context,
     accountId: string,
     pollId: string,
     choices: readonly number[],
 ): Promise<PollWithOptions | undefined> =>
-    ctx.transaction(async (tx) => {
-        // So that two votes by one account can't both count as its first.
-        await lockKey(tx.db, `vote:${pollId}:${accountId}`);
-
-        const poll = await findPoll(tx, pollId);
-        const note = poll && await visibleNote(tx, poll.note_id, accountId);
-        if (poll === undefined || note === undefined) return undefined;
-
-        const { blocking, blockedBy } = await blocksBetween(tx, accountId, [note.account_id]);
-        if (blocking.size > 0 || blockedBy.size > 0) throw new NotPermitted();
-
-        // As Mastodon words its errors.
-        if (hasEnded(tx, poll)) throw new Unprocessable("The poll has already ended");
-        if (choices.some((choice) => choice < 0 || choice >= poll.options.length)) {
-            throw new Unprocessable("The chosen vote option does not exist");
-        }
-        if (note.account_id === accountId) {
-            throw new Unprocessable("You cannot vote in your own polls");
-        }
-
-        const voted = (await votesAmong(tx, accountId, [poll.id])).get(poll.id) ?? [];
-        const again = poll.multiple
-            ? new Set(choices).size < choices.length || choices.some((c) => voted.includes(c))
-            : voted.length > 0 || choices.length > 1;
-        if (again) throw new Unprocessable("You have already voted on this poll");
-
-        await insertVotes(tx, poll, accountId, choices, voted.length > 0);
-        return await findPoll(tx, poll.id);
-    });
+    ctx.transaction((tx) => castVotes(tx, accountId, pollId, choices));

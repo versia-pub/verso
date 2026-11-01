@@ -26,7 +26,7 @@ export type PollOptionsTable = {
     votes_count: Generated<number>;
 };
 
-/** A local account's vote for one of a poll's options. */
+/** An account's vote for one of a poll's options. */
 export type PollVotesTable = {
     id: string;
     poll_id: string;

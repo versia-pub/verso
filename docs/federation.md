@@ -65,7 +65,8 @@ ctx.transaction(tx ⇒ type.receive(tx, entity, sender))
 
 If an entity is invalid, or comes from an instance that isn't allowed to send it, the job fails with
 `PermanentFailure`. Verso then tells the sender why over instance messaging, if the sender supports
-it.
+it. This is also how Verso refuses what the spec says to refuse with a 422, such as a Vote in a poll
+that ended, as it has already answered 202.
 
 The dedupe key stops a replayed request from being applied twice. Some types are `resendable`, such
 as a user whose profile changed and then changed back. For those, the key includes the signature, so

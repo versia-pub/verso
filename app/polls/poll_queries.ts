@@ -1,10 +1,11 @@
 import { type Selectable, sql } from "kysely";
 import { skippingLocked } from "../db/locking.ts";
 import type { Context } from "../kernel/context.ts";
-import type { PollOptionsTable, PollsTable } from "./tables.ts";
+import type { PollOptionsTable, PollsTable, PollVotesTable } from "./tables.ts";
 
 export type PollRow = Selectable<PollsTable>;
 export type PollOptionRow = Selectable<PollOptionsTable>;
+export type PollVoteRow = Selectable<PollVotesTable>;
 
 /** A poll with its options, in order. */
 export type PollWithOptions = PollRow & { readonly options: readonly PollOptionRow[] };
@@ -158,7 +159,7 @@ export const votesAmong = async (
 
 /**
  * Adds `accountId`'s votes for `choices` in `poll`, counts them, and counts `accountId` as a voter
- * unless `voted` already.
+ * unless `voted` already. Returns the votes' ids, in the order of `choices`.
  */
 export const insertVotes = async (
     ctx: Context,
@@ -166,10 +167,11 @@ export const insertVotes = async (
     accountId: string,
     choices: readonly number[],
     voted: boolean,
-): Promise<void> => {
+): Promise<string[]> => {
+    const ids = choices.map(() => ctx.ids());
     await ctx.db.insertInto("poll_votes")
-        .values(choices.map((choice) => ({
-            id: ctx.ids(),
+        .values(choices.map((choice, index) => ({
+            id: ids[index],
             poll_id: poll.id,
             account_id: accountId,
             choice,
@@ -183,13 +185,30 @@ export const insertVotes = async (
         .where("position", "in", choices)
         .execute();
 
-    if (voted) return;
+    if (voted) return ids;
     await ctx.db.updateTable("polls")
         .set({ voters_count: sql`voters_count + 1` })
         .where("id", "=", poll.id)
         .where("voters_count", "is not", null)
         .execute();
+    return ids;
 };
+
+/** The votes of `ids`, as they were cast. */
+export const findVotes = (ctx: Context, ids: readonly string[]): Promise<PollVoteRow[]> =>
+    ids.length === 0
+        ? Promise.resolve([])
+        : ctx.db.selectFrom("poll_votes").selectAll().where("id", "in", ids).orderBy("choice")
+            .execute();
+
+/** The instances of the remote accounts that voted in `pollId`. */
+export const voterInstances = async (ctx: Context, pollId: string): Promise<string[]> =>
+    (await ctx.db.selectFrom("poll_votes")
+        .innerJoin("accounts", "accounts.id", "poll_votes.account_id")
+        .select("accounts.instance_id")
+        .distinct()
+        .where("poll_votes.poll_id", "=", pollId)
+        .execute()).flatMap((row) => row.instance_id ?? []);
 
 /**
  * Marks up to `limit` polls that have ended by now, but weren't marked yet, as ended, and returns

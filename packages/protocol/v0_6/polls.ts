@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { contentFormatOf, optional, Rfc3339, Unsigned } from "./common.ts";
+import { contentFormatOf, Entity, optional, ReferenceText, Rfc3339, Unsigned } from "./common.ts";
 
 /** The key of {@link Polls} in a Note's `extensions`. */
 export const pollsKey = "pub.versia:polls";
@@ -17,3 +17,16 @@ export const Polls = z.object({
     expires_at: optional(Rfc3339),
 });
 export type Polls = z.infer<typeof Polls>;
+
+/**
+ * `author` votes for the option at index `option` of the poll on the Note `poll`. A vote for several
+ * options is a Vote for each.
+ * @see https://versia.pub/extensions/polls
+ */
+export const Vote = Entity.extend({
+    type: z.literal("pub.versia:polls/Vote"),
+    author: ReferenceText,
+    poll: ReferenceText,
+    option: Unsigned,
+});
+export type Vote = z.infer<typeof Vote>;
