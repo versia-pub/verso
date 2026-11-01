@@ -20,7 +20,9 @@ export type NotificationType =
     /** Someone reacted to one of the user's statuses. */
     | "reaction"
     /** A status the user boosted was edited. */
-    | "update";
+    | "update"
+    /** A poll the user wrote or voted in ended. */
+    | "poll";
 
 /**
  * A local user's notification. The columns it doesn't need are `null`; the ones it has are deleted
@@ -119,6 +121,7 @@ const typeNames = {
     favourite: true,
     reaction: true,
     update: true,
+    poll: true,
 } as const satisfies Record<NotificationType, true>;
 
 const types: ReadonlySet<string> = new Set(Object.keys(typeNames));

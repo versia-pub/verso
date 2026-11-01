@@ -160,8 +160,8 @@ worker stops claiming jobs and waits for running ones to finish.
 
 The scheduler, in [`app/jobs/scheduler.ts`](../app/jobs/scheduler.ts), queues recurring work. The
 tasks in `queues.ts` run hourly: cleaning up finished jobs, ended login flows, rate limit counts and
-unused media. Every worker runs the scheduler, and a dedupe key per period makes sure each task is
-queued once per period.
+unused media. Finding the polls that ended runs every minute. Every worker runs the scheduler, and a
+dedupe key per period makes sure each task is queued once per period.
 
 ## Messages between processes
 

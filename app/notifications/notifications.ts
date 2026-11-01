@@ -1,6 +1,7 @@
 /**
  * Notifying local users of what others do: mentions, statuses of accounts they asked to be notified
- * of, boosts, follows, follow requests, likes, reactions and edits of statuses they boosted.
+ * of, boosts, follows, follow requests, likes, reactions and edits of statuses they boosted, and of
+ * the polls they wrote or voted in ending.
  * Undoing any of them, or deleting the status, deletes the notification with it. Followers and
  * boosters of a status can be many, so jobs notify them, a batch at a time.
  * @module
@@ -27,6 +28,8 @@ import { isNoteEdited, isNotePosted, isNoteReceived } from "../notes/events.ts";
 import { findNote, mentionsOf, type NoteRow } from "../notes/note_queries.ts";
 import { localSharerIds } from "../notes/share_queries.ts";
 import { threadMutersAmong } from "../notes/thread_mute_queries.ts";
+import { isPollEnded, type PollEnded } from "../polls/events.ts";
+import { localVoterIds } from "../polls/poll_queries.ts";
 import {
     deleteFollowNotifications,
     insertNotifications,
@@ -108,8 +111,8 @@ const mutingThread = async (
 };
 
 /**
- * Notifies each of `accountIds`, local users, of what `fromId` did, unless it is themselves, they
- * mute the thread of the status it is about, or their policy drops it. A notification their policy
+ * Notifies each of `accountIds`, local users, of what `fromId` did, unless it is themselves (but a
+ * poll's author is told it ended, as on Mastodon), they mute the thread of the status it is about, or their policy drops it. A notification their policy
  * filters isn't grouped, streamed or pushed, and a filtered mention is kept in a request.
  */
 const notifyAll = async (
@@ -120,7 +123,7 @@ const notifyAll = async (
     links: Links,
 ) => {
     const now = ctx.clock.now();
-    const others = accountIds.filter((id) => id !== fromId);
+    const others = type === "poll" ? accountIds : accountIds.filter((id) => id !== fromId);
     const muting = await mutingThread(ctx, links.noteId, others);
     const unmuted = others.filter((id) => !muting.has(id));
     const verdicts = await verdictsOf(ctx, unmuted, type, fromId, links.noteId);
@@ -293,6 +296,16 @@ const notifyOfNote = async (ctx: Context, noteId: string, edited: boolean) => {
     await (edited ? notifyEdited(ctx, note) : notifyPosted(ctx, note));
 };
 
+/** Notifies the local author of a poll that ended, and the local users who voted in it. */
+const notifyEnded = async (ctx: Context, event: PollEnded) => {
+    const note = await findNote(ctx, event.noteId);
+    if (note === undefined) return;
+
+    const voters = await localVoterIds(ctx, event.pollId);
+    const notified = note.instance_id === null ? [note.account_id, ...voters] : voters;
+    await notifyAll(ctx, notified, "poll", note.account_id, { noteId: note.id });
+};
+
 /** What notifies of an interaction, and what it links, by its kind. */
 const interacted = {
     like: (id: string) => ["favourite", { likeId: id }],
@@ -340,4 +353,5 @@ export const notifyOf = async (ctx: Context, event: DomainEvent): Promise<void> 
     if (isNoteReceived(event) && !event.fetched) {
         return await notifyOfNote(ctx, event.noteId, event.edited);
     }
+    if (isPollEnded(event)) return await notifyEnded(ctx, event);
 };

@@ -67,8 +67,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 
 - `reaction` notifications tell users someone reacted to their status. See
   [Reactions](reactions.md#notifications).
-- Verso never sends `poll`, `admin.sign_up`, `admin.report`, `severed_relationships`,
-  `moderation_warning` or `quote` notifications.
+- Verso never sends `admin.sign_up`, `admin.report`, `severed_relationships`, `moderation_warning`
+  or `quote` notifications.
 - Notifications from blocked and muted accounts, and about statuses the user can no longer see, are
   left out of lists and counts.
 - Notification policies also apply to `reaction` notifications, as they do to likes.

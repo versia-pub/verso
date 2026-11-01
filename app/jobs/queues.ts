@@ -12,6 +12,7 @@ import { mediaHandler } from "../media/processing.ts";
 import { mediaQueue } from "../media/uploads.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
+import { endedPollsQueue, endPolls } from "../polls/ending.ts";
 import { pushHandler, pushQueue } from "../push/pushes.ts";
 import { registry } from "../registry.ts";
 import { deleteExpiredJobs } from "./job_queries.ts";
@@ -24,6 +25,11 @@ const hourly: Record<string, Queue["handler"]> = {
     "oauth-cleanup": (ctx) => deleteExpiredFlows(ctx),
     "rate-limits-cleanup": (ctx) => deleteEndedRateLimits(ctx),
     [unusedMediaQueue]: (ctx) => removeUnusedMedia(ctx),
+};
+
+/** Work the scheduler enqueues every minute, as `hourly` is every hour. */
+const everyMinute: Record<string, Queue["handler"]> = {
+    [endedPollsQueue]: (ctx) => endPolls(ctx),
 };
 
 /** Every queue the worker runs, by name. Modules add theirs as they need them. */
@@ -49,12 +55,13 @@ export const queues: Record<string, Queue> = {
     // Each job runs vips a few times, a minute each at most, and uses memory while it does.
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
     ...Object.fromEntries(
-        Object.entries(hourly).map(([queue, handler]) => [queue, { handler, concurrency: 1 }]),
+        Object.entries({ ...hourly, ...everyMinute })
+            .map(([queue, handler]) => [queue, { handler, concurrency: 1 }]),
     ),
 };
 
 /** Recurring work the scheduler enqueues. */
-export const tasks: readonly Task[] = Object.keys(hourly).map((queue) => ({
-    queue,
-    every: "hour",
-}));
+export const tasks: readonly Task[] = [
+    ...Object.keys(hourly).map((queue): Task => ({ queue, every: "hour" })),
+    ...Object.keys(everyMinute).map((queue): Task => ({ queue, every: "minute" })),
+];

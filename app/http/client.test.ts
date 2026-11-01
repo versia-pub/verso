@@ -8,6 +8,7 @@ import { defaultSettings } from "../instances/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { indexUnindexedAccounts } from "../search/accounts.ts";
 import { indexUnindexed } from "../search/notes.ts";
+import { endPolls } from "../polls/ending.ts";
 import { drain } from "../jobs/worker.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
@@ -411,6 +412,23 @@ Deno.test("a user asks a question with a poll, another votes, and the poll is ch
         (await alice.statuses.edit(posted.id, { status: "Which?", poll: null })).poll,
         null,
     );
+});
+
+Deno.test("a user who voted in a poll is notified when it ends", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const posted = await alice.statuses.post({
+        status: "Which?",
+        poll: { options: ["Red", "Blue"], expires_in: 600 },
+    });
+    await bob.polls.vote(posted.poll?.id ?? "", [1]);
+
+    test.clock.advance(600_000);
+    await endPolls(test.ctx);
+    const [notification] = (await bob.notifications.list({ types: ["poll"] })).items;
+    assertEquals([notification.type, notification.account.id], ["poll", "alice"]);
+    assertEquals(notification.status?.poll?.expired, true);
 });
 
 Deno.test("a user bookmarks a status, lists it, and removes the bookmark", async () => {

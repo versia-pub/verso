@@ -12,6 +12,8 @@ export type PollsTable = {
     expires_at: Date | null;
     /** How many accounts voted, or `null` if unknown. */
     voters_count: number | null;
+    /** When Verso saw it had ended and told its voters, or `null` if it hasn't yet. */
+    ended_at: Generated<Date | null>;
     created_at: Date;
 };
 

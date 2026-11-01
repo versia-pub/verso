@@ -1,4 +1,5 @@
 import { type Selectable, sql } from "kysely";
+import { skippingLocked } from "../db/locking.ts";
 import type { Context } from "../kernel/context.ts";
 import type { PollOptionsTable, PollsTable } from "./tables.ts";
 
@@ -41,7 +42,7 @@ export const insertPoll = async (ctx: Context, noteId: string, poll: NewPoll): P
     await insertOptions(ctx, id, poll.options);
 };
 
-/** Changes `poll` to ask what `changes` asks, keeping its votes unless `reset`. */
+/** Changes `poll` to ask what `changes` asks, and end anew, keeping its votes unless `reset`. */
 export const updatePoll = async (
     ctx: Context,
     poll: PollRow,
@@ -53,6 +54,8 @@ export const updatePoll = async (
             multiple: changes.multiple,
             hide_totals: changes.hideTotals,
             expires_at: changes.expiresAt,
+            // Its end moves, so its voters are told again when it comes.
+            ended_at: null,
             ...reset ? { voters_count: 0 } : {},
         })
         .where("id", "=", poll.id)
@@ -160,3 +163,38 @@ export const insertVotes = async (
         .where("voters_count", "is not", null)
         .execute();
 };
+
+/**
+ * Marks up to `limit` polls that have ended by now, but weren't marked yet, as ended, and returns
+ * them, the first to end first.
+ */
+export const markEndedPolls = async (ctx: Context, limit: number): Promise<PollRow[]> => {
+    const now = ctx.clock.now();
+    // So that two jobs running at once never mark the same poll.
+    const polls = await skippingLocked(
+        ctx.db,
+        ctx.db.selectFrom("polls").selectAll()
+            .where("ended_at", "is", null)
+            .where("expires_at", "<=", now)
+            .orderBy("expires_at")
+            .limit(limit),
+    ).execute();
+    if (polls.length === 0) return [];
+
+    await ctx.db.updateTable("polls")
+        .set({ ended_at: now })
+        .where("id", "in", polls.map((poll) => poll.id))
+        .execute();
+    return polls;
+};
+
+/** The local accounts that voted in `pollId`. */
+export const localVoterIds = async (ctx: Context, pollId: string): Promise<string[]> =>
+    (await ctx.db.selectFrom("poll_votes")
+        .innerJoin("accounts", "accounts.id", "poll_votes.account_id")
+        .select("poll_votes.account_id")
+        .distinct()
+        .where("poll_votes.poll_id", "=", pollId)
+        .where("accounts.instance_id", "is", null)
+        .orderBy("poll_votes.account_id")
+        .execute()).map((row) => row.account_id);

@@ -69,6 +69,7 @@ import { conversations } from "./0067_conversations.ts";
 import { notificationPolicies } from "./0068_notification_policies.ts";
 import { notificationPermissions } from "./0069_notification_permissions.ts";
 import { polls } from "./0070_polls.ts";
+import { endedPolls } from "./0071_ended_polls.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -145,4 +146,5 @@ export const migrations: Record<string, Migration> = {
     "0068_notification_policies": notificationPolicies,
     "0069_notification_permissions": notificationPermissions,
     "0070_polls": polls,
+    "0071_ended_polls": endedPolls,
 };

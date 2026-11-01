@@ -87,6 +87,7 @@ const titles: Record<NotificationType, (name: string) => string> = {
     favourite: (name) => `${name} favorited your post`,
     update: (name) => `${name} edited a post`,
     reaction: (name) => `${name} reacted to your post`,
+    poll: (name) => `A poll by ${name} has ended`,
 };
 
 /** How long a push's body may be, in characters, as on Mastodon. */

@@ -17,8 +17,8 @@ import { renderNotifications, shownNotification, shownOf } from "./render.ts";
 import { isNotificationType } from "./tables.ts";
 
 /**
- * Types of notifications, as clients name them. Those Verso doesn't have, such as `poll`, are left
- * out, so they match no notification.
+ * Types of notifications, as clients name them. Those Verso doesn't have, such as `admin.report`,
+ * are left out, so they match no notification.
  */
 export const NotificationTypes = Strings.transform((types) => types.filter(isNotificationType))
     .optional();

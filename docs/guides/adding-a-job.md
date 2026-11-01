@@ -93,7 +93,7 @@ Use `enqueue` for a single job. A `dedupeKey` stops the same work from being que
 
 For scheduled work, such as a cleanup, add the handler to `hourly` in `queues.ts`. The scheduler
 queues it once an hour in its own queue, one at a time. For a different period, add a `Task` to
-`tasks` with `every: "minute"` or `"day"`.
+`tasks` with `every: "day"`, or add the handler to `everyMinute`.
 
 ## 5. Test it
 
