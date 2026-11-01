@@ -111,6 +111,8 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/polls/{id}": (c) => c.polls.get("1"),
     "POST /api/v1/polls/{id}/votes": (c) => c.polls.vote("1", [0]),
     "POST /api/v1/reports": (c) => c.reports.create({ account_id: "1" }),
+    "GET /api/v1/announcements": (c) => c.announcements.list(),
+    "POST /api/v1/announcements/{id}/dismiss": (c) => c.announcements.dismiss("1"),
     "GET /api/v1/scheduled_statuses": (c) => c.scheduledStatuses.list(),
     "GET /api/v1/scheduled_statuses/{id}": (c) => c.scheduledStatuses.get("1"),
     "PUT /api/v1/scheduled_statuses/{id}": (c) =>

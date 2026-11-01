@@ -6,7 +6,7 @@ import { createNote, createShare } from "../notes/testing.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
 import { createTestContext } from "../testing/context.ts";
-import { resolveUrl } from "./urls.ts";
+import { resolveEntityAt, resolveUrl } from "./urls.ts";
 
 Deno.test("an entity URL finds the local account or status it names, if the viewer may see it", async () => {
     await using test = await createTestContext();
@@ -110,4 +110,23 @@ Deno.test("a failure other than a remote instance's isn't hidden", async () => {
         Error,
         "Broken",
     );
+});
+
+Deno.test("an entity is fetched from the budget it is given", async () => {
+    const budgets: unknown[] = [];
+    await using test = await createTestContext({
+        federation: {
+            resolve: (_ctx, _reference, _type, budget) => {
+                budgets.push(budget);
+                return Promise.resolve("bob");
+            },
+        },
+    });
+    const budget = { fetches: 3, saving: 0 };
+
+    assertEquals(
+        await resolveEntityAt(test.ctx, "https://b.test/.versia/v0.6/entities/User/bob", budget),
+        { type: "User", id: "bob" },
+    );
+    assertEquals(budgets, [budget]);
 });

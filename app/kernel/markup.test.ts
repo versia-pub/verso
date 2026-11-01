@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { countText, type Links, renderText, scanText } from "./markup.ts";
+import { countText, type Links, linksIn, renderText, scanText } from "./markup.ts";
 
 const links: Links = {
     mention: (mention) =>
@@ -98,6 +98,24 @@ Deno.test("only web addresses with a scheme are links", () => {
         renderText("[here](/a) [mail](mailto:bob@b.example)", "text/markdown"),
         "<p>[here](/a) [mail](mailto:bob@b.example)</p>",
     );
+});
+
+Deno.test("the web addresses linked to are found, each once, as first written", () => {
+    assertEquals(
+        linksIn(
+            "https://b.example/2 and https://a.example/1\nhttps://b.example/2 a.example",
+            "text/plain",
+        ),
+        ["https://b.example/2", "https://a.example/1"],
+    );
+    assertEquals(
+        linksIn(
+            "[here](https://a.example/) `https://b.example/` [mail](mailto:c@c.example)",
+            "text/markdown",
+        ),
+        ["https://a.example/"],
+    );
+    assertEquals(linksIn("No links", "text/plain"), []);
 });
 
 Deno.test("HTML ends where its last block does", () => {

@@ -8,6 +8,7 @@ import type {
     IdentitiesTable,
     RolesTable,
 } from "../accounts/tables.ts";
+import type { AnnouncementDismissalsTable, AnnouncementsTable } from "../announcements/tables.ts";
 import type { AccessTokensTable, AppsTable, OAuthFlowsTable } from "../auth/tables.ts";
 import type { AccountEmojisTable, EmojisTable, NoteEmojisTable } from "../emojis/tables.ts";
 import type {
@@ -63,6 +64,8 @@ export type Database = {
     account_roles: AccountRolesTable;
     account_search: AccountSearchTable;
     accounts: AccountsTable;
+    announcement_dismissals: AnnouncementDismissalsTable;
+    announcements: AnnouncementsTable;
     apps: AppsTable;
     conversation_notes: ConversationNotesTable;
     conversations: ConversationsTable;

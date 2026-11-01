@@ -91,6 +91,10 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   user who stays logged in isn't counted. Deleted statuses aren't counted.
 - Every block in `GET /api/v1/instance/domain_blocks` has the severity `suspend`, since Verso blocks
   instances entirely.
+- An announcement is taken down when its event ends, and the user stream says so with
+  `announcement.delete`. Mastodon hides it without telling apps.
+- An announcement's statuses are the ones its links lead to when it's saved, found by their Versia
+  URL. It only mentions accounts Verso already knows of.
 
 ## Custom emoji
 

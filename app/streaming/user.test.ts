@@ -1,6 +1,8 @@
 import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { assertEquals } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
+import { removeAnnouncement, unpublishAnnouncement } from "../announcements/announcements.ts";
+import { announce } from "../announcements/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
 import type { Permission } from "../kernel/permissions.ts";
@@ -66,7 +68,8 @@ const open = async () => {
             send: (data) => {
                 const { stream, event, payload } = JSON.parse(data);
                 // A delete's payload is an id, and `filters_changed` has none.
-                const shown = event === "delete" || payload === undefined
+                const ids = ["delete", "announcement.delete"];
+                const shown = ids.includes(event) || payload === undefined
                     ? payload
                     : JSON.parse(payload);
                 sent.push([stream.join(), event, shown?.status?.id ?? shown?.id ?? shown]);
@@ -168,6 +171,42 @@ Deno.test("a user is told on the user stream when their filters change", async (
 
     const told = ["user", "filters_changed", undefined];
     assertEquals([alice.sent, notifications.sent, bob.sent], [[told, told], [], []]);
+});
+
+Deno.test("every user on the user stream is told of announcements as they are published and taken down", async () => {
+    await using test = await open();
+    const alice = test.streaming("alice", ["user"], { permissions: [] });
+    const notifications = test.streaming("alice", ["user:notification"]);
+    const elsewhere = test.streaming("bob", ["public"]);
+    const { sessions, queries } = test.counted();
+    const carol = test.streaming("carol", ["user"], { sessions });
+    const dave = test.streaming("carol", ["user"], { sessions });
+
+    const shown = await announce(test.ctx, "Hi");
+    await test.dispatch.idle();
+    const rendering = queries();
+    const draft = await announce(test.ctx, "Later", { scheduledAt: new Date("2027-01-01") });
+    await unpublishAnnouncement(test.ctx, shown.id);
+    await removeAnnouncement(test.ctx, draft.id);
+    await test.dispatch.idle();
+
+    const told = [["user", "announcement", shown.id], ["user", "announcement.delete", shown.id]];
+    assertEquals([alice.sent, carol.sent, dave.sent], [told, told, told]);
+    assertEquals([notifications.sent, elsewhere.sent], [[], []]);
+    // Telling of an announcement taken down looks nothing up.
+    assertEquals(rendering > 0, true);
+    assertEquals(queries(), rendering);
+});
+
+Deno.test("an announcement isn't looked up when no one is on the user stream", async () => {
+    await using test = await open();
+    const { sessions, queries } = test.counted();
+    const notifications = test.streaming("alice", ["user:notification"], { sessions });
+
+    await announce(test.ctx, "Hi");
+    await test.dispatch.idle();
+
+    assertEquals([notifications.sent, queries()], [[], 0]);
 });
 
 Deno.test("a user is told of statuses they may see, and those deleted that they could", async () => {

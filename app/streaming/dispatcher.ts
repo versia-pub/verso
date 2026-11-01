@@ -1,12 +1,16 @@
 /**
  * Giving a process's streaming sessions the statuses, notifications, filter changes,
- * conversations and merged notification requests they stream, from one subscription to each channel rather than one for every
+ * conversations, merged notification requests and announcements they stream, from one subscription to each channel rather than one for every
  * session, through a listener for each kind of stream. Messages are handled one at a time, in the
  * order they are heard, so a session is never sent a status's delete before its update, and what published them doesn't wait for them to be
  * streamed.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
+import {
+    announcementChanged,
+    type AnnouncementChangedMessage,
+} from "../announcements/announcements.ts";
 import {
     conversationChanged,
     type ConversationChangedMessage,
@@ -27,6 +31,7 @@ export type Listener = {
     readonly filtersChanged?: (message: FiltersChangedMessage) => Promise<void>;
     readonly conversations?: (message: ConversationChangedMessage) => Promise<void>;
     readonly notificationsMerged?: (message: NotificationsMergedMessage) => Promise<void>;
+    readonly announcements?: (message: AnnouncementChangedMessage) => Promise<void>;
 };
 
 /** A session's viewer, who is logged in. */
@@ -121,6 +126,11 @@ export const dispatcher = (ctx: Context): Dispatcher => {
         ctx,
         notificationsMerged,
         (message) => handle(async (listener) => await listener.notificationsMerged?.(message)),
+    );
+    subscribe(
+        ctx,
+        announcementChanged,
+        (message) => handle(async (listener) => await listener.announcements?.(message)),
     );
 
     return {

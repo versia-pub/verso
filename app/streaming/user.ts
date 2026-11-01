@@ -1,10 +1,13 @@
 /**
  * The `user` and `user:notification` streams: the statuses of a user's home timeline as they
  * appear, change or go, their notifications, when the notification requests they accepted are
- * merged, and on `user`, when their filters change, as on Mastodon.
+ * merged, and on `user`, when their filters change, and the announcements published, changed or
+ * taken down, as on Mastodon.
  * @see https://docs.joinmastodon.org/methods/streaming/#user
  * @module
  */
+import { findPublishedAnnouncement } from "../announcements/announcement_queries.ts";
+import { renderAnnouncements } from "../announcements/render.ts";
 import { followersAmong } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
@@ -70,7 +73,8 @@ const couldSee = async (
  * status is looked up for the viewers it could reach, its author, their followers and those who
  * follow its hashtags, and sent if it is on their home timeline when it is heard of, rendered once
  * for each of them, as they see it. A notification is rendered once for its viewer. Each is sent as
- * long as they may read statuses and their notifications, as on the routes for them.
+ * long as they may read statuses and their notifications, as on the routes for them. An announcement
+ * is rendered once, as anyone sees it, for every session.
  */
 export const userStreams = (ctx: Context): Sessions => {
     const sessions = new Set<Entry>();
@@ -155,6 +159,28 @@ export const userStreams = (ctx: Context): Sessions => {
                 }
             }
             return Promise.resolve();
+        },
+        announcements: async (message) => {
+            const subscribed = [...sessions].filter((entry) =>
+                entry.session.subscribedTo(["user"])
+            );
+            if (subscribed.length === 0) return;
+
+            if (!message.published) {
+                for (const { session } of subscribed) {
+                    session.deliver(["user"], "announcement.delete", message.id);
+                }
+                return;
+            }
+
+            // Rendered once, as anyone sees it, as on Mastodon.
+            const row = await findPublishedAnnouncement(ctx, message.id);
+            if (row === undefined) return;
+            const [shown] = await renderAnnouncements(ctx, [row], null);
+            const payload = JSON.stringify(shown);
+            for (const { session } of subscribed) {
+                session.deliver(["user"], "announcement", payload);
+            }
         },
         add: (viewer, session) => {
             const entry = { viewer, session };

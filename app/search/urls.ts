@@ -8,7 +8,7 @@
 import { parseReference } from "@versia/protocol";
 import { type AccountRow, findAccounts } from "../accounts/account_queries.ts";
 import { isRemoteFailure } from "../federation/resolver.ts";
-import type { Context } from "../kernel/context.ts";
+import type { Budget, Context } from "../kernel/context.ts";
 import type { NoteRow } from "../notes/note_queries.ts";
 import { visibleNote } from "../notes/visibility.ts";
 
@@ -26,7 +26,7 @@ const entityAt = (text: string) => {
     if (match === null) return undefined;
 
     const [, name, id] = match;
-    const type = name === "User" ? "User" : "Note";
+    const type: "User" | "Note" = name === "User" ? "User" : "Note";
     const reference = parseReference(id, url.host);
     return reference && { type, reference };
 };
@@ -37,6 +37,27 @@ export type UrlResource =
     | { readonly type: "statuses"; readonly note: NoteRow };
 
 /**
+ * The id of the User or Note at the entity URL `url`, fetched if Verso doesn't have it, from
+ * `budget` if given. A remote instance that fails finds nothing.
+ */
+export const resolveEntityAt = async (
+    ctx: Context,
+    url: string,
+    budget?: Budget,
+): Promise<{ readonly type: "User" | "Note"; readonly id: string } | undefined> => {
+    const entity = entityAt(url);
+    if (entity === undefined) return undefined;
+
+    try {
+        const id = await ctx.federation.resolve(ctx, entity.reference, entity.type, budget);
+        return id === undefined ? undefined : { type: entity.type, id };
+    } catch (error) {
+        if (!isRemoteFailure(error)) throw error;
+        return undefined;
+    }
+};
+
+/**
  * The account or status at the entity URL `url`, fetched if Verso doesn't have it, if `viewerId`
  * may see it. A remote instance that fails finds nothing.
  */
@@ -45,17 +66,9 @@ export const resolveUrl = async (
     url: string,
     viewerId: string,
 ): Promise<UrlResource | undefined> => {
-    const entity = entityAt(url);
+    const entity = await resolveEntityAt(ctx, url);
     if (entity === undefined) return undefined;
-
-    let id: string | undefined;
-    try {
-        id = await ctx.federation.resolve(ctx, entity.reference, entity.type);
-    } catch (error) {
-        if (!isRemoteFailure(error)) throw error;
-        return undefined;
-    }
-    if (id === undefined) return undefined;
+    const { id } = entity;
 
     if (entity.type === "User") {
         const [account] = await findAccounts(ctx, [id]);

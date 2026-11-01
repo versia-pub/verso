@@ -8699,6 +8699,81 @@
                 }
             }
         },
+        "/api/v1/announcements": {
+            "get": {
+                "summary": "View all announcements",
+                "description": "See all currently active announcements set by admins.\n\nNeeds a token for a user, not one an app got for itself.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/announcements/#get"
+                },
+                "tags": [
+                    "announcements"
+                ],
+                "security": [
+                    {
+                        "OAuth2": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Announcement"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/announcements/{id}/dismiss": {
+            "post": {
+                "summary": "Dismiss an announcement",
+                "description": "Allows a user to mark the announcement as read.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/announcements/#dismiss"
+                },
+                "tags": [
+                    "announcements"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Announcement in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses/{id}/reactions/{name}": {
             "put": {
                 "summary": "React to a status with an emoji",
@@ -17255,6 +17330,129 @@
                     "indexable",
                     "attribution_domains",
                     "quote_policy"
+                ]
+            },
+            "Announcement": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "starts_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "ends_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "all_day": {
+                        "type": "boolean"
+                    },
+                    "published_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "read": {
+                        "type": "boolean"
+                    },
+                    "mentions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StatusMention"
+                        }
+                    },
+                    "statuses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Status"
+                        }
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StatusTag"
+                        }
+                    },
+                    "emojis": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CustomEmoji"
+                        }
+                    },
+                    "reactions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AnnouncementReaction"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "content",
+                    "starts_at",
+                    "ends_at",
+                    "all_day",
+                    "published_at",
+                    "updated_at",
+                    "mentions",
+                    "statuses",
+                    "tags",
+                    "emojis",
+                    "reactions"
+                ]
+            },
+            "AnnouncementReaction": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                    },
+                    "me": {
+                        "type": "boolean"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "static_url": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "name",
+                    "count"
                 ]
             },
             "Application": {

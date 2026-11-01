@@ -4,6 +4,7 @@
  * @module
  */
 import { z } from "zod";
+import { Announcement } from "../announcement.ts";
 import { Conversation } from "../conversation.ts";
 import { Notification } from "../notification.ts";
 import { Status } from "../status.ts";
@@ -72,6 +73,18 @@ export type StreamEvent =
         readonly event: "conversation";
         readonly stream: readonly string[];
         readonly conversation: Conversation;
+    }
+    | {
+        /** An announcement was published, or changed. */
+        readonly event: "announcement";
+        readonly stream: readonly string[];
+        readonly announcement: Announcement;
+    }
+    | {
+        /** An announcement was taken down. */
+        readonly event: "announcement.delete";
+        readonly stream: readonly string[];
+        readonly id: string;
     }
     | {
         /** An event this client doesn't know, which Mastodon may have and Verso may later. */
@@ -148,6 +161,10 @@ const eventOf = (data: unknown): StreamEvent => {
             return { event, stream, conversation: parsed(Conversation) };
         case "notifications_merged":
             return { event, stream };
+        case "announcement":
+            return { event, stream, announcement: parsed(Announcement) };
+        case "announcement.delete":
+            return { event, stream, id: payload };
         default:
             return { event: "unknown", stream, name: event, payload };
     }

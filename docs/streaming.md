@@ -42,6 +42,10 @@ A user's conversations arrive on `conversations.changed` and go to their `direct
 its latest status but still has others. A conversation that loses all its statuses is gone, so
 nothing is sent, as on Mastodon.
 
+Announcements arrive on `announcements.changed` and go to every `user` stream. One published or
+changed is sent as `announcement`, rendered once, and one taken down or deleted as
+`announcement.delete`, with its id.
+
 The dispatcher, in [`app/streaming/dispatcher.ts`](../app/streaming/dispatcher.ts), subscribes once
 to each channel per process, rather than once per WebSocket, and hands each message to each kind of
 stream. It handles messages one at a time, so a client never gets a status's delete before its

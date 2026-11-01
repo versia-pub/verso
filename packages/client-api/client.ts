@@ -38,6 +38,7 @@ import { TimelineMethods } from "./client/timelines.ts";
 import { ConversationMethods } from "./client/conversations.ts";
 import { PollMethods } from "./client/polls.ts";
 import { ReportMethods } from "./client/reports.ts";
+import { AnnouncementMethods } from "./client/announcements.ts";
 import { ScheduledStatusMethods } from "./client/scheduled_statuses.ts";
 
 export type {
@@ -164,6 +165,8 @@ export class Client {
     readonly media: MediaMethods;
     /** Reporting accounts to the instance's moderators. */
     readonly reports: ReportMethods;
+    /** The announcements the instance's admins make. */
+    readonly announcements: AnnouncementMethods;
 
     /** A client for the instance at `url`, such as `https://verso.example`. */
     constructor(url: string | URL, options: ClientOptions = {}) {
@@ -199,6 +202,7 @@ export class Client {
         this.roles = new RoleMethods(this.#http);
         this.media = new MediaMethods(this.#http);
         this.reports = new ReportMethods(this.#http);
+        this.announcements = new AnnouncementMethods(this.#http);
     }
 
     /** The instance's URL. */

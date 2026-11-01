@@ -25,7 +25,7 @@ behave differently.
 | Search                     | accounts, statuses and hashtags                                         |
 | Instance                   | the instance, rules, policies, custom emoji                             |
 
-Missing so far: trends and announcements. There's no admin API: admins use `verso admin` instead.
+Missing so far: trends. There's no admin API: admins use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -207,7 +207,9 @@ Missing so far: trends and announcements. There's no admin API: admins use `vers
 | `GET /api/v1/custom_emojis`                  | ✅    |                              |
 | `GET /api/v1/directory`                      | 🟡    | Local accounts only          |
 | Trends (3 methods)                           | ❌    |                              |
-| Announcements (4 methods)                    | ❌    |                              |
+| `GET /api/v1/announcements`                  | ✅    |                              |
+| `POST /api/v1/announcements/:id/dismiss`     | ✅    |                              |
+| Announcement reactions (2 methods)           | ❌    |                              |
 | `GET /api/oembed`                            | ❌    |                              |
 | `GET /health`                                | ❌    | Verso has `GET /health/live` |
 

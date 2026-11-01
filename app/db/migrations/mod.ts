@@ -74,6 +74,7 @@ import { scheduledNotes } from "./0072_scheduled_notes.ts";
 import { scheduledNoteMedia } from "./0073_scheduled_note_media.ts";
 import { reports } from "./0074_reports.ts";
 import { remoteReports } from "./0075_remote_reports.ts";
+import { announcements } from "./0076_announcements.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -155,4 +156,5 @@ export const migrations: Record<string, Migration> = {
     "0073_scheduled_note_media": scheduledNoteMedia,
     "0074_reports": reports,
     "0075_remote_reports": remoteReports,
+    "0076_announcements": announcements,
 };

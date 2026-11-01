@@ -41,6 +41,28 @@ Admin commands print one line of JSON, so scripts can read their output. If a co
 prints why and exits with 1. If it's used wrongly, such as with a missing argument, it prints its
 help and exits with 2.
 
+### `verso admin announcements`
+
+Announcements are shown to every user in their apps. They're plain text, and can mention accounts,
+link to statuses and use custom emojis. Times are ISO 8601, such as `2026-11-01T18:00Z`.
+
+| Command                                               | Does                                              |
+| ----------------------------------------------------- | ------------------------------------------------- |
+| `announcements list`                                  | lists every announcement, published or not        |
+| `announcements create <text> [--scheduled-at <time>]` | makes one, published at once or at the time given |
+| `announcements update <id> [--text <text>]`           | changes one, keeping what isn't given             |
+| `announcements publish <id>`                          | shows one to users now                            |
+| `announcements unpublish <id>`                        | takes one down, until it's published again        |
+| `announcements delete <id>`                           | deletes one                                       |
+
+`create` and `update` also take `--starts-at`, `--ends-at` and `--all-day` for an event. An event
+needs both times, and is taken down when it ends. With `update`, `none` removes a time.
+
+```sh
+$ verso admin announcements create "Maintenance tonight" --starts-at 2026-11-01T22:00Z --ends-at 2026-11-01T23:00Z
+{"id":"01a189b0-…","text":"Maintenance tonight","published":true,…}
+```
+
 ### `verso admin domains`
 
 Blocks instances, in addition to the config's `blocked_domains`. See [Moderating](moderating.md).

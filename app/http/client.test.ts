@@ -2,6 +2,8 @@ import { assert, assertEquals, assertRejects } from "@std/assert";
 import { ApiError, Client, createPkce, type Stream, type StreamEvent } from "@versia/client-api";
 import { encode } from "fast-png";
 import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
+import { removeAnnouncement } from "../announcements/announcements.ts";
+import { announce } from "../announcements/testing.ts";
 import { oidcProvider } from "../auth/oidc.ts";
 import { formTokenIn, tokenFor } from "../auth/testing.ts";
 import { defaultSettings } from "../instances/testing.ts";
@@ -927,6 +929,10 @@ const describe = (event: StreamEvent) => {
             return `${event.stream.join(",")} notifications_merged`;
         case "conversation":
             return `${event.stream.join(",")} conversation ${event.conversation.last_status?.id}`;
+        case "announcement":
+            return `${event.stream.join(",")} announcement ${event.announcement.content}`;
+        case "announcement.delete":
+            return `${event.stream.join(",")} announcement.delete ${event.id}`;
         case "unknown":
             return `${event.stream.join(",")} ${event.name}`;
         case "error":
@@ -934,7 +940,7 @@ const describe = (event: StreamEvent) => {
     }
 };
 
-Deno.test("a user streams statuses, notifications and filter changes as they happen", async () => {
+Deno.test("a user streams statuses, notifications, filter changes and announcements as they happen", async () => {
     await using test = await open();
     await using server = test.listen();
     const alice = await test.as("alice");
@@ -966,6 +972,10 @@ Deno.test("a user streams statuses, notifications and filter changes as they hap
     assertEquals(await next(stream, 1), ["user notification follow"]);
     await alice.filters.create({ title: "Pets", context: ["home"] });
     assertEquals(await next(stream, 1), ["user filters_changed"]);
+    const announced = await announce(test.ctx, "Hi");
+    assertEquals(await next(stream, 1), ["user announcement <p>Hi</p>"]);
+    await removeAnnouncement(test.ctx, announced.id);
+    assertEquals(await next(stream, 1), [`user announcement.delete ${announced.id}`]);
 
     assertEquals((await stream.close()).code, 1000);
     assertEquals(await next(stream, 0), []);

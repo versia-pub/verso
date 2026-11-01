@@ -197,6 +197,19 @@ export const scanText = (text: string, format: MarkupFormat): Found => {
     };
 };
 
+/** The web addresses `text` links to, each once, in the order first written. */
+export const linksIn = (text: string, format: MarkupFormat): string[] => {
+    const found = new Set<string>();
+    for (const block of parsers[format].parse(text, {})) {
+        for (const token of block.children ?? []) {
+            const href = token.type === "link_open" ? token.attrGet("href") : null;
+            if (typeof href === "string") found.add(href);
+        }
+    }
+
+    return [...found];
+};
+
 /** `text` as HTML, with its mentions and hashtags linked where `links` says. */
 export const renderText = (text: string, format: MarkupFormat, links: Links = {}): string => {
     const env = {};

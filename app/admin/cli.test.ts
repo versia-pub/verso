@@ -291,3 +291,118 @@ Deno.test("reports are listed until they are resolved, and unknown ones refused"
     const error = await assertRejects(() => admin(test.ctx, "reports", "resolve", "x"), AdminError);
     assertEquals(error.message, "There is no report x");
 });
+
+Deno.test("announcements are made, changed, published, taken down and deleted", async () => {
+    await using test = await createTestContext();
+    const now = test.clock.now().toISOString();
+    const json = (printed: string[]) => JSON.parse(printed.join(""));
+
+    const made = json((await admin(test.ctx, "announcements", "create", "Hi")).printed);
+    assertEquals(made, {
+        id: made.id,
+        text: "Hi",
+        published: true,
+        published_at: now,
+        scheduled_at: null,
+        starts_at: null,
+        ends_at: null,
+        all_day: false,
+        created_at: now,
+        updated_at: now,
+    });
+    const event = json(
+        (await admin(
+            test.ctx,
+            "announcements",
+            "create",
+            "Party",
+            "--starts-at",
+            "2026-02-01",
+            "--ends-at",
+            "2026-02-02T12:00Z",
+            "--all-day",
+            "--scheduled-at",
+            "2026-01-15",
+        )).printed,
+    );
+    assertEquals([
+        event.published,
+        event.scheduled_at,
+        event.starts_at,
+        event.ends_at,
+        event.all_day,
+    ], [
+        false,
+        "2026-01-15T00:00:00.000Z",
+        "2026-02-01T00:00:00.000Z",
+        "2026-02-02T12:00:00.000Z",
+        true,
+    ]);
+
+    const changed = json(
+        (await admin(
+            test.ctx,
+            "announcements",
+            "update",
+            event.id,
+            "--text",
+            "Gathering",
+            "--all-day",
+            "false",
+            "--starts-at",
+            "none",
+            "--ends-at",
+            "none",
+        )).printed,
+    );
+    assertEquals([changed.text, changed.all_day, changed.starts_at, changed.ends_at], [
+        "Gathering",
+        false,
+        null,
+        null,
+    ]);
+    assertEquals(
+        json((await admin(test.ctx, "announcements", "publish", event.id)).printed).published,
+        true,
+    );
+    assertEquals(
+        json((await admin(test.ctx, "announcements", "unpublish", made.id)).printed).published,
+        false,
+    );
+    assertEquals(
+        json((await admin(test.ctx, "announcements", "list")).printed).map((each: { id: string }) =>
+            each.id
+        ),
+        [made.id, event.id],
+    );
+    assertEquals(json((await admin(test.ctx, "announcements", "delete", made.id)).printed), {
+        id: made.id,
+        deleted: true,
+    });
+
+    for (
+        const args of [["publish", "x"], ["unpublish", "x"], ["update", "x"], ["delete", made.id]]
+    ) {
+        const error = await assertRejects(
+            () => admin(test.ctx, "announcements", ...args),
+            AdminError,
+        );
+        assertStringIncludes(error.message, "There is no announcement");
+    }
+    const invalid = await assertRejects(
+        () => admin(test.ctx, "announcements", "create", "Hi", "--starts-at", "2026-02-01"),
+        AdminError,
+    );
+    assertEquals(invalid.message, "An event needs both when it starts and when it ends");
+    const halfEvent = await assertRejects(
+        () => admin(test.ctx, "announcements", "update", event.id, "--starts-at", "2026-02-01"),
+        AdminError,
+    );
+    assertEquals(halfEvent.message, "An event needs both when it starts and when it ends");
+    for (const time of ["tomorrow", "2026-13-40", "1700000000", "2026", "2026-11"]) {
+        await assertRejects(
+            () => admin(test.ctx, "announcements", "create", "Hi", "--scheduled-at", time),
+            ValidationError,
+        );
+    }
+});

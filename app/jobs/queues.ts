@@ -1,3 +1,4 @@
+import { announcementsQueue, publishDueAnnouncements } from "../announcements/announcements.ts";
 import { deleteExpiredFlows } from "../auth/flow_queries.ts";
 import { acceptHandler, acceptQueue } from "../graph/follows.ts";
 import { deliverQueue } from "../federation/deliver.ts";
@@ -30,6 +31,7 @@ const hourly: Record<string, Queue["handler"]> = {
 
 /** Work the scheduler enqueues every minute, as `hourly` is every hour. */
 const everyMinute: Record<string, Queue["handler"]> = {
+    [announcementsQueue]: (ctx) => publishDueAnnouncements(ctx),
     [endedPollsQueue]: (ctx) => endPolls(ctx),
     [scheduledNotesQueue]: (ctx) => publishDue(ctx),
 };

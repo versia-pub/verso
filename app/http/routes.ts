@@ -17,6 +17,7 @@ import { graphRoutes } from "../graph/routes.ts";
 import { noteRoutes } from "../notes/routes.ts";
 import { pollRoutes } from "../polls/routes.ts";
 import { reportRoutes } from "../reports/routes.ts";
+import { announcementRoutes } from "../announcements/routes.ts";
 import { scheduledRoutes } from "../schedules/routes.ts";
 import { groupedNotificationRoutes } from "../notifications/grouped_routes.ts";
 import { notificationPolicyRoutes } from "../notifications/policy_routes.ts";
@@ -57,6 +58,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...pollRoutes,
         ...scheduledRoutes,
         ...reportRoutes(settings.instance),
+        ...announcementRoutes,
         ...interactionRoutes,
         ...timelineRoutes,
         ...conversationRoutes,
