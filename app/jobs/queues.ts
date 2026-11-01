@@ -15,6 +15,7 @@ import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
 import { endedPollsQueue, endPolls } from "../polls/ending.ts";
 import { pushHandler, pushQueue } from "../push/pushes.ts";
 import { registry } from "../registry.ts";
+import { publishDue, scheduledNotesQueue } from "../schedules/publishing.ts";
 import { deleteExpiredJobs } from "./job_queries.ts";
 import type { Task } from "./scheduler.ts";
 import type { Queue } from "./worker.ts";
@@ -30,6 +31,7 @@ const hourly: Record<string, Queue["handler"]> = {
 /** Work the scheduler enqueues every minute, as `hourly` is every hour. */
 const everyMinute: Record<string, Queue["handler"]> = {
     [endedPollsQueue]: (ctx) => endPolls(ctx),
+    [scheduledNotesQueue]: (ctx) => publishDue(ctx),
 };
 
 /** Every queue the worker runs, by name. Modules add theirs as they need them. */

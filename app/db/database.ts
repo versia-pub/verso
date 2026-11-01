@@ -46,6 +46,7 @@ import type {
     NotificationsTable,
 } from "../notifications/tables.ts";
 import type { PollOptionsTable, PollsTable, PollVotesTable } from "../polls/tables.ts";
+import type { ScheduledNotesTable } from "../schedules/tables.ts";
 import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
 import type { AccountSearchTable, NoteSearchTable } from "../search/tables.ts";
 import type { Config } from "../kernel/config.ts";
@@ -106,6 +107,7 @@ export type Database = {
     reactions: ReactionsTable;
     remote_note_totals: RemoteNoteTotalsTable;
     roles: RolesTable;
+    scheduled_notes: ScheduledNotesTable;
     tag_follows: TagFollowsTable;
     tags: TagsTable;
     thread_mutes: ThreadMutesTable;

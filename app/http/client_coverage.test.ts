@@ -110,6 +110,11 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/statuses/{id}/history": (c) => c.statuses.history("1"),
     "GET /api/v1/polls/{id}": (c) => c.polls.get("1"),
     "POST /api/v1/polls/{id}/votes": (c) => c.polls.vote("1", [0]),
+    "GET /api/v1/scheduled_statuses": (c) => c.scheduledStatuses.list(),
+    "GET /api/v1/scheduled_statuses/{id}": (c) => c.scheduledStatuses.get("1"),
+    "PUT /api/v1/scheduled_statuses/{id}": (c) =>
+        c.scheduledStatuses.update("1", "2030-01-01T00:00:00.000Z"),
+    "DELETE /api/v1/scheduled_statuses/{id}": (c) => c.scheduledStatuses.delete("1"),
     "POST /api/v1/statuses/{id}/favourite": (c) => c.statuses.favourite("1"),
     "POST /api/v1/statuses/{id}/unfavourite": (c) => c.statuses.unfavourite("1"),
     "GET /api/v1/statuses/{id}/favourited_by": (c) => c.statuses.favouritedBy("1"),

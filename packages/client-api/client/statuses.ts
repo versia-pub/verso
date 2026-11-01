@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Account, type Visibility } from "../account.ts";
+import { ScheduledStatus } from "../scheduled_status.ts";
 import { Context, Status, StatusEdit, StatusReaction, StatusSource } from "../status.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
 import { Page, type PageQuery } from "./pages.ts";
@@ -95,6 +96,22 @@ export class StatusMethods {
      */
     post(draft: StatusDraft, options?: CallOptions): Promise<Status> {
         return this.http.json(Status, "POST", "/api/v1/statuses", { ...options, json: draft });
+    }
+
+    /**
+     * Schedules a status to be posted at `scheduledAt`, an ISO 8601 time at least 5 minutes from
+     * now. A time already past posts it now, as `post` does, which this doesn't expect.
+     * @see https://docs.joinmastodon.org/methods/statuses/#create
+     */
+    schedule(
+        draft: StatusDraft,
+        scheduledAt: string,
+        options?: CallOptions,
+    ): Promise<ScheduledStatus> {
+        return this.http.json(ScheduledStatus, "POST", "/api/v1/statuses", {
+            ...options,
+            json: { ...draft, scheduled_at: scheduledAt },
+        });
     }
 
     /**

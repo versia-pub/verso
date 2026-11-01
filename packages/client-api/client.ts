@@ -37,6 +37,7 @@ import { FilterMethods } from "./client/filters.ts";
 import { TimelineMethods } from "./client/timelines.ts";
 import { ConversationMethods } from "./client/conversations.ts";
 import { PollMethods } from "./client/polls.ts";
+import { ScheduledStatusMethods } from "./client/scheduled_statuses.ts";
 
 export type {
     AccountSearchQuery,
@@ -138,6 +139,8 @@ export class Client {
     readonly bookmarks: BookmarkMethods;
     /** The polls attached to statuses. */
     readonly polls: PollMethods;
+    /** The viewer's statuses that will be posted later. */
+    readonly scheduledStatuses: ScheduledStatusMethods;
     /** Lists of statuses, newest first. */
     readonly timelines: TimelineMethods;
     /** The viewer's direct conversations. */
@@ -181,6 +184,7 @@ export class Client {
         this.favourites = new FavouriteMethods(this.#http);
         this.bookmarks = new BookmarkMethods(this.#http);
         this.polls = new PollMethods(this.#http);
+        this.scheduledStatuses = new ScheduledStatusMethods(this.#http);
         this.timelines = new TimelineMethods(this.#http);
         this.conversations = new ConversationMethods(this.#http);
         this.notifications = new NotificationMethods(this.#http);

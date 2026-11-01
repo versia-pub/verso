@@ -25,8 +25,8 @@ behave differently.
 | Search                     | accounts, statuses and hashtags                                         |
 | Instance                   | the instance, rules, policies, custom emoji                             |
 
-Missing so far: scheduled statuses, reports, trends and announcements. There's no admin API: admins
-use `verso admin` instead.
+Missing so far: reports, trends and announcements. There's no admin API: admins use `verso admin`
+instead.
 
 ## Apps and logging in
 
@@ -100,7 +100,7 @@ use `verso admin` instead.
 
 | Method                                   | Verso | Notes                          |
 | ---------------------------------------- | ----- | ------------------------------ |
-| `POST /api/v1/statuses`                  | 🟡    | No scheduling                  |
+| `POST /api/v1/statuses`                  | 🟡    | No media in scheduled statuses |
 | `GET /api/v1/statuses/:id`               | ✅    |                                |
 | `GET /api/v1/statuses`                   | ✅    | Several statuses by id         |
 | `PUT /api/v1/statuses/:id`               | ✅    |                                |
@@ -126,7 +126,7 @@ use `verso admin` instead.
 | `PUT /api/v1/media/:id`                  | ✅    |                                |
 | `POST /api/v1/media`                     | ❌    | Deprecated by Mastodon; use v2 |
 | Polls (2 methods)                        | ✅    |                                |
-| Scheduled statuses (4 methods)           | ❌    |                                |
+| Scheduled statuses (4 methods)           | ✅    |                                |
 
 ## Timelines
 

@@ -9,6 +9,7 @@ import { queues } from "../jobs/queues.ts";
 import { indexUnindexedAccounts } from "../search/accounts.ts";
 import { indexUnindexed } from "../search/notes.ts";
 import { endPolls } from "../polls/ending.ts";
+import { publishDue } from "../schedules/publishing.ts";
 import { drain } from "../jobs/worker.ts";
 import { fakeClock } from "../kernel/clock.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
@@ -429,6 +430,32 @@ Deno.test("a user who voted in a poll is notified when it ends", async () => {
     const [notification] = (await bob.notifications.list({ types: ["poll"] })).items;
     assertEquals([notification.type, notification.account.id], ["poll", "alice"]);
     assertEquals(notification.status?.poll?.expired, true);
+});
+
+Deno.test("a user schedules a status, moves it, and it is posted when due", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const at = (ms: number) => new Date(test.clock.now().getTime() + ms).toISOString();
+
+    const scheduled = await alice.statuses.schedule({ status: "Later" }, at(3600_000));
+    const cancelled = await alice.statuses.schedule({ status: "Never" }, at(3600_000));
+    assertEquals(scheduled.params.text, "Later");
+    assertEquals((await alice.scheduledStatuses.get(scheduled.id)).id, scheduled.id);
+
+    const moved = await alice.scheduledStatuses.update(scheduled.id, at(7200_000));
+    assertEquals(moved.scheduled_at, at(7200_000));
+    await alice.scheduledStatuses.delete(cancelled.id);
+    assertEquals((await alice.scheduledStatuses.list()).items.map((each) => each.id), [
+        scheduled.id,
+    ]);
+
+    test.clock.advance(7200_000);
+    await publishDue(test.ctx);
+    assertEquals((await alice.scheduledStatuses.list()).items, []);
+    assertEquals(
+        (await alice.accounts.statuses("alice")).items.map((status) => status.content),
+        ["<p>Later</p>"],
+    );
 });
 
 Deno.test("a user bookmarks a status, lists it, and removes the bookmark", async () => {

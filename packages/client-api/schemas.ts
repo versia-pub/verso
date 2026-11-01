@@ -16,6 +16,7 @@ export * from "./preferences.ts";
 export * from "./preview_card.ts";
 export * from "./relationship.ts";
 export * from "./role.ts";
+export * from "./scheduled_status.ts";
 export * from "./search.ts";
 export * from "./status.ts";
 export * from "./tag.ts";

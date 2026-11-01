@@ -142,65 +142,90 @@ const mediaOrPoll = (media: boolean, poll: boolean) => {
     if (media && poll) throw new Unprocessable("A status can't have both media and a poll");
 };
 
+/** A draft with the accounts it mentions looked up, ready to post. */
+export type PreparedDraft = {
+    readonly draft: Draft;
+    readonly found: Found;
+    readonly accounts: ReadonlyMap<string, AccountRow>;
+};
+
 /**
- * Posts a status by `accountId`, a local user, and counts it. The mentioned users are looked up
- * first, outside the transaction, as that can mean fetching from remote instances. Returns
- * `undefined` if the status it replies to doesn't exist or `accountId` may not see it.
+ * Checks `draft`, and looks up the users it mentions, outside any transaction, as that can mean
+ * fetching from remote instances.
+ */
+export const prepareDraft = async (ctx: Context, draft: Draft): Promise<PreparedDraft> => {
+    mediaOrPoll((draft.mediaIds ?? []).length > 0, draft.poll !== undefined);
+    const found = scanText(draft.text, draft.format);
+
+    return { draft, found, accounts: await mentioned(ctx, found.mentions) };
+};
+
+/**
+ * Posts the status `prepared` by `accountId`, a local user, in `ctx`'s transaction, and counts it.
+ * Returns `undefined` if the status it replies to doesn't exist or `accountId` may not see it.
+ */
+export const insertDraft = async (
+    ctx: Context,
+    accountId: string,
+    { draft, found, accounts }: PreparedDraft,
+): Promise<NoteRow | undefined> => {
+    const author = await findAccount(ctx, accountId);
+    if (author === undefined) throw new Error(`Account ${accountId} doesn't exist`);
+
+    const replyTo = draft.inReplyToId;
+    const parent = replyTo === undefined
+        ? undefined
+        : await visibleOriginal(ctx, replyTo, accountId);
+    if (replyTo !== undefined && parent === undefined) return undefined;
+
+    const html = renderDraft(ctx, draft.text, draft.format, accounts);
+    const note = await insertNote(
+        ctx,
+        {
+            id: ctx.ids(),
+            account_id: accountId,
+            instance_id: null,
+            remote_id: null,
+            visibility: draft.visibility ?? author.default_visibility,
+            content: draft.text,
+            content_format: draft.format,
+            content_html: html,
+            spoiler_text: draft.spoilerText,
+            sensitive: draft.spoilerText !== "" ||
+                (draft.sensitive ?? author.default_sensitive),
+            language: draft.language ?? (author.default_language || null),
+            in_reply_to_id: parent?.id ?? null,
+            in_reply_to_account_id: parent?.account_id ?? null,
+            created_at: ctx.clock.now(),
+            edited_at: null,
+        },
+        [...accounts.values()].map((row) => row.id),
+        found.hashtags,
+    );
+    await useEmojis(ctx, note, found, draft.spoilerText, draft.poll?.options ?? []);
+    await attach(ctx, accountId, note.id, draft.mediaIds ?? []);
+    if (draft.poll) await addPoll(ctx, note.id, draft.poll);
+
+    await countPosted(ctx, note, 1);
+
+    const event: NotePosted = { type: "notes.posted", noteId: note.id };
+    await emit(ctx, event);
+
+    return note;
+};
+
+/**
+ * Posts a status by `accountId`, a local user, and counts it, as {@link prepareDraft} and
+ * {@link insertDraft} do. Returns `undefined` if the status it replies to doesn't exist or
+ * `accountId` may not see it.
  */
 export const postNote = async (
     ctx: Context,
     accountId: string,
     draft: Draft,
 ): Promise<NoteRow | undefined> => {
-    mediaOrPoll((draft.mediaIds ?? []).length > 0, draft.poll !== undefined);
-    const found = scanText(draft.text, draft.format);
-    const accounts = await mentioned(ctx, found.mentions);
-
-    return await ctx.transaction(async (tx) => {
-        const author = await findAccount(tx, accountId);
-        if (author === undefined) throw new Error(`Account ${accountId} doesn't exist`);
-
-        const replyTo = draft.inReplyToId;
-        const parent = replyTo === undefined
-            ? undefined
-            : await visibleOriginal(tx, replyTo, accountId);
-        if (replyTo !== undefined && parent === undefined) return undefined;
-
-        const html = renderDraft(tx, draft.text, draft.format, accounts);
-        const note = await insertNote(
-            tx,
-            {
-                id: tx.ids(),
-                account_id: accountId,
-                instance_id: null,
-                remote_id: null,
-                visibility: draft.visibility ?? author.default_visibility,
-                content: draft.text,
-                content_format: draft.format,
-                content_html: html,
-                spoiler_text: draft.spoilerText,
-                sensitive: draft.spoilerText !== "" ||
-                    (draft.sensitive ?? author.default_sensitive),
-                language: draft.language ?? (author.default_language || null),
-                in_reply_to_id: parent?.id ?? null,
-                in_reply_to_account_id: parent?.account_id ?? null,
-                created_at: tx.clock.now(),
-                edited_at: null,
-            },
-            [...accounts.values()].map((row) => row.id),
-            found.hashtags,
-        );
-        await useEmojis(tx, note, found, draft.spoilerText, draft.poll?.options ?? []);
-        await attach(tx, accountId, note.id, draft.mediaIds ?? []);
-        if (draft.poll) await addPoll(tx, note.id, draft.poll);
-
-        await countPosted(tx, note, 1);
-
-        const event: NotePosted = { type: "notes.posted", noteId: note.id };
-        await emit(tx, event);
-
-        return note;
-    });
+    const prepared = await prepareDraft(ctx, draft);
+    return await ctx.transaction((tx) => insertDraft(tx, accountId, prepared));
 };
 
 /** What a local user changes in a status. Omitted fields stay as they were. */

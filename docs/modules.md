@@ -17,6 +17,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `conversations` | users' direct conversations                  | `conversations.ts`            |
 | `interactions`  | likes, boosts and reactions                  | `likes.ts`, `shares.ts`       |
 | `polls`         | polls on statuses, and votes in them         | `polls.ts`                    |
+| `schedules`     | statuses scheduled to be posted later        | `schedules.ts`                |
 | `emojis`        | custom emojis, local and remote              | `emojis.ts`                   |
 | `media`         | uploads, processing, attachments, cleanup    | `uploads.ts`, `processing.ts` |
 | `notifications` | notifications, single and grouped            | `notifications.ts`            |
@@ -54,6 +55,7 @@ their own.
 | `endorsements`                                                         | `graph`         |
 | `likes`, `reactions`                                                   | `interactions`  |
 | `polls`, `poll_options`, `poll_votes`                                  | `polls`         |
+| `scheduled_notes`                                                      | `schedules`     |
 | `emojis`, `note_emojis`, `account_emojis`                              | `emojis`        |
 | `media`, `note_media`                                                  | `media`         |
 | `notifications`, `notification_policies`, `notification_requests`      | `notifications` |

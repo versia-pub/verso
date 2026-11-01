@@ -17,8 +17,7 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 
 - Unlisted statuses are sent to other instances as public, since Versia has no unlisted visibility.
   Verso keeps them off its own public timelines, but other instances may show them on theirs.
-- Scheduled statuses aren't supported yet. Posting a status with one fails with a `422`, rather than
-  posting it without.
+- Scheduled statuses can't have media yet. Scheduling one with `media_ids` fails with a `422`.
 - A remote poll's counts only change when its instance sends the status again, such as when the poll
   ends, apart from local users' votes. Mastodon also updates them while the poll runs.
 - An edit that leaves out `media_ids` or `poll` keeps the status's media or poll. Mastodon removes

@@ -130,14 +130,13 @@ Deno.test("a status and its warning are held to the limit, with links counting a
     assertEquals((await test.post({ status: "a".repeat(10_001) })).status, 422);
 });
 
-Deno.test("schedules are refused, until Verso has them", async () => {
+Deno.test("a status without a schedule, or with an empty one, is posted now", async () => {
     await using test = await open();
-    const fields = async (body: Record<string, unknown> | string) =>
-        Object.keys((await test.post(body)).body.details ?? {});
 
-    assertEquals(await fields({ status: "Hi", scheduled_at: "2030-01-01T00:00:00Z" }), [
-        "body.scheduled_at",
-    ]);
+    assertEquals(
+        Object.keys((await test.post({ status: "Hi", scheduled_at: "soon" })).body.details),
+        ["body.scheduled_at"],
+    );
 
     const empty = await test.post({ status: "Hi", media_ids: [], poll: null, scheduled_at: null });
     assertEquals(empty.status, 200);
