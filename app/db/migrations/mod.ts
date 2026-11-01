@@ -72,6 +72,7 @@ import { polls } from "./0070_polls.ts";
 import { endedPolls } from "./0071_ended_polls.ts";
 import { scheduledNotes } from "./0072_scheduled_notes.ts";
 import { scheduledNoteMedia } from "./0073_scheduled_note_media.ts";
+import { reports } from "./0074_reports.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -151,4 +152,5 @@ export const migrations: Record<string, Migration> = {
     "0071_ended_polls": endedPolls,
     "0072_scheduled_notes": scheduledNotes,
     "0073_scheduled_note_media": scheduledNoteMedia,
+    "0074_reports": reports,
 };

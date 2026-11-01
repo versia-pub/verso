@@ -27,6 +27,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `markers`       | where a user read up to in a timeline        | `routes.ts`                   |
 | `instances`     | this instance, its keys, remote instances    | `keys.ts`, `reachability.ts`  |
 | `moderation`    | instances Verso doesn't federate with        | `domain_blocks.ts`            |
+| `reports`       | reports of accounts to moderators            | `reports.ts`                  |
 | `admin`         | `verso admin …` commands                     | `cli.ts`                      |
 
 Boosts are statuses that point at the status they boost, so they live in `notes`, not in a table of
@@ -69,6 +70,7 @@ their own.
 | `conversations`, `conversation_notes`                                  | `conversations` |
 | `instances`, `instance_keys`                                           | `instances`     |
 | `domain_blocks`                                                        | `moderation`    |
+| `reports`                                                              | `reports`       |
 | `rate_limits`                                                          | `http`          |
 | `jobs`, `job_pauses`                                                   | `jobs`          |
 

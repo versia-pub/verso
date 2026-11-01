@@ -176,6 +176,7 @@ export const Permissions = z.strictObject({
         "owner:note",
         "owner:notification",
         "owner:reaction",
+        "owner:report",
     ]),
 }).prefault({});
 

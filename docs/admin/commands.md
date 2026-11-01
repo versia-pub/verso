@@ -64,6 +64,22 @@ $ verso admin domains list
 `true` when the config also blocks the domain, in which case unblocking it here does nothing until
 it's removed from the config too.
 
+### `verso admin reports`
+
+Users report accounts, and some of their statuses, from their apps.
+
+| Command                | Does                                                               |
+| ---------------------- | ------------------------------------------------------------------ |
+| `reports list [--all]` | lists the reports no one has dealt with, or every one with `--all` |
+| `reports resolve <id>` | marks a report as dealt with                                       |
+
+```sh
+$ verso admin reports list
+[{"id":"01a189a2-…","reporter":"alice","target":"spam@remote.example","category":"spam",…}]
+```
+
+`rule_ids` are the numbers of the instance's rules, in the order the config lists them.
+
 ### `verso admin roles`
 
 Roles give accounts permissions on top of what `[permissions] default` gives everyone.

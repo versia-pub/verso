@@ -6,6 +6,7 @@ import { createInstance } from "../instances/testing.ts";
 import { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
+import { fileReport } from "../reports/reports.ts";
 import { adminCommand, AdminError } from "./cli.ts";
 
 /** The config the commands are given, which blocks config.example. */
@@ -261,4 +262,31 @@ Deno.test("a domain to block must be a domain name", async () => {
         );
         assertStringIncludes(error.message, "isn't a domain name", bad);
     }
+});
+
+Deno.test("reports are listed until they are resolved, and unknown ones refused", async () => {
+    await using test = await createTestContext();
+    for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
+    const report = await fileReport(test.ctx, "alice", {
+        targetId: "bob",
+        noteIds: [],
+        comment: "Rude",
+        ruleIds: [],
+    }, 0);
+
+    const listed = await admin(test.ctx, "reports", "list");
+    assertEquals(JSON.parse(listed.printed.join("")).map((each: { id: string }) => each.id), [
+        report?.id,
+    ]);
+
+    const resolved = await admin(test.ctx, "reports", "resolve", report?.id ?? "");
+    assertEquals(JSON.parse(resolved.printed.join("")), { id: report?.id, resolved: true });
+    assertEquals((await admin(test.ctx, "reports", "list")).printed, ["[]"]);
+    const all = await admin(test.ctx, "reports", "list", "--all");
+    assertEquals(JSON.parse(all.printed.join("")).map((each: { id: string }) => each.id), [
+        report?.id,
+    ]);
+
+    const error = await assertRejects(() => admin(test.ctx, "reports", "resolve", "x"), AdminError);
+    assertEquals(error.message, "There is no report x");
 });

@@ -25,8 +25,7 @@ behave differently.
 | Search                     | accounts, statuses and hashtags                                         |
 | Instance                   | the instance, rules, policies, custom emoji                             |
 
-Missing so far: reports, trends and announcements. There's no admin API: admins use `verso admin`
-instead.
+Missing so far: trends and announcements. There's no admin API: admins use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -94,7 +93,7 @@ instead.
 | Filter keywords (5 methods)                       | ✅    |                                   |
 | Filter statuses (4 methods)                       | ✅    |                                   |
 | Filters v1 (5 methods)                            | ❌    | Deprecated; use v2                |
-| `POST /api/v1/reports`                            | ❌    |                                   |
+| `POST /api/v1/reports`                            | 🟡    | Not sent to other instances yet   |
 
 ## Statuses
 

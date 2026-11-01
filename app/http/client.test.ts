@@ -467,6 +467,26 @@ Deno.test("a user schedules a status, moves it, and it is posted when due", asyn
     );
 });
 
+Deno.test("a user reports an account and one of its statuses", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const bob = await test.as("bob");
+    const status = await bob.statuses.post({ status: "Buy now" });
+    const bobId = (await bob.accounts.verifyCredentials()).id;
+
+    const report = await alice.reports.create({
+        account_id: bobId,
+        status_ids: [status.id],
+        category: "spam",
+    });
+
+    assertEquals([report.category, report.status_ids, report.target_account.id], [
+        "spam",
+        [status.id],
+        bobId,
+    ]);
+});
+
 Deno.test("a user bookmarks a status, lists it, and removes the bookmark", async () => {
     await using test = await open();
     const alice = await test.as("alice");

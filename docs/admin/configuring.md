@@ -150,6 +150,7 @@ to the client API: other instances can still fetch public statuses over Versia.
 | `owner:media`          | upload media                                                     |
 | `owner:emoji`          | add their own custom emoji                                       |
 | `owner:notification`   | view and dismiss their own notifications                         |
+| `owner:report`         | report accounts and statuses to moderators                       |
 | `blocks`               | see who blocks each account, which moderators may need           |
 | `emojis`               | add, change and delete any custom emoji, and make them global    |
 | `roles`                | create, change and grant lower roles, with permissions they have |

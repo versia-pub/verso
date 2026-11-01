@@ -98,6 +98,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                     "owner:note",
                     "owner:notification",
                     "owner:reaction",
+                    "owner:report",
                 ],
             },
             streaming: { sockets_per_account: 10, subscriptions: 100, tag_length: 100 },

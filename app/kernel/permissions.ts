@@ -50,6 +50,8 @@ export const permissions = [
     "search",
     /** View and dismiss one's own notifications. */
     "owner:notification",
+    /** Report accounts and statuses to the instance's moderators. */
+    "owner:report",
     /**
      * See who blocks each account, which is otherwise only the blocker's to know, as moderators may
      * need to.

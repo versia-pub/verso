@@ -8468,6 +8468,237 @@
                 }
             }
         },
+        "/api/v1/reports": {
+            "post": {
+                "summary": "File a report",
+                "description": "Report problematic accounts and contents to your moderators.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:report` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/reports/#post"
+                },
+                "tags": [
+                    "reports"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:reports"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "account_id": {
+                                        "type": "string"
+                                    },
+                                    "status_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "comment": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
+                                    "forward": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "forward_to_domains": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "category": {
+                                        "$ref": "#/components/schemas/ReportCategory"
+                                    },
+                                    "rule_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "account_id"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "account_id": {
+                                        "type": "string"
+                                    },
+                                    "status_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "comment": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
+                                    "forward": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "forward_to_domains": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "category": {
+                                        "$ref": "#/components/schemas/ReportCategory"
+                                    },
+                                    "rule_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "account_id"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "account_id": {
+                                        "type": "string"
+                                    },
+                                    "status_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "comment": {
+                                        "default": "",
+                                        "type": "string"
+                                    },
+                                    "forward": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "forward_to_domains": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "category": {
+                                        "$ref": "#/components/schemas/ReportCategory"
+                                    },
+                                    "rule_ids": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "account_id"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Report"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses/{id}/reactions/{name}": {
             "put": {
                 "summary": "React to a status with an emoji",
@@ -13383,6 +13614,7 @@
                                                 "read:emoji",
                                                 "search",
                                                 "owner:notification",
+                                                "owner:report",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -13474,6 +13706,7 @@
                                                 "read:emoji",
                                                 "search",
                                                 "owner:notification",
+                                                "owner:report",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -13565,6 +13798,7 @@
                                                 "read:emoji",
                                                 "search",
                                                 "owner:notification",
+                                                "owner:report",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -13735,6 +13969,7 @@
                                                 "read:emoji",
                                                 "search",
                                                 "owner:notification",
+                                                "owner:report",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -13823,6 +14058,7 @@
                                                 "read:emoji",
                                                 "search",
                                                 "owner:notification",
+                                                "owner:report",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -13911,6 +14147,7 @@
                                                 "read:emoji",
                                                 "search",
                                                 "owner:notification",
+                                                "owner:report",
                                                 "blocks",
                                                 "emojis",
                                                 "roles"
@@ -19579,6 +19816,93 @@
                     "domain_blocking",
                     "endorsed",
                     "note"
+                ]
+            },
+            "Report": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "action_taken": {
+                        "type": "boolean"
+                    },
+                    "action_taken_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/ReportCategory"
+                    },
+                    "comment": {
+                        "type": "string"
+                    },
+                    "forwarded": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "status_ids": {
+                        "anyOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "rule_ids": {
+                        "anyOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "target_account": {
+                        "$ref": "#/components/schemas/Account"
+                    }
+                },
+                "required": [
+                    "id",
+                    "action_taken",
+                    "action_taken_at",
+                    "category",
+                    "comment",
+                    "forwarded",
+                    "created_at",
+                    "status_ids",
+                    "rule_ids",
+                    "target_account"
+                ]
+            },
+            "ReportCategory": {
+                "type": "string",
+                "enum": [
+                    "spam",
+                    "legal",
+                    "violation",
+                    "other"
                 ]
             },
             "Role": {
