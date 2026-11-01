@@ -1,6 +1,6 @@
 import { Context, ScheduledStatus, Status, StatusEdit, StatusSource } from "@versia/client-api";
 import { z } from "zod";
-import { NotFound, Unprocessable } from "../http/errors.ts";
+import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Flag, Ids, Integer, Strings, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config_sections.ts";
@@ -133,30 +133,24 @@ const draft = (limits: Limits) =>
         .refine(limited(limits).check, limited(limits).error);
 
 /** What a scheduled status will be posted with, as `body` asks. */
-const paramsOf = (body: z.output<ReturnType<typeof draft>>): ScheduledParams => {
-    if (body.media_ids.length > 0) {
-        throw new Unprocessable("Scheduled statuses can't have media yet");
-    }
-
-    return {
-        text: body.status,
-        content_type: body.content_type,
-        spoiler_text: body.spoiler_text,
-        sensitive: body.sensitive ?? null,
-        visibility: body.visibility ?? null,
-        language: body.language || null,
-        in_reply_to_id: body.in_reply_to_id ?? null,
-        media_ids: null,
-        poll: body.poll
-            ? {
-                options: body.poll.options,
-                expires_in: body.poll.expiresIn,
-                multiple: body.poll.multiple,
-                hide_totals: body.poll.hideTotals,
-            }
-            : null,
-    };
-};
+const paramsOf = (body: z.output<ReturnType<typeof draft>>): ScheduledParams => ({
+    text: body.status,
+    content_type: body.content_type,
+    spoiler_text: body.spoiler_text,
+    sensitive: body.sensitive ?? null,
+    visibility: body.visibility ?? null,
+    language: body.language || null,
+    in_reply_to_id: body.in_reply_to_id ?? null,
+    media_ids: body.media_ids.length > 0 ? body.media_ids : null,
+    poll: body.poll
+        ? {
+            options: body.poll.options,
+            expires_in: body.poll.expiresIn,
+            multiple: body.poll.multiple,
+            hide_totals: body.poll.hideTotals,
+        }
+        : null,
+});
 
 /**
  * What an edited status may say. Omitted fields stay as they were, including the text format. A
@@ -200,7 +194,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 const row = await scheduleNote(ctx, viewer.accountId, scheduledAt, paramsOf(body));
                 if (row === undefined) throw new NotFound("The status replied to doesn't exist");
 
-                return { status: 200, body: renderScheduled([row])[0] };
+                return { status: 200, body: (await renderScheduled(ctx, [row]))[0] };
             }
 
             const note = await postNote(ctx, viewer.accountId, {

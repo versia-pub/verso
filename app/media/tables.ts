@@ -64,3 +64,14 @@ export type NoteMediaTable = {
     media_id: string;
     position: number;
 };
+
+/**
+ * Media reserved for a scheduled status, at its position among its media, counting from 0, until it
+ * is posted with them attached.
+ */
+export type ScheduledNoteMediaTable = {
+    scheduled_note_id: string;
+    /** Each media row is reserved for at most one scheduled status. */
+    media_id: string;
+    position: number;
+};

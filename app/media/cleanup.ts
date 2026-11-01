@@ -1,6 +1,6 @@
 /**
- * Removing what nothing uses: media, local or remote, that no status, account or emoji used within
- * the time the settings give, and the files that no media uses.
+ * Removing what nothing uses: media, local or remote, that no status, scheduled status, account or
+ * emoji used within the time the settings give, and the files that no media uses.
  * @module
  */
 import { lockKey } from "../db/locking.ts";

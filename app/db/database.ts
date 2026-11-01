@@ -22,7 +22,7 @@ import type { LikesTable, ReactionsTable } from "../interactions/tables.ts";
 import type { RateLimitsTable } from "../http/tables.ts";
 import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
 import type { JobPausesTable, JobsTable } from "../jobs/tables.ts";
-import type { MediaTable, NoteMediaTable } from "../media/tables.ts";
+import type { MediaTable, NoteMediaTable, ScheduledNoteMediaTable } from "../media/tables.ts";
 import type {
     BookmarksTable,
     NoteMentionsTable,
@@ -108,6 +108,7 @@ export type Database = {
     remote_note_totals: RemoteNoteTotalsTable;
     roles: RolesTable;
     scheduled_notes: ScheduledNotesTable;
+    scheduled_note_media: ScheduledNoteMediaTable;
     tag_follows: TagFollowsTable;
     tags: TagsTable;
     thread_mutes: ThreadMutesTable;

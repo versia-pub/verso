@@ -1,6 +1,7 @@
 /**
  * Media attached to statuses. Each attachment is an upload by the status's author, attached to at
- * most one status, and only once it is processed (unless processing failed).
+ * most one status, and only once it is processed (unless processing failed). Uploads can also be
+ * reserved for a scheduled status, until it is posted with them.
  * @module
  */
 import { Unprocessable } from "../http/errors.ts";
@@ -10,24 +11,22 @@ import {
     attachmentsOf,
     deleteAttachments,
     insertAttachments,
+    insertReservations,
     unattachedUploads,
 } from "./attachment_queries.ts";
 import { type MediaRow, type RemoteMedia, saveRemoteMedia } from "./media_queries.ts";
 import { describeUpload, processingFailed, type UploadDescription } from "./uploads.ts";
 
 /**
- * Attaches the uploads `mediaIds`, in that order, to the status `noteId` by `accountId`, as
- * Mastodon does. Each must be an upload by that account, not attached to another status, and
- * processed. An id given twice is attached once. Run it in the transaction that creates the status;
- * it ends the transaction otherwise.
+ * The uploads `mediaIds`, each once, in order, if each is an upload by `accountId` that is neither
+ * attached to a status nor reserved for a scheduled one, and is processed, as Mastodon requires.
  * @see https://docs.joinmastodon.org/methods/statuses/#create
  */
-export const attach = async (
+const usableUploads = async (
     ctx: Context,
     accountId: string,
-    noteId: string,
     mediaIds: readonly string[],
-): Promise<void> => {
+): Promise<string[]> => {
     const ids = [...new Set(mediaIds)];
 
     const uploads = new Map(
@@ -47,7 +46,36 @@ export const attach = async (
     });
     if (failed.length > 0) throw new Unprocessable(`Media failed to process: ${failed.join(", ")}`);
 
-    await insertAttachments(ctx, noteId, ids);
+    return ids;
+};
+
+/**
+ * Attaches the uploads `mediaIds`, in that order, to the status `noteId` by `accountId`, as
+ * Mastodon does. Each must be usable, as {@link usableUploads} says. An id given twice is attached
+ * once. Run it in the transaction that creates the status; it ends the transaction otherwise.
+ */
+export const attach = async (
+    ctx: Context,
+    accountId: string,
+    noteId: string,
+    mediaIds: readonly string[],
+): Promise<void> => {
+    await insertAttachments(ctx, noteId, await usableUploads(ctx, accountId, mediaIds));
+};
+
+/**
+ * Reserves the uploads `mediaIds`, in that order, for the scheduled status `scheduledId` by
+ * `accountId`, so that nothing else attaches them and they aren't removed as unused. Each must be
+ * usable, as for {@link attach}. An id given twice is reserved once. The reservation ends with the
+ * scheduled status, so they can be attached when it is posted.
+ */
+export const reserve = async (
+    ctx: Context,
+    accountId: string,
+    scheduledId: string,
+    mediaIds: readonly string[],
+): Promise<void> => {
+    await insertReservations(ctx, scheduledId, await usableUploads(ctx, accountId, mediaIds));
 };
 
 /** A change to how a media attachment is described, by media id. */

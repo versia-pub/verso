@@ -13,8 +13,9 @@ export const hasAttachments = (
     );
 
 /**
- * The ids in `ids` that are uploads by `accountId` and not attached to a status. Images scaled down
- * to fit a box, such as avatars, are left out, as they aren't attachments.
+ * The ids in `ids` that are uploads by `accountId`, not attached to a status nor reserved for a
+ * scheduled one. Images scaled down to fit a box, such as avatars, are left out, as they aren't
+ * attachments.
  */
 export const unattachedUploads = async (
     ctx: Context,
@@ -28,13 +29,16 @@ export const unattachedUploads = async (
         .where("account_id", "=", accountId)
         .where("fit_width", "is", null)
         .where((eb) =>
-            eb.not(eb.exists(
-                eb.selectFrom("note_media").select("media_id").whereRef(
-                    "note_media.media_id",
-                    "=",
-                    "media.id",
+            eb.not(eb.or([
+                eb.exists(
+                    eb.selectFrom("note_media").select("media_id")
+                        .whereRef("note_media.media_id", "=", "media.id"),
                 ),
-            ))
+                eb.exists(
+                    eb.selectFrom("scheduled_note_media").select("media_id")
+                        .whereRef("scheduled_note_media.media_id", "=", "media.id"),
+                ),
+            ]))
         )
         .execute();
 };
@@ -50,6 +54,45 @@ export const insertAttachments = async (
     await ctx.db.insertInto("note_media")
         .values(mediaIds.map((media_id, position) => ({ note_id: noteId, media_id, position })))
         .execute();
+};
+
+/** Reserves the media `mediaIds` for the scheduled status `scheduledId`, in that order. */
+export const insertReservations = async (
+    ctx: Context,
+    scheduledId: string,
+    mediaIds: readonly string[],
+): Promise<void> => {
+    if (mediaIds.length === 0) return;
+
+    await ctx.db.insertInto("scheduled_note_media")
+        .values(mediaIds.map((media_id, position) => ({
+            scheduled_note_id: scheduledId,
+            media_id,
+            position,
+        })))
+        .execute();
+};
+
+/** The media reserved for each of `scheduledIds`, in order, grouped by scheduled status. */
+export const reservationsOf = async (
+    ctx: Context,
+    scheduledIds: readonly string[],
+): Promise<Map<string, MediaRow[]>> => {
+    const reserved = new Map<string, MediaRow[]>();
+    if (scheduledIds.length === 0) return reserved;
+
+    const rows = await ctx.db.selectFrom("scheduled_note_media")
+        .innerJoin("media", "media.id", "scheduled_note_media.media_id")
+        .selectAll("media")
+        .select("scheduled_note_media.scheduled_note_id")
+        .where("scheduled_note_media.scheduled_note_id", "in", scheduledIds)
+        .orderBy("scheduled_note_media.position")
+        .execute();
+    for (const { scheduled_note_id, ...row } of rows) {
+        reserved.set(scheduled_note_id, [...reserved.get(scheduled_note_id) ?? [], row]);
+    }
+
+    return reserved;
 };
 
 /** Detaches all media from the status `noteId`. */

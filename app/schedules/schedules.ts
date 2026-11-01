@@ -6,7 +6,8 @@
 import { lockKey } from "../db/locking.ts";
 import { Unprocessable } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
-import type { Draft } from "../notes/notes.ts";
+import { reserve } from "../media/attachments.ts";
+import { type Draft, mediaOrPoll } from "../notes/notes.ts";
 import { visibleOriginal } from "../notes/visibility.ts";
 import {
     countScheduled,
@@ -56,8 +57,9 @@ const checkSchedule = async (
 };
 
 /**
- * Schedules a status by `accountId`, a local user, to be posted with `params` at `scheduledAt`.
- * Returns `undefined` if the status it replies to doesn't exist or `accountId` may not see it.
+ * Schedules a status by `accountId`, a local user, to be posted with `params` at `scheduledAt`, and
+ * reserves its media until then. Returns `undefined` if the status it replies to doesn't exist or
+ * `accountId` may not see it.
  */
 export const scheduleNote = (
     ctx: Context,
@@ -69,6 +71,9 @@ export const scheduleNote = (
         // So that two at once can't both be within the limits.
         await lockKey(tx.db, `schedule:${accountId}`);
 
+        // Each once, as they are reserved and attached.
+        const mediaIds = [...new Set(params.media_ids ?? [])];
+        mediaOrPoll(mediaIds.length > 0, params.poll !== null);
         const replyTo = params.in_reply_to_id;
         if (replyTo !== null && await visibleOriginal(tx, replyTo, accountId) === undefined) {
             return undefined;
@@ -79,10 +84,11 @@ export const scheduleNote = (
             id: tx.ids(),
             account_id: accountId,
             scheduled_at: scheduledAt,
-            params,
+            params: { ...params, media_ids: mediaIds.length > 0 ? mediaIds : null },
             created_at: tx.clock.now(),
         };
         await insertScheduled(tx, row);
+        await reserve(tx, accountId, row.id, mediaIds);
         return row;
     });
 

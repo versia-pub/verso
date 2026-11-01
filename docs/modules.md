@@ -57,7 +57,7 @@ their own.
 | `polls`, `poll_options`, `poll_votes`                                  | `polls`         |
 | `scheduled_notes`                                                      | `schedules`     |
 | `emojis`, `note_emojis`, `account_emojis`                              | `emojis`        |
-| `media`, `note_media`                                                  | `media`         |
+| `media`, `note_media`, `scheduled_note_media`                          | `media`         |
 | `notifications`, `notification_policies`, `notification_requests`      | `notifications` |
 | `notification_permissions`                                             | `notifications` |
 | `push_subscriptions`, `vapid_keys`                                     | `push`          |

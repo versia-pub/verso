@@ -3,6 +3,10 @@ import { createLocalAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { queues, tasks } from "../jobs/queues.ts";
+import { removeUnusedMedia } from "../media/cleanup.ts";
+import { findMedia } from "../media/media_queries.ts";
+import { mediaRoutes } from "../media/routes.ts";
+import { upload } from "../media/uploads.ts";
 import { noteRoutes } from "../notes/routes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { createNote } from "../notes/testing.ts";
@@ -21,7 +25,11 @@ const open = async () => {
     const test = await createTestContext();
     const app = createTestApp(
         test.ctx,
-        [...noteRoutes(defaultSettings().limits), ...scheduledRoutes],
+        [
+            ...noteRoutes(defaultSettings().limits),
+            ...scheduledRoutes,
+            ...mediaRoutes(defaultSettings().media, defaultSettings().limits),
+        ],
         { checkResponses: true },
     );
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
@@ -86,11 +94,24 @@ const open = async () => {
             .execute();
     };
 
+    /** The id of a file `as` uploads, processed at once, or not if it is an image. */
+    const uploaded = async (as = "alice", image = false) => {
+        const bytes = image
+            ? new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+            : new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+        const file = {
+            file: new Blob([bytes]),
+            mediaType: image ? "image/png" : "application/zip",
+        };
+
+        return (await upload(test.ctx, as, file)).id;
+    };
+
     const posted = () =>
         test.ctx.db.selectFrom("notes").selectAll().where("account_id", "=", "alice")
             .orderBy("id").execute();
 
-    return { ...test, request, inMs, schedule, publish, insert, posted };
+    return { ...test, request, inMs, schedule, publish, insert, uploaded, posted };
 };
 
 Deno.test("a status scheduled for later is kept, with what it will be posted with", async () => {
@@ -149,19 +170,121 @@ Deno.test("a time already past posts now, but one less than 5 minutes ahead is r
     assertEquals((await test.schedule(test.inMs(5 * minute + 1))).status, 200);
 });
 
-Deno.test("a reply to a status its author can't see, or with media, can't be scheduled", async () => {
+Deno.test("a reply to a status its author can't see can't be scheduled", async () => {
     await using test = await open();
     const hidden = await createNote(test.ctx, "bob", { visibility: "direct" });
 
     const reply = await test.schedule(test.inMs(day), { in_reply_to_id: hidden.id });
-    assertEquals(reply.status, 404);
 
-    const media = await test.schedule(test.inMs(day), { media_ids: ["m1"] });
-    assertEquals([media.status, media.body.error_description], [
-        422,
-        "Scheduled statuses can't have media yet",
+    assertEquals(reply.status, 404);
+    assertEquals((await test.request("GET", "/api/v1/scheduled_statuses")).body, []);
+});
+
+Deno.test("a scheduled status keeps its media, in order, and is posted with them", async () => {
+    await using test = await open();
+    const [first, second, third] = [
+        await test.uploaded(),
+        await test.uploaded(),
+        await test.uploaded(),
+    ];
+
+    const scheduled = await test.schedule(test.inMs(day), { media_ids: [second, first, second] });
+    const later = await test.schedule(test.inMs(2 * day), { media_ids: [third] });
+
+    assertEquals(scheduled.body.params.media_ids, [second, first]);
+    assertEquals(scheduled.body.media_attachments.map((each: { id: string }) => each.id), [
+        second,
+        first,
+    ]);
+    assertEquals(
+        (await test.request("GET", "/api/v1/scheduled_statuses")).body,
+        [later.body, scheduled.body],
+    );
+
+    // Reserved media can still be described.
+    const described = await test.request("PUT", `/api/v1/media/${first}`, { description: "A" });
+    assertEquals(described.body.description, "A");
+
+    await test.publish(day);
+
+    const [note] = await test.posted();
+    const attached = await test.ctx.db.selectFrom("note_media")
+        .innerJoin("media", "media.id", "note_media.media_id")
+        .select(["media.id", "media.description"])
+        .where("note_id", "=", note.id)
+        .orderBy("position")
+        .execute();
+    assertEquals(attached, [{ id: second, description: null }, { id: first, description: "A" }]);
+    // Only what is still scheduled is reserved.
+    assertEquals(
+        await test.ctx.db.selectFrom("scheduled_note_media").select("media_id").execute(),
+        [{ media_id: third }],
+    );
+});
+
+Deno.test("media reserved for a scheduled status is used by nothing else, until it is cancelled", async () => {
+    await using test = await open();
+    const file = await test.uploaded();
+    const scheduled = await test.schedule(test.inMs(2 * day), { media_ids: [file] });
+    const other = await test.request("POST", "/api/v1/statuses", { status: "Now" });
+
+    const errors = [
+        await test.request("POST", "/api/v1/statuses", { status: "Now", media_ids: [file] }),
+        await test.request("PUT", `/api/v1/statuses/${other.body.id}`, {
+            status: "Now",
+            media_ids: [file],
+        }),
+        await test.schedule(test.inMs(day), { media_ids: [file] }),
+    ].map((response) => [response.status, response.body.error_description]);
+    assertEquals(errors, Array(3).fill([422, `Media not found: ${file}`]));
+
+    // Not removed as unused, however long it waits.
+    test.clock.advance(day);
+    await removeUnusedMedia(test.ctx);
+    assertEquals((await findMedia(test.ctx, file))?.id, file);
+
+    await test.request("DELETE", `/api/v1/scheduled_statuses/${scheduled.body.id}`);
+    const now = await test.request("POST", "/api/v1/statuses", {
+        status: "Now",
+        media_ids: [file],
+    });
+    assertEquals(now.body.media_attachments.map((each: { id: string }) => each.id), [file]);
+});
+
+Deno.test("media that is cancelled with its scheduled status is removed as unused", async () => {
+    await using test = await open();
+    const file = await test.uploaded();
+    const scheduled = await test.schedule(test.inMs(2 * day), { media_ids: [file] });
+
+    await test.request("DELETE", `/api/v1/scheduled_statuses/${scheduled.body.id}`);
+    test.clock.advance(day);
+    await removeUnusedMedia(test.ctx);
+
+    assertEquals(await findMedia(test.ctx, file), undefined);
+});
+
+Deno.test("media still being processed, someone else's, or with a poll can't be scheduled", async () => {
+    await using test = await open();
+    const [processing, bobs, file] = [
+        await test.uploaded("alice", true),
+        await test.uploaded("bob"),
+        await test.uploaded(),
+    ];
+    const poll = { options: ["Yes", "No"], expires_in: 600 };
+
+    const errors = [
+        await test.schedule(test.inMs(day), { media_ids: [processing] }),
+        await test.schedule(test.inMs(day), { media_ids: [bobs] }),
+        await test.schedule(test.inMs(day), { media_ids: [file], poll }),
+    ].map((response) => [response.status, response.body.error_description]);
+
+    assertEquals(errors, [
+        [422, `Media still being processed: ${processing}`],
+        [422, `Media not found: ${bobs}`],
+        [422, "A status can't have both media and a poll"],
     ]);
     assertEquals((await test.request("GET", "/api/v1/scheduled_statuses")).body, []);
+    assertEquals(await test.ctx.db.selectFrom("scheduled_note_media").selectAll().execute(), []);
 });
 
 Deno.test("an account may schedule 25 statuses a day, in UTC, and 300 in all", async () => {

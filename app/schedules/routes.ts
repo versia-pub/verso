@@ -48,7 +48,7 @@ export const scheduledRoutes: readonly Route[] = [
 
             return {
                 status: 200,
-                body: renderScheduled(rows),
+                body: await renderScheduled(ctx, rows),
                 cursors: cursorsOf(rows, query, (row) => row.id),
             };
         },
@@ -66,7 +66,7 @@ export const scheduledRoutes: readonly Route[] = [
             const row = await findScheduled(ctx, viewer.accountId, params.id);
             if (row === undefined) throw new NotFound();
 
-            return { status: 200, body: renderScheduled([row])[0] };
+            return { status: 200, body: (await renderScheduled(ctx, [row]))[0] };
         },
     }),
     defineRoute({
@@ -88,7 +88,7 @@ export const scheduledRoutes: readonly Route[] = [
             const row = await reschedule(ctx, viewer.accountId, params.id, body.scheduled_at);
             if (row === undefined) throw new NotFound();
 
-            return { status: 200, body: renderScheduled([row])[0] };
+            return { status: 200, body: (await renderScheduled(ctx, [row]))[0] };
         },
     }),
     defineRoute({

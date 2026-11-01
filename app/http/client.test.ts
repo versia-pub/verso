@@ -437,9 +437,17 @@ Deno.test("a user schedules a status, moves it, and it is posted when due", asyn
     const alice = await test.as("alice");
     const at = (ms: number) => new Date(test.clock.now().getTime() + ms).toISOString();
 
-    const scheduled = await alice.statuses.schedule({ status: "Later" }, at(3600_000));
+    const file = new File([png(8, 8)], "red.png", { type: "image/png" });
+    const uploaded = await alice.media.upload({ file });
+    await drain(test.ctx, queues);
+
+    const scheduled = await alice.statuses.schedule(
+        { status: "Later", media_ids: [uploaded.id] },
+        at(3600_000),
+    );
     const cancelled = await alice.statuses.schedule({ status: "Never" }, at(3600_000));
     assertEquals(scheduled.params.text, "Later");
+    assertEquals(scheduled.media_attachments.map((media) => media.id), [uploaded.id]);
     assertEquals((await alice.scheduledStatuses.get(scheduled.id)).id, scheduled.id);
 
     const moved = await alice.scheduledStatuses.update(scheduled.id, at(7200_000));
@@ -452,9 +460,10 @@ Deno.test("a user schedules a status, moves it, and it is posted when due", asyn
     test.clock.advance(7200_000);
     await publishDue(test.ctx);
     assertEquals((await alice.scheduledStatuses.list()).items, []);
+    const [posted] = (await alice.accounts.statuses("alice")).items;
     assertEquals(
-        (await alice.accounts.statuses("alice")).items.map((status) => status.content),
-        ["<p>Later</p>"],
+        [posted.content, posted.media_attachments.map((media) => media.id)],
+        ["<p>Later</p>", [uploaded.id]],
     );
 });
 

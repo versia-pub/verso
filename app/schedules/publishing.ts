@@ -25,7 +25,7 @@ const publish = async (ctx: Context, row: ScheduledNoteRow) => {
     try {
         const prepared = await prepareDraft(ctx, draftOf(row.params));
         const posted = await ctx.transaction(async (tx) => {
-            // Posted already.
+            // Posted already. Removing it ends its media's reservation, so they can be attached.
             if (!await deleteScheduled(tx, row.id)) return true;
             return await insertDraft(tx, row.account_id, prepared) !== undefined;
         });

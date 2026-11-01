@@ -100,7 +100,7 @@ instead.
 
 | Method                                   | Verso | Notes                          |
 | ---------------------------------------- | ----- | ------------------------------ |
-| `POST /api/v1/statuses`                  | 🟡    | No media in scheduled statuses |
+| `POST /api/v1/statuses`                  | ✅    |                                |
 | `GET /api/v1/statuses/:id`               | ✅    |                                |
 | `GET /api/v1/statuses`                   | ✅    | Several statuses by id         |
 | `PUT /api/v1/statuses/:id`               | ✅    |                                |

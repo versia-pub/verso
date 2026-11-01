@@ -138,7 +138,7 @@ const useEmojis = async (
 };
 
 /** Refuses a status that would have both media and a poll, as Mastodon does. */
-const mediaOrPoll = (media: boolean, poll: boolean) => {
+export const mediaOrPoll = (media: boolean, poll: boolean): void => {
     if (media && poll) throw new Unprocessable("A status can't have both media and a poll");
 };
 
