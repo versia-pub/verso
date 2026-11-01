@@ -66,7 +66,8 @@ it's removed from the config too.
 
 ### `verso admin reports`
 
-Users report accounts, and some of their statuses, from their apps.
+Users report accounts, and some of their statuses, from their apps. Other instances send reports
+too, with no `reporter`, but the `instance` that sent them.
 
 | Command                | Does                                                               |
 | ---------------------- | ------------------------------------------------------------------ |

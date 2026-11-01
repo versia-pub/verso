@@ -3,6 +3,7 @@ import { CustomEmojis } from "./custom_emojis.ts";
 import { Dislike, Like } from "./likes.ts";
 import { Polls, Vote } from "./polls.ts";
 import { Reaction } from "./reactions.ts";
+import { Report } from "./reports.ts";
 import { Share } from "./share.ts";
 
 const base = {
@@ -106,4 +107,31 @@ Deno.test("a poll's options are text, and its votes are counts", () => {
 
     const [, vote] = examples[4];
     assertEquals(Vote.safeParse({ ...vote, option: -1 }).success, false);
+});
+
+// The spec's example of a Report, which is transient, so it has no id.
+const report = {
+    type: "pub.versia:reports/Report",
+    created_at: "2021-01-01T00:00:00.000Z",
+    author: "6f3001a1-641b-4763-a9c4-a089852eec84",
+    reported: [
+        "test.com:46f936a3-9a1e-4b02-8cde-0902a89769fa",
+        "test.com:213d7c56-fb9b-4646-a4d2-7d70aa7d106a",
+    ],
+    tags: ["spam", "harassment"],
+    comment: "This is spam.",
+};
+
+Deno.test("a Report may be anonymous, and needs only what it reports and its tags", () => {
+    assertEquals(Report.safeParse(report).success, true);
+    for (const key of ["author", "comment"]) {
+        assertEquals(Report.safeParse({ ...report, [key]: undefined }).success, true, key);
+        assertEquals(Report.safeParse({ ...report, [key]: null }).success, true, key);
+    }
+
+    for (const key of ["type", "created_at", "reported", "tags"]) {
+        assertEquals(Report.safeParse({ ...report, [key]: undefined }).success, false, key);
+    }
+    assertEquals(Report.safeParse({ ...report, reported: ["bad id!"] }).success, false);
+    assertEquals(Report.safeParse({ ...report, author: "bad id!" }).success, false);
 });

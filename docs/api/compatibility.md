@@ -93,7 +93,7 @@ Missing so far: trends and announcements. There's no admin API: admins use `vers
 | Filter keywords (5 methods)                       | ✅    |                                   |
 | Filter statuses (4 methods)                       | ✅    |                                   |
 | Filters v1 (5 methods)                            | ❌    | Deprecated; use v2                |
-| `POST /api/v1/reports`                            | 🟡    | Not sent to other instances yet   |
+| `POST /api/v1/reports`                            | ✅    |                                   |
 
 ## Statuses
 

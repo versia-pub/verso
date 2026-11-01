@@ -70,7 +70,8 @@ that ended, as it has already answered 202.
 
 The dedupe key stops a replayed request from being applied twice. Some types are `resendable`, such
 as a user whose profile changed and then changed back. For those, the key includes the signature, so
-only an identical request counts as a duplicate.
+only an identical request counts as a duplicate. A transient entity that Verso stores, such as a
+Report, has no id to tell it by, so it is stored with a hash of itself, in case its job runs again.
 
 `Delete` is handled in [`app/federation/delete.ts`](../app/federation/delete.ts), which calls
 `prepareDelete` and `deleteRemote` on the deleted entity's type.

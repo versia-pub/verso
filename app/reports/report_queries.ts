@@ -8,10 +8,29 @@ export const insertReport = async (ctx: Context, row: ReportRow): Promise<void> 
     await ctx.db.insertInto("reports").values(row).execute();
 };
 
+/** Saves a report from another instance, unless it was already received. */
+export const insertReceivedReport = async (ctx: Context, row: ReportRow): Promise<void> => {
+    await ctx.db.insertInto("reports").values(row)
+        .onConflict((conflict) =>
+            conflict.columns(["instance_id", "digest", "target_account_id"]).doNothing()
+        )
+        .execute();
+};
+
+export const findReport = (ctx: Context, id: string): Promise<ReportRow | undefined> =>
+    ctx.db.selectFrom("reports").selectAll().where("id", "=", id).executeTakeFirst();
+
+/** A report, with the domain of the instance that sent it, if one did. */
+export type ListedReport = ReportRow & { readonly instance: string | null };
+
 /** Every report, or only those no moderator has dealt with yet, the first filed first. */
-export const listReports = (ctx: Context, unresolvedOnly: boolean): Promise<ReportRow[]> => {
-    let query = ctx.db.selectFrom("reports").selectAll().orderBy("id");
-    if (unresolvedOnly) query = query.where("resolved_at", "is", null);
+export const listReports = (ctx: Context, unresolvedOnly: boolean): Promise<ListedReport[]> => {
+    let query = ctx.db.selectFrom("reports")
+        .leftJoin("instances", "instances.id", "reports.instance_id")
+        .selectAll("reports")
+        .select("instances.domain as instance")
+        .orderBy("reports.id");
+    if (unresolvedOnly) query = query.where("reports.resolved_at", "is", null);
 
     return query.execute();
 };

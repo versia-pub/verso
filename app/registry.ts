@@ -9,6 +9,7 @@ import { noteReactionCollections, reactionType } from "./interactions/reaction_f
 import { noteShareCollections, shareType } from "./interactions/share_federation.ts";
 import { noteCollections, noteType, removeNotesOfDeletedUser } from "./notes/federation.ts";
 import { voteType } from "./polls/federation.ts";
+import { reportType } from "./reports/federation.ts";
 
 /** Users, with the collections other modules add, and their statuses removed before the user is. */
 const user = {
@@ -38,9 +39,9 @@ const types = [user, note, ...likeTypes, shareType, reactionType, voteType];
 
 /**
  * Every Versia entity type Verso supports: the ones it stores, Delete, which deletes them, the
- * transient ones that follows are sent as, and the extensions that add no types.
+ * transient ones that follows and reports are sent as, and the extensions that add no types.
  */
 export const registry = createRegistry(
-    [...types, deleteType(types), ...followTypes],
+    [...types, deleteType(types), ...followTypes, reportType],
     [v0_6.customEmojisKey, messagingExtension],
 );

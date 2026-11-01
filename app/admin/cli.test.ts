@@ -272,6 +272,7 @@ Deno.test("reports are listed until they are resolved, and unknown ones refused"
         noteIds: [],
         comment: "Rude",
         ruleIds: [],
+        forward: false,
     }, 0);
 
     const listed = await admin(test.ctx, "reports", "list");

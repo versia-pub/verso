@@ -20,6 +20,7 @@ import { blockedDomainNames } from "./moderation/domain_block_queries.ts";
 import { noteDeliveries } from "./notes/federation.ts";
 import { notifyOf } from "./notifications/notifications.ts";
 import { voteDeliveries } from "./polls/federation.ts";
+import { reportDeliveries } from "./reports/federation.ts";
 import { uncountNotesOf } from "./notes/removal.ts";
 import { vapidKey } from "./push/keys.ts";
 import { queuePushes } from "./push/pushes.ts";
@@ -46,6 +47,7 @@ export const subscribers: readonly Subscriber[] = [
     shareDeliveries,
     reactionDeliveries,
     voteDeliveries,
+    reportDeliveries,
     undoReactionsWithDeletedEmoji,
     notifyOf,
     trackConversations,

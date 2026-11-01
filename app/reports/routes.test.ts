@@ -55,7 +55,7 @@ Deno.test("a report of an account and its statuses is kept for moderators", asyn
         action_taken_at: null,
         category: "spam",
         comment: "Spam",
-        // Not sent to other instances yet.
+        // bob is local, so it isn't sent anywhere.
         forwarded: false,
         created_at: test.clock.now().toISOString(),
         status_ids: [second.id, first.id],
@@ -66,6 +66,7 @@ Deno.test("a report of an account and its statuses is kept for moderators", asyn
         id: filed.body.id,
         created_at: test.clock.now().toISOString(),
         reporter: "alice",
+        instance: null,
         target: "bob",
         category: "spam",
         comment: "Spam",

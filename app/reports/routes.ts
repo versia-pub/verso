@@ -10,10 +10,7 @@ import { fileReport } from "./reports.ts";
 /** At most this many characters, as on Mastodon. */
 const commentLimit = 1000;
 
-/**
- * Filing reports, with the rules in `instance` to say were broken. They aren't sent on to other
- * instances yet, so `forward` and `forward_to_domains` are accepted but do nothing.
- */
+/** Filing reports, with the rules in `instance` to say were broken. */
 export const reportRoutes = (instance: Pick<Config["instance"], "rules">): readonly Route[] => [
     defineRoute({
         method: "POST",
@@ -40,6 +37,8 @@ export const reportRoutes = (instance: Pick<Config["instance"], "rules">): reado
                 comment: body.comment,
                 category: body.category,
                 ruleIds: body.rule_ids,
+                forward: body.forward,
+                forwardToDomains: body.forward_to_domains,
             }, instance.rules.length);
             if (report === undefined) throw new NotFound();
 
