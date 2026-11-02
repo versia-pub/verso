@@ -58,6 +58,8 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/featured_tags/suggestions": (c) => c.featuredTags.suggestions(),
     "GET /api/v1/accounts/{id}/featured_tags": (c) => c.accounts.featuredTags("1"),
     "GET /api/v1/tags/{name}": (c) => c.tags.get("cats"),
+    "GET /api/v2/suggestions": (c) => c.suggestions.list(),
+    "DELETE /api/v1/suggestions/{id}": (c) => c.suggestions.dismiss("1"),
     "GET /api/v1/trends/tags": (c) => c.trends.tags(),
     "GET /api/v1/trends/statuses": (c) => c.trends.statuses(),
     "POST /api/v1/tags/{name}/follow": (c) => c.tags.follow("cats"),

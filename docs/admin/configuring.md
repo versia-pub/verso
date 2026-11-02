@@ -71,6 +71,11 @@ Apps can list trending hashtags and statuses, unless you set `show_trends` to `f
 trend once you approve them, as [moderating](moderating.md) says, unless you set
 `trendable_by_default` to `true`.
 
+Apps suggest accounts to follow: the ones you list in `suggested_accounts`, such as
+`["alice",
+"bob@b.example"]`, and the ones followed by those a user follows. Verso must already know
+the remote ones.
+
 `extended_description`, `privacy_policy` and `terms_of_service` are plain text, with a blank line
 between paragraphs, and the date they last changed, unquoted. It's easiest to keep them in files and
 read them with `${file:…}`.

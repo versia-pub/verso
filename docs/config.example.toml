@@ -140,6 +140,8 @@ rules = [
 # approves them (`verso admin trends`).
 # show_trends = true
 # trendable_by_default = false
+# Accounts apps suggest to everyone who doesn't follow them, by address. Remote ones must be known.
+# suggested_accounts = ["alice", "bob@b.example"]
 
 # Long texts, in plain text with a blank line between paragraphs, and the day they last changed.
 [instance.privacy_policy]

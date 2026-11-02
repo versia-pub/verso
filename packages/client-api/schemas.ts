@@ -21,6 +21,7 @@ export * from "./role.ts";
 export * from "./scheduled_status.ts";
 export * from "./search.ts";
 export * from "./status.ts";
+export * from "./suggestion.ts";
 export * from "./tag.ts";
 export * from "./token.ts";
 export * from "./versia_emoji.ts";

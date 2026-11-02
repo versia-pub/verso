@@ -51,6 +51,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 show_block_reasons: "none",
                 show_trends: true,
                 trendable_by_default: false,
+                suggested_accounts: [],
             },
             limits: {
                 display_name: 60,
@@ -278,6 +279,7 @@ level = "debug"
                 show_block_reasons: "all",
                 show_trends: true,
                 trendable_by_default: false,
+                suggested_accounts: [],
             },
             limits: {
                 display_name: 60,

@@ -6,6 +6,7 @@ import { removeAnnouncement } from "../announcements/announcements.ts";
 import { announce } from "../announcements/testing.ts";
 import { oidcProvider } from "../auth/oidc.ts";
 import { formTokenIn, tokenFor } from "../auth/testing.ts";
+import { insertFollow } from "../graph/follow_queries.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { indexUnindexedAccounts } from "../search/accounts.ts";
@@ -547,6 +548,28 @@ Deno.test("a user reads what is trending, which an admin approved", async () => 
     assertEquals(trending.account.acct, "alice");
     assertEquals(await test.client.trends.statuses({ offset: 1 }), []);
     assertEquals(await test.client.trends.tags(), []);
+});
+
+Deno.test("a user is suggested accounts their follows follow, and dismisses one", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    for (const id of ["ann", "bea", "cat"]) await createLocalAccount(test.ctx, id);
+    await test.ctx.db.updateTable("accounts").set({ discoverable: true }).execute();
+    for (const [follower, followee] of [["alice", "ann"], ["ann", "bea"], ["ann", "cat"]]) {
+        await insertFollow(test.ctx, {
+            followerId: follower,
+            followeeId: followee,
+            accepted: true,
+            options: {},
+        });
+    }
+
+    const accts = async () => (await alice.suggestions.list()).map((one) => one.account.acct);
+    assertEquals(await accts(), ["bea", "cat"]);
+    assertEquals((await alice.suggestions.list({ limit: 1 }))[0].sources, ["friends_of_friends"]);
+
+    await alice.suggestions.dismiss("bea");
+    assertEquals(await accts(), ["cat"]);
 });
 
 Deno.test("a user follows a hashtag, sees its statuses at home, lists it, and unfollows it", async () => {

@@ -30,6 +30,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `reports`       | reports of accounts to moderators            | `reports.ts`                  |
 | `announcements` | announcements from admins to every user      | `announcements.ts`            |
 | `trends`        | trending hashtags and statuses               | `refresh.ts`, `scoring.ts`    |
+| `suggestions`   | accounts suggested to follow                 | `suggestions.ts`              |
 | `admin`         | `verso admin …` commands                     | `cli.ts`                      |
 
 Boosts are statuses that point at the status they boost, so they live in `notes`, not in a table of
@@ -75,6 +76,7 @@ their own.
 | `reports`                                                              | `reports`       |
 | `announcements`, `announcement_dismissals`                             | `announcements` |
 | `trending_tags`, `trending_statuses`                                   | `trends`        |
+| `suggestion_dismissals`                                                | `suggestions`   |
 | `rate_limits`                                                          | `http`          |
 | `jobs`, `job_pauses`                                                   | `jobs`          |
 

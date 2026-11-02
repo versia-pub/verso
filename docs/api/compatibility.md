@@ -25,6 +25,7 @@ behave differently.
 | Search                     | accounts, statuses and hashtags                                         |
 | Instance                   | the instance, rules, policies, custom emoji                             |
 | Trends                     | hashtags and statuses                                                   |
+| Suggestions                | v2 and dismissing                                                       |
 
 There's no admin API: admins use `verso admin` instead.
 
@@ -89,7 +90,9 @@ There's no admin API: admins use `verso admin` instead.
 | `POST /api/v1/tags/:name/unfollow`                | ✅    |                                   |
 | `GET /api/v1/followed_tags`                       | ✅    |                                   |
 | `GET /api/v1/preferences`                         | 🟡    | Only the defaults for posting     |
-| Suggestions (v1 and v2)                           | ❌    |                                   |
+| `GET /api/v2/suggestions`                         | 🟡    | See differences                   |
+| `GET /api/v1/suggestions`                         | ❌    | Deprecated; use v2                |
+| `DELETE /api/v1/suggestions/:id`                  | ✅    |                                   |
 | `/api/v2/filters` (5 methods)                     | ✅    |                                   |
 | Filter keywords (5 methods)                       | ✅    |                                   |
 | Filter statuses (4 methods)                       | ✅    |                                   |

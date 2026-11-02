@@ -44,6 +44,7 @@ import type { ListAccountsTable, ListsTable } from "../lists/tables.ts";
 import type { ConversationNotesTable, ConversationsTable } from "../conversations/tables.ts";
 import type { FilterKeywordsTable, FiltersTable, FilterStatusesTable } from "../filters/tables.ts";
 import type { FeaturedTagsTable, TagFollowsTable, TagsTable } from "../tags/tables.ts";
+import type { SuggestionDismissalsTable } from "../suggestions/tables.ts";
 import type { TrendingStatusesTable, TrendingTagsTable } from "../trends/tables.ts";
 import type {
     NotificationPermissionsTable,
@@ -121,6 +122,7 @@ export type Database = {
     scheduled_note_media: ScheduledNoteMediaTable;
     reports: ReportsTable;
     tag_follows: TagFollowsTable;
+    suggestion_dismissals: SuggestionDismissalsTable;
     tags: TagsTable;
     thread_mutes: ThreadMutesTable;
     trending_statuses: TrendingStatusesTable;

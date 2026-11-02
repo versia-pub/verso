@@ -112,6 +112,16 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   something asks for approval.
 - `show_trends = false` answers `200` with an empty list, as Mastodon does.
 
+## Suggestions
+
+- Verso suggests the accounts in `suggested_accounts`, then those that most of the accounts the user
+  follows follow, with `featured` and `friends_of_friends` as their sources. Mastodon also suggests
+  popular accounts and ones like those the user just followed, which Verso doesn't.
+- Mastodon shuffles the suggestions and keeps them for 15 minutes. Verso lists them in order, from
+  current data.
+- A local account has to be discoverable to be suggested. Remote accounts always count as
+  discoverable, since Versia has no such setting.
+
 ## Custom emoji
 
 - `GET /api/v1/custom_emojis` also lists the viewer's own emoji. See

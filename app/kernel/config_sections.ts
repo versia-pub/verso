@@ -145,6 +145,11 @@ export const Instance = z.strictObject({
      * reject what they don't want.
      */
     trendable_by_default: z.boolean().default(false),
+    /**
+     * Accounts to suggest to every user who doesn't follow them yet, such as `alice` or
+     * `bob@b.example`. Remote ones must be known to Verso already.
+     */
+    suggested_accounts: z.array(z.string().min(1)).default([]),
 }).prefault({});
 
 /** What everyone may do, before any role adds more. */

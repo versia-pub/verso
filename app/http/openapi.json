@@ -10347,6 +10347,123 @@
                 }
             }
         },
+        "/api/v2/suggestions": {
+            "get": {
+                "summary": "View follow suggestions",
+                "description": "Accounts that are promoted by staff, or that the user has had past positive interactions with, but is not yet following.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/suggestions/#v2"
+                },
+                "tags": [
+                    "suggestions"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Skip the first n results."
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Maximum number of results to return. Defaults to 40. Max 80."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Suggestion"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/suggestions/{id}": {
+            "delete": {
+                "summary": "Remove a suggestion",
+                "description": "Remove an account from follow suggestions.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/suggestions/#remove"
+                },
+                "tags": [
+                    "suggestions"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Account in the database."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/conversations": {
             "get": {
                 "summary": "View all conversations",
@@ -21161,6 +21278,50 @@
                 "required": [
                     "name",
                     "url"
+                ]
+            },
+            "Suggestion": {
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "staff",
+                                    "past_interactions",
+                                    "global"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "sources": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SuggestionSource"
+                        }
+                    },
+                    "account": {
+                        "$ref": "#/components/schemas/Account"
+                    }
+                },
+                "required": [
+                    "source",
+                    "sources",
+                    "account"
+                ]
+            },
+            "SuggestionSource": {
+                "type": "string",
+                "enum": [
+                    "featured",
+                    "most_followed",
+                    "most_interactions",
+                    "similar_to_recently_followed",
+                    "friends_of_friends"
                 ]
             },
             "Tag": {
