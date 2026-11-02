@@ -108,3 +108,95 @@ Deno.test("announcements are for users, and dismissing them needs write:accounts
         403,
     );
 });
+
+Deno.test("announcements are reacted to, and the reactions are listed with the viewer's own", async () => {
+    await using test = await open();
+    await createLocalEmoji(test.ctx, "verso");
+    await test.ctx.db.updateTable("media").set({ preview_sha256: "emoji-verso-still" })
+        .where("sha256", "=", "emoji-verso").execute();
+    const made = await announce(test.ctx, "Hi");
+    const later = await announce(test.ctx, "Later", { scheduledAt: new Date("2027-01-01") });
+    const alice = await tokenFor(test.ctx, "alice", ["read", "write:favourites"]);
+    const bob = await tokenFor(test.ctx, "bob", ["read", "write:favourites"]);
+    const react = (id: string, name: string) =>
+        `/api/v1/announcements/${id}/reactions/${encodeURIComponent(name)}`;
+
+    assertEquals(await test.call("PUT", react(made.id, "👍"), alice), { status: 200, body: {} });
+    assertEquals(await test.call("PUT", react(made.id, "verso"), alice), { status: 200, body: {} });
+    assertEquals(await test.call("PUT", react(made.id, "verso"), bob), { status: 200, body: {} });
+
+    const reactions = async (token: string) =>
+        (await test.call("GET", "/api/v1/announcements", token)).body[0].reactions;
+    assertEquals(await reactions(alice), [
+        { name: "👍", count: 1, me: true },
+        {
+            name: "verso",
+            count: 2,
+            me: true,
+            url: "https://social.example/media/emoji-verso",
+            static_url: "https://social.example/media/emoji-verso-still",
+        },
+    ]);
+    assertEquals((await reactions(bob)).map((reaction: { me: boolean }) => reaction.me), [
+        false,
+        true,
+    ]);
+
+    assertEquals(await test.call("DELETE", react(made.id, "verso"), alice), {
+        status: 200,
+        body: {},
+    });
+    assertEquals((await reactions(alice)).map((reaction: { count: number }) => reaction.count), [
+        1,
+        1,
+    ]);
+
+    // As on Mastodon, undoing what wasn't done is not found, and the rest is unprocessable.
+    assertEquals((await test.call("DELETE", react(made.id, "verso"), alice)).status, 404);
+    assertEquals((await test.call("PUT", react(later.id, "👍"), alice)).status, 404);
+    assertEquals((await test.call("DELETE", react(later.id, "👍"), alice)).status, 404);
+    assertEquals(await test.call("PUT", react(made.id, "👍"), alice), {
+        status: 422,
+        body: { error: "Validation failed", error_description: "Duplicate record" },
+    });
+    assertEquals((await test.call("PUT", react(made.id, "nobody"), alice)).body, {
+        error: "Validation failed",
+        error_description: "Name is not a recognized emoji",
+    });
+});
+
+Deno.test("an announcement can't be reacted to with more than a few different emojis", async () => {
+    await using test = await open();
+    const made = await announce(test.ctx, "Hi");
+    const alice = await tokenFor(test.ctx, "alice", ["write:favourites"]);
+    const react = (name: string) =>
+        test.call(
+            "PUT",
+            `/api/v1/announcements/${made.id}/reactions/${encodeURIComponent(name)}`,
+            alice,
+        );
+
+    for (const name of ["😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😆"]) {
+        assertEquals((await react(name)).status, 200);
+    }
+    assertEquals(await react("😉"), {
+        status: 422,
+        body: {
+            error: "Validation failed",
+            error_description: "Limit of different reactions reached",
+        },
+    });
+});
+
+Deno.test("reacting to announcements needs write:favourites", async () => {
+    await using test = await open();
+    const made = await announce(test.ctx, "Hi");
+    const react = `/api/v1/announcements/${made.id}/reactions/${encodeURIComponent("👍")}`;
+
+    for (const method of ["PUT", "DELETE"]) {
+        assertEquals((await test.call(method, react)).status, 401);
+        assertEquals((await test.call(method, react, await tokenFor(test.ctx, null))).status, 422);
+        const read = await tokenFor(test.ctx, "alice", ["read", "write:accounts"]);
+        assertEquals((await test.call(method, react, read)).status, 403);
+    }
+});

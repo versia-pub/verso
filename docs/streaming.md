@@ -44,7 +44,10 @@ nothing is sent, as on Mastodon.
 
 Announcements arrive on `announcements.changed` and go to every `user` stream. One published or
 changed is sent as `announcement`, rendered once, and one taken down or deleted as
-`announcement.delete`, with its id.
+`announcement.delete`, with its id. Reactions to an announcement arrive on `announcements.reacted`
+and go to every `user` stream as `announcement.reaction`: the emoji's name, how many reacted with it
+now, which is 0 if the last reaction was undone, the announcement's id, and the custom emoji's
+picture. It never says whether the viewer reacted.
 
 The dispatcher, in [`app/streaming/dispatcher.ts`](../app/streaming/dispatcher.ts), subscribes once
 to each channel per process, rather than once per WebSocket, and hands each message to each kind of

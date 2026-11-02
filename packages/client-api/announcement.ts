@@ -19,6 +19,20 @@ export const AnnouncementReaction = z.object({
 export type AnnouncementReaction = z.infer<typeof AnnouncementReaction>;
 
 /**
+ * A change in the reactions to an announcement with one emoji, as the user stream sends it. Unlike
+ * the reactions in an announcement, it has none of them if the last was undone, and it never says
+ * whether the viewer made one.
+ */
+export const AnnouncementReactionChange = z.object({
+    announcement_id: z.string(),
+    name: z.string(),
+    count: z.int().min(0),
+    url: z.url().optional(),
+    static_url: z.url().optional(),
+});
+export type AnnouncementReactionChange = z.infer<typeof AnnouncementReactionChange>;
+
+/**
  * An announcement the instance's admins make to its users.
  * @see https://docs.joinmastodon.org/entities/Announcement/
  */

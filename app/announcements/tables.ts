@@ -27,3 +27,17 @@ export type AnnouncementDismissalsTable = {
     account_id: string;
     announcement_id: string;
 };
+
+/**
+ * A user's reaction to an announcement, with an emoji: a Unicode one, as `text`, or a custom one,
+ * as `emoji_id`, but never both.
+ */
+export type AnnouncementReactionsTable = {
+    /** Orders reactions by creation time. */
+    id: string;
+    account_id: string;
+    announcement_id: string;
+    text: string | null;
+    emoji_id: string | null;
+    created_at: Date;
+};

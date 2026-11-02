@@ -15,6 +15,8 @@ import {
     removeAnnouncement,
     unpublishAnnouncement,
 } from "./announcements.ts";
+import { reactToAnnouncement } from "./reactions.ts";
+import { renderAnnouncements } from "./render.ts";
 import { announce } from "./testing.ts";
 
 const minute = 60_000;
@@ -246,4 +248,16 @@ Deno.test("only published announcements are dismissed", async () => {
     assertEquals(await dismissAnnouncement(test.ctx, "alice", made.id), true);
     assertEquals(await dismissAnnouncement(test.ctx, "alice", draft.id), false);
     assertEquals(await dismissAnnouncement(test.ctx, "alice", "x"), false);
+});
+
+Deno.test("reactions are rendered with whether the viewer made them, but not for no viewer", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "alice");
+    const made = await announce(test.ctx, "Hi");
+    await reactToAnnouncement(test.ctx, "alice", made.id, "👍");
+
+    const reactions = async (viewerId: string | null) =>
+        (await renderAnnouncements(test.ctx, [made], viewerId))[0].reactions;
+    assertEquals(await reactions("alice"), [{ name: "👍", count: 1, me: true }]);
+    assertEquals(await reactions(null), [{ name: "👍", count: 1 }]);
 });

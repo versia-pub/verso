@@ -21,4 +21,25 @@ export class AnnouncementMethods {
     async dismiss(id: string, options?: CallOptions): Promise<void> {
         await this.http.send("POST", path`/api/v1/announcements/${id}/dismiss`, options);
     }
+
+    /**
+     * Reacts to an announcement with an emoji: a Unicode one, or a custom emoji's shortcode
+     * without colons.
+     * @see https://docs.joinmastodon.org/methods/announcements/#put-reactions
+     */
+    async react(id: string, name: string, options?: CallOptions): Promise<void> {
+        await this.http.send("PUT", path`/api/v1/announcements/${id}/reactions/${name}`, options);
+    }
+
+    /**
+     * Undoes a reaction to an announcement.
+     * @see https://docs.joinmastodon.org/methods/announcements/#delete-reactions
+     */
+    async unreact(id: string, name: string, options?: CallOptions): Promise<void> {
+        await this.http.send(
+            "DELETE",
+            path`/api/v1/announcements/${id}/reactions/${name}`,
+            options,
+        );
+    }
 }

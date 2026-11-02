@@ -95,6 +95,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   `announcement.delete`. Mastodon hides it without telling apps.
 - An announcement's statuses are the ones its links lead to when it's saved, found by their Versia
   URL. It only mentions accounts Verso already knows of.
+- An announcement can be reacted to with any Unicode emoji, and with the shortcode of one of the
+  instance's global custom emojis. Mastodon takes the Unicode emojis from a list of its own.
 
 ## Custom emoji
 

@@ -209,7 +209,7 @@ Missing so far: trends. There's no admin API: admins use `verso admin` instead.
 | Trends (3 methods)                           | ❌    |                              |
 | `GET /api/v1/announcements`                  | ✅    |                              |
 | `POST /api/v1/announcements/:id/dismiss`     | ✅    |                              |
-| Announcement reactions (2 methods)           | ❌    |                              |
+| Announcement reactions (2 methods)           | ✅    |                              |
 | `GET /api/oembed`                            | ❌    |                              |
 | `GET /health`                                | ❌    | Verso has `GET /health/live` |
 

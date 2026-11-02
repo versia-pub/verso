@@ -7,7 +7,8 @@
  * @module
  */
 import { findPublishedAnnouncement } from "../announcements/announcement_queries.ts";
-import { renderAnnouncements } from "../announcements/render.ts";
+import { reactionsOf } from "../announcements/reaction_queries.ts";
+import { renderAnnouncements, renderReaction } from "../announcements/render.ts";
 import { followersAmong } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
@@ -180,6 +181,30 @@ export const userStreams = (ctx: Context): Sessions => {
             const payload = JSON.stringify(shown);
             for (const { session } of subscribed) {
                 session.deliver(["user"], "announcement", payload);
+            }
+        },
+        announcementReactions: async (message) => {
+            const subscribed = [...sessions].filter((entry) =>
+                entry.session.subscribedTo(["user"])
+            );
+            if (subscribed.length === 0) return;
+            if (await findPublishedAnnouncement(ctx, message.announcementId) === undefined) return;
+
+            // As on Mastodon: with none of them left if the last was undone, and not for a viewer.
+            const emoji = message.emojiId === null
+                ? { text: message.name, emoji_id: null }
+                : { text: null, emoji_id: message.emojiId };
+            const [group] = (await reactionsOf(ctx, [message.announcementId], null, emoji))
+                .get(message.announcementId) ?? [];
+            const reaction = group
+                ? renderReaction(ctx, group, false)
+                : { name: message.name, count: 0 };
+            const payload = JSON.stringify({
+                ...reaction,
+                announcement_id: message.announcementId,
+            });
+            for (const { session } of subscribed) {
+                session.deliver(["user"], "announcement.reaction", payload);
             }
         },
         add: (viewer, session) => {

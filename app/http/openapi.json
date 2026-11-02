@@ -8774,6 +8774,108 @@
                 }
             }
         },
+        "/api/v1/announcements/{id}/reactions/{name}": {
+            "put": {
+                "summary": "Add a reaction to an announcement",
+                "description": "React to an announcement with an emoji.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:reaction` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/announcements/#put-reactions"
+                },
+                "tags": [
+                    "announcements"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:favourites"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Announcement in the database."
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Unicode emoji, or the shortcode of an existing custom emoji, without colons."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove a reaction from an announcement",
+                "description": "Undo a react emoji to an announcement.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:reaction` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/announcements/#delete-reactions"
+                },
+                "tags": [
+                    "announcements"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:favourites"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The ID of the Announcement in the database."
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Unicode emoji, or the shortcode of an existing custom emoji, without colons."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/statuses/{id}/reactions/{name}": {
             "put": {
                 "summary": "React to a status with an emoji",
@@ -17451,6 +17553,35 @@
                     }
                 },
                 "required": [
+                    "name",
+                    "count"
+                ]
+            },
+            "AnnouncementReactionChange": {
+                "type": "object",
+                "properties": {
+                    "announcement_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "static_url": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "announcement_id",
                     "name",
                     "count"
                 ]

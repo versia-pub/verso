@@ -933,6 +933,10 @@ const describe = (event: StreamEvent) => {
             return `${event.stream.join(",")} announcement ${event.announcement.content}`;
         case "announcement.delete":
             return `${event.stream.join(",")} announcement.delete ${event.id}`;
+        case "announcement.reaction":
+            return `${
+                event.stream.join(",")
+            } announcement.reaction ${event.reaction.name} ${event.reaction.count}`;
         case "unknown":
             return `${event.stream.join(",")} ${event.name}`;
         case "error":
@@ -974,6 +978,10 @@ Deno.test("a user streams statuses, notifications, filter changes and announceme
     assertEquals(await next(stream, 1), ["user filters_changed"]);
     const announced = await announce(test.ctx, "Hi");
     assertEquals(await next(stream, 1), ["user announcement <p>Hi</p>"]);
+    await alice.announcements.react(announced.id, "👍");
+    assertEquals(await next(stream, 1), ["user announcement.reaction 👍 1"]);
+    await alice.announcements.unreact(announced.id, "👍");
+    assertEquals(await next(stream, 1), ["user announcement.reaction 👍 0"]);
     await removeAnnouncement(test.ctx, announced.id);
     assertEquals(await next(stream, 1), [`user announcement.delete ${announced.id}`]);
 

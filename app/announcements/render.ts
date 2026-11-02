@@ -1,13 +1,43 @@
-import type { Announcement } from "@versia/client-api";
+import type { Announcement, AnnouncementReaction } from "@versia/client-api";
 import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccountsOf } from "../accounts/public.ts";
 import { usableEmojis } from "../emojis/emoji_queries.ts";
-import { renderEmojis } from "../emojis/render.ts";
+import { emojiPicture, renderEmojis } from "../emojis/render.ts";
 import type { Context } from "../kernel/context.ts";
 import { scanText } from "../kernel/markup.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { visibleNotes } from "../notes/visibility.ts";
 import { type AnnouncementRow, dismissedAmong } from "./announcement_queries.ts";
+import { type ReactionGroup, reactionsOf } from "./reaction_queries.ts";
+
+/** A custom emoji's picture in a reaction, if it is one whose picture is ready. */
+const reactionPicture = (ctx: Context, group: ReactionGroup) => {
+    const picture = group.media_type === null
+        ? undefined
+        : emojiPicture(ctx, { ...group, media_type: group.media_type });
+
+    return picture === undefined ? {} : { url: picture.url, static_url: picture.still };
+};
+
+/** What a reaction's emoji is called: the Unicode emoji, or the custom emoji's shortcode. */
+export const reactionName = (group: Pick<ReactionGroup, "text" | "shortcode">): string => {
+    const name = group.text ?? group.shortcode;
+    if (name === null) throw new Error("A reaction has neither text nor a custom emoji");
+
+    return name;
+};
+
+/** The reactions to an announcement with one emoji, with whether the viewer made one, for a viewer. */
+export const renderReaction = (
+    ctx: Context,
+    group: ReactionGroup,
+    viewer: boolean,
+): AnnouncementReaction => ({
+    name: reactionName(group),
+    count: group.count,
+    ...(viewer ? { me: group.me } : {}),
+    ...reactionPicture(ctx, group),
+});
 
 /**
  * Renders published announcements in the order given, as `viewerId` sees them, with whether they
@@ -37,6 +67,8 @@ export const renderAnnouncements = async (
         ? undefined
         : await dismissedAmong(ctx, viewerId, rows.map((row) => row.id));
 
+    const reactions = await reactionsOf(ctx, rows.map((row) => row.id), viewerId);
+
     return rows.map((row) => {
         if (row.published_at === null) throw new Error(`Announcement ${row.id} isn't published`);
         const found = scanText(row.text, "text/plain");
@@ -63,7 +95,9 @@ export const renderAnnouncements = async (
                 url: ctx.urls.url`/tags/${name.toLowerCase()}`,
             })),
             emojis: renderEmojis(ctx, emojis.filter((emoji) => shortcodes.has(emoji.shortcode))),
-            reactions: [],
+            reactions: (reactions.get(row.id) ?? []).map((group) =>
+                renderReaction(ctx, group, viewerId !== null)
+            ),
         };
     });
 };

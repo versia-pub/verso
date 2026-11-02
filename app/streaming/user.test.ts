@@ -2,7 +2,13 @@ import { configure, type LogRecord, reset } from "@logtape/logtape";
 import { assertEquals } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { removeAnnouncement, unpublishAnnouncement } from "../announcements/announcements.ts";
+import {
+    announcementReacted,
+    reactToAnnouncement,
+    unreactToAnnouncement,
+} from "../announcements/reactions.ts";
 import { announce } from "../announcements/testing.ts";
+import { createLocalEmoji } from "../emojis/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
 import type { Permission } from "../kernel/permissions.ts";
@@ -198,12 +204,67 @@ Deno.test("every user on the user stream is told of announcements as they are pu
     assertEquals(queries(), rendering);
 });
 
-Deno.test("an announcement isn't looked up when no one is on the user stream", async () => {
+Deno.test("every user on the user stream is told of the reactions to announcements, as nobody's own", async () => {
+    await using test = await open();
+    await createLocalEmoji(test.ctx, "verso");
+    const alice = test.streaming("alice", ["user"]);
+    const notifications = test.streaming("alice", ["user:notification"]);
+    const { id } = await announce(test.ctx, "Hi");
+    const draft = await announce(test.ctx, "Later", { scheduledAt: new Date("2027-01-01") });
+    await test.dispatch.idle();
+    alice.sent.length = 0;
+    const url = "https://social.example/media/emoji-verso";
+
+    // The count streamed is the count when it is heard, so each change is heard before the next.
+    const steps = [
+        () => reactToAnnouncement(test.ctx, "alice", id, "verso"),
+        () => reactToAnnouncement(test.ctx, "bob", id, "verso"),
+        () => reactToAnnouncement(test.ctx, "bob", id, "👍"),
+        () => unreactToAnnouncement(test.ctx, "alice", id, "verso"),
+        () => unreactToAnnouncement(test.ctx, "bob", id, "verso"),
+        () => unreactToAnnouncement(test.ctx, "bob", id, "👍"),
+        // Nobody is told of what failed, or that an announcement that isn't published has any.
+        () => reactToAnnouncement(test.ctx, "bob", draft.id, "👍"),
+        () => reactToAnnouncement(test.ctx, "bob", id, "nobody"),
+    ];
+    for (const step of steps) {
+        await step();
+        await test.dispatch.idle();
+    }
+
+    const change = (
+        name: string,
+        count: number,
+        picture: object = {},
+    ) => ["user", "announcement.reaction", { name, count, announcement_id: id, ...picture }];
+    assertEquals(alice.sent, [
+        change("verso", 1, { url, static_url: url }),
+        change("verso", 2, { url, static_url: url }),
+        change("👍", 1),
+        change("verso", 1, { url, static_url: url }),
+        // Nothing is left to have a picture.
+        change("verso", 0),
+        change("👍", 0),
+    ]);
+    assertEquals(notifications.sent, []);
+
+    // Nor of reactions to one that was taken down or deleted since.
+    await unpublishAnnouncement(test.ctx, id);
+    alice.sent.length = 0;
+    for (const announcementId of [id, draft.id, "nothing"]) {
+        await publish(test.ctx, announcementReacted, { announcementId, name: "👍", emojiId: null });
+    }
+    await test.dispatch.idle();
+    assertEquals(alice.sent, []);
+});
+
+Deno.test("an announcement and its reactions aren't looked up when no one is on the user stream", async () => {
     await using test = await open();
     const { sessions, queries } = test.counted();
     const notifications = test.streaming("alice", ["user:notification"], { sessions });
 
-    await announce(test.ctx, "Hi");
+    const { id } = await announce(test.ctx, "Hi");
+    await reactToAnnouncement(test.ctx, "alice", id, "👍");
     await test.dispatch.idle();
 
     assertEquals([notifications.sent, queries()], [[], 0]);
