@@ -29,6 +29,8 @@ import { totalsOf } from "./total_queries.ts";
 import { onlookerOf } from "./visibility.ts";
 import { pollOf } from "../polls/poll_queries.ts";
 import { renderPolls } from "../polls/render.ts";
+import { cardsOf } from "../previews/card_queries.ts";
+import { renderCard } from "../previews/render.ts";
 import { displayNamesOf } from "../tags/tag_queries.ts";
 
 /**
@@ -135,6 +137,9 @@ export const renderStatuses = async (
         : await mutedThreadsAmong(ctx, viewerId, notes.map((note) => note.thread_id));
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
     const polls = await renderPolls(ctx, notes, viewerId);
+    const cards = new Map(
+        [...await cardsOf(ctx, noteIds)].map(([id, card]) => [id, renderCard(ctx, card)]),
+    );
     const filters = viewerId === null
         ? undefined
         : (await activeFiltersAmong(ctx, [viewerId])).get(viewerId) ?? [];
@@ -198,7 +203,7 @@ export const renderStatuses = async (
             in_reply_to_account_id: note.in_reply_to_account_id,
             reblog,
             poll: polls.get(note.id) ?? null,
-            card: null,
+            card: cards.get(note.id) ?? null,
             language: note.language,
             text: options.source ? note.content : null,
             edited_at: note.edited_at?.toISOString() ?? null,

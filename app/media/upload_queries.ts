@@ -139,7 +139,7 @@ export type RemovedMedia =
 /**
  * Removes up to `limit` media rows created before `before` that nothing uses, local or remote,
  * oldest first, starting after the row at `after`. Media is unused when no status has it attached,
- * no scheduled status has it reserved, and no account or custom emoji uses it. Anything that starts
+ * no scheduled status has it reserved, and no account, custom emoji or preview card uses it. Anything that starts
  * using media must be added here. If a status gets attached to the media, or a scheduled one
  * reserves it, at the same moment, the removal fails instead, since media in use can't be deleted.
  * It reads the `accounts` and `emojis` tables directly rather than going through their modules, so
@@ -189,6 +189,10 @@ export const deleteUnusedMedia = (
                         eb.exists(
                             eb.selectFrom("emojis").select("emojis.id")
                                 .whereRef("emojis.media_id", "=", "unused.id"),
+                        ),
+                        eb.exists(
+                            eb.selectFrom("preview_cards").select("preview_cards.id")
+                                .whereRef("preview_cards.image_id", "=", "unused.id"),
                         ),
                     ]))
                 )

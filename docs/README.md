@@ -32,6 +32,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [Federation](federation.md): Versia receiving, sending, fetching, signatures, spec gaps
 - [Logging in and permissions](auth.md): apps, OpenID Connect, tokens, scopes, roles
 - [Media](media.md): uploads, image processing with vips, file stores, cleanup
+- [Preview cards](previews.md): finding a status's link, fetching the page, storing the image
 - [Notifications and push](notifications.md): who is notified, grouping, markers, Web Push
 - [Streaming](streaming.md): the WebSocket, streams, the dispatcher, limits
 - [Search](search.md): indexing words, status queries, accounts, hashtags, limits

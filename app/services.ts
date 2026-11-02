@@ -18,6 +18,7 @@ import type { Context, Federation, Subscriber } from "./kernel/context.ts";
 import { domainBlocks } from "./moderation/domain_blocks.ts";
 import { blockedDomainNames } from "./moderation/domain_block_queries.ts";
 import { noteDeliveries } from "./notes/federation.ts";
+import { queueCards } from "./previews/cards.ts";
 import { notifyOf } from "./notifications/notifications.ts";
 import { voteDeliveries } from "./polls/federation.ts";
 import { reportDeliveries } from "./reports/federation.ts";
@@ -51,6 +52,7 @@ export const subscribers: readonly Subscriber[] = [
     undoReactionsWithDeletedEmoji,
     notifyOf,
     trackConversations,
+    queueCards,
     uncountFollowsOf,
     uncountNotesOf,
     uncountLikesOf,

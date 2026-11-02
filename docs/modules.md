@@ -31,6 +31,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `announcements` | announcements from admins to every user      | `announcements.ts`            |
 | `trends`        | trending hashtags and statuses               | `refresh.ts`, `scoring.ts`    |
 | `suggestions`   | accounts suggested to follow                 | `suggestions.ts`              |
+| `previews`      | preview cards of the pages statuses link to  | `cards.ts`, `fetching.ts`     |
 | `admin`         | `verso admin …` commands                     | `cli.ts`                      |
 
 Boosts are statuses that point at the status they boost, so they live in `notes`, not in a table of
@@ -67,6 +68,7 @@ their own.
 | `push_subscriptions`, `vapid_keys`                                     | `push`          |
 | `note_search`, `account_search`                                        | `search`        |
 | `markers`                                                              | `markers`       |
+| `preview_cards`, `note_preview_cards`                                  | `previews`      |
 | `tags`, `featured_tags`, `tag_follows`                                 | `tags`          |
 | `lists`, `list_accounts`                                               | `lists`         |
 | `filters`, `filter_keywords`, `filter_statuses`                        | `filters`       |

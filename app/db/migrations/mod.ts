@@ -78,6 +78,7 @@ import { announcements } from "./0076_announcements.ts";
 import { announcementReactions } from "./0077_announcement_reactions.ts";
 import { trends } from "./0078_trends.ts";
 import { suggestionDismissals } from "./0079_suggestion_dismissals.ts";
+import { previewCards } from "./0080_preview_cards.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -163,4 +164,5 @@ export const migrations: Record<string, Migration> = {
     "0077_announcement_reactions": announcementReactions,
     "0078_trends": trends,
     "0079_suggestion_dismissals": suggestionDismissals,
+    "0080_preview_cards": previewCards,
 };

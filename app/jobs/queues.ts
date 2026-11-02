@@ -14,6 +14,7 @@ import { mediaQueue } from "../media/uploads.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
 import { endedPollsQueue, endPolls } from "../polls/ending.ts";
+import { cardHandler, cardsQueue } from "../previews/cards.ts";
 import { pushHandler, pushQueue } from "../push/pushes.ts";
 import { registry } from "../registry.ts";
 import { publishDue, scheduledNotesQueue } from "../schedules/publishing.ts";
@@ -56,6 +57,8 @@ export const queues: Record<string, Queue> = {
     [undoneReactionsQueue]: { handler: undoneReactionsHandler, concurrency: 2 },
     [notifyQueue]: { handler: notifyHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
+    // Each job fetches a page and an image, and runs vips on the image.
+    [cardsQueue]: { handler: cardHandler, concurrency: 2 },
     // By the push service's host.
     [pushQueue]: { handler: pushHandler, concurrency: 8, perGroup: 2 },
     // Each job runs vips a few times, a minute each at most, and uses memory while it does.

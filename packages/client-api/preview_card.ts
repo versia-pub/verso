@@ -7,7 +7,8 @@ import { Account } from "./account.ts";
  */
 export const PreviewCardAuthor = z.object({
     name: z.string(),
-    url: z.url(),
+    /** Empty if the page doesn't say. */
+    url: z.string(),
     /** Their account, or `null` if they have no known account. */
     account: Account.nullable(),
 });
@@ -21,6 +22,8 @@ export const PreviewCard = z.object({
     url: z.url(),
     title: z.string(),
     description: z.string(),
+    /** An ISO 639-1 code, or `null` if the page doesn't say. */
+    language: z.string().nullable(),
     type: z.enum(["link", "photo", "video", "rich"]),
     authors: z.array(PreviewCardAuthor),
     /** @deprecated Since Mastodon 4.3. Use `authors`. */
@@ -36,9 +39,13 @@ export const PreviewCard = z.object({
     height: z.int().min(0),
     /** An image for the preview, or `null` if there is none. */
     image: z.url().nullable(),
+    /** Alt text for `image`, or empty. */
+    image_description: z.string(),
     /** A video or photo to embed, or empty. */
     embed_url: z.string(),
     /** A placeholder to display while the image loads, or `null` if there is none. */
     blurhash: z.string().nullable(),
+    /** When the page was published, or `null` if it doesn't say. */
+    published_at: z.iso.datetime().nullable(),
 });
 export type PreviewCard = z.infer<typeof PreviewCard>;

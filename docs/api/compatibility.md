@@ -24,6 +24,7 @@ behave differently.
 | Filters                    | v2, by keyword and by status                                            |
 | Search                     | accounts, statuses and hashtags                                         |
 | Instance                   | the instance, rules, policies, custom emoji                             |
+| Preview cards              | link cards on statuses                                                  |
 | Trends                     | hashtags and statuses                                                   |
 | Suggestions                | v2 and dismissing                                                       |
 

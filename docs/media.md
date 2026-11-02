@@ -2,7 +2,8 @@
 
 Media is anything attached to a status, or used as an avatar, header or custom emoji. Local media is
 an uploaded file, kept in the file store. Remote media is just a URL and the metadata its instance
-sent, which Verso doesn't download or proxy.
+sent, which Verso doesn't download or proxy. The only image it downloads is the one on a page that a
+status links to, for that page's [preview card](previews.md).
 
 The code is in [`app/media/`](../app/media/), with the file stores and image processing behind ports
 in [`app/kernel/`](../app/kernel/).

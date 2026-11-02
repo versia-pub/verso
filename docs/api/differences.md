@@ -27,6 +27,17 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - `/api/v1/statuses/:id/context` only includes the replies Verso already has. It doesn't fetch the
   rest of a remote thread.
 
+## Preview cards
+
+- Every card has the type `link`. Verso doesn't make video or rich embeds, or use oEmbed, so `html`
+  and `embed_url` are empty.
+- `authors` has the page's author but no `account`: Verso doesn't look up `fediverse:creator`.
+- Pages are read as UTF-8 unless the response or the page names another charset. Mastodon also
+  guesses it from the bytes.
+- A card's image is downloaded and stored by Verso, scaled to fit 640×360. A page's image that is
+  too big, or isn't a JPEG, PNG, GIF or WebP, isn't used.
+- A failed fetch isn't tried again for the same status.
+
 ## Accounts
 
 - Blocking an account isn't federated, and doesn't remove follows. It hides the account from the
