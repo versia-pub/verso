@@ -136,6 +136,10 @@ rules = [
 # users) or "all".
 # show_blocks = "none"
 # show_block_reasons = "none"
+# Whether apps can list trending hashtags and statuses, and whether they trend before an admin
+# approves them (`verso admin trends`).
+# show_trends = true
+# trendable_by_default = false
 
 # Long texts, in plain text with a blank line between paragraphs, and the day they last changed.
 [instance.privacy_policy]

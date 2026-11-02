@@ -14,6 +14,9 @@ import { endPolls } from "../polls/ending.ts";
 import { publishDue } from "../schedules/publishing.ts";
 import { drain } from "../jobs/worker.ts";
 import { fakeClock } from "../kernel/clock.ts";
+import { Instance } from "../kernel/config_sections.ts";
+import { createNote } from "../notes/testing.ts";
+import { refreshTrends } from "../trends/refresh.ts";
 import { fakeTransport } from "../kernel/fake_transport.ts";
 import type { IssuerConfig } from "../kernel/identity.ts";
 import { createTestApp } from "../testing/app.ts";
@@ -529,6 +532,21 @@ Deno.test("a user features a hashtag, lists it, and stops featuring it", async (
 
     await alice.featuredTags.unfeature(featured.id);
     assertEquals(await alice.featuredTags.list(), []);
+});
+
+Deno.test("a user reads what is trending, which an admin approved", async () => {
+    await using test = await open(
+        { ...defaultSettings(), instance: Instance.parse({ trendable_by_default: true }) },
+    );
+    await test.as("alice");
+    await test.ctx.db.updateTable("accounts").set({ discoverable: true }).execute();
+    await createNote(test.ctx, "alice", { likes_count: 5 });
+    await refreshTrends(test.ctx);
+
+    const [trending] = await test.client.trends.statuses({ limit: 1 });
+    assertEquals(trending.account.acct, "alice");
+    assertEquals(await test.client.trends.statuses({ offset: 1 }), []);
+    assertEquals(await test.client.trends.tags(), []);
 });
 
 Deno.test("a user follows a hashtag, sees its statuses at home, lists it, and unfollows it", async () => {

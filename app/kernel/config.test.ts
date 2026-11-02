@@ -49,6 +49,8 @@ Deno.test("a minimal config gets the defaults", async () => {
                 show_activity: true,
                 show_blocks: "none",
                 show_block_reasons: "none",
+                show_trends: true,
+                trendable_by_default: false,
             },
             limits: {
                 display_name: 60,
@@ -274,6 +276,8 @@ level = "debug"
                 show_activity: false,
                 show_blocks: "users",
                 show_block_reasons: "all",
+                show_trends: true,
+                trendable_by_default: false,
             },
             limits: {
                 display_name: 60,

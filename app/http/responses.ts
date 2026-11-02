@@ -58,8 +58,23 @@ export const Linked = <T extends Schema>(
 });
 type Linked = ReturnType<typeof Linked>;
 
+/**
+ * Declares a response that is a page of a list that comes by `offset`, such as trends, with the
+ * offsets of the pages around it in its `Link` header.
+ */
+export const Offset = <T extends Schema>(
+    item: T,
+): { readonly kind: "offset"; readonly item: T } => ({
+    kind: "offset",
+    item,
+});
+type Offset = ReturnType<typeof Offset>;
+
 /** Where the pages around a page of a list start, if there are any. */
 export type Cursors = { readonly newer?: string; readonly older?: string };
+
+/** The offsets at which the pages after and before a page of a list start, if there are any. */
+export type Offsets = { readonly next?: number; readonly prev?: number };
 
 /** A status a route may respond with: one with a body, or 101 for a WebSocket. */
 type Status = ContentfulStatusCode | 101;
@@ -76,6 +91,7 @@ export type Responses = Partial<
         | typeof Redirect
         | Binary
         | Paged
+        | Offset
         | Linked
         | typeof NoBody
         | typeof Upgrade
@@ -96,6 +112,7 @@ type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
             download?: true;
         }
     : R extends Paged ? { status: S; body: z.input<R["item"]>[]; cursors: Cursors }
+    : R extends Offset ? { status: S; body: z.input<R["item"]>[]; offsets: Offsets }
     : R extends Linked ? { status: S; body: z.input<R["body"]>; cursors: Cursors }
     : R extends typeof NoBody ? { status: S }
     : R extends typeof Upgrade ? {

@@ -30,6 +30,13 @@ Give moderators a [role](commands.md#verso-admin-roles) with the staff
 [permissions](configuring.md#permissions) they need: `blocks`, `emojis` or `roles`. Mastodon apps
 show `emojis` and `roles` as "Manage custom emojis" and "Manage roles".
 
+## Trends
+
+Verso works out which hashtags and statuses are trending, but shows none until you approve them,
+unless `trendable_by_default` is `true` in the [config](configuring.md). Approve or reject hashtags
+and accounts with [`verso admin trends`](commands.md#verso-admin-trends). Rejecting an account also
+hides its statuses from trending statuses.
+
 ## Custom emoji
 
 Every user can add custom emoji that only they can use. Global emoji are for everyone on the

@@ -24,8 +24,9 @@ behave differently.
 | Filters                    | v2, by keyword and by status                                            |
 | Search                     | accounts, statuses and hashtags                                         |
 | Instance                   | the instance, rules, policies, custom emoji                             |
+| Trends                     | hashtags and statuses                                                   |
 
-Missing so far: trends. There's no admin API: admins use `verso admin` instead.
+There's no admin API: admins use `verso admin` instead.
 
 ## Apps and logging in
 
@@ -206,7 +207,10 @@ Missing so far: trends. There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/instance/translation_languages` | ❌    |                              |
 | `GET /api/v1/custom_emojis`                  | ✅    |                              |
 | `GET /api/v1/directory`                      | 🟡    | Local accounts only          |
-| Trends (3 methods)                           | ❌    |                              |
+| `GET /api/v1/trends/tags`                    | ✅    |                              |
+| `GET /api/v1/trends`                         | ✅    | The same as `/trends/tags`   |
+| `GET /api/v1/trends/statuses`                | 🟡    | See differences              |
+| `GET /api/v1/trends/links`                   | ❌    |                              |
 | `GET /api/v1/announcements`                  | ✅    |                              |
 | `POST /api/v1/announcements/:id/dismiss`     | ✅    |                              |
 | Announcement reactions (2 methods)           | ✅    |                              |

@@ -138,6 +138,13 @@ export const Instance = z.strictObject({
     show_blocks: Audience.default("none"),
     /** Who sees why each instance was blocked, if they see the blocks. */
     show_block_reasons: Audience.default("none"),
+    /** Whether `/api/v1/trends/tags` and `/api/v1/trends/statuses` list what is trending. */
+    show_trends: z.boolean().default(true),
+    /**
+     * Whether hashtags and accounts trend before an admin approves them. Either way, an admin can
+     * reject what they don't want.
+     */
+    trendable_by_default: z.boolean().default(false),
 }).prefault({});
 
 /** What everyone may do, before any role adds more. */

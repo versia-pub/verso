@@ -67,6 +67,10 @@ Apps can list the instances Verso knows of and weekly counts of activity, unless
 `show_blocks` is `"users"` or `"all"`, and so are the reasons for blocking them, with
 `show_block_reasons`.
 
+Apps can list trending hashtags and statuses, unless you set `show_trends` to `false`. They only
+trend once you approve them, as [moderating](moderating.md) says, unless you set
+`trendable_by_default` to `true`.
+
 `extended_description`, `privacy_policy` and `terms_of_service` are plain text, with a blank line
 between paragraphs, and the date they last changed, unquoted. It's easiest to keep them in files and
 read them with `${file:…}`.

@@ -32,6 +32,7 @@ import { search, type SearchQuery } from "./client/search.ts";
 import { StreamingMethods } from "./client/streaming.ts";
 import { BookmarkMethods, FavouriteMethods, StatusMethods } from "./client/statuses.ts";
 import { FeaturedTagMethods, FollowedTagMethods, TagMethods } from "./client/tags.ts";
+import { TrendMethods } from "./client/trends.ts";
 import { ListMethods } from "./client/lists.ts";
 import { FilterMethods } from "./client/filters.ts";
 import { TimelineMethods } from "./client/timelines.ts";
@@ -126,6 +127,8 @@ export class Client {
     readonly tags: TagMethods;
     /** The hashtags the viewer follows. */
     readonly followedTags: FollowedTagMethods;
+    /** What is trending on the instance. */
+    readonly trends: TrendMethods;
     /** The viewer's lists of accounts. */
     readonly lists: ListMethods;
     /** The viewer's filters, and the keywords and statuses they match. */
@@ -184,6 +187,7 @@ export class Client {
         this.featuredTags = new FeaturedTagMethods(this.#http);
         this.tags = new TagMethods(this.#http);
         this.followedTags = new FollowedTagMethods(this.#http);
+        this.trends = new TrendMethods(this.#http);
         this.lists = new ListMethods(this.#http);
         this.filters = new FilterMethods(this.#http);
         this.statuses = new StatusMethods(this.#http);

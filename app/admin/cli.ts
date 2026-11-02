@@ -25,6 +25,7 @@ import type { Context } from "../kernel/context.ts";
 import { blockDomain, blockedByConfig, unblockDomain } from "../moderation/domain_blocks.ts";
 import { listBlockedDomains } from "../moderation/domain_block_queries.ts";
 import { reportsForAdmin, resolve } from "../reports/reports.ts";
+import { decideAccount, decideTag, trendsForAdmin } from "../trends/review.ts";
 
 /** What admin commands need from whoever runs them. */
 export type AdminIo = {
@@ -80,6 +81,29 @@ const announcementOutcome = (id: string, result: AnnouncementResult) => {
 /** Rejects a command run without one of its subcommands, as a usage error. */
 export const missingCommand = (): never => {
     throw new ValidationError("Missing command");
+};
+
+/** Lets a hashtag trend or not, and prints the decision, or fails if there is no such hashtag. */
+const decideTrendingTag = async (io: AdminIo, config: string, name: string, trendable: boolean) => {
+    const tag = name.replace(/^#/, "").toLowerCase();
+    if (!await io.withContext(config, (ctx) => decideTag(ctx, tag, trendable))) {
+        throw new AdminError(`No status has used the hashtag ${tag}`);
+    }
+
+    io.print(JSON.stringify({ tag, trendable }));
+};
+
+/** Lets an account's statuses trend or not, and prints the decision, or fails if there is none. */
+const decideTrendingAccount = async (
+    io: AdminIo,
+    config: string,
+    account: string,
+    trendable: boolean,
+) => {
+    const id = await io.withContext(config, (ctx) => decideAccount(ctx, account, trendable));
+    if (id === undefined) throw new AdminError(`There is no account named ${account}`);
+
+    io.print(JSON.stringify({ id, trendable }));
 };
 
 /** The `admin` command, to add to the main one, which has the global `--config` option. */
@@ -175,6 +199,48 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
                     if (!found) throw new AdminError(`There is no announcement ${id}`);
 
                     io.print(JSON.stringify({ id, deleted: true }));
+                }),
+        )
+        .command(
+            "trends",
+            new Command<{ config: string }>()
+                .description(
+                    "Approve or reject the hashtags and accounts that trend. Hashtags and accounts " +
+                        "wait for approval unless `trendable_by_default` is set in the config.",
+                )
+                .action(missingCommand)
+                .command(
+                    "list",
+                    "Print what is trending, with whether it is shown: approved, rejected or pending.",
+                )
+                .action(async ({ config }) => {
+                    io.print(JSON.stringify(
+                        await io.withContext(
+                            config,
+                            (ctx, settings) =>
+                                trendsForAdmin(ctx, settings.instance.trendable_by_default),
+                        ),
+                    ));
+                })
+                .command("approve-tag <name:string>", "Let a hashtag trend.")
+                .action(async ({ config }, name) => {
+                    await decideTrendingTag(io, config, name, true);
+                })
+                .command("reject-tag <name:string>", "Stop a hashtag from trending.")
+                .action(async ({ config }, name) => {
+                    await decideTrendingTag(io, config, name, false);
+                })
+                .command(
+                    "approve-account <account:string>",
+                    "Let an account's statuses trend. A local account is its username, a remote " +
+                        "one username@domain.",
+                )
+                .action(async ({ config }, account) => {
+                    await decideTrendingAccount(io, config, account, true);
+                })
+                .command("reject-account <account:string>", "Stop an account's statuses trending.")
+                .action(async ({ config }, account) => {
+                    await decideTrendingAccount(io, config, account, false);
                 }),
         )
         .command(

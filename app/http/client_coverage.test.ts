@@ -58,6 +58,8 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/featured_tags/suggestions": (c) => c.featuredTags.suggestions(),
     "GET /api/v1/accounts/{id}/featured_tags": (c) => c.accounts.featuredTags("1"),
     "GET /api/v1/tags/{name}": (c) => c.tags.get("cats"),
+    "GET /api/v1/trends/tags": (c) => c.trends.tags(),
+    "GET /api/v1/trends/statuses": (c) => c.trends.statuses(),
     "POST /api/v1/tags/{name}/follow": (c) => c.tags.follow("cats"),
     "POST /api/v1/tags/{name}/unfollow": (c) => c.tags.unfollow("cats"),
     "GET /api/v1/followed_tags": (c) => c.followedTags.list(),
@@ -197,6 +199,7 @@ const calls: Record<string, (client: Client) => unknown> = {
 
 /** Operations no client method makes, and why. */
 const uncalled: Record<string, string> = {
+    "GET /api/v1/trends": "Mastodon's old name for /api/v1/trends/tags, which `trends.tags` calls",
     "GET /api/v1/streaming":
         "A WebSocket, which `streaming.connect` opens, tested in client.test.ts",
     "POST /oauth/authorize/issuer": "A page the user's browser submits, while logging in",

@@ -29,6 +29,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `moderation`    | instances Verso doesn't federate with        | `domain_blocks.ts`            |
 | `reports`       | reports of accounts to moderators            | `reports.ts`                  |
 | `announcements` | announcements from admins to every user      | `announcements.ts`            |
+| `trends`        | trending hashtags and statuses               | `refresh.ts`, `scoring.ts`    |
 | `admin`         | `verso admin …` commands                     | `cli.ts`                      |
 
 Boosts are statuses that point at the status they boost, so they live in `notes`, not in a table of
@@ -73,6 +74,7 @@ their own.
 | `domain_blocks`                                                        | `moderation`    |
 | `reports`                                                              | `reports`       |
 | `announcements`, `announcement_dismissals`                             | `announcements` |
+| `trending_tags`, `trending_statuses`                                   | `trends`        |
 | `rate_limits`                                                          | `http`          |
 | `jobs`, `job_pauses`                                                   | `jobs`          |
 

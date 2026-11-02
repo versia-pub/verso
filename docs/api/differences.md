@@ -98,6 +98,20 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - An announcement can be reacted to with any Unicode emoji, and with the shortcode of one of the
   instance's global custom emojis. Mastodon takes the Unicode emojis from a list of its own.
 
+## Trends
+
+- Trends only show what an admin approved, unless `trendable_by_default` is set. Mastodon's default
+  is the same. Statuses are approved by account, not one by one.
+- Verso scores hashtags and statuses every minute, not every five. Statuses from the last two days
+  can trend.
+- Hashtags are scored by public statuses only. The history shown on a hashtag counts unlisted
+  statuses too.
+- A local account's statuses only trend if it's discoverable. Remote accounts always count as
+  discoverable, since Versia has no such setting. Statuses with no language can trend.
+- Trending statuses aren't ordered by the viewer's languages, and admins don't get a mail when
+  something asks for approval.
+- `show_trends = false` answers `200` with an empty list, as Mastodon does.
+
 ## Custom emoji
 
 - `GET /api/v1/custom_emojis` also lists the viewer's own emoji. See

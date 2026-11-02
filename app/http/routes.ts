@@ -30,6 +30,7 @@ import { instanceRoutes } from "../instances/routes.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
 import { moderationRoutes } from "../moderation/routes.ts";
 import { registry } from "../registry.ts";
+import { trendRoutes } from "../trends/routes.ts";
 import { searchRoutes } from "../search/routes.ts";
 import { streamingRoutes } from "../streaming/routes.ts";
 import { tagRoutes } from "../tags/routes.ts";
@@ -61,6 +62,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...announcementRoutes,
         ...interactionRoutes,
         ...timelineRoutes,
+        ...trendRoutes(settings.instance),
         ...conversationRoutes,
         // Before `/api/v1/notifications/:id`, which would take their paths.
         ...notificationRequestRoutes,

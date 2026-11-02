@@ -7,6 +7,7 @@ import { type Expression, sql, type SqlBool } from "kysely";
 import { usesSqlite } from "../db/columns.ts";
 import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
+import type { Visibility } from "../kernel/visibility.ts";
 
 /**
  * Whether a hashtag's name starts with `start`, in a way its index finds. SQLite's `LIKE` ignores
@@ -66,8 +67,9 @@ export type HashtagDay = {
 };
 
 /**
- * How public and unlisted statuses used each of `names` on each of the days that start at `days`,
- * newest first, each a day long, as Mastodon counts its uses. Days they weren't used are left out.
+ * How statuses of the visibilities `visibilities`, public and unlisted unless said otherwise, used
+ * each of `names` on each of the days that start at `days`, newest first, each a day long, as
+ * Mastodon counts its uses. Days they weren't used are left out.
  *
  * Only statuses whose ids are from the oldest day on are counted, so that the hashtags' index
  * reads only those, not every use there ever was. Ids have the time a status was made, except a
@@ -79,6 +81,7 @@ export const hashtagUses = async (
     ctx: Pick<Context, "db">,
     names: readonly string[],
     days: readonly Date[],
+    visibilities: readonly Visibility[] = ["public", "unlisted"],
 ): Promise<HashtagDay[]> => {
     const newest = days.at(0);
     const oldest = days.at(-1);
@@ -101,7 +104,7 @@ export const hashtagUses = async (
         ])
         .where("note_tags.name", "in", names)
         .where("note_tags.note_id", ">=", firstIdAt(oldest))
-        .where("notes.visibility", "in", ["public", "unlisted"])
+        .where("notes.visibility", "in", visibilities)
         .where("notes.created_at", ">=", oldest)
         .where("notes.created_at", "<", new Date(newest.getTime() + 24 * 60 * 60 * 1000))
         .groupBy(["note_tags.name", sql`day`])

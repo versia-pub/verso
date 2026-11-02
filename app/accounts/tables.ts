@@ -46,6 +46,8 @@ export type AccountsTable = {
     bot: Generated<boolean>;
     /** Whether the account may be suggested to others and listed in the directory. */
     discoverable: Generated<boolean>;
+    /** Whether an admin approved its statuses for trending, or rejected them, or `null` if not yet. */
+    trendable: Generated<boolean | null>;
     /** Whether its public statuses may appear in search results. */
     indexable: Generated<boolean>;
     /** Whether its followers and following are hidden from others. */

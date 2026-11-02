@@ -158,6 +158,16 @@ const response = (
                     },
                 },
             };
+        case "offset":
+            return {
+                description: "A page of a list, by offset",
+                headers: pageLinks,
+                content: {
+                    "application/json": {
+                        schema: { type: "array", items: jsonSchema(declared.item, names) },
+                    },
+                },
+            };
         case "linked":
             return {
                 description: "A page of a list",

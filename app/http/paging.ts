@@ -4,7 +4,7 @@
  * @module
  */
 import { z } from "zod";
-import type { Cursors } from "./responses.ts";
+import type { Cursors, Offsets } from "./responses.ts";
 import { Integer } from "./schemas.ts";
 
 type PageFields = {
@@ -66,6 +66,34 @@ export const linkHeader = (url: URL, cursors: Cursors): string | undefined => {
     const links = [
         cursors.older === undefined ? undefined : `<${at("max_id", cursors.older)}>; rel="next"`,
         cursors.newer === undefined ? undefined : `<${at("min_id", cursors.newer)}>; rel="prev"`,
+    ].filter((link) => link !== undefined);
+
+    return links.length > 0 ? links.join(", ") : undefined;
+};
+
+/**
+ * Where the pages around a page of `size` items that starts at `offset` start, as Mastodon links
+ * them: there is a next page only if this one is full, and a previous one only if it starts after
+ * the first full page, so the first page isn't linked back to from the second.
+ * @see https://github.com/mastodon/mastodon/blob/main/app/controllers/concerns/api/pagination.rb
+ */
+export const offsetsOf = (size: number, offset: number, limit: number): Offsets => ({
+    next: size >= limit ? offset + limit : undefined,
+    prev: offset > limit ? offset - limit : undefined,
+});
+
+/** The `Link` header for a page at `url`, with the offsets in place of its own, as `linkHeader`. */
+export const offsetLinkHeader = (url: URL, offsets: Offsets): string | undefined => {
+    const at = (offset: number) => {
+        const linked = new URL(url);
+        linked.searchParams.set("offset", String(offset));
+
+        return linked.href;
+    };
+
+    const links = [
+        offsets.next === undefined ? undefined : `<${at(offsets.next)}>; rel="next"`,
+        offsets.prev === undefined ? undefined : `<${at(offsets.prev)}>; rel="prev"`,
     ].filter((link) => link !== undefined);
 
     return links.length > 0 ? links.join(", ") : undefined;

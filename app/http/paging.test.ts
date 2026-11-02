@@ -1,5 +1,5 @@
 import { assertEquals, assertFalse } from "@std/assert";
-import { cursorsOf, linkHeader, PageQuery } from "./paging.ts";
+import { cursorsOf, linkHeader, offsetLinkHeader, offsetsOf, PageQuery } from "./paging.ts";
 
 const Query = PageQuery({ default: 20, max: 40 });
 
@@ -43,4 +43,23 @@ Deno.test("links keep what was asked, but the cursors, and lead to the pages aro
         '<https://social.example/api/v1/things?min_id=3>; rel="prev"',
     );
     assertEquals(linkHeader(url, {}), undefined);
+});
+
+Deno.test("a full page links to the next by offset, and later ones back, as Mastodon does", () => {
+    assertEquals(offsetsOf(10, 0, 10), { next: 10, prev: undefined });
+    assertEquals(offsetsOf(10, 10, 10), { next: 20, prev: undefined });
+    assertEquals(offsetsOf(10, 25, 10), { next: 35, prev: 15 });
+    assertEquals(offsetsOf(3, 25, 10), { next: undefined, prev: 15 });
+    assertEquals(offsetsOf(0, 0, 10), { next: undefined, prev: undefined });
+});
+
+Deno.test("offset links keep what was asked, but the offset", () => {
+    const url = new URL("https://social.example/api/v1/trends/tags?limit=10&offset=20");
+
+    assertEquals(
+        offsetLinkHeader(url, { next: 30, prev: 10 }),
+        '<https://social.example/api/v1/trends/tags?limit=10&offset=30>; rel="next", ' +
+            '<https://social.example/api/v1/trends/tags?limit=10&offset=10>; rel="prev"',
+    );
+    assertEquals(offsetLinkHeader(url, {}), undefined);
 });

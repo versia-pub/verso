@@ -232,8 +232,8 @@ Deno.test("the hashtags statuses used become known, and statuses' hashtags refer
 
     assertEquals((await migrate(db)).ok, true);
     assertEquals(await db.selectFrom("tags").selectAll().orderBy("name").execute(), [
-        { name: "deno", display_name: "deno" },
-        { name: "verso", display_name: "verso" },
+        { name: "deno", display_name: "deno", trendable: null },
+        { name: "verso", display_name: "verso", trendable: null },
     ]);
     assertEquals((await db.selectFrom("note_tags").selectAll().execute()).length, 3);
     await assertRejects(() =>

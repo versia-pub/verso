@@ -1,12 +1,19 @@
 import { assertEquals, assertNotEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { ValidationError } from "@cliffy/command";
-import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
+import {
+    createLocalAccount,
+    createRemoteAccount,
+    createRole,
+    giveRole,
+} from "../accounts/testing.ts";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
 import { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
+import { createNote } from "../notes/testing.ts";
 import { fileReport } from "../reports/reports.ts";
+import { refreshTrends } from "../trends/refresh.ts";
 import { adminCommand, AdminError } from "./cli.ts";
 
 /** The config the commands are given, which blocks config.example. */
@@ -404,5 +411,94 @@ Deno.test("announcements are made, changed, published, taken down and deleted", 
             () => admin(test.ctx, "announcements", "create", "Hi", "--scheduled-at", time),
             ValidationError,
         );
+    }
+});
+
+Deno.test("trending hashtags and accounts are approved and rejected, and listed with their state", async () => {
+    await using test = await createTestContext();
+    await createInstance(test.ctx, "remote.example");
+    await createRemoteAccount(test.ctx, "rem", "remote.example");
+    const users = ["alice", "b", "c", "d", "e"];
+    for (const id of users) await createLocalAccount(test.ctx, id);
+    await test.ctx.db.updateTable("accounts").set({ discoverable: true }).execute();
+    for (const id of users) await createNote(test.ctx, id, { likes_count: 5 }, [], ["cats"]);
+    await createNote(test.ctx, "rem", { likes_count: 5 });
+    await refreshTrends(test.ctx);
+
+    const listed = async () =>
+        JSON.parse((await admin(test.ctx, "trends", "list")).printed.join(""));
+    const states = async () => {
+        const { tags, accounts } = await listed();
+        return {
+            tags: tags.map((tag: { name: string; state: string }) => [tag.name, tag.state]),
+            accounts: accounts.map((each: { acct: string; state: string }) => [
+                each.acct,
+                each.state,
+            ]),
+        };
+    };
+    assertEquals((await states()).tags, [["cats", "pending"]]);
+    assertEquals((await states()).accounts.length, 6);
+    assertEquals((await states()).accounts[0][1], "pending");
+
+    const approved = await admin(test.ctx, "trends", "approve-tag", "#Cats");
+    assertEquals(JSON.parse(approved.printed.join("")), { tag: "cats", trendable: true });
+    assertEquals((await states()).tags, [["cats", "approved"]]);
+    await admin(test.ctx, "trends", "reject-tag", "cats");
+    assertEquals((await states()).tags, [["cats", "rejected"]]);
+
+    await admin(test.ctx, "trends", "approve-account", "alice");
+    await admin(test.ctx, "trends", "reject-account", "@rem@remote.example");
+    const { accounts } = await states();
+    assertEquals(accounts.find(([acct]: string[]) => acct === "alice")[1], "approved");
+    assertEquals(accounts.find(([acct]: string[]) => acct === "rem@remote.example")[1], "rejected");
+    assertEquals(accounts.find(([acct]: string[]) => acct === "b")[1], "pending");
+});
+
+Deno.test("what trends is approved by default when the config says so", async () => {
+    await using test = await createTestContext();
+    await createLocalAccount(test.ctx, "alice");
+    await test.ctx.db.updateTable("accounts").set({ discoverable: true }).execute();
+    await createNote(test.ctx, "alice", { likes_count: 5 });
+    await refreshTrends(test.ctx);
+
+    const printed: string[] = [];
+    await adminCommand({
+        withContext: (_path, work) =>
+            work(test.ctx, Config.parse({ ...config, instance: { trendable_by_default: true } })),
+        print: (line) => printed.push(line),
+    })
+        .globalOption("-c, --config <path:string>", "The config file.", { default: "config.toml" })
+        .noExit()
+        .parse(["trends", "list"]);
+
+    assertEquals(JSON.parse(printed.join("")).accounts[0].state, "approved");
+});
+
+Deno.test("trends can't be decided for hashtags and accounts there aren't", async () => {
+    await using test = await createTestContext();
+    await createInstance(test.ctx, "remote.example");
+    await createRemoteAccount(test.ctx, "rem", "remote.example");
+
+    const tag = await assertRejects(
+        () => admin(test.ctx, "trends", "approve-tag", "nothing"),
+        AdminError,
+    );
+    assertEquals(tag.message, "No status has used the hashtag nothing");
+
+    for (
+        const account of [
+            "nobody",
+            "nobody@remote.example",
+            "nobody@unknown.example",
+            "a@b@c",
+            "rem@remote.example@x",
+        ]
+    ) {
+        const error = await assertRejects(
+            () => admin(test.ctx, "trends", "reject-account", account),
+            AdminError,
+        );
+        assertEquals(error.message, `There is no account named ${account}`);
     }
 });

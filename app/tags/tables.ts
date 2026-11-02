@@ -1,9 +1,13 @@
+import type { Generated } from "kysely";
+
 /** A hashtag that a status, local or remote, has used. */
 export type TagsTable = {
     /** In lower case, without the `#`, as statuses' hashtags are matched. */
     name: string;
     /** As it was first written, without the `#`. */
     display_name: string;
+    /** Whether an admin approved it for trending, or rejected it, or `null` if not yet. */
+    trendable: Generated<boolean | null>;
 };
 
 /** A hashtag that a local user features on their profile, as Mastodon has them. */

@@ -6,7 +6,7 @@
 import type { Context as HonoContext } from "@hono/hono";
 import { deleteCookie, setCookie } from "@hono/hono/cookie";
 import { z } from "zod";
-import { linkHeader } from "./paging.ts";
+import { linkHeader, offsetLinkHeader } from "./paging.ts";
 import { type Route } from "./route.ts";
 import { type CookieChanges, type Reply, type Responses } from "./responses.ts";
 
@@ -26,12 +26,20 @@ const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType 
     declared instanceof z.ZodType;
 
 /**
- * Why a response's body doesn't match `schema`, or doesn't have cursors if it is a page of a list,
- * if it doesn't.
+ * Why a response's body doesn't match `schema`, or doesn't have the `pages` it should, cursors or
+ * offsets, if it is a page of a list, if it doesn't.
  */
-const bodyProblem = (reply: Reply<Responses>, schema: z.ZodType, paged: boolean) => {
+const bodyProblem = (
+    reply: Reply<Responses>,
+    schema: z.ZodType,
+    pages: "cursors" | "offsets" | false,
+) => {
     if (!("body" in reply)) return "it has no body";
-    if (paged !== "cursors" in reply) return paged ? "it has no cursors" : "it has cursors";
+    for (const kind of ["cursors", "offsets"] as const) {
+        if ((pages === kind) !== kind in reply) {
+            return pages === kind ? `it has no ${kind}` : `it has ${kind}`;
+        }
+    }
 
     const result = schema.safeParse(reply.body);
     return result.success ? undefined : z.prettifyError(result.error);
@@ -52,9 +60,11 @@ const replyProblem = (route: Route, reply: Reply<Responses>) => {
         case "binary":
             return "file" in reply ? undefined : "it isn't a file";
         case "paged":
-            return bodyProblem(reply, z.array(declared.item), true);
+            return bodyProblem(reply, z.array(declared.item), "cursors");
+        case "offset":
+            return bodyProblem(reply, z.array(declared.item), "offsets");
         case "linked":
-            return bodyProblem(reply, declared.body, true);
+            return bodyProblem(reply, declared.body, "cursors");
         case "upgrade":
             return "socket" in reply ? undefined : "it isn't a WebSocket";
         case "none": {
@@ -102,6 +112,15 @@ export const send = (
     if ("cursors" in reply) {
         const asked = new URL(c.req.url);
         const link = linkHeader(new URL(asked.pathname + asked.search, origin), reply.cursors);
+        if (link !== undefined) c.header("link", link);
+    }
+
+    if ("offsets" in reply) {
+        const asked = new URL(c.req.url);
+        const link = offsetLinkHeader(
+            new URL(asked.pathname + asked.search, origin),
+            reply.offsets,
+        );
         if (link !== undefined) c.header("link", link);
     }
 

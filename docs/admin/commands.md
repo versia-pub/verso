@@ -123,6 +123,27 @@ below their own. Role names are unique, ignoring case.
 
 After that, anyone with the `roles` permission can change, delete and grant roles through the API.
 
+### `verso admin trends`
+
+Hashtags and accounts only trend once approved, unless `trendable_by_default` is set in the config.
+
+| Command                            | Does                                             |
+| ---------------------------------- | ------------------------------------------------ |
+| `trends list`                      | lists what is trending, with whether it is shown |
+| `trends approve-tag <name>`        | lets a hashtag trend                             |
+| `trends reject-tag <name>`         | stops a hashtag trending                         |
+| `trends approve-account <account>` | lets an account's statuses trend                 |
+| `trends reject-account <account>`  | stops an account's statuses trending             |
+
+```sh
+$ verso admin trends list
+{"tags":[{"name":"cats","score":16,"state":"pending"}],"accounts":[…]}
+```
+
+`state` is `approved`, `rejected` or `pending`. An account is a local username, or `username@domain`
+for a remote one. Approving or rejecting takes effect at once, even for a hashtag or account that
+isn't trending yet.
+
 ### `verso admin users`
 
 | Command                               | Does                              |
