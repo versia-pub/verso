@@ -59,7 +59,7 @@ Deno.test("a local note is a status, with its mentions, hashtags and the note it
         reblogs_count: 0,
         favourites_count: 0,
         replies_count: 2,
-        url: null,
+        url: `https://social.example/.versia/v0.6/entities/Note/${note.id}`,
         in_reply_to_id: parent.id,
         in_reply_to_account_id: "carol",
         reblog: null,

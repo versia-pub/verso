@@ -51,8 +51,8 @@ export const Account = z.object({
     username: z.string(),
     /** `username` for local accounts, and `username@domain` for remote ones. */
     acct: z.string(),
-    /** The profile's web page, or `null` if it has none. */
-    url: z.url().nullable(),
+    /** The profile's web page, which is `uri` if it has none. */
+    url: z.url(),
     /** The account's id in the federation protocol. */
     uri: z.url(),
     display_name: z.string(),

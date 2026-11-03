@@ -199,8 +199,8 @@ export const renderStatuses = async (
             favourites_count: Math.max(note.likes_count, totals.get(note.id)?.likes ?? 0) -
                 (uncounted.likes.get(note.id) ?? 0),
             replies_count: Math.max(note.replies_count, totals.get(note.id)?.replies ?? 0),
-            // Verso has no web pages for statuses.
-            url: null,
+            // Verso has no web pages for statuses, so this is the same as `uri`.
+            url: noteUri(ctx, note, domain).href,
             in_reply_to_id: note.in_reply_to_id,
             in_reply_to_account_id: note.in_reply_to_account_id,
             reblog,

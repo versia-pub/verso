@@ -108,13 +108,15 @@ export const renderAccount = (
     // sent it.
     const html = local ? (html: string) => html : sanitizeHtml;
 
+    const uri = userUri(ctx, row);
+
     return {
         id: row.id,
         username: row.username,
         acct: local ? row.username : `${row.username}@${row.domain}`,
-        // Verso has no profile pages to link to; a web frontend would.
-        url: null,
-        uri: userUri(ctx, row),
+        // Verso has no profile pages to link to, so this is the same as `uri`.
+        url: uri,
+        uri,
         display_name: row.display_name,
         note: html(row.note_html),
         avatar: avatar.url,

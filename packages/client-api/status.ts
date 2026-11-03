@@ -119,8 +119,8 @@ export const Status = z.object({
     replies_count: z.int().min(0),
     /** Mastodon 4.5 and later. */
     quotes_count: z.int().min(0).optional(),
-    /** The status's web page, or `null` if it has none. */
-    url: z.url().nullable(),
+    /** The status's web page, which is `uri` if it has none. */
+    url: z.url(),
     in_reply_to_id: z.string().nullable(),
     in_reply_to_account_id: z.string().nullable(),
     /** The status this one boosts, if it is a boost. */

@@ -9,8 +9,8 @@ Verso federates over Versia, not ActivityPub. Search and follows work with accou
 instances, but accounts on Mastodon and other ActivityPub servers can't be found or followed.
 
 - `uri` on accounts and statuses is the entity's Versia URL, which `resolve` in search can look up.
-- `url` on accounts and statuses is `null`, because Verso has no web pages for them. Apps that open
-  a status or profile in the browser can't do so.
+- `url` on accounts and statuses is the same as `uri`, because Verso has no web pages for them. Apps
+  that open a status or profile in the browser get the Versia entity instead.
 - A remote account's `acct` is `username@domain`.
 - A report sent on to another instance says its category, but not which rules were broken. One
   received keeps `spam` or `legal` if it says so; Mastodon files every one as `other`.

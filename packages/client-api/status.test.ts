@@ -34,7 +34,7 @@ const status = {
     reblogs_count: 0,
     favourites_count: 0,
     replies_count: 0,
-    url: null,
+    url: "https://social.example/.versia/v0.6/entities/Note/1",
     in_reply_to_id: null,
     in_reply_to_account_id: null,
     reblog: null,
