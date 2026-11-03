@@ -51,11 +51,30 @@ export const removeLink = async (ctx: Context, noteId: string): Promise<void> =>
     await ctx.db.deleteFrom("note_preview_cards").where("note_id", "=", noteId).execute();
 };
 
+/** A card with its image. */
+export type CardWithImage = PreviewCardRow & { readonly image: MediaRow | undefined };
+
 /** A status's card, with the link it was shown for, and its image. */
-export type NoteCard = PreviewCardRow & {
+export type NoteCard = CardWithImage & {
     readonly note_id: string;
     readonly link: string;
-    readonly image: MediaRow | undefined;
+};
+
+/** `cards` with their images. */
+export const withImages = async <Card extends PreviewCardRow>(
+    ctx: Context,
+    cards: readonly Card[],
+): Promise<(Card & { readonly image: MediaRow | undefined })[]> => {
+    const imageIds = cards.flatMap((card) => card.image_id ?? []);
+    const images = imageIds.length === 0 ? [] : await ctx.db.selectFrom("media").selectAll()
+        .where("id", "in", imageIds)
+        .execute();
+    const byId = new Map(images.map((image) => [image.id, image]));
+
+    return cards.map((card) => ({
+        ...card,
+        image: card.image_id === null ? undefined : byId.get(card.image_id),
+    }));
 };
 
 /** The cards that the statuses `noteIds` show, by status. */
@@ -72,14 +91,5 @@ export const cardsOf = async (
         .where("note_preview_cards.note_id", "in", noteIds)
         .execute();
 
-    const imageIds = links.flatMap((card) => card.image_id ?? []);
-    const images = imageIds.length === 0 ? [] : await ctx.db.selectFrom("media").selectAll()
-        .where("id", "in", imageIds)
-        .execute();
-    const byId = new Map(images.map((image) => [image.id, image]));
-
-    return new Map(links.map((card) => [card.note_id, {
-        ...card,
-        image: card.image_id === null ? undefined : byId.get(card.image_id),
-    }]));
+    return new Map((await withImages(ctx, links)).map((card) => [card.note_id, card]));
 };

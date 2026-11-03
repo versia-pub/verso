@@ -1,14 +1,26 @@
 /**
- * Working out what is trending. Hashtags are scored by how many accounts used them today compared
- * with yesterday, statuses by how many times they were liked and boosted, as Mastodon does.
+ * Working out what is trending. Hashtags and links are scored by how many accounts used them today
+ * compared with yesterday, statuses by how many times they were liked and boosted, as Mastodon
+ * does.
  * Whether admins approved them is checked when they are shown, so approving takes effect at once.
  * @module
  */
 import type { Context } from "../kernel/context.ts";
 import { hashtagUses } from "../search/hashtag_queries.ts";
 import {
+    cardsSharedBy,
+    linkUses,
+    replaceTrendingLinks,
+    type TrendingLink,
+    trendingLinks,
+} from "./link_queries.ts";
+import {
     dayMs,
     decayed,
+    linkDecayThreshold,
+    linkPeakHalfLifeMs,
+    linkScore,
+    linkThreshold,
     peakCooldownMs,
     peakHalfLifeMs,
     statusDecayThreshold,
@@ -30,6 +42,33 @@ import {
 
 /** The queue the scheduler enqueues a refresh in. */
 export const trendsQueue = "trends";
+
+/** What a trend's peak was, so far. */
+type Peak = { readonly max_score: number; readonly max_score_at: Date };
+
+/**
+ * A trend's peak and current score, if `score` now, with the peak it had before, `before`, leaves
+ * it at least `decayThreshold`. A peak is remembered for two days, and halves every `halfLifeMs`.
+ */
+const trendOf = (
+    score: number,
+    before: Peak | undefined,
+    now: Date,
+    halfLifeMs: number,
+    decayThreshold: number,
+): (Peak & { readonly score: number }) | undefined => {
+    const stale = before === undefined ||
+        before.max_score_at.getTime() < now.getTime() - peakCooldownMs;
+    let peak = stale ? { max_score: 0, max_score_at: now } : before;
+    if (score > peak.max_score) peak = { max_score: score, max_score_at: now };
+
+    const current = decayed(
+        peak.max_score,
+        now.getTime() - peak.max_score_at.getTime(),
+        halfLifeMs,
+    );
+    return current >= decayThreshold ? { ...peak, score: current } : undefined;
+};
 
 /**
  * Scores the hashtags that accounts used today, and those already trending, and keeps those whose
@@ -56,26 +95,53 @@ export const refreshTrendingTags = async (ctx: Context): Promise<void> => {
     for (const name of names) {
         const score = tagScore(uses.get(`${name} 0`) ?? 0, uses.get(`${name} 1`) ?? 0);
 
-        const before = existing.get(name);
-        const stale = before === undefined ||
-            before.max_score_at.getTime() < now.getTime() - peakCooldownMs;
-        let peak = stale
-            ? { score: 0, at: now }
-            : { score: before.max_score, at: before.max_score_at };
-        if (score > peak.score) peak = { score, at: now };
-
-        const current = decayed(peak.score, now.getTime() - peak.at.getTime(), peakHalfLifeMs);
-        if (current >= tagDecayThreshold) {
-            trending.push({
-                name,
-                score: current,
-                max_score: peak.score,
-                max_score_at: peak.at,
-            });
-        }
+        const trend = trendOf(
+            score,
+            existing.get(name),
+            now,
+            peakHalfLifeMs,
+            tagDecayThreshold,
+        );
+        if (trend) trending.push({ name, ...trend });
     }
 
     await replaceTrendingTags(ctx, trending);
+};
+
+/**
+ * Scores the links that accounts shared today, and those already trending, and keeps those whose
+ * decayed peak is still high enough, as for hashtags, except that a link's peak halves every eight
+ * hours. Statuses and boosts both count.
+ */
+export const refreshTrendingLinks = async (ctx: Context): Promise<void> => {
+    const now = ctx.clock.now();
+    const today = new Date(Math.floor(now.getTime() / dayMs) * dayMs);
+    const yesterday = new Date(today.getTime() - dayMs);
+
+    const existing = new Map((await trendingLinks(ctx)).map((row) => [row.card_id, row]));
+    const ids = [
+        ...new Set([...await cardsSharedBy(ctx, today, linkThreshold), ...existing.keys()]),
+    ];
+
+    const uses = new Map(
+        (await linkUses(ctx, ids, [today, yesterday]))
+            .map((used) => [`${used.card_id} ${used.day}`, used.accounts]),
+    );
+
+    const trending: TrendingLink[] = [];
+    for (const id of ids) {
+        const score = linkScore(uses.get(`${id} 0`) ?? 0, uses.get(`${id} 1`) ?? 0);
+        const trend = trendOf(
+            score,
+            existing.get(id),
+            now,
+            linkPeakHalfLifeMs,
+            linkDecayThreshold,
+        );
+        if (trend) trending.push({ card_id: id, ...trend });
+    }
+
+    await replaceTrendingLinks(ctx, trending);
 };
 
 /** How far back a status can have been posted and still trend, as its score halves every hour. */
@@ -117,5 +183,6 @@ export const refreshTrendingStatuses = async (ctx: Context): Promise<void> => {
 /** Works out what is trending. */
 export const refreshTrends = async (ctx: Context): Promise<void> => {
     await refreshTrendingTags(ctx);
+    await refreshTrendingLinks(ctx);
     await refreshTrendingStatuses(ctx);
 };

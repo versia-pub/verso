@@ -113,15 +113,23 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 
 - Trends only show what an admin approved, unless `trendable_by_default` is set. Mastodon's default
   is the same. Statuses are approved by account, not one by one.
-- Verso scores hashtags and statuses every minute, not every five. Statuses from the last two days
-  can trend.
+- Verso scores hashtags, links and statuses every minute, not every five. Statuses from the last two
+  days can trend.
 - Hashtags are scored by public statuses only. The history shown on a hashtag counts unlisted
   statuses too.
 - A local account's statuses only trend if it's discoverable. Remote accounts always count as
   discoverable, since Versia has no such setting. Statuses with no language can trend.
 - Trending statuses aren't ordered by the viewer's languages, and admins don't get a mail when
   something asks for approval.
-- `show_trends = false` answers `200` with an empty list, as Mastodon does.
+- `show_trends = false` answers `200` with an empty list, as Mastodon does. The link timeline
+  answers `404` then.
+- Links follow `trendable_by_default` too, which Mastodon only uses to skip review mails. A link
+  trends if an admin approved it, or else its website, or else the default does. Links with no
+  language can trend, and aren't ordered by the viewer's languages.
+- A link counts accounts that shared it in public statuses and boosts, and its history counts the
+  same. The link timeline lists the public statuses whose first link it is, by discoverable
+  accounts, without those of accounts the viewer blocks or mutes. It has no `local`, `remote` or
+  `only_media`, as in Mastodon.
 
 ## Suggestions
 

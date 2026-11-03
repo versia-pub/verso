@@ -10347,6 +10347,185 @@
                 }
             }
         },
+        "/api/v1/trends/links": {
+            "get": {
+                "summary": "View trending links",
+                "description": "Links that have been shared more than others.\n\nNeeds the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/trends/#links"
+                },
+                "tags": [
+                    "trends"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Skip the first n results."
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ],
+                            "description": "Maximum number of results to return. Defaults to 10. Max 20."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, by offset",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/TrendsLink"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/timelines/link": {
+            "get": {
+                "summary": "View link timeline",
+                "description": "View public statuses containing a link to the specified currently-trending article. This only lists statuses from people who have opted in to discoverability features.\n\nNeeds the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/timelines/#link"
+                },
+                "tags": [
+                    "timelines"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "url",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The URL of the trending article."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Status"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/suggestions": {
             "get": {
                 "summary": "View follow suggestions",
@@ -21454,6 +21633,148 @@
                     "token_type",
                     "scope",
                     "created_at"
+                ]
+            },
+            "TrendsLink": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "language": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "link",
+                            "photo",
+                            "video",
+                            "rich"
+                        ]
+                    },
+                    "authors": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PreviewCardAuthor"
+                        }
+                    },
+                    "author_name": {
+                        "type": "string"
+                    },
+                    "author_url": {
+                        "type": "string"
+                    },
+                    "provider_name": {
+                        "type": "string"
+                    },
+                    "provider_url": {
+                        "type": "string"
+                    },
+                    "html": {
+                        "type": "string"
+                    },
+                    "width": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    },
+                    "height": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                    },
+                    "image": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "image_description": {
+                        "type": "string"
+                    },
+                    "embed_url": {
+                        "type": "string"
+                    },
+                    "blurhash": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "published_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "history": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TrendsLinkHistory"
+                        }
+                    }
+                },
+                "required": [
+                    "url",
+                    "title",
+                    "description",
+                    "language",
+                    "type",
+                    "authors",
+                    "author_name",
+                    "author_url",
+                    "provider_name",
+                    "provider_url",
+                    "html",
+                    "width",
+                    "height",
+                    "image",
+                    "image_description",
+                    "embed_url",
+                    "blurhash",
+                    "published_at",
+                    "history"
+                ]
+            },
+            "TrendsLinkHistory": {
+                "type": "object",
+                "properties": {
+                    "day": {
+                        "type": "string"
+                    },
+                    "uses": {
+                        "type": "string"
+                    },
+                    "accounts": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "day",
+                    "uses",
+                    "accounts"
                 ]
             },
             "V1Instance": {

@@ -1,5 +1,5 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert";
-import { decayed, statusScore, tagScore } from "./scoring.ts";
+import { decayed, linkScore, statusScore, tagScore } from "./scoring.ts";
 
 Deno.test("a hashtag scores the square of how far today's accounts exceed yesterday's, over them", () => {
     assertEquals(tagScore(5, 1), 16);
@@ -34,4 +34,12 @@ Deno.test("a status with too few likes and boosts scores nothing, and one from t
 
     assertEquals(statusScore(4, now, now), 0);
     assertEquals(statusScore(5, new Date("2026-01-02T12:00:00Z"), now), 16);
+});
+
+Deno.test("a link scores as a hashtag does, by the accounts that shared it", () => {
+    assertEquals(linkScore(5, 1), 16);
+    assertEquals(linkScore(5, 0), 16);
+    assertEquals(linkScore(9, 3), 12);
+    assertEquals(linkScore(4, 1), 0);
+    assertEquals(linkScore(6, 7), 0);
 });

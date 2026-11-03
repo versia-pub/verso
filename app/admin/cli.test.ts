@@ -12,6 +12,7 @@ import { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createNote } from "../notes/testing.ts";
+import { createCard } from "../previews/testing.ts";
 import { fileReport } from "../reports/reports.ts";
 import { refreshTrends } from "../trends/refresh.ts";
 import { adminCommand, AdminError } from "./cli.ts";
@@ -501,4 +502,50 @@ Deno.test("trends can't be decided for hashtags and accounts there aren't", asyn
         );
         assertEquals(error.message, `There is no account named ${account}`);
     }
+});
+
+Deno.test("trending links and their websites are approved and rejected, and listed with their state", async () => {
+    await using test = await createTestContext();
+    const users = ["alice", "b", "c", "d", "e"];
+    for (const id of users) await createLocalAccount(test.ctx, id);
+    const notes = [];
+    for (const id of users) notes.push((await createNote(test.ctx, id)).id);
+    await createCard(test.ctx, notes, { url: "https://news.example/story", title: "A story" });
+    await refreshTrends(test.ctx);
+
+    const listed = async () =>
+        JSON.parse((await admin(test.ctx, "trends", "list")).printed.join(""));
+    const link = async () => (await listed()).links;
+    assertEquals(await link(), [{
+        url: "https://news.example/story",
+        title: "A story",
+        score: 16,
+        state: "pending",
+    }]);
+
+    const domain = await admin(test.ctx, "trends", "approve-domain", "News.Example");
+    assertEquals(JSON.parse(domain.printed.join("")), { domain: "news.example", trendable: true });
+    assertEquals((await link())[0].state, "approved");
+    assertEquals((await listed()).domains, [{ domain: "news.example", trendable: true }]);
+
+    await admin(test.ctx, "trends", "reject-link", "https://news.example/story");
+    assertEquals((await link())[0].state, "rejected");
+    const approved = await admin(test.ctx, "trends", "approve-link", "https://news.example/story");
+    assertEquals(
+        JSON.parse(approved.printed.join("")),
+        { url: "https://news.example/story", trendable: true },
+    );
+    await admin(test.ctx, "trends", "reject-domain", "news.example");
+    assertEquals((await link())[0].state, "approved");
+
+    const missing = await assertRejects(
+        () => admin(test.ctx, "trends", "approve-link", "https://news.example/other"),
+        AdminError,
+    );
+    assertEquals(missing.message, "Verso has no preview card at https://news.example/other");
+    const invalid = await assertRejects(
+        () => admin(test.ctx, "trends", "approve-domain", "not a domain"),
+        AdminError,
+    );
+    assertEquals(invalid.message, "not a domain is not a domain name");
 });

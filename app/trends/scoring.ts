@@ -2,6 +2,7 @@
  * How much hashtags and statuses are trending, with Mastodon's formulas and defaults.
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/tags.rb
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/statuses.rb
+ * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/links.rb
  * @module
  */
 
@@ -18,6 +19,15 @@ export const tagDecayThreshold = 1;
 export const peakCooldownMs = 2 * dayMs;
 export const peakHalfLifeMs = 4 * hourMs;
 
+/** How many accounts must share a link in a day for it to trend. */
+export const linkThreshold = 5;
+
+/** A link stays trending while its decayed peak is at least this. */
+export const linkDecayThreshold = 1;
+
+/** How long a link's peak counts, as a hashtag's does, and how long it takes to halve. */
+export const linkPeakHalfLifeMs = 8 * hourMs;
+
 /** How many times a status must be liked and boosted to trend. */
 export const statusThreshold = 5;
 
@@ -28,16 +38,24 @@ export const statusDecayThreshold = 0.3;
 export const statusHalfLifeMs = hourMs;
 
 /**
- * How much a hashtag trends: how far the accounts that used it today, `observed`, exceed those
- * that did yesterday, `expected`, squared, or nothing if fewer did than yesterday or than the
- * threshold.
+ * How much something trends: how far the accounts that used it today, `observed`, exceed those
+ * that did yesterday, `expected`, squared, or nothing if fewer did than yesterday or than
+ * `threshold`.
  */
-export const tagScore = (observed: number, expected: number): number => {
+const surge = (observed: number, expected: number, threshold: number): number => {
     const baseline = expected === 0 ? 1 : expected;
-    if (baseline > observed || observed < tagThreshold) return 0;
+    if (baseline > observed || observed < threshold) return 0;
 
     return (observed - baseline) ** 2 / baseline;
 };
+
+/** How much a hashtag trends, from the accounts that used it today and yesterday. */
+export const tagScore = (observed: number, expected: number): number =>
+    surge(observed, expected, tagThreshold);
+
+/** How much a link trends, from the accounts that shared it today and yesterday. */
+export const linkScore = (observed: number, expected: number): number =>
+    surge(observed, expected, linkThreshold);
 
 /** `score` after `elapsedMs` of decay, which halves it every `halfLifeMs`. */
 export const decayed = (score: number, elapsedMs: number, halfLifeMs: number): number =>

@@ -3,7 +3,7 @@
  * statuses use, and the statuses, directly.
  * @module
  */
-import { type Expression, sql, type SqlBool } from "kysely";
+import { type Expression, type RawBuilder, sql, type SqlBool } from "kysely";
 import { usesSqlite } from "../db/columns.ts";
 import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
@@ -66,6 +66,15 @@ export type HashtagDay = {
     readonly accounts: number;
 };
 
+/** Which of `days` a status is from, by the newest it is after, as an index into them. */
+export const dayOf = (days: readonly Date[]): RawBuilder<number> =>
+    sql<number>`CASE ${
+        sql.join(
+            days.map((start, i) => sql`WHEN notes.created_at >= ${start} THEN ${sql.lit(i)}`),
+            sql` `,
+        )
+    } END`;
+
 /**
  * How statuses of the visibilities `visibilities`, public and unlisted unless said otherwise, used
  * each of `names` on each of the days that start at `days`, newest first, each a day long, as
@@ -87,13 +96,7 @@ export const hashtagUses = async (
     const oldest = days.at(-1);
     if (names.length === 0 || newest === undefined || oldest === undefined) return [];
 
-    // Which of `days` a status is from, by the newest it is after.
-    const day = sql<number>`CASE ${
-        sql.join(
-            days.map((start, i) => sql`WHEN notes.created_at >= ${start} THEN ${sql.lit(i)}`),
-            sql` `,
-        )
-    } END`;
+    const day = dayOf(days);
     const rows = await ctx.db.selectFrom("note_tags")
         .innerJoin("notes", "notes.id", "note_tags.note_id")
         .select((eb) => [

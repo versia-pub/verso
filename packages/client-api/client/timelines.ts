@@ -55,6 +55,14 @@ export class TimelineMethods {
     }
 
     /**
+     * Public statuses that link to a trending article, as `trends.links` gives its `url`.
+     * @see https://docs.joinmastodon.org/methods/timelines/#link
+     */
+    link(url: string, query: PageQuery = {}, options?: CallOptions): Promise<Page<Status>> {
+        return Page.get(this.http, Status, "/api/v1/timelines/link", { ...query, url }, options);
+    }
+
+    /**
      * The statuses of the accounts in one of the viewer's lists.
      * @see https://docs.joinmastodon.org/methods/timelines/#list
      */

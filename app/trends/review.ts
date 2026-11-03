@@ -7,6 +7,13 @@ import { findLocalAccount, findRemoteAccountByName } from "../accounts/account_q
 import { findInstanceId } from "../instances/instance_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import {
+    providerDecisions,
+    setCardTrendable,
+    setProviderTrendable,
+    type TrendingCard,
+    trendingCards,
+} from "./link_queries.ts";
+import {
     setAccountTrendable,
     setTagTrendable,
     trendingAccountsForAdmin,
@@ -24,29 +31,67 @@ const stateOf = (trendable: boolean | null, byDefault: boolean): TrendState => {
     return trendable ? "approved" : "rejected";
 };
 
+/** The domain of a card's website, and each domain it is a subdomain of, the most specific first. */
+export const websiteDomains = (url: string): string[] => {
+    const { hostname } = new URL(url);
+    const labels = (canonicalizeDomain(hostname) ?? hostname).split(".");
+
+    return labels.map((_, i) => labels.slice(i).join("."));
+};
+
+/** Whether `card` trends: its own decision, or else its website's, or else `byDefault` decides. */
+export const cardState = (
+    card: Pick<TrendingCard, "url" | "trendable">,
+    decisions: ReadonlyMap<string, boolean>,
+    byDefault: boolean,
+): TrendState => {
+    const domain = websiteDomains(card.url).find((name) => decisions.has(name));
+    const website = domain === undefined ? null : decisions.get(domain) ?? null;
+
+    return stateOf(card.trendable ?? website, byDefault);
+};
+
 /** What is trending, with whether each is shown. */
 export type TrendsForAdmin = {
     readonly tags: readonly { name: string; score: number; state: TrendState }[];
     readonly accounts: readonly { id: string; acct: string; score: number; state: TrendState }[];
+    readonly links: readonly { url: string; title: string; score: number; state: TrendState }[];
+    /** The websites an admin decided about, whose links trend or not unless a card was decided. */
+    readonly domains: readonly { domain: string; trendable: boolean }[];
 };
 
 /** What is trending, with whether it is shown, for an admin to review. */
 export const trendsForAdmin = async (
     ctx: Context,
     byDefault: boolean,
-): Promise<TrendsForAdmin> => ({
-    tags: (await trendingTagsForAdmin(ctx)).map((tag) => ({
-        name: tag.name,
-        score: tag.score,
-        state: stateOf(tag.trendable, byDefault),
-    })),
-    accounts: (await trendingAccountsForAdmin(ctx)).map((account) => ({
-        id: account.id,
-        acct: account.domain === null ? account.username : `${account.username}@${account.domain}`,
-        score: account.score,
-        state: stateOf(account.trendable, byDefault),
-    })),
-});
+): Promise<TrendsForAdmin> => {
+    const decisions = await providerDecisions(ctx);
+
+    return {
+        tags: (await trendingTagsForAdmin(ctx)).map((tag) => ({
+            name: tag.name,
+            score: tag.score,
+            state: stateOf(tag.trendable, byDefault),
+        })),
+        accounts: (await trendingAccountsForAdmin(ctx)).map((account) => ({
+            id: account.id,
+            acct: account.domain === null
+                ? account.username
+                : `${account.username}@${account.domain}`,
+            score: account.score,
+            state: stateOf(account.trendable, byDefault),
+        })),
+        links: (await trendingCards(ctx)).map((card) => ({
+            url: card.url,
+            title: card.title,
+            score: card.score,
+            state: cardState(card, decisions, byDefault),
+        })),
+        domains: [...decisions]
+            .map(([domain, trendable]) => ({ domain, trendable }))
+            .toSorted((a, b) => a.domain.localeCompare(b.domain)),
+    };
+};
 
 /**
  * Lets the hashtag `name`, with or without its `#`, trend or not. Returns `false` if no status has
@@ -81,4 +126,27 @@ export const decideAccount = async (
 
     await setAccountTrendable(ctx, account.id, trendable);
     return account.id;
+};
+
+/**
+ * Lets the link whose card is at `url`, as `trends list` prints it, trend or not. Returns `false`
+ * if Verso has no card there.
+ */
+export const decideLink = (ctx: Context, url: string, trendable: boolean): Promise<boolean> =>
+    setCardTrendable(ctx, url, trendable);
+
+/**
+ * Lets the links to the website `domain`, and its subdomains, trend or not, unless a link was
+ * decided. Returns the domain as stored, or `undefined` if it isn't a domain name.
+ */
+export const decideDomain = async (
+    ctx: Context,
+    domain: string,
+    trendable: boolean,
+): Promise<string | undefined> => {
+    const name = canonicalizeDomain(domain);
+    if (name === undefined) return undefined;
+
+    await setProviderTrendable(ctx, name, trendable);
+    return name;
 };

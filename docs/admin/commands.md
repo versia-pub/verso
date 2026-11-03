@@ -125,7 +125,8 @@ After that, anyone with the `roles` permission can change, delete and grant role
 
 ### `verso admin trends`
 
-Hashtags and accounts only trend once approved, unless `trendable_by_default` is set in the config.
+Hashtags, accounts and links only trend once approved, unless `trendable_by_default` is set in the
+config.
 
 | Command                            | Does                                             |
 | ---------------------------------- | ------------------------------------------------ |
@@ -134,6 +135,10 @@ Hashtags and accounts only trend once approved, unless `trendable_by_default` is
 | `trends reject-tag <name>`         | stops a hashtag trending                         |
 | `trends approve-account <account>` | lets an account's statuses trend                 |
 | `trends reject-account <account>`  | stops an account's statuses trending             |
+| `trends approve-link <url>`        | lets a link trend                                |
+| `trends reject-link <url>`         | stops a link trending                            |
+| `trends approve-domain <domain>`   | lets the links to a website trend                |
+| `trends reject-domain <domain>`    | stops the links to a website trending            |
 
 ```sh
 $ verso admin trends list
@@ -141,8 +146,9 @@ $ verso admin trends list
 ```
 
 `state` is `approved`, `rejected` or `pending`. An account is a local username, or `username@domain`
-for a remote one. Approving or rejecting takes effect at once, even for a hashtag or account that
-isn't trending yet.
+for a remote one. A link is the `url` that `list` prints. A website's decision covers its
+subdomains, and a link's own decision wins over it. Approving or rejecting takes effect at once,
+even for a hashtag, account or link that isn't trending yet.
 
 ### `verso admin users`
 

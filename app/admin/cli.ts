@@ -25,7 +25,13 @@ import type { Context } from "../kernel/context.ts";
 import { blockDomain, blockedByConfig, unblockDomain } from "../moderation/domain_blocks.ts";
 import { listBlockedDomains } from "../moderation/domain_block_queries.ts";
 import { reportsForAdmin, resolve } from "../reports/reports.ts";
-import { decideAccount, decideTag, trendsForAdmin } from "../trends/review.ts";
+import {
+    decideAccount,
+    decideDomain,
+    decideLink,
+    decideTag,
+    trendsForAdmin,
+} from "../trends/review.ts";
 
 /** What admin commands need from whoever runs them. */
 export type AdminIo = {
@@ -104,6 +110,28 @@ const decideTrendingAccount = async (
     if (id === undefined) throw new AdminError(`There is no account named ${account}`);
 
     io.print(JSON.stringify({ id, trendable }));
+};
+
+/** Lets a link trend or not, and prints the decision, or fails if Verso has no such card. */
+const decideTrendingLink = async (io: AdminIo, config: string, url: string, trendable: boolean) => {
+    if (!await io.withContext(config, (ctx) => decideLink(ctx, url, trendable))) {
+        throw new AdminError(`Verso has no preview card at ${url}`);
+    }
+
+    io.print(JSON.stringify({ url, trendable }));
+};
+
+/** Lets a website's links trend or not, and prints the decision, or fails if it isn't a domain. */
+const decideTrendingDomain = async (
+    io: AdminIo,
+    config: string,
+    domain: string,
+    trendable: boolean,
+) => {
+    const name = await io.withContext(config, (ctx) => decideDomain(ctx, domain, trendable));
+    if (name === undefined) throw new AdminError(`${domain} is not a domain name`);
+
+    io.print(JSON.stringify({ domain: name, trendable }));
 };
 
 /** The `admin` command, to add to the main one, which has the global `--config` option. */
@@ -205,8 +233,8 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
             "trends",
             new Command<{ config: string }>()
                 .description(
-                    "Approve or reject the hashtags and accounts that trend. Hashtags and accounts " +
-                        "wait for approval unless `trendable_by_default` is set in the config.",
+                    "Approve or reject the hashtags, accounts and links that trend. They wait for " +
+                        "approval unless `trendable_by_default` is set in the config.",
                 )
                 .action(missingCommand)
                 .command(
@@ -241,6 +269,29 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
                 .command("reject-account <account:string>", "Stop an account's statuses trending.")
                 .action(async ({ config }, account) => {
                     await decideTrendingAccount(io, config, account, false);
+                })
+                .command(
+                    "approve-link <url:string>",
+                    "Let a link trend. Give its url as `list` prints it.",
+                )
+                .action(async ({ config }, url) => {
+                    await decideTrendingLink(io, config, url, true);
+                })
+                .command("reject-link <url:string>", "Stop a link from trending.")
+                .action(async ({ config }, url) => {
+                    await decideTrendingLink(io, config, url, false);
+                })
+                .command(
+                    "approve-domain <domain:string>",
+                    "Let the links to a website and its subdomains trend, unless a link was " +
+                        "decided.",
+                )
+                .action(async ({ config }, domain) => {
+                    await decideTrendingDomain(io, config, domain, true);
+                })
+                .command("reject-domain <domain:string>", "Stop a website's links from trending.")
+                .action(async ({ config }, domain) => {
+                    await decideTrendingDomain(io, config, domain, false);
                 }),
         )
         .command(

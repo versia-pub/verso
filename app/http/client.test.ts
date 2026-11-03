@@ -548,6 +548,7 @@ Deno.test("a user reads what is trending, which an admin approved", async () => 
     assertEquals(trending.account.acct, "alice");
     assertEquals(await test.client.trends.statuses({ offset: 1 }), []);
     assertEquals(await test.client.trends.tags(), []);
+    assertEquals(await test.client.trends.links(), []);
 });
 
 Deno.test("a user is suggested accounts their follows follow, and dismisses one", async () => {

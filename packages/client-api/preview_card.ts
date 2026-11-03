@@ -49,3 +49,27 @@ export const PreviewCard = z.object({
     published_at: z.iso.datetime().nullable(),
 });
 export type PreviewCard = z.infer<typeof PreviewCard>;
+
+/**
+ * How a trending link was shared on one day.
+ * @see https://docs.joinmastodon.org/entities/PreviewCard/#trends-link
+ */
+export const TrendsLinkHistory = z.object({
+    /** Midnight at the start of the day, in UTC, as a UNIX timestamp. */
+    day: z.string(),
+    /** How many statuses shared it that day. */
+    uses: z.string(),
+    /** How many accounts those statuses were by. */
+    accounts: z.string(),
+});
+export type TrendsLinkHistory = z.infer<typeof TrendsLinkHistory>;
+
+/**
+ * A preview card of a trending link, with how it was shared lately.
+ * @see https://docs.joinmastodon.org/entities/PreviewCard/#trends-link
+ */
+export const TrendsLink = PreviewCard.extend({
+    /** Each of the past week's days, today first. */
+    history: z.array(TrendsLinkHistory),
+});
+export type TrendsLink = z.infer<typeof TrendsLink>;

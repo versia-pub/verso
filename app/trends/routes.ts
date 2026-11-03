@@ -1,12 +1,16 @@
-import { Status, Tag } from "@versia/client-api";
+import { Status, Tag, TrendsLink } from "@versia/client-api";
 import { z } from "zod";
-import { offsetsOf } from "../http/paging.ts";
-import { Offset } from "../http/responses.ts";
+import { viewerHidden } from "../graph/hidden.ts";
+import { NotFound } from "../http/errors.ts";
+import { cursorsOf, offsetsOf, PageQuery } from "../http/paging.ts";
+import { Offset, Paged } from "../http/responses.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Integer } from "../http/schemas.ts";
 import type { Config } from "../kernel/config.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { renderHashtags } from "../search/hashtags.ts";
+import { linkPage } from "./link_queries.ts";
+import { approvedTrendingCards, renderTrendingLinks } from "./links.ts";
 import { approvedTrendingStatuses, approvedTrendingTags } from "./trend_queries.ts";
 
 /** Which page of a trending list to return, by offset, and how long it is at most. */
@@ -24,6 +28,11 @@ const TrendQuery = (limit: { readonly default: number; readonly max: number }) =
     });
 
 const tagsQuery = TrendQuery({ default: 10, max: 20 });
+
+/** Which link's statuses to return, and which of them. */
+const LinkTimelineQuery = PageQuery({ default: 20, max: 40 }).extend({
+    url: z.string().meta({ description: "The URL of the trending article." }),
+});
 
 /** What is trending, which `instance` says whether to show, and whether admins approved. */
 export const trendRoutes = (
@@ -88,6 +97,58 @@ export const trendRoutes = (
                     status: 200,
                     body: await renderStatuses(ctx, notes, viewerId),
                     offsets: offsetsOf(notes.length, query.offset, query.limit),
+                };
+            },
+        }),
+        defineRoute({
+            method: "GET",
+            path: "/api/v1/trends/links",
+            summary: "View trending links",
+            description: "Links that have been shared more than others.",
+            docs: "https://docs.joinmastodon.org/methods/trends/#links",
+            tags: ["trends"],
+            auth: { require: "optional", permission: "read:note" },
+            query: tagsQuery,
+            responses: { 200: Offset(TrendsLink) },
+            handler: async (ctx, { query }) => {
+                const cards = instance.show_trends
+                    ? (await approvedTrendingCards(ctx, instance.trendable_by_default))
+                        .slice(query.offset, query.offset + query.limit)
+                    : [];
+
+                return {
+                    status: 200,
+                    body: await renderTrendingLinks(ctx, cards),
+                    offsets: offsetsOf(cards.length, query.offset, query.limit),
+                };
+            },
+        }),
+        defineRoute({
+            method: "GET",
+            path: "/api/v1/timelines/link",
+            summary: "View link timeline",
+            description:
+                "View public statuses containing a link to the specified currently-trending " +
+                "article. This only lists statuses from people who have opted in to discoverability " +
+                "features.",
+            docs: "https://docs.joinmastodon.org/methods/timelines/#link",
+            tags: ["timelines"],
+            auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
+            query: LinkTimelineQuery,
+            responses: { 200: Paged(Status) },
+            handler: async (ctx, { query, viewer }) => {
+                const viewerId = viewer?.accountId ?? null;
+                const card = instance.show_trends
+                    ? (await approvedTrendingCards(ctx, instance.trendable_by_default))
+                        .find((trending) => trending.url === query.url)
+                    : undefined;
+                if (card === undefined) throw new NotFound();
+
+                const notes = await linkPage(ctx, card.id, viewerHidden(ctx, viewerId), query);
+                return {
+                    status: 200,
+                    body: await renderStatuses(ctx, notes, viewerId),
+                    cursors: cursorsOf(notes, query, (note) => note.id),
                 };
             },
         }),

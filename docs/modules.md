@@ -29,7 +29,7 @@ files write them. See [Architecture](architecture.md) for the rules between modu
 | `moderation`    | instances Verso doesn't federate with        | `domain_blocks.ts`            |
 | `reports`       | reports of accounts to moderators            | `reports.ts`                  |
 | `announcements` | announcements from admins to every user      | `announcements.ts`            |
-| `trends`        | trending hashtags and statuses               | `refresh.ts`, `scoring.ts`    |
+| `trends`        | trending hashtags, statuses and links        | `refresh.ts`, `scoring.ts`    |
 | `suggestions`   | accounts suggested to follow                 | `suggestions.ts`              |
 | `previews`      | preview cards of the pages statuses link to  | `cards.ts`, `fetching.ts`     |
 | `admin`         | `verso admin …` commands                     | `cli.ts`                      |
@@ -68,7 +68,7 @@ their own.
 | `push_subscriptions`, `vapid_keys`                                     | `push`          |
 | `note_search`, `account_search`                                        | `search`        |
 | `markers`                                                              | `markers`       |
-| `preview_cards`, `note_preview_cards`                                  | `previews`      |
+| `preview_cards`, `note_preview_cards`, `preview_card_providers`        | `previews`      |
 | `tags`, `featured_tags`, `tag_follows`                                 | `tags`          |
 | `lists`, `list_accounts`                                               | `lists`         |
 | `filters`, `filter_keywords`, `filter_statuses`                        | `filters`       |
@@ -77,7 +77,7 @@ their own.
 | `domain_blocks`                                                        | `moderation`    |
 | `reports`                                                              | `reports`       |
 | `announcements`, `announcement_dismissals`                             | `announcements` |
-| `trending_tags`, `trending_statuses`                                   | `trends`        |
+| `trending_tags`, `trending_links`, `trending_statuses`                 | `trends`        |
 | `suggestion_dismissals`                                                | `suggestions`   |
 | `rate_limits`                                                          | `http`          |
 | `jobs`, `job_pauses`                                                   | `jobs`          |

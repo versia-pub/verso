@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TrendsLink } from "../preview_card.ts";
 import { Status } from "../status.ts";
 import { Tag } from "../tag.ts";
 import { type CallOptions, type Http } from "./http.ts";
@@ -7,7 +8,7 @@ import { type CallOptions, type Http } from "./http.ts";
 export type TrendQuery = {
     /** How many to skip. */
     readonly offset?: number;
-    /** The most to return. Instances give at most 20 hashtags or 40 statuses. */
+    /** The most to return. Instances give at most 20 hashtags or links, or 40 statuses. */
     readonly limit?: number;
 };
 
@@ -29,6 +30,17 @@ export class TrendMethods {
      */
     statuses(query?: TrendQuery, options?: CallOptions): Promise<Status[]> {
         return this.http.json(z.array(Status), "GET", "/api/v1/trends/statuses", {
+            ...options,
+            query,
+        });
+    }
+
+    /**
+     * The links shared by more accounts than usual lately, the highest scoring first.
+     * @see https://docs.joinmastodon.org/methods/trends/#links
+     */
+    links(query?: TrendQuery, options?: CallOptions): Promise<TrendsLink[]> {
+        return this.http.json(z.array(TrendsLink), "GET", "/api/v1/trends/links", {
             ...options,
             query,
         });

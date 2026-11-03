@@ -138,7 +138,9 @@ export const renderStatuses = async (
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
     const polls = await renderPolls(ctx, notes, viewerId);
     const cards = new Map(
-        [...await cardsOf(ctx, noteIds)].map(([id, card]) => [id, renderCard(ctx, card)]),
+        [...await cardsOf(ctx, noteIds)].map((
+            [id, card],
+        ) => [id, renderCard(ctx, card, card.link)]),
     );
     const filters = viewerId === null
         ? undefined

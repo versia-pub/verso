@@ -18,3 +18,15 @@ export type TrendingStatusesTable = {
     /** How much it is trending now, after its age decayed it. */
     score: number;
 };
+
+/** A link that is trending, or is not yet approved to be shown as trending. */
+export type TrendingLinksTable = {
+    /** The page's preview card. */
+    card_id: string;
+    /** How much it is trending now, after its peak decayed. */
+    score: number;
+    /** The highest score it had in the last two days. */
+    max_score: number;
+    /** When it had `max_score`. */
+    max_score_at: Date;
+};

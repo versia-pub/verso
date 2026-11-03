@@ -62,6 +62,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "DELETE /api/v1/suggestions/{id}": (c) => c.suggestions.dismiss("1"),
     "GET /api/v1/trends/tags": (c) => c.trends.tags(),
     "GET /api/v1/trends/statuses": (c) => c.trends.statuses(),
+    "GET /api/v1/trends/links": (c) => c.trends.links(),
     "POST /api/v1/tags/{name}/follow": (c) => c.tags.follow("cats"),
     "POST /api/v1/tags/{name}/unfollow": (c) => c.tags.unfollow("cats"),
     "GET /api/v1/followed_tags": (c) => c.followedTags.list(),
@@ -150,6 +151,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/timelines/home": (c) => c.timelines.home(),
     "GET /api/v1/timelines/public": (c) => c.timelines.public(),
     "GET /api/v1/timelines/tag/{hashtag}": (c) => c.timelines.tag("cats"),
+    "GET /api/v1/timelines/link": (c) => c.timelines.link("https://example.org/a"),
 
     "GET /api/v1/notifications": (c) => c.notifications.list(),
     "GET /api/v1/notifications/{id}": (c) => c.notifications.get("1"),

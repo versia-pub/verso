@@ -25,7 +25,7 @@ behave differently.
 | Search                     | accounts, statuses and hashtags                                         |
 | Instance                   | the instance, rules, policies, custom emoji                             |
 | Preview cards              | link cards on statuses                                                  |
-| Trends                     | hashtags and statuses                                                   |
+| Trends                     | hashtags, statuses and links                                            |
 | Suggestions                | v2 and dismissing                                                       |
 
 There's no admin API: admins use `verso admin` instead.
@@ -139,7 +139,7 @@ There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/timelines/home`            | ✅    |                                       |
 | `GET /api/v1/timelines/public`          | ✅    |                                       |
 | `GET /api/v1/timelines/tag/:hashtag`    | ✅    |                                       |
-| `GET /api/v1/timelines/link`            | ❌    |                                       |
+| `GET /api/v1/timelines/link`            | 🟡    | See differences                       |
 | `GET /api/v1/timelines/list/:list_id`   | ✅    |                                       |
 | `GET /api/v1/markers`                   | ✅    |                                       |
 | `POST /api/v1/markers`                  | ✅    |                                       |
@@ -214,7 +214,7 @@ There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/trends/tags`                    | ✅    |                              |
 | `GET /api/v1/trends`                         | ✅    | The same as `/trends/tags`   |
 | `GET /api/v1/trends/statuses`                | 🟡    | See differences              |
-| `GET /api/v1/trends/links`                   | ❌    |                              |
+| `GET /api/v1/trends/links`                   | 🟡    | See differences              |
 | `GET /api/v1/announcements`                  | ✅    |                              |
 | `POST /api/v1/announcements/:id/dismiss`     | ✅    |                              |
 | Announcement reactions (2 methods)           | ✅    |                              |

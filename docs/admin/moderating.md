@@ -32,10 +32,11 @@ show `emojis` and `roles` as "Manage custom emojis" and "Manage roles".
 
 ## Trends
 
-Verso works out which hashtags and statuses are trending, but shows none until you approve them,
-unless `trendable_by_default` is `true` in the [config](configuring.md). Approve or reject hashtags
-and accounts with [`verso admin trends`](commands.md#verso-admin-trends). Rejecting an account also
-hides its statuses from trending statuses.
+Verso works out which hashtags, statuses and links are trending, but shows none until you approve
+them, unless `trendable_by_default` is `true` in the [config](configuring.md). Approve or reject
+hashtags, accounts, links and the websites they are on with
+[`verso admin trends`](commands.md#verso-admin-trends). Rejecting an account also hides its statuses
+from trending statuses.
 
 ## Custom emoji
 

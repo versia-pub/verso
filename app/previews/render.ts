@@ -1,18 +1,18 @@
 import type { PreviewCard } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import { fileUrl } from "../media/render.ts";
-import type { NoteCard } from "./card_queries.ts";
+import type { CardWithImage } from "./card_queries.ts";
 
 /**
  * A card as Mastodon's API renders it. It is always a link: Verso makes no embeds. Its image is
- * the stored copy, once processed.
+ * the stored copy, once processed. `url` is the link to show: for a status, the one it wrote.
  * @see https://docs.joinmastodon.org/entities/PreviewCard/
  */
-export const renderCard = (ctx: Context, card: NoteCard): PreviewCard => {
+export const renderCard = (ctx: Context, card: CardWithImage, url: string): PreviewCard => {
     const image = card.image?.sha256 ? card.image : undefined;
 
     return {
-        url: card.link,
+        url,
         title: card.title,
         description: card.description,
         language: card.language,

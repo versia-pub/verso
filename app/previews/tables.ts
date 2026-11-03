@@ -1,3 +1,5 @@
+import type { Generated } from "kysely";
+
 /** A preview of a web page, made from what the page says about itself. */
 export type PreviewCardsTable = {
     id: string;
@@ -20,6 +22,15 @@ export type PreviewCardsTable = {
     link_type: "article" | "unknown";
     /** When the page was fetched. */
     fetched_at: Date;
+    /** Whether an admin let the card trend, or `null` if they haven't decided. */
+    trendable: Generated<boolean | null>;
+};
+
+/** Whether the links to a website, and its subdomains, may trend, once an admin decided. */
+export type PreviewCardProvidersTable = {
+    /** The website's domain name. */
+    domain: string;
+    trendable: boolean;
 };
 
 /** The card a status shows: the first page it links to. */

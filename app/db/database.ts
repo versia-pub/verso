@@ -45,8 +45,16 @@ import type { ConversationNotesTable, ConversationsTable } from "../conversation
 import type { FilterKeywordsTable, FiltersTable, FilterStatusesTable } from "../filters/tables.ts";
 import type { FeaturedTagsTable, TagFollowsTable, TagsTable } from "../tags/tables.ts";
 import type { SuggestionDismissalsTable } from "../suggestions/tables.ts";
-import type { NotePreviewCardsTable, PreviewCardsTable } from "../previews/tables.ts";
-import type { TrendingStatusesTable, TrendingTagsTable } from "../trends/tables.ts";
+import type {
+    NotePreviewCardsTable,
+    PreviewCardProvidersTable,
+    PreviewCardsTable,
+} from "../previews/tables.ts";
+import type {
+    TrendingLinksTable,
+    TrendingStatusesTable,
+    TrendingTagsTable,
+} from "../trends/tables.ts";
 import type {
     NotificationPermissionsTable,
     NotificationPoliciesTable,
@@ -122,12 +130,14 @@ export type Database = {
     scheduled_notes: ScheduledNotesTable;
     scheduled_note_media: ScheduledNoteMediaTable;
     note_preview_cards: NotePreviewCardsTable;
+    preview_card_providers: PreviewCardProvidersTable;
     preview_cards: PreviewCardsTable;
     reports: ReportsTable;
     tag_follows: TagFollowsTable;
     suggestion_dismissals: SuggestionDismissalsTable;
     tags: TagsTable;
     thread_mutes: ThreadMutesTable;
+    trending_links: TrendingLinksTable;
     trending_statuses: TrendingStatusesTable;
     trending_tags: TrendingTagsTable;
     vapid_keys: VapidKeysTable;

@@ -1,9 +1,11 @@
 import { assertEquals } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { createInstance } from "../instances/testing.ts";
-import { createNote } from "../notes/testing.ts";
+import { createNote, createShare } from "../notes/testing.ts";
+import { setLink } from "../previews/card_queries.ts";
+import { createCard } from "../previews/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { refreshTrendingStatuses, refreshTrendingTags } from "./refresh.ts";
+import { refreshTrendingLinks, refreshTrendingStatuses, refreshTrendingTags } from "./refresh.ts";
 
 const hour = 60 * 60 * 1000;
 
@@ -242,4 +244,150 @@ Deno.test("when an author's statuses are equally popular, the newest trends", as
     await refreshTrendingStatuses(test.ctx);
     assertEquals(second.id > first.id, true);
     assertEquals(await trendingStatuses(test), [[second.id, 8]]);
+});
+
+const sharers = ["alice", "b", "c", "d", "e"];
+
+/** The cards that are trending, with their scores. */
+const trendingCardScores = async (test: Awaited<ReturnType<typeof open>>) =>
+    (await test.ctx.db.selectFrom("trending_links").selectAll().orderBy("card_id").execute())
+        .map((row) => row.score);
+
+/** Statuses by `accounts`, all showing one card, which is returned. */
+const share = async (
+    test: Awaited<ReturnType<typeof open>>,
+    accounts: readonly string[],
+    note: Parameters<typeof createNote>[2] = {},
+    card: Parameters<typeof createCard>[2] = {},
+) => {
+    const notes = [];
+    for (const account of accounts) notes.push((await createNote(test.ctx, account, note)).id);
+
+    return { cardId: await createCard(test.ctx, notes, card), notes };
+};
+
+Deno.test("a link trends when enough accounts shared it today, more than yesterday", async () => {
+    await using test = await open();
+    for (const id of sharers.slice(1)) await createLocalAccount(test.ctx, id);
+
+    const { cardId } = await share(test, sharers);
+    await share(test, sharers.slice(0, 4));
+    // Five yesterday, as many as today.
+    await share(test, sharers, { created_at: new Date("2026-01-07T09:00:00Z") });
+
+    await refreshTrendingLinks(test.ctx);
+    const rows = await test.ctx.db.selectFrom("trending_links").selectAll().execute();
+    assertEquals(rows.map((row) => [row.card_id, row.score]), [[cardId, 16]]);
+});
+
+Deno.test("boosts count for the account that boosted, not for the status they share", async () => {
+    await using test = await open();
+    for (const id of sharers.slice(1)) await createLocalAccount(test.ctx, id);
+
+    // Alice shared it, and four others boosted her status.
+    const { notes } = await share(test, ["alice"]);
+    for (const id of sharers.slice(1, 4)) await createShare(test.ctx, id, notes[0]);
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), []);
+
+    // Alice boosting her own status again is by the same account, which counts once.
+    await createShare(test.ctx, "alice", notes[0]);
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), []);
+
+    await createShare(test.ctx, "e", notes[0]);
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), [16]);
+});
+
+Deno.test("only public statuses without a content warning count toward a link trending", async () => {
+    await using test = await open();
+    for (const id of sharers.slice(1)) await createLocalAccount(test.ctx, id);
+
+    for (const note of [{ visibility: "unlisted" }, { sensitive: true }, { spoiler_text: "cw" }]) {
+        // Four public statuses, and a fifth that mustn't count, all for one card.
+        const { cardId } = await share(test, sharers.slice(0, 4));
+        const fifth = await createNote(
+            test.ctx,
+            "e",
+            note as Parameters<typeof createNote>[2],
+        );
+        await setLink(test.ctx, fifth.id, cardId, "https://news.example/story");
+    }
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), []);
+
+    // A public fifth would have counted.
+    const { cardId } = await share(test, sharers.slice(0, 4));
+    const fifth = await createNote(test.ctx, "e");
+    await setLink(test.ctx, fifth.id, cardId, "https://news.example/story");
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), [16]);
+});
+
+Deno.test("a link counts only if its card is for an article with a title, description, image and provider", async () => {
+    await using test = await open();
+    for (const id of sharers.slice(1)) await createLocalAccount(test.ctx, id);
+
+    const incomplete = [
+        { link_type: "unknown" as const },
+        { title: "" },
+        { description: "" },
+        { provider_name: "" },
+    ];
+    for (const card of incomplete) await share(test, sharers, {}, card);
+
+    const noImage = await share(test, sharers);
+    await test.ctx.db.updateTable("preview_cards").set({ image_id: null })
+        .where("id", "=", noImage.cardId).execute();
+
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), []);
+});
+
+Deno.test("a link stays while its peak decays, halving every eight hours", async () => {
+    await using test = await open();
+    for (const id of sharers.slice(1)) await createLocalAccount(test.ctx, id);
+    await share(test, sharers);
+
+    await refreshTrendingLinks(test.ctx);
+    test.clock.advance(8 * hour);
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), [8]);
+    const [row] = await test.ctx.db.selectFrom("trending_links").selectAll().execute();
+    assertEquals(row.max_score, 16);
+    assertEquals(row.max_score_at, new Date("2026-01-08T12:00:00Z"));
+
+    // Another day on, nobody shared it today, and the peak is under 1 after 32 hours more.
+    test.clock.advance(32 * hour);
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), []);
+});
+
+Deno.test("a link's peak moves to now when a higher score is reached", async () => {
+    await using test = await open();
+    for (const id of [...sharers.slice(1), "f"]) await createLocalAccount(test.ctx, id);
+    const { notes } = await share(test, sharers);
+
+    await refreshTrendingLinks(test.ctx);
+    test.clock.advance(hour);
+    await createShare(test.ctx, "f", notes[0]);
+    await refreshTrendingLinks(test.ctx);
+
+    const [row] = await test.ctx.db.selectFrom("trending_links").selectAll().execute();
+    assertEquals(row.score, 25);
+    assertEquals(row.max_score, 25);
+    assertEquals(row.max_score_at, new Date("2026-01-08T13:00:00Z"));
+});
+
+Deno.test("a trending link nobody shared today stays until its peak has decayed below one", async () => {
+    await using test = await open();
+    for (const id of sharers.slice(1)) await createLocalAccount(test.ctx, id);
+    await share(test, sharers);
+    await refreshTrendingLinks(test.ctx);
+
+    // After 16 hours it is the next day, and the peak of 16 has halved twice.
+    test.clock.advance(16 * hour);
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), [4]);
 });
