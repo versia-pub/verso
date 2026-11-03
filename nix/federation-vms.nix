@@ -3,7 +3,8 @@
 # follows alice, and alice's next note reaches bea's home timeline, with its totals fetched from
 # a.test. bea likes and shares it, and a.test counts both. b.test keeps its uploads in a Garage
 # bucket, which it checks it can write to when it starts, and bea's picture, processed there, reaches
-# alice on a.test.
+# alice on a.test. alice's poll reaches bea, whose vote a.test counts, and bea's report of alice
+# reaches a.test, where it waits for a moderator.
 { pkgs, module }:
 let
   # A certificate authority both machines trust, and a certificate for each. Test keys only.
@@ -270,5 +271,44 @@ pkgs.testers.runNixOSTest {
     [attachment] = mention["status"]["media_attachments"]
     shown = [attachment["type"], attachment["url"], attachment["preview_url"], attachment["description"]]
     assert shown == ["image", processed["url"], None, "A_square"], f"a.test shows {shown!r}"
+
+    # alice asks which colour, in a poll, and bea sees it from b.test.
+    asked = api(a, "alice-token", "POST", "/api/v1/statuses", {
+        "status": "Which?",
+        "visibility": "public",
+        "poll": {"options": ["Red", "Blue", "Green"], "expires_in": 3600, "multiple": False},
+    })
+    b.wait_until_succeeds(
+        "curl --fail --silent https://b.test/api/v1/timelines/home "
+        f"--header 'authorization: Bearer bea-token' | grep -qF {shlex.quote(asked['uri'])}"
+    )
+    poll = next(s for s in api(b, "bea-token", "GET", "/api/v1/timelines/home") if s["uri"] == asked["uri"])["poll"]
+    assert [option["title"] for option in poll["options"]] == ["Red", "Blue", "Green"], f"b.test shows {poll!r}"
+
+    # bea votes for Blue. b.test counts it at once, and a.test, which owns the poll, counts it too.
+    voted = api(b, "bea-token", "POST", f"/api/v1/polls/{poll['id']}/votes", {"choices": [1]})
+    assert voted["own_votes"] == [1], f"b.test answered {voted!r}"
+    a.wait_until_succeeds(
+        f"curl --fail --silent https://a.test/api/v1/statuses/{asked['id']} "
+        "--header 'authorization: Bearer alice-token' | grep -qF '\"voters_count\":1'"
+    )
+    counted = api(a, "alice-token", "GET", f"/api/v1/statuses/{asked['id']}")["poll"]
+    assert [option["votes_count"] for option in counted["options"]] == [0, 1, 0], f"a.test counts {counted!r}"
+
+    # bea reports alice, and sends it to a.test, where it waits for a moderator.
+    reported = api(b, "bea-token", "POST", "/api/v1/reports", {
+        "account_id": found["id"],
+        "status_ids": [home[0]["id"]],
+        "comment": "Rude",
+        "category": "spam",
+        "forward": True,
+        "forward_to_domains": ["a.test"],
+    })
+    assert reported["forwarded"] is True, f"b.test answered {reported!r}"
+    a.wait_until_succeeds(
+        "sudo -u postgres psql -d verso -tAc "
+        "\"select i.domain, r.target_account_id, r.category, r.comment, jsonb_array_length(r.note_ids) "
+        "from reports r join instances i on i.id = r.instance_id\" | grep -qx 'b.test|alice|spam|Rude|1'"
+    )
   '';
 }
