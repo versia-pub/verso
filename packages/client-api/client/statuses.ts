@@ -127,11 +127,18 @@ export class StatusMethods {
 
     /**
      * Deletes one of the viewer's statuses or shares. Gives it back with its `text`, so it can be
-     * posted again with changes.
+     * posted again with changes. Its media is kept for a while, to attach again, unless
+     * `deleteMedia` is set.
      * @see https://docs.joinmastodon.org/methods/statuses/#delete
      */
-    delete(id: string, options?: CallOptions): Promise<Status> {
-        return this.http.json(Status, "DELETE", path`/api/v1/statuses/${id}`, options);
+    delete(
+        id: string,
+        options?: CallOptions & { readonly deleteMedia?: boolean },
+    ): Promise<Status> {
+        return this.http.json(Status, "DELETE", path`/api/v1/statuses/${id}`, {
+            ...options,
+            query: { delete_media: options?.deleteMedia },
+        });
     }
 
     /**

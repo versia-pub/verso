@@ -10,7 +10,7 @@ import type { MediaRow } from "./media_queries.ts";
 import { renderAttachment } from "./render.ts";
 import { serveFile } from "./serving.ts";
 import { findUpload } from "./upload_queries.ts";
-import { describeUpload, processingFailed, upload } from "./uploads.ts";
+import { deleteUploads, describeUpload, processingFailed, upload } from "./uploads.ts";
 
 /** Room for the form's other fields and boundaries, besides the file. */
 const formBytes = 64 * 1024;
@@ -145,6 +145,28 @@ export const mediaRoutes = (media: MediaLimits, limits: Limits): readonly Route[
             if (row === undefined) throw new NotFound();
 
             return progressOf(ctx, row);
+        },
+    }),
+    defineRoute({
+        method: "DELETE",
+        path: "/api/v1/media/:id",
+        summary: "Delete media attachment",
+        description: "Delete a media attachment that is not currently attached to a status.",
+        docs: "https://docs.joinmastodon.org/methods/media/#delete",
+        tags: ["media"],
+        auth: { require: "user", scope: "write:media", permission: "owner:media" },
+        params: MediaId,
+        responses: { 200: z.object({}) },
+        handler: async (ctx, { params, viewer }) => {
+            const row = await findUpload(ctx, params.id, viewer.accountId);
+            // Avatars and headers aren't attachments.
+            if (row === undefined || row.fit_width !== null) throw new NotFound();
+
+            if ((await deleteUploads(ctx, viewer.accountId, [row.id])).length === 0) {
+                throw new Unprocessable("Media attachment is currently used by a status");
+            }
+
+            return { status: 200, body: {} };
         },
     }),
     defineRoute({

@@ -1957,6 +1957,184 @@
                 }
             }
         },
+        "/api/v1/accounts/{id}/endorse": {
+            "post": {
+                "summary": "Feature account on your profile",
+                "description": "Add the given account to the user's featured profiles. (Featured profiles are currently shown on the user's own public profile.)\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#endorse"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Relationship"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}/unendorse": {
+            "post": {
+                "summary": "Unfeature account from profile",
+                "description": "Remove the given account from the user's featured profiles.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#unendorse"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Relationship"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/accounts/{id}/endorsements": {
+            "get": {
+                "summary": "Get account's endorsements",
+                "description": "Accounts that the given account is currently featuring on its profile.\n\nNeeds the `read:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/accounts/#endorsements"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Account"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/endorsements": {
             "get": {
                 "summary": "View currently featured profiles",
@@ -2767,6 +2945,90 @@
                     {
                         "OAuth2": [
                             "write:follows"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The name of the hashtag."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Tag"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tags/{name}/feature": {
+            "post": {
+                "summary": "Feature a tag",
+                "description": "Showcase a hashtag on your profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/tags/#feature"
+                },
+                "tags": [
+                    "tags"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "The name of the hashtag."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Tag"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tags/{name}/unfeature": {
+            "post": {
+                "summary": "Unfeature a tag",
+                "description": "Stop showcasing a hashtag on your profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/tags/#unfeature"
+                },
+                "tags": [
+                    "tags"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
                         ]
                     }
                 ],
@@ -7358,8 +7620,67 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "delete_media",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Whether to delete the status's media at once, rather than keep it for a redraft.",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "delete_media": {
+                                        "description": "Whether to delete the status's media at once, rather than keep it for a redraft.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "delete_media": {
+                                        "description": "Whether to delete the status's media at once, rather than keep it for a redraft.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "delete_media": {
+                                        "description": "Whether to delete the status's media at once, rather than keep it for a redraft.",
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "A JSON body",
@@ -13809,6 +14130,46 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/MediaAttachment"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete media attachment",
+                "description": "Delete a media attachment that is not currently attached to a status.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:media` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/media/#delete"
+                },
+                "tags": [
+                    "media"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:media"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
                                 }
                             }
                         }
@@ -21546,6 +21907,9 @@
                         }
                     },
                     "following": {
+                        "type": "boolean"
+                    },
+                    "featuring": {
                         "type": "boolean"
                     }
                 },

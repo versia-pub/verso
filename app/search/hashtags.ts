@@ -5,6 +5,7 @@
  */
 import type { Tag } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
+import { featuredTagsAmong } from "../tags/featured_tag_queries.ts";
 import { followedTagsAmong } from "../tags/tag_follow_queries.ts";
 import { displayNamesOf } from "../tags/tag_queries.ts";
 import { hashtagsStartingWith, hashtagUses } from "./hashtag_queries.ts";
@@ -30,7 +31,7 @@ const dayLength = 24 * 60 * 60 * 1000;
 /**
  * The hashtags `names`, with how they were used on each of the past week's days, today first, in
  * UTC, as Mastodon shows them, by the names they were first written with. Each one's id is its name
- * in lower case. A signed-in viewer, `viewerId`, is told whether they follow each.
+ * in lower case. A signed-in viewer, `viewerId`, is told whether they follow and feature each.
  */
 export const renderHashtags = async (
     ctx: Context,
@@ -44,6 +45,7 @@ export const renderHashtags = async (
         (await hashtagUses(ctx, names, days)).map((used) => [`${used.name} ${used.day}`, used]),
     );
     const followed = viewerId === null ? null : await followedTagsAmong(ctx, viewerId, names);
+    const featured = viewerId === null ? null : await featuredTagsAmong(ctx, viewerId, names);
 
     return names.map((name) => ({
         id: name,
@@ -58,5 +60,6 @@ export const renderHashtags = async (
             };
         }),
         ...followed && { following: followed.has(name) },
+        ...featured && { featuring: featured.has(name) },
     }));
 };

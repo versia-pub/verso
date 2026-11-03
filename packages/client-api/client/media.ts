@@ -42,6 +42,14 @@ export class MediaMethods {
     }
 
     /**
+     * Deletes an upload that isn't attached to a status.
+     * @see https://docs.joinmastodon.org/methods/media/#delete
+     */
+    async delete(id: string, options?: CallOptions): Promise<void> {
+        await this.http.send("DELETE", path`/api/v1/media/${id}`, options);
+    }
+
+    /**
      * One of the viewer's uploads. Its `url` is `null` until it is processed.
      * @see https://docs.joinmastodon.org/methods/media/#get
      */

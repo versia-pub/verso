@@ -109,6 +109,22 @@ export const updateDescription = async (
 };
 
 /**
+ * Removes the media `ids`, which the caller has checked nothing uses, and returns their locations
+ * and the keys of the files they stored.
+ */
+export const deleteMedia = async (
+    ctx: Context,
+    ids: readonly string[],
+): Promise<Pick<MediaRow, "id" | "sha256" | "preview_sha256" | "upload_sha256">[]> => {
+    if (ids.length === 0) return [];
+
+    return await ctx.db.deleteFrom("media")
+        .where("id", "in", ids)
+        .returning(["id", "sha256", "preview_sha256", "upload_sha256"])
+        .execute();
+};
+
+/**
  * An upload stored under `key` once processed, or having it as its preview. Only local media
  * qualifies.
  */

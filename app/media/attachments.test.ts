@@ -184,6 +184,56 @@ Deno.test("an edit attaches files in place of the status's, and its history keep
     assertEquals((await test.post({ status: "Again", media_ids: [a] })).status, 200);
 });
 
+Deno.test("deleting a status keeps its media to redraft, unless asked to delete it", async () => {
+    await using test = await open();
+    const media = [
+        await test.uploaded(zip(1)),
+        await test.uploaded(zip(2)),
+        await test.uploaded(zip(3)),
+    ];
+    const ids: string[] = [];
+    for (const id of media) ids.push((await test.post({ status: "", media_ids: [id] })).body.id);
+
+    const remove = async (id: string, options: string | Record<string, unknown>) => {
+        const query = typeof options === "string" ? options : "";
+        const response = await test.app.request(`/api/v1/statuses/${id}${query}`, {
+            method: "DELETE",
+            headers: {
+                authorization: `Bearer ${await tokenFor(test.ctx, "alice")}`,
+                ...typeof options !== "string" && { "content-type": "application/json" },
+            },
+            body: typeof options === "string" ? undefined : JSON.stringify(options),
+        });
+        return { status: response.status, body: await response.json() };
+    };
+
+    // The status shows its media as it was.
+    const kept = await remove(ids[0], "");
+    assertEquals(kept.body.media_attachments.map((m: Attachment) => m.id), [media[0]]);
+    assertEquals((await findMedia(test.ctx, media[0]))?.id, media[0]);
+
+    const byQuery = await remove(ids[1], "?delete_media=true");
+    assertEquals(byQuery.body.media_attachments.map((m: Attachment) => m.id), [media[1]]);
+    assertEquals(await findMedia(test.ctx, media[1]), undefined);
+
+    assertEquals((await remove(ids[2], { delete_media: "1" })).status, 200);
+    assertEquals(await findMedia(test.ctx, media[2]), undefined);
+});
+
+Deno.test("deleting a status deletes all its media, when asked to", async () => {
+    await using test = await open();
+    const media = [await test.uploaded(zip(1)), await test.uploaded(zip(2))];
+    const posted = await test.post({ status: "", media_ids: media });
+
+    const response = await test.app.request(`/api/v1/statuses/${posted.body.id}?delete_media=1`, {
+        method: "DELETE",
+        headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` },
+    });
+
+    assertEquals(response.status, 200);
+    for (const id of media) assertEquals(await findMedia(test.ctx, id), undefined);
+});
+
 Deno.test("an edit that leaves files out keeps them, and can describe them", async () => {
     await using test = await open();
     const [a, other] = [await test.uploaded(zip(1)), await test.uploaded(zip(2))];

@@ -8,7 +8,11 @@ import { defineRoute, type Route } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import { isHashtagName } from "../kernel/markup.ts";
 import { renderHashtags } from "../search/hashtags.ts";
-import { deleteFeaturedTag, featuredTagsOf } from "./featured_tag_queries.ts";
+import {
+    deleteFeaturedTag,
+    deleteFeaturedTagNamed,
+    featuredTagsOf,
+} from "./featured_tag_queries.ts";
 import { featureTag, suggestedTags } from "./featured_tags.ts";
 import { renderFeaturedTags } from "./render.ts";
 import { tagFollowPage } from "./tag_follow_queries.ts";
@@ -173,6 +177,42 @@ export const tagRoutes: readonly Route[] = [
         handler: async (ctx, { params, viewer }) => {
             if (!isHashtagName(params.name)) throw new NotFound();
             await unfollowTag(ctx, viewer.accountId, params.name);
+
+            return { status: 200, body: await shownHashtag(ctx, params.name, viewer.accountId) };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v1/tags/:name/feature",
+        summary: "Feature a tag",
+        description: "Showcase a hashtag on your profile.",
+        docs: "https://docs.joinmastodon.org/methods/tags/#feature",
+        tags: ["tags"],
+        auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
+        params: HashtagName,
+        responses: { 200: Tag },
+        handler: async (ctx, { params, viewer }) => {
+            if (!isHashtagName(params.name)) throw new NotFound();
+            if (await featureTag(ctx, viewer.accountId, params.name) === "full") {
+                throw new Unprocessable("You have already featured the maximum number of hashtags");
+            }
+
+            return { status: 200, body: await shownHashtag(ctx, params.name, viewer.accountId) };
+        },
+    }),
+    defineRoute({
+        method: "POST",
+        path: "/api/v1/tags/:name/unfeature",
+        summary: "Unfeature a tag",
+        description: "Stop showcasing a hashtag on your profile.",
+        docs: "https://docs.joinmastodon.org/methods/tags/#unfeature",
+        tags: ["tags"],
+        auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
+        params: HashtagName,
+        responses: { 200: Tag },
+        handler: async (ctx, { params, viewer }) => {
+            if (!isHashtagName(params.name)) throw new NotFound();
+            await deleteFeaturedTagNamed(ctx, viewer.accountId, params.name.toLowerCase());
 
             return { status: 200, body: await shownHashtag(ctx, params.name, viewer.accountId) };
         },

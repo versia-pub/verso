@@ -345,6 +345,37 @@ export class AccountMethods {
     }
 
     /**
+     * Features an account the viewer follows on their profile. The same as {@link pin}, under the
+     * name Mastodon 4.4 gave it.
+     * @see https://docs.joinmastodon.org/methods/accounts/#endorse
+     */
+    endorse(id: string, options?: CallOptions): Promise<Relationship> {
+        return this.relate(id, "endorse", options);
+    }
+
+    /**
+     * Stops featuring an account on the viewer's profile. The same as {@link unpin}.
+     * @see https://docs.joinmastodon.org/methods/accounts/#unendorse
+     */
+    unendorse(id: string, options?: CallOptions): Promise<Relationship> {
+        return this.relate(id, "unendorse", options);
+    }
+
+    /**
+     * The accounts an account features on its profile, the latest featured first.
+     * @see https://docs.joinmastodon.org/methods/accounts/#endorsements
+     */
+    endorsements(id: string, query: PageQuery = {}, options?: CallOptions): Promise<Page<Account>> {
+        return Page.get(
+            this.http,
+            Account,
+            path`/api/v1/accounts/${id}/endorsements`,
+            query,
+            options,
+        );
+    }
+
+    /**
      * Sets the viewer's private note on an account, or removes it if empty.
      * @see https://docs.joinmastodon.org/methods/accounts/#note
      */

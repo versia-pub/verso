@@ -122,3 +122,65 @@ Deno.test("suggestions are the hashtags a user used lately, the most used first,
     const suggested = await test.request("GET", "/api/v1/featured_tags/suggestions");
     assertEquals(suggested.body.map((tag: { name: string }) => tag.name), ["dogs", "cats"]);
 });
+
+Deno.test("a hashtag is featured and unfeatured by its name, and shown as featured", async () => {
+    await using test = await open();
+    await test.tagged("alice", ["Cats"]);
+
+    const featured = await test.request("POST", "/api/v1/tags/cats/feature");
+    assertEquals([featured.status, featured.body.name, featured.body.featuring], [
+        200,
+        "Cats",
+        true,
+    ]);
+    assertEquals((await test.request("POST", "/api/v1/tags/CATS/feature")).body.featuring, true);
+    assertEquals((await test.request("GET", "/api/v1/featured_tags")).body.length, 1);
+
+    assertEquals((await test.request("GET", "/api/v1/tags/cats")).body.featuring, true);
+    assertEquals(
+        (await test.request("GET", "/api/v1/tags/cats", { as: "bob" })).body.featuring,
+        false,
+    );
+    assertEquals(
+        (await test.request("GET", "/api/v1/tags/cats", { as: null })).body.featuring,
+        undefined,
+    );
+
+    const unfeatured = await test.request("POST", "/api/v1/tags/cats/unfeature");
+    assertEquals([unfeatured.status, unfeatured.body.featuring], [200, false]);
+    assertEquals((await test.request("GET", "/api/v1/featured_tags")).body, []);
+    assertEquals((await test.request("POST", "/api/v1/tags/cats/unfeature")).status, 200);
+});
+
+Deno.test("only a hashtag's name can be featured, a few at a time", async () => {
+    await using test = await open();
+
+    assertEquals((await test.request("POST", "/api/v1/tags/1/feature")).status, 404);
+    assertEquals((await test.request("POST", "/api/v1/tags/1/unfeature")).status, 404);
+    assertEquals((await test.request("POST", "/api/v1/tags/1/feature")).status, 404);
+    assertEquals((await test.request("GET", "/api/v1/featured_tags")).body, []);
+    assertEquals(
+        (await test.request("POST", "/api/v1/tags/cats/feature", { as: null })).status,
+        401,
+    );
+
+    for (let i = 0; i < featuredTagLimit; i++) await featureTag(test.ctx, "alice", `tag${i}`);
+    assertEquals((await test.request("POST", "/api/v1/tags/cats/feature")).status, 422);
+    assertEquals((await test.request("POST", "/api/v1/tags/tag1/feature")).status, 200);
+});
+
+Deno.test("unfeaturing a hashtag, in any case, leaves other users featuring it", async () => {
+    await using test = await open();
+    await featureTag(test.ctx, "alice", "cats");
+    await featureTag(test.ctx, "bob", "Cats");
+
+    const unfeatured = await test.request("POST", "/api/v1/tags/CATS/unfeature");
+    assertEquals(unfeatured.body.featuring, false);
+
+    assertEquals((await test.request("GET", "/api/v1/featured_tags")).body, []);
+    assertEquals((await test.request("GET", "/api/v1/accounts/bob/featured_tags")).body.length, 1);
+    assertEquals(
+        (await test.request("GET", "/api/v1/tags/cats", { as: "bob" })).body.featuring,
+        true,
+    );
+});

@@ -20,9 +20,11 @@ const open = async () => {
     await follow(test.ctx, "alice", "dave");
     await test.ctx.db.updateTable("follows").set({ accepted: true }).execute();
 
-    /** Sends a request as `as`. */
-    const request = async (method: string, path: string, as = "alice") => {
-        const headers = { authorization: `Bearer ${await tokenFor(test.ctx, as)}` };
+    /** Sends a request as `as`, or as nobody if it is `null`. */
+    const request = async (method: string, path: string, as: string | null = "alice") => {
+        const headers: Record<string, string> = as === null
+            ? {}
+            : { authorization: `Bearer ${await tokenFor(test.ctx, as)}` };
         const response = await app.request(path, { method, headers });
 
         return {
@@ -84,6 +86,35 @@ Deno.test("the featured accounts are listed, the latest featured first, in pages
     assertEquals((await test.request("GET", "/api/v1/endorsements", "bob")).body, []);
 
     const first = await test.request("GET", "/api/v1/endorsements?limit=2");
+    assertEquals(ids(first.body), ["carol", "bob"]);
+    const next = new URL(first.link?.match(/<([^>]+)>; rel="next"/)?.[1] ?? "");
+    assertEquals(ids((await test.request("GET", next.pathname + next.search)).body), ["dave"]);
+});
+
+Deno.test("endorse and unendorse do what pin and unpin do", async () => {
+    await using test = await open();
+
+    const endorsed = await test.request("POST", "/api/v1/accounts/bob/endorse");
+    assertEquals([endorsed.status, endorsed.body.endorsed], [200, true]);
+    assertEquals((await test.request("POST", "/api/v1/accounts/alice/endorse")).status, 422);
+
+    const unendorsed = await test.request("POST", "/api/v1/accounts/bob/unendorse");
+    assertEquals([unendorsed.status, unendorsed.body.endorsed], [200, false]);
+    assertEquals((await test.request("POST", "/api/v1/accounts/missing/unendorse")).status, 404);
+});
+
+Deno.test("anyone sees the accounts an account features, in pages", async () => {
+    await using test = await open();
+    for (const id of ["dave", "bob", "carol"]) await endorse(test.ctx, "alice", id);
+    const ids = (body: { id: string }[]) => body.map((account) => account.id);
+    const path = "/api/v1/accounts/alice/endorsements";
+
+    assertEquals(ids((await test.request("GET", path, null)).body), ["carol", "bob", "dave"]);
+    assertEquals(ids((await test.request("GET", path, "bob")).body), ["carol", "bob", "dave"]);
+    assertEquals((await test.request("GET", "/api/v1/accounts/bob/endorsements")).body, []);
+    assertEquals((await test.request("GET", "/api/v1/accounts/missing/endorsements")).status, 404);
+
+    const first = await test.request("GET", `${path}?limit=2`);
     assertEquals(ids(first.body), ["carol", "bob"]);
     const next = new URL(first.link?.match(/<([^>]+)>; rel="next"/)?.[1] ?? "");
     assertEquals(ids((await test.request("GET", next.pathname + next.search)).body), ["dave"]);

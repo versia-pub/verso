@@ -28,6 +28,8 @@ export const Tag = z.object({
     history: z.array(TagHistory),
     /** Whether the viewer follows it, given only to a signed-in viewer. */
     following: z.boolean().optional(),
+    /** Whether the viewer features it on their profile, given only to a signed-in viewer. */
+    featuring: z.boolean().optional(),
 });
 export type Tag = z.infer<typeof Tag>;
 

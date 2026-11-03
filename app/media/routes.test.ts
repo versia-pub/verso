@@ -10,8 +10,11 @@ import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
+import { createNote } from "../notes/testing.ts";
+import { insertAttachments } from "./attachment_queries.ts";
 import { findMedia, saveRemoteMedia } from "./media_queries.ts";
 import { mediaRoutes } from "./routes.ts";
+import { uploadPicture } from "./uploads.ts";
 
 /** A `width`×`height` PNG, entirely red. */
 const png = (width: number, height: number) =>
@@ -101,6 +104,78 @@ Deno.test("a file that isn't a picture is ready at once, as a file", async () =>
     });
     assertEquals(await test.request("GET", `/api/v1/media/${uploaded.body.id}`), uploaded);
     assertEquals((await findMedia(test.ctx, uploaded.body.id))?.media_type, "application/zip");
+});
+
+Deno.test("an upload is deleted with its file, unless a status uses it", async () => {
+    const files = memoryFiles();
+    await using test = await open(undefined, files);
+    const [mine, twin, used] = [
+        await test.upload(zip, "application/zip"),
+        await test.upload(zip, "application/zip"),
+        await test.upload(new Uint8Array([9, 9, 9]), "application/zip"),
+    ];
+    const note = await createNote(test.ctx, "alice");
+    await insertAttachments(test.ctx, note.id, [used.body.id]);
+    const key = await sha256Of(zip);
+
+    assertEquals(
+        (await test.request("DELETE", `/api/v1/media/${mine.body.id}`, { as: "bob" })).status,
+        404,
+    );
+    assertEquals((await test.request("DELETE", "/api/v1/media/missing")).status, 404);
+    assertEquals((await test.request("DELETE", `/api/v1/media/${used.body.id}`)).status, 422);
+    assertEquals((await findMedia(test.ctx, used.body.id))?.id, used.body.id);
+
+    assertEquals(await test.request("DELETE", `/api/v1/media/${mine.body.id}`), {
+        status: 200,
+        body: {},
+    });
+    assertEquals(await findMedia(test.ctx, mine.body.id), undefined);
+    assertEquals((await test.request("GET", `/api/v1/media/${mine.body.id}`)).status, 404);
+    // An identical upload still has the file.
+    assertEquals(await files.has(key), true);
+
+    assertEquals((await test.request("DELETE", `/api/v1/media/${twin.body.id}`)).status, 200);
+    assertEquals(await files.has(key), false);
+});
+
+Deno.test("deleting an upload deletes its preview and original too", async () => {
+    const files = memoryFiles();
+    await using test = await open(undefined, files);
+    const { body } = await test.upload(zip, "application/zip");
+    const stored = async (bytes: number[]) =>
+        await files.put(await bytesSource(new Uint8Array(bytes)), "application/zip");
+    const [preview, original] = [await stored([1]), await stored([2])];
+    await test.ctx.db.updateTable("media")
+        .set({ preview_sha256: preview, upload_sha256: original })
+        .where("id", "=", body.id)
+        .execute();
+
+    assertEquals((await test.request("DELETE", `/api/v1/media/${body.id}`)).status, 200);
+
+    assertEquals([await files.has(preview), await files.has(original)], [false, false]);
+    assertEquals(await files.has(await sha256Of(zip)), false);
+});
+
+Deno.test("a picture scaled down to fit a box, such as an avatar, isn't deleted as media", async () => {
+    await using test = await open();
+    const avatar = await uploadPicture(test.ctx, "alice", {
+        file: new Blob([png(8, 8)]),
+        mediaType: "image/png",
+    }, { width: 4, height: 4 });
+
+    assertEquals((await test.request("DELETE", `/api/v1/media/${avatar?.id}`)).status, 404);
+    assertEquals((await findMedia(test.ctx, avatar?.id ?? ""))?.id, avatar?.id);
+});
+
+Deno.test("deleting an upload needs the write:media scope", async () => {
+    await using test = await open();
+    const { body } = await test.upload(zip, "application/zip");
+
+    const response = await test.request("DELETE", `/api/v1/media/${body.id}`, {
+        scopes: ["read:media" as Scope],
+    });
+    assertEquals(response.status, 403);
 });
 
 Deno.test("a picture is answered with 202, then 206, until it is processed", async () => {

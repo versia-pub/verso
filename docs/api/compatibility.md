@@ -66,6 +66,9 @@ There's no admin API: admins use `verso admin` instead.
 | `POST /api/v1/accounts/:id/unmute`                | ✅    |                                   |
 | `POST /api/v1/accounts/:id/pin`                   | ✅    |                                   |
 | `POST /api/v1/accounts/:id/unpin`                 | ✅    |                                   |
+| `POST /api/v1/accounts/:id/endorse`               | ✅    | The same as pin                   |
+| `POST /api/v1/accounts/:id/unendorse`             | ✅    | The same as unpin                 |
+| `GET /api/v1/accounts/:id/endorsements`           | ✅    |                                   |
 | `POST /api/v1/accounts/:id/note`                  | ✅    |                                   |
 | `GET /api/v1/accounts/relationships`              | ✅    |                                   |
 | `GET /api/v1/accounts/familiar_followers`         | ✅    |                                   |
@@ -87,6 +90,8 @@ There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/endorsements`                        | ✅    |                                   |
 | Featured tags (4 methods)                         | ✅    |                                   |
 | `GET /api/v1/tags/:name`                          | ✅    |                                   |
+| `POST /api/v1/tags/:name/feature`                 | ✅    |                                   |
+| `POST /api/v1/tags/:name/unfeature`               | ✅    |                                   |
 | `POST /api/v1/tags/:name/follow`                  | ✅    |                                   |
 | `POST /api/v1/tags/:name/unfollow`                | ✅    |                                   |
 | `GET /api/v1/followed_tags`                       | ✅    |                                   |
@@ -128,6 +133,7 @@ There's no admin API: admins use `verso admin` instead.
 | `POST /api/v2/media`                     | 🟡    | Only images are processed      |
 | `GET /api/v1/media/:id`                  | ✅    |                                |
 | `PUT /api/v1/media/:id`                  | ✅    |                                |
+| `DELETE /api/v1/media/:id`               | ✅    |                                |
 | `POST /api/v1/media`                     | ❌    | Deprecated by Mastodon; use v2 |
 | Polls (2 methods)                        | ✅    |                                |
 | Scheduled statuses (4 methods)           | ✅    |                                |

@@ -18,7 +18,9 @@ import {
 } from "../kernel/images.ts";
 import { spool } from "../kernel/spool.ts";
 import type { MediaRow } from "./media_queries.ts";
-import { findUpload, insertUpload, updateUpload } from "./upload_queries.ts";
+import { unattachedUploads } from "./attachment_queries.ts";
+import { deleteFileIfUnused } from "./cleanup.ts";
+import { deleteMedia, findUpload, insertUpload, updateUpload } from "./upload_queries.ts";
 
 /** The queue that processes uploaded images. */
 export const mediaQueue = "media";
@@ -206,6 +208,27 @@ export const describeUpload = async (
     if (Object.keys(columns).length > 0) await updateUpload(ctx, id, accountId, columns);
 
     return await findUpload(ctx, id, accountId);
+};
+
+/**
+ * Deletes the uploads of `ids` by `accountId` that no status uses nor has reserved, along with the
+ * files nothing else uses, and returns their ids.
+ */
+export const deleteUploads = async (
+    ctx: Context,
+    accountId: string,
+    ids: readonly string[],
+): Promise<string[]> => {
+    const removed = await ctx.transaction(async (tx) =>
+        await deleteMedia(tx, (await unattachedUploads(tx, accountId, ids)).map((row) => row.id))
+    );
+
+    const keys = new Set(
+        removed.flatMap((row) => [row.sha256, row.preview_sha256, row.upload_sha256]),
+    );
+    for (const key of keys) if (key !== null) await deleteFileIfUnused(ctx, key);
+
+    return removed.map((row) => row.id);
 };
 
 /**

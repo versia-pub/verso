@@ -56,6 +56,22 @@ export class TagMethods {
     }
 
     /**
+     * Features the hashtag `name` on the viewer's profile.
+     * @see https://docs.joinmastodon.org/methods/tags/#feature
+     */
+    feature(name: string, options?: CallOptions): Promise<Tag> {
+        return this.http.json(Tag, "POST", path`/api/v1/tags/${name}/feature`, options);
+    }
+
+    /**
+     * Stops featuring the hashtag `name`.
+     * @see https://docs.joinmastodon.org/methods/tags/#unfeature
+     */
+    unfeature(name: string, options?: CallOptions): Promise<Tag> {
+        return this.http.json(Tag, "POST", path`/api/v1/tags/${name}/unfeature`, options);
+    }
+
+    /**
      * Follows the hashtag `name`, putting its public statuses on the viewer's home timeline.
      * @see https://docs.joinmastodon.org/methods/tags/#follow
      */

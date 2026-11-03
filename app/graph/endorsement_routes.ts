@@ -1,5 +1,6 @@
 import { Account, Relationship } from "@versia/client-api";
 import { z } from "zod";
+import { findAccount } from "../accounts/account_queries.ts";
 import { publicAccounts } from "../accounts/public.ts";
 import { NotFound, Unprocessable } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
@@ -9,11 +10,14 @@ import { endorsementPage } from "./endorsement_queries.ts";
 import { endorse, unendorse } from "./endorsements.ts";
 import { relationship } from "./relationships.ts";
 
-/** Features an account on the viewer's profile, or stops featuring it. */
-const endorseRoute = (action: "pin" | "unpin") =>
+/**
+ * Features an account on the viewer's profile, or stops featuring it, at the path Mastodon names
+ * the action by.
+ */
+const endorseRoute = (action: "pin" | "unpin", name: string) =>
     defineRoute({
         method: "POST",
-        path: `/api/v1/accounts/:id/${action}`,
+        path: `/api/v1/accounts/:id/${name}`,
         ...action === "pin"
             ? {
                 summary: "Feature account on your profile",
@@ -24,7 +28,7 @@ const endorseRoute = (action: "pin" | "unpin") =>
                 summary: "Unfeature account from profile",
                 description: "Remove the given account from the user's featured profiles.",
             },
-        docs: `https://docs.joinmastodon.org/methods/accounts/#${action}`,
+        docs: `https://docs.joinmastodon.org/methods/accounts/#${name}`,
         tags: ["accounts"],
         auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
         params: z.object({ id: z.string() }),
@@ -47,8 +51,33 @@ const endorseRoute = (action: "pin" | "unpin") =>
     });
 
 export const endorsementRoutes: readonly Route[] = [
-    endorseRoute("pin"),
-    endorseRoute("unpin"),
+    endorseRoute("pin", "pin"),
+    endorseRoute("unpin", "unpin"),
+    // Mastodon 4.4 names them endorse and unendorse; the old names stay as aliases.
+    endorseRoute("pin", "endorse"),
+    endorseRoute("unpin", "unendorse"),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/accounts/:id/endorsements",
+        summary: "Get account's endorsements",
+        description: "Accounts that the given account is currently featuring on its profile.",
+        docs: "https://docs.joinmastodon.org/methods/accounts/#endorsements",
+        tags: ["accounts"],
+        auth: { require: "optional", scope: "read:accounts", permission: "read:account" },
+        params: z.object({ id: z.string() }),
+        query: PageQuery({ default: 40, max: 80 }),
+        responses: { 200: Paged(Account) },
+        handler: async (ctx, { params, query }) => {
+            if (await findAccount(ctx, params.id) === undefined) throw new NotFound();
+
+            const endorsements = await endorsementPage(ctx, params.id, query);
+            return {
+                status: 200,
+                body: await publicAccounts(ctx, endorsements.map((row) => row.account_id)),
+                cursors: cursorsOf(endorsements, query, (row) => row.id),
+            };
+        },
+    }),
     defineRoute({
         method: "GET",
         path: "/api/v1/endorsements",

@@ -39,6 +39,33 @@ export const deleteFeaturedTag = async (
         .returning("id")
         .executeTakeFirst()) !== undefined;
 
+/** Has `accountId` stop featuring the hashtag `tag`, in lower case. */
+export const deleteFeaturedTagNamed = async (
+    ctx: Context,
+    accountId: string,
+    tag: string,
+): Promise<void> => {
+    await ctx.db.deleteFrom("featured_tags")
+        .where("account_id", "=", accountId)
+        .where("tag", "=", tag)
+        .execute();
+};
+
+/** Which of the hashtags `tags`, in lower case, `accountId` features. */
+export const featuredTagsAmong = async (
+    ctx: Context,
+    accountId: string,
+    tags: readonly string[],
+): Promise<Set<string>> => {
+    if (tags.length === 0) return new Set();
+
+    const rows = await ctx.db.selectFrom("featured_tags").select("tag")
+        .where("account_id", "=", accountId)
+        .where("tag", "in", tags)
+        .execute();
+    return new Set(rows.map((row) => row.tag));
+};
+
 /** The hashtags `accountId` features, the earliest featured first. */
 export const featuredTagsOf = async (ctx: Context, accountId: string): Promise<FeaturedTagRow[]> =>
     await ctx.db.selectFrom("featured_tags").selectAll()

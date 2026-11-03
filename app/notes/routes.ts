@@ -6,6 +6,7 @@ import { Flag, Ids, Integer, Strings, Text } from "../http/schemas.ts";
 import type { Limits } from "../kernel/config_sections.ts";
 import { countText } from "../kernel/markup.ts";
 import { FocusPoint, MediaDescription } from "../media/routes.ts";
+import { deleteUploads } from "../media/uploads.ts";
 import { unshare } from "../interactions/shares.ts";
 import { editNote, postNote } from "./notes.ts";
 import { removeNote } from "./removal.ts";
@@ -21,6 +22,14 @@ import { renderScheduled } from "../schedules/render.ts";
 import { ScheduledAt } from "../schedules/routes.ts";
 import { scheduleNote } from "../schedules/schedules.ts";
 import type { ScheduledParams } from "../schedules/tables.ts";
+
+/** What deleting a status takes. */
+const DeleteOptions = z.object({
+    delete_media: Flag.optional().meta({
+        description: "Whether to delete the status's media at once, rather than keep it for a " +
+            "redraft.",
+    }),
+});
 
 /** What a status says, whether it is new or edited. */
 const text = {
@@ -368,8 +377,11 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
         tags: ["statuses"],
         auth: { require: "user", scope: "write:statuses", permission: "owner:note" },
         params: z.object({ id: z.string() }),
+        // Mastodon reads it from the query or the form alike.
+        query: DeleteOptions,
+        body: DeleteOptions,
         responses: { 200: Status },
-        handler: async (ctx, { params, viewer }) => {
+        handler: async (ctx, { params, query, body, viewer }) => {
             const note = await visibleNote(ctx, params.id, viewer.accountId);
             if (note?.account_id !== viewer.accountId) throw new NotFound();
 
@@ -379,6 +391,15 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 ? await removeNote(ctx, note.id)
                 : await unshare(ctx, viewer.accountId, note.reblog_of_id) !== undefined;
             if (!removed) throw new NotFound();
+
+            // Otherwise the media stays for a while, so the status can be redrafted.
+            if (note.reblog_of_id === null && (query.delete_media ?? body.delete_media)) {
+                await deleteUploads(
+                    ctx,
+                    viewer.accountId,
+                    status.media_attachments.map((m) => m.id),
+                );
+            }
 
             return { status: 200, body: status };
         },
