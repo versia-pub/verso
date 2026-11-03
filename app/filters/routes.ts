@@ -73,7 +73,8 @@ const Context = Strings
     });
 
 const FilterAction = z.enum(filterActions).meta({
-    description: "The policy to be applied when the filter is matched. Specify `warn` or `hide`.",
+    description:
+        "The policy to be applied when the filter is matched. Specify `warn`, `hide` or `blur`.",
 });
 
 // Mastodon reads a blank value as never expiring.

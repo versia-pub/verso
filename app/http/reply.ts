@@ -124,6 +124,10 @@ export const send = (
         if (link !== undefined) c.header("link", link);
     }
 
+    if (route.deprecated !== undefined) {
+        c.header("deprecation", `@${Date.parse(route.deprecated) / 1000}`);
+    }
+
     const maxAge = route.immutable ? yearSeconds : route.maxAge;
     if (maxAge !== undefined && reply.status < 300) {
         c.header(

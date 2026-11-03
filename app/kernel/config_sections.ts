@@ -123,6 +123,14 @@ export const Instance = z.strictObject({
         z.strictObject({
             text: z.string().trim().min(1),
             hint: z.string().trim().default(""),
+            /** The rule in other languages, by language code. */
+            translations: z.record(
+                z.string().min(1),
+                z.strictObject({
+                    text: z.string().trim().min(1),
+                    hint: z.string().trim().default(""),
+                }),
+            ).default({}),
         }),
     ).default([]),
     /** A longer text about it, for its about page. */

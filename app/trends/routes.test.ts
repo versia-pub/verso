@@ -56,7 +56,11 @@ Deno.test("trending hashtags are listed, the highest scoring first, with their h
     assertEquals(body.map((tag: { name: string }) => tag.name), ["cats"]);
     assertEquals(body[0].url, "https://social.example/tags/cats");
     assertEquals(body[0].history[0], { day: "1767225600", accounts: "5", uses: "5" });
-    assertEquals((await test.call("/api/v1/trends")).body, body);
+    const old = await test.call("/api/v1/trends");
+    assertEquals(old.body, body);
+    // Mastodon deprecates the old path, not `/tags`.
+    assertEquals(old.headers.get("deprecation"), "@1648598400");
+    assertEquals((await test.call("/api/v1/trends/tags")).headers.get("deprecation"), null);
 });
 
 Deno.test("trending hashtags show whether the viewer follows them", async () => {

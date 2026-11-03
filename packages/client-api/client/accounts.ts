@@ -57,6 +57,8 @@ export type ProfileChanges = {
     readonly indexable?: boolean;
     /** Whether its followers and follows are hidden from others. */
     readonly hide_collections?: boolean;
+    /** All the domains whose pages may credit the account, replacing the old ones. */
+    readonly attribution_domains?: readonly string[];
     readonly avatar?: Blob;
     readonly avatar_description?: string;
     readonly header?: Blob;

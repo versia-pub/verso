@@ -78,6 +78,7 @@ export const renderRules = (instance: AboutSettings["instance"]): Rule[] =>
         id: String(index + 1),
         text: rule.text,
         hint: rule.hint,
+        translations: rule.translations,
     }));
 
 /**

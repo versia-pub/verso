@@ -91,6 +91,16 @@ Deno.test("a user makes filters, changes them, and deletes them", async () => {
     const listed = await test.request("GET", "/api/v2/filters");
     assertEquals(listed.body.map((each: { id: string }) => each.id), [made.body.id, other.id]);
 
+    const blurred = await test.request("PUT", `/api/v2/filters/${made.body.id}`, {
+        filter_action: "blur",
+    });
+    assertEquals(blurred.body.filter_action, "blur");
+    assertEquals(
+        (await test.request("PUT", `/api/v2/filters/${made.body.id}`, { filter_action: "show" }))
+            .status,
+        422,
+    );
+
     assertEquals((await test.request("DELETE", `/api/v2/filters/${other.id}`)).body, {});
     assertEquals((await test.request("GET", `/api/v2/filters/${other.id}`)).status, 404);
     assertEquals((await test.request("GET", "/api/v2/filters")).body.length, 1);
@@ -135,7 +145,7 @@ Deno.test("a filter needs a title, a context and keywords that aren't blank", as
     assertEquals((await create({ title: " " })).status, 422);
     assertEquals((await create({ context: [] })).status, 422);
     assertEquals((await create({ context: ["home", "elsewhere"] })).status, 422);
-    assertEquals((await create({ filter_action: "blur" })).status, 422);
+    assertEquals((await create({ filter_action: "show" })).status, 422);
     assertEquals(
         (await create({ keywords_attributes: [{ keyword: " ", whole_word: true }] })).status,
         422,

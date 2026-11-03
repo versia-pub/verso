@@ -10,7 +10,10 @@ import { createTestContext } from "../testing/context.ts";
 import { reportsForAdmin, resolve } from "./reports.ts";
 import { reportRoutes } from "./routes.ts";
 
-const rules = [{ text: "Be kind", hint: "" }, { text: "No spam", hint: "" }];
+const rules = [
+    { text: "Be kind", hint: "", translations: {} },
+    { text: "No spam", hint: "", translations: {} },
+];
 
 /** alice, bob and carol, local users, and dave, a remote one. */
 const open = async () => {

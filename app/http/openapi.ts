@@ -46,6 +46,7 @@ type Operation = {
     readonly description?: string;
     readonly externalDocs?: { readonly url: string };
     readonly tags?: readonly string[];
+    readonly deprecated?: true;
     readonly security?: Security;
     readonly parameters?: readonly Parameter[];
     readonly requestBody?: { readonly required: boolean; readonly content: Content };
@@ -221,6 +222,7 @@ const operation = (route: Route, names: Naming): Operation => {
         ...description && { description },
         ...route.docs && { externalDocs: { url: route.docs } },
         ...route.tags && { tags: route.tags },
+        ...route.deprecated && { deprecated: true as const },
         ...needed && { security: needed },
         ...all.length > 0 && { parameters: all },
         ...body && {

@@ -174,7 +174,7 @@ Deno.test("the instance's own pages all match their schemas", async () => {
         ...settings,
         instance: {
             ...settings.instance,
-            rules: [{ text: "Be kind", hint: "" }],
+            rules: [{ text: "Be kind", hint: "", translations: {} }],
             extended_description: document,
             privacy_policy: document,
             terms_of_service: document,

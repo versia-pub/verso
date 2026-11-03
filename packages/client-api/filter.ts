@@ -34,8 +34,8 @@ export const Filter = z.object({
     context: z.array(z.enum(["home", "notifications", "public", "thread", "account"])),
     /** When it stops applying, or `null` if it never does. */
     expires_at: z.iso.datetime().nullable(),
-    /** Whether what it matches is shown behind a warning or left out. */
-    filter_action: z.enum(["warn", "hide"]),
+    /** Whether what it matches is shown behind a warning, left out, or has its media blurred. */
+    filter_action: z.enum(["warn", "hide", "blur"]),
     /** Left out where a status says which filters it matches. */
     keywords: z.array(FilterKeyword).optional(),
     /** Left out where a status says which filters it matches. */

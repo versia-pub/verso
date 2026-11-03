@@ -4,8 +4,8 @@ import { emojisOfAccounts } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
-import { Flag, Ids, Text } from "../http/schemas.ts";
-import type { Limits, MediaLimits } from "../kernel/config_sections.ts";
+import { Flag, Ids, Strings, Text } from "../http/schemas.ts";
+import { DomainName, type Limits, type MediaLimits } from "../kernel/config_sections.ts";
 import { countFollowRequests } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { MediaDescription } from "../media/routes.ts";
@@ -35,13 +35,39 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
     );
 };
 
+/** The most domains an account may name as able to credit it, as Mastodon allows. */
+const maxAttributionDomains = 100;
+
+/**
+ * Domains as Mastodon reads them: without a leading `http://`, `https://` or `*.`, and without
+ * blank ones or repeats. Domains are lowercase, which Mastodon doesn't enforce.
+ */
+const AttributionDomains = Strings
+    .transform((entries) =>
+        entries
+            .map((entry) =>
+                entry.trim().replace(/^http:\/\//, "").replace(/^https:\/\//, "").replace(
+                    /^\*\./,
+                    "",
+                )
+            )
+            .filter((entry) => entry !== "")
+    )
+    .pipe(z.array(DomainName))
+    .transform((domains) => [...new Set(domains)])
+    .pipe(
+        z.array(z.string()).max(maxAttributionDomains, {
+            error: `At most ${maxAttributionDomains} domains`,
+        }),
+    );
+
 /** Room for the form's other fields and boundaries, besides the pictures. */
 const formBytes = 64 * 1024;
 
 /**
  * What `update_credentials` changes, within `limits`, with pictures at most as large as `media`
- * allows uploads to be. Attribution domains and quote policies are accepted, but not stored yet;
- * Verso doesn't restrict quotes.
+ * allows uploads to be. Quote policies are accepted, but not stored yet; Verso doesn't restrict
+ * quotes.
  * @see https://docs.joinmastodon.org/methods/accounts/#update_credentials
  */
 const credentialChanges = (media: MediaLimits, limits: Limits) => {
@@ -62,6 +88,7 @@ const credentialChanges = (media: MediaLimits, limits: Limits) => {
         discoverable: Flag.optional(),
         indexable: Flag.optional(),
         hide_collections: Flag.optional(),
+        attribution_domains: AttributionDomains.optional(),
         avatar: Picture.optional(),
         avatar_description: MediaDescription(limits).optional(),
         header: Picture.optional(),
@@ -121,6 +148,7 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
                 discoverable: body.discoverable,
                 indexable: body.indexable,
                 hideCollections: body.hide_collections,
+                attributionDomains: body.attribution_domains,
                 defaultVisibility: body.source?.privacy,
                 defaultSensitive: body.source?.sensitive,
                 defaultLanguage: body.source?.language,

@@ -170,6 +170,7 @@ text = " Be kind "
 [[instance.rules]]
 text = "No spam"
 hint = " Ads included "
+translations = { fr = { text = " Pas de spam ", hint = " Pubs comprises " } }
 
 [limits]
 note = 500
@@ -267,7 +268,14 @@ level = "debug"
                 name: "Example Social",
                 description: "A place to talk.",
                 contact: { email: "admin@social.example", account: "admin" },
-                rules: [{ text: "Be kind", hint: "" }, { text: "No spam", hint: "Ads included" }],
+                rules: [
+                    { text: "Be kind", hint: "", translations: {} },
+                    {
+                        text: "No spam",
+                        hint: "Ads included",
+                        translations: { fr: { text: "Pas de spam", hint: "Pubs comprises" } },
+                    },
+                ],
                 privacy_policy: { text: "We keep little.", updated: new Date("2026-10-01") },
                 terms_of_service: {
                     text: "Be kind.",
@@ -312,6 +320,17 @@ const errors = async (toml: string) => {
     assertEquals(result.ok, false, toml);
     return result.ok ? "" : result.error;
 };
+
+Deno.test("a rule's translations need a language and a text", async () => {
+    const rule = (translations: string) =>
+        `${minimal}[[instance.rules]]\ntext = "Be kind"\ntranslations = ${translations}`;
+
+    assertStringIncludes(await errors(rule('{ "" = { text = "Sois gentil" } }')), "translations");
+    assertStringIncludes(await errors(rule('{ fr = { text = " " } }')), "text");
+    assertStringIncludes(await errors(rule('{ fr = { hint = "Toujours" } }')), "text");
+    assertStringIncludes(await errors(rule('{ fr = { text = "a", note = "b" } }')), "note");
+    assertEquals((await parseConfig(rule('{ fr = { text = "Sois gentil" } }'))).ok, true);
+});
 
 Deno.test("bad configs explain what is wrong", async () => {
     assertStringIncludes(await errors(""), "domain");

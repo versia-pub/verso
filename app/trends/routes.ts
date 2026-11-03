@@ -38,10 +38,11 @@ const LinkTimelineQuery = PageQuery({ default: 20, max: 40 }).extend({
 export const trendRoutes = (
     instance: Pick<Config["instance"], "show_trends" | "trendable_by_default">,
 ): readonly Route[] => {
-    const trendingTags = (path: string) =>
+    const trendingTags = (path: string, deprecated?: string) =>
         defineRoute({
             method: "GET",
             path,
+            deprecated,
             summary: "View trending tags",
             description: "Tags that are being used more frequently within the past week.",
             docs: "https://docs.joinmastodon.org/methods/trends/#tags",
@@ -70,7 +71,7 @@ export const trendRoutes = (
     return [
         trendingTags("/api/v1/trends/tags"),
         // The route Mastodon had before it had `/tags`, which apps still use.
-        trendingTags("/api/v1/trends"),
+        trendingTags("/api/v1/trends", "2022-03-30"),
         defineRoute({
             method: "GET",
             path: "/api/v1/trends/statuses",

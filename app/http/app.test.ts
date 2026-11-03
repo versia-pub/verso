@@ -1,6 +1,7 @@
 import { html } from "@hono/hono/html";
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { z } from "zod";
+import { createLocalAccount } from "../accounts/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
@@ -257,6 +258,8 @@ const open = async () => {
     const test = await createTestContext();
     const app = createTestApp(test.ctx, [
         rename,
+        duplicate,
+        old,
         echo,
         echoText,
         echoLong,
@@ -489,6 +492,27 @@ Deno.test("a route can take a larger body, up to a limit of its own", async () =
     assertEquals((await test.send("/echo-text", text(256 * 1024 + 1), "text/plain")).status, 413);
 });
 
+const old = defineRoute({
+    method: "GET",
+    path: "/old",
+    summary: "Mastodon deprecated it",
+    deprecated: "2022-11-14",
+    responses: { 200: z.object({}) },
+    handler: () => Promise.resolve({ status: 200, body: {} }),
+});
+
+const duplicate = defineRoute({
+    method: "POST",
+    path: "/duplicate",
+    summary: "Makes the same account twice",
+    responses: { 200: z.object({}) },
+    handler: async (ctx) => {
+        await createLocalAccount(ctx, "alice");
+        await createLocalAccount(ctx, "alice");
+        return { status: 200, body: {} };
+    },
+});
+
 Deno.test("errors use Mastodon's shape, without internal details", async () => {
     await using test = await open();
     assertEquals(await test.send("/things/missing?notify=1", '{"name":"b"}'), {
@@ -502,6 +526,26 @@ Deno.test("errors use Mastodon's shape, without internal details", async () => {
 
     assertEquals((await test.app.request("/nothing")).status, 404);
     assertEquals((await test.app.request("/things/a?notify=1")).status, 404);
+});
+
+Deno.test("a deprecated route says since when, as Mastodon does, in Unix time", async () => {
+    await using test = await open();
+    const deprecated = await test.app.request("/old");
+    await deprecated.body?.cancel();
+    const current = await test.app.request("/welcome?name=a");
+    await current.body?.cancel();
+
+    assertEquals(deprecated.headers.get("deprecation"), "@1668384000");
+    assertEquals(current.headers.get("deprecation"), null);
+});
+
+Deno.test("a record made twice at once is a 422, not a 500", async () => {
+    await using test = await open();
+
+    assertEquals(await test.send("/duplicate", "{}"), {
+        status: 422,
+        body: { error: "Duplicate record" },
+    });
 });
 
 Deno.test("with checks on, a reply that doesn't match its schema is a 500", async () => {

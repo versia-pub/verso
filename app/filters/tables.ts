@@ -3,8 +3,8 @@ export const filterContexts = ["home", "notifications", "public", "thread", "acc
 
 export type FilterContext = typeof filterContexts[number];
 
-/** What is done with a status a filter matches: shown behind a warning, or left out. */
-export const filterActions = ["warn", "hide"] as const;
+/** What is done with a status a filter matches: warned about, left out, or its media blurred. */
+export const filterActions = ["warn", "hide", "blur"] as const;
 
 export type FilterAction = typeof filterActions[number];
 

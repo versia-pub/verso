@@ -93,6 +93,7 @@ Deno.test("a new account starts with the name claim and default settings", async
         discoverable: false,
         indexable: false,
         hide_collections: false,
+        attribution_domains: [],
         default_visibility: "public",
         default_sensitive: false,
         default_language: "",

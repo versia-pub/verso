@@ -1,6 +1,7 @@
 import { type Context as HonoContext, Hono } from "@hono/hono";
 import { bodyLimit } from "@hono/hono/body-limit";
 import { getLogger } from "@logtape/logtape";
+import { isUniqueViolation } from "../db/errors.ts";
 import { Permissions } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Cidr } from "../kernel/ip.ts";
@@ -26,6 +27,9 @@ const maxBodyBytes = 256 * 1024;
 const errorReply = (error: unknown, c: HonoContext<AppEnv>): Response => {
     c.header("cache-control", "no-store");
     if (error instanceof HttpError) return c.json(error, error.status);
+
+    // As Mastodon answers when two requests make the same record at once.
+    if (isUniqueViolation(error)) return c.json({ error: "Duplicate record" }, 422);
 
     logger.error("{method} {path} failed: {error}", {
         method: c.req.method,

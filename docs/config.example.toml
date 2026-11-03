@@ -127,6 +127,8 @@ contact = { email = "admin@social.example", account = "admin" }
 rules = [
     { text = "Be kind" },
     { text = "No spam", hint = "Advertising counts as spam." },
+    # Apps show the translation that matches their user's language.
+    { text = "No hate", translations = { fr = { text = "Pas de haine" } } },
 ]
 # Whether apps can list the instances Verso knows of, and weekly counts of local statuses, logins
 # and new accounts.

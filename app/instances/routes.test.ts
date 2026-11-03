@@ -119,6 +119,7 @@ text = "Be kind"
 [[instance.rules]]
 text = "No spam"
 hint = "Ads included"
+translations = { fr = { text = "Pas de spam", hint = "Pubs comprises" }, de = { text = "Kein Spam" } }
 
 [limits]
 fields = 4
@@ -176,8 +177,16 @@ registration = { claim = "groups", contains = "verso" }
         ["alice", [{ id: "Admin", name: "Admin", color: "" }], 1],
     );
     assertEquals(instance.rules, [
-        { id: "1", text: "Be kind", hint: "" },
-        { id: "2", text: "No spam", hint: "Ads included" },
+        { id: "1", text: "Be kind", hint: "", translations: {} },
+        {
+            id: "2",
+            text: "No spam",
+            hint: "Ads included",
+            translations: {
+                fr: { text: "Pas de spam", hint: "Pubs comprises" },
+                de: { text: "Kein Spam", hint: "" },
+            },
+        },
     ]);
 });
 
@@ -264,6 +273,9 @@ rules = [{ text = "Be kind", hint = "Always" }]
     const v2 = await test.get();
 
     const { body, status } = await test.fetch("/api/v1/instance");
+    const asked = await test.app.request("/api/v1/instance");
+    await asked.body?.cancel();
+    assertEquals(asked.headers.get("deprecation"), "@1668384000");
 
     assertEquals(status, 200);
     assertEquals({ ...body, contact_account: body.contact_account?.username }, {
@@ -287,7 +299,7 @@ rules = [{ text = "Be kind", hint = "Always" }]
             polls: v2.configuration.polls,
         },
         contact_account: "alice",
-        rules: [{ id: "1", text: "Be kind", hint: "Always" }],
+        rules: [{ id: "1", text: "Be kind", hint: "Always", translations: {} }],
     });
     assertEquals(await test.fetch("/api/v1/instance/rules"), { status: 200, body: v2.rules });
 });

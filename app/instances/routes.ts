@@ -79,6 +79,7 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
                 "instead.",
             docs: "https://docs.joinmastodon.org/methods/instance/#v1",
             tags: ["instance"],
+            deprecated: "2022-11-14",
             responses: { 200: V1Instance },
             handler: async (ctx) => {
                 const kept = await stats.get(ctx);

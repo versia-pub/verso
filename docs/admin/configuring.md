@@ -53,6 +53,7 @@ contact = { email = "admin@social.example", account = "admin" }
 rules = [
     { text = "Be kind" },
     { text = "No spam", hint = "Advertising counts as spam." },
+    { text = "No hate", translations = { fr = { text = "Pas de haine" } } },
 ]
 
 [instance.privacy_policy]
@@ -61,6 +62,9 @@ updated = 2026-10-01
 ```
 
 `contact.account` is the username of a local account to show as the instance's contact.
+
+A rule's `translations` give its text, and hint, in other languages by language code. Apps pick the
+one that matches their user's language.
 
 Apps can list the instances Verso knows of and weekly counts of activity, unless you set
 `show_peers` or `show_activity` to `false`. Blocked instances are hidden from apps unless

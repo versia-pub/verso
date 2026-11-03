@@ -52,6 +52,8 @@ export type AccountsTable = {
     indexable: Generated<boolean>;
     /** Whether its followers and following are hidden from others. */
     hide_collections: Generated<boolean>;
+    /** The domains whose pages may credit the account as their author. */
+    attribution_domains: Generated<string[]>;
 
     /** Defaults for new statuses, which clients read and change through Mastodon's `source`. */
     default_visibility: Generated<Visibility>;

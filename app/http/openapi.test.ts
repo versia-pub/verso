@@ -417,3 +417,19 @@ Deno.test("a route's description comes before what OpenAPI can't say, and links 
     assertEquals(paths["/api/v1/blocks"].get.description, "View your blocks.");
     assertEquals(paths["/api/v1/blocks"].get.externalDocs, undefined);
 });
+
+Deno.test("a deprecated route is marked so, and others aren't", () => {
+    const route = (path: string, deprecated?: string) =>
+        defineRoute({
+            method: "GET",
+            path,
+            summary: "Lists",
+            deprecated,
+            responses: { 200: z.object({}) },
+            handler: unused,
+        });
+
+    const { paths } = openApiDocument([route("/old", "2022-11-14"), route("/new")], info, origin);
+    assertEquals(paths["/old"].get.deprecated, true);
+    assertFalse("deprecated" in paths["/new"].get);
+});

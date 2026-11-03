@@ -3971,9 +3971,10 @@
                                         "type": "string",
                                         "enum": [
                                             "warn",
-                                            "hide"
+                                            "hide",
+                                            "blur"
                                         ],
-                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn`, `hide` or `blur`."
                                     },
                                     "expires_in": {
                                         "anyOf": [
@@ -4101,9 +4102,10 @@
                                         "type": "string",
                                         "enum": [
                                             "warn",
-                                            "hide"
+                                            "hide",
+                                            "blur"
                                         ],
-                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn`, `hide` or `blur`."
                                     },
                                     "expires_in": {
                                         "anyOf": [
@@ -4231,9 +4233,10 @@
                                         "type": "string",
                                         "enum": [
                                             "warn",
-                                            "hide"
+                                            "hide",
+                                            "blur"
                                         ],
-                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn`, `hide` or `blur`."
                                     },
                                     "expires_in": {
                                         "anyOf": [
@@ -4712,9 +4715,10 @@
                                         "type": "string",
                                         "enum": [
                                             "warn",
-                                            "hide"
+                                            "hide",
+                                            "blur"
                                         ],
-                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn`, `hide` or `blur`."
                                     },
                                     "expires_in": {
                                         "anyOf": [
@@ -4837,9 +4841,10 @@
                                         "type": "string",
                                         "enum": [
                                             "warn",
-                                            "hide"
+                                            "hide",
+                                            "blur"
                                         ],
-                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn`, `hide` or `blur`."
                                     },
                                     "expires_in": {
                                         "anyOf": [
@@ -4962,9 +4967,10 @@
                                         "type": "string",
                                         "enum": [
                                             "warn",
-                                            "hide"
+                                            "hide",
+                                            "blur"
                                         ],
-                                        "description": "The policy to be applied when the filter is matched. Specify `warn` or `hide`."
+                                        "description": "The policy to be applied when the filter is matched. Specify `warn`, `hide` or `blur`."
                                     },
                                     "expires_in": {
                                         "anyOf": [
@@ -5759,6 +5765,19 @@
                                             "string"
                                         ]
                                     },
+                                    "attribution_domains": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
                                     "avatar": {
                                         "type": "string",
                                         "format": "binary",
@@ -5893,6 +5912,19 @@
                                             "string"
                                         ]
                                     },
+                                    "attribution_domains": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
                                     "avatar": {
                                         "type": "string",
                                         "format": "binary",
@@ -6025,6 +6057,19 @@
                                         "type": [
                                             "boolean",
                                             "string"
+                                        ]
+                                    },
+                                    "attribution_domains": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
                                         ]
                                     },
                                     "avatar": {
@@ -10514,6 +10559,7 @@
                 "tags": [
                     "trends"
                 ],
+                "deprecated": true,
                 "security": [
                     {},
                     {
@@ -17334,6 +17380,7 @@
                 "tags": [
                     "instance"
                 ],
+                "deprecated": true,
                 "responses": {
                     "200": {
                         "description": "A JSON body",
@@ -19104,7 +19151,8 @@
                         "type": "string",
                         "enum": [
                             "warn",
-                            "hide"
+                            "hide",
+                            "blur"
                         ]
                     },
                     "keywords": {

@@ -119,6 +119,12 @@ export type RouteDefinition<
      * once. Signed routes are limited by the instance that signed, not by client.
      */
     readonly rateLimit?: false | { readonly bucket: string; readonly times: number };
+    /**
+     * The date, as `YYYY-MM-DD`, from which Mastodon deprecates the route. Its responses carry it
+     * in a `Deprecation` header, and the API documentation marks it deprecated.
+     * @see https://www.rfc-editor.org/rfc/rfc9745
+     */
+    readonly deprecated?: string;
     /** Without it, anyone may call the route, and tokens are ignored. */
     readonly auth?: A;
     /**

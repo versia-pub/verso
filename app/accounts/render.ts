@@ -173,7 +173,7 @@ export const renderCredentialAccount = (
         hide_collections: row.hide_collections,
         discoverable: row.discoverable,
         indexable: row.indexable,
-        attribution_domains: [],
+        attribution_domains: row.attribution_domains,
         // Verso doesn't restrict quotes.
         quote_policy: "public",
     },

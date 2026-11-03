@@ -320,6 +320,62 @@ Deno.test("a user changes their profile with a form, and the rest stays", async 
     assertEquals((await test.update("{}")).body.source.note, "Kept");
 });
 
+Deno.test("a user names the domains that may credit them, cleaned up as Mastodon does", async () => {
+    await using test = await openApi();
+    const domains = async (body: string, type = "application/json") =>
+        (await test.update(body, type)).body.source?.attribution_domains;
+
+    assertEquals((await test.update("{}")).body.source.attribution_domains, []);
+    assertEquals(
+        await domains(JSON.stringify({
+            attribution_domains: [
+                " https://news.example ",
+                "http://blog.example",
+                "*.Shop.example",
+                "news.example",
+                "",
+                "  ",
+            ],
+        })),
+        ["news.example", "blog.example", "shop.example"],
+    );
+    assertEquals(await domains("{}"), ["news.example", "blog.example", "shop.example"]);
+    assertEquals(
+        await domains(
+            "attribution_domains[]=a.example&attribution_domains[]=b.example",
+            "application/x-www-form-urlencoded",
+        ),
+        ["a.example", "b.example"],
+    );
+    assertEquals(await domains("attribution_domains[]=", "application/x-www-form-urlencoded"), []);
+});
+
+Deno.test("domains that can't credit an account are refused, and nothing changes", async () => {
+    await using test = await openApi();
+    await test.update(JSON.stringify({ attribution_domains: ["kept.example"] }));
+    const tooMany = Array.from({ length: 101 }, (_, index) => `d${index}.example`);
+
+    for (const invalid of [["localhost"], ["a.example/path"], ["a.example:8080"], [1], tooMany]) {
+        const response = await test.update(JSON.stringify({ attribution_domains: invalid }));
+        assertEquals(response.status, 422, JSON.stringify(invalid).slice(0, 40));
+    }
+
+    const hundred = tooMany.slice(0, 100);
+    const accepted = await test.update(JSON.stringify({ attribution_domains: hundred }));
+    assertEquals(accepted.body.source.attribution_domains, hundred);
+    assertEquals(
+        (await test.update(JSON.stringify({ attribution_domains: [...hundred, "d0.example"] })))
+            .status,
+        200,
+    );
+    assertEquals(
+        (await test.update(JSON.stringify({ attribution_domains: ["z.example", ...tooMany] })))
+            .status,
+        422,
+    );
+    assertEquals((await test.update("{}")).body.source.attribution_domains, hundred);
+});
+
 Deno.test("profile changes are held to the configured limits", async () => {
     await using test = await openApi(
         Limits.parse({
