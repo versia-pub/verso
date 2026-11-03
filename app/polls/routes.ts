@@ -6,6 +6,7 @@ import { Integer } from "../http/schemas.ts";
 import type { Context } from "../kernel/context.ts";
 import { visibleNote } from "../notes/visibility.ts";
 import { findPoll } from "./poll_queries.ts";
+import { refreshPoll } from "./refreshing.ts";
 import { vote } from "./polls.ts";
 import { renderPolls } from "./render.ts";
 
@@ -13,14 +14,14 @@ const PollId = z.object({
     id: z.string().meta({ description: "The ID of the Poll in the database." }),
 });
 
-/** The poll `pollId`, as `viewerId` sees it, if they may see its status. */
+/** The poll `pollId`, as `viewerId` sees it, and the id of its status, if they may see it. */
 const shownPoll = async (ctx: Context, pollId: string, viewerId: string | null) => {
     const poll = await findPoll(ctx, pollId);
     const note = poll && await visibleNote(ctx, poll.note_id, viewerId);
     const shown = note && (await renderPolls(ctx, [note], viewerId)).get(note.id);
-    if (shown === undefined) throw new NotFound();
+    if (note === undefined || shown === undefined) throw new NotFound();
 
-    return shown;
+    return { shown, noteId: note.id };
 };
 
 const docs = "https://docs.joinmastodon.org/methods/polls";
@@ -36,10 +37,14 @@ export const pollRoutes: readonly Route[] = [
         auth: { require: "optional", scope: "read:statuses", permission: "read:note" },
         params: PollId,
         responses: { 200: Poll },
-        handler: async (ctx, { params, viewer }) => ({
-            status: 200,
-            body: await shownPoll(ctx, params.id, viewer?.accountId ?? null),
-        }),
+        handler: async (ctx, { params, viewer }) => {
+            const viewerId = viewer?.accountId ?? null;
+            const { shown, noteId } = await shownPoll(ctx, params.id, viewerId);
+            // As Mastodon does, only for a signed-in user.
+            if (viewerId !== null) await refreshPoll(ctx, noteId);
+
+            return { status: 200, body: shown };
+        },
     }),
     defineRoute({
         method: "POST",
@@ -63,7 +68,7 @@ export const pollRoutes: readonly Route[] = [
             const poll = await vote(ctx, viewer.accountId, params.id, body.choices);
             if (poll === undefined) throw new NotFound();
 
-            return { status: 200, body: await shownPoll(ctx, poll.id, viewer.accountId) };
+            return { status: 200, body: (await shownPoll(ctx, poll.id, viewer.accountId)).shown };
         },
     }),
 ];

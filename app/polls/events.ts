@@ -23,3 +23,13 @@ export type PollVoted = {
 };
 
 export const isPollVoted = (event: DomainEvent): event is PollVoted => event.type === "polls.voted";
+
+/** Votes were counted in the poll `pollId` on the local status `noteId` since it was last sent. */
+export type PollUpdated = {
+    readonly type: "polls.updated";
+    readonly pollId: string;
+    readonly noteId: string;
+};
+
+export const isPollUpdated = (event: DomainEvent): event is PollUpdated =>
+    event.type === "polls.updated";

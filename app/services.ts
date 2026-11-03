@@ -21,6 +21,7 @@ import { noteDeliveries } from "./notes/federation.ts";
 import { queueCards } from "./previews/cards.ts";
 import { notifyOf } from "./notifications/notifications.ts";
 import { voteDeliveries } from "./polls/federation.ts";
+import { queuePollUpdate } from "./polls/updating.ts";
 import { reportDeliveries } from "./reports/federation.ts";
 import { uncountNotesOf } from "./notes/removal.ts";
 import { vapidKey } from "./push/keys.ts";
@@ -48,6 +49,7 @@ export const subscribers: readonly Subscriber[] = [
     shareDeliveries,
     reactionDeliveries,
     voteDeliveries,
+    queuePollUpdate,
     reportDeliveries,
     undoReactionsWithDeletedEmoji,
     notifyOf,

@@ -116,3 +116,81 @@ Deno.test("votes in a remote poll are counted by its instance, and others' reach
 
     assertEquals(test.counts(await test.pollOf("alice", uri)), [0, 2, 0]);
 });
+
+/** How many times `domain` was asked for the status `id`. */
+const fetches = (network: Awaited<ReturnType<typeof open>>["network"], id: string) =>
+    network.transport.sent.filter((request) =>
+        new URL(request.url).pathname === `/.versia/v0.6/entities/Note/${id}`
+    ).length;
+
+Deno.test("votes in a local poll reach its followers' instances a few minutes after the first", async () => {
+    await using test = await open();
+    const a = test.network.instances["a.test"];
+    const carol = await clientOf(a, await createLocalAccount(a.ctx, "carol"));
+    const id = await test.ask("alice", false);
+    const uri = `https://a.test/.versia/v0.6/entities/Note/${id}`;
+    const poll = (await carol("GET", `/api/v1/statuses/${id}`)).body.poll;
+    const dave = await clientOf(a, await createLocalAccount(a.ctx, "dave"));
+
+    assertEquals(
+        (await carol("POST", `/api/v1/polls/${poll.id}/votes`, { choices: [1] })).status,
+        200,
+    );
+    test.network.clock.advance(2 * 60_000);
+    assertEquals(
+        (await dave("POST", `/api/v1/polls/${poll.id}/votes`, { choices: [1] })).status,
+        200,
+    );
+    await test.network.drain();
+    assertEquals(test.counts(await test.pollOf("bob", uri)), [0, 0, 0]);
+
+    test.network.clock.advance(60_000);
+    await test.network.drain();
+    assertEquals(test.counts(await test.pollOf("bob", uri)), [0, 2, 0]);
+
+    // A vote after that starts another wait.
+    const erin = await clientOf(a, await createLocalAccount(a.ctx, "erin"));
+    assertEquals(
+        (await erin("POST", `/api/v1/polls/${poll.id}/votes`, { choices: [0] })).status,
+        200,
+    );
+    test.network.clock.advance(3 * 60_000);
+    await test.network.drain();
+    assertEquals(test.counts(await test.pollOf("bob", uri)), [1, 2, 0]);
+});
+
+Deno.test("a remote poll opened by a user is fetched again once it is a minute old, until it has ended", async () => {
+    await using test = await open();
+    const b = test.network.instances["b.test"];
+    const carol = await clientOf(b, await createLocalAccount(b.ctx, "carol"));
+    const id = await test.ask("bob", false);
+    const uri = `https://b.test/.versia/v0.6/entities/Note/${id}`;
+    const poll = (await carol("GET", `/api/v1/statuses/${id}`)).body.poll;
+    assertEquals(
+        (await carol("POST", `/api/v1/polls/${poll.id}/votes`, { choices: [2] })).status,
+        200,
+    );
+
+    /** Has alice open the poll, and returns its counts as she saw them, and the fetches it made. */
+    const view = async () => {
+        const before = fetches(test.network, id);
+        const shown = await test.pollOf("alice", uri);
+        const got = await test.users.alice("GET", `/api/v1/polls/${shown.id}`);
+        assertEquals(got.status, 200);
+        await test.network.drain();
+
+        return [test.counts(got.body), fetches(test.network, id) - before];
+    };
+
+    assertEquals(await view(), [[0, 0, 0], 0]);
+
+    test.network.clock.advance(60_000);
+    assertEquals(await view(), [[0, 0, 0], 1]);
+    assertEquals(await view(), [[0, 0, 1], 0]);
+
+    // bob's instance sends the votes so far when the poll ends, which alice's keeps as final.
+    test.network.clock.advance(3600_000);
+    await test.end("b.test");
+    test.network.clock.advance(60_000);
+    assertEquals(await view(), [[0, 0, 1], 0]);
+});

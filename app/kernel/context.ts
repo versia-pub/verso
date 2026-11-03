@@ -38,14 +38,16 @@ export type Budget = {
 /**
  * Verso's id for the entity of type `type` that `reference` points at, or `undefined` if there is
  * none. A local entity is looked up; a remote one is fetched if Verso doesn't have it, or had it
- * too long ago, unless its instance is blocked, isn't at a domain, or `budget` is spent. If
- * fetching fails, the stored copy is used; without one, it throws.
+ * too long ago, unless its instance is blocked, isn't at a domain, or `budget` is spent. "Too long
+ * ago" is `maxAgeMs`, a day unless the resolver is set otherwise. If fetching fails, the stored copy
+ * is used; without one, it throws.
  */
 export type Resolver = (
     ctx: Context,
     reference: Reference,
     type: string,
     budget?: Budget,
+    maxAgeMs?: number,
 ) => Promise<string | undefined>;
 
 /**

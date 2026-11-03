@@ -68,6 +68,23 @@ Deno.test("a remote user is fetched once, and again when it is a day old", async
     assertEquals(fetched("b.test"), 2);
 });
 
+Deno.test("a resolve can ask for a copy newer than a day", async () => {
+    const { network, a, bob, fetched, resolve } = await open();
+    await using _ = network;
+    const reference = { host: "b.test", id: bob };
+
+    await resolve(a, reference, "User");
+    network.clock.advance(60_000);
+    await resolve(a, reference, "User", undefined, 60_001);
+    assertEquals(fetched("b.test"), 1);
+
+    await resolve(a, reference, "User", undefined, 60_000);
+    assertEquals(fetched("b.test"), 2);
+
+    await resolve(a, reference, "User");
+    assertEquals(fetched("b.test"), 2);
+});
+
 Deno.test("a local user is looked up, not fetched", async () => {
     const { network, a, fetched, user } = await open();
     await using _ = network;

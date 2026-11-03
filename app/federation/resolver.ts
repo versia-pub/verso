@@ -79,7 +79,7 @@ const Identified = z.object({ id: z.string() });
 
 /** A resolver for the types in `registry`. Create one per process, and share it. */
 export const createResolver = (registry: Registry, options: ResolverOptions = {}): Resolver => {
-    const maxAgeMs = options.maxAgeMs ?? 24 * 60 * 60_000;
+    const defaultMaxAgeMs = options.maxAgeMs ?? 24 * 60 * 60_000;
     const missingMs = options.missingMs ?? 60 * 60_000;
 
     /** When each missing entity may be fetched again. */
@@ -165,7 +165,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         return (await type.known?.(ctx, reference))?.id;
     };
 
-    return async (ctx, reference, typeName, budget = fetchBudget()) => {
+    return async (ctx, reference, typeName, budget = fetchBudget(), maxAgeMs = defaultMaxAgeMs) => {
         const type = registry.types.get(typeName);
         if (!type?.known) throw new Error(`A ${typeName} can't be resolved`);
 

@@ -19,8 +19,9 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 
 - Unlisted statuses are sent to other instances as public, since Versia has no unlisted visibility.
   Verso keeps them off its own public timelines, but other instances may show them on theirs.
-- A remote poll's counts only change when its instance sends the status again, such as when the poll
-  ends, apart from local users' votes. Mastodon also updates them while the poll runs.
+- A remote poll's counts change when its instance sends the status again, and when a signed-in user
+  opens the poll more than a minute after Verso last had it. Mastodon fetches the poll before it
+  answers; Verso queues the fetch, so that answer has the old counts and the next has the new ones.
 - An edit that leaves out `media_ids` or `poll` keeps the status's media or poll. Mastodon removes
   them. Send `poll: null` to remove a poll.
 - Quotes can't be restricted: statuses have no quote policy.
