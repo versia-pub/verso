@@ -2,7 +2,7 @@
  * Statuses as the client API renders them, in the Mastodon format.
  * @module
  */
-import type { Status, StatusEdit } from "@versia/client-api";
+import type { Quote, ShallowQuote, Status, StatusEdit } from "@versia/client-api";
 import { findAccounts } from "../accounts/account_queries.ts";
 import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
@@ -19,7 +19,9 @@ import { asVersionMedia, attachedTo } from "../media/attachments.ts";
 import { renderAttachment } from "../media/render.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import { findNotes, mentionsOf, type NoteRow, tagsOf, versionsOf } from "./note_queries.ts";
-import { notesSeenBy } from "./thread_queries.ts";
+import { notesSeenBy, quoteCounts } from "./thread_queries.ts";
+import { everyone } from "./audience.ts";
+import { quoteApproval, quoteViews } from "./quotes.ts";
 import { countSharesBy, sharedAmong } from "./share_queries.ts";
 import { pinnedAmong } from "./pin_queries.ts";
 import { bookmarkedAmong } from "./bookmark_queries.ts";
@@ -85,6 +87,48 @@ const sharedStatuses = async (
 };
 
 /**
+ * The quotes that `notes` have, by status, as `viewerId` sees them. The quoted statuses are shown by
+ * id if `nested`, and otherwise rendered, as quotes inside them are shown by id.
+ */
+const quotedStatuses = async (
+    ctx: Context,
+    notes: readonly NoteRow[],
+    viewerId: string | null,
+    nested: boolean,
+): Promise<Map<string, Quote | ShallowQuote>> => {
+    const quoting = new Map(
+        notes.flatMap((note) =>
+            note.quote_id === null || note.reblog_of_id !== null ? [] : [[note.id, note.quote_id]]
+        ),
+    );
+    const views = await quoteViews(ctx, quoting, viewerId);
+    if (nested) {
+        return new Map([...views].map(([id, { state, note }]) => [id, {
+            state,
+            quoted_status_id: note?.id ?? null,
+        }]));
+    }
+
+    const shown = [
+        ...new Map(
+            [...views.values()].flatMap(({ note }) =>
+                note === null ? [] : [[note.id, note] as const]
+            ),
+        ).values(),
+    ];
+    const statuses = new Map(
+        (await renderStatuses(ctx, shown, viewerId, { nested: true })).map((
+            status,
+        ) => [status.id, status]),
+    );
+
+    return new Map([...views].map(([id, { state, note }]) => [id, {
+        state,
+        quoted_status: (note && statuses.get(note.id)) ?? null,
+    }]));
+};
+
+/**
  * How many likes and boosts of each of `noteIds` are by the accounts `blocked`, which the viewer
  * blocks and isn't shown.
  */
@@ -108,13 +152,14 @@ const blockedCounts = async (
  * larger of Verso's own count and the count its instance reports, as Mastodon does. The likes,
  * boosts and reactions of the accounts the viewer blocks aren't counted. A viewer is told which of
  * their filters each status matches. With `source`, statuses carry the text their authors wrote, as
- * Mastodon returns a deleted status for redrafting.
+ * Mastodon returns a deleted status for redrafting. A status that quotes another has it as its
+ * `quote`, which is shown by id only if `nested`, as it is inside a quote, so a quote goes no deeper.
  */
 export const renderStatuses = async (
     ctx: Context,
     notes: readonly NoteRow[],
     viewerId: string | null,
-    options: { readonly source?: boolean } = {},
+    options: { readonly source?: boolean; readonly nested?: boolean } = {},
 ): Promise<Status[]> => {
     const noteIds = notes.map((note) => note.id);
     const mentions = await mentionsOf(ctx, noteIds);
@@ -136,6 +181,8 @@ export const renderStatuses = async (
         ? new Set()
         : await mutedThreadsAmong(ctx, viewerId, notes.map((note) => note.thread_id));
     const reblogs = await sharedStatuses(ctx, notes, viewerId);
+    const quotes = await quotedStatuses(ctx, notes, viewerId, options.nested ?? false);
+    const quoted = await quoteCounts(ctx, noteIds, everyone);
     const polls = await renderPolls(ctx, notes, viewerId);
     const cards = new Map(
         [...await cardsOf(ctx, noteIds)].map((
@@ -199,11 +246,14 @@ export const renderStatuses = async (
             favourites_count: Math.max(note.likes_count, totals.get(note.id)?.likes ?? 0) -
                 (uncounted.likes.get(note.id) ?? 0),
             replies_count: Math.max(note.replies_count, totals.get(note.id)?.replies ?? 0),
+            quotes_count: quoted.get(note.id) ?? 0,
             // Verso has no web pages for statuses, so this is the same as `uri`.
             url: noteUri(ctx, note, domain).href,
             in_reply_to_id: note.in_reply_to_id,
             in_reply_to_account_id: note.in_reply_to_account_id,
             reblog,
+            quote: quotes.get(note.id) ?? null,
+            quote_approval: reblog?.quote_approval ?? quoteApproval(note, viewerId),
             poll: polls.get(note.id) ?? null,
             card: cards.get(note.id) ?? null,
             language: note.language,

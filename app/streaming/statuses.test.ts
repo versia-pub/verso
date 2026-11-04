@@ -111,6 +111,7 @@ Deno.test("a deleted status's mentions fit in its message, as many as a status m
         visibility: "unlisted",
         mentionIds: Array.from({ length: 150 }, () => crypto.randomUUID()),
         inReplyToAccountId: null,
+        quotedAccountId: null,
     };
 
     await streamStatuses(test.ctx, event);

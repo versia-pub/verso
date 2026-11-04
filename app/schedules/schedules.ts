@@ -4,10 +4,11 @@
  * @module
  */
 import { lockKey } from "../db/locking.ts";
-import { Unprocessable } from "../http/errors.ts";
+import { NotFound, Unprocessable } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
 import { reserve } from "../media/attachments.ts";
 import { type Draft, mediaOrPoll } from "../notes/notes.ts";
+import { quotableNote } from "../notes/quotes.ts";
 import { visibleOriginal } from "../notes/visibility.ts";
 import {
     countScheduled,
@@ -59,7 +60,7 @@ const checkSchedule = async (
 /**
  * Schedules a status by `accountId`, a local user, to be posted with `params` at `scheduledAt`, and
  * reserves its media until then. Returns `undefined` if the status it replies to doesn't exist or
- * `accountId` may not see it.
+ * `accountId` may not see it. Throws {@link NotFound} if they can't quote the status it quotes.
  */
 export const scheduleNote = (
     ctx: Context,
@@ -77,6 +78,10 @@ export const scheduleNote = (
         const replyTo = params.in_reply_to_id;
         if (replyTo !== null && await visibleOriginal(tx, replyTo, accountId) === undefined) {
             return undefined;
+        }
+        const quoted = params.quoted_status_id;
+        if (quoted && await quotableNote(tx, accountId, quoted) === undefined) {
+            throw new NotFound("The post you are trying to quote does not appear to exist.");
         }
         await checkSchedule(tx, accountId, scheduledAt, null);
 
@@ -126,6 +131,7 @@ export const draftOf = (params: ScheduledParams): Draft => ({
     sensitive: params.sensitive ?? undefined,
     language: params.language ?? undefined,
     inReplyToId: params.in_reply_to_id ?? undefined,
+    quotedStatusId: params.quoted_status_id ?? undefined,
     mediaIds: params.media_ids ?? [],
     poll: params.poll === null ? undefined : {
         options: params.poll.options,

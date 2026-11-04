@@ -107,36 +107,38 @@ There's no admin API: admins use `verso admin` instead.
 
 ## Statuses
 
-| Method                                   | Verso | Notes                          |
-| ---------------------------------------- | ----- | ------------------------------ |
-| `POST /api/v1/statuses`                  | ✅    |                                |
-| `GET /api/v1/statuses/:id`               | ✅    |                                |
-| `GET /api/v1/statuses`                   | ✅    | Several statuses by id         |
-| `PUT /api/v1/statuses/:id`               | ✅    |                                |
-| `DELETE /api/v1/statuses/:id`            | ✅    |                                |
-| `GET /api/v1/statuses/:id/context`       | 🟡    | Only replies Verso has         |
-| `GET /api/v1/statuses/:id/history`       | ✅    |                                |
-| `GET /api/v1/statuses/:id/source`        | ✅    |                                |
-| `GET /api/v1/statuses/:id/reblogged_by`  | ✅    |                                |
-| `GET /api/v1/statuses/:id/favourited_by` | ✅    |                                |
-| `POST /api/v1/statuses/:id/favourite`    | ✅    |                                |
-| `POST /api/v1/statuses/:id/unfavourite`  | ✅    |                                |
-| `POST /api/v1/statuses/:id/reblog`       | ✅    |                                |
-| `POST /api/v1/statuses/:id/unreblog`     | ✅    |                                |
-| `POST /api/v1/statuses/:id/pin`          | ✅    |                                |
-| `POST /api/v1/statuses/:id/unpin`        | ✅    |                                |
-| `POST /api/v1/statuses/:id/bookmark`     | ✅    |                                |
-| `POST /api/v1/statuses/:id/unbookmark`   | ✅    |                                |
-| `POST /api/v1/statuses/:id/mute`         | ✅    |                                |
-| `POST /api/v1/statuses/:id/unmute`       | ✅    |                                |
-| `POST /api/v1/statuses/:id/translate`    | ❌    |                                |
-| `POST /api/v2/media`                     | 🟡    | Only images are processed      |
-| `GET /api/v1/media/:id`                  | ✅    |                                |
-| `PUT /api/v1/media/:id`                  | ✅    |                                |
-| `DELETE /api/v1/media/:id`               | ✅    |                                |
-| `POST /api/v1/media`                     | ❌    | Deprecated by Mastodon; use v2 |
-| Polls (2 methods)                        | ✅    |                                |
-| Scheduled statuses (4 methods)           | ✅    |                                |
+| Method                                              | Verso | Notes                          |
+| --------------------------------------------------- | ----- | ------------------------------ |
+| `POST /api/v1/statuses`                             | ✅    |                                |
+| `GET /api/v1/statuses/:id`                          | ✅    |                                |
+| `GET /api/v1/statuses`                              | ✅    | Several statuses by id         |
+| `PUT /api/v1/statuses/:id`                          | ✅    |                                |
+| `DELETE /api/v1/statuses/:id`                       | ✅    |                                |
+| `GET /api/v1/statuses/:id/context`                  | 🟡    | Only replies Verso has         |
+| `GET /api/v1/statuses/:id/history`                  | ✅    |                                |
+| `GET /api/v1/statuses/:id/quotes`                   | ✅    |                                |
+| `POST /api/v1/statuses/:id/quotes/:quote_id/revoke` | 🟡    | Always `403`                   |
+| `GET /api/v1/statuses/:id/source`                   | ✅    |                                |
+| `GET /api/v1/statuses/:id/reblogged_by`             | ✅    |                                |
+| `GET /api/v1/statuses/:id/favourited_by`            | ✅    |                                |
+| `POST /api/v1/statuses/:id/favourite`               | ✅    |                                |
+| `POST /api/v1/statuses/:id/unfavourite`             | ✅    |                                |
+| `POST /api/v1/statuses/:id/reblog`                  | ✅    |                                |
+| `POST /api/v1/statuses/:id/unreblog`                | ✅    |                                |
+| `POST /api/v1/statuses/:id/pin`                     | ✅    |                                |
+| `POST /api/v1/statuses/:id/unpin`                   | ✅    |                                |
+| `POST /api/v1/statuses/:id/bookmark`                | ✅    |                                |
+| `POST /api/v1/statuses/:id/unbookmark`              | ✅    |                                |
+| `POST /api/v1/statuses/:id/mute`                    | ✅    |                                |
+| `POST /api/v1/statuses/:id/unmute`                  | ✅    |                                |
+| `POST /api/v1/statuses/:id/translate`               | ❌    |                                |
+| `POST /api/v2/media`                                | 🟡    | Only images are processed      |
+| `GET /api/v1/media/:id`                             | ✅    |                                |
+| `PUT /api/v1/media/:id`                             | ✅    |                                |
+| `DELETE /api/v1/media/:id`                          | ✅    |                                |
+| `POST /api/v1/media`                                | ❌    | Deprecated by Mastodon; use v2 |
+| Polls (2 methods)                                   | ✅    |                                |
+| Scheduled statuses (4 methods)                      | ✅    |                                |
 
 ## Timelines
 

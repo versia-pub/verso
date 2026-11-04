@@ -2,7 +2,7 @@ import { isAccountDeleting } from "../accounts/events.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import type { NoteDeleted } from "./events.ts";
-import { deleteNote, mentionsOf } from "./note_queries.ts";
+import { deleteNote, findNote, mentionsOf } from "./note_queries.ts";
 import { countPosted } from "./notes.ts";
 import {
     deleteNotes,
@@ -36,6 +36,9 @@ export const removeNote = (ctx: Context, id: string): Promise<boolean> =>
             visibility: note.visibility,
             mentionIds,
             inReplyToAccountId: note.in_reply_to_account_id,
+            quotedAccountId: note.quote_id === null
+                ? null
+                : (await findNote(tx, note.quote_id))?.account_id ?? null,
         };
         await emit(tx, event);
 

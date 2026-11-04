@@ -13,6 +13,8 @@ export type ScheduledParams = {
     readonly visibility: Visibility | null;
     readonly language: string | null;
     readonly in_reply_to_id: string | null;
+    /** The status it quotes. Statuses scheduled before quotes existed lack it. */
+    readonly quoted_status_id?: string | null;
     readonly media_ids: string[] | null;
     /** It runs for `expires_in` seconds from when the status is posted. */
     readonly poll: {

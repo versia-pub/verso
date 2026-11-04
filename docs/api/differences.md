@@ -24,7 +24,17 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   answers; Verso queues the fetch, so that answer has the old counts and the next has the new ones.
 - An edit that leaves out `media_ids` or `poll` keeps the status's media or poll. Mastodon removes
   them. Send `poll: null` to remove a poll.
-- Quotes can't be restricted: statuses have no quote policy.
+- Anyone who can see a public or unlisted status may quote it, and only the author may quote a
+  private one. Statuses have no quote policy: `quote_approval_policy` is accepted and ignored, and
+  `quote_approval` always says so. A quote of a private status is posted as private. A direct quote
+  has to be of the sender or of someone it mentions.
+- Verso doesn't tell a blocked account that it can't quote, so a user who blocks the quoted author
+  can't quote them, but one the author blocks can. Quotes can't be revoked:
+  `POST
+  /api/v1/statuses/:id/quotes/:quote_id/revoke` answers `403`. A quote's state is never
+  `pending`, `rejected`, `revoked` or `deleted`; a status whose quoted status is deleted has no
+  quote.
+- A status that quotes can't be edited to have no text.
 - `/api/v1/statuses/:id/context` only includes the replies Verso already has. It doesn't fetch the
   rest of a remote thread.
 

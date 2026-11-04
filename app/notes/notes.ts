@@ -10,7 +10,7 @@ import type { TextFormat } from "../accounts/tables.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { setNoteEmojis, usableEmojiIds } from "../emojis/emoji_queries.ts";
 import { fetchBudget } from "../federation/resolver.ts";
-import { Unprocessable } from "../http/errors.ts";
+import { NotFound, Unprocessable } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type Found, type Mention, renderText, scanText } from "../kernel/markup.ts";
@@ -32,6 +32,7 @@ import {
     type NoteRow,
     updateNote,
 } from "./note_queries.ts";
+import { quotableNote } from "./quotes.ts";
 import { countShare } from "./share_queries.ts";
 import { visibleOriginal } from "./visibility.ts";
 
@@ -70,6 +71,8 @@ export type Draft = {
     readonly language?: string;
     /** The status it replies to, which its author must be able to see. */
     readonly inReplyToId?: string;
+    /** The status it quotes, which {@link quotableNote} decides its author may quote. */
+    readonly quotedStatusId?: string;
     /** The uploads attached to it, in order, which {@link attach} validates. */
     readonly mediaIds?: readonly string[];
     /** A poll, which a status with media can't have. */
@@ -163,6 +166,9 @@ export const prepareDraft = async (ctx: Context, draft: Draft): Promise<Prepared
 /**
  * Posts the status `prepared` by `accountId`, a local user, in `ctx`'s transaction, and counts it.
  * Returns `undefined` if the status it replies to doesn't exist or `accountId` may not see it.
+ * Throws {@link NotFound} if the status it quotes can't be quoted by them. A status that quotes a
+ * private one is private too, and a direct one may only quote a status by a user it mentions, or
+ * its own author, as on Mastodon.
  */
 export const insertDraft = async (
     ctx: Context,
@@ -178,6 +184,25 @@ export const insertDraft = async (
         : await visibleOriginal(ctx, replyTo, accountId);
     if (replyTo !== undefined && parent === undefined) return undefined;
 
+    const quoted = draft.quotedStatusId === undefined
+        ? undefined
+        : await quotableNote(ctx, accountId, draft.quotedStatusId);
+    if (draft.quotedStatusId !== undefined && quoted === undefined) {
+        throw new NotFound("The post you are trying to quote does not appear to exist.");
+    }
+
+    const requested = draft.visibility ?? author.default_visibility;
+    const visibility = quoted?.visibility === "private" &&
+            (requested === "public" || requested === "unlisted")
+        ? "private"
+        : requested;
+    if (
+        visibility === "direct" && quoted !== undefined && quoted.account_id !== accountId &&
+        ![...accounts.values()].some((row) => row.id === quoted.account_id)
+    ) {
+        throw new Unprocessable("Cannot quote a non-mentioned user in a Private Mention post.");
+    }
+
     const html = renderDraft(ctx, draft.text, draft.format, accounts);
     const note = await insertNote(
         ctx,
@@ -186,7 +211,7 @@ export const insertDraft = async (
             account_id: accountId,
             instance_id: null,
             remote_id: null,
-            visibility: draft.visibility ?? author.default_visibility,
+            visibility,
             content: draft.text,
             content_format: draft.format,
             content_html: html,
@@ -196,6 +221,7 @@ export const insertDraft = async (
             language: draft.language ?? (author.default_language || null),
             in_reply_to_id: parent?.id ?? null,
             in_reply_to_account_id: parent?.account_id ?? null,
+            quote_id: quoted?.id ?? null,
             created_at: ctx.clock.now(),
             edited_at: null,
         },

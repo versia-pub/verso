@@ -36,6 +36,10 @@ export type StatusDraft = {
     /** Defaults to the author's. */
     readonly visibility?: Visibility;
     readonly in_reply_to_id?: string;
+    /** The status to quote, which makes the text optional. */
+    readonly quoted_status_id?: string;
+    /** Who may quote it. Verso accepts it and lets everyone quote. */
+    readonly quote_approval_policy?: "public" | "followers" | "nobody";
     /** A poll, which a status with media can't have. */
     readonly poll?: PollDraft;
 };
@@ -226,6 +230,28 @@ export class StatusMethods {
             Account,
             path`/api/v1/statuses/${id}/reblogged_by`,
             query,
+            options,
+        );
+    }
+
+    /**
+     * The statuses that quote a status, newest first.
+     * @see https://docs.joinmastodon.org/methods/statuses/#quotes
+     */
+    quotes(id: string, query: PageQuery = {}, options?: CallOptions): Promise<Page<Status>> {
+        return Page.get(this.http, Status, path`/api/v1/statuses/${id}/quotes`, query, options);
+    }
+
+    /**
+     * Revokes the quote `quoteId` of a status. Verso never lets this succeed, since quotes aren't
+     * put up for review.
+     * @see https://docs.joinmastodon.org/methods/statuses/#revoke_quote
+     */
+    revokeQuote(id: string, quoteId: string, options?: CallOptions): Promise<Status> {
+        return this.http.json(
+            Status,
+            "POST",
+            path`/api/v1/statuses/${id}/quotes/${quoteId}/revoke`,
             options,
         );
     }

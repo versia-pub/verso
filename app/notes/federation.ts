@@ -33,7 +33,8 @@ const sendNote = async (ctx: Context, noteId: string, others: readonly string[] 
 
     const mentionIds = (await mentionsOf(ctx, [note.id])).get(note.id) ?? [];
     const [entity] = await renderVersiaNotes(ctx, [note]);
-    const audience = await audienceOf(ctx, note, mentionIds);
+    const quoted = note.quote_id === null ? undefined : await findNote(ctx, note.quote_id);
+    const audience = await audienceOf(ctx, note, mentionIds, quoted?.account_id);
     await queueDeliveriesTo(ctx, entity, [...new Set([...audience, ...others])].toSorted());
 };
 
@@ -60,7 +61,11 @@ export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
         in_reply_to_account_id: event.inReplyToAccountId,
     };
     const entity = deleteEntity(ctx, author.id, "Note", event.noteId);
-    await queueDeliveriesTo(ctx, entity, await audienceOf(ctx, note, event.mentionIds));
+    await queueDeliveriesTo(
+        ctx,
+        entity,
+        await audienceOf(ctx, note, event.mentionIds, event.quotedAccountId),
+    );
 };
 
 /**

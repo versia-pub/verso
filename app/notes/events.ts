@@ -29,6 +29,8 @@ export type NoteDeleted = {
     readonly mentionIds: readonly string[];
     /** The author of the status it replied to, if any. */
     readonly inReplyToAccountId: string | null;
+    /** The author of the status it quoted, if any. */
+    readonly quotedAccountId: string | null;
 };
 
 /**

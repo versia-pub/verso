@@ -136,6 +136,8 @@ const calls: Record<string, (client: Client) => unknown> = {
     "POST /api/v1/statuses/{id}/reblog": (c) => c.statuses.reblog("1"),
     "POST /api/v1/statuses/{id}/unreblog": (c) => c.statuses.unreblog("1"),
     "GET /api/v1/statuses/{id}/reblogged_by": (c) => c.statuses.rebloggedBy("1"),
+    "GET /api/v1/statuses/{id}/quotes": (c) => c.statuses.quotes("1"),
+    "POST /api/v1/statuses/{id}/quotes/{quote_id}/revoke": (c) => c.statuses.revokeQuote("1", "2"),
     "POST /api/v1/statuses/{id}/pin": (c) => c.statuses.pin("1"),
     "POST /api/v1/statuses/{id}/unpin": (c) => c.statuses.unpin("1"),
     "GET /api/v1/statuses/{id}/reactions": (c) => c.statuses.reactions("1"),

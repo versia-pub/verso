@@ -18,6 +18,7 @@ import { accountStatusesRoute } from "./account_status_routes.ts";
 import { pinRoute, unpinRoute } from "./pin_routes.ts";
 import { bookmarkRoutes } from "./bookmark_routes.ts";
 import { threadMuteRoutes } from "./thread_mute_routes.ts";
+import { quoteRoutes } from "./quote_routes.ts";
 import { renderScheduled } from "../schedules/render.ts";
 import { ScheduledAt } from "../schedules/routes.ts";
 import { scheduleNote } from "../schedules/schedules.ts";
@@ -107,10 +108,14 @@ const MediaAttribute = (limits: Limits) =>
         focus: FocusPoint.optional(),
     });
 
-/** Text may be blank if media is attached. */
+/** Who may quote a status, which Verso doesn't act on. */
+const quotePolicy = z.enum(["public", "followers", "nobody"]).optional();
+
+/** Text may be blank if media is attached, or a status is quoted. */
 const notBlank = {
-    check: (body: { status: string; media_ids?: string[] }) =>
-        body.status.trim() !== "" || (body.media_ids ?? []).length > 0,
+    check: (body: { status: string; media_ids?: string[]; quoted_status_id?: string | null }) =>
+        body.status.trim() !== "" || (body.media_ids ?? []).length > 0 ||
+        Boolean(body.quoted_status_id),
     error: { error: "Can't be blank without attachments", path: ["status"] },
 };
 
@@ -123,7 +128,7 @@ const limited = (limits: Limits) => ({
 
 /**
  * What a new status may say. It is plain text, unless `content_type` says Markdown, as on Pleroma.
- * Quote policies are omitted; Verso doesn't restrict quotes.
+ * A quote policy is accepted and ignored; Verso doesn't restrict quotes.
  * @see https://docs.joinmastodon.org/methods/statuses/#create
  */
 const draft = (limits: Limits) =>
@@ -136,6 +141,8 @@ const draft = (limits: Limits) =>
         poll: PollDraft(limits).nullish(),
         visibility: z.enum(["public", "unlisted", "private", "direct"]).optional(),
         in_reply_to_id: z.string().nullish(),
+        quoted_status_id: z.string().nullish(),
+        quote_approval_policy: quotePolicy,
         scheduled_at: ScheduledAt,
     })
         .refine(notBlank.check, notBlank.error)
@@ -150,6 +157,7 @@ const paramsOf = (body: z.output<ReturnType<typeof draft>>): ScheduledParams => 
     visibility: body.visibility ?? null,
     language: body.language || null,
     in_reply_to_id: body.in_reply_to_id ?? null,
+    quoted_status_id: body.quoted_status_id || null,
     media_ids: body.media_ids.length > 0 ? body.media_ids : null,
     poll: body.poll
         ? {
@@ -177,6 +185,8 @@ const edit = (limits: Limits) =>
         spoiler_text: z.string().optional(),
         /** Replaces the status's poll, or with `null`, removes it. If omitted, it stays. */
         poll: PollDraft(limits).nullable().optional(),
+        /** Ignored, as is `quoted_status_id`, which can't be changed. */
+        quote_approval_policy: quotePolicy,
     })
         .refine(notBlank.check, notBlank.error)
         .refine(limited(limits).check, limited(limits).error);
@@ -214,6 +224,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 sensitive: body.sensitive,
                 language: body.language || undefined,
                 inReplyToId: body.in_reply_to_id ?? undefined,
+                quotedStatusId: body.quoted_status_id || undefined,
                 mediaIds: body.media_ids,
                 poll: body.poll ?? undefined,
             });
@@ -325,6 +336,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
     unpinRoute,
     ...bookmarkRoutes,
     ...threadMuteRoutes,
+    ...quoteRoutes,
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/history",

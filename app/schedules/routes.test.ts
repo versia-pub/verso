@@ -135,6 +135,7 @@ Deno.test("a status scheduled for later is kept, with what it will be posted wit
             visibility: null,
             language: null,
             in_reply_to_id: null,
+            quoted_status_id: null,
             media_ids: null,
             poll: { options: ["Yes", "No"], expires_in: 3600, multiple: true, hide_totals: true },
             scheduled_at: null,
@@ -419,4 +420,39 @@ Deno.test("statuses that are due are posted every minute", () => {
         { queue: scheduledNotesQueue, every: "minute" },
     ]);
     assertEquals(queues[scheduledNotesQueue].concurrency, 1);
+});
+
+Deno.test("a scheduled status can quote one, and quotes it when it is posted", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "bob");
+
+    const scheduled = await test.schedule(test.inMs(10 * minute), {
+        status: "",
+        quoted_status_id: note.id,
+    });
+    assertEquals([scheduled.status, scheduled.body.params.quoted_status_id], [200, note.id]);
+
+    await test.publish(10 * minute);
+    const [posted] = await test.posted();
+    assertEquals(posted?.quote_id, note.id);
+});
+
+Deno.test("a status can't be scheduled to quote what its author can't, and is dropped if it later can't", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "bob");
+    const priv = await createNote(test.ctx, "bob", { visibility: "private" });
+
+    const refused = await test.schedule(test.inMs(10 * minute), { quoted_status_id: priv.id });
+    assertEquals(refused.status, 404);
+    assertEquals(
+        refused.body.error_description,
+        "The post you are trying to quote does not appear to exist.",
+    );
+    assertEquals((await test.request("GET", "/api/v1/scheduled_statuses")).body, []);
+
+    await test.insert([new Date(test.inMs(minute))], { quoted_status_id: note.id });
+    await test.ctx.db.updateTable("notes").set({ visibility: "direct" })
+        .where("id", "=", note.id).execute();
+    await test.publish(minute);
+    assertEquals(await test.posted(), []);
 });

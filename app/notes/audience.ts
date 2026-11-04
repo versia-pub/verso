@@ -14,17 +14,18 @@ export const everyone: readonly Visibility[] = ["public", "unlisted"];
 
 /**
  * The remote instances a local status is shown on: those of the users it mentions, those of the
- * author's followers unless it is direct, and the instance of the author of the status that a
- * public or unlisted status replies to, so that it can show the thread.
+ * author's followers unless it is direct, and the instances of the authors of the statuses that a
+ * public or unlisted status replies to and `quotedAccountId`, which is the author of the status it
+ * quotes, if any, so that they can show the thread and the quote.
  */
 export const audienceOf = async (
     ctx: Context,
     note: Pick<NoteRow, "account_id" | "visibility" | "in_reply_to_account_id">,
     mentionIds: readonly string[],
+    quotedAccountId: string | null = null,
 ): Promise<string[]> => {
-    const replied = everyone.includes(note.visibility) && note.in_reply_to_account_id !== null
-        ? [note.in_reply_to_account_id]
-        : [];
+    const linked = [note.in_reply_to_account_id, quotedAccountId].flatMap((id) => id ?? []);
+    const replied = everyone.includes(note.visibility) ? linked : [];
     const followers = note.visibility === "direct"
         ? []
         : await followerInstances(ctx, note.account_id);

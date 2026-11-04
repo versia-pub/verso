@@ -27,6 +27,7 @@ export const ScheduledStatus = z.object({
         spoiler_text: z.string().nullable(),
         visibility: Visibility.nullable(),
         in_reply_to_id: z.string().nullable(),
+        quoted_status_id: z.string().nullable().optional(),
         language: z.string().nullable(),
         scheduled_at: z.null(),
         idempotency: z.string().nullable(),

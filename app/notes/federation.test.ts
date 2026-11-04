@@ -321,6 +321,19 @@ Deno.test("a note is shown on the instances of who it mentions, the followers, a
         "c.example",
     ]);
     assertEquals(await audienceOf(test.ctx, note("public", null), []), ["b.example"]);
+
+    // The instance of the author of the status it quotes, shown the same way.
+    assertEquals(await audienceOf(test.ctx, note("public", null), [], "frank"), [
+        "b.example",
+        "d.example",
+    ]);
+    assertEquals(await audienceOf(test.ctx, note("unlisted", "erin"), [], "frank"), [
+        "b.example",
+        "c.example",
+        "d.example",
+    ]);
+    assertEquals(await audienceOf(test.ctx, note("private", null), [], "frank"), ["b.example"]);
+    assertEquals(await audienceOf(test.ctx, note("direct", null), [], "frank"), []);
 });
 
 Deno.test("a user's outbox is their public and unlisted notes, oldest first", async () => {

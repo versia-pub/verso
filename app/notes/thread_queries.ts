@@ -5,7 +5,8 @@ import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 import { type ExpressionBuilder, sql } from "kysely";
-import type { Filter } from "../graph/excluded_queries.ts";
+import { type Excluded, type Filter, notExcluded } from "../graph/excluded_queries.ts";
+import { type PageBounds, readPage } from "../db/paging.ts";
 
 /** Someone viewing statuses, with the accounts they follow, or `null` for anyone. */
 export type Onlooker = { readonly id: string; readonly followed: AccountIdQuery } | null;
@@ -122,3 +123,47 @@ export const countLinkedNotes = async (
     readCount(
         await linkedTo(ctx, link, noteId, visibilities).select(countAll).executeTakeFirstOrThrow(),
     );
+
+/**
+ * How many statuses with one of `visibilities` quote each of `noteIds`, by status, omitting those
+ * nothing quotes. Boosts aren't quotes.
+ */
+export const quoteCounts = async (
+    ctx: Context,
+    noteIds: readonly string[],
+    visibilities: readonly Visibility[],
+): Promise<Map<string, number>> => {
+    if (noteIds.length === 0) return new Map();
+
+    const rows = await ctx.db.selectFrom("notes")
+        .select((eb) => ["quote_id", countAll(eb)])
+        .where("quote_id", "in", noteIds)
+        .where("visibility", "in", visibilities)
+        .where("reblog_of_id", "is", null)
+        .groupBy("quote_id")
+        .execute();
+
+    return new Map(
+        rows.flatMap((row) => row.quote_id === null ? [] : [[row.quote_id, readCount(row)]]),
+    );
+};
+
+/**
+ * A page of the statuses with one of `visibilities` that quote `noteId`, excluding those by the
+ * accounts `hidden`, newest first. Boosts aren't quotes.
+ */
+export const quotePage = async (
+    ctx: Context,
+    noteId: string,
+    visibilities: readonly Visibility[],
+    hidden: Excluded | null,
+    page: PageBounds,
+): Promise<NoteRow[]> => {
+    let query = ctx.db.selectFrom("notes").selectAll()
+        .where("quote_id", "=", noteId)
+        .where("visibility", "in", visibilities)
+        .where("reblog_of_id", "is", null);
+    if (hidden !== null) query = query.where(notExcluded(hidden, "notes.account_id"));
+
+    return await readPage(query, "id", page);
+};
