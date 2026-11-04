@@ -39,7 +39,7 @@ together.
 ## The Mastodon version
 
 Apps enable features based on the Mastodon version an instance reports, `mastodonVersion` in
-[`app/instances/render.ts`](../app/instances/render.ts), currently 4.4.0. Raise it once Verso has
+[`app/instances/render.ts`](../app/instances/render.ts), currently 4.5.0. Raise it once Verso has
 everything a later version added, so apps use it.
 
 ## Unused code

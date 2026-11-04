@@ -49,8 +49,8 @@ export const savePolicy = async (
 };
 
 /**
- * Keeps the request of `fromId`'s filtered mentions of `accountId`, making it if there is none,
- * with `noteId` as its latest status and its mentions counted again.
+ * Keeps the request of `fromId`'s filtered mentions and quotes of `accountId`, making it if there is
+ * none, with `noteId` as its latest status and those counted again.
  */
 export const saveRequest = async (
     ctx: Context,
@@ -62,7 +62,7 @@ export const saveRequest = async (
         ctx.db.selectFrom("notifications").select("id")
             .where("account_id", "=", accountId)
             .where("from_account_id", "=", fromId)
-            .where("type", "=", "mention")
+            .where("type", "in", ["mention", "quote"])
             .where("filtered", "=", true)
             .limit(countedAtMost)
             .as("counted"),

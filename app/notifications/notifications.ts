@@ -1,7 +1,7 @@
 /**
  * Notifying local users of what others do: mentions, statuses of accounts they asked to be notified
- * of, boosts, follows, follow requests, likes, reactions and edits of statuses they boosted, and of
- * the polls they wrote or voted in ending.
+ * of, boosts, follows, follow requests, likes, reactions, quotes, edits of statuses they boosted or
+ * quoted, and of the polls they wrote or voted in ending.
  * Undoing any of them, or deleting the status, deletes the notification with it. Followers and
  * boosters of a status can be many, so jobs notify them, a batch at a time.
  * @module
@@ -27,11 +27,13 @@ import { type Channel, publish } from "../kernel/pubsub.ts";
 import { isNoteEdited, isNotePosted, isNoteReceived } from "../notes/events.ts";
 import { findNote, mentionsOf, type NoteRow } from "../notes/note_queries.ts";
 import { localSharerIds } from "../notes/share_queries.ts";
+import { localQuotesOf } from "../notes/thread_queries.ts";
 import { threadMutersAmong } from "../notes/thread_mute_queries.ts";
 import { isPollEnded, type PollEnded } from "../polls/events.ts";
 import { localVoterIds } from "../polls/poll_queries.ts";
 import {
     deleteFollowNotifications,
+    deleteQuotedUpdates,
     insertNotifications,
     latestGroupKey,
     mentionNotifiedIds,
@@ -112,8 +114,9 @@ const mutingThread = async (
 
 /**
  * Notifies each of `accountIds`, local users, of what `fromId` did, unless it is themselves (but a
- * poll's author is told it ended, as on Mastodon), they mute the thread of the status it is about, or their policy drops it. A notification their policy
- * filters isn't grouped, streamed or pushed, and a filtered mention is kept in a request.
+ * poll's author is told it ended, as on Mastodon), they mute the thread of the status it is about,
+ * or their policy drops it. A notification their policy filters isn't grouped, streamed or pushed,
+ * and a filtered mention or quote is kept in a request.
  */
 const notifyAll = async (
     ctx: Context,
@@ -153,7 +156,7 @@ const notifyAll = async (
     await insertNotifications(ctx, rows);
     for (const row of rows) {
         if (row.filtered) {
-            if (type === "mention" && links.noteId !== undefined) {
+            if ((type === "mention" || type === "quote") && links.noteId !== undefined) {
                 await saveRequest(ctx, row.account_id, fromId, links.noteId);
             }
             continue;
@@ -174,9 +177,12 @@ const notifyAll = async (
 /** The queue that notifies a status's followers of it, or its boosters of an edit. */
 export const notifyQueue = "notify";
 
-/** Some of the local users a job notifies of a status, and of what. */
+/**
+ * Some of the local users a job notifies of a status, and of what. Those told of a `quoted_update`
+ * are the authors of statuses that quote it.
+ */
 export const NotifyJob = z.object({
-    type: z.enum(["status", "update"]),
+    type: z.enum(["status", "update", "quoted_update"]),
     noteId: z.string(),
     accountIds: z.array(z.string()),
 });
@@ -210,6 +216,16 @@ export const notifyHandler: Handler = async (ctx: Context, job: JobsTable): Prom
         const note = await findNote(tx, noteId);
         if (note === undefined) return;
 
+        if (type === "quoted_update") {
+            for (const quote of await localQuotesOf(tx, noteId, accountIds)) {
+                await deleteQuotedUpdates(tx, quote.account_id, quote.id);
+                await notifyAll(tx, [quote.account_id], type, note.account_id, {
+                    noteId: quote.id,
+                });
+            }
+            return;
+        }
+
         await notifyAll(tx, accountIds, type, note.account_id, { noteId });
     });
 };
@@ -236,6 +252,16 @@ const mentionedLocals = async (ctx: Context, note: NoteRow) => {
         .map((account) => account.id);
 };
 
+/** Notifies the author of the status that `note` quotes, if it is local. */
+const notifyQuoted = async (ctx: Context, note: NoteRow) => {
+    if (note.quote_id === null) return;
+
+    const quoted = await findNote(ctx, note.quote_id);
+    if (quoted?.instance_id !== null) return;
+
+    await notifyAll(ctx, [quoted.account_id], "quote", note.account_id, { noteId: note.id });
+};
+
 /**
  * Notifies the local users a new status mentions, and, as on Mastodon, the author's followers who
  * asked to be notified, unless it is direct, or a reply to someone else. Followers it mentions are
@@ -244,6 +270,7 @@ const mentionedLocals = async (ctx: Context, note: NoteRow) => {
 const notifyPosted = async (ctx: Context, note: NoteRow) => {
     const mentioned = await mentionedLocals(ctx, note);
     await notifyAll(ctx, mentioned, "mention", note.account_id, { noteId: note.id });
+    await notifyQuoted(ctx, note);
 
     const replyToOther = note.in_reply_to_account_id !== null &&
         note.in_reply_to_account_id !== note.account_id;
@@ -256,7 +283,7 @@ const notifyPosted = async (ctx: Context, note: NoteRow) => {
 
 /**
  * Notifies the local users an edited status mentions for the first time, and the local users who
- * boosted it, as on Mastodon.
+ * boosted or quoted it, as on Mastodon.
  */
 const notifyEdited = async (ctx: Context, note: NoteRow) => {
     const alreadyMentioned = await mentionNotifiedIds(ctx, note.id);
@@ -265,6 +292,9 @@ const notifyEdited = async (ctx: Context, note: NoteRow) => {
 
     const sharers = await localSharerIds(ctx, note.id);
     await notifyLater(ctx, sharers, "update", note.id);
+
+    const quoters = new Set((await localQuotesOf(ctx, note.id)).map((quote) => quote.account_id));
+    await notifyLater(ctx, [...quoters], "quoted_update", note.id);
 };
 
 /**

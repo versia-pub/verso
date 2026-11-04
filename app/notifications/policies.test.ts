@@ -164,6 +164,30 @@ Deno.test("edits of boosted statuses aren't filtered, nor anything from limited 
     assertEquals(await test.of("alice"), ["update bob", "favourite bob"]);
 });
 
+Deno.test("quotes are filtered and kept in a request, but edits of quoted statuses aren't", async () => {
+    await using test = await open();
+    await test.policy("alice", { for_not_following: "filter" });
+    const note = await test.post("alice", "Hi", { public: true });
+
+    const quote = await postNote(test.ctx, "bob", {
+        text: "Look",
+        format: "text/plain",
+        spoilerText: "",
+        quotedStatusId: note,
+    });
+    await editNote(test.ctx, "alice", note, { text: "Hello" });
+    await drain(test.ctx, queues);
+    assertEquals(await test.of("alice"), ["quote bob filtered"]);
+    assertEquals(await test.of("bob"), ["quoted_update alice"]);
+
+    const requests = await test.ctx.db.selectFrom("notification_requests").selectAll().execute();
+    assertEquals(
+        requests.map((row) => [row.account_id, row.from_account_id, row.last_note_id]),
+        [["alice", "bob", quote?.id ?? null]],
+    );
+    assertEquals(requests[0].notifications_count, 1);
+});
+
 Deno.test("a filtered notification isn't grouped or streamed", async () => {
     await using test = await open();
     const heard: unknown[] = [];

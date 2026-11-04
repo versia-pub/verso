@@ -167,3 +167,23 @@ export const quotePage = async (
 
     return await readPage(query, "id", page);
 };
+
+/**
+ * The statuses by local users that quote `noteId`, only those by `accountIds` if given. Boosts
+ * aren't quotes.
+ */
+export const localQuotesOf = async (
+    ctx: Context,
+    noteId: string,
+    accountIds?: readonly string[],
+): Promise<NoteRow[]> => {
+    if (accountIds?.length === 0) return [];
+
+    let query = ctx.db.selectFrom("notes").selectAll()
+        .where("quote_id", "=", noteId)
+        .where("instance_id", "is", null)
+        .where("reblog_of_id", "is", null);
+    if (accountIds !== undefined) query = query.where("account_id", "in", accountIds);
+
+    return await query.orderBy("id").execute();
+};

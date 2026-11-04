@@ -49,6 +49,22 @@ export const deleteFollowNotifications = async (
     return numDeletedRows > 0n;
 };
 
+/**
+ * Deletes `accountId`'s `quoted_update` notifications about their status `noteId`, so that only the
+ * newest remains, as on Mastodon.
+ */
+export const deleteQuotedUpdates = async (
+    ctx: Context,
+    accountId: string,
+    noteId: string,
+): Promise<void> => {
+    await ctx.db.deleteFrom("notifications")
+        .where("account_id", "=", accountId)
+        .where("note_id", "=", noteId)
+        .where("type", "=", "quoted_update")
+        .execute();
+};
+
 /** The accounts notified that `noteId` mentions them, whether their policies filtered it or not. */
 export const mentionNotifiedIds = async (ctx: Context, noteId: string): Promise<Set<string>> =>
     new Set(

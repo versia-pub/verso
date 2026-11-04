@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import type { z } from "zod";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { acceptFollow, follow, rejectFollow, unfollow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -8,7 +9,7 @@ import { share, unshare } from "../interactions/shares.ts";
 import { enqueue } from "../jobs/job_queries.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
-import type { NotePosted } from "../notes/events.ts";
+import type { NotePosted, NoteReceived } from "../notes/events.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
 import { createNote, createShare } from "../notes/testing.ts";
@@ -24,12 +25,18 @@ const open = async () => {
     await createInstance(test.ctx, "remote.example");
     await createRemoteAccount(test.ctx, "dave", "remote.example");
 
-    const post = async (accountId: string, text: string, inReplyToId?: string) => {
+    const post = async (
+        accountId: string,
+        text: string,
+        inReplyToId?: string,
+        quotedStatusId?: string,
+    ) => {
         const note = await postNote(test.ctx, accountId, {
             text,
             format: "text/plain",
             spoilerText: "",
             inReplyToId,
+            quotedStatusId,
         });
         if (note === undefined) throw new Error("Not posted");
 
@@ -89,6 +96,113 @@ Deno.test("likes, boosts and reactions notify the author, until they are undone"
     await unshare(test.ctx, "carol", note.id);
     await unreact(test.ctx, "bob", note.id, "👍");
     assertEquals(await test.of("alice"), []);
+});
+
+Deno.test("quoting a status notifies its author, until the quote is deleted", async () => {
+    await using test = await open();
+    const note = await test.post("alice", "Hi");
+
+    const quote = await test.post("bob", "Look", undefined, note.id);
+    await test.post("alice", "Me", undefined, note.id);
+    assertEquals(await test.of("alice"), [`quote bob ${quote.id}`]);
+    assertEquals(await groupKeysOf(test.ctx, "alice"), ["-"]);
+
+    await removeNote(test.ctx, quote.id);
+    assertEquals(await test.of("alice"), []);
+});
+
+Deno.test("a remote quote of a local status notifies its author", async () => {
+    await using test = await open();
+    const note = await test.post("alice", "Hi");
+    const quote = await createNote(test.ctx, "dave", {
+        instance_id: "remote.example",
+        remote_id: "quote",
+        quote_id: note.id,
+    });
+    const received: NoteReceived = {
+        type: "notes.received",
+        noteId: quote.id,
+        edited: false,
+        fetched: false,
+    };
+    await test.ctx.transaction((tx) => notifyOf(tx, received));
+    assertEquals(await test.of("alice"), [`quote dave ${quote.id}`]);
+
+    // A quote of a remote status notifies no one, not even its remote author.
+    const remote = await createNote(test.ctx, "dave", {
+        instance_id: "remote.example",
+        remote_id: "other",
+    });
+    const local = await test.post("bob", "Look", undefined, remote.id);
+    assertEquals(await test.of("bob"), []);
+    assertEquals(await test.of("dave"), []);
+    assertEquals(local.quote_id, remote.id);
+});
+
+Deno.test("editing a status notifies the authors of its quotes, once each", async () => {
+    await using test = await open();
+    const note = await test.post("alice", "Hi");
+    const first = await test.post("bob", "Look", undefined, note.id);
+    const second = await test.post("bob", "Again", undefined, note.id);
+    const third = await test.post("carol", "Hm", undefined, note.id);
+    await test.post("alice", "Mine", undefined, note.id);
+    await createNote(test.ctx, "dave", {
+        instance_id: "remote.example",
+        remote_id: "quote",
+        quote_id: note.id,
+    });
+    await like(test.ctx, "carol", first.id);
+
+    await editNote(test.ctx, "alice", note.id, { text: "Hi again" });
+    // One job tells alice, bob and carol, who quoted it, bob twice. The remote quoter isn't told.
+    const jobs = await test.ctx.db.selectFrom("jobs").select("payload")
+        .where("queue", "=", notifyQueue)
+        .execute();
+    assertEquals(
+        jobs.map((job) => NotifyJob.parse(job.payload)).filter((job) =>
+            job.type === "quoted_update"
+        ).map((job) => job.accountIds.toSorted()),
+        [["alice", "bob", "carol"]],
+    );
+    assertEquals(await test.of("bob"), [
+        `quoted_update alice ${second.id}`,
+        `quoted_update alice ${first.id}`,
+        `favourite carol ${first.id}`,
+    ]);
+    assertEquals(await test.of("carol"), [`quoted_update alice ${third.id}`]);
+    assertEquals(await test.of("dave"), []);
+
+    await editNote(test.ctx, "alice", note.id, { text: "Hi once more" });
+    assertEquals(await test.of("carol"), [`quoted_update alice ${third.id}`]);
+    assertEquals((await test.of("bob")).length, 3);
+    assertEquals(await groupKeysOf(test.ctx, "carol"), ["-"]);
+    assertEquals(await test.of("alice"), [
+        `quote carol ${third.id}`,
+        `quote bob ${second.id}`,
+        `quote bob ${first.id}`,
+    ]);
+
+    // Editing a quote tells the author of the status it quotes nothing more.
+    await editNote(test.ctx, "bob", first.id, { text: "Look again" });
+    assertEquals((await test.of("alice")).length, 3);
+});
+
+Deno.test("a quoted_update job notifies only the users it names", async () => {
+    await using test = await open();
+    const note = await test.post("alice", "Hi");
+    await test.post("bob", "Look", undefined, note.id);
+    await test.post("carol", "Hm", undefined, note.id);
+
+    for (const accountIds of [["carol"], []]) {
+        const payload: z.infer<typeof NotifyJob> = {
+            type: "quoted_update",
+            noteId: note.id,
+            accountIds,
+        };
+        await enqueue(test.ctx, { queue: notifyQueue, payload });
+    }
+    assertEquals(await test.of("bob"), []);
+    assertEquals((await test.of("carol")).length, 1);
 });
 
 Deno.test("no one is notified of what they do to their own statuses", async () => {

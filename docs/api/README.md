@@ -1,7 +1,7 @@
 # The client API
 
 Verso implements the Mastodon client API, so Mastodon apps work with it unchanged. It reports itself
-as Mastodon 4.4.0, which apps check to decide which features to use. These pages are for people
+as Mastodon 4.5.0, which apps check to decide which features to use. These pages are for people
 writing apps, or wondering what an app can do with Verso:
 
 - [Mastodon API compatibility](compatibility.md) lists every Mastodon method, and whether Verso has

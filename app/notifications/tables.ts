@@ -21,6 +21,10 @@ export type NotificationType =
     | "reaction"
     /** A status the user boosted was edited. */
     | "update"
+    /** Someone quoted one of the user's statuses. */
+    | "quote"
+    /** A status the user quoted was edited. */
+    | "quoted_update"
     /** A poll the user wrote or voted in ended. */
     | "poll";
 
@@ -121,6 +125,8 @@ const typeNames = {
     favourite: true,
     reaction: true,
     update: true,
+    quote: true,
+    quoted_update: true,
     poll: true,
 } as const satisfies Record<NotificationType, true>;
 

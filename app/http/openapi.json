@@ -13148,6 +13148,18 @@
                                                             "string"
                                                         ]
                                                     },
+                                                    "quote": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "quoted_update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
                                                     "admin.sign_up": {
                                                         "type": [
                                                             "boolean",
@@ -13277,6 +13289,18 @@
                                                             "string"
                                                         ]
                                                     },
+                                                    "quote": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "quoted_update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
                                                     "admin.sign_up": {
                                                         "type": [
                                                             "boolean",
@@ -13401,6 +13425,18 @@
                                                         ]
                                                     },
                                                     "update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "quote": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "quoted_update": {
                                                         "type": [
                                                             "boolean",
                                                             "string"
@@ -13566,6 +13602,18 @@
                                                             "string"
                                                         ]
                                                     },
+                                                    "quote": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "quoted_update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
                                                     "admin.sign_up": {
                                                         "type": [
                                                             "boolean",
@@ -13660,6 +13708,18 @@
                                                             "string"
                                                         ]
                                                     },
+                                                    "quote": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "quoted_update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
                                                     "admin.sign_up": {
                                                         "type": [
                                                             "boolean",
@@ -13749,6 +13809,18 @@
                                                         ]
                                                     },
                                                     "update": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "quote": {
+                                                        "type": [
+                                                            "boolean",
+                                                            "string"
+                                                        ]
+                                                    },
+                                                    "quoted_update": {
                                                         "type": [
                                                             "boolean",
                                                             "string"
@@ -21115,6 +21187,12 @@
                     "update": {
                         "type": "boolean"
                     },
+                    "quote": {
+                        "type": "boolean"
+                    },
+                    "quoted_update": {
+                        "type": "boolean"
+                    },
                     "admin.sign_up": {
                         "type": "boolean"
                     },
@@ -21134,6 +21212,8 @@
                     "favourite",
                     "poll",
                     "update",
+                    "quote",
+                    "quoted_update",
                     "admin.sign_up",
                     "admin.report",
                     "reaction"

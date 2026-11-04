@@ -17,7 +17,7 @@ import type { NotificationType, PolicyAction } from "./tables.ts";
 
 /**
  * The types of notifications a policy applies to: Mastodon's, and reactions, as likes. A status or
- * an edit from an account the user asked for isn't filtered.
+ * an edit from an account the user asked for, or an edit of a status they quoted, isn't filtered.
  */
 const filterable: ReadonlySet<NotificationType> = new Set([
     "mention",
@@ -26,6 +26,7 @@ const filterable: ReadonlySet<NotificationType> = new Set([
     "follow_request",
     "favourite",
     "reaction",
+    "quote",
 ]);
 
 const dayMs = 24 * 60 * 60 * 1000;

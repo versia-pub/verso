@@ -6,14 +6,18 @@ import { issueToken } from "../auth/tokens.ts";
 import { follow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
 import { drain, PermanentFailure } from "../jobs/worker.ts";
-import { postNote } from "../notes/notes.ts";
+import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
+import { editNote, postNote } from "../notes/notes.ts";
 import { createTestContext } from "../testing/context.ts";
 import { vapidKey } from "./keys.ts";
 import { pushHandler, pushQueue } from "./pushes.ts";
 import { findSubscriptionById, replaceSubscription } from "./subscription_queries.ts";
 import type { PushAlert, PushPolicy } from "./tables.ts";
 
-const queues = { [pushQueue]: { handler: pushHandler, concurrency: 1 } };
+const queues = {
+    [pushQueue]: { handler: pushHandler, concurrency: 1 },
+    [notifyQueue]: { handler: notifyHandler, concurrency: 1 },
+};
 
 const base64url = (bytes: Uint8Array) =>
     bytes.toBase64({ alphabet: "base64url", omitPadding: true });
@@ -125,11 +129,17 @@ const open = async () => {
         return { id, token: issued.token };
     };
 
-    const post = async (accountId: string, text: string, spoilerText = "") => {
+    const post = async (
+        accountId: string,
+        text: string,
+        spoilerText = "",
+        quotedStatusId?: string,
+    ) => {
         const note = await postNote(test.ctx, accountId, {
             text,
             format: "text/plain",
             spoilerText,
+            quotedStatusId,
         });
         if (note === undefined) throw new Error("Not posted");
         return note.id;
@@ -198,6 +208,27 @@ Deno.test("a push's body is the content warning, or the status cut to 140 charac
         // Carol's profile says nothing.
         ["carol followed you", ""],
     ]);
+});
+
+Deno.test("quotes and edits of quoted statuses are pushed with Mastodon's titles", async () => {
+    await using test = await open();
+    await test.subscribe("alice", "a", ["quote", "quoted_update"]);
+    await test.subscribe("bob", "b", ["quote", "quoted_update"]);
+
+    const note = await test.post("alice", "Hi");
+    await test.post("bob", "Look", "", note);
+    await test.drain();
+    await editNote(test.ctx, "alice", note, { text: "Hi again" });
+    await test.drain();
+
+    assertEquals(
+        test.pushed.map(([path, payload]) => [path, payload.notification_type, payload.title]),
+        [
+            ["/a", "quote", "bob quoted your post"],
+            ["/b", "quoted_update", "alice edited a post you have quoted"],
+        ],
+    );
+    assertEquals(test.pushed[0][1].body, "Look");
 });
 
 Deno.test("only subscriptions that ask for a notification's type, from whom it is from, get it", async () => {

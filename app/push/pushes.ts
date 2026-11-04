@@ -86,6 +86,8 @@ const titles: Record<NotificationType, (name: string) => string> = {
     follow_request: (name) => `${name} has requested to follow you`,
     favourite: (name) => `${name} favorited your post`,
     update: (name) => `${name} edited a post`,
+    quote: (name) => `${name} quoted your post`,
+    quoted_update: (name) => `${name} edited a post you have quoted`,
     reaction: (name) => `${name} reacted to your post`,
     poll: (name) => `A poll by ${name} has ended`,
 };

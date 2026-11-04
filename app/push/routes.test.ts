@@ -71,6 +71,8 @@ const none = {
     favourite: false,
     poll: false,
     update: false,
+    quote: false,
+    quoted_update: false,
     "admin.sign_up": false,
     "admin.report": false,
     reaction: false,

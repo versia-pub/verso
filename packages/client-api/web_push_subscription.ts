@@ -10,6 +10,8 @@ export const PushAlerts = z.object({
     favourite: z.boolean(),
     poll: z.boolean(),
     update: z.boolean(),
+    quote: z.boolean(),
+    quoted_update: z.boolean(),
     "admin.sign_up": z.boolean(),
     "admin.report": z.boolean(),
     /** Reactions with emojis, which Mastodon doesn't have. */
