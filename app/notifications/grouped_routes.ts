@@ -26,6 +26,7 @@ import {
     IncludeFiltered,
     lastReadOf,
     NotificationTypes,
+    SupportedTypes,
     unreadDescription,
 } from "./routes.ts";
 import type { NotificationType } from "./tables.ts";
@@ -73,6 +74,7 @@ export const groupedNotificationRoutes: readonly Route[] = [
                     "notification group is always rendered in full in the `accounts` attribute.",
             }),
             grouped_types: GroupedTypes,
+            supported_types: SupportedTypes,
         }),
         responses: { 200: Linked(GroupedNotificationsResults) },
         handler: async (ctx, { query, viewer }) => {
@@ -97,7 +99,11 @@ export const groupedNotificationRoutes: readonly Route[] = [
                     rows,
                     query.grouped_types,
                     viewer.accountId,
-                    { partial: query.expand_accounts === "partial_avatars", paged: true },
+                    {
+                        partial: query.expand_accounts === "partial_avatars",
+                        paged: true,
+                        supported: query.supported_types,
+                    },
                 ),
                 cursors: cursorsOf(rows, query, (row) => row.id),
             };
@@ -154,8 +160,9 @@ export const groupedNotificationRoutes: readonly Route[] = [
         tags: ["notifications"],
         auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },
         params: z.object({ group_key: z.string() }),
+        query: z.object({ supported_types: SupportedTypes }),
         responses: { 200: GroupedNotificationsResults },
-        handler: async (ctx, { params, viewer }) => {
+        handler: async (ctx, { params, query, viewer }) => {
             const key = params.group_key;
             const shown = shownOf(ctx, viewer.accountId);
             const row = await findGroupNotification(ctx, viewer.accountId, key, shown);
@@ -168,6 +175,7 @@ export const groupedNotificationRoutes: readonly Route[] = [
                 body: await renderNotificationGroups(ctx, [row], grouped, viewer.accountId, {
                     partial: false,
                     paged: false,
+                    supported: query.supported_types,
                 }),
             };
         },

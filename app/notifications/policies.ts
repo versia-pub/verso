@@ -46,6 +46,7 @@ type Relation = {
     readonly notFollower: boolean;
     readonly newAccount: boolean;
     readonly privateMention: boolean;
+    readonly bot: boolean;
 };
 
 /**
@@ -56,7 +57,8 @@ const doesWith = (policy: Policy, action: PolicyAction, relation: Relation) =>
     (policy.for_not_following === action && relation.notFollowing) ||
     (policy.for_not_followers === action && relation.notFollower) ||
     (policy.for_new_accounts === action && relation.newAccount && relation.notFollowing) ||
-    (policy.for_private_mentions === action && relation.privateMention && relation.notFollowing);
+    (policy.for_private_mentions === action && relation.privateMention && relation.notFollowing) ||
+    (policy.for_bots === action && relation.bot && relation.notFollowing);
 
 /**
  * Of `accountIds`, those whose own direct status mentioning `fromId` is among the 100 that `note`
@@ -141,6 +143,7 @@ export const verdictsOf = async (
             notFollower: !followedBy.has(accountId),
             newAccount: from.created_at.getTime() > now - newAccountMs,
             privateMention: direct && !answered.has(accountId),
+            bot: from.bot,
         };
         if (doesWith(policy, "drop", relation)) verdicts.set(accountId, "drop");
         else if (doesWith(policy, "filter", relation)) verdicts.set(accountId, "filter");

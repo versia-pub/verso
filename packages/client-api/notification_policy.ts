@@ -20,6 +20,8 @@ export const NotificationPolicy = z.object({
     for_private_mentions: PolicyAction,
     /** From accounts a moderator limited. */
     for_limited_accounts: PolicyAction,
+    /** From accounts that say they are bots, unless the viewer follows them. */
+    for_bots: PolicyAction,
     summary: z.object({
         /** How many accounts the viewer has filtered mentions from, counting up to 100. */
         pending_requests_count: z.int(),

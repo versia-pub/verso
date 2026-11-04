@@ -23,7 +23,8 @@ type Shown = {
     id: string;
     type: string;
     group_key: string;
-    account: { id: string };
+    account: { id: string; acct: string; url: string };
+    fallback?: { title: string; summary: string; description: string | null };
     status?: { id: string };
     emoji?: string;
     emoji_url?: string | null;
@@ -38,6 +39,7 @@ type Group = {
     page_max_id?: string;
     latest_page_notification_at?: string;
     sample_account_ids: string[];
+    fallback?: { title: string; summary: string; description: string | null };
     status_id?: string;
     emojis?: { emoji: string; emoji_url: string | null }[];
 };
@@ -153,6 +155,77 @@ Deno.test("reaction notifications have the emoji, and a custom one's picture", a
         ["reaction", ":blob:", "https://social.example/media/emoji-blob"],
         ["reaction", "🎉", null],
     ]);
+});
+
+Deno.test("a client that says what it supports gets a fallback for the types it doesn't", async () => {
+    await using test = await open();
+    const own = await test.post("alice", "Hi");
+    await react(test.ctx, "bob", own.id, "🎉");
+    await react(test.ctx, "carol", own.id, "🎉");
+    await like(test.ctx, "bob", own.id);
+    const [liked, carolReacted, bobReacted] = await test.ids();
+
+    const named = (id: string) =>
+        `<a href="https://social.example/.versia/v0.6/entities/User/${id}">@${id}</a>`;
+    const fallback = {
+        title: `${named("carol")} reacted to your post`,
+        summary: "Your app doesn't support this kind of notification.",
+        description: null,
+    };
+
+    const none = await test.request("GET", "/api/v1/notifications");
+    assertEquals((none.body as Shown[]).map((each) => each.fallback), [
+        undefined,
+        undefined,
+        undefined,
+    ]);
+
+    const supports = (types: string[]) =>
+        types.map((type) => `supported_types[]=${type}`).join("&");
+    const all = await test.request("GET", `/api/v1/notifications?${supports(["mention"])}`);
+    assertEquals((all.body as Shown[]).map((each) => [each.id, each.fallback]), [
+        [liked, undefined],
+        [carolReacted, fallback],
+        [bobReacted, { ...fallback, title: `${named("bob")} reacted to your post` }],
+    ]);
+
+    const supported = await test.request(
+        "GET",
+        `/api/v1/notifications?${supports(["reaction", "unknown"])}`,
+    );
+    assertEquals((supported.body as Shown[]).map((each) => each.fallback), [
+        undefined,
+        undefined,
+        undefined,
+    ]);
+
+    const one = await test.request(
+        "GET",
+        `/api/v1/notifications/${carolReacted}?${supports(["follow"])}`,
+    );
+    assertEquals((one.body as Shown).fallback, fallback);
+    const own1 = await test.request("GET", `/api/v1/notifications/${carolReacted}`);
+    assertEquals((own1.body as Shown).fallback, undefined);
+
+    // As the groups of a reaction are, a group has a fallback naming its accounts.
+    const groups = await test.request(
+        "GET",
+        `/api/v2/notifications?grouped_types[]=reaction&${supports(["favourite"])}`,
+    );
+    const [favourite, reacted] = (groups.body as Grouped).notification_groups;
+    assertEquals(reacted?.fallback, {
+        ...fallback,
+        title: `${named("carol")} and one other reacted to your post`,
+    });
+    assertEquals(favourite?.fallback, undefined);
+
+    const group = await test.request(
+        "GET",
+        `/api/v2/notifications/ungrouped-${carolReacted}?${supports(["favourite"])}`,
+    );
+    assertEquals((group.body as Grouped).notification_groups[0]?.fallback, fallback);
+    const plain = await test.request("GET", `/api/v2/notifications/ungrouped-${carolReacted}`);
+    assertEquals((plain.body as Grouped).notification_groups[0]?.fallback, undefined);
 });
 
 Deno.test("notifications are filtered by type, leaving out types Verso doesn't have", async () => {

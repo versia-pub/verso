@@ -19,6 +19,7 @@ import { findNotes } from "../notes/note_queries.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { isSeenBy } from "../notes/thread_queries.ts";
 import { onlookerOf } from "../notes/visibility.ts";
+import { fallbackOf } from "./fallback.ts";
 import { groupKeyOf, groupStatsOf } from "./group_queries.ts";
 import { findNotification, type NotificationRow, type Shown } from "./notification_queries.ts";
 import type { NotificationRequestRow } from "./request_queries.ts";
@@ -39,20 +40,23 @@ export const shownNotification = async (
     ctx: Context,
     accountId: string,
     id: string,
+    supported?: readonly string[],
 ): Promise<Notification | undefined> => {
     const row = await findNotification(ctx, accountId, id, shownOf(ctx, accountId));
-    return row && (await renderNotifications(ctx, [row], accountId))[0];
+    return row && (await renderNotifications(ctx, [row], accountId, supported))[0];
 };
 
 /**
  * The notifications `rows` of `viewerId`, in order, with the accounts that caused them and the
  * statuses they are about, as the viewer sees those, which they must be able to see, as
- * {@link shownOf} ensures. Those of types that aren't grouped each have a group of their own.
+ * {@link shownOf} ensures. Those of types that aren't grouped each have a group of their own. If
+ * the client said which types it `supported`, those of other types have a fallback.
  */
 export const renderNotifications = async (
     ctx: Context,
     rows: readonly NotificationRow[],
     viewerId: string,
+    supported?: readonly string[],
 ): Promise<Notification[]> => {
     const fromIds = [...new Set(rows.map((row) => row.from_account_id))];
     const accounts = await publicAccountsOf(ctx, await findAccounts(ctx, fromIds));
@@ -69,12 +73,14 @@ export const renderNotifications = async (
         const reaction = row.reaction_id === null ? undefined : reactions.get(row.reaction_id);
         if (account === undefined) return [];
 
+        const fallback = fallbackOf(row.type, supported, [account]);
         return [{
             id: row.id,
             type: row.type,
             group_key: row.group_key ?? `ungrouped-${row.id}`,
             created_at: row.created_at.toISOString(),
             account,
+            ...(fallback && { fallback }),
             ...(status && { status }),
             ...(reaction && renderReactionEmoji(ctx, reaction)),
         }];
@@ -91,7 +97,8 @@ const partialAccount = (
  * `viewerId`, in order, with the accounts that caused their notifications and the statuses they
  * are about. With `partial`, only each group's newest account is in full, and the others in part,
  * as Mastodon's `partial_avatars`. Without `paged`, they are whole groups rather than a page, so
- * have no page's ids.
+ * have no page's ids. If the client said which types it `supported`, the groups of other types
+ * have a fallback.
  * @see https://github.com/mastodon/mastodon/blob/v4.3.0/app/models/notification_group.rb
  */
 export const renderNotificationGroups = async (
@@ -99,9 +106,13 @@ export const renderNotificationGroups = async (
     rows: readonly NotificationRow[],
     grouped: readonly NotificationType[],
     viewerId: string,
-    options: { readonly partial: boolean; readonly paged: boolean },
+    options: {
+        readonly partial: boolean;
+        readonly paged: boolean;
+        readonly supported?: readonly string[];
+    },
 ): Promise<GroupedNotificationsResults> => {
-    const { partial, paged } = options;
+    const { partial, paged, supported } = options;
     const newest = rows.at(0);
     const oldest = rows.at(-1);
     if (newest === undefined || oldest === undefined) {
@@ -155,6 +166,11 @@ export const renderNotificationGroups = async (
             return [[emoji.emoji, emoji]];
         }));
 
+        const fallback = fallbackOf(
+            group.row.type,
+            supported,
+            group.samples.flatMap((sample) => accounts.get(sample.from_account_id) ?? []),
+        );
         return [{
             group_key: group.key,
             notifications_count: group.count,
@@ -166,6 +182,7 @@ export const renderNotificationGroups = async (
                 latest_page_notification_at: latest.created_at.toISOString(),
             }),
             sample_account_ids: group.samples.map((sample) => sample.from_account_id),
+            ...(fallback && { fallback }),
             ...(status && { status_id: status.id }),
             ...(group.row.type === "reaction" && { emojis: [...emojis.values()] }),
         }];

@@ -84,6 +84,8 @@ export type NotificationPoliciesTable = {
     for_private_mentions: PolicyAction;
     /** From accounts a moderator limited, which Verso has none of yet. */
     for_limited_accounts: PolicyAction;
+    /** From accounts that say they are bots, that the user doesn't follow. */
+    for_bots: PolicyAction;
     updated_at: Date;
 };
 

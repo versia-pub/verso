@@ -12,6 +12,7 @@ export const defaultPolicy: Policy = {
     for_new_accounts: "accept",
     for_private_mentions: "filter",
     for_limited_accounts: "filter",
+    for_bots: "accept",
 };
 
 /** The most requests, and filtered mentions in each, that are counted, as on Mastodon. */

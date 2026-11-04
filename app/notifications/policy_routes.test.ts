@@ -63,6 +63,7 @@ Deno.test("a user's policy has Mastodon's defaults, and how many requests they h
         for_new_accounts: "accept",
         for_private_mentions: "filter",
         for_limited_accounts: "filter",
+        for_bots: "accept",
         summary: { pending_requests_count: 2, pending_notifications_count: 3 },
     });
 });
@@ -79,6 +80,12 @@ Deno.test("a user changes parts of their policy, keeping the others", async () =
         ["drop", "filter"],
     );
     assertEquals((await test.request("GET", path)).body.for_private_mentions, "filter");
+
+    const bots = await test.request("PATCH", path, { body: { for_bots: "filter" } });
+    assertEquals(
+        [bots.body.for_bots, bots.body.for_not_following, bots.body.for_new_accounts],
+        ["filter", "drop", "filter"],
+    );
 
     const wrong = await test.request("PATCH", path, { body: { for_not_following: "mute" } });
     assertEquals(wrong.status, 422);

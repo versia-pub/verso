@@ -12489,6 +12489,25 @@
                                 "string"
                             ]
                         }
+                    },
+                    {
+                        "name": "supported_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that the client supports. Notifications of other types have a `fallback`."
+                        }
                     }
                 ],
                 "responses": {
@@ -12694,6 +12713,25 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "supported_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that the client supports. Notifications of other types have a `fallback`."
+                        }
                     }
                 ],
                 "responses": {
@@ -12849,6 +12887,15 @@
                                             "drop"
                                         ],
                                         "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that were limited by a moderator. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_bots": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that are marked as bots. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
                                     }
                                 }
                             }
@@ -12901,6 +12948,15 @@
                                             "drop"
                                         ],
                                         "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that were limited by a moderator. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_bots": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that are marked as bots. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
                                     }
                                 }
                             }
@@ -12953,6 +13009,15 @@
                                             "drop"
                                         ],
                                         "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that were limited by a moderator. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
+                                    },
+                                    "for_bots": {
+                                        "type": "string",
+                                        "enum": [
+                                            "accept",
+                                            "filter",
+                                            "drop"
+                                        ],
+                                        "description": "Whether to `accept`, `filter` or `drop` notifications from accounts that are marked as bots. `drop` will prevent creation of the notification object altogether (without preventing the underlying activity), `filter` will cause it to be marked as filtered, and `accept` will not affect its processing."
                                     }
                                 }
                             }
@@ -13123,6 +13188,25 @@
                                 }
                             ],
                             "description": "Restrict which notification types can be grouped."
+                        }
+                    },
+                    {
+                        "name": "supported_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that the client supports. Notifications of other types have a `fallback`."
                         }
                     }
                 ],
@@ -13341,6 +13425,25 @@
                         "required": true,
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "supported_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ],
+                            "description": "Types of notifications that the client supports. Notifications of other types have a `fallback`."
                         }
                     }
                 ],
@@ -21030,6 +21133,9 @@
                     "account": {
                         "$ref": "#/components/schemas/Account"
                     },
+                    "fallback": {
+                        "$ref": "#/components/schemas/NotificationFallback"
+                    },
                     "status": {
                         "$ref": "#/components/schemas/Status"
                     },
@@ -21054,6 +21160,28 @@
                     "group_key",
                     "created_at",
                     "account"
+                ]
+            },
+            "NotificationFallback": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "title",
+                    "summary",
+                    "description"
                 ]
             },
             "NotificationGroup": {
@@ -21089,6 +21217,9 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "fallback": {
+                        "$ref": "#/components/schemas/NotificationFallback"
                     },
                     "status_id": {
                         "type": "string"
@@ -21126,6 +21257,9 @@
                     "for_limited_accounts": {
                         "$ref": "#/components/schemas/PolicyAction"
                     },
+                    "for_bots": {
+                        "$ref": "#/components/schemas/PolicyAction"
+                    },
                     "summary": {
                         "type": "object",
                         "properties": {
@@ -21152,6 +21286,7 @@
                     "for_new_accounts",
                     "for_private_mentions",
                     "for_limited_accounts",
+                    "for_bots",
                     "summary"
                 ]
             },

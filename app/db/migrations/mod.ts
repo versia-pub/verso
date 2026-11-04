@@ -82,6 +82,7 @@ import { previewCards } from "./0080_preview_cards.ts";
 import { trendingLinks } from "./0081_trending_links.ts";
 import { attributionDomains } from "./0082_attribution_domains.ts";
 import { profileTabs } from "./0083_profile_tabs.ts";
+import { policyForBots } from "./0084_policy_for_bots.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -171,4 +172,5 @@ export const migrations: Record<string, Migration> = {
     "0081_trending_links": trendingLinks,
     "0082_attribution_domains": attributionDomains,
     "0083_profile_tabs": profileTabs,
+    "0084_policy_for_bots": policyForBots,
 };

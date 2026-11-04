@@ -65,6 +65,7 @@ export const notificationPolicyRoutes: readonly Route[] = [
                     "user follows, are always allowed, regardless of this value.",
             ),
             for_limited_accounts: Action("accounts that were limited by a moderator"),
+            for_bots: Action("accounts that are marked as bots"),
         }),
         responses: { 200: NotificationPolicy },
         handler: async (ctx, { viewer, body }) => {

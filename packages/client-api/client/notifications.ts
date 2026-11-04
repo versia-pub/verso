@@ -32,8 +32,17 @@ export type PolicyChanges = {
     readonly [part in Exclude<keyof NotificationPolicy, "summary">]?: PolicyAction;
 };
 
+/** What types of notifications the app supports. */
+export type Supporting = {
+    /**
+     * The types the app supports. Notifications of other types have a `fallback`, unless
+     * Mastodon's baseline ones, which every app is taken to support. Without it, none has one.
+     */
+    readonly supported_types?: readonly string[];
+};
+
 /** Which notifications to list. */
-export type NotificationsQuery = PageQuery & NotificationFilter;
+export type NotificationsQuery = PageQuery & NotificationFilter & Supporting;
 
 /** Which unread notifications to count. */
 export type UnreadCountQuery = NotificationFilter & {
@@ -89,8 +98,11 @@ export class NotificationMethods {
      * One of the viewer's notifications.
      * @see https://docs.joinmastodon.org/methods/notifications/#get-one
      */
-    get(id: string, options?: CallOptions): Promise<Notification> {
-        return this.http.json(Notification, "GET", path`/api/v1/notifications/${id}`, options);
+    get(id: string, query: Supporting = {}, options?: CallOptions): Promise<Notification> {
+        return this.http.json(Notification, "GET", path`/api/v1/notifications/${id}`, {
+            ...options,
+            query,
+        });
     }
 
     /**
@@ -255,12 +267,16 @@ export class GroupedNotificationMethods {
      * One of the viewer's notification groups, with the accounts and status it refers to.
      * @see https://docs.joinmastodon.org/methods/grouped_notifications/#get-notification-group
      */
-    get(groupKey: string, options?: CallOptions): Promise<GroupedNotificationsResults> {
+    get(
+        groupKey: string,
+        query: Supporting = {},
+        options?: CallOptions,
+    ): Promise<GroupedNotificationsResults> {
         return this.http.json(
             GroupedNotificationsResults,
             "GET",
             path`/api/v2/notifications/${groupKey}`,
-            options,
+            { ...options, query },
         );
     }
 

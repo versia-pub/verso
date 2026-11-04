@@ -23,6 +23,12 @@ import { isNotificationType } from "./tables.ts";
 export const NotificationTypes = Strings.transform((types) => types.filter(isNotificationType))
     .optional();
 
+/** The types of notifications a client supports, which are not filtered, as Mastodon's. */
+export const SupportedTypes = Strings.optional().meta({
+    description: "Types of notifications that the client supports. Notifications of other types " +
+        "have a `fallback`.",
+});
+
 /** How many unread notifications to count up to, as on Mastodon. */
 export const CountQuery = PageQuery({ default: 100, max: 1000 }).pick({ limit: true });
 
@@ -85,6 +91,7 @@ export const notificationRoutes: readonly Route[] = [
                 description: "Return only notifications received from the specified account.",
             }),
             include_filtered: IncludeFiltered,
+            supported_types: SupportedTypes,
         }),
         responses: { 200: Paged(Notification) },
         handler: async (ctx, { query, viewer }) => {
@@ -103,7 +110,7 @@ export const notificationRoutes: readonly Route[] = [
 
             return {
                 status: 200,
-                body: await renderNotifications(ctx, rows, viewer.accountId),
+                body: await renderNotifications(ctx, rows, viewer.accountId, query.supported_types),
                 cursors: cursorsOf(rows, query, (row) => row.id),
             };
         },
@@ -160,9 +167,15 @@ export const notificationRoutes: readonly Route[] = [
         tags: ["notifications"],
         auth: { require: "user", scope: "read:notifications", permission: "owner:notification" },
         params: z.object({ id: z.string() }),
+        query: z.object({ supported_types: SupportedTypes }),
         responses: { 200: Notification },
-        handler: async (ctx, { params, viewer }) => {
-            const notification = await shownNotification(ctx, viewer.accountId, params.id);
+        handler: async (ctx, { params, query, viewer }) => {
+            const notification = await shownNotification(
+                ctx,
+                viewer.accountId,
+                params.id,
+                query.supported_types,
+            );
             if (notification === undefined) throw new NotFound();
 
             return { status: 200, body: notification };

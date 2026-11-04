@@ -653,6 +653,7 @@ Deno.test("a user's policy filters direct mentions from strangers until they acc
 
     const policy = await alice.notifications.updatePolicy({ for_private_mentions: "accept" });
     assertEquals([policy.for_private_mentions, policy.for_not_following], ["accept", "accept"]);
+    assertEquals((await alice.notifications.updatePolicy({ for_bots: "drop" })).for_bots, "drop");
     const accepted = await bob.statuses.post({ status: "@alice Again", visibility: "direct" });
     assertEquals((await alice.notifications.list()).items.map((n) => n.status?.id), [accepted.id]);
 });
@@ -767,6 +768,21 @@ Deno.test("a user reads, counts and dismisses their notifications, alone or grou
     assertEquals(all.items.map((n) => n.type), ["follow", "favourite", "favourite"]);
     assertEquals((await alice.notifications.get(follow.id)).account.id, bobId);
     assertEquals(await alice.notifications.unreadCount({ exclude_types: ["follow"] }), 2);
+
+    // A reaction is no baseline type, so an app that lists others gets a fallback for it.
+    await carol.statuses.react(id, "🎉");
+    const [reacted] = (await alice.notifications.list({ supported_types: ["follow"] })).items;
+    assertEquals(reacted.fallback?.description, null);
+    assertEquals((await alice.notifications.get(reacted.id)).fallback, undefined);
+    assertEquals(
+        (await alice.notifications.get(reacted.id, { supported_types: ["follow"] })).fallback,
+        reacted.fallback,
+    );
+    const reactedGroup = await alice.groupedNotifications.get(reacted.group_key, {
+        supported_types: ["follow"],
+    });
+    assertEquals(reactedGroup.notification_groups[0].fallback, reacted.fallback);
+    await alice.notifications.dismiss(reacted.id);
 
     const grouped = await alice.groupedNotifications.list();
     const [, liked] = grouped.items;

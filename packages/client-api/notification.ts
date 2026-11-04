@@ -27,6 +27,18 @@ export const NotificationType = z.enum([
 export type NotificationType = z.infer<typeof NotificationType>;
 
 /**
+ * What an app that doesn't know a notification's type can show of it, when it said which types it
+ * supports. Both are HTML.
+ * @see https://docs.joinmastodon.org/entities/Notification/#fallback
+ */
+export const NotificationFallback = z.object({
+    title: z.string(),
+    summary: z.string(),
+    description: z.string().nullable(),
+});
+export type NotificationFallback = z.infer<typeof NotificationFallback>;
+
+/**
  * Something that happened that concerns the user.
  * @see https://docs.joinmastodon.org/entities/Notification/
  */
@@ -38,6 +50,8 @@ export const Notification = z.object({
     created_at: z.iso.datetime(),
     /** Who did it. */
     account: Account,
+    /** What to show instead, when the app's `supported_types` lack this notification's type. */
+    fallback: NotificationFallback.optional(),
     /** The status it is about, for the types about one. */
     status: Status.optional(),
     /**
@@ -71,6 +85,8 @@ export const NotificationGroup = z.object({
     latest_page_notification_at: z.iso.datetime().optional(),
     /** Some of the accounts that most recently caused its notifications, newest first. */
     sample_account_ids: z.array(z.string()),
+    /** What to show instead, when the app's `supported_types` lack this group's type. */
+    fallback: NotificationFallback.optional(),
     /** The status it is about, for the types about one. */
     status_id: z.string().optional(),
     /**

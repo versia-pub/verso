@@ -151,6 +151,26 @@ Deno.test("an account is new for 30 days, unless the user follows it", async () 
     assertEquals((await test.of("alice"))[0], "favourite bob");
 });
 
+Deno.test("a policy for bots applies to bots the user doesn't follow", async () => {
+    await using test = await open();
+    await test.ctx.db.updateTable("accounts").set({ bot: true }).where("id", "=", "bob").execute();
+    const note = await test.post("alice", "Hi", { public: true });
+
+    await test.policy("alice", { for_bots: "filter" });
+    await like(test.ctx, "bob", note);
+    await like(test.ctx, "carol", note);
+    assertEquals(await test.of("alice"), ["favourite carol", "favourite bob filtered"]);
+
+    await test.policy("alice", { for_bots: "drop" });
+    await share(test.ctx, "bob", note);
+    await share(test.ctx, "carol", note);
+    assertEquals((await test.of("alice")).slice(0, 2), ["reblog carol", "favourite carol"]);
+
+    await follow(test.ctx, "alice", "bob");
+    await follow(test.ctx, "bob", "alice");
+    assertEquals((await test.of("alice")).at(0), "follow bob");
+});
+
 Deno.test("edits of boosted statuses aren't filtered, nor anything from limited accounts", async () => {
     await using test = await open();
     await test.policy("alice", { for_limited_accounts: "drop" });
