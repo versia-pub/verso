@@ -1,6 +1,6 @@
 # Mastodon API compatibility
 
-Verso reports itself as Mastodon 4.3.0, so apps enable that version's features. This page compares
+Verso reports itself as Mastodon 4.4.0, so apps enable that version's features. This page compares
 Verso with [Mastodon 4.3's API](https://docs.joinmastodon.org/methods/), method by method.
 
 - ✅ works as on Mastodon.

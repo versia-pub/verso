@@ -24,7 +24,9 @@ import type { MediaLimits } from "../kernel/config_sections.ts";
 import { imageFormats } from "../kernel/images.ts";
 import type { Context } from "../kernel/context.ts";
 import { charactersPerLink } from "../kernel/markup.ts";
+import { pinLimit } from "../notes/pins.ts";
 import { vapidPublicKey } from "../push/keys.ts";
+import { featuredTagLimit } from "../tags/featured_tags.ts";
 import { countInstances } from "./instance_queries.ts";
 
 /** What the instance's description is built from. */
@@ -39,10 +41,10 @@ export type AboutSettings =
  * The Mastodon version clients are told, which they turn features on by. Raise it as Verso
  * implements what later versions added.
  */
-const mastodonVersion = "4.3.0";
+const mastodonVersion = "4.4.0";
 
-/** The API version Mastodon 4.3 reports. */
-const mastodonApiVersion = 2;
+/** The API version Mastodon 4.4 reports. */
+const mastodonApiVersion = 6;
 
 const sourceUrl = "https://github.com/versia-pub/verso";
 
@@ -93,10 +95,9 @@ const configuration = (
 ): Instance["configuration"] => ({
     urls: { streaming: ctx.urls.origin.replace(/^http/, "ws") },
     vapid: { public_key: vapidKey },
-    // Featured tags arrive in a later step.
     accounts: {
-        max_featured_tags: 0,
-        max_pinned_statuses: 0,
+        max_featured_tags: featuredTagLimit,
+        max_pinned_statuses: pinLimit,
         max_display_name_length: limits.display_name,
         max_note_length: limits.note,
         max_profile_fields: limits.fields,
@@ -111,6 +112,7 @@ const configuration = (
     // Any other file is accepted too, as a generic file, but clients offer only what is listed.
     media_attachments: {
         supported_mime_types: Object.values(imageFormats).map((format) => format.mediaType),
+        description_limit: limits.media_description,
         image_size_limit: media.max_upload_bytes,
         image_matrix_limit: media.max_pixels,
         video_size_limit: 0,
@@ -124,6 +126,8 @@ const configuration = (
         max_expiration: limits.poll_max_seconds,
     },
     translation: { enabled: false },
+    // Verso federates with every instance it hasn't blocked.
+    limited_federation: false,
 });
 
 /** How many users, statuses and other instances the instance has, as it tells clients. */
@@ -147,7 +151,7 @@ export const instanceStats = async (ctx: Context): Promise<InstanceStats> => ({
     domains: await countInstances(ctx),
 });
 
-/** The instance as Mastodon's API describes it, claiming Mastodon 4.3. */
+/** The instance as Mastodon's API describes it, claiming Mastodon 4.4. */
 export const renderInstance = async (
     ctx: Context,
     settings: AboutSettings,
@@ -171,6 +175,8 @@ export const renderInstance = async (
         registrations: {
             enabled: false,
             approval_required: false,
+            reason_required: false,
+            min_age: null,
             message: registrationMessage(settings.auth.issuers),
             url: null,
         },
@@ -184,33 +190,37 @@ export const renderInstance = async (
 };
 
 /** The instance as Mastodon described it before 4.0, derived from how it describes itself now. */
-export const renderV1Instance = (instance: Instance, stats: InstanceStats): V1Instance => ({
-    uri: instance.domain,
-    title: instance.title,
-    short_description: instance.description,
-    description: textToHtml(instance.description),
-    email: instance.contact.email,
-    version: instance.version,
-    urls: { streaming_api: instance.configuration.urls.streaming },
-    stats: {
-        user_count: stats.users,
-        status_count: stats.statuses,
-        domain_count: stats.domains,
-    },
-    thumbnail: instance.thumbnail.url,
-    languages: instance.languages,
-    registrations: instance.registrations.enabled,
-    approval_required: instance.registrations.approval_required,
-    invites_enabled: false,
-    configuration: {
-        accounts: { max_featured_tags: instance.configuration.accounts.max_featured_tags },
-        statuses: instance.configuration.statuses,
-        media_attachments: instance.configuration.media_attachments,
-        polls: instance.configuration.polls,
-    },
-    contact_account: instance.contact.account,
-    rules: instance.rules,
-});
+export const renderV1Instance = (instance: Instance, stats: InstanceStats): V1Instance => {
+    const { description_limit: _, ...media } = instance.configuration.media_attachments;
+
+    return {
+        uri: instance.domain,
+        title: instance.title,
+        short_description: instance.description,
+        description: textToHtml(instance.description),
+        email: instance.contact.email,
+        version: instance.version,
+        urls: { streaming_api: instance.configuration.urls.streaming },
+        stats: {
+            user_count: stats.users,
+            status_count: stats.statuses,
+            domain_count: stats.domains,
+        },
+        thumbnail: instance.thumbnail.url,
+        languages: instance.languages,
+        registrations: instance.registrations.enabled,
+        approval_required: instance.registrations.approval_required,
+        invites_enabled: false,
+        configuration: {
+            accounts: { max_featured_tags: instance.configuration.accounts.max_featured_tags },
+            statuses: instance.configuration.statuses,
+            media_attachments: media,
+            polls: instance.configuration.polls,
+        },
+        contact_account: instance.contact.account,
+        rules: instance.rules,
+    };
+};
 
 type Document = NonNullable<AboutSettings["instance"]["privacy_policy"]>;
 

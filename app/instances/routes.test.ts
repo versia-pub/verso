@@ -38,13 +38,13 @@ const configured = async (toml: string): Promise<AboutSettings> => {
     return result.config;
 };
 
-Deno.test("an instance with no settings goes by its domain, and claims Mastodon 4.3", async () => {
+Deno.test("an instance with no settings goes by its domain, and claims Mastodon 4.4", async () => {
     await using test = await open();
 
     assertEquals(await test.get(), {
         domain: "social.example",
         title: "social.example",
-        version: "4.3.0 (compatible; Verso 0.0.0)",
+        version: "4.4.0 (compatible; Verso 0.0.0)",
         source_url: "https://github.com/versia-pub/verso",
         description: "",
         usage: { users: { active_month: 0 } },
@@ -55,8 +55,8 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
             urls: { streaming: "wss://social.example" },
             vapid: { public_key: await vapidPublicKey(test.ctx) },
             accounts: {
-                max_featured_tags: 0,
-                max_pinned_statuses: 0,
+                max_featured_tags: 10,
+                max_pinned_statuses: 5,
                 max_display_name_length: 60,
                 max_note_length: 10_000,
                 max_profile_fields: 16,
@@ -77,6 +77,7 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
                     "image/avif",
                     "image/heic",
                 ],
+                description_limit: 4000,
                 image_size_limit: 16_777_216,
                 image_matrix_limit: 8_294_400,
                 video_size_limit: 0,
@@ -90,14 +91,17 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
                 max_expiration: 2_629_746,
             },
             translation: { enabled: false },
+            limited_federation: false,
         },
         registrations: {
             enabled: false,
             approval_required: false,
+            reason_required: false,
+            min_age: null,
             message: "<p>This instance isn&#39;t taking new accounts.</p>",
             url: null,
         },
-        api_versions: { mastodon: 2 },
+        api_versions: { mastodon: 6 },
         contact: { email: "", account: null },
         rules: [],
     });
@@ -125,6 +129,7 @@ translations = { fr = { text = "Pas de spam", hint = "Pubs comprises" }, de = { 
 fields = 4
 status = 1000
 attachments = 2
+media_description = 500
 
 [[auth.issuers]]
 name = "Closed ID"
@@ -161,6 +166,7 @@ registration = { claim = "groups", contains = "verso" }
     assertEquals(instance.configuration.accounts.max_profile_fields, 4);
     assertEquals(instance.configuration.statuses.max_characters, 1000);
     assertEquals(instance.configuration.statuses.max_media_attachments, 2);
+    assertEquals(instance.configuration.media_attachments.description_limit, 500);
     assertEquals(instance.configuration.media_attachments.image_size_limit, 2_000_000);
     assertEquals(instance.configuration.media_attachments.image_matrix_limit, 1_000_000);
     assertEquals(
@@ -271,6 +277,7 @@ rules = [{ text = "Be kind", hint = "Always" }]
         await postNote(test.ctx, "alice", { text, format: "text/plain", spoilerText: "" });
     }
     const v2 = await test.get();
+    const { description_limit: _, ...media } = v2.configuration.media_attachments;
 
     const { body, status } = await test.fetch("/api/v1/instance");
     const asked = await test.app.request("/api/v1/instance");
@@ -284,7 +291,7 @@ rules = [{ text = "Be kind", hint = "Always" }]
         short_description: "A place to talk.\n\nAnd <listen>.",
         description: "<p>A place to talk.</p><p>And &lt;listen&gt;.</p>",
         email: "admin@social.example",
-        version: "4.3.0 (compatible; Verso 0.0.0)",
+        version: "4.4.0 (compatible; Verso 0.0.0)",
         urls: { streaming_api: "wss://social.example" },
         stats: { user_count: 2, status_count: 2, domain_count: 1 },
         thumbnail: "https://social.example/instance/thumbnail.png",
@@ -293,9 +300,10 @@ rules = [{ text = "Be kind", hint = "Always" }]
         approval_required: false,
         invites_enabled: false,
         configuration: {
-            accounts: { max_featured_tags: 0 },
+            accounts: { max_featured_tags: 10 },
             statuses: v2.configuration.statuses,
-            media_attachments: v2.configuration.media_attachments,
+            // Mastodon's v1 instance doesn't say how long a description may be.
+            media_attachments: media,
             polls: v2.configuration.polls,
         },
         contact_account: "alice",

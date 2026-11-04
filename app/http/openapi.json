@@ -18093,15 +18093,8 @@
                         "type": "string"
                     },
                     "url": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uri"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "type": "string",
+                        "format": "uri"
                     },
                     "uri": {
                         "type": "string",
@@ -18659,15 +18652,8 @@
                         "type": "string"
                     },
                     "url": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uri"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "type": "string",
+                        "format": "uri"
                     },
                     "uri": {
                         "type": "string",
@@ -20060,15 +20046,8 @@
                         "type": "string"
                     },
                     "url": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uri"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "type": "string",
+                        "format": "uri"
                     },
                     "uri": {
                         "type": "string",
@@ -20565,15 +20544,8 @@
                         "type": "string"
                     },
                     "url": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uri"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "type": "string",
+                        "format": "uri"
                     },
                     "avatar": {
                         "type": "string",
@@ -21595,15 +21567,8 @@
                         "maximum": 9007199254740991
                     },
                     "url": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "uri"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "type": "string",
+                        "format": "uri"
                     },
                     "in_reply_to_id": {
                         "type": [
