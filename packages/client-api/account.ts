@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CustomEmoji } from "./custom_emoji.ts";
 import { AccountRole, Role } from "./role.ts";
+import { FeaturedTag } from "./tag.ts";
 
 /**
  * A name and value pair on a profile, such as a website.
@@ -162,6 +163,54 @@ export const CredentialAccount = Account.extend({
     role: Role,
 });
 export type CredentialAccount = z.infer<typeof CredentialAccount>;
+
+/**
+ * A name and value pair on the viewer's own profile, as they wrote it.
+ * @see https://docs.joinmastodon.org/entities/Profile/#fields
+ */
+export const ProfileField = z.object({
+    name: z.string(),
+    value: z.string(),
+    /** When a `rel="me"` link back from the value's page was found, or `null` if not. */
+    verified_at: z.iso.datetime().nullable(),
+});
+export type ProfileField = z.infer<typeof ProfileField>;
+
+/**
+ * The viewer's own profile, as they wrote it, for editing. Mastodon 4.5 and later.
+ * @see https://docs.joinmastodon.org/entities/Profile/
+ */
+export const Profile = z.object({
+    id: z.string(),
+    display_name: z.string(),
+    /** The bio, in plain text. */
+    note: z.string(),
+    fields: z.array(ProfileField),
+    /** The bio, as HTML. */
+    formatted_note: z.string(),
+    /** The fields, with HTML values. */
+    formatted_fields: z.array(ProfileField),
+    /** The avatar, or `null` if the account has none of its own. */
+    avatar: z.url().nullable(),
+    avatar_static: z.url().nullable(),
+    avatar_description: z.string(),
+    /** The header, or `null` if the account has none of its own. */
+    header: z.url().nullable(),
+    header_static: z.url().nullable(),
+    header_description: z.string(),
+    locked: z.boolean(),
+    bot: z.boolean(),
+    discoverable: z.boolean().nullable(),
+    indexable: z.boolean(),
+    hide_collections: z.boolean().nullable(),
+    show_media: z.boolean(),
+    show_media_replies: z.boolean(),
+    show_featured: z.boolean(),
+    /** The websites that may credit the account as an author. */
+    attribution_domains: z.array(z.string()),
+    featured_tags: z.array(FeaturedTag),
+});
+export type Profile = z.infer<typeof Profile>;
 
 /**
  * An account the viewer mutes, with when the mute ends.

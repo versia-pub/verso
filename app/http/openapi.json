@@ -6347,6 +6347,473 @@
                 }
             }
         },
+        "/api/v1/profile": {
+            "get": {
+                "summary": "View profile",
+                "description": "Get the user's own profile, as they wrote it, for editing.\n\nNeeds a token for a user, not one an app got for itself.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/profile/#get"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "profile"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Profile"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Update profile",
+                "description": "Update the user's own profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/profile/#update"
+                },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "display_name": {
+                                        "type": "string"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    },
+                                    "locked": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "bot": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "discoverable": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "indexable": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "hide_collections": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "attribution_domains": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "avatar_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "header": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "header_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "fields_attributes": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        },
+                                                        "value": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "propertyNames": {
+                                                    "type": "string",
+                                                    "pattern": "^\\d+$"
+                                                },
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        },
+                                                        "value": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "show_media": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "show_media_replies": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "show_featured": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "display_name": {
+                                        "type": "string"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    },
+                                    "locked": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "bot": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "discoverable": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "indexable": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "hide_collections": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "attribution_domains": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "avatar_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "header": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "header_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "fields_attributes": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        },
+                                                        "value": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "propertyNames": {
+                                                    "type": "string",
+                                                    "pattern": "^\\d+$"
+                                                },
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        },
+                                                        "value": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "show_media": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "show_media_replies": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "show_featured": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "display_name": {
+                                        "type": "string"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    },
+                                    "locked": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "bot": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "discoverable": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "indexable": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "hide_collections": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "attribution_domains": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "avatar": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "avatar_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "header": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "header_description": {
+                                        "type": "string",
+                                        "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "fields_attributes": {
+                                        "anyOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        },
+                                                        "value": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "type": "object",
+                                                "propertyNames": {
+                                                    "type": "string",
+                                                    "pattern": "^\\d+$"
+                                                },
+                                                "additionalProperties": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        },
+                                                        "value": {
+                                                            "default": "",
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    "show_media": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "show_media_replies": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "show_featured": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Profile"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/profile/avatar": {
             "delete": {
                 "summary": "Delete profile avatar",
@@ -21158,6 +21625,179 @@
                     "name",
                     "url",
                     "account"
+                ]
+            },
+            "Profile": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "display_name": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "fields": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProfileField"
+                        }
+                    },
+                    "formatted_note": {
+                        "type": "string"
+                    },
+                    "formatted_fields": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ProfileField"
+                        }
+                    },
+                    "avatar": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "avatar_static": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "avatar_description": {
+                        "type": "string"
+                    },
+                    "header": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "header_static": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "header_description": {
+                        "type": "string"
+                    },
+                    "locked": {
+                        "type": "boolean"
+                    },
+                    "bot": {
+                        "type": "boolean"
+                    },
+                    "discoverable": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "indexable": {
+                        "type": "boolean"
+                    },
+                    "hide_collections": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "show_media": {
+                        "type": "boolean"
+                    },
+                    "show_media_replies": {
+                        "type": "boolean"
+                    },
+                    "show_featured": {
+                        "type": "boolean"
+                    },
+                    "attribution_domains": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "featured_tags": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FeaturedTag"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "display_name",
+                    "note",
+                    "fields",
+                    "formatted_note",
+                    "formatted_fields",
+                    "avatar",
+                    "avatar_static",
+                    "avatar_description",
+                    "header",
+                    "header_static",
+                    "header_description",
+                    "locked",
+                    "bot",
+                    "discoverable",
+                    "indexable",
+                    "hide_collections",
+                    "show_media",
+                    "show_media_replies",
+                    "show_featured",
+                    "attribution_domains",
+                    "featured_tags"
+                ]
+            },
+            "ProfileField": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    },
+                    "verified_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "value",
+                    "verified_at"
                 ]
             },
             "PushAlerts": {

@@ -6,6 +6,7 @@ import { createTestApp } from "../testing/app.ts";
 import { memoryRateLimitStore } from "../http/rate_limits.ts";
 import { defineRoute } from "../http/route.ts";
 import { createInstance } from "../instances/testing.ts";
+import { featureTag } from "../tags/featured_tags.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
 import { Limits, MediaLimits } from "../kernel/config_sections.ts";
@@ -690,4 +691,223 @@ Deno.test("viewing accounts and changing one's own follow what config permits", 
         body: '{"display_name":"Alice"}',
     };
     assertEquals(await status("/api/v1/accounts/update_credentials", update), 403);
+    assertEquals(await status("/api/v1/profile", update), 403);
+    assertEquals(await status("/api/v1/profile", asAlice), 200);
+});
+
+/** Reads or changes alice's profile, with a token that has `scopes`, all of them if omitted. */
+const profileOf = async (
+    test: Awaited<ReturnType<typeof openApi>>,
+    body?: string | FormData,
+    scopes?: Scope[],
+    type = "application/json",
+) => {
+    const response = await test.app.request("/api/v1/profile", {
+        method: body === undefined ? "GET" : "PATCH",
+        body,
+        headers: {
+            ...typeof body === "string" && { "content-type": type },
+            authorization: `Bearer ${await tokenFor(test.ctx, "alice", scopes)}`,
+        },
+    });
+    return { status: response.status, body: await response.json() };
+};
+
+Deno.test("a user sees their own profile as they wrote it, with no pictures until they have some", async () => {
+    await using test = await openApi();
+    await test.update(JSON.stringify({
+        display_name: "Alice",
+        note: "Hi <you>",
+        fields_attributes: [{ name: "Site", value: "a & b" }],
+        attribution_domains: ["blog.example"],
+    }));
+    await featureTag(test.ctx, "alice", "Cats");
+
+    const { status, body } = await profileOf(test);
+
+    assertEquals(status, 200);
+    assertEquals(body, {
+        id: "alice",
+        display_name: "Alice",
+        note: "Hi <you>",
+        fields: [{ name: "Site", value: "a & b", verified_at: null }],
+        formatted_note: "<p>Hi &lt;you&gt;</p>",
+        formatted_fields: [{ name: "Site", value: "a &amp; b", verified_at: null }],
+        avatar: null,
+        avatar_static: null,
+        avatar_description: "",
+        header: null,
+        header_static: null,
+        header_description: "",
+        locked: false,
+        bot: false,
+        discoverable: false,
+        indexable: false,
+        hide_collections: false,
+        show_media: true,
+        show_media_replies: true,
+        show_featured: true,
+        attribution_domains: ["blog.example"],
+        featured_tags: [{
+            id: body.featured_tags[0].id,
+            name: "Cats",
+            url: "https://social.example/tags/cats",
+            statuses_count: "0",
+            last_status_at: null,
+        }],
+    });
+});
+
+Deno.test("only a token that may read accounts sees a profile", async () => {
+    await using test = await openApi();
+
+    for (const scopes of [["read"], ["profile"], ["read:accounts"]] as Scope[][]) {
+        assertEquals((await profileOf(test, undefined, scopes)).status, 200, `${scopes}`);
+    }
+    assertEquals((await profileOf(test, undefined, ["read:statuses"])).status, 403);
+    assertEquals((await test.get("/api/v1/profile")).status, 401);
+    assertEquals((await test.get("/api/v1/profile", await tokenFor(test.ctx, null))).status, 422);
+});
+
+Deno.test("a user changes their profile, with the tabs it shows, and gets it back as they wrote it", async () => {
+    await using test = await openApi();
+
+    const { status, body } = await profileOf(
+        test,
+        JSON.stringify({
+            display_name: " Alice ",
+            note: "Hi\n\nthere",
+            locked: true,
+            discoverable: true,
+            indexable: false,
+            hide_collections: true,
+            show_media: true,
+            show_media_replies: false,
+            show_featured: false,
+            fields_attributes: [{ name: "Site", value: "x" }],
+            avatar_description: "Me",
+            // Not Mastodon's here: the defaults for new statuses are changed with the account's.
+            source: { privacy: "private" },
+        }),
+    );
+
+    assertEquals(status, 200);
+    assertEquals(body.display_name, "Alice");
+    assertEquals(body.note, "Hi\n\nthere");
+    assertEquals(body.formatted_note, "<p>Hi</p><p>there</p>");
+    assertEquals(body.fields, [{ name: "Site", value: "x", verified_at: null }]);
+    assertEquals(
+        [body.locked, body.discoverable, body.indexable, body.hide_collections],
+        [true, true, false, true],
+    );
+    assertEquals(
+        [body.show_media, body.show_media_replies, body.show_featured],
+        [true, false, false],
+    );
+
+    const account = await test.get("/api/v1/accounts/alice");
+    assertEquals(
+        [account.body.show_media, account.body.show_media_replies, account.body.show_featured],
+        [true, false, false],
+    );
+
+    const own = await test.get(
+        "/api/v1/accounts/verify_credentials",
+        await tokenFor(test.ctx, "alice"),
+    );
+    assertEquals(own.body.source.privacy, "public");
+
+    // What is omitted stays.
+    const kept = await profileOf(test, JSON.stringify({ show_media: false }));
+    assertEquals([kept.body.show_media, kept.body.show_media_replies, kept.body.locked], [
+        false,
+        false,
+        true,
+    ]);
+    assertEquals(kept.body.show_featured, false);
+});
+
+Deno.test("update_credentials leaves the tabs a profile shows as they are", async () => {
+    await using test = await openApi();
+
+    const { body } = await test.update(JSON.stringify({ show_media: false, show_featured: false }));
+
+    assertEquals([body.show_media, body.show_media_replies, body.show_featured], [
+        true,
+        true,
+        true,
+    ]);
+});
+
+Deno.test("a user's pictures are in their profile once processed, and null once removed", async () => {
+    await using test = await openApi();
+
+    const added = await profileOf(
+        test,
+        formOf({
+            avatar: png(4, 4),
+            avatar_description: "Me",
+            header: png(4, 4),
+            show_media: "false",
+        }),
+    );
+    assertEquals(added.status, 200);
+    assertEquals(added.body.avatar_description, "Me");
+    assertEquals(added.body.show_media, false);
+    // Until processed, the account shows the default ones.
+    assertEquals(added.body.avatar, "https://social.example/accounts/alice/avatar.png");
+
+    await drain(test.ctx, queues);
+    const shown = await profileOf(test);
+    for (const name of ["avatar", "avatar_static", "header", "header_static"]) {
+        assertEquals(shown.body[name].startsWith("https://social.example/media/"), true, name);
+    }
+
+    const remove = async (name: string) => {
+        const response = await test.app.request(`/api/v1/profile/${name}`, {
+            method: "DELETE",
+            headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` },
+        });
+        await response.body?.cancel();
+    };
+
+    // Each is null on its own.
+    await remove("header");
+    const headerless = (await profileOf(test)).body;
+    assertEquals([headerless.header, headerless.header_static], [null, null]);
+    assertEquals(headerless.avatar.startsWith("https://social.example/media/"), true);
+    assertEquals(headerless.avatar_static.startsWith("https://social.example/media/"), true);
+
+    await remove("avatar");
+    const { body } = await profileOf(test);
+    assertEquals([body.avatar, body.avatar_static, body.header, body.header_static], [
+        null,
+        null,
+        null,
+        null,
+    ]);
+});
+
+Deno.test("a profile is held to the same limits as credentials, and only a token that may write changes it", async () => {
+    await using test = await openApi(Limits.parse({ display_name: 5 }));
+
+    assertEquals((await profileOf(test, JSON.stringify({ display_name: "Too long" }))).status, 422);
+    assertEquals((await profileOf(test, JSON.stringify({ show_media: "maybe" }))).status, 422);
+    assertEquals((await profileOf(test, "{}", ["read"])).status, 403);
+    assertEquals((await profileOf(test, "{}", ["write:accounts"])).status, 200);
+    assertEquals(
+        (await profileOf(test, "show_media=0", ["write"], "application/x-www-form-urlencoded"))
+            .body.show_media,
+        false,
+    );
+});
+
+Deno.test("a profile takes an avatar and a header as large as uploads may be, together", async () => {
+    await using test = await openApi(
+        Limits.parse({}),
+        MediaLimits.parse({ max_upload_bytes: 100_000 }),
+    );
+    const noisy = noise(150);
+
+    assertEquals((await profileOf(test, formOf({ avatar: noisy, header: noisy }))).status, 200);
 });

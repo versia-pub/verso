@@ -6,8 +6,10 @@ import type {
     Account,
     CredentialAccount,
     CustomEmoji,
+    FeaturedTag,
     Field,
     Preferences,
+    Profile,
     Role,
 } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
@@ -138,9 +140,9 @@ export const renderAccount = (
         followers_count: row.followers_count,
         following_count: row.following_count,
         hide_collections: row.hide_collections,
-        show_media: true,
-        show_media_replies: true,
-        show_featured: true,
+        show_media: row.show_media,
+        show_media_replies: row.show_media_replies,
+        show_featured: row.show_featured,
         // Only the roles shown on profiles. Remote accounts have none stored.
         roles: local
             ? roles.filter((role) => role.visible)
@@ -181,6 +183,49 @@ export const renderCredentialAccount = (
     },
     role: renderRole(roles, permissions),
 });
+
+/**
+ * A user's own profile as they wrote it, with the hashtags they feature. Pictures they don't have
+ * are `null`, not the default ones.
+ */
+export const renderProfile = (
+    ctx: Context,
+    row: AccountRow,
+    featuredTags: readonly FeaturedTag[],
+): Profile => {
+    const account = renderAccount(ctx, row, [], []);
+    const own = <T>(id: string | null, shown: T): T | null => id === null ? null : shown;
+    const field = (value: (field: ProfileField) => string) => (field: ProfileField) => ({
+        name: field.name,
+        value: value(field),
+        verified_at: null,
+    });
+
+    return {
+        id: row.id,
+        display_name: row.display_name,
+        note: row.note,
+        fields: row.fields.map(field((field) => field.value)),
+        formatted_note: account.note,
+        formatted_fields: row.fields.map(field((field) => field.value_html)),
+        avatar: own(row.avatar_id, account.avatar),
+        avatar_static: own(row.avatar_id, account.avatar_static),
+        avatar_description: account.avatar_description,
+        header: own(row.header_id, account.header),
+        header_static: own(row.header_id, account.header_static),
+        header_description: account.header_description,
+        locked: row.locked,
+        bot: row.bot,
+        discoverable: row.discoverable,
+        indexable: row.indexable,
+        hide_collections: row.hide_collections,
+        show_media: row.show_media,
+        show_media_replies: row.show_media_replies,
+        show_featured: row.show_featured,
+        attribution_domains: row.attribution_domains,
+        featured_tags: [...featuredTags],
+    };
+};
 
 /**
  * A user's preferences. Verso keeps only those for posting; the others are Mastodon's defaults, and

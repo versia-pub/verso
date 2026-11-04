@@ -101,6 +101,8 @@ const configuration = (
         max_pinned_statuses: pinLimit,
         max_display_name_length: limits.display_name,
         max_note_length: limits.note,
+        max_avatar_description_length: limits.media_description,
+        max_header_description_length: limits.media_description,
         max_profile_fields: limits.fields,
         profile_field_name_limit: limits.field_name,
         profile_field_value_limit: limits.field_value,
@@ -174,7 +176,10 @@ export const renderInstance = async (
         source_url: sourceUrl,
         description: instance.description,
         usage: { users: { active_month: stats.activeMonth } },
-        thumbnail: { url: ctx.urls.url`/instance/thumbnail.png` },
+        thumbnail: {
+            url: ctx.urls.url`/instance/thumbnail.png`,
+            description: "A pattern generated from the instance's domain name.",
+        },
         icon: [],
         languages: [],
         configuration: configuration(

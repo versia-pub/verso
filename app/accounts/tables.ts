@@ -52,6 +52,12 @@ export type AccountsTable = {
     indexable: Generated<boolean>;
     /** Whether its followers and following are hidden from others. */
     hide_collections: Generated<boolean>;
+    /** Whether its profile has a media tab. */
+    show_media: Generated<boolean>;
+    /** Whether that tab includes replies. */
+    show_media_replies: Generated<boolean>;
+    /** Whether its profile has a tab of featured accounts and hashtags. */
+    show_featured: Generated<boolean>;
     /** The domains whose pages may credit the account as their author. */
     attribution_domains: Generated<string[]>;
 

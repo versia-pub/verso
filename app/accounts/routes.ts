@@ -1,4 +1,4 @@
-import { Account, CredentialAccount, Preferences } from "@versia/client-api";
+import { Account, CredentialAccount, Preferences, Profile } from "@versia/client-api";
 import { z } from "zod";
 import { emojisOfAccounts } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
@@ -9,12 +9,14 @@ import { DomainName, type Limits, type MediaLimits } from "../kernel/config_sect
 import { countFollowRequests } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { MediaDescription } from "../media/routes.ts";
+import { featuredTagsOf } from "../tags/featured_tag_queries.ts";
+import { renderFeaturedTags } from "../tags/render.ts";
 import { type AccountRow, findAccount } from "./account_queries.ts";
 import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { pictureRoutes } from "./picture_routes.ts";
-import { updateProfile } from "./profile.ts";
+import { type ProfileChanges, updateProfile } from "./profile.ts";
 import { publicAccount, publicAccounts } from "./public.ts";
-import { renderCredentialAccount, renderPreferences } from "./render.ts";
+import { renderCredentialAccount, renderPreferences, renderProfile } from "./render.ts";
 import { rolesOf } from "./role_queries.ts";
 
 const found = (row: AccountRow | undefined) => {
@@ -34,6 +36,14 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
         await countFollowRequests(ctx, row.id),
     );
 };
+
+/** The viewer's own profile, as they wrote it, with the hashtags they feature. */
+const ownProfile = async (ctx: Context, viewer: RouteViewer & { readonly accountId: string }) =>
+    renderProfile(
+        ctx,
+        found(await findAccount(ctx, viewer.accountId)),
+        await renderFeaturedTags(ctx, await featuredTagsOf(ctx, viewer.accountId)),
+    );
 
 /** The most domains an account may name as able to credit it, as Mastodon allows. */
 const maxAttributionDomains = 100;
@@ -63,6 +73,23 @@ const AttributionDomains = Strings
 
 /** Room for the form's other fields and boundaries, besides the pictures. */
 const formBytes = 64 * 1024;
+
+/** What `update_credentials` or `PATCH /api/v1/profile` sets, as `updateProfile` takes it. */
+const profileUpdate = (
+    body: Omit<z.output<ReturnType<typeof credentialChanges>>, "source">,
+): ProfileChanges => ({
+    displayName: body.display_name,
+    note: body.note,
+    fields: body.fields_attributes,
+    locked: body.locked,
+    bot: body.bot,
+    discoverable: body.discoverable,
+    indexable: body.indexable,
+    hideCollections: body.hide_collections,
+    attributionDomains: body.attribution_domains,
+    avatar: { file: body.avatar, description: body.avatar_description },
+    header: { file: body.header, description: body.header_description },
+});
 
 /**
  * What `update_credentials` changes, within `limits`, with pictures at most as large as `media`
@@ -111,6 +138,18 @@ const credentialChanges = (media: MediaLimits, limits: Limits) => {
 };
 
 /**
+ * What `PATCH /api/v1/profile` changes: what `update_credentials` does, except the defaults for new
+ * statuses, and which tabs the profile shows.
+ * @see https://docs.joinmastodon.org/methods/profile/#update
+ */
+const profileChanges = (media: MediaLimits, limits: Limits) =>
+    credentialChanges(media, limits).omit({ source: true }).extend({
+        show_media: Flag.optional(),
+        show_media_replies: Flag.optional(),
+        show_featured: Flag.optional(),
+    });
+
+/**
  * Accounts, and the default pictures of accounts without their own, with profiles held to `limits`
  * and pictures to `media`.
  */
@@ -140,20 +179,10 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
         responses: { 200: CredentialAccount },
         handler: async (ctx, { viewer, body }) => {
             await updateProfile(ctx, viewer.accountId, {
-                displayName: body.display_name,
-                note: body.note,
-                fields: body.fields_attributes,
-                locked: body.locked,
-                bot: body.bot,
-                discoverable: body.discoverable,
-                indexable: body.indexable,
-                hideCollections: body.hide_collections,
-                attributionDomains: body.attribution_domains,
+                ...profileUpdate(body),
                 defaultVisibility: body.source?.privacy,
                 defaultSensitive: body.source?.sensitive,
                 defaultLanguage: body.source?.language,
-                avatar: { file: body.avatar, description: body.avatar_description },
-                header: { file: body.header, description: body.header_description },
             });
 
             return { status: 200, body: await ownAccount(ctx, viewer) };
@@ -226,6 +255,39 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
             status: 200,
             body: renderPreferences(found(await findAccount(ctx, viewer.accountId))),
         }),
+    }),
+    defineRoute({
+        method: "GET",
+        path: "/api/v1/profile",
+        summary: "View profile",
+        description: "Get the user's own profile, as they wrote it, for editing.",
+        docs: "https://docs.joinmastodon.org/methods/profile/#get",
+        tags: ["accounts"],
+        auth: { require: "user", scope: "profile" },
+        responses: { 200: Profile },
+        handler: async (ctx, { viewer }) => ({ status: 200, body: await ownProfile(ctx, viewer) }),
+    }),
+    defineRoute({
+        method: "PATCH",
+        path: "/api/v1/profile",
+        summary: "Update profile",
+        description: "Update the user's own profile.",
+        docs: "https://docs.joinmastodon.org/methods/profile/#update",
+        tags: ["accounts"],
+        auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
+        maxBodyBytes: 2 * media.max_upload_bytes + formBytes,
+        body: profileChanges(media, limits),
+        responses: { 200: Profile },
+        handler: async (ctx, { viewer, body }) => {
+            await updateProfile(ctx, viewer.accountId, {
+                ...profileUpdate(body),
+                showMedia: body.show_media,
+                showMediaReplies: body.show_media_replies,
+                showFeatured: body.show_featured,
+            });
+
+            return { status: 200, body: await ownProfile(ctx, viewer) };
+        },
     }),
     ...(["avatar", "header"] as const).map((picture) =>
         defineRoute({

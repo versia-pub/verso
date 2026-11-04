@@ -50,6 +50,7 @@ export type {
     FollowOptions,
     MuteOptions,
     ProfileChanges,
+    ProfileUpdate,
 } from "./client/accounts.ts";
 export type { EmojiChanges, EmojiDraft } from "./client/emojis.ts";
 export type { FilterInput, KeywordAttributes, KeywordInput } from "./client/filters.ts";

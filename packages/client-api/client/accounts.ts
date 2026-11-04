@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { Account, CredentialAccount, FamiliarFollowers, type Visibility } from "../account.ts";
+import {
+    Account,
+    CredentialAccount,
+    FamiliarFollowers,
+    Profile,
+    type Visibility,
+} from "../account.ts";
 import { Preferences } from "../preferences.ts";
 import { Relationship } from "../relationship.ts";
 import { List } from "../list.ts";
@@ -74,6 +80,16 @@ export type ProfileChanges = {
     };
 };
 
+/** Changes to the viewer's profile. What is omitted stays as it was. */
+export type ProfileUpdate = Omit<ProfileChanges, "source"> & {
+    /** Whether the profile has a media tab. */
+    readonly show_media?: boolean;
+    /** Whether that tab includes replies. */
+    readonly show_media_replies?: boolean;
+    /** Whether the profile has a tab of featured accounts and hashtags. */
+    readonly show_featured?: boolean;
+};
+
 /** How to follow an account. What is omitted stays as it was, if the viewer already follows it. */
 export type FollowOptions = {
     /** Whether its shares show in the home timeline. Defaults to `true`. */
@@ -126,6 +142,27 @@ export class AccountMethods {
         const pictures = changes.avatar !== undefined || changes.header !== undefined;
 
         return this.http.json(CredentialAccount, "PATCH", "/api/v1/accounts/update_credentials", {
+            ...options,
+            ...pictures ? { form: changes } : { json: changes },
+        });
+    }
+
+    /**
+     * The viewer's own profile, as they wrote it.
+     * @see https://docs.joinmastodon.org/methods/profile/#get
+     */
+    profile(options?: CallOptions): Promise<Profile> {
+        return this.http.json(Profile, "GET", "/api/v1/profile", options);
+    }
+
+    /**
+     * Changes the viewer's profile. Sent as a form if it has a picture, and as JSON if not.
+     * @see https://docs.joinmastodon.org/methods/profile/#update
+     */
+    updateProfile(changes: ProfileUpdate, options?: CallOptions): Promise<Profile> {
+        const pictures = changes.avatar !== undefined || changes.header !== undefined;
+
+        return this.http.json(Profile, "PATCH", "/api/v1/profile", {
             ...options,
             ...pictures ? { form: changes } : { json: changes },
         });

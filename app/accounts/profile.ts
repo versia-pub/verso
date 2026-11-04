@@ -43,6 +43,9 @@ export type ProfileChanges = {
     readonly discoverable?: boolean;
     readonly indexable?: boolean;
     readonly hideCollections?: boolean;
+    readonly showMedia?: boolean;
+    readonly showMediaReplies?: boolean;
+    readonly showFeatured?: boolean;
     /** The domains whose pages may credit the account, all of them, replacing the old ones. */
     readonly attributionDomains?: readonly string[];
     readonly defaultVisibility?: Visibility;
@@ -136,6 +139,9 @@ export const updateProfile = async (
         discoverable: changes.discoverable,
         indexable: changes.indexable,
         hide_collections: changes.hideCollections,
+        show_media: changes.showMedia,
+        show_media_replies: changes.showMediaReplies,
+        show_featured: changes.showFeatured,
         attribution_domains: changes.attributionDomains && [...changes.attributionDomains],
         default_visibility: changes.defaultVisibility,
         default_sensitive: changes.defaultSensitive,

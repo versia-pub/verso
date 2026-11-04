@@ -74,6 +74,8 @@ There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/accounts/familiar_followers`         | ✅    |                                   |
 | `GET /api/v1/accounts/search`                     | ✅    |                                   |
 | `GET /api/v1/accounts/lookup`                     | ✅    |                                   |
+| `GET /api/v1/profile`                             | ✅    |                                   |
+| `PATCH /api/v1/profile`                           | ✅    |                                   |
 | `DELETE /api/v1/profile/avatar`                   | ✅    |                                   |
 | `DELETE /api/v1/profile/header`                   | ✅    |                                   |
 | `GET /api/v1/favourites`                          | ✅    |                                   |

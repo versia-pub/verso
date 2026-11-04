@@ -67,7 +67,10 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
         source_url: "https://github.com/versia-pub/verso",
         description: "",
         usage: { users: { active_month: 0 } },
-        thumbnail: { url: "https://social.example/instance/thumbnail.png" },
+        thumbnail: {
+            url: "https://social.example/instance/thumbnail.png",
+            description: "A pattern generated from the instance's domain name.",
+        },
         icon: [],
         languages: [],
         configuration: {
@@ -78,6 +81,8 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
                 max_pinned_statuses: 5,
                 max_display_name_length: 60,
                 max_note_length: 10_000,
+                max_avatar_description_length: 4000,
+                max_header_description_length: 4000,
                 max_profile_fields: 16,
                 profile_field_name_limit: 255,
                 profile_field_value_limit: 255,
@@ -188,6 +193,8 @@ registration = { claim = "groups", contains = "verso" }
     assertEquals(instance.title, "Example Social");
     assertEquals(instance.description, "A place to talk.");
     assertEquals(instance.configuration.accounts.max_profile_fields, 4);
+    assertEquals(instance.configuration.accounts.max_avatar_description_length, 500);
+    assertEquals(instance.configuration.accounts.max_header_description_length, 500);
     assertEquals(instance.configuration.statuses.max_characters, 1000);
     assertEquals(instance.configuration.statuses.max_media_attachments, 2);
     assertEquals(instance.configuration.media_attachments.description_limit, 500);
