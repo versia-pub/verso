@@ -57,13 +57,13 @@ remote = "authenticated"
     });
 });
 
-Deno.test("an instance with no settings goes by its domain, and claims Mastodon 4.4", async () => {
+Deno.test("an instance with no settings goes by its domain, and claims Mastodon 4.7", async () => {
     await using test = await open();
 
     assertEquals(await test.get(), {
         domain: "social.example",
         title: "social.example",
-        version: "4.6.0 (compatible; Verso 0.0.0)",
+        version: "4.7.0 (compatible; Verso 0.0.0)",
         source_url: "https://github.com/versia-pub/verso",
         description: "",
         usage: { users: { active_month: 0 } },
@@ -130,7 +130,7 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
             message: "<p>This instance isn&#39;t taking new accounts.</p>",
             url: null,
         },
-        api_versions: { mastodon: 10 },
+        api_versions: { mastodon: 11 },
         contact: { email: "", account: null },
         rules: [],
     });
@@ -322,7 +322,7 @@ rules = [{ text = "Be kind", hint = "Always" }]
         short_description: "A place to talk.\n\nAnd <listen>.",
         description: "<p>A place to talk.</p><p>And &lt;listen&gt;.</p>",
         email: "admin@social.example",
-        version: "4.6.0 (compatible; Verso 0.0.0)",
+        version: "4.7.0 (compatible; Verso 0.0.0)",
         urls: { streaming_api: "wss://social.example" },
         stats: { user_count: 2, status_count: 2, domain_count: 1 },
         thumbnail: "https://social.example/instance/thumbnail.png",

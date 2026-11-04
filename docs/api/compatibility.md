@@ -1,7 +1,8 @@
 # Mastodon API compatibility
 
-Verso reports itself as Mastodon 4.6.0, so apps enable that version's features. This page compares
-Verso with [Mastodon 4.3's API](https://docs.joinmastodon.org/methods/), method by method.
+Verso reports itself as Mastodon 4.7.0, so apps enable that version's features. This page compares
+Verso with [Mastodon's API](https://docs.joinmastodon.org/methods/) up to version 4.7, method by
+method.
 
 - ✅ works as on Mastodon.
 - 🟡 works, with what's missing or different in the notes.
@@ -142,6 +143,21 @@ There's no admin API: admins use `verso admin` instead.
 | Polls (2 methods)                                   | ✅    |                                |
 | Scheduled statuses (4 methods)                      | ✅    |                                |
 
+## Left out from Mastodon 4.4 to 4.7
+
+These newer parts of Mastodon's API aren't in Verso. Apps get a `404`.
+
+- ❌ Collections, from 4.6.
+- ❌ `GET /api/v1_alpha/async_refreshes/:id` and the `Mastodon-Async-Refresh` header, from 4.4.
+- ❌ Annual reports, from 4.4.
+- ❌ Email subscriptions, from 4.6.
+- ❌ Donation campaigns, from 4.4.
+- ❌ The `standard` flag on push subscriptions and the OAuth `userinfo` endpoint, from 4.4.
+- ❌ The `untrusted_*` counts of remote accounts.
+
+Verso doesn't delete or suspend accounts, and it keeps remote handles as they are, so `suspended`
+and `invalid_handle` are never set on an account.
+
 ## Timelines
 
 | Method                                  | Verso | Notes                                 |
@@ -214,6 +230,7 @@ There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/instance/rules`                 | ✅    |                              |
 | `GET /api/v1/instance/extended_description`  | ✅    |                              |
 | `GET /api/v1/instance/privacy_policy`        | ✅    |                              |
+| `GET /api/v1/instance/terms_of_service`      | ✅    | Also `/:date`                |
 | `GET /api/v1/instance/peers`                 | ✅    |                              |
 | `GET /api/v1/instance/activity`              | 🟡    | Logins are counted by tokens |
 | `GET /api/v1/instance/domain_blocks`         | ✅    |                              |
@@ -236,11 +253,10 @@ There's no admin API: admins use `verso admin` instead.
 Verso doesn't implement Mastodon's admin API (`/api/v1/admin/…` and `/api/v2/admin/…`). Admins use
 the [`verso admin` commands](../admin/commands.md) instead.
 
-## Beyond Mastodon 4.3
+## Beyond Mastodon
 
 Verso also has:
 
-- `GET /api/v1/instance/terms_of_service`, also by date, from Mastodon 4.4
 - roles, with `/api/v1/roles` and `/api/v1/accounts/:id/roles`, from Versia Server
 - custom emoji management, with `/api/v1/emojis`, from Versia Server
 - reactions to statuses, with `reactions` on each status and `/api/v1/statuses/:id/reactions`, from
