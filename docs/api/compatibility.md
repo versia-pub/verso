@@ -1,6 +1,6 @@
 # Mastodon API compatibility
 
-Verso reports itself as Mastodon 4.5.0, so apps enable that version's features. This page compares
+Verso reports itself as Mastodon 4.6.0, so apps enable that version's features. This page compares
 Verso with [Mastodon 4.3's API](https://docs.joinmastodon.org/methods/), method by method.
 
 - ✅ works as on Mastodon.
@@ -52,7 +52,7 @@ There's no admin API: admins use `verso admin` instead.
 | `PATCH /api/v1/accounts/update_credentials`       | ✅    |                                   |
 | `GET /api/v1/accounts/:id`                        | ✅    |                                   |
 | `GET /api/v1/accounts`                            | ✅    | Several accounts by id            |
-| `GET /api/v1/accounts/:id/statuses`               | ✅    |                                   |
+| `GET /api/v1/accounts/:id/statuses`               | ✅    | With `exclude_direct`             |
 | `GET /api/v1/accounts/:id/followers`              | ✅    |                                   |
 | `GET /api/v1/accounts/:id/following`              | ✅    |                                   |
 | `GET /api/v1/accounts/:id/featured_tags`          | 🟡    | Remote accounts have none         |

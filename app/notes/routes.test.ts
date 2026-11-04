@@ -366,6 +366,23 @@ Deno.test("an account's statuses may leave out replies to others or shares, or b
     assertEquals(await statuses("?exclude_reblogs=true"), [toBob.id, toSelf.id, own.id]);
 });
 
+Deno.test("an account's statuses may leave out direct ones, which only its owner sees anyway", async () => {
+    await using test = await open();
+    const everyone = await createNote(test.ctx, "alice", { visibility: "public" });
+    const followers = await createNote(test.ctx, "alice", { visibility: "private" });
+    const direct = await createNote(test.ctx, "alice", { visibility: "direct" }, ["dave"]);
+    const statuses = async (query: string, as: string | null = "alice") =>
+        (await test.request("GET", `/api/v1/accounts/alice/statuses${query}`, as)).body
+            .map((status: { id: string }) => status.id);
+
+    assertEquals(await statuses(""), [direct.id, followers.id, everyone.id]);
+    assertEquals(await statuses("?exclude_direct=true"), [followers.id, everyone.id]);
+    assertEquals(await statuses("?exclude_direct=false"), [direct.id, followers.id, everyone.id]);
+    assertEquals(await statuses("?exclude_direct=true&exclude_reblogs=true&only_media=true"), []);
+    assertEquals(await statuses("?exclude_direct=true", "dave"), [everyone.id]);
+    assertEquals(await statuses("", "dave"), [everyone.id]);
+});
+
 Deno.test("a status's history is given to whoever may see it", async () => {
     await using test = await open();
     const everyone = await createNote(test.ctx, "alice");

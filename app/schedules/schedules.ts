@@ -7,7 +7,7 @@ import { lockKey } from "../db/locking.ts";
 import { NotFound, Unprocessable } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
 import { reserve } from "../media/attachments.ts";
-import { type Draft, mediaOrPoll } from "../notes/notes.ts";
+import type { Draft } from "../notes/notes.ts";
 import { quotableNote } from "../notes/quotes.ts";
 import { visibleOriginal } from "../notes/visibility.ts";
 import {
@@ -74,7 +74,6 @@ export const scheduleNote = (
 
         // Each once, as they are reserved and attached.
         const mediaIds = [...new Set(params.media_ids ?? [])];
-        mediaOrPoll(mediaIds.length > 0, params.poll !== null);
         const replyTo = params.in_reply_to_id;
         if (replyTo !== null && await visibleOriginal(tx, replyTo, accountId) === undefined) {
             return undefined;

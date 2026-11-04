@@ -18,6 +18,7 @@ import { Page, type PageQuery } from "./pages.ts";
 export type AccountStatusesQuery = PageQuery & {
     readonly exclude_replies?: boolean;
     readonly exclude_reblogs?: boolean;
+    readonly exclude_direct?: boolean;
     readonly only_media?: boolean;
     /** Only those pinned to the profile. */
     readonly pinned?: boolean;

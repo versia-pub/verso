@@ -6,9 +6,16 @@ import type { CardWithImage } from "./card_queries.ts";
 /**
  * A card as Mastodon's API renders it. It is always a link: Verso makes no embeds. Its image is
  * the stored copy, once processed. `url` is the link to show: for a status, the one it wrote.
+ * Signed-in viewers, `viewerId`, also get `missing_attribution`, which is always false: Verso
+ * doesn't read `fediverse:creator`.
  * @see https://docs.joinmastodon.org/entities/PreviewCard/
  */
-export const renderCard = (ctx: Context, card: CardWithImage, url: string): PreviewCard => {
+export const renderCard = (
+    ctx: Context,
+    card: CardWithImage,
+    url: string,
+    viewerId: string | null,
+): PreviewCard => {
     const image = card.image?.sha256 ? card.image : undefined;
 
     return {
@@ -32,5 +39,6 @@ export const renderCard = (ctx: Context, card: CardWithImage, url: string): Prev
         embed_url: "",
         blurhash: image?.blurhash ?? null,
         published_at: card.published_at?.toISOString() ?? null,
+        ...viewerId === null ? {} : { missing_attribution: false },
     };
 };

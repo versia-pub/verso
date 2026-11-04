@@ -7127,7 +7127,7 @@
                                                                 }
                                                             }
                                                         ],
-                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                        "description": "Possible answers to the poll. If provided, `poll[expires_in]` must be provided."
                                                     },
                                                     "expires_in": {
                                                         "anyOf": [
@@ -7141,7 +7141,7 @@
                                                                 "pattern": "^-?\\d+$"
                                                             }
                                                         ],
-                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `poll[options]` must be provided."
                                                     },
                                                     "multiple": {
                                                         "description": "Allow multiple choices? Defaults to false.",
@@ -7295,7 +7295,7 @@
                                                                 }
                                                             }
                                                         ],
-                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                        "description": "Possible answers to the poll. If provided, `poll[expires_in]` must be provided."
                                                     },
                                                     "expires_in": {
                                                         "anyOf": [
@@ -7309,7 +7309,7 @@
                                                                 "pattern": "^-?\\d+$"
                                                             }
                                                         ],
-                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `poll[options]` must be provided."
                                                     },
                                                     "multiple": {
                                                         "description": "Allow multiple choices? Defaults to false.",
@@ -7463,7 +7463,7 @@
                                                                 }
                                                             }
                                                         ],
-                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                        "description": "Possible answers to the poll. If provided, `poll[expires_in]` must be provided."
                                                     },
                                                     "expires_in": {
                                                         "anyOf": [
@@ -7477,7 +7477,7 @@
                                                                 "pattern": "^-?\\d+$"
                                                             }
                                                         ],
-                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `poll[options]` must be provided."
                                                     },
                                                     "multiple": {
                                                         "description": "Allow multiple choices? Defaults to false.",
@@ -7798,7 +7798,7 @@
                                                                 }
                                                             }
                                                         ],
-                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                        "description": "Possible answers to the poll. If provided, `poll[expires_in]` must be provided."
                                                     },
                                                     "expires_in": {
                                                         "anyOf": [
@@ -7812,7 +7812,7 @@
                                                                 "pattern": "^-?\\d+$"
                                                             }
                                                         ],
-                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `poll[options]` must be provided."
                                                     },
                                                     "multiple": {
                                                         "description": "Allow multiple choices? Defaults to false.",
@@ -7951,7 +7951,7 @@
                                                                 }
                                                             }
                                                         ],
-                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                        "description": "Possible answers to the poll. If provided, `poll[expires_in]` must be provided."
                                                     },
                                                     "expires_in": {
                                                         "anyOf": [
@@ -7965,7 +7965,7 @@
                                                                 "pattern": "^-?\\d+$"
                                                             }
                                                         ],
-                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `poll[options]` must be provided."
                                                     },
                                                     "multiple": {
                                                         "description": "Allow multiple choices? Defaults to false.",
@@ -8104,7 +8104,7 @@
                                                                 }
                                                             }
                                                         ],
-                                                        "description": "Possible answers to the poll. If provided, `media_ids` cannot be used, and `poll[expires_in]` must be provided."
+                                                        "description": "Possible answers to the poll. If provided, `poll[expires_in]` must be provided."
                                                     },
                                                     "expires_in": {
                                                         "anyOf": [
@@ -8118,7 +8118,7 @@
                                                                 "pattern": "^-?\\d+$"
                                                             }
                                                         ],
-                                                        "description": "Duration that the poll should be open, in seconds. If provided, `media_ids` cannot be used, and `poll[options]` must be provided."
+                                                        "description": "Duration that the poll should be open, in seconds. If provided, `poll[options]` must be provided."
                                                     },
                                                     "multiple": {
                                                         "description": "Allow multiple choices? Defaults to false.",
@@ -8397,6 +8397,17 @@
                     },
                     {
                         "name": "exclude_reblogs",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "exclude_direct",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -21713,6 +21724,9 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "missing_attribution": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -23183,6 +23197,9 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "missing_attribution": {
+                        "type": "boolean"
                     },
                     "history": {
                         "type": "array",

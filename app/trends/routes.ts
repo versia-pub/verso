@@ -114,7 +114,7 @@ export const trendRoutes = (
             auth: { require: "optional", permission: "read:note" },
             query: tagsQuery,
             responses: { 200: Offset(TrendsLink) },
-            handler: async (ctx, { query }) => {
+            handler: async (ctx, { query, viewer }) => {
                 const cards = instance.show_trends
                     ? (await approvedTrendingCards(ctx, instance.trendable_by_default))
                         .slice(query.offset, query.offset + query.limit)
@@ -122,7 +122,7 @@ export const trendRoutes = (
 
                 return {
                     status: 200,
-                    body: await renderTrendingLinks(ctx, cards),
+                    body: await renderTrendingLinks(ctx, cards, viewer?.accountId ?? null),
                     offsets: offsetsOf(cards.length, query.offset, query.limit),
                 };
             },

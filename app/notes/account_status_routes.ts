@@ -19,6 +19,7 @@ import { z } from "zod";
 const AccountStatusesQuery = PageQuery({ default: 20, max: 40 }).extend({
     exclude_replies: Flag.default(false),
     exclude_reblogs: Flag.default(false),
+    exclude_direct: Flag.default(false),
     only_media: Flag.default(false),
     pinned: Flag.default(false),
     tagged: z.string().optional(),
@@ -41,7 +42,10 @@ export const accountStatusesRoute = defineRoute({
         const account = await findAccount(ctx, params.id);
         if (account === undefined) throw new NotFound();
 
-        const visibilities = await visibilitiesFor(ctx, account.id, viewerId);
+        const seen = await visibilitiesFor(ctx, account.id, viewerId);
+        const visibilities = query.exclude_direct
+            ? seen.filter((visibility) => visibility !== "direct")
+            : seen;
         if (query.pinned) {
             const pinned = await pinnedNotes(ctx, account.id, visibilities, query.only_media);
             return {

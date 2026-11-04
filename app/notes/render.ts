@@ -187,7 +187,7 @@ export const renderStatuses = async (
     const cards = new Map(
         [...await cardsOf(ctx, noteIds)].map((
             [id, card],
-        ) => [id, renderCard(ctx, card, card.link)]),
+        ) => [id, renderCard(ctx, card, card.link, viewerId)]),
     );
     const filters = viewerId === null
         ? undefined

@@ -75,7 +75,7 @@ export type Draft = {
     readonly quotedStatusId?: string;
     /** The uploads attached to it, in order, which {@link attach} validates. */
     readonly mediaIds?: readonly string[];
-    /** A poll, which a status with media can't have. */
+    /** A poll. */
     readonly poll?: PollDraft;
 };
 
@@ -140,11 +140,6 @@ const useEmojis = async (
     await setNoteEmojis(ctx, note.id, await usableEmojiIds(ctx, note.account_id, [...shortcodes]));
 };
 
-/** Refuses a status that would have both media and a poll, as Mastodon does. */
-export const mediaOrPoll = (media: boolean, poll: boolean): void => {
-    if (media && poll) throw new Unprocessable("A status can't have both media and a poll");
-};
-
 /** A draft with the accounts it mentions looked up, ready to post. */
 export type PreparedDraft = {
     readonly draft: Draft;
@@ -157,7 +152,6 @@ export type PreparedDraft = {
  * fetching from remote instances.
  */
 export const prepareDraft = async (ctx: Context, draft: Draft): Promise<PreparedDraft> => {
-    mediaOrPoll((draft.mediaIds ?? []).length > 0, draft.poll !== undefined);
     const found = scanText(draft.text, draft.format);
 
     return { draft, found, accounts: await mentioned(ctx, found.mentions) };
@@ -311,10 +305,6 @@ export const editNote = async (
         const media = await attachedTo(tx, note.id);
         const mediaChanges = edit.mediaChanges ?? [];
         const poll = await pollOf(tx, note.id);
-        mediaOrPoll(
-            (edit.mediaIds ?? media).length > 0,
-            edit.poll === undefined ? poll !== undefined : edit.poll !== null,
-        );
         const same = changes.content === note.content &&
             changes.content_format === note.content_format &&
             changes.spoiler_text === note.spoiler_text && changes.sensitive === note.sensitive &&

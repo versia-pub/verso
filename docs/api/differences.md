@@ -42,7 +42,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 
 - Every card has the type `link`. Verso doesn't make video or rich embeds, or use oEmbed, so `html`
   and `embed_url` are empty.
-- `authors` has the page's author but no `account`: Verso doesn't look up `fediverse:creator`.
+- `authors` has the page's author but no `account`: Verso doesn't look up `fediverse:creator`, so
+  `missing_attribution`, which signed-in viewers get, is always `false`.
 - Pages are read as UTF-8 unless the response or the page names another charset. Mastodon also
   guesses it from the bytes.
 - A card's image is downloaded and stored by Verso, scaled to fit 640×360. A page's image that is

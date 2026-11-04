@@ -219,6 +219,10 @@ Deno.test("trending links are listed with their history, and their url opens the
     assertEquals(body[0].history.length, 7);
     assertEquals(body[0].history[0], { day: "1767225600", accounts: "5", uses: "5" });
     assertEquals(body[0].history[1], { day: "1767139200", accounts: "0", uses: "0" });
+    // Only signed-in viewers get `missing_attribution`.
+    assertEquals("missing_attribution" in body[0], false);
+    const signedIn = await test.call("/api/v1/trends/links", await tokenFor(test.ctx, "alice"));
+    assertEquals(signedIn.body[0].missing_attribution, false);
 
     const timeline = await test.call(
         `/api/v1/timelines/link?url=${encodeURIComponent(body[0].url)}`,
@@ -229,6 +233,12 @@ Deno.test("trending links are listed with their history, and their url opens the
         [test.notes.e, test.notes.d, test.notes.c, test.notes.b, test.notes.alice],
     );
     assertEquals(timeline.body[0].card.url, cardUrl);
+    assertEquals("missing_attribution" in timeline.body[0].card, false);
+    const asAlice = await test.call(
+        `/api/v1/timelines/link?url=${encodeURIComponent(body[0].url)}`,
+        await tokenFor(test.ctx, "alice"),
+    );
+    assertEquals(asAlice.body[0].card.missing_attribution, false);
 });
 
 Deno.test("a link's timeline needs a user where hashtag and link timelines are not public", async () => {

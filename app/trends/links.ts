@@ -27,11 +27,12 @@ const dayLength = 24 * 60 * 60 * 1000;
 /**
  * The cards `cards` as Mastodon renders trending links: with how they were shared on each of the
  * past week's days, today first, in UTC. A link's `url` is its card's, which is what the link
- * timeline looks cards up by.
+ * timeline looks cards up by. `viewerId` is who sees them, if signed in.
  */
 export const renderTrendingLinks = async (
     ctx: Context,
     cards: readonly TrendingCard[],
+    viewerId: string | null,
 ): Promise<TrendsLink[]> => {
     const today = Math.floor(ctx.clock.now().getTime() / dayLength) * dayLength;
     const days = Array.from({ length: 7 }, (_, i) => new Date(today - i * dayLength));
@@ -41,7 +42,7 @@ export const renderTrendingLinks = async (
     );
 
     return (await withImages(ctx, cards)).map((card) => ({
-        ...renderCard(ctx, card, card.url),
+        ...renderCard(ctx, card, card.url, viewerId),
         history: days.map((day, i) => {
             const used = uses.get(`${card.id} ${i}`);
             return {

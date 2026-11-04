@@ -58,8 +58,8 @@ const PollDraft = (limits: Limits) =>
                     }),
             )
             .meta({
-                description: "Possible answers to the poll. If provided, `media_ids` cannot be " +
-                    "used, and `poll[expires_in]` must be provided.",
+                description:
+                    "Possible answers to the poll. If provided, `poll[expires_in]` must be provided.",
             }),
         expires_in: Integer.pipe(
             z.int()
@@ -71,7 +71,7 @@ const PollDraft = (limits: Limits) =>
                 }),
         ).meta({
             description: "Duration that the poll should be open, in seconds. If provided, " +
-                "`media_ids` cannot be used, and `poll[options]` must be provided.",
+                "`poll[options]` must be provided.",
         }),
         multiple: Flag.default(false).meta({
             description: "Allow multiple choices? Defaults to false.",

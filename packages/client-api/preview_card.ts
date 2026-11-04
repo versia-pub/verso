@@ -47,6 +47,11 @@ export const PreviewCard = z.object({
     blurhash: z.string().nullable(),
     /** When the page was published, or `null` if it doesn't say. */
     published_at: z.iso.datetime().nullable(),
+    /**
+     * Whether the page names the viewer as its author without their allowing its website to. Only
+     * sent to signed-in viewers, and always false on Verso.
+     */
+    missing_attribution: z.boolean().optional(),
 });
 export type PreviewCard = z.infer<typeof PreviewCard>;
 

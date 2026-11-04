@@ -4,6 +4,7 @@ import { tokenFor } from "../auth/testing.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { queues, tasks } from "../jobs/queues.ts";
 import { removeUnusedMedia } from "../media/cleanup.ts";
+import { attachmentsOf } from "../media/attachment_queries.ts";
 import { findMedia } from "../media/media_queries.ts";
 import { mediaRoutes } from "../media/routes.ts";
 import { upload } from "../media/uploads.ts";
@@ -264,25 +265,21 @@ Deno.test("media that is cancelled with its scheduled status is removed as unuse
     assertEquals(await findMedia(test.ctx, file), undefined);
 });
 
-Deno.test("media still being processed, someone else's, or with a poll can't be scheduled", async () => {
+Deno.test("media still being processed or someone else's can't be scheduled", async () => {
     await using test = await open();
-    const [processing, bobs, file] = [
+    const [processing, bobs] = [
         await test.uploaded("alice", true),
         await test.uploaded("bob"),
-        await test.uploaded(),
     ];
-    const poll = { options: ["Yes", "No"], expires_in: 600 };
 
     const errors = [
         await test.schedule(test.inMs(day), { media_ids: [processing] }),
         await test.schedule(test.inMs(day), { media_ids: [bobs] }),
-        await test.schedule(test.inMs(day), { media_ids: [file], poll }),
     ].map((response) => [response.status, response.body.error_description]);
 
     assertEquals(errors, [
         [422, `Media still being processed: ${processing}`],
         [422, `Media not found: ${bobs}`],
-        [422, "A status can't have both media and a poll"],
     ]);
     assertEquals((await test.request("GET", "/api/v1/scheduled_statuses")).body, []);
     assertEquals(await test.ctx.db.selectFrom("scheduled_note_media").selectAll().execute(), []);
@@ -350,6 +347,23 @@ Deno.test("scheduled statuses are listed by id, the last scheduled first, in pag
 
     const next = await test.request("GET", `/api/v1/scheduled_statuses?max_id=${second}`);
     assertEquals(next.body.map((each: { id: string }) => each.id), [first]);
+});
+
+Deno.test("a scheduled status can have media and a poll at once", async () => {
+    await using test = await open();
+    const file = await test.uploaded();
+    const poll = { options: ["Yes", "No"], expires_in: 600 };
+    const scheduled = await test.schedule(test.inMs(60 * minute), { media_ids: [file], poll });
+    assertEquals(scheduled.status, 200);
+
+    await test.publish(60 * minute);
+
+    const [note] = await test.posted();
+    assertEquals((await pollOf(test.ctx, note.id))?.options.length, 2);
+    assertEquals(
+        (await attachmentsOf(test.ctx, [note.id])).get(note.id)?.map((row) => row.id),
+        [file],
+    );
 });
 
 Deno.test("a scheduled status is posted once when due, with its author's defaults then", async () => {

@@ -4,6 +4,7 @@ import { tokenFor } from "../auth/testing.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { defaultSettings } from "../instances/testing.ts";
+import { upload } from "../media/uploads.ts";
 import { noteRoutes } from "../notes/routes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -56,7 +57,14 @@ const open = async () => {
     const poll = async (pollId: string, as: string | null = "alice") =>
         (await request("GET", `/api/v1/polls/${pollId}`, undefined, as)).body;
 
-    return { ...test, request, ask, vote, poll };
+    /** The id of a file `as` uploads, processed at once. */
+    const uploaded = async (as = "alice") =>
+        (await upload(test.ctx, as, {
+            file: new Blob([new Uint8Array([0x50, 0x4b, 0x03, 0x04])]),
+            mediaType: "application/zip",
+        })).id;
+
+    return { ...test, request, ask, vote, poll, uploaded };
 };
 
 /** Each option's title and votes. */
@@ -105,7 +113,27 @@ Deno.test("a status is posted with a poll, which anyone who may see it can view"
     assertEquals((await test.poll(hidden.body.poll.id)).votes_count, 0);
 });
 
-Deno.test("polls are limited as the instance says, and can't come with media", async () => {
+Deno.test("a status can have media and a poll at once", async () => {
+    await using test = await open();
+    const file = await test.uploaded();
+
+    const posted = await test.request("POST", "/api/v1/statuses", {
+        status: "Which?",
+        media_ids: [file],
+        poll: { options: ["a", "b"], expires_in: 600 },
+    });
+    assertEquals(posted.status, 200);
+    assertEquals(posted.body.media_attachments.map((each: { id: string }) => each.id), [file]);
+    assertEquals(posted.body.poll.options.map((each: { title: string }) => each.title), ["a", "b"]);
+
+    const listed = await test.request(
+        "GET",
+        "/api/v1/accounts/alice/statuses?only_media=true",
+    );
+    assertEquals(listed.body.map((each: { id: string }) => each.id), [posted.body.id]);
+});
+
+Deno.test("polls are limited as the instance says", async () => {
     await using test = await open();
     const rejected = async (poll: Record<string, unknown>, extra = {}) => {
         const posted = await test.request("POST", "/api/v1/statuses", {
@@ -134,10 +162,6 @@ Deno.test("polls are limited as the instance says, and can't come with media", a
     assertEquals(await rejected({ expires_in: 2_629_747 }), {
         "body.poll.expires_in": ["Must be at most 2629746 seconds"],
     });
-    assertEquals(
-        await rejected({}, { media_ids: ["1"] }),
-        "A status can't have both media and a poll",
-    );
     assertEquals(
         await rejected({
             options: Array.from({ length: 20 }, (_, i) => `${i}`.padEnd(60, "x")),
@@ -263,10 +287,13 @@ Deno.test("editing a poll keeps its votes unless it asks something else", async 
     assertEquals(tally(other.body.poll), ["Red 0", "Blue 0"]);
     assertEquals((await test.poll(pollId, "bob")).own_votes, []);
 
-    assertEquals(
-        (await edit({ media_ids: ["1"] })).body.error_description,
-        "A status can't have both media and a poll",
-    );
+    // Media can be added to a status with a poll, and removed from it, without touching the poll.
+    const file = await test.uploaded();
+    const withMedia = await edit({ media_ids: [file] });
+    assertEquals(withMedia.body.media_attachments.map((each: { id: string }) => each.id), [file]);
+    assertEquals(withMedia.body.poll.id, pollId);
+    const withoutMedia = await edit({ media_ids: [] });
+    assertEquals([withoutMedia.body.media_attachments, withoutMedia.body.poll.id], [[], pollId]);
     const removed = await edit({ poll: null });
     assertEquals(removed.body.poll, null);
     assertEquals((await test.request("GET", `/api/v1/polls/${pollId}`)).status, 404);
@@ -281,6 +308,9 @@ Deno.test("editing a poll keeps its votes unless it asks something else", async 
             "Red,Blue,Green",
             "Red,Blue,Green",
             "Red,Blue,Green",
+            // The edits that added and removed media.
+            "Red,Blue",
+            "Red,Blue",
             "Red,Blue",
             undefined,
         ],

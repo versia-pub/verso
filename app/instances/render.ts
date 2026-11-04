@@ -41,10 +41,10 @@ export type AboutSettings =
  * The Mastodon version clients are told, which they turn features on by. Raise it as Verso
  * implements what later versions added.
  */
-const mastodonVersion = "4.5.0";
+const mastodonVersion = "4.6.0";
 
-/** The API version Mastodon 4.5 reports. */
-const mastodonApiVersion = 7;
+/** The API version Mastodon 4.6 reports. */
+const mastodonApiVersion = 10;
 
 const sourceUrl = "https://github.com/versia-pub/verso";
 
