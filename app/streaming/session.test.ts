@@ -52,34 +52,33 @@ Deno.test("a client subscribes to streams once each, when it connects or later, 
     assertEquals(sent, []);
 });
 
-Deno.test("a client subscribes only to streams its token's scopes allow, and public ones", () => {
+Deno.test("a client subscribes only to streams its token's scopes allow", () => {
     const { session, sent, send } = open(["read:notifications"]);
     const refused = { error: "Access token does not have the required scopes", status: 401 };
+    const publics = ["", ":media", ":local", ":local:media", ":remote", ":remote:media"].map((
+        variant,
+    ) => `public${variant}`);
 
     send(
         { type: "subscribe", stream: "user" },
         { type: "subscribe", stream: "user:notification" },
-        ...["", ":media", ":local", ":local:media", ":remote", ":remote:media"].map((variant) => ({
-            type: "subscribe",
-            stream: `public${variant}`,
-        })),
+        ...publics.map((stream) => ({ type: "subscribe", stream })),
+        { type: "subscribe", stream: "hashtag", tag: "nix" },
+        { type: "subscribe", stream: "hashtag:local", tag: "nix" },
     );
 
-    assertEquals(session.streams(), [
-        "user:notification",
-        "public",
-        "public:media",
-        "public:local",
-        "public:local:media",
-        "public:remote",
-        "public:remote:media",
-    ]);
-    assertEquals(sent, [refused]);
+    assertEquals(session.streams(), ["user:notification"]);
+    assertEquals(sent, Array(9).fill(refused));
 
-    // A user's statuses, though not their notifications.
+    // A user's statuses and the public ones, though not their notifications.
     const statuses = open(["read:statuses"], { stream: "user:notification" });
-    statuses.send({ type: "subscribe", stream: "user" });
-    assertEquals([statuses.session.streams(), statuses.sent], [["user"], [refused]]);
+    statuses.send(
+        { type: "subscribe", stream: "user" },
+        ...publics.map((stream) => ({ type: "subscribe", stream })),
+        { type: "subscribe", stream: "hashtag", tag: "nix" },
+    );
+    assertEquals(statuses.session.streams(), ["user", ...publics, "hashtag#nix"]);
+    assertEquals(statuses.sent, [refused]);
 });
 
 Deno.test("a client is told of streams that don't exist, once its token could read one", () => {
@@ -127,7 +126,7 @@ Deno.test("messages that aren't JSON, or aren't requests, are ignored, and bytes
 
 Deno.test("a client subscribes to hashtags' streams, whatever their case, if it names them", () => {
     // Public streams.
-    const { session, sent, send } = open(["read:notifications"], { stream: "hashtag", tag: "Nix" });
+    const { session, sent, send } = open(["read:statuses"], { stream: "hashtag", tag: "Nix" });
     const missing = { error: "Missing tag name parameter", status: 400 };
 
     send(

@@ -57,6 +57,8 @@ export const permissions = [
      * need to.
      */
     "blocks",
+    /** View the public timelines even where config disables them. */
+    "feeds",
     /** Add global custom emojis. */
     "emojis",
     /** Create, change and assign roles below one's own. */

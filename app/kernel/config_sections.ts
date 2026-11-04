@@ -290,6 +290,39 @@ export const StreamingLimits = z.strictObject({
 
 export type StreamingLimits = z.infer<typeof StreamingLimits>;
 
+/** Who may see a kind of feed: anyone, only logged-in users, or only those allowed to. */
+export const FeedAccess = z.enum(["public", "authenticated", "disabled"]);
+
+export type FeedAccess = z.infer<typeof FeedAccess>;
+
+/**
+ * Who may see the statuses of other users that are on the instance (`local`) or from other
+ * instances (`remote`), as Mastodon 4.5 lets admins choose.
+ */
+const feeds = (topic: boolean) =>
+    z.strictObject({
+        /** Statuses from this instance's users. */
+        local: (topic ? FeedAccess.exclude(["disabled"]) : FeedAccess).default("public"),
+        /** Statuses from other instances' users. */
+        remote: FeedAccess.default("public"),
+    }).prefault({});
+
+/**
+ * Who may see the public timelines, which logged-out visitors can by default. Accounts whose
+ * roles have the `feeds` permission see them even where they are `disabled`.
+ */
+export const TimelinesAccess = z.strictObject({
+    /** The public timeline and its streams. */
+    live_feeds: feeds(false),
+    /**
+     * The hashtag and trending link timelines and the hashtag streams. As on Mastodon, local ones
+     * can't be disabled.
+     */
+    topic_feeds: feeds(true),
+}).prefault({});
+
+export type TimelinesAccess = z.infer<typeof TimelinesAccess>;
+
 /**
  * How much one search may ask for, so that it can't make Verso do unbounded work. Mastodon has no
  * such limits.

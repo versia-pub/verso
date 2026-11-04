@@ -224,6 +224,19 @@ updated = 2026-10-01
 # query_length = 500
 # max_offset = 10000
 
+[timelines_access.live_feeds]
+# Who may see the public timeline and its streams, by where the statuses are from: "public" for
+# anyone, "authenticated" for logged-in users only, or "disabled" for those whose roles have the
+# `feeds` permission only. Mastodon 4.5 calls these live feeds.
+# local = "public"
+# remote = "public"
+
+[timelines_access.topic_feeds]
+# The same for hashtag timelines, trending link timelines and hashtag streams. Statuses from this
+# instance can't be "disabled".
+# local = "public"
+# remote = "public"
+
 [push]
 # How many seconds a push service has to respond. One that takes longer isn't tried again.
 # timeout_seconds = 10

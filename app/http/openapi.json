@@ -14742,6 +14742,7 @@
                                                 "owner:notification",
                                                 "owner:report",
                                                 "blocks",
+                                                "feeds",
                                                 "emojis",
                                                 "roles"
                                             ]
@@ -14834,6 +14835,7 @@
                                                 "owner:notification",
                                                 "owner:report",
                                                 "blocks",
+                                                "feeds",
                                                 "emojis",
                                                 "roles"
                                             ]
@@ -14926,6 +14928,7 @@
                                                 "owner:notification",
                                                 "owner:report",
                                                 "blocks",
+                                                "feeds",
                                                 "emojis",
                                                 "roles"
                                             ]
@@ -15097,6 +15100,7 @@
                                                 "owner:notification",
                                                 "owner:report",
                                                 "blocks",
+                                                "feeds",
                                                 "emojis",
                                                 "roles"
                                             ]
@@ -15186,6 +15190,7 @@
                                                 "owner:notification",
                                                 "owner:report",
                                                 "blocks",
+                                                "feeds",
                                                 "emojis",
                                                 "roles"
                                             ]
@@ -15275,6 +15280,7 @@
                                                 "owner:notification",
                                                 "owner:report",
                                                 "blocks",
+                                                "feeds",
                                                 "emojis",
                                                 "roles"
                                             ]

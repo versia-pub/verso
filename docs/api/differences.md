@@ -92,6 +92,17 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - Web Push only sends to `https` endpoints. `PUT /api/v1/push/subscription` resets anything it isn't
   given, the same way creating a subscription does.
 
+## Timelines
+
+- Who may see the public, hashtag and trending link timelines is set in `[timelines_access]` in the
+  config, not by an admin in the web interface. Where it says `authenticated` or `disabled`, a
+  request without a user is answered 422, and one from a user without the `feeds` permission is
+  answered with an empty list if the feed is `disabled`, as on Mastodon. The `feeds` permission is
+  Mastodon's `view_feeds`.
+- Hashtag and trending link timelines share one setting, as on Mastodon. A link timeline asks for
+  both local and remote statuses whatever it is sent.
+- Verso has no suspended users, so no stream is closed by one.
+
 ## Search
 
 - Statuses are only searched when the query has a word, a phrase, a hashtag, `from:` or

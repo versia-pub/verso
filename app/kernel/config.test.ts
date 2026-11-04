@@ -106,6 +106,10 @@ Deno.test("a minimal config gets the defaults", async () => {
             },
             streaming: { sockets_per_account: 10, subscriptions: 100, tag_length: 100 },
             search: { query_length: 500, max_offset: 10_000 },
+            timelines_access: {
+                live_feeds: { local: "public", remote: "public" },
+                topic_feeds: { local: "public", remote: "public" },
+            },
             push: { timeout_seconds: 10 },
             jobs: { dead_letter_days: 30 },
             logging: { level: "info" },
@@ -195,6 +199,14 @@ tag_length = 50
 [search]
 query_length = 200
 max_offset = 1000
+
+[timelines_access.live_feeds]
+local = "authenticated"
+remote = "disabled"
+
+[timelines_access.topic_feeds]
+local = "authenticated"
+remote = "authenticated"
 
 [push]
 timeout_seconds = 5
@@ -307,6 +319,10 @@ level = "debug"
             permissions: { anonymous: [], default: ["owner:account"] },
             streaming: { sockets_per_account: 4, subscriptions: 20, tag_length: 50 },
             search: { query_length: 200, max_offset: 1000 },
+            timelines_access: {
+                live_feeds: { local: "authenticated", remote: "disabled" },
+                topic_feeds: { local: "authenticated", remote: "authenticated" },
+            },
             push: { timeout_seconds: 5 },
             jobs: { dead_letter_days: 14 },
             logging: { level: "debug" },
@@ -330,6 +346,29 @@ Deno.test("a rule's translations need a language and a text", async () => {
     assertStringIncludes(await errors(rule('{ fr = { hint = "Toujours" } }')), "text");
     assertStringIncludes(await errors(rule('{ fr = { text = "a", note = "b" } }')), "note");
     assertEquals((await parseConfig(rule('{ fr = { text = "Sois gentil" } }'))).ok, true);
+});
+
+Deno.test("local hashtag timelines can't be disabled, but the others can", async () => {
+    const feeds = (section: string, key: string, access: string) =>
+        `${minimal}[timelines_access.${section}]\n${key} = "${access}"`;
+
+    assertStringIncludes(
+        await errors(feeds("topic_feeds", "local", "disabled")),
+        "timelines_access.topic_feeds.local",
+    );
+    assertStringIncludes(
+        await errors(feeds("live_feeds", "local", "private")),
+        "timelines_access.live_feeds.local",
+    );
+    for (
+        const toml of [
+            feeds("live_feeds", "local", "disabled"),
+            feeds("live_feeds", "remote", "disabled"),
+            feeds("topic_feeds", "remote", "disabled"),
+        ]
+    ) {
+        assertEquals((await parseConfig(toml)).ok, true, toml);
+    }
 });
 
 Deno.test("bad configs explain what is wrong", async () => {

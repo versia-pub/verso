@@ -19,7 +19,7 @@ const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "alice", "bob");
-    const app = createTestApp(test.ctx, timelineRoutes, { checkResponses: true });
+    const app = createTestApp(test.ctx, timelineRoutes(), { checkResponses: true });
 
     const home = async (query = "", as: string | null = "alice", scopes?: Scope[], on = app) => {
         const headers: HeadersInit = as === null
@@ -124,7 +124,7 @@ Deno.test("timelines leave out the statuses of the accounts the viewer mutes", a
 
 Deno.test("home is only for a logged-in user, with a token and role that may read statuses", async () => {
     await using test = await open();
-    const limited = createTestApp(test.ctx, timelineRoutes, {
+    const limited = createTestApp(test.ctx, timelineRoutes(), {
         permissions: { anonymous: [], default: ["read:account"] },
     });
 
@@ -176,13 +176,13 @@ Deno.test("the public timeline is for anyone, from here, elsewhere or both", asy
 
 Deno.test("the public timeline is only for tokens and roles that may read statuses", async () => {
     await using test = await open();
-    const limited = createTestApp(test.ctx, timelineRoutes, {
+    const limited = createTestApp(test.ctx, timelineRoutes(), {
         permissions: { anonymous: ["read:account"], default: ["read:account"] },
     });
 
     assertEquals((await test.everyone("", null, limited)).status, 403);
     assertEquals((await test.everyone("", "alice", limited)).status, 403);
-    const response = await createTestApp(test.ctx, timelineRoutes).request(
+    const response = await createTestApp(test.ctx, timelineRoutes()).request(
         "/api/v1/timelines/public",
         { headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice", ["write"])}` } },
     );
@@ -279,7 +279,7 @@ Deno.test("a list's timeline is only its owner's, with a token that may read lis
     if (list === "full") throw new Error("Too many lists");
     await addListAccounts(test.ctx, "alice", list.id, ["bob"]);
     const note = await createNote(test.ctx, "bob");
-    const app = createTestApp(test.ctx, timelineRoutes, { checkResponses: true });
+    const app = createTestApp(test.ctx, timelineRoutes(), { checkResponses: true });
 
     const read = async (as: string, scopes?: Scope[]) => {
         const response = await app.request(`/api/v1/timelines/list/${list.id}`, {

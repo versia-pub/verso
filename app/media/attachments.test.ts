@@ -30,7 +30,7 @@ const zip = (n: number) => new Uint8Array([0x50, 0x4b, 0x03, 0x04, n]);
 
 const open = async (limits = Limits.parse({})) => {
     const test = await createTestContext();
-    const app = createTestApp(test.ctx, [...noteRoutes(limits), ...timelineRoutes], {
+    const app = createTestApp(test.ctx, [...noteRoutes(limits), ...timelineRoutes()], {
         checkResponses: true,
     });
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);

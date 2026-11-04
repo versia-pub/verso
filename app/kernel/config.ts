@@ -14,6 +14,7 @@ import {
     PushSettings,
     SearchLimits,
     StreamingLimits,
+    TimelinesAccess,
 } from "./config_sections.ts";
 
 const developmentOnly = 'Only allowed with mode = "development"';
@@ -158,6 +159,7 @@ export const Config = z.strictObject({
     permissions: Permissions,
     streaming: StreamingLimits,
     search: SearchLimits,
+    timelines_access: TimelinesAccess,
     push: PushSettings,
     jobs: z.strictObject({
         /** How many days a job that failed for good is retained, for someone to look at. */

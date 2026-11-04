@@ -67,7 +67,7 @@ dropped and a warning is logged.
 | `list`                                    | the list `list`, one of the viewer's    |
 | `direct`                                  | the viewer's direct conversations       |
 
-`user`, `list` and `direct` need `read:statuses`, and `user:notification` needs
+Every stream but `user:notification` needs `read:statuses`, and `user:notification` needs
 `read:notifications`. The `user` stream only includes notifications if the token can read them.
 Whose list it is takes a query, so a `list` subscription starts once that's known.
 
@@ -75,7 +75,9 @@ Home statuses are rendered separately for each viewer, 8 viewers at a time. Publ
 statuses are rendered once for everyone, in [`app/streaming/shared.ts`](../app/streaming/shared.ts),
 and aren't sent to viewers who block or mute the author. Each viewer's copy gets `filtered`, the
 viewer's filters that the status matches. Permissions are checked for each message, so a viewer
-whose roles no longer give `read:note` stops getting statuses.
+whose roles no longer give `read:note` stops getting statuses. So is
+[`[timelines_access]`](configuration.md): a viewer who may not see statuses from where a status is
+from, because that is `disabled` and their roles lack `feeds`, isn't sent it.
 
 A home status goes to its author, their followers, and the users who follow one of its hashtags, if
 it's on their home timeline. A list's status goes to its owner if its author is in the list and it's

@@ -31,7 +31,7 @@ import { countInstances } from "./instance_queries.ts";
 
 /** What the instance's description is built from. */
 export type AboutSettings =
-    & Pick<Config, "instance" | "limits" | "auth" | "streaming" | "search">
+    & Pick<Config, "instance" | "limits" | "auth" | "streaming" | "search" | "timelines_access">
     & {
         readonly media: MediaLimits;
         readonly federation: Pick<Config["federation"], "blocked_domains">;
@@ -91,6 +91,7 @@ const configuration = (
     ctx: Context,
     limits: AboutSettings["limits"],
     media: MediaLimits,
+    timelines: AboutSettings["timelines_access"],
     vapidKey: string,
 ): Instance["configuration"] => ({
     urls: { streaming: ctx.urls.origin.replace(/^http/, "ws") },
@@ -126,6 +127,12 @@ const configuration = (
         max_expiration: limits.poll_max_seconds,
     },
     translation: { enabled: false },
+    // Mastodon has one setting for hashtag timelines and trending link timelines.
+    timelines_access: {
+        live_feeds: timelines.live_feeds,
+        hashtag_feeds: timelines.topic_feeds,
+        trending_link_feeds: timelines.topic_feeds,
+    },
     // Verso federates with every instance it hasn't blocked.
     limited_federation: false,
 });
@@ -170,7 +177,13 @@ export const renderInstance = async (
         thumbnail: { url: ctx.urls.url`/instance/thumbnail.png` },
         icon: [],
         languages: [],
-        configuration: configuration(ctx, limits, settings.media, await vapidPublicKey(ctx)),
+        configuration: configuration(
+            ctx,
+            limits,
+            settings.media,
+            settings.timelines_access,
+            await vapidPublicKey(ctx),
+        ),
         // Accounts are created by logging in, never by a client's sign-up form.
         registrations: {
             enabled: false,

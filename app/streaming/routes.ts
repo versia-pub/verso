@@ -4,7 +4,7 @@ import { watchToken } from "../auth/tokens.ts";
 import { HttpError, NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Binary, Upgrade } from "../http/responses.ts";
-import type { StreamingLimits } from "../kernel/config_sections.ts";
+import { StreamingLimits, TimelinesAccess } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import { findList } from "../lists/list_queries.ts";
 import { directStreams } from "./direct.ts";
@@ -19,9 +19,13 @@ const docs = "https://docs.joinmastodon.org/methods/streaming";
 
 /**
  * Streaming: events as they happen, over a WebSocket, with each account's WebSockets on this
- * process, and their streams, no more than `limits` allow.
+ * process, and their streams, no more than `limits` allow, and the public ones as far as `access`
+ * lets their viewers see them.
  */
-export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
+export const streamingRoutes = (
+    limits: StreamingLimits,
+    access: TimelinesAccess = TimelinesAccess.parse({}),
+): readonly Route[] => {
     /** How many WebSockets each account has open on this process. */
     const opened = new Map<string, number>();
     const count = (accountId: string, by: number) => {
@@ -37,8 +41,8 @@ export const streamingRoutes = (limits: StreamingLimits): readonly Route[] => {
         const dispatch = dispatcher(ctx);
         streams = [
             userStreams(ctx),
-            publicStreams(ctx),
-            hashtagStreams(ctx),
+            publicStreams(ctx, access),
+            hashtagStreams(ctx, access),
             listStreams(ctx),
             directStreams(ctx),
         ];

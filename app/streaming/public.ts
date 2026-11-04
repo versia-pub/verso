@@ -5,6 +5,7 @@
  * @see https://docs.joinmastodon.org/methods/streaming/#public
  * @module
  */
+import { TimelinesAccess } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import { publicStatus } from "../notes/stream_lookups.ts";
 import type { Sessions } from "./dispatcher.ts";
@@ -22,10 +23,15 @@ const streams = [
 /**
  * What the sessions of the process `ctx` belongs to are sent of the `public` streams. A status is
  * sent if it is on the public timeline, rendered as anyone sees it, to those whose viewers may read
- * statuses and don't block or mute its author, as on the public timeline.
+ * statuses, may see statuses from where it is from and don't block or mute its author, as on the
+ * public timeline.
  */
-export const publicStreams = (ctx: Context): Sessions =>
+export const publicStreams = (
+    ctx: Context,
+    access: Pick<TimelinesAccess, "live_feeds"> = TimelinesAccess.parse({}),
+): Sessions =>
     sharedStreams(ctx, {
+        feeds: access.live_feeds,
         subscribed: (session) => session.streams().filter((stream) => streams.includes(stream)),
         find: publicStatus,
         streamsOf: (shown, status) => {

@@ -61,21 +61,22 @@ what they test. To add a setting, see [Adding a config option](guides/adding-a-c
 
 ## Sections
 
-| Section         | Sets                                                                 |
-| --------------- | -------------------------------------------------------------------- |
-| top level       | `mode`, `domain`, `database`                                         |
-| `[media]`       | upload limits, cleanup, and `storage`: a folder or S3                |
-| `[http]`        | the port, the trusted proxies, and `[http.rate_limit]`               |
-| `[auth]`        | the development login, and `[[auth.issuers]]`: who users log in with |
-| `[federation]`  | blocked domains, delivery, and fetch and rate limits for instances   |
-| `[instance]`    | the name, description, contact, rules, privacy policy and terms      |
-| `[limits]`      | how long names, bios and statuses may be, and how many of each       |
-| `[permissions]` | what logged-out visitors and every user may do                       |
-| `[streaming]`   | WebSockets and streams per user                                      |
-| `[search]`      | the longest query and largest offset                                 |
-| `[push]`        | how long a push service has to answer                                |
-| `[jobs]`        | how long dead letters are kept                                       |
-| `[logging]`     | the log level                                                        |
+| Section              | Sets                                                                 |
+| -------------------- | -------------------------------------------------------------------- |
+| top level            | `mode`, `domain`, `database`                                         |
+| `[media]`            | upload limits, cleanup, and `storage`: a folder or S3                |
+| `[http]`             | the port, the trusted proxies, and `[http.rate_limit]`               |
+| `[auth]`             | the development login, and `[[auth.issuers]]`: who users log in with |
+| `[federation]`       | blocked domains, delivery, and fetch and rate limits for instances   |
+| `[instance]`         | the name, description, contact, rules, privacy policy and terms      |
+| `[limits]`           | how long names, bios and statuses may be, and how many of each       |
+| `[permissions]`      | what logged-out visitors and every user may do                       |
+| `[streaming]`        | WebSockets and streams per user                                      |
+| `[search]`           | the longest query and largest offset                                 |
+| `[timelines_access]` | who may see the public, hashtag and link timelines                   |
+| `[push]`             | how long a push service has to answer                                |
+| `[jobs]`             | how long dead letters are kept                                       |
+| `[logging]`          | the log level                                                        |
 
 ## NixOS
 

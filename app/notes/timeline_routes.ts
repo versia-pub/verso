@@ -7,6 +7,8 @@ import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Paged } from "../http/responses.ts";
 import { Flag, Strings } from "../http/schemas.ts";
+import { TimelinesAccess } from "../kernel/config_sections.ts";
+import { visibleOrigin } from "./feed_access.ts";
 import { renderStatuses } from "./render.ts";
 import { hashtagPage, homePage, listPage, type Origin, publicPage } from "./timeline_queries.ts";
 import { homeSourcesOf, listSourcesOf } from "./timeline_sources.ts";
@@ -51,9 +53,12 @@ const HashtagQuery = PublicQuery.extend({
 
 /**
  * Timelines: the statuses of the accounts someone follows, assembled when the timeline is read
- * rather than written out to each follower, and everyone's public statuses.
+ * rather than written out to each follower, and everyone's public statuses, as far as `access`
+ * lets the viewer see them.
  */
-export const timelineRoutes: readonly Route[] = [
+export const timelineRoutes = (
+    access: TimelinesAccess = TimelinesAccess.parse({}),
+): readonly Route[] => [
     defineRoute({
         method: "GET",
         path: "/api/v1/timelines/home",
@@ -90,9 +95,10 @@ export const timelineRoutes: readonly Route[] = [
         responses: { 200: Paged(Status) },
         handler: async (ctx, { query, viewer }) => {
             const viewerId = viewer?.accountId ?? null;
-            const notes = await publicPage(
+            const origin = await visibleOrigin(access.live_feeds, originOf(query), viewer);
+            const notes = origin === undefined ? [] : await publicPage(
                 ctx,
-                originOf(query),
+                origin,
                 viewerHidden(ctx, viewerId),
                 query,
                 query.only_media,
@@ -129,10 +135,11 @@ export const timelineRoutes: readonly Route[] = [
                 none: query.none,
             };
 
-            const notes = await hashtagPage(
+            const origin = await visibleOrigin(access.topic_feeds, originOf(query), viewer);
+            const notes = origin === undefined ? [] : await hashtagPage(
                 ctx,
                 tags,
-                originOf(query),
+                origin,
                 viewerHidden(ctx, viewerId),
                 query,
                 query.only_media,

@@ -7,6 +7,8 @@ import { Offset, Paged } from "../http/responses.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Integer } from "../http/schemas.ts";
 import type { Config } from "../kernel/config.ts";
+import { TimelinesAccess } from "../kernel/config_sections.ts";
+import { visibleOrigin } from "../notes/feed_access.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { renderHashtags } from "../search/hashtags.ts";
 import { linkPage } from "./link_queries.ts";
@@ -37,6 +39,7 @@ const LinkTimelineQuery = PageQuery({ default: 20, max: 40 }).extend({
 /** What is trending, which `instance` says whether to show, and whether admins approved. */
 export const trendRoutes = (
     instance: Pick<Config["instance"], "show_trends" | "trendable_by_default">,
+    access: Pick<Config["timelines_access"], "topic_feeds"> = TimelinesAccess.parse({}),
 ): readonly Route[] => {
     const trendingTags = (path: string, deprecated?: string) =>
         defineRoute({
@@ -139,13 +142,17 @@ export const trendRoutes = (
             responses: { 200: Paged(Status) },
             handler: async (ctx, { query, viewer }) => {
                 const viewerId = viewer?.accountId ?? null;
+                // Mastodon decides it by the `local` and `remote` it is sent, which it doesn't use.
+                const origin = await visibleOrigin(access.topic_feeds, "all", viewer);
                 const card = instance.show_trends
                     ? (await approvedTrendingCards(ctx, instance.trendable_by_default))
                         .find((trending) => trending.url === query.url)
                     : undefined;
                 if (card === undefined) throw new NotFound();
 
-                const notes = await linkPage(ctx, card.id, viewerHidden(ctx, viewerId), query);
+                const notes = origin === undefined
+                    ? []
+                    : await linkPage(ctx, card.id, viewerHidden(ctx, viewerId), query, origin);
                 return {
                     status: 200,
                     body: await renderStatuses(ctx, notes, viewerId),

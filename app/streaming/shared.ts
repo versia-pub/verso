@@ -3,19 +3,22 @@
  * streams are. Each status is looked up and rendered once for all of a process's sessions, as
  * anyone sees it, as Mastodon streams them, rather than once for each session, with only the
  * filters each viewer has that it matches added. It is sent to the sessions whose viewers may read
- * statuses and don't hide its author.
+ * statuses, may see statuses from where it is from and don't hide its author.
  * @module
  */
 import type { Status } from "@versia/client-api";
 import { activeFiltersAmong, filterResults } from "../filters/matching.ts";
 import { hidingAmong } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
+import { type Feeds, type Seen, seenOf } from "../notes/feed_access.ts";
 import type { PublicStatus } from "../notes/stream_lookups.ts";
 import type { Sessions, StreamViewer } from "./dispatcher.ts";
 import type { Session } from "./session.ts";
 
 /** Which statuses a kind of stream has, and on which of its streams each goes. */
 export type SharedStreams = {
+    /** Who may see the statuses the streams have, by where they are from. */
+    readonly feeds: Feeds;
     /** The streams of the kind `session` is subscribed to. */
     readonly subscribed: (session: Session) => readonly string[];
     /** The status `noteId`, if the streams have it. */
@@ -30,16 +33,19 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
 
     /**
      * The sessions subscribed to any of the streams whose viewers may read statuses, with the
-     * streams. Their permissions are checked one at a time, as each may need a query.
+     * streams and which statuses of the feeds they may see. Their permissions are checked one at a
+     * time, as each may need a query.
      */
     const reading = async () => {
         const subscribed = [...sessions]
             .map((each) => ({ ...each, streams: streams.subscribed(each.session) }))
             .filter((each) => each.streams.length > 0);
 
-        const found = [];
+        const found: ((typeof subscribed)[number] & { readonly seen: Seen })[] = [];
         for (const each of subscribed) {
-            if ((await each.viewer.permissions()).has("read:note")) found.push(each);
+            if ((await each.viewer.permissions()).has("read:note")) {
+                found.push({ ...each, seen: await seenOf(streams.feeds, each.viewer) });
+            }
         }
         return found;
     };
@@ -67,8 +73,10 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
             const on = streams.streamsOf(shown, status);
             const filters = await activeFiltersAmong(ctx, [...viewerIds]);
             const unfiltered = JSON.stringify({ ...status, filtered: [] });
-            for (const { viewer, session } of readers) {
+            for (const { viewer, session, seen } of readers) {
                 if (hiding.has(viewer.accountId)) continue;
+                // As Mastodon drops statuses of an origin that is disabled to the viewer.
+                if (!(shown.local ? seen.local : seen.remote)) continue;
 
                 const filtered = filterResults(filters.get(viewer.accountId) ?? [], status);
                 const payload = filtered.length === 0

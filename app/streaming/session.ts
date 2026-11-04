@@ -34,23 +34,23 @@ export type Session = {
 };
 
 /**
- * A stream a client can subscribe to, by the scope it needs, if it isn't public, and whether it is
+ * A stream a client can subscribe to, by the scope it needs, and whether it is
  * one hashtag's or one list's, which the client names with that parameter.
  */
-type Stream = { readonly scope?: Scope; readonly param?: "tag" | "list" };
+type Stream = { readonly scope: Scope; readonly param?: "tag" | "list" };
 
 /** The streams Verso has, which are Mastodon's. */
 const streams = new Map<string, Stream>([
     ["user", { scope: "read:statuses" }],
     ["user:notification", { scope: "read:notifications" }],
-    ["public", {}],
-    ["public:media", {}],
-    ["public:local", {}],
-    ["public:local:media", {}],
-    ["public:remote", {}],
-    ["public:remote:media", {}],
-    ["hashtag", { param: "tag" }],
-    ["hashtag:local", { param: "tag" }],
+    ["public", { scope: "read:statuses" }],
+    ["public:media", { scope: "read:statuses" }],
+    ["public:local", { scope: "read:statuses" }],
+    ["public:local:media", { scope: "read:statuses" }],
+    ["public:remote", { scope: "read:statuses" }],
+    ["public:remote:media", { scope: "read:statuses" }],
+    ["hashtag", { scope: "read:statuses", param: "tag" }],
+    ["hashtag:local", { scope: "read:statuses", param: "tag" }],
     ["list", { scope: "read:statuses", param: "list" }],
     ["direct", { scope: "read:statuses" }],
 ]);
@@ -117,8 +117,9 @@ export const openSession = (
     const subscribe = (name: string, params: Params) => {
         const stream = streams.get(name);
 
+        // The scope of one that doesn't exist is the scope most streams need.
         const scope = stream ? stream.scope : "read:statuses";
-        if (scope && !grants(viewer.scopes, scope)) {
+        if (!grants(viewer.scopes, scope)) {
             return refuse("Access token does not have the required scopes", 401);
         }
         if (!stream) return refuse("Unknown stream type", 400);

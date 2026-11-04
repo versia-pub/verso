@@ -38,6 +38,25 @@ const configured = async (toml: string): Promise<AboutSettings> => {
     return result.config;
 };
 
+Deno.test("an instance says who may see its timelines, with one setting for hashtags and links", async () => {
+    await using test = await open(
+        await configured(`
+[timelines_access.live_feeds]
+local = "authenticated"
+remote = "disabled"
+
+[timelines_access.topic_feeds]
+remote = "authenticated"
+`),
+    );
+
+    assertEquals((await test.get()).configuration.timelines_access, {
+        live_feeds: { local: "authenticated", remote: "disabled" },
+        hashtag_feeds: { local: "public", remote: "authenticated" },
+        trending_link_feeds: { local: "public", remote: "authenticated" },
+    });
+});
+
 Deno.test("an instance with no settings goes by its domain, and claims Mastodon 4.4", async () => {
     await using test = await open();
 
@@ -91,6 +110,11 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
                 max_expiration: 2_629_746,
             },
             translation: { enabled: false },
+            timelines_access: {
+                live_feeds: { local: "public", remote: "public" },
+                hashtag_feeds: { local: "public", remote: "public" },
+                trending_link_feeds: { local: "public", remote: "public" },
+            },
             limited_federation: false,
         },
         registrations: {

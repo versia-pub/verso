@@ -7,6 +7,7 @@ import { block } from "../graph/blocks.ts";
 import { createFilter } from "../filters/filters.ts";
 import { blockDomainFor } from "../graph/domain_blocks.ts";
 import { mute } from "../graph/mutes.ts";
+import { TimelinesAccess } from "../kernel/config_sections.ts";
 import { createInstance } from "../instances/testing.ts";
 import { like } from "../interactions/likes.ts";
 import type { Permission } from "../kernel/permissions.ts";
@@ -30,10 +31,10 @@ const everyStream = [
     "public:remote:media",
 ];
 
-const open = async () => {
+const open = async (access?: Parameters<typeof publicStreams>[1]) => {
     const test = await createTestContext();
     const dispatch = dispatcher(test.ctx);
-    const shared = publicStreams(test.ctx);
+    const shared = publicStreams(test.ctx, access);
     dispatch.listen(shared);
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     await createInstance(test.ctx, "b.example");
@@ -118,6 +119,50 @@ const open = async () => {
 
     return { ...test, streaming, counted, post, deleted, published };
 };
+
+Deno.test("statuses from where the feed is disabled are only sent to those with the feeds permission", async () => {
+    await using disabled = await open(
+        TimelinesAccess.parse({ live_feeds: { local: "public", remote: "disabled" } }),
+    );
+    const plain = disabled.streaming("alice");
+    const allowed = disabled.streaming("bob", everyStream, {
+        permissions: ["read:note", "feeds"],
+    });
+
+    const local = await disabled.post("bob");
+    const remote = await disabled.post("carol", { instance_id: "b.example", remote_id: "c1" });
+
+    assertEquals(
+        plain.sent,
+        everyStream.filter((stream) => !stream.includes("remote") && !stream.includes("media"))
+            .map((stream) => [stream, "update", local]),
+    );
+    assertEquals(allowed.sent.length, 4);
+    assertEquals(
+        allowed.sent.filter((event) => (event as string[])[2] === remote).length,
+        2,
+    );
+});
+
+Deno.test("local statuses are only sent to those with the feeds permission where they are disabled", async () => {
+    await using test = await open(
+        TimelinesAccess.parse({ live_feeds: { local: "disabled", remote: "public" } }),
+    );
+    const plain = test.streaming("alice", ["public", "public:local"]);
+    const allowed = test.streaming("bob", ["public", "public:local"], {
+        permissions: ["read:note", "feeds"],
+    });
+
+    const local = await test.post("bob");
+    const remote = await test.post("carol", { instance_id: "b.example", remote_id: "c1" });
+
+    assertEquals(plain.sent, [["public", "update", remote]]);
+    assertEquals(allowed.sent, [
+        ["public", "update", local],
+        ["public:local", "update", local],
+        ["public", "update", remote],
+    ]);
+});
 
 Deno.test("public statuses are sent on the public streams for where they are from", async () => {
     await using test = await open();

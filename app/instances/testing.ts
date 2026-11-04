@@ -4,6 +4,7 @@ import {
     MediaLimits,
     SearchLimits,
     StreamingLimits,
+    TimelinesAccess,
 } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Server } from "../kernel/fake_transport.ts";
@@ -33,6 +34,7 @@ export const defaultSettings = (): AboutSettings => ({
     media: MediaLimits.parse({}),
     streaming: StreamingLimits.parse({}),
     search: SearchLimits.parse({}),
+    timelines_access: TimelinesAccess.parse({}),
     federation: { blocked_domains: [] },
 });
 

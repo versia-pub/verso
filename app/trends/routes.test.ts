@@ -21,9 +21,12 @@ const cardUrl = "https://news.example/story";
  * Five discoverable local users, who used #cats and #dogs, and have a popular status each, all
  * linking to one article.
  */
-const open = async (instance = { show_trends: true, trendable_by_default: true }) => {
+const open = async (
+    instance = { show_trends: true, trendable_by_default: true },
+    access?: Parameters<typeof trendRoutes>[1],
+) => {
     const test = await createTestContext();
-    const app = createTestApp(test.ctx, trendRoutes(instance), { checkResponses: true });
+    const app = createTestApp(test.ctx, trendRoutes(instance, access), { checkResponses: true });
     test.clock.advance(12 * hour);
     for (const id of authors) await createLocalAccount(test.ctx, id);
     await test.ctx.db.updateTable("accounts").set({ discoverable: true }).execute();
@@ -226,6 +229,53 @@ Deno.test("trending links are listed with their history, and their url opens the
         [test.notes.e, test.notes.d, test.notes.c, test.notes.b, test.notes.alice],
     );
     assertEquals(timeline.body[0].card.url, cardUrl);
+});
+
+Deno.test("a link's timeline needs a user where hashtag and link timelines are not public", async () => {
+    await using test = await open({ show_trends: true, trendable_by_default: true }, {
+        topic_feeds: { local: "authenticated", remote: "public" },
+    });
+    const path = `/api/v1/timelines/link?url=${encodeURIComponent(cardUrl)}`;
+
+    const refused = await test.call(path);
+    assertEquals(refused.status, 422);
+    assertEquals(refused.body, { error: "This method requires an authenticated user" });
+    assertEquals((await test.call(path, await tokenFor(test.ctx, "alice"))).status, 200);
+    // Only the cards that are trending are found, which the user is told first.
+    assertEquals(
+        (await test.call(`${path}x`, await tokenFor(test.ctx, "alice"))).status,
+        404,
+    );
+});
+
+Deno.test("a link's timeline is only local to users who may not see remote statuses, and refused to guests", async () => {
+    const path = `/api/v1/timelines/link?url=${encodeURIComponent(cardUrl)}`;
+
+    // The origin it asks about is both, so a setting for either one counts.
+    await using remote = await open({ show_trends: true, trendable_by_default: true }, {
+        topic_feeds: { local: "public", remote: "authenticated" },
+    });
+    assertEquals((await remote.call(path)).status, 422);
+    assertEquals((await remote.call(path, await tokenFor(remote.ctx, "alice"))).status, 200);
+
+    // Users who may only see local statuses are given only those.
+    await using disabled = await open({ show_trends: true, trendable_by_default: true }, {
+        topic_feeds: { local: "authenticated", remote: "disabled" },
+    });
+    await createInstance(disabled.ctx, "b.example");
+    await createRemoteAccount(disabled.ctx, "carol", "b.example");
+    const remoteNote = await createNote(disabled.ctx, "carol", {
+        instance_id: "b.example",
+        remote_id: "c1",
+    });
+    const card = await disabled.ctx.db.selectFrom("preview_cards").select("id")
+        .where("url", "=", cardUrl).executeTakeFirstOrThrow();
+    await setLink(disabled.ctx, remoteNote.id, card.id, cardUrl);
+
+    const ids = async (token: string) =>
+        (await disabled.call(path, token)).body.map((status: { id: string }) => status.id);
+    const local = [...Object.values(disabled.notes)].sort().reverse();
+    assertEquals(await ids(await tokenFor(disabled.ctx, "alice")), local);
 });
 
 Deno.test("a link's history counts each account once a day, and not statuses of days to come", async () => {

@@ -10,6 +10,7 @@ import { type Excluded, notExcluded } from "../graph/blocks.ts";
 import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
 import type { NoteRow } from "../notes/note_queries.ts";
+import type { Origin } from "../notes/timeline_queries.ts";
 import type { PreviewCardRow } from "../previews/card_queries.ts";
 import { dayOf } from "../search/hashtag_queries.ts";
 import type { TrendingLinksTable } from "./tables.ts";
@@ -184,7 +185,7 @@ export const setCardTrendable = async (
 /**
  * A page of the public statuses whose first link is the card `cardId`, newest first, as Mastodon
  * lists them: by accounts that are discoverable, and if there is a viewer, not by those they block
- * or mute, `hidden`.
+ * or mute, `hidden`, and only those from `origin`.
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/link_feed.rb
  */
 export const linkPage = async (
@@ -192,6 +193,7 @@ export const linkPage = async (
     cardId: string,
     hidden: Excluded | null,
     page: PageBounds,
+    origin: Origin = "all",
 ): Promise<NoteRow[]> => {
     const query = ctx.db.selectFrom("notes")
         .innerJoin("note_preview_cards", "note_preview_cards.note_id", "notes.id")
@@ -204,7 +206,9 @@ export const linkPage = async (
                 eb("accounts.instance_id", "is not", null),
                 eb("accounts.discoverable", "=", true),
             ])
-        );
+        )
+        .$if(origin === "local", (eb) => eb.where("notes.instance_id", "is", null))
+        .$if(origin === "remote", (eb) => eb.where("notes.instance_id", "is not", null));
 
     return await readPage(
         hidden === null ? query : query.where(notExcluded(hidden, "notes.account_id")),

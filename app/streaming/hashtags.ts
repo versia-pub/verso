@@ -4,6 +4,7 @@
  * @see https://docs.joinmastodon.org/methods/streaming/#hashtag
  * @module
  */
+import { TimelinesAccess } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import { hashtagStatus } from "../notes/stream_lookups.ts";
 import { hashtagStream } from "./session.ts";
@@ -18,10 +19,15 @@ const isHashtagStream = (stream: string) =>
 /**
  * What the sessions of the process `ctx` belongs to are sent of the hashtag streams. A status is
  * sent on the streams of each hashtag it uses if it could be on their timelines, rendered as anyone
- * sees it, to those whose viewers may read statuses and don't block or mute its author.
+ * sees it, to those whose viewers may read statuses, may see statuses from where it is from and
+ * don't block or mute its author.
  */
-export const hashtagStreams = (ctx: Context): Sessions =>
+export const hashtagStreams = (
+    ctx: Context,
+    access: Pick<TimelinesAccess, "topic_feeds"> = TimelinesAccess.parse({}),
+): Sessions =>
     sharedStreams(ctx, {
+        feeds: access.topic_feeds,
         subscribed: (session) => session.streams().filter(isHashtagStream),
         find: hashtagStatus,
         streamsOf: (shown, status) => {

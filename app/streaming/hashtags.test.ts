@@ -4,6 +4,7 @@ import type { Visibility } from "../kernel/visibility.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { mute } from "../graph/mutes.ts";
+import { TimelinesAccess } from "../kernel/config_sections.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { publish } from "../kernel/pubsub.ts";
@@ -23,10 +24,10 @@ const everyStream = [
     ["hashtag:local", "rust"],
 ];
 
-const open = async () => {
+const open = async (access?: Parameters<typeof hashtagStreams>[1]) => {
     const test = await createTestContext();
     const dispatch = dispatcher(test.ctx);
-    const shared = hashtagStreams(test.ctx);
+    const shared = hashtagStreams(test.ctx, access);
     dispatch.listen(shared);
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     await createInstance(test.ctx, "b.example");
@@ -98,6 +99,25 @@ const open = async () => {
 
     return { ...test, dispatch, streaming, post, deleted, published };
 };
+
+Deno.test("statuses from where hashtags are disabled are only sent to those with the feeds permission", async () => {
+    await using test = await open(
+        TimelinesAccess.parse({ topic_feeds: { local: "public", remote: "disabled" } }),
+    );
+    const plain = test.streaming("alice", [["hashtag", "nix"]]);
+    const allowed = test.streaming("bob", [["hashtag", "nix"]], {
+        permissions: ["read:note", "feeds"],
+    });
+
+    const local = await test.post("bob", ["nix"]);
+    const remote = await test.post("carol", ["nix"], { instance_id: "b.example", remote_id: "c1" });
+
+    assertEquals(plain.sent, [["hashtag,nix", "update", local]]);
+    assertEquals(allowed.sent, [
+        ["hashtag,nix", "update", local],
+        ["hashtag,nix", "update", remote],
+    ]);
+});
 
 Deno.test("public statuses are sent on the streams of each hashtag they use, for where they are from", async () => {
     await using test = await open();
