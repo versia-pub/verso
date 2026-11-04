@@ -245,6 +245,8 @@ and `invalid_handle` are never set on an account.
 | `GET /api/v1/announcements`                  | ✅    |                              |
 | `POST /api/v1/announcements/:id/dismiss`     | ✅    |                              |
 | Announcement reactions (2 methods)           | ✅    |                              |
+| `GET /.well-known/nodeinfo`                  | ✅    | NodeInfo 2.0                 |
+| `GET /nodeinfo/2.0`                          | 🟡    | See differences              |
 | `GET /api/oembed`                            | ❌    |                              |
 | `GET /health`                                | ❌    | Verso has `GET /health/live` |
 

@@ -25,6 +25,7 @@ const exposed = [
  */
 const corsRules = [
     { path: "/.well-known/*", methods: ["GET"] },
+    { path: "/nodeinfo/*", methods: ["GET"] },
     { path: "/api/*", methods: ["GET", "POST", "PUT", "PATCH", "DELETE"] },
     { path: "/oauth/token", methods: ["POST"] },
     { path: "/oauth/revoke", methods: ["POST"] },

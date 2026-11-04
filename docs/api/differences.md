@@ -12,6 +12,9 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - `url` on accounts and statuses is the same as `uri`, because Verso has no web pages for them. Apps
   that open a status or profile in the browser get the Versia entity instead.
 - A remote account's `acct` is `username@domain`.
+- NodeInfo says the software is `verso` and the protocol `versia`, which the NodeInfo schema has no
+  name for; Mastodon says `mastodon` and `activitypub`. `openRegistrations` is always `false`, as in
+  the instance API.
 - A report sent on to another instance says its category, but not which rules were broken. One
   received keeps `spam` or `legal` if it says so; Mastodon files every one as `other`.
 

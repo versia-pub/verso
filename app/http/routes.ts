@@ -27,6 +27,7 @@ import { pushRoutes } from "../push/routes.ts";
 import { timelineRoutes } from "../notes/timeline_routes.ts";
 import type { AboutSettings } from "../instances/render.ts";
 import { instanceRoutes } from "../instances/routes.ts";
+import { nodeInfoRoutes } from "../instances/nodeinfo.ts";
 import { versiaInstanceRoutes } from "../instances/versia_routes.ts";
 import { moderationRoutes } from "../moderation/routes.ts";
 import { registry } from "../registry.ts";
@@ -85,6 +86,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...instanceRoutes(settings),
         ...moderationRoutes(settings.instance, settings.federation.blocked_domains),
         ...versiaInstanceRoutes(settings.instance, registry.extensions),
+        ...nodeInfoRoutes(settings.instance),
         docsRoute,
     ];
 

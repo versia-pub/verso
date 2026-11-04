@@ -18897,6 +18897,176 @@
                 }
             }
         },
+        "/.well-known/nodeinfo": {
+            "get": {
+                "summary": "Discover NodeInfo",
+                "tags": [
+                    "versia"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "links": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "rel": {
+                                                        "type": "string"
+                                                    },
+                                                    "href": {
+                                                        "type": "string",
+                                                        "format": "uri"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "rel",
+                                                    "href"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "links"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/nodeinfo/2.0": {
+            "get": {
+                "summary": "Get NodeInfo",
+                "tags": [
+                    "versia"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "const": "2.0"
+                                        },
+                                        "software": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "version": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "name",
+                                                "version"
+                                            ]
+                                        },
+                                        "protocols": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "services": {
+                                            "type": "object",
+                                            "properties": {
+                                                "outbound": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "inbound": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "outbound",
+                                                "inbound"
+                                            ]
+                                        },
+                                        "usage": {
+                                            "type": "object",
+                                            "properties": {
+                                                "users": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "total": {
+                                                            "type": "number"
+                                                        },
+                                                        "activeMonth": {
+                                                            "type": "number"
+                                                        },
+                                                        "activeHalfyear": {
+                                                            "type": "number"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "total",
+                                                        "activeMonth",
+                                                        "activeHalfyear"
+                                                    ]
+                                                },
+                                                "localPosts": {
+                                                    "type": "number"
+                                                }
+                                            },
+                                            "required": [
+                                                "users",
+                                                "localPosts"
+                                            ]
+                                        },
+                                        "openRegistrations": {
+                                            "type": "boolean"
+                                        },
+                                        "metadata": {
+                                            "type": "object",
+                                            "properties": {
+                                                "nodeName": {
+                                                    "type": "string"
+                                                },
+                                                "nodeDescription": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "nodeName",
+                                                "nodeDescription"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "version",
+                                        "software",
+                                        "protocols",
+                                        "services",
+                                        "usage",
+                                        "openRegistrations",
+                                        "metadata"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/docs": {
             "get": {
                 "summary": "View API documentation",

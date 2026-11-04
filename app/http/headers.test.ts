@@ -113,3 +113,20 @@ Deno.test("HSTS is only sent when the instance is reached over HTTPS", async () 
         null,
     );
 });
+
+Deno.test("NodeInfo may be read by other sites", async () => {
+    await using test = await open();
+    const preflight = async (path: string) =>
+        await headersOf(
+            await test.app.request(path, {
+                method: "OPTIONS",
+                headers: {
+                    origin: "https://stats.example",
+                    "access-control-request-method": "GET",
+                },
+            }),
+        );
+
+    assertEquals((await preflight("/nodeinfo/2.0")).get("access-control-allow-methods"), "GET");
+    assertEquals((await preflight("/nodeinfo/2.0")).get("access-control-allow-origin"), "*");
+});
