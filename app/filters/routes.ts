@@ -2,7 +2,7 @@ import { Filter, FilterKeyword, FilterStatus } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound, Unprocessable } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { Flag, Integer, notBlank, Strings, Text } from "../http/schemas.ts";
+import { notBlank } from "../http/schemas.ts";
 import {
     filtersOf,
     filterStatusesOf,
@@ -17,121 +17,25 @@ import {
     changeFilter,
     changeKeyword,
     createFilter,
-    type KeywordChange,
     removeFilter,
     removeFilterStatus,
     removeKeyword,
 } from "./filters.ts";
 import { renderFilter, renderFilters, renderFilterStatus, renderKeyword } from "./render.ts";
-import { filterActions, filterContexts } from "./tables.ts";
-
-/** The longest title or keyword a filter may have. Mastodon has no limit. */
-const textLimit = 256;
-
-/** The most keywords one request may add to a filter or change. */
-const keywordsLimit = 100;
-
-/** The furthest off a filter may expire, a hundred years from now, in seconds. */
-const expiryLimit = 100 * 365 * 24 * 60 * 60;
-
-const FilterId = z.object({
-    id: z.string().meta({ description: "The ID of the Filter in the database." }),
-});
-
-const ParentId = z.object({
-    filter_id: z.string().meta({ description: "The ID of the Filter in the database." }),
-});
-
-const KeywordId = z.object({
-    id: z.string().meta({ description: "The ID of the FilterKeyword in the database." }),
-});
-
-const FilterStatusId = z.object({
-    id: z.string().meta({ description: "The ID of the FilterStatus in the database." }),
-});
-
-const Title = Text(textLimit).refine(...notBlank("Title")).meta({
-    description: "The name of the filter group.",
-});
-
-// Mastodon drops blank contexts before checking them.
-const Context = Strings
-    .transform((contexts) => contexts.map((each) => each.trim()).filter((each) => each !== ""))
-    .pipe(
-        z.array(z.enum(filterContexts, { error: "None or invalid context supplied" }))
-            .min(1, { error: "Context can't be blank" }),
-    )
-    .meta({
-        description: "Where the filter should be applied. Specify at least one of `home`, " +
-            "`notifications`, `public`, `thread`, `account`.",
-    });
-
-const FilterAction = z.enum(filterActions).meta({
-    description:
-        "The policy to be applied when the filter is matched. Specify `warn`, `hide` or `blur`.",
-});
-
-// Mastodon reads a blank value as never expiring.
-const ExpiresIn = z.union([
-    Integer.pipe(z.int().min(0).max(expiryLimit)),
-    z.literal("").transform(() => null),
-    z.null(),
-]);
-
-const Keyword = Text(textLimit);
-
-const WholeWord = Flag.meta({
-    description: "Whether the keyword should consider word boundaries.",
-});
-
-const KeywordAttribute = z.object({
-    id: z.string().optional().meta({
-        description: "Provide the ID of an existing keyword to modify it, instead of creating a " +
-            "new keyword.",
-    }),
-    keyword: Keyword.optional().meta({
-        description: "A keyword to be added to the newly-created filter group.",
-    }),
-    whole_word: WholeWord.optional(),
-    _destroy: Flag.optional().meta({
-        description: "If true, will remove the keyword with the given ID.",
-    }),
-});
-
-type KeywordAttribute = z.infer<typeof KeywordAttribute>;
-
-// Rails reads nested attributes as an array, or as an object keyed by index, as forms send them.
-const KeywordAttributes = z.union([
-    z.array(KeywordAttribute),
-    z.record(z.string(), KeywordAttribute).transform((byIndex) => Object.values(byIndex)),
-])
-    .refine((attributes) => attributes.length <= keywordsLimit, {
-        error: `Must be at most ${keywordsLimit} keywords`,
-    })
-    .default([]);
-
-/**
- * What `keywords_attributes` asks to do to a filter's keywords, as Rails reads it: one with an id
- * changes or removes that keyword, and one without adds a keyword, unless it is blank or removed.
- */
-const keywordChangesOf = (attributes: readonly KeywordAttribute[]): KeywordChange[] =>
-    attributes.flatMap(({ id, keyword, whole_word, _destroy }): KeywordChange[] => {
-        const blank = keyword === undefined || keyword.trim() === "";
-
-        if (id !== undefined) {
-            if (_destroy) return [{ remove: id }];
-            if (keyword !== undefined && blank) {
-                throw new Unprocessable("Keywords keyword can't be blank");
-            }
-
-            return [{ change: id, to: { keyword, whole_word } }];
-        }
-
-        if (_destroy || (blank && whole_word !== true)) return [];
-        if (blank) throw new Unprocessable("Keywords keyword can't be blank");
-
-        return [{ add: { keyword, whole_word: whole_word ?? true } }];
-    });
+import {
+    Context,
+    ExpiresIn,
+    FilterAction,
+    FilterId,
+    FilterStatusId,
+    Keyword,
+    KeywordAttributes,
+    keywordChangesOf,
+    KeywordId,
+    ParentId,
+    Title,
+    WholeWord,
+} from "./schemas.ts";
 
 const auth = {
     read: { require: "user", scope: "read:filters", permission: "owner:filter" },
