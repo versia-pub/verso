@@ -5,6 +5,7 @@
  * Whether admins approved them is checked when they are shown, so approving takes effect at once.
  * @module
  */
+import { dayMs } from "../kernel/clock.ts";
 import type { Context } from "../kernel/context.ts";
 import { hashtagUses } from "../search/hashtag_queries.ts";
 import {
@@ -15,7 +16,6 @@ import {
     trendingLinks,
 } from "./link_queries.ts";
 import {
-    dayMs,
     decayed,
     linkDecayThreshold,
     linkPeakHalfLifeMs,

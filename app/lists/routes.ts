@@ -6,7 +6,7 @@ import { NotFound, Unprocessable } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { Paged } from "../http/responses.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { Flag, Ids, Integer, Text } from "../http/schemas.ts";
+import { Flag, Ids, Integer, notBlank, Text } from "../http/schemas.ts";
 import {
     deleteList,
     findList,
@@ -27,9 +27,7 @@ const membersLimit = 100;
 
 const ListId = z.object({ id: z.string().meta({ description: "The ID of the list." }) });
 
-const Title = Text(titleLimit).refine((title) => title.trim() !== "", {
-    error: "Title can't be blank",
-});
+const Title = Text(titleLimit).refine(...notBlank("Title"));
 
 const RepliesPolicy = z.enum(repliesPolicies).meta({
     description: "One of `followed`, `list`, or `none`. Defaults to `list`.",

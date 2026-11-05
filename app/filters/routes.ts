@@ -2,7 +2,7 @@ import { Filter, FilterKeyword, FilterStatus } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound, Unprocessable } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
-import { Flag, Integer, Strings, Text } from "../http/schemas.ts";
+import { Flag, Integer, notBlank, Strings, Text } from "../http/schemas.ts";
 import {
     filtersOf,
     filterStatusesOf,
@@ -33,12 +33,6 @@ const keywordsLimit = 100;
 
 /** The furthest off a filter may expire, a hundred years from now, in seconds. */
 const expiryLimit = 100 * 365 * 24 * 60 * 60;
-
-const notBlank = (name: string) =>
-    [
-        (text: string) => text.trim() !== "",
-        { error: `${name} can't be blank` },
-    ] as const;
 
 const FilterId = z.object({
     id: z.string().meta({ description: "The ID of the Filter in the database." }),

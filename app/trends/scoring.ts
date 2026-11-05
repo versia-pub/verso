@@ -6,8 +6,7 @@
  * @module
  */
 
-const hourMs = 60 * 60 * 1000;
-export const dayMs = 24 * hourMs;
+import { dayMs, hourMs } from "../kernel/clock.ts";
 
 /** How many accounts must use a hashtag in a day for it to trend. */
 export const tagThreshold = 5;

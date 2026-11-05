@@ -6,6 +6,7 @@
 import { sign } from "@versia/protocol";
 import { versiaJson } from "../http/responses.ts";
 import type { Context } from "../kernel/context.ts";
+import { readLimited } from "../kernel/limited.ts";
 import { checkSignature } from "../kernel/signatures.ts";
 import { timeoutSignal, userAgent } from "../kernel/transport.ts";
 
@@ -38,28 +39,10 @@ export class Unreachable extends Error {
     override readonly name = "Unreachable";
 }
 
-/** Reads a body, stopping as soon as it exceeds `maxReplyBytes`. */
+/** Reads a body, failing as soon as it exceeds `maxReplyBytes`. */
 const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> => {
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-
-    const reader = response.body?.getReader();
-    for (let read = await reader?.read(); read && !read.done; read = await reader?.read()) {
-        size += read.value.length;
-        if (size > maxReplyBytes) {
-            await reader?.cancel();
-            throw new BadReply(`The reply is larger than ${maxReplyBytes} bytes`);
-        }
-
-        chunks.push(read.value);
-    }
-
-    const body = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-        body.set(chunk, offset);
-        offset += chunk.length;
-    }
+    const { body, truncated } = await readLimited(response.body, maxReplyBytes);
+    if (truncated) throw new BadReply(`The reply is larger than ${maxReplyBytes} bytes`);
 
     return body;
 };

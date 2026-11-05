@@ -2,10 +2,8 @@
  * What services read from config as they run, computed once at startup.
  * @module
  */
+import { dayMs, hourMs } from "./clock.ts";
 import type { Config } from "./config.ts";
-
-const hourMs = 60 * 60 * 1000;
-const dayMs = 24 * hourMs;
 
 export type Settings = {
     /** How long a job that failed for good is retained. */

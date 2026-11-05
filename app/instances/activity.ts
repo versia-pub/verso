@@ -6,13 +6,12 @@
 import type { WeeklyActivity } from "@versia/client-api";
 import { countLocalAccountsCreated } from "../accounts/account_queries.ts";
 import { countAccountsWithTokensSince } from "../auth/token_queries.ts";
+import { dayMs } from "../kernel/clock.ts";
 import type { Context } from "../kernel/context.ts";
 import { countLocalNotesPosted } from "../notes/note_queries.ts";
 
 /** How many weeks Mastodon reports, the current one included. */
 const weeks = 12;
-
-const dayMs = 24 * 60 * 60 * 1000;
 
 /** Midnight UTC on the Monday that starts the week of `time`. */
 export const weekStart = (time: Date): Date => {

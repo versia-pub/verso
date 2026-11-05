@@ -112,7 +112,7 @@ const MediaAttribute = (limits: Limits) =>
 const quotePolicy = z.enum(["public", "followers", "nobody"]).optional();
 
 /** Text may be blank if media is attached, or a status is quoted. */
-const notBlank = {
+const blankUnlessAttached = {
     check: (body: { status: string; media_ids?: string[]; quoted_status_id?: string | null }) =>
         body.status.trim() !== "" || (body.media_ids ?? []).length > 0 ||
         Boolean(body.quoted_status_id),
@@ -145,7 +145,7 @@ const draft = (limits: Limits) =>
         quote_approval_policy: quotePolicy,
         scheduled_at: ScheduledAt,
     })
-        .refine(notBlank.check, notBlank.error)
+        .refine(blankUnlessAttached.check, blankUnlessAttached.error)
         .refine(limited(limits).check, limited(limits).error);
 
 /** What a scheduled status will be posted with, as `body` asks. */
@@ -188,7 +188,7 @@ const edit = (limits: Limits) =>
         /** Ignored, as is `quoted_status_id`, which can't be changed. */
         quote_approval_policy: quotePolicy,
     })
-        .refine(notBlank.check, notBlank.error)
+        .refine(blankUnlessAttached.check, blankUnlessAttached.error)
         .refine(limited(limits).check, limited(limits).error);
 
 /**

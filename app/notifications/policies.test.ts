@@ -3,6 +3,7 @@ import { createLocalAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { like } from "../interactions/likes.ts";
 import { share } from "../interactions/shares.ts";
+import { dayMs } from "../kernel/clock.ts";
 import { subscribe } from "../kernel/pubsub.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
@@ -10,8 +11,6 @@ import { editNote, postNote } from "../notes/notes.ts";
 import { createTestContext } from "../testing/context.ts";
 import { notified } from "./notifications.ts";
 import { defaultPolicy, type Policy, savePolicy } from "./policy_queries.ts";
-
-const dayMs = 24 * 60 * 60 * 1000;
 
 /** alice, bob and carol, local users made just now, so new accounts. */
 const open = async () => {

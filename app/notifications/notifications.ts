@@ -21,6 +21,7 @@ import {
 import { enqueueAll } from "../jobs/job_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
+import { hourMs } from "../kernel/clock.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type Channel, publish } from "../kernel/pubsub.ts";
@@ -71,8 +72,6 @@ export const groupedTypes: ReadonlySet<NotificationType> = new Set([
 
 /** How long a group may span, as on Mastodon. */
 const groupSpanHours = 12;
-
-const hourMs = 60 * 60 * 1000;
 
 /**
  * The group a new notification of `accountId` goes in, as on Mastodon: one of its type and status,

@@ -5,6 +5,7 @@
  */
 import { lockKey } from "../db/locking.ts";
 import { NotFound, Unprocessable } from "../http/errors.ts";
+import { dayMs } from "../kernel/clock.ts";
 import type { Context } from "../kernel/context.ts";
 import { reserve } from "../media/attachments.ts";
 import type { Draft } from "../notes/notes.ts";
@@ -28,8 +29,6 @@ const totalLimit = 300;
 
 /** How many statuses one account may have scheduled for one day, in UTC, as on Mastodon. */
 const dailyLimit = 25;
-
-const dayMs = 24 * 60 * 60_000;
 
 /**
  * Refuses to schedule one of `accountId`'s statuses, other than `exceptId`, for `scheduledAt`, as

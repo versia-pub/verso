@@ -9,6 +9,7 @@
 import { findAccount } from "../accounts/account_queries.ts";
 import { followsFrom } from "../graph/follow_queries.ts";
 import { followersAmong } from "../graph/follows.ts";
+import { dayMs } from "../kernel/clock.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, mentionsOf, type NoteRow } from "../notes/note_queries.ts";
 import { policiesOf, type Policy } from "./policy_queries.ts";
@@ -28,8 +29,6 @@ const filterable: ReadonlySet<NotificationType> = new Set([
     "reaction",
     "quote",
 ]);
-
-const dayMs = 24 * 60 * 60 * 1000;
 
 /** How long an account is new for, as on Mastodon. */
 const newAccountMs = 30 * dayMs;

@@ -4,6 +4,7 @@
  * @module
  */
 import type { Context } from "../kernel/context.ts";
+import { readLimited } from "../kernel/limited.ts";
 import { timeoutSignal, userAgent } from "../kernel/transport.ts";
 
 /** How many redirects are followed. */
@@ -25,45 +26,6 @@ export type Fetched = {
     readonly body: Uint8Array<ArrayBuffer>;
     /** Whether the body was cut off at the limit. */
     readonly truncated: boolean;
-};
-
-/** Reads up to `limit` bytes of `stream`, and stops there. */
-const readLimited = async (stream: ReadableStream<Uint8Array> | null, limit: number) => {
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    let truncated = false;
-
-    if (stream) {
-        const reader = stream.getReader();
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const room = limit - size;
-                if (value.length > room) {
-                    chunks.push(value.subarray(0, room));
-                    size = limit;
-                    truncated = true;
-                    break;
-                }
-
-                chunks.push(value);
-                size += value.length;
-            }
-        } finally {
-            await reader.cancel().catch(() => {});
-        }
-    }
-
-    const body = new Uint8Array(size);
-    let at = 0;
-    for (const chunk of chunks) {
-        body.set(chunk, at);
-        at += chunk.length;
-    }
-
-    return { body, truncated };
 };
 
 /**

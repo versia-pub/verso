@@ -6,6 +6,10 @@ export interface Clock {
     now(): Date;
 }
 
+/** An hour and a day, in milliseconds. */
+export const hourMs = 60 * 60 * 1000;
+export const dayMs = 24 * hourMs;
+
 export const systemClock: Clock = { now: () => new Date() };
 
 /** A clock for tests. Time stands still until `advance` moves it on. */

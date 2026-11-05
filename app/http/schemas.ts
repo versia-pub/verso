@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/** A check for `.refine(...notBlank("Title"))`: text that isn't blank, named `name` in the error. */
+export const notBlank = (
+    name: string,
+): readonly [(text: string) => boolean, { readonly error: string }] => [
+    (text: string) => text.trim() !== "",
+    { error: `${name} can't be blank` },
+];
+
 /** A boolean, as JSON sends it or as a form does: `true`, `1`, `false` or `0`. */
 export const Flag: z.ZodType<boolean, boolean | string> = z.union([
     z.boolean(),
