@@ -148,7 +148,7 @@ Deno.test("reaction notifications have the emoji, and a custom one's picture", a
     await createLocalEmoji(test.ctx, "blob");
     const own = await test.post("alice", "Hi");
     await react(test.ctx, "bob", own.id, "🎉");
-    await react(test.ctx, "carol", own.id, ":blob:");
+    await react(test.ctx, "carol", own.id, "blob");
 
     const { body } = await test.request("GET", "/api/v1/notifications");
     assertEquals((body as Shown[]).map((each) => [each.type, each.emoji, each.emoji_url]), [
@@ -441,7 +441,7 @@ Deno.test("only the types in grouped_types are grouped, and reactions only when 
     await like(test.ctx, "bob", own.id);
     await like(test.ctx, "carol", own.id);
     await react(test.ctx, "bob", own.id, "🎉");
-    await react(test.ctx, "bob", own.id, ":blob:");
+    await react(test.ctx, "bob", own.id, "blob");
     await react(test.ctx, "carol", own.id, "🎉");
     const [carolReacted, blobbed, bobReacted, carolLiked, bobLiked] = await test.ids();
     const hour = Math.floor(test.clock.now().getTime() / 3_600_000);

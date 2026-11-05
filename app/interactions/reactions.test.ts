@@ -9,7 +9,7 @@ import { renderStatuses } from "../notes/render.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { reactionsOf } from "./reaction_render_queries.ts";
-import { react, unreact } from "./reactions.ts";
+import { react, reactionEmoji, unreact } from "./reactions.ts";
 
 /** alice, bob, who follows her, and dave; the local instance's blob, and b.example's dog. */
 const open = async () => {
@@ -35,11 +35,11 @@ Deno.test("a note is reacted to with each emoji once, the first used first", asy
     await using test = await open();
     const note = await createNote(test.ctx, "alice");
 
-    for (const [by, name] of [["bob", "👍🏽"], ["dave", ":blob:"], ["bob", ":blob:"]]) {
+    for (const [by, name] of [["bob", "👍🏽"], ["dave", "blob"], ["bob", "blob"]]) {
         assertEquals((await react(test.ctx, by, note.id, name)) !== "missing", true);
     }
     // Again, it is the same reaction.
-    await react(test.ctx, "bob", note.id, ":blob:");
+    await react(test.ctx, "bob", note.id, "blob");
 
     assertEquals(await test.total(note.id), 3);
     const groups = (await reactionsOf(test.ctx, [note.id], "bob", null)).get(note.id) ?? [];
@@ -58,9 +58,9 @@ Deno.test("the reactions of blocked accounts are taken from their status's and e
     await using test = await open();
     await createLocalEmoji(test.ctx, "cat");
     const notes = [await createNote(test.ctx, "alice"), await createNote(test.ctx, "alice")];
-    await react(test.ctx, "dave", notes[0].id, ":blob:");
+    await react(test.ctx, "dave", notes[0].id, "blob");
     for (const note of notes) {
-        for (const name of [":blob:", ":cat:"]) await react(test.ctx, "bob", note.id, name);
+        for (const name of ["blob", "cat"]) await react(test.ctx, "bob", note.id, name);
     }
     await block(test.ctx, "alice", "dave");
 
@@ -76,8 +76,21 @@ Deno.test("only a Unicode emoji, or one of this instance's, can be reacted with"
     await using test = await open();
     const note = await createNote(test.ctx, "alice");
 
+    // Not Unicode, or not a global emoji of this instance's, named by its bare shortcode.
     for (
-        const name of ["hello", "a", "😀😀", ":nope:", ":dog:", "blob", ":blob", "x:blob:", "😀 "]
+        const name of [
+            "hello",
+            "a",
+            "😀😀",
+            "nope",
+            "dog",
+            "dog@b.example",
+            "blob@a.test",
+            ":blob:",
+            ":blob",
+            "x:blob:",
+            "😀 ",
+        ]
     ) {
         assertEquals(await react(test.ctx, "bob", note.id, name), "unknown emoji", name);
     }
@@ -86,6 +99,21 @@ Deno.test("only a Unicode emoji, or one of this instance's, can be reacted with"
     // Though no one has reacted with it, it can be undone, as with any emoji.
     assertEquals((await unreact(test.ctx, "bob", note.id, "😀")) !== "missing", true);
     assertEquals(await unreact(test.ctx, "bob", note.id, "hello"), "unknown emoji");
+});
+
+Deno.test("a shortcode has letters, digits, underscores and dashes, and a keycap is a Unicode emoji", async () => {
+    await using test = await open();
+
+    for (const shortcode of ["blob_cat", "blob-cat", "blob2", "BLOB"]) {
+        const id = await createLocalEmoji(test.ctx, shortcode);
+        assertEquals(await reactionEmoji(test.ctx, shortcode), { text: null, emoji_id: id });
+    }
+    for (const keycap of ["1️⃣", "#️⃣"]) {
+        assertEquals(await reactionEmoji(test.ctx, keycap), { text: keycap, emoji_id: null });
+    }
+    for (const name of ["blob:x", "blob@b.example", "blob cat", "1"]) {
+        assertEquals(await reactionEmoji(test.ctx, name), undefined, name);
+    }
 });
 
 Deno.test("reacting to a share reacts to what it shares, and undoing it undoes that", async () => {
@@ -98,10 +126,10 @@ Deno.test("reacting to a share reacts to what it shares, and undoing it undoes t
     assertEquals(await test.total(note.id), 1);
 
     // Undoing one emoji leaves the others.
-    await react(test.ctx, "bob", note.id, ":blob:");
+    await react(test.ctx, "bob", note.id, "blob");
     await unreact(test.ctx, "bob", share.id, "🎉");
     assertEquals(await test.total(note.id), 1);
-    await unreact(test.ctx, "bob", note.id, ":blob:");
+    await unreact(test.ctx, "bob", note.id, "blob");
     assertEquals(await test.total(note.id), 0);
 });
 
@@ -125,8 +153,12 @@ Deno.test("a status shows its reactions, and the custom emojis they use among it
     await test.ctx.db.updateTable("emojis").set({ category: "Blobs" })
         .where("shortcode", "=", "blob")
         .execute();
+    // So that its still picture isn't its picture.
+    await test.ctx.db.updateTable("media").set({ preview_sha256: "preview-blob" })
+        .where("sha256", "=", "emoji-blob")
+        .execute();
     const note = await createNote(test.ctx, "alice");
-    await react(test.ctx, "bob", note.id, ":blob:");
+    await react(test.ctx, "bob", note.id, "blob");
     await react(test.ctx, "dave", note.id, "🎉");
     // A remote instance's reaction with its own emoji, as I10 will store them.
     await test.ctx.db.insertInto("reactions")
@@ -142,9 +174,23 @@ Deno.test("a status shows its reactions, and the custom emojis they use among it
 
     const [status] = await renderStatuses(test.ctx, [note], "bob");
     assertEquals(status?.reactions, [
-        { name: ":blob:", count: 1, remote: false, me: true },
+        {
+            name: "blob",
+            count: 1,
+            remote: false,
+            me: true,
+            url: "https://social.example/media/emoji-blob",
+            static_url: "https://social.example/media/preview-blob",
+        },
         { name: "🎉", count: 1, remote: false, me: false },
-        { name: ":dog@b.example:", count: 1, remote: true, me: false },
+        {
+            name: "dog@b.example",
+            count: 1,
+            remote: true,
+            me: false,
+            url: "https://b.example/dog.png",
+            static_url: "https://b.example/dog.png",
+        },
     ]);
     assertEquals(
         status?.emojis.map((emoji) => [emoji.shortcode, emoji.visible_in_picker, emoji.category]),

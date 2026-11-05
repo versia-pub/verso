@@ -240,7 +240,7 @@ export const renderStatuses = async (
                 ...emojis.get(note.id) ?? [],
                 ...reactionEmojis(reactions.get(note.id) ?? []),
             ]),
-            reactions: renderReactions(reactions.get(note.id) ?? [], viewerId !== null),
+            reactions: renderReactions(ctx, reactions.get(note.id) ?? [], viewerId !== null),
             reblogs_count: Math.max(note.shares_count, totals.get(note.id)?.shares ?? 0) -
                 (uncounted.shares.get(note.id) ?? 0),
             favourites_count: Math.max(note.likes_count, totals.get(note.id)?.likes ?? 0) -

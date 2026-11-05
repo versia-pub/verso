@@ -90,7 +90,7 @@ Deno.test("a like, share and reaction reach the note's instance, and the share t
 
     assertEquals((await test.users.bob("POST", `${path}/favourite`)).status, 200);
     assertEquals((await test.users.bob("POST", `${path}/reblog`)).status, 200);
-    assertEquals((await test.users.bob("PUT", `${path}/reactions/🎉`)).status, 201);
+    assertEquals((await test.users.bob("POST", `${path}/react/🎉`)).status, 200);
     await test.network.drain();
 
     assertEquals(await test.onA(id), {
@@ -106,7 +106,7 @@ Deno.test("a like, share and reaction reach the note's instance, and the share t
 
     await test.users.bob("POST", `${path}/unfavourite`);
     await test.users.bob("POST", `${path}/unreblog`);
-    await test.users.bob("DELETE", `${path}/reactions/🎉`);
+    await test.users.bob("POST", `${path}/unreact/🎉`);
     await test.network.drain();
 
     assertEquals(await test.onA(id), { counts: [0, 0], liked: [], shared: [], reactions: [] });

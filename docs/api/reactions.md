@@ -1,18 +1,20 @@
 # Reactions
 
-Users can react to statuses with emoji, as on Versia Server and Pleroma. A user can react to a
-status with several different emoji, once each. Reactions federate, so statuses also show those
-Verso has received from other instances.
+Users can react to statuses with emoji. A user can react to a status with several different emoji,
+once each. Reactions federate, so statuses also show those Verso has received from other instances.
+
+The routes to react and undo are glitch-soc's, which Chuckya also has. The routes to list reactions
+are Versia Server's.
 
 ## Naming an emoji
 
 Reactions name their emoji in one of three ways:
 
-| Name               | Emoji                                                       |
-| ------------------ | ----------------------------------------------------------- |
-| `👍`               | a Unicode emoji, one only                                   |
-| `:blobcat:`        | one of the instance's global custom emoji, by its shortcode |
-| `:blob@b.example:` | another instance's custom emoji, with its domain            |
+| Name             | Emoji                                                       |
+| ---------------- | ----------------------------------------------------------- |
+| `👍`             | a Unicode emoji, one only                                   |
+| `blobcat`        | one of the instance's global custom emoji, by its shortcode |
+| `blob@b.example` | another instance's custom emoji, with its domain            |
 
 Users react with Unicode emoji and the instance's global custom emoji, not their own. Other
 instances' emoji appear in their users' reactions, but can't be reacted with here. In URLs, names
@@ -27,19 +29,28 @@ used. Reactions from accounts the viewer blocks aren't counted.
 {
     "reactions": [
         { "name": "👍", "count": 3, "remote": false, "me": true },
-        { "name": ":blob@b.example:", "count": 1, "remote": true, "me": false }
+        {
+            "name": "blob@b.example",
+            "count": 1,
+            "remote": true,
+            "me": false,
+            "url": "https://b.example/blob.png",
+            "static_url": "https://b.example/blob.png"
+        }
     ]
 }
 ```
 
-| Field    | Type    | Description                                                   |
-| -------- | ------- | ------------------------------------------------------------- |
-| `name`   | string  | The emoji, named as above                                     |
-| `count`  | integer | How many accounts reacted with it                             |
-| `remote` | boolean | Whether the emoji is another instance's                       |
-| `me`     | boolean | Whether the viewer reacted with it. Left out without a viewer |
+| Field        | Type    | Description                                                   |
+| ------------ | ------- | ------------------------------------------------------------- |
+| `name`       | string  | The emoji, named as above                                     |
+| `count`      | integer | How many accounts reacted with it                             |
+| `remote`     | boolean | Whether the emoji is another instance's                       |
+| `me`         | boolean | Whether the viewer reacted with it. Left out without a viewer |
+| `url`        | string  | A custom emoji's picture. Left out for Unicode emoji          |
+| `static_url` | string  | A still version of it. Left out for Unicode emoji             |
 
-A custom emoji's picture is in the status's `emojis`, by its shortcode.
+`remote` is Verso's own. A custom emoji is also in the status's `emojis`, by its shortcode.
 
 ## Methods
 
@@ -48,20 +59,20 @@ token too. Reacting needs a user's token, the `write:statuses` scope and the `ow
 permission. A status the viewer may not see is a `404`. Reacting to a boost reacts to the status it
 boosts.
 
-### `PUT /api/v1/statuses/:id/reactions/:name`
+### `POST /api/v1/statuses/:id/react/:name`
 
-Reacts to a status with an emoji, and answers `201` with the status. Reacting again with the same
+Reacts to a status with an emoji, and answers `200` with the status. Reacting again with the same
 emoji changes nothing. An emoji that isn't one of those users can react with is a `422`.
 
 ```sh
-curl -X PUT https://social.example/api/v1/statuses/$ID/reactions/%F0%9F%91%8D \
+curl -X POST https://social.example/api/v1/statuses/$ID/react/%F0%9F%91%8D \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-### `DELETE /api/v1/statuses/:id/reactions/:name`
+### `POST /api/v1/statuses/:id/unreact/:name`
 
-Undoes the viewer's reaction with an emoji, and answers with the status. A status the viewer reacted
-to can be undone even if they may no longer see it.
+Undoes the viewer's reaction with an emoji, and answers `200` with the status, also if they hadn't
+reacted with it. A status the viewer reacted to can be undone even if they may no longer see it.
 
 ### `GET /api/v1/statuses/:id/reactions`
 

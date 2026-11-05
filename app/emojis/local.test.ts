@@ -262,8 +262,8 @@ Deno.test("a user's own emojis are theirs to use, over global ones of the same n
         format: "text/plain",
         spoilerText: "",
     });
-    await react(test.ctx, "alice", note?.id ?? "", ":blob:");
-    await react(test.ctx, "alice", note?.id ?? "", ":mine:");
+    await react(test.ctx, "alice", note?.id ?? "", "blob");
+    await react(test.ctx, "alice", note?.id ?? "", "mine");
     const reacted = await findNote(test.ctx, note?.id ?? "");
     const [status] = reacted ? await renderStatuses(test.ctx, [reacted], null) : [];
     assertEquals(urls(status?.emojis), [["blob", global("blob")], ["mine", global("mine")]]);

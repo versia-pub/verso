@@ -1,7 +1,7 @@
 /**
  * Reactions to statuses, each with an emoji: a Unicode one, or a custom one, which local users take
  * from the local instance's emojis. A user reacts to a status with each emoji once, and with as
- * many emojis as they like, as on Versia Server.
+ * many emojis as they like.
  * @see https://versia.pub/extensions/reactions
  * @module
  */
@@ -33,16 +33,15 @@ export const isUnicodeEmoji = (text: string): boolean => /^\p{RGI_Emoji}$/v.test
 
 /**
  * The emoji a local user names to react with: a Unicode emoji, or one of the local instance's
- * custom emojis by its shortcode in colons, such as `:blobcat:`, or `undefined` if it is neither.
+ * custom emojis by its shortcode, such as `blobcat`, or `undefined` if it is neither.
  */
 export const reactionEmoji = async (
     ctx: Context,
     name: string,
 ): Promise<ReactionEmoji | undefined> => {
-    const shortcode = /^:([A-Za-z0-9_-]+):$/u.exec(name)?.[1];
-    if (shortcode !== undefined) {
+    if (/^[A-Za-z0-9_-]+$/u.test(name)) {
         // Only global ones, so that each reaction's name is one emoji.
-        const [id] = await usableEmojiIds(ctx, null, [shortcode]);
+        const [id] = await usableEmojiIds(ctx, null, [name]);
         return id === undefined ? undefined : { text: null, emoji_id: id };
     }
 

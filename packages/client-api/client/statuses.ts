@@ -319,23 +319,27 @@ export class StatusMethods {
 
     /**
      * Reacts to a status with an emoji: a Unicode one, or one of the instance's custom ones, by its
-     * shortcode in colons, such as `:blobcat:`. Another instance's custom emojis can't be used.
+     * shortcode, such as `blobcat`. Another instance's custom emojis can't be used.
+     * @see https://github.com/glitch-soc/mastodon/pull/2462
      */
     react(id: string, emoji: string, options?: CallOptions): Promise<Status> {
         return this.http.json(
             Status,
-            "PUT",
-            path`/api/v1/statuses/${id}/reactions/${emoji}`,
+            "POST",
+            path`/api/v1/statuses/${id}/react/${emoji}`,
             options,
         );
     }
 
-    /** Undoes the viewer's reaction to a status with an emoji, named as `react` names it. */
+    /**
+     * Undoes the viewer's reaction to a status with an emoji, named as `react` names it.
+     * @see https://github.com/glitch-soc/mastodon/pull/2462
+     */
     unreact(id: string, emoji: string, options?: CallOptions): Promise<Status> {
         return this.http.json(
             Status,
-            "DELETE",
-            path`/api/v1/statuses/${id}/reactions/${emoji}`,
+            "POST",
+            path`/api/v1/statuses/${id}/unreact/${emoji}`,
             options,
         );
     }
@@ -343,7 +347,7 @@ export class StatusMethods {
     /**
      * The accounts that reacted to a status with an emoji, newest first. The emoji is named as the
      * status's reactions name it, which for another instance's custom one adds its domain, such as
-     * `:blob@b.example:`.
+     * `blob@b.example`.
      */
     reactedBy(
         id: string,

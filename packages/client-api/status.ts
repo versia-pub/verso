@@ -21,18 +21,22 @@ export const StatusMention = z.object({
 export type StatusMention = z.infer<typeof StatusMention>;
 
 /**
- * The reactions to a status with one emoji. Versia Server's, which Pleroma has as
- * `pleroma.emoji_reactions`.
- * @see https://github.com/versia-pub/server/blob/main/packages/client/schemas/versia.ts
+ * The reactions to a status with one emoji. glitch-soc's, which Pleroma has as
+ * `pleroma.emoji_reactions`, with `remote`.
+ * @see https://github.com/glitch-soc/mastodon/pull/2462
  */
 export const StatusReaction = z.object({
-    /** A Unicode emoji, or a custom one's shortcode in colons, with its domain if it is remote. */
+    /** A Unicode emoji, or a custom one's shortcode, with its domain if it is remote. */
     name: z.string(),
     count: z.int().min(1),
     /** Whether the emoji is a remote instance's. */
     remote: z.boolean(),
     /** Whether the viewer reacted with it, for a viewer. */
     me: z.boolean().optional(),
+    /** The picture of a custom emoji, once it is ready. */
+    url: z.url().optional(),
+    /** A still version of the picture of a custom emoji, once it is ready. */
+    static_url: z.url().optional(),
 });
 export type StatusReaction = z.infer<typeof StatusReaction>;
 

@@ -81,11 +81,11 @@ Deno.test("a reaction is sent to the note's author and the reactor's followers, 
     });
     const local = await createNote(test.ctx, "bob");
 
-    const blob = await test.reacted("alice", theirs.id, ":blob:");
+    const blob = await test.reacted("alice", theirs.id, "blob");
     const reactedAt = test.ctx.clock.now().toISOString();
     const party = await test.reacted("alice", local.id, "🎉");
     test.clock.advance(1000);
-    await unreact(test.ctx, "alice", theirs.id, ":blob:");
+    await unreact(test.ctx, "alice", theirs.id, "blob");
 
     const now = test.ctx.clock.now().toISOString();
     assertEquals(
@@ -158,7 +158,7 @@ Deno.test("a local reaction is fetched by instances that may see its note, or wh
     );
     const local = await createNote(test.ctx, "alice", { visibility: "private" });
     const hidden = await test.reacted("alice", theirs.id, "🎉");
-    const followed = await test.reacted("alice", local.id, ":blob:");
+    const followed = await test.reacted("alice", local.id, "blob");
 
     assertEquals((await test.find(hidden, "b.example"))?.object, "b.example:n1");
     assertEquals(await test.find(hidden, "c.example"), undefined);
@@ -191,7 +191,7 @@ Deno.test("a local note lists its reactions, for instances that may see it", asy
     const note = await createNote(test.ctx, "bob");
     const hidden = await createNote(test.ctx, "alice", { visibility: "private" });
     const first = await test.reacted("alice", note.id, "🎉");
-    const second = await test.reacted("bob", note.id, ":blob:");
+    const second = await test.reacted("bob", note.id, "blob");
     await test.reacted("alice", hidden.id, "🎉");
     const theirs = await createNote(test.ctx, "carol", {
         instance_id: "b.example",
@@ -252,7 +252,7 @@ Deno.test("local users' reactions with a deleted emoji are undone, and remote in
         instance_id: "b.example",
         remote_id: "n1",
     });
-    const blob = await test.reacted("alice", theirs.id, ":blob:");
+    const blob = await test.reacted("alice", theirs.id, "blob");
     const party = await test.reacted("alice", theirs.id, "🎉");
     // carol's reaction with b.example's own blob stays.
     await test.ctx.transaction((tx) =>
@@ -297,7 +297,7 @@ Deno.test("the reactions undone with a deleted emoji are told of 100 to a job", 
     const reactors = Array.from({ length: 101 }, (_, n) => `u${n}`);
     for (const id of reactors) {
         await createLocalAccount(test.ctx, id);
-        await react(test.ctx, id, note.id, ":blob:");
+        await react(test.ctx, id, note.id, "blob");
     }
 
     const emoji = await test.ctx.db.selectFrom("emojis").select("id")

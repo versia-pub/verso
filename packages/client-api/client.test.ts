@@ -231,11 +231,11 @@ Deno.test("relationships ask for each id Rails-style", async () => {
 Deno.test("a reaction's emoji is escaped in its path, custom or not", async () => {
     const { client, sent } = fake(() => json([]));
 
-    await client.statuses.reactedBy("1", ":blob@b.example:");
+    await client.statuses.reactedBy("1", "blob@b.example");
     await client.statuses.reactedBy("1", "👍");
 
     assertEquals(sent.map((request) => new URL(request.url).pathname), [
-        "/api/v1/statuses/1/reactions/%3Ablob%40b.example%3A",
+        "/api/v1/statuses/1/reactions/blob%40b.example",
         "/api/v1/statuses/1/reactions/%F0%9F%91%8D",
     ]);
 });

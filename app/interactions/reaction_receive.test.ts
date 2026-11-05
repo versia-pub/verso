@@ -144,7 +144,14 @@ Deno.test("a reaction with the sender's custom emoji is kept with it", async () 
 
     await test.send(reaction("r1", `a.test:${test.local.id}`, ":blob:", emoji("blob")));
     assertEquals(await test.shown(test.local.id), {
-        reactions: [{ name: ":blob@b.test:", count: 1, remote: true, me: false }],
+        reactions: [{
+            name: "blob@b.test",
+            count: 1,
+            remote: true,
+            me: false,
+            url: "https://b.test/blob.png",
+            static_url: "https://b.test/blob.png",
+        }],
         emojis: [["blob@b.test", "https://b.test/blob.png"]],
     });
 

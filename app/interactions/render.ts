@@ -1,5 +1,6 @@
 /**
- * Reactions as the client API renders them, as Versia Server has them.
+ * Reactions as the client API renders them, as glitch-soc has them.
+ * @see https://github.com/glitch-soc/mastodon/pull/2462
  * @module
  */
 import type { StatusReaction } from "@versia/client-api";
@@ -12,43 +13,60 @@ import type { ReactionGroup, ReactionWithEmoji } from "./reaction_render_queries
 type Named = Pick<ReactionGroup, "text" | "shortcode" | "domain">;
 
 /**
- * What the reactions with one emoji are called: the Unicode emoji, or the custom emoji's shortcode
- * in colons, with its instance's domain if it is a remote instance's, such as `:blob@b.example:`.
+ * What the reactions with one emoji are called: the Unicode emoji, or the custom emoji's shortcode,
+ * with its instance's domain if it is a remote instance's, such as `blob@b.example`.
  */
-export const reactionName = (group: Named): string => group.text ?? `:${shortcodeOf(group)}:`;
+export const reactionName = (group: Named): string => group.text ?? shortcodeOf(group);
 
 /** A custom emoji's shortcode, as it is named among a status's custom emojis. */
 const shortcodeOf = (group: Named) =>
     group.domain === null ? `${group.shortcode}` : `${group.shortcode}@${group.domain}`;
 
+/** The URLs of a custom emoji's picture, or `undefined` for a Unicode emoji or one not ready. */
+const pictureOf = (ctx: Context, reaction: Omit<ReactionWithEmoji, "id">) =>
+    reaction.media_type === null
+        ? undefined
+        : emojiPicture(ctx, { ...reaction, media_type: reaction.media_type });
+
 /**
- * A reaction's emoji, named as {@link reactionName} names it, and its picture's URL if it is a
- * custom one whose picture is ready, as Pleroma has them on its emoji reaction notifications.
+ * A reaction's emoji, named as Pleroma names it on its emoji reaction notifications: the Unicode
+ * emoji, or the custom emoji's shortcode in colons. With the custom emoji's picture's URL if it is
+ * ready.
  */
 export const renderReactionEmoji = (
     ctx: Context,
     reaction: ReactionWithEmoji,
-): { emoji: string; emoji_url: string | null } => {
-    const picture = reaction.media_type === null
-        ? undefined
-        : emojiPicture(ctx, { ...reaction, media_type: reaction.media_type });
-
-    return { emoji: reactionName(reaction), emoji_url: picture?.url ?? null };
-};
-
-/** The reactions to a status with one emoji, with whether the viewer made one, for a viewer. */
-export const renderReaction = (group: ReactionGroup, viewer: boolean): StatusReaction => ({
-    name: reactionName(group),
-    count: group.count,
-    remote: group.domain !== null,
-    ...(viewer ? { me: group.me } : {}),
+): { emoji: string; emoji_url: string | null } => ({
+    emoji: reaction.text ?? `:${shortcodeOf(reaction)}:`,
+    emoji_url: pictureOf(ctx, reaction)?.url ?? null,
 });
+
+/**
+ * The reactions to a status with one emoji, with whether the viewer made one, for a viewer, and
+ * the pictures of a custom emoji whose picture is ready.
+ */
+export const renderReaction = (
+    ctx: Context,
+    group: ReactionGroup,
+    viewer: boolean,
+): StatusReaction => {
+    const picture = pictureOf(ctx, group);
+
+    return {
+        name: reactionName(group),
+        count: group.count,
+        remote: group.domain !== null,
+        ...(viewer ? { me: group.me } : {}),
+        ...(picture ? { url: picture.url, static_url: picture.still } : {}),
+    };
+};
 
 /** Reactions to a status, by emoji, as {@link renderReaction} renders them. */
 export const renderReactions = (
+    ctx: Context,
     groups: readonly ReactionGroup[],
     viewer: boolean,
-): StatusReaction[] => groups.map((group) => renderReaction(group, viewer));
+): StatusReaction[] => groups.map((group) => renderReaction(ctx, group, viewer));
 
 /** The custom emojis a status has reactions with, to display among its custom emojis. */
 export const reactionEmojis = (groups: readonly ReactionGroup[]): ShownEmoji[] =>

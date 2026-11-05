@@ -58,28 +58,29 @@ const ShareOptions = z.object({
     visibility: z.enum(["public", "unlisted", "private"]).optional(),
 });
 
-/** Versia Server's reaction routes, which Verso's routes follow. */
+/** Versia Server's reaction list routes, which Verso's follow. */
 const versiaServerReactions =
     "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions";
 
 /**
- * Reacts to a status with an emoji, or undoes it, as Versia Server does. The emoji is a Unicode
- * one, or one of the local instance's by its shortcode in colons.
- * @see https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions
+ * Reacts to a status with an emoji, or undoes it, as glitch-soc does. The emoji is a Unicode one,
+ * or one of the local instance's by its shortcode.
+ * @see https://github.com/glitch-soc/mastodon/pull/2462
  */
-const reactionRoute = (method: "PUT" | "DELETE") =>
+const reactionRoute = (action: "react" | "unreact") =>
     defineRoute({
-        method,
-        path: "/api/v1/statuses/:id/reactions/:name",
-        summary: method === "PUT"
+        method: "POST",
+        path: `/api/v1/statuses/:id/${action}/:name`,
+        summary: action === "react"
             ? "React to a status with an emoji"
             : "Undo reaction to a status with an emoji",
+        docs: "https://github.com/glitch-soc/mastodon/pull/2462",
         tags: ["statuses"],
         auth: { require: "user", scope: "write:statuses", permission: "owner:reaction" },
         params: z.object({ id: z.string(), name: z.string().min(1) }),
-        responses: method === "PUT" ? { 201: Status } : { 200: Status },
+        responses: { 200: Status },
         handler: async (ctx, { params, viewer }) => {
-            const result = method === "PUT"
+            const result = action === "react"
                 ? await react(ctx, viewer.accountId, params.id, params.name)
                 : await unreact(ctx, viewer.accountId, params.id, params.name);
             if (result === "missing") throw new NotFound();
@@ -88,17 +89,17 @@ const reactionRoute = (method: "PUT" | "DELETE") =>
             }
 
             const [status] = await renderStatuses(ctx, [result], viewer.accountId);
-            return { status: method === "PUT" ? 201 : 200, body: status };
+            return { status: 200, body: status };
         },
     });
 
 /**
  * Likes of statuses (which Mastodon calls favourites), boosts (which it calls reblogs), and
- * reactions, as Versia Server has them.
+ * reactions: glitch-soc's routes to react, and Versia Server's to list them.
  */
 export const interactionRoutes: readonly Route[] = [
-    reactionRoute("PUT"),
-    reactionRoute("DELETE"),
+    reactionRoute("react"),
+    reactionRoute("unreact"),
     defineRoute({
         method: "GET",
         path: "/api/v1/statuses/:id/reactions",
@@ -117,7 +118,7 @@ export const interactionRoutes: readonly Route[] = [
             const groups =
                 (await reactionsOf(ctx, [note.id], viewerId, viewerBlocks(ctx, viewerId)))
                     .get(note.id) ?? [];
-            return { status: 200, body: renderReactions(groups, viewer !== undefined) };
+            return { status: 200, body: renderReactions(ctx, groups, viewer !== undefined) };
         },
     }),
     defineRoute({
@@ -131,8 +132,8 @@ export const interactionRoutes: readonly Route[] = [
         params: z.object({
             id: z.string(),
             name: z.string().min(1).meta({
-                description: "A Unicode emoji, or a custom emoji's shortcode in colons, with its " +
-                    "domain if it's another instance's, such as `:blob@b.example:`.",
+                description: "A Unicode emoji, or a custom emoji's shortcode, with its domain if " +
+                    "it's another instance's, such as `blob@b.example`.",
             }),
         }),
         query: PageQuery({ default: 40, max: 80 }),

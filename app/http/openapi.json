@@ -9931,55 +9931,13 @@
                 }
             }
         },
-        "/api/v1/statuses/{id}/reactions/{name}": {
-            "put": {
+        "/api/v1/statuses/{id}/react/{name}": {
+            "post": {
                 "summary": "React to a status with an emoji",
                 "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:reaction` permission.",
-                "tags": [
-                    "statuses"
-                ],
-                "security": [
-                    {
-                        "OAuth2": [
-                            "write:statuses"
-                        ]
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "minLength": 1
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "A JSON body",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Status"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "summary": "Undo reaction to a status with an emoji",
-                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:reaction` permission.",
+                "externalDocs": {
+                    "url": "https://github.com/glitch-soc/mastodon/pull/2462"
+                },
                 "tags": [
                     "statuses"
                 ],
@@ -10021,7 +9979,104 @@
                         }
                     }
                 }
-            },
+            }
+        },
+        "/api/v1/statuses/{id}/unreact/{name}": {
+            "post": {
+                "summary": "Undo reaction to a status with an emoji",
+                "description": "Needs a token for a user, not one an app got for itself. Needs the `owner:reaction` permission.",
+                "externalDocs": {
+                    "url": "https://github.com/glitch-soc/mastodon/pull/2462"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/reactions": {
+            "get": {
+                "summary": "List reactions to a status",
+                "description": "Reactions to a status, by emoji.\n\nNeeds the `read:reaction` permission.",
+                "externalDocs": {
+                    "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/StatusReaction"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/statuses/{id}/reactions/{name}": {
             "get": {
                 "summary": "List accounts that reacted with an emoji",
                 "description": "Accounts that reacted to a status with an emoji.\n\nNeeds the `read:reaction` permission.",
@@ -10055,7 +10110,7 @@
                         "schema": {
                             "type": "string",
                             "minLength": 1,
-                            "description": "A Unicode emoji, or a custom emoji's shortcode in colons, with its domain if it's another instance's, such as `:blob@b.example:`."
+                            "description": "A Unicode emoji, or a custom emoji's shortcode, with its domain if it's another instance's, such as `blob@b.example`."
                         }
                     },
                     {
@@ -10119,51 +10174,6 @@
                                     "type": "array",
                                     "items": {
                                         "$ref": "#/components/schemas/Account"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/statuses/{id}/reactions": {
-            "get": {
-                "summary": "List reactions to a status",
-                "description": "Reactions to a status, by emoji.\n\nNeeds the `read:reaction` permission.",
-                "externalDocs": {
-                    "url": "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions"
-                },
-                "tags": [
-                    "statuses"
-                ],
-                "security": [
-                    {},
-                    {
-                        "OAuth2": [
-                            "read:statuses"
-                        ]
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "A JSON body",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/StatusReaction"
                                     }
                                 }
                             }
@@ -23072,6 +23082,14 @@
                     },
                     "me": {
                         "type": "boolean"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "static_url": {
+                        "type": "string",
+                        "format": "uri"
                     }
                 },
                 "required": [
