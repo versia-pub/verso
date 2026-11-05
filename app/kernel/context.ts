@@ -130,7 +130,14 @@ export type Context<DB = Database> = {
     readonly clock: Clock;
     readonly ids: IdGenerator;
     readonly urls: UrlBuilder;
+    /** For other instances, which only ever use the standard HTTPS port. */
     readonly transport: Transport;
+    /**
+     * For servers that anyone can name outside federation, such as the endpoint of a push
+     * subscription and the pages of links to preview. Limited to the web's ports, and any the
+     * admin adds.
+     */
+    readonly webTransport: Transport;
     /** Where uploaded files are stored. */
     readonly files: FileStore;
     /** Processes uploaded images so they are ready to store and display. */

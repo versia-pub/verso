@@ -176,7 +176,7 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
 
     let response;
     try {
-        response = await ctx.transport(request);
+        response = await ctx.webTransport(request);
     } catch (error) {
         if (error instanceof DOMException && error.name === "TimeoutError") {
             throw new PermanentFailure(

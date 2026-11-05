@@ -96,6 +96,9 @@ roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
 # Lets Verso reach remote instances at internal addresses, such as on a local network.
 # Development only.
 # allow_internal_addresses = false
+# Ports besides 80 and 443 that push endpoints and the pages of link previews may use. Instances
+# are always reached on 443, as Versia says.
+# extra_web_ports = []
 # Instances not to federate with, with their subdomains, besides the ones blocked with
 # `verso admin domains block`.
 # blocked_domains = []

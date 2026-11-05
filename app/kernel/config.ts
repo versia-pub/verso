@@ -107,6 +107,11 @@ export const Config = z.strictObject({
          */
         allow_internal_addresses: z.boolean().default(false),
         /**
+         * Ports besides 80 and 443 that push endpoints and the pages of link previews may use.
+         * Instances always use 443, as Versia says.
+         */
+        extra_web_ports: z.array(z.int().min(1).max(65535)).default([]),
+        /**
          * Instances Verso doesn't federate with, with their subdomains, besides the ones blocked
          * with `verso admin domains block`.
          */

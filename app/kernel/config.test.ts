@@ -34,6 +34,7 @@ Deno.test("a minimal config gets the defaults", async () => {
             auth: { issuers: [], dev_login: false, timeout_seconds: 15 },
             federation: {
                 allow_internal_addresses: false,
+                extra_web_ports: [],
                 blocked_domains: [],
                 silent_blocks: false,
                 unreachable_days: 7,
@@ -188,6 +189,7 @@ anonymous = []
 default = ["owner:account"]
 
 [federation]
+extra_web_ports = [8443]
 unreachable_days = 3
 delivery_hours = 24
 
@@ -269,6 +271,7 @@ level = "debug"
             },
             federation: {
                 allow_internal_addresses: false,
+                extra_web_ports: [8443],
                 blocked_domains: [],
                 silent_blocks: false,
                 unreachable_days: 3,
@@ -378,6 +381,12 @@ Deno.test("bad configs explain what is wrong", async () => {
         "domain",
     );
     assertStringIncludes(await errors(minimal + "[http]\nport = 0"), "http.port");
+    for (const port of ["0", "65536", "1.5"]) {
+        assertStringIncludes(
+            await errors(minimal + `[federation]\nextra_web_ports = [${port}]`),
+            "federation.extra_web_ports",
+        );
+    }
     assertStringIncludes(await errors('domian = "typo.example"' + minimal), "domian");
     assertStringIncludes(
         await errors(minimal + '[logging]\nlevel = "loud"'),

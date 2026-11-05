@@ -193,6 +193,16 @@ Deno.test("a notification is pushed encrypted and signed, with what Mastodon pus
     assertEquals([claims.aud, claims.sub], ["https://push.example", "https://social.example"]);
 });
 
+Deno.test("pushes go through the transport for web servers, not the one for instances", async () => {
+    await using test = await open();
+    await test.subscribe("alice", "a");
+    await test.post("bob", "Hi @alice");
+
+    const instances = () => Promise.reject(new TypeError("not for instances"));
+    assertEquals(await drain({ ...test.ctx, transport: instances }, queues), 1);
+    assertEquals(test.pushed.length, 1);
+});
+
 Deno.test("a push's body is the content warning, or the status cut to 140 characters", async () => {
     await using test = await open();
     await test.subscribe("alice", "a");

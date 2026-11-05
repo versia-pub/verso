@@ -86,14 +86,24 @@ export type FederationTransportOptions = {
      * Lets requests reach internal addresses, for instances on a local network. Development only.
      */
     readonly allowInternal?: boolean;
+    /**
+     * The ports requests may go to, where an address without a port is 80 for http and 443 for
+     * https. Any port if left out, and with `allowInternal`, since instances on a local network use
+     * whichever they like.
+     */
+    readonly ports?: readonly number[];
     readonly fetch?: (request: Request, init: RequestInit) => Promise<Response>;
     readonly resolve?: DnsResolver;
 };
 
+/** The port a request goes to, which is that of its scheme when the address names none. */
+const portOf = (url: URL): number => Number(url.port) || (url.protocol === "http:" ? 80 : 443);
+
 /**
- * For remote instances, which anyone can name, such as in a signature's `Versia-Signed-By`. Names
- * that resolve to an internal address are rejected, so a request can't make Verso reach into its
- * own network, and redirects aren't followed, since they could point anywhere and Versia's
+ * For servers anyone can name, such as in a signature's `Versia-Signed-By`, a push endpoint or a
+ * page to preview. Names that resolve to an internal address are rejected, so a request can't make
+ * Verso reach into its own network, nor can it probe other services on a public host when `ports`
+ * limits where requests go. Redirects aren't followed, since they could point anywhere and Versia's
  * endpoints don't redirect: the redirect itself is the response.
  *
  * `fetch` resolves the name again, so a name whose answer changes in between could still get
@@ -107,7 +117,12 @@ export const federationTransport = (options: FederationTransportOptions = {}): T
 
     return async (request) => {
         if (!options.allowInternal) {
-            const hostname = new URL(request.url).hostname.replace(/^\[(.*)\]$/, "$1");
+            const url = new URL(request.url);
+            if (options.ports && !options.ports.includes(portOf(url))) {
+                throw new TypeError(`port ${portOf(url)} isn't allowed`);
+            }
+
+            const hostname = url.hostname.replace(/^\[(.*)\]$/, "$1");
             const addresses = parseIp(hostname) ? [hostname] : await resolve(hostname);
 
             if (addresses.length === 0 || addresses.some(isInternal)) {

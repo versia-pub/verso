@@ -25,6 +25,7 @@ const open = async () => {
         ids: idGenerator(clock, countingRandom()),
         urls: urlBuilder("social.example"),
         transport: fakeTransport(),
+        webTransport: fakeTransport(),
         files: memoryFiles(),
         images: vipsImages({ maxPixels: 8_294_400 }),
         identityProviders: {},

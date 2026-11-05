@@ -108,8 +108,9 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - `supported_types` adds a `fallback` to notifications of types the app didn't list, except the ones
   every Mastodon app knows. The only other type Verso has is `reaction`, so only those get one.
 - Notification requests are accepted or dismissed at most 100 at a time.
-- Web Push only sends to `https` endpoints. `PUT /api/v1/push/subscription` resets anything it isn't
-  given, the same way creating a subscription does.
+- Web Push only sends to `https` endpoints, on ports 80, 443 and those in
+  `[federation] extra_web_ports`. `PUT /api/v1/push/subscription` resets anything it isn't given,
+  the same way creating a subscription does.
 
 ## Timelines
 

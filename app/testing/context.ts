@@ -75,6 +75,7 @@ export const createTestContext = async (
         ids: idGenerator(clock, countingRandom()),
         urls: urlBuilder(options.domain ?? "social.example"),
         transport,
+        webTransport: transport,
         files: options.files ?? memoryFiles(),
         images: options.images ?? vipsImages({ maxPixels: 8_294_400 }),
         identityProviders: options.identityProviders ?? {},

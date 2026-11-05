@@ -95,6 +95,82 @@ Deno.test("internal addresses can be allowed, for a local network", async () => 
     assertEquals(sent.map((request) => request.redirect), ["manual", "manual"]);
 });
 
+Deno.test("requests go only to the ports allowed, where an address without one has its scheme's", async () => {
+    const { transport, sent } = open({ "b.example": ["93.184.216.34"] }, {
+        ports: [80, 443, 8443],
+    });
+
+    for (const url of ["https://b.example/", "http://b.example/", "https://b.example:8443/"]) {
+        await transport(new Request(url));
+    }
+    assertEquals(sent.length, 3);
+
+    for (
+        const url of [
+            "https://b.example:6379/",
+            "http://b.example:8080/",
+            "https://b.example:8444/",
+        ]
+    ) {
+        await assertRejects(() => transport(new Request(url)), TypeError, "isn't allowed");
+    }
+    assertEquals(sent.length, 3);
+});
+
+Deno.test("a port in the address counts instead of its scheme's", async () => {
+    const { transport, sent } = open({ "b.example": ["93.184.216.34"] }, { ports: [443] });
+
+    await transport(new Request("http://b.example:443/"));
+    assertEquals(sent.length, 1);
+
+    for (const url of ["http://b.example/", "https://b.example:80/"]) {
+        await assertRejects(() => transport(new Request(url)), TypeError, "port 80 isn't allowed");
+    }
+    assertEquals(sent.length, 1);
+});
+
+Deno.test("https goes to 443 and http to 80 unless the address says otherwise", async () => {
+    const dns = { "b.example": ["93.184.216.34"] };
+
+    const { transport: secure, sent } = open(dns, { ports: [443] });
+    await secure(new Request("https://b.example/"));
+    assertEquals(sent.length, 1);
+
+    const { transport: plain } = open(dns, { ports: [80] });
+    await assertRejects(() => plain(new Request("https://b.example/")), TypeError, "port 443");
+
+    // No port is allowed at all.
+    const { transport: none } = open(dns, { ports: [] });
+    await assertRejects(() => none(new Request("https://b.example/")), TypeError, "port 443");
+});
+
+Deno.test("a port that isn't allowed is refused before the name is resolved", async () => {
+    const resolved: string[] = [];
+    const transport = federationTransport({
+        ports: [443],
+        resolve: (hostname) => {
+            resolved.push(hostname);
+            return Promise.resolve(["93.184.216.34"]);
+        },
+        fetch: () => Promise.resolve(new Response()),
+    });
+
+    await assertRejects(
+        () => transport(new Request("https://b.example:8443/")),
+        TypeError,
+        "port 8443 isn't allowed",
+    );
+    assertEquals(resolved, []);
+});
+
+Deno.test("ports aren't limited when internal addresses are allowed, for a local network", async () => {
+    const { transport, sent } = open({}, { allowInternal: true, ports: [443] });
+
+    await transport(new Request("https://127.0.0.1:8443/"));
+
+    assertEquals(sent.length, 1);
+});
+
 Deno.test("a timed transport gives up on a server that takes too long, but not on others", async () => {
     // Responds at once, or never, but for when the request is given up on.
     const transport: Transport = (request) =>

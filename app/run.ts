@@ -123,6 +123,11 @@ export const contextFor = (
         urls,
         transport: federationTransport({
             allowInternal: config.federation.allow_internal_addresses,
+            ports: [443],
+        }),
+        webTransport: federationTransport({
+            allowInternal: config.federation.allow_internal_addresses,
+            ports: [80, 443, ...config.federation.extra_web_ports],
         }),
         files: filesFor(config.media.storage, fetchTransport, systemClock),
         images: vipsImages({ maxPixels: config.media.max_pixels }),

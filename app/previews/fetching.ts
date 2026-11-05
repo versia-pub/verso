@@ -1,6 +1,6 @@
 /**
  * Fetching the pages that statuses link to, and the images on them. Every hop of a redirect is a
- * new request through the context's transport, so each is checked as the first was.
+ * new request through the context's web transport, so each is checked as the first was.
  * @module
  */
 import type { Context } from "../kernel/context.ts";
@@ -32,7 +32,7 @@ export type Fetched = {
  * Fetches `url` and follows redirects to other web addresses, then reads up to `limit` bytes of the
  * body. Resolves with `undefined` if it ends in anything but a 200, runs out of redirects or time,
  * can't be reached, or isn't of a type `accept` approves. The fetch is of public addresses only,
- * as far as the context's transport guarantees.
+ * as far as the context's web transport guarantees.
  */
 export const fetchLimited = async (
     ctx: Context,
@@ -49,7 +49,7 @@ export const fetchLimited = async (
     try {
         let at = url;
         for (let redirects = 0; redirects <= maxRedirects; redirects++) {
-            const response = await ctx.transport(
+            const response = await ctx.webTransport(
                 new Request(at, {
                     headers: {
                         "Accept": options.accept,

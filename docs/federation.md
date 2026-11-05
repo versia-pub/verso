@@ -163,6 +163,12 @@ The transport won't connect to private, loopback or link-local addresses, and ch
 DNS. This stops remote content from making Verso call into its own network.
 `[federation] allow_internal_addresses` turns the check off, for development only.
 
+Instances are only reached on port 443, since Versia domains have no port and the spec fixes HTTPS
+to 443. Addresses that users and web pages name, such as push endpoints and links to preview, go
+through `ctx.webTransport`, which allows ports 80 and 443 and those in
+`[federation] extra_web_ports`, so they can't make Verso probe other services on a public host.
+`allow_internal_addresses` lifts the port limit too.
+
 Remote HTML is sanitised when it's rendered, by [`app/kernel/html.ts`](../app/kernel/html.ts).
 Images and anything else that loads from elsewhere are removed: Verso doesn't proxy remote media,
 and loading it would reveal readers' IP addresses.

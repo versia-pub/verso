@@ -20,6 +20,21 @@ const fetchFrom = async (
     return { fetched, sent: test.transport.sent };
 };
 
+Deno.test("pages are fetched through the transport for web servers, not the one for instances", async () => {
+    await using test = await createTestContext({
+        transport: fakeTransport({ "a.example": page("<p>Hi</p>") }),
+    });
+    const instances = () => Promise.reject(new TypeError("not for instances"));
+
+    const fetched = await fetchLimited(
+        { ...test.ctx, transport: instances },
+        new URL("https://a.example/"),
+        { ...html, limit: 1000 },
+    );
+
+    assertEquals(new TextDecoder().decode(fetched?.body), "<p>Hi</p>");
+});
+
 Deno.test("a page is fetched as a bot, asking for HTML", async () => {
     const { fetched, sent } = await fetchFrom(
         { "a.example": page("<p>Hi</p>") },
@@ -75,10 +90,14 @@ Deno.test("every hop of a redirect is checked, so one to an internal address is 
         },
     });
 
-    const fetched = await fetchLimited({ ...test.ctx, transport }, new URL("https://a.example/"), {
-        ...html,
-        limit: 1000,
-    });
+    const fetched = await fetchLimited(
+        { ...test.ctx, webTransport: transport },
+        new URL("https://a.example/"),
+        {
+            ...html,
+            limit: 1000,
+        },
+    );
 
     assertEquals(fetched, undefined);
     assertEquals(reached, ["https://a.example/"]);

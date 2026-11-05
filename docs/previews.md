@@ -21,11 +21,12 @@ receive doesn't make each of them fetch the page at once.
 
 ## Fetching
 
-Pages and images are fetched through `ctx.transport`, so the checks for federation apply: names that
-resolve to internal addresses are refused. The transport doesn't follow redirects, so `fetchLimited`
-in [`fetching.ts`](../app/previews/fetching.ts) follows up to five itself, sending each hop through
-the transport. It gives up after 30 seconds. A page must be a `200` of type `text/html`, and is read
-up to 1 MiB. An image can be up to 8 MiB, and has to be a JPEG, PNG, GIF or WebP.
+Pages and images are fetched through `ctx.webTransport`, so the checks for federation apply: names
+that resolve to internal addresses are refused, and so are ports other than 80, 443 and the ones in
+`[federation] extra_web_ports`. The transport doesn't follow redirects, so `fetchLimited` in
+[`fetching.ts`](../app/previews/fetching.ts) follows up to five itself, sending each hop through the
+transport. It gives up after 30 seconds. A page must be a `200` of type `text/html`, and is read up
+to 1 MiB. An image can be up to 8 MiB, and has to be a JPEG, PNG, GIF or WebP.
 
 The image is processed as an upload is, scaled down to fit 640×360, and stored as media that belongs
 to no account. The card uses it, so removing unused media keeps it. This is the one case where Verso
