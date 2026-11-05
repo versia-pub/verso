@@ -28,6 +28,22 @@ export const testPostgresUrl = async (): Promise<string | undefined> => {
     return url.href;
 };
 
+/**
+ * `pglite`, which collects garbage when it is closed. A closed PGlite keeps about 200 MB of memory
+ * until V8 collects it, which it doesn't hurry to do, so a worker running many tests held
+ * gigabytes. The test task passes `--expose-gc` for this.
+ */
+const collectingOnClose = (pglite: PGlite): PGlite => {
+    const close = pglite.close.bind(pglite);
+
+    pglite.close = async () => {
+        await close();
+        (globalThis as { gc?: () => void }).gc?.();
+    };
+
+    return pglite;
+};
+
 /** A new, empty database for one test. */
 export const testDatabase = async <DB>(): Promise<Kysely<DB>> => {
     const postgres = await testPostgresUrl();
@@ -36,7 +52,7 @@ export const testDatabase = async <DB>(): Promise<Kysely<DB>> => {
 
     if (testDatabaseKind === "sqlite") return connect(sqliteDialect(new DatabaseSync(":memory:")));
 
-    return connect(new PGliteDialect({ pglite: await PGlite.create() }));
+    return connect(new PGliteDialect({ pglite: collectingOnClose(await PGlite.create()) }));
 };
 
 /** `db`, with every migration run. If they fail, it is closed. */
@@ -53,7 +69,7 @@ let migratedPglite: Promise<Blob> | undefined;
 
 const migratedPgliteData = () =>
     migratedPglite ??= (async () => {
-        const pglite = await PGlite.create();
+        const pglite = collectingOnClose(await PGlite.create());
         const db = await migrated(connect(new PGliteDialect({ pglite })));
         try {
             return await pglite.dumpDataDir("none");
@@ -69,6 +85,8 @@ const migratedPgliteData = () =>
 export const migratedTestDatabase = async <DB>(): Promise<Kysely<DB>> => {
     if (testDatabaseKind !== "pglite") return await migrated(await testDatabase<DB>());
 
-    const pglite = await PGlite.create({ loadDataDir: await migratedPgliteData() });
+    const pglite = collectingOnClose(
+        await PGlite.create({ loadDataDir: await migratedPgliteData() }),
+    );
     return connect(new PGliteDialect({ pglite }));
 };

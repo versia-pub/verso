@@ -15,6 +15,9 @@ let
     {
       packages ? [ ],
       setup ? "",
+      # A test that hangs fails the check, rather than holding it up forever. Deno names a test
+      # that has run for over a minute, so the log says which.
+      run ? "timeout --kill-after=10 600 deno task ${task}",
     }:
     pkgs.runCommand name { nativeBuildInputs = [ pkgs.deno ] ++ packages; } ''
       export DENO_DIR="$TMPDIR/deno" DENO_NO_UPDATE_CHECK=1
@@ -23,28 +26,47 @@ let
       chmod -R a-w "$TMPDIR/src"
       ${setup}
       cd "$TMPDIR/src"
-      # A test that hangs fails the check, rather than holding it up forever. Deno names a test
-      # that has run for over a minute, so the log says which.
-      timeout --kill-after=10 600 deno task ${task}
+      ${run}
       touch $out
     '';
+
+  # The three test checks run at once, so each is held to a number of test files at a time, which
+  # keeps them to about 5 GB in all. Most of that is PGlite, which takes over a hundred megabytes
+  # for each database a test opens. The test files run in a few groups, one after another: a worker
+  # keeps some of what its files used until its process ends, so shorter processes use less memory,
+  # and they are no slower.
+  testShards = 4;
+  testTask =
+    name: jobs: args:
+    denoTaskWith name "test" (
+      args
+      // {
+        setup = ''
+          export DENO_JOBS=${toString jobs}
+          ${args.setup or ""}
+        '';
+        run = ''
+          files=$(find . -name '*.test.ts' -not -path './node_modules/*' -not -path './vendor/*' | sort)
+          for shard in $(seq ${toString testShards}); do
+            timeout --kill-after=10 600 deno task test \
+              $(echo "$files" | awk -v n=${toString testShards} -v i="$shard" 'NR % n == i % n')
+          done
+        '';
+      }
+    );
 in
 {
   fmt = denoTask "fmt" "fmt --check";
   lint = denoTask "lint" "lint";
   typecheck = denoTask "typecheck" "check";
-  # Tests process pictures with vips, as Verso does. Each PGlite takes most of a gigabyte until it
-  # is collected, so fewer tests run at once, which takes barely longer than one per core.
-  test-pglite = denoTaskWith "test-pglite" "test" {
-    packages = [ vips ];
-    setup = "export DENO_JOBS=6";
-  };
-  test-sqlite = denoTaskWith "test-sqlite" "test" {
+  # Tests process pictures with vips, as Verso does.
+  test-pglite = testTask "test-pglite" 3 { packages = [ vips ]; };
+  test-sqlite = testTask "test-sqlite" 4 {
     packages = [ vips ];
     setup = "export VERSO_TEST_DATABASE=sqlite";
   };
   # A throwaway PostgreSQL in $TMPDIR, reached over loopback, the only network in the sandbox.
-  test-postgres = denoTaskWith "test-postgres" "test" {
+  test-postgres = testTask "test-postgres" 4 {
     packages = [
       pkgs.postgresql_18
       vips
