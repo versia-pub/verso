@@ -18,9 +18,15 @@ const write = (value: unknown) =>
         ? Number(value)
         : value;
 
-const readers: Record<string, (value: unknown) => unknown> = {
+const readers: Record<string, (value: unknown, column: string) => unknown> = {
     [sqliteTypes.timestamp]: (value) => new Date(value as string),
-    [sqliteTypes.json]: (value) => JSON.parse(value as string),
+    [sqliteTypes.json]: (value, column) => {
+        try {
+            return JSON.parse(value as string);
+        } catch (error) {
+            throw new Error(`The JSON in column ${column} can't be read`, { cause: error });
+        }
+    },
     boolean: (value) => value !== 0,
 };
 
@@ -94,7 +100,7 @@ export const sqliteDialect = (database: DatabaseSync): Dialect =>
                     const record = row as Record<string, unknown>;
                     for (const [name, convert] of converted) {
                         if (record[name] !== null) {
-                            record[name] = convert(record[name]);
+                            record[name] = convert(record[name], name);
                         }
                     }
                     return record;

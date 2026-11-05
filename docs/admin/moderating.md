@@ -1,7 +1,7 @@
 # Moderating
 
-For now, Verso's moderation tools are blocking instances, giving moderators roles, and managing
-custom emoji. There are no reports, suspensions or ways to remove other users' statuses yet.
+For now, Verso's moderation tools are blocking instances, giving moderators roles, reading reports
+and managing custom emoji. There are no suspensions or ways to remove other users' statuses yet.
 
 ## Blocking instances
 
@@ -23,6 +23,12 @@ it's blocked. Otherwise it gets a `403`.
 
 Blocking an instance doesn't delete what Verso already has from it. Users can also block an instance
 for themselves from their app, which only hides it from them.
+
+## Reports
+
+Users report accounts and statuses from their apps, and other instances send reports too. List the
+ones no one has dealt with, and mark them as dealt with, using
+[`verso admin reports`](commands.md#verso-admin-reports).
 
 ## Moderators
 
