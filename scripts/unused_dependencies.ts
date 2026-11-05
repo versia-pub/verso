@@ -21,7 +21,18 @@ const typeScriptFiles = async (directory: string): Promise<string[]> => {
     return files;
 };
 
-const importsOf = async (file: string): Promise<string[]> => {
+type Info = {
+    modules: { specifier: string; dependencies?: { specifier: string }[] }[];
+};
+
+const root = new URL(`file://${Deno.cwd()}/`);
+
+const used = new Set<string>();
+/** The modules whose imports are in `used`, as URLs. */
+const reached = new Set<string>();
+
+/** Adds the imports of `file` and of everything it reaches. */
+const addImportsOf = async (file: string) => {
     const output = await new Deno.Command("deno", {
         args: ["info", "--json", file],
     }).output();
@@ -32,19 +43,21 @@ const importsOf = async (file: string): Promise<string[]> => {
         );
     }
 
-    const info: { modules: { dependencies?: { specifier: string }[] }[] } = JSON
-        .parse(
-            new TextDecoder().decode(output.stdout),
-        );
+    const info: Info = JSON.parse(new TextDecoder().decode(output.stdout));
 
-    return info.modules.flatMap((module) => module.dependencies ?? []).map((
-        dependency,
-    ) => dependency.specifier);
+    for (const module of info.modules) {
+        reached.add(module.specifier);
+        for (const dependency of module.dependencies ?? []) used.add(dependency.specifier);
+    }
 };
 
-const used = new Set<string>();
-for (const file of await typeScriptFiles(".")) {
-    for (const specifier of await importsOf(file)) used.add(specifier);
+// Tests reach most of the code, and one `deno info` covers everything a file reaches, so only files
+// not reached yet need their own.
+const files = (await typeScriptFiles(".")).sort((a, b) =>
+    Number(b.endsWith(".test.ts")) - Number(a.endsWith(".test.ts"))
+);
+for (const file of files) {
+    if (!reached.has(new URL(file.slice("./".length), root).href)) await addImportsOf(file);
 }
 
 const isUsed = (name: string) =>
