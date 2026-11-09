@@ -208,7 +208,8 @@ export const followersAmong = async (
 };
 
 /**
- * Whether an account that follows `accountId`, and was accepted, is on the instance `instanceId`.
+ * Whether an account that follows `accountId`, and was accepted, and isn't suspended, is on the
+ * instance `instanceId`.
  */
 export const hasFollowersOn = (
     ctx: Context,
@@ -216,7 +217,10 @@ export const hasFollowersOn = (
     instanceId: string,
 ): Promise<boolean> => anyFollowerOn(ctx, accountId, instanceId);
 
-/** The remote instances that accounts following `accountId`, and accepted, are on. */
+/**
+ * The remote instances that accounts following `accountId`, and accepted, are on, other than
+ * suspended ones.
+ */
 export const followerInstances = (ctx: Context, accountId: string): Promise<string[]> =>
     followerInstanceIds(ctx, accountId);
 

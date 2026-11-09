@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import { setSuspendedAt } from "../accounts/account_queries.ts";
 import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -14,6 +15,7 @@ import {
     follow,
     followerInstances,
     hasFollowers,
+    hasFollowersOn,
     rejectFollow,
     unfollow,
 } from "./follows.ts";
@@ -236,6 +238,12 @@ Deno.test("an account's followers are found by their other instances, once each"
         "c.example",
     ]);
     assertEquals(await followerInstances(test.ctx, "bob"), []);
+
+    // Suspended followers don't count, though they still follow.
+    for (const id of ["carol", "dan"]) await setSuspendedAt(test.ctx, id, test.clock.now());
+    assertEquals(await followerInstances(test.ctx, "alice"), ["c.example"]);
+    const on = (domain: string) => hasFollowersOn(test.ctx, "alice", domain);
+    assertEquals([await on("b.example"), await on("c.example")], [false, true]);
 });
 
 Deno.test("an account has followers only once one is accepted", async () => {

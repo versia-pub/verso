@@ -347,6 +347,28 @@ export const setSuspendedAt = async (
     return numUpdatedRows > 0n;
 };
 
+/**
+ * Whether the user `id` on the instance `domain`, or the local user `id` if `domain` is `null`, is
+ * one Verso has and has suspended.
+ */
+export const isSuspended = async (
+    ctx: Context,
+    domain: string | null,
+    id: string,
+): Promise<boolean> => {
+    const query = domain === null
+        ? ctx.db.selectFrom("accounts").select("accounts.id")
+            .where("accounts.instance_id", "is", null)
+            .where("accounts.id", "=", id)
+        : ctx.db.selectFrom("accounts").select("accounts.id")
+            .innerJoin("instances", "instances.id", "accounts.instance_id")
+            .where("instances.domain", "=", domain)
+            .where("accounts.remote_id", "=", id);
+
+    return await query.where("accounts.suspended_at", "is not", null).executeTakeFirst() !==
+        undefined;
+};
+
 /** Columns of an account to update. */
 export type AccountChanges = Updateable<AccountsTable>;
 

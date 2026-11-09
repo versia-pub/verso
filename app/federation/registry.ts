@@ -10,6 +10,7 @@ import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { versiaJson } from "../http/responses.ts";
 import type { Budget, Context } from "../kernel/context.ts";
+import { bySuspendedUser } from "./authors.ts";
 
 /**
  * Which page of a collection to return: from `offset`, at most `limit` items. Limits from 1 to 40
@@ -136,7 +137,10 @@ export const createRegistry = (
     return { types: byName, extensions: [...extensions].toSorted() };
 };
 
-/** The routes where remote instances fetch one type's entities and their collections. */
+/**
+ * The routes where remote instances fetch one type's entities and their collections. Those of
+ * suspended users aren't found.
+ */
 const routesOf = (type: EntityType): Route[] => {
     const { find, collections } = type;
     // Encoded, as remote instances request it, so an extension's type is one path segment and its
@@ -156,7 +160,9 @@ const routesOf = (type: EntityType): Route[] => {
             responses: { 200: type.schema },
             handler: async (ctx, { params, signedBy }) => {
                 const entity = await find(ctx, params.id, signedBy);
-                if (entity === undefined) throw new NotFound();
+                if (entity === undefined || await bySuspendedUser(ctx, entity, ctx.urls.domain)) {
+                    throw new NotFound();
+                }
 
                 return { status: 200, body: entity };
             },
@@ -179,7 +185,9 @@ const routesOf = (type: EntityType): Route[] => {
                     ? collections[params.name]
                     : undefined;
                 const page = await provider?.(ctx, params.id, query, signedBy);
-                if (page === undefined) throw new NotFound();
+                if (page === undefined || await bySuspendedUser(ctx, page, ctx.urls.domain)) {
+                    throw new NotFound();
+                }
 
                 return { status: 200, body: page };
             },

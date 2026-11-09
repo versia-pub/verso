@@ -5,7 +5,7 @@
  * @module
  */
 import { parseReference, v0_6 } from "@versia/protocol";
-import { findAccount } from "../accounts/account_queries.ts";
+import { findAccount, isSuspended } from "../accounts/account_queries.ts";
 import { isProfileUpdated } from "../accounts/events.ts";
 import {
     hasPicturesProcessing,
@@ -140,7 +140,8 @@ const partiesOf = async (ctx: Context, local: string, author: string, sender: Se
 
 /**
  * A user requesting to follow a local one, who is accepted at once unless they are locked. A
- * follower requesting again is accepted again, in case their instance missed it.
+ * follower requesting again is accepted again, in case their instance missed it. A suspended user
+ * can't be followed, and their instance isn't told.
  */
 const followType: EntityType<v0_6.Follow> = {
     type: "Follow",
@@ -154,6 +155,7 @@ const followType: EntityType<v0_6.Follow> = {
     receive: async (ctx, entity, sender) => {
         const { localId, authorId } = await partiesOf(ctx, entity.followee, entity.author, sender);
         if (localId === undefined || authorId === undefined) return;
+        if (await isSuspended(ctx, null, localId)) return;
 
         const [existing] = await followsFrom(ctx, authorId, [localId]);
         await follow(ctx, authorId, localId);

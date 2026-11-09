@@ -10,6 +10,7 @@ import type { DeadPayload } from "../jobs/job_queries.ts";
 import type { JobPayload } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
+import { bySuspendedUser } from "./authors.ts";
 import { checkEntity, InboxJob } from "./inbox.ts";
 import { queueMessage } from "./messaging.ts";
 import type { Registry } from "./registry.ts";
@@ -80,7 +81,13 @@ export const inboxHandler = (registry: Registry): Handler => async (ctx, job) =>
     }
 };
 
-/** Validates the entity `signer` sent, and applies it. */
+/**
+ * What a suspended user's instance may still send, as on Mastodon: deletions, profile changes, and
+ * ending follows.
+ */
+const fromSuspended = new Set(["Delete", "User", "Unfollow", "FollowReject"]);
+
+/** Validates the entity `signer` sent, and applies it, unless it is by a suspended user. */
 const apply = async (ctx: Context, registry: Registry, signer: string, body: string) => {
     let checked: ReturnType<typeof checkEntity>;
     try {
@@ -97,6 +104,14 @@ const apply = async (ctx: Context, registry: Registry, signer: string, body: str
         throw new PermanentFailure(
             `${signer} may not send this ${type.type}, which only ${authority ?? "nobody"} may`,
         );
+    }
+
+    if (!fromSuspended.has(type.type) && await bySuspendedUser(ctx, entity, signer)) {
+        logger.info("Dropping the {type} {signer} sent, since its author is suspended", {
+            type: type.type,
+            signer,
+        });
+        return;
     }
 
     // Its row was created when its key was fetched, to validate the signature.

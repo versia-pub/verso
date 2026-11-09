@@ -41,7 +41,8 @@ export const webfingerRoutes: readonly Route[] = [
             const account = host.toLowerCase() === domain
                 ? await findLocalAccount(ctx, username)
                 : undefined;
-            if (!account) throw new NotFound();
+            // A suspended user is no longer served.
+            if (!account || account.suspended_at !== null) throw new NotFound();
 
             const user = ctx.urls.url`/.versia/v0.6/entities/User/${account.id}`;
 

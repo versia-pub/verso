@@ -16,6 +16,7 @@ import { type DeadPayload, enqueue, enqueueAll } from "../jobs/job_queries.ts";
 import type { JobPayload, JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
+import { bySuspendedUser } from "./authors.ts";
 
 /** Versia's own queue, so deliveries of other protocols can't hold it up. */
 export const deliverQueue = "versia-deliver";
@@ -132,9 +133,21 @@ const domainsOf = async (ctx: Context, job: FanOutJob) => {
     return domains;
 };
 
+/** Whether the entity stored as `bodyId` is by a suspended local user, and isn't a Delete. */
+const withheld = async (ctx: Context, bodyId: string) => {
+    const row = await ctx.db.selectFrom("delivery_bodies").select("body").where("id", "=", bodyId)
+        .executeTakeFirst();
+    if (row === undefined) return false;
+
+    const entity: unknown = JSON.parse(row.body);
+    return (entity as { type?: unknown }).type !== "Delete" &&
+        await bySuspendedUser(ctx, entity, ctx.urls.domain);
+};
+
 /**
  * Runs fan-out jobs: queues a delivery of the entity to each instance it goes to, grouped by
- * instance so each can be rate limited, or deletes the entity if it goes to none. A job run again
+ * instance so each can be rate limited, or deletes the entity if it goes to none, or is by a
+ * suspended user, unless it deletes something. A job run again
  * doesn't queue a delivery that is still queued, but may queue one that was already sent again.
  * The deliveries are due when the job was queued, so the entities queued earlier are sent first.
  */
@@ -143,7 +156,7 @@ export const fanOutHandler: Handler = async (ctx: Context, job: JobsTable): Prom
     if (!payload.success) throw new PermanentFailure("The job isn't a fan-out job");
     const { bodyId } = payload.data;
 
-    const domains = await domainsOf(ctx, payload.data);
+    const domains = await withheld(ctx, bodyId) ? [] : await domainsOf(ctx, payload.data);
 
     await ctx.transaction(async (tx) => {
         if (domains.length === 0) {

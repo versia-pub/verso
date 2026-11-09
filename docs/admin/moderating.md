@@ -37,10 +37,15 @@ Suspend an account, local or remote, with
 the suspension restores everything.
 
 A suspended local user's apps are refused with a `403`, and their streams close. Their scheduled
-statuses wait, and nothing is pushed to them. Other instances aren't told.
+statuses wait, and nothing is pushed to them. Other instances aren't told, but can no longer fetch
+or follow them, and are sent nothing of theirs, except that a status an admin deletes is deleted
+there too.
 
-For now, that is all a suspension does. Suspended accounts and their statuses are still shown, and
-remote ones can still send Verso their statuses.
+From a suspended remote user, Verso only accepts deletions, profile changes, and ended follows.
+Their follows stay, but their instance isn't sent statuses for them, nor may it see followers-only
+ones.
+
+For now, suspended accounts and their statuses are still shown to local users.
 
 ## Removing statuses
 
