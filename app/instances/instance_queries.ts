@@ -21,6 +21,24 @@ export const instanceDomains = async (ctx: Context): Promise<string[]> =>
 export const countInstances = async (ctx: Context): Promise<number> =>
     readCount(await ctx.db.selectFrom("instances").select(countAll).executeTakeFirstOrThrow());
 
+/**
+ * How many instances are parked at `now`, so nothing is sent to them until their wait ends, and how
+ * many couldn't be reached the last time Verso tried.
+ */
+export const reachabilityCounts = async (
+    ctx: Context,
+    now: Date,
+): Promise<{ readonly parked: number; readonly unreachable: number }> => {
+    const parked = await ctx.db.selectFrom("instances").select(countAll)
+        .where("parked_until", ">", now)
+        .executeTakeFirstOrThrow();
+    const unreachable = await ctx.db.selectFrom("instances").select(countAll)
+        .where("unreachable_since", "is not", null)
+        .executeTakeFirstOrThrow();
+
+    return { parked: readCount(parked), unreachable: readCount(unreachable) };
+};
+
 /** The domains of the instances `ids` that are on `protocol`, sorted. */
 export const domainsOf = async (
     ctx: Context,

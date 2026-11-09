@@ -1,5 +1,6 @@
 import type { SelectQueryBuilder } from "kysely";
 import { batchesOf } from "../db/batches.ts";
+import { countAll, readCount } from "../db/count.ts";
 import { usesSqlite } from "../db/columns.ts";
 import type { Database } from "../db/database.ts";
 import { skippingLocked } from "../db/locking.ts";
@@ -117,17 +118,10 @@ export type ClaimOptions = {
     readonly skipGroups?: readonly string[];
 };
 
-/**
- * The ids of the jobs `claim` leases, in the order it leases them: due, not running, of a group that
- * isn't paused or skipped. Exported for the tests of its query plan.
- */
-export const claimable = (
-    ctx: Context,
-    options: ClaimOptions,
-    now: Date,
-): SelectQueryBuilder<Database, "jobs", { id: string }> =>
-    ctx.db.selectFrom("jobs").select("id")
-        .where("queue", "=", options.queue)
+/** The jobs of `queue` due at `now` that aren't running, nor of a paused group. */
+const dueJobs = (ctx: Context, queue: string, now: Date) =>
+    ctx.db.selectFrom("jobs")
+        .where("queue", "=", queue)
         .where("run_at", "<=", now)
         .where("finished_at", "is", null)
         .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
@@ -141,7 +135,18 @@ export const claimable = (
                     .whereRef("job_pauses.group_key", "=", "jobs.group_key")
                     .where("job_pauses.until", ">", now),
             ))
-        )
+        );
+
+/**
+ * The ids of the jobs `claim` leases, in the order it leases them: due, not running, of a group that
+ * isn't paused or skipped. Exported for the tests of its query plan.
+ */
+export const claimable = (
+    ctx: Context,
+    options: ClaimOptions,
+    now: Date,
+): SelectQueryBuilder<Database, "jobs", { id: string }> =>
+    dueJobs(ctx, options.queue, now).select("id")
         .$if((options.skipGroups ?? []).length > 0, (query) =>
             query.where((eb) =>
                 eb.or([
@@ -250,6 +255,65 @@ export const deadLetters = (
         .where("finished_at", "is", null)
         .where((eb) => eb("attempts", ">=", eb.ref("max_attempts")))
         .where("run_at", "<=", before);
+
+/**
+ * How many jobs each queue has that are neither finished nor dead, due or not, running or not.
+ * Exported for the tests of its query plan.
+ */
+export const waitingCounts = (
+    ctx: Context,
+): SelectQueryBuilder<Database, "jobs", { queue: string; count: number | string | bigint }> =>
+    ctx.db.selectFrom("jobs").select(["queue", countAll])
+        .where("finished_at", "is", null)
+        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
+        .groupBy("queue");
+
+/** How many dead letters each queue has. Exported for the tests of its query plan. */
+export const deadCounts = (
+    ctx: Context,
+    now: Date,
+): SelectQueryBuilder<Database, "jobs", { queue: string; count: number | string | bigint }> =>
+    deadLetters(ctx, now).clearSelect().select(["queue", countAll]).groupBy("queue");
+
+/** What metrics say of one queue's jobs. */
+export type QueueStats = {
+    readonly queue: string;
+    /** Jobs neither finished nor dead, due or not, running or not. */
+    readonly waiting: number;
+    /** When the job due longest, that no worker is running, became due, if one is. */
+    readonly oldestDue: Date | undefined;
+    readonly dead: number;
+};
+
+/**
+ * Every queue with jobs waiting or dead, by name. The counts read the indexes of waiting and dead
+ * jobs, and the job due longest is found as `claim` finds it, without locking it.
+ */
+export const queueStats = async (ctx: Context, now: Date): Promise<QueueStats[]> => {
+    const waiting = new Map(
+        (await waitingCounts(ctx).execute()).map((row) => [row.queue, readCount(row)]),
+    );
+    const dead = new Map(
+        (await deadCounts(ctx, now).execute()).map((row) => [row.queue, readCount(row)]),
+    );
+
+    const stats = [];
+    for (const queue of new Set([...waiting.keys(), ...dead.keys()].toSorted())) {
+        const oldest = await dueJobs(ctx, queue, now).select("run_at")
+            .orderBy("run_at")
+            .limit(1)
+            .executeTakeFirst();
+
+        stats.push({
+            queue,
+            waiting: waiting.get(queue) ?? 0,
+            oldestDue: oldest?.run_at,
+            dead: dead.get(queue) ?? 0,
+        });
+    }
+
+    return stats;
+};
 
 /**
  * Deletes finished jobs that no longer need to be retained, dead letters retained as long as the

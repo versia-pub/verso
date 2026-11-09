@@ -249,5 +249,9 @@ updated = 2026-10-01
 # How many days a job that failed for good is retained, for someone to look at.
 # dead_letter_days = 30
 
+[metrics]
+# A bearer token of at least 32 characters, for scrapers of /metrics. Without it, there are none.
+# token = "…"
+
 [logging]
 # level = "info"

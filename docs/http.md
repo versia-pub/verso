@@ -169,6 +169,9 @@ commit the new snapshot, so the change shows up in review.
 [`app/http/readiness.ts`](../app/http/readiness.ts). They aren't route objects, so they're neither
 rate limited nor in the OpenAPI document.
 
+`GET /metrics`, from [`app/http/metrics.ts`](../app/http/metrics.ts), is there only when config sets
+`[metrics] token`, and is rate limited, so the token can't be guessed quickly.
+
 ## Tests
 
 `createTestApp(ctx, routes)` in [`app/testing/app.ts`](../app/testing/app.ts) builds the app with

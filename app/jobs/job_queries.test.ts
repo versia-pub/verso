@@ -8,6 +8,7 @@ import {
     claim,
     claimable,
     complete,
+    deadCounts,
     deadLetters,
     deleteExpiredJobs,
     enqueue,
@@ -16,7 +17,9 @@ import {
     giveUp,
     nextRunAt,
     postpone,
+    queueStats,
     release,
+    waitingCounts,
 } from "./job_queries.ts";
 import { postponeGroup, resumeGroup } from "./job_pause_queries.ts";
 
@@ -555,6 +558,71 @@ Deno.test("dead letters are found by an index of them only", async () => {
     const scans = [...text.matchAll(/"Index Name":"jobs_dead"[^}]*?"Actual Rows":(\d+)/g)];
     assertEquals(scans.map((scan) => scan[1]), ["0"]);
     assertEquals(/"Rows Removed by Filter":[1-9]/.test(text), false);
+});
+
+Deno.test("queues' waiting jobs and dead letters are counted from their indexes", async () => {
+    await using test = await open();
+    const { db } = test.ctx;
+
+    await enqueueAll(
+        test.ctx,
+        Array.from({ length: 200 }, (_, n) => ({ queue: "deliver", payload: { n } })),
+    );
+    const counts = [waitingCounts(test.ctx), deadCounts(test.ctx, test.clock.now())].map((query) =>
+        query.compile()
+    );
+
+    if (testDatabaseKind === "sqlite") {
+        const details = [];
+        for (const query of counts) {
+            const plan = await db.executeQuery<{ detail: string }>(
+                CompiledQuery.raw(`explain query plan ${query.sql}`, [...query.parameters]),
+            );
+            details.push(plan.rows.map((row) => row.detail).join("\n"));
+        }
+        assertStringIncludes(details[0], "USING INDEX jobs_claimable");
+        assertStringIncludes(details[1], "jobs_dead");
+        return;
+    }
+
+    await sql`set enable_seqscan = off`.execute(db);
+    for (
+        const [query, index] of [[counts[0], "jobs_claimable"], [counts[1], "jobs_dead"]] as const
+    ) {
+        const plan = await db.executeQuery(
+            CompiledQuery.raw(`explain (format json) ${query.sql}`, [...query.parameters]),
+        );
+        assertStringIncludes(JSON.stringify(plan.rows), `"Index Name":"${index}"`);
+    }
+});
+
+Deno.test("a queue's stats count its waiting and dead jobs, and say how long one has been due", async () => {
+    await using test = await open();
+    const start = test.clock.now();
+
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: "oldest, running" } });
+    test.clock.advance(minute);
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: "due" } });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: "paused" }, group: "b.example" });
+    await enqueue(test.ctx, {
+        queue: "deliver",
+        payload: { n: "later" },
+        runAt: new Date(start.getTime() + 10 * minute),
+    });
+    await enqueue(test.ctx, { queue: "fetch", payload: {}, maxAttempts: 1 });
+    test.clock.advance(minute);
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: "due later" } });
+
+    // The oldest is running, so the one due next is the one due longest.
+    await claim(test.ctx, { ...options, limit: 1 });
+    const [dying] = await claim(test.ctx, { ...options, queue: "fetch" });
+    await giveUp(test.ctx, dying, "invalid");
+    await postponeGroup(test.ctx, "deliver", "b.example", new Date(start.getTime() + 20 * minute));
+
+    assertEquals(await queueStats(test.ctx, test.clock.now()), [
+        { queue: "deliver", waiting: 5, oldestDue: new Date(start.getTime() + minute), dead: 0 },
+        { queue: "fetch", waiting: 0, oldestDue: undefined, dead: 1 },
+    ]);
 });
 
 Deno.test("dead letters are kept for as long as settings say", async () => {

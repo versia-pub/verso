@@ -1,6 +1,7 @@
 import { type Context as HonoContext, Hono } from "@hono/hono";
 import { bodyLimit } from "@hono/hono/body-limit";
 import { getLogger } from "@logtape/logtape";
+import { hashToken } from "../auth/secrets.ts";
 import { isUniqueViolation } from "../db/errors.ts";
 import { Permissions } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
@@ -9,6 +10,7 @@ import type { AppEnv, AppServices } from "./env.ts";
 import { ContentTooLarge, Defederated, HttpError, NotFound } from "./errors.ts";
 import { useHeaders } from "./headers.ts";
 import { asOAuthError, inputOf } from "./input.ts";
+import { metrics, metricsType } from "./metrics.ts";
 import { checkRateLimit, rateLimit, type RateLimits } from "./rate_limits.ts";
 import { unready } from "./readiness.ts";
 import { checkReply, send } from "./reply.ts";
@@ -64,6 +66,8 @@ export type AppOptions = {
     readonly silentBlocks?: boolean;
     /** Whether the process hears other processes' messages. Without it, it always does. */
     readonly listening?: () => boolean;
+    /** What a scraper must send as a bearer token to read `/metrics`. Without it, there are none. */
+    readonly metricsToken?: string;
 };
 
 /** Every route the server serves. Tests call its `fetch` directly, with no network in between. */
@@ -185,6 +189,20 @@ export const createApp = (
 
     // Preflights were handled before this, by the CORS headers.
     if (limits) app.use(rateLimit<AppEnv>(ctx.clock, limits, clientKey));
+
+    // Limited, so the token can't be guessed quickly. Both are hashed, so comparing them takes as
+    // long however much of the token is right.
+    const { metricsToken } = options;
+    if (metricsToken !== undefined) {
+        app.get("/metrics", async (c) => {
+            const given = /^Bearer (.+)$/i.exec(c.req.header("authorization") ?? "")?.[1] ?? "";
+            if (await hashToken(given) !== await hashToken(metricsToken)) {
+                return c.text("Unauthorized", 401, { "www-authenticate": "Bearer" });
+            }
+
+            return c.body(await metrics(ctx), 200, { "content-type": metricsType });
+        });
+    }
 
     for (const route of routes) if (!unlimited(route)) handle(route);
 

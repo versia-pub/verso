@@ -98,3 +98,19 @@ checks. Like Mastodon, Verso also has `GET /api/v1/streaming/health`, which retu
   blocked domains, may be stale.
 
 The log says why.
+
+## Metrics
+
+With `[metrics] token` set, `GET /metrics` returns OpenMetrics text to a scraper that sends
+`Authorization: Bearer <token>`. They come from the database, so every web process gives the same:
+
+| Metric                                 | What it is                                                 |
+| -------------------------------------- | ---------------------------------------------------------- |
+| `verso_jobs_waiting{queue}`            | Jobs neither finished nor dead, due or not, running or not |
+| `verso_jobs_oldest_due_seconds{queue}` | How long the job due longest, not running, has waited      |
+| `verso_jobs_dead{queue}`               | Jobs that failed for good, retained                        |
+| `verso_instances_parked`               | Instances nothing is sent to until their wait ends         |
+| `verso_instances_unreachable`          | Instances that couldn't be reached the last time           |
+
+A growing `verso_jobs_oldest_due_seconds{queue="versia-deliver"}` means deliveries are falling
+behind.

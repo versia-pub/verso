@@ -89,6 +89,7 @@ const serve = (
             permissions: config.permissions,
             silentBlocks: config.federation.silent_blocks,
             listening,
+            metricsToken: config.metrics.token,
         }).fetch,
     );
     return server.finished;

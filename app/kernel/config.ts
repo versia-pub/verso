@@ -170,6 +170,13 @@ export const Config = z.strictObject({
         /** How many days a job that failed for good is retained, for someone to look at. */
         dead_letter_days: z.int().min(1).default(30),
     }).prefault({}),
+    metrics: z.strictObject({
+        /**
+         * What a scraper must send as a bearer token to read `/metrics`. Without it, there are no
+         * metrics.
+         */
+        token: z.string().min(32).optional(),
+    }).prefault({}),
     logging: z.strictObject({
         level: z.enum(["trace", "debug", "info", "warning", "error", "fatal"])
             .default("info"),

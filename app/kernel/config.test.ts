@@ -113,6 +113,7 @@ Deno.test("a minimal config gets the defaults", async () => {
             },
             push: { timeout_seconds: 10 },
             jobs: { dead_letter_days: 30 },
+            metrics: {},
             logging: { level: "info" },
         },
     });
@@ -215,6 +216,9 @@ timeout_seconds = 5
 
 [jobs]
 dead_letter_days = 14
+
+[metrics]
+token = "a-token-long-enough-for-config-0123456789"
 
 [logging]
 level = "debug"
@@ -328,6 +332,7 @@ level = "debug"
             },
             push: { timeout_seconds: 5 },
             jobs: { dead_letter_days: 14 },
+            metrics: { token: "a-token-long-enough-for-config-0123456789" },
             logging: { level: "debug" },
         },
     });
@@ -388,6 +393,7 @@ Deno.test("bad configs explain what is wrong", async () => {
         );
     }
     assertStringIncludes(await errors('domian = "typo.example"' + minimal), "domian");
+    assertStringIncludes(await errors(minimal + '[metrics]\ntoken = "short"'), "metrics.token");
     assertStringIncludes(
         await errors(minimal + '[logging]\nlevel = "loud"'),
         "logging.level",
