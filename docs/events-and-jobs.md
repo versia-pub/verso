@@ -47,6 +47,9 @@ anything else slow, go in a job. So does work that grows with someone's follower
 subscribers queue one fan-out job, which finds the instances they are on (see
 [Sending](federation.md#sending)).
 
+[`app/services.ts`](../app/services.ts) lists the subscribers grouped by which of these each does:
+queue jobs, write rows that must agree with the change, or tell other processes once it commits.
+
 The order of subscribers only matters where a comment says so. For example, `acceptWhenUnlocked`
 runs before `profileDeliveries`, so a follower it accepts gets the profile too.
 

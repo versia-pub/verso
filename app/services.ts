@@ -37,12 +37,16 @@ export const appServices = (): AppServices => ({
     permissionsOf: accountPermissions,
 });
 
-/** Who is notified of each event. */
+/**
+ * Who is notified of each event. Each runs inside the transaction that emitted it, so what it does
+ * commits with the change, and each only does one of three kinds of thing, as grouped here.
+ */
 export const subscribers: readonly Subscriber[] = [
+    // Queue jobs, for anything slow or sent elsewhere. A delivery queues one fan-out job, however
+    // many followers it is for.
     // Before the profile is sent, so the followers it accepts are sent it too.
     acceptWhenUnlocked,
     profileDeliveries,
-    showProcessedPictures,
     followDeliveries,
     noteDeliveries,
     likeDeliveries,
@@ -51,19 +55,22 @@ export const subscribers: readonly Subscriber[] = [
     voteDeliveries,
     queuePollUpdate,
     reportDeliveries,
+    queueCards,
+    queuePushes,
+    // Write rows that must agree with the change: notifications, conversations, counts and the
+    // search index. A few emit events of their own.
+    showProcessedPictures,
     undoReactionsWithDeletedEmoji,
     notifyOf,
     trackConversations,
-    queueCards,
     uncountFollowsOf,
     uncountNotesOf,
     uncountLikesOf,
-    streamStatuses,
-    queuePushes,
     indexStatuses,
     indexAccountsOf,
+    // Tell other processes, once the transaction commits.
+    streamStatuses,
 ];
-
 /** How long the instance's keys and the blocked domains are cached before they are read again. */
 const keptMs = 60_000;
 
