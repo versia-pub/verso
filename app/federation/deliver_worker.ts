@@ -62,8 +62,9 @@ export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload
  * 2. `postponeGroup` writes the instance's pause to `job_pauses` (`job_pause_queries.ts`), keyed by
  *    this queue and the domain, which is each delivery's group. The pause comes from the park, from
  *    `Retry-After` and from a rate limit with nothing left.
- * 3. `claim` skips jobs whose group has a pause that hasn't ended, so the instance's waiting
- *    deliveries aren't leased at all. A delivery already leased, and so not skipped, does the same
+ * 3. `postponeGroup` also makes the instance's waiting deliveries due when the pause ends, and
+ *    `enqueue` does the same for new ones, so claims don't read them meanwhile. `claim` skips any
+ *    of the group's jobs due before then all the same, so its deliveries aren't leased at all. A delivery already leased, and so not skipped, does the same
  *    as the probe: `parkedUntil` makes it throw `RetryAt`, which only moves its own `run_at`.
  * 4. Any reply but a server failure is `recordReached`: if the instance had been failing or parked,
  *    `resumeGroup` deletes the pause and makes the waiting deliveries due now. Otherwise the pause

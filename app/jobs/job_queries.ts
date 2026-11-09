@@ -1,15 +1,17 @@
+import type { SelectQueryBuilder } from "kysely";
 import { batchesOf } from "../db/batches.ts";
+import type { Database } from "../db/database.ts";
 import { skippingLocked } from "../db/locking.ts";
 import { notify } from "../db/notify.ts";
 import type { Context } from "../kernel/context.ts";
+import { type PauseEnds, pausesOf } from "./job_pause_queries.ts";
 import type { JobPayload, JobsTable } from "./tables.ts";
 import { jobsChannel } from "./wakeups.ts";
 
 export type NewJob = {
     readonly queue: string;
     readonly payload: JobPayload;
-    readonly priority?: number;
-    /** Defaults to now. */
+    /** Defaults to now. If its group is paused until later, it runs once the pause ends. */
     readonly runAt?: Date;
     readonly maxAttempts?: number;
     /** While a job with this key is queued, enqueueing another with the same key does nothing. */
@@ -26,16 +28,20 @@ export type NewJob = {
     readonly wake?: boolean;
 };
 
-/** A new job as a row, due now unless it says otherwise. */
-const rowOf = (ctx: Context, job: NewJob) => {
+/**
+ * A new job as a row, due now unless it says otherwise, or its group is paused until later, so that
+ * it waits with the group's other jobs and runs after them.
+ */
+const rowOf = (ctx: Context, job: NewJob, pauses: PauseEnds) => {
     const now = ctx.clock.now();
+    const runAt = job.runAt ?? now;
+    const pauseEnd = job.group === undefined ? undefined : pauses.get(job.queue, job.group);
 
     return {
         id: ctx.ids(),
         queue: job.queue,
         payload: job.payload,
-        priority: job.priority ?? 0,
-        run_at: job.runAt ?? now,
+        run_at: pauseEnd && pauseEnd > runAt ? pauseEnd : runAt,
         attempts: 0,
         max_attempts: job.maxAttempts ?? 10,
         lease_owner: null,
@@ -59,7 +65,7 @@ export const enqueue = async (
     job: NewJob,
 ): Promise<string | undefined> => {
     const inserted = await ctx.db.insertInto("jobs")
-        .values(rowOf(ctx, job))
+        .values(rowOf(ctx, job, await pausesOf(ctx, [job])))
         .onConflict((conflict) => conflict.column("dedupe_key").doNothing())
         .returning("id")
         .executeTakeFirst();
@@ -73,8 +79,9 @@ export const enqueueAll = async (ctx: Context, jobs: readonly NewJob[]): Promise
     const woken = new Set<string>();
 
     for (const batch of batchesOf(jobs)) {
+        const pauses = await pausesOf(ctx, batch);
         const inserted = await ctx.db.insertInto("jobs")
-            .values(batch.map((job) => rowOf(ctx, job)))
+            .values(batch.map((job) => rowOf(ctx, job, pauses)))
             .onConflict((conflict) => conflict.column("dedupe_key").doNothing())
             .returning("queue")
             .execute();
@@ -99,10 +106,46 @@ export type ClaimOptions = {
 };
 
 /**
- * Leases up to `limit` due jobs from one queue, highest priority first, then oldest first, so a
- * group's jobs run in the order they were created, except for groups that are paused. Each claim
- * uses up an attempt. A job whose lease expired, say because its worker crashed, is due again, so a
- * job may run more than once and every handler must be idempotent.
+ * The ids of the jobs `claim` leases, in the order it leases them: due, not running, of a group that
+ * isn't paused or skipped. Exported for the tests of its query plan.
+ */
+export const claimable = (
+    ctx: Context,
+    options: ClaimOptions,
+    now: Date,
+): SelectQueryBuilder<Database, "jobs", { id: string }> =>
+    ctx.db.selectFrom("jobs").select("id")
+        .where("queue", "=", options.queue)
+        .where("run_at", "<=", now)
+        .where("finished_at", "is", null)
+        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
+        .where((eb) =>
+            eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
+        )
+        .where((eb) =>
+            eb.not(eb.exists(
+                eb.selectFrom("job_pauses").select("job_pauses.queue")
+                    .whereRef("job_pauses.queue", "=", "jobs.queue")
+                    .whereRef("job_pauses.group_key", "=", "jobs.group_key")
+                    .where("job_pauses.until", ">", now),
+            ))
+        )
+        .$if((options.skipGroups ?? []).length > 0, (query) =>
+            query.where((eb) =>
+                eb.or([
+                    eb("group_key", "is", null),
+                    eb("group_key", "not in", options.skipGroups ?? []),
+                ])
+            ))
+        .orderBy("run_at").orderBy("id")
+        .limit(options.limit)
+        .$call((query) => skippingLocked(ctx.db, query));
+
+/**
+ * Leases up to `limit` due jobs from one queue, the longest due first, then the oldest, so a group's
+ * jobs that waited out a pause together run in the order they were made. Jobs of a paused group are
+ * skipped. Each claim uses up an attempt. A job whose lease expired, say because its worker crashed,
+ * is due again, so a job may run more than once and every handler must be idempotent.
  */
 export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTable[]> => {
     const now = ctx.clock.now();
@@ -113,37 +156,13 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
             lease_expires_at: new Date(now.getTime() + options.leaseMs),
             attempts: eb("attempts", "+", 1),
         }))
-        .where("id", "in", (eb) =>
-            eb.selectFrom("jobs").select("id")
-                .where("queue", "=", options.queue)
-                .where("run_at", "<=", now)
-                .where("finished_at", "is", null)
-                .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
-                .where((eb) =>
-                    eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
-                )
-                .where((eb) =>
-                    eb.not(eb.exists(
-                        eb.selectFrom("job_pauses").select("job_pauses.queue")
-                            .whereRef("job_pauses.queue", "=", "jobs.queue")
-                            .whereRef("job_pauses.group_key", "=", "jobs.group_key")
-                            .where("job_pauses.until", ">", now),
-                    ))
-                )
-                .$if((options.skipGroups ?? []).length > 0, (query) =>
-                    query.where((eb) =>
-                        eb.or([
-                            eb("group_key", "is", null),
-                            eb("group_key", "not in", options.skipGroups ?? []),
-                        ])
-                    ))
-                .orderBy("priority", "desc").orderBy("id")
-                .limit(options.limit)
-                .$call((query) => skippingLocked(ctx.db, query)))
+        .where("id", "in", claimable(ctx, options, now))
         .returningAll()
         .execute();
 
-    return jobs.toSorted((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
+    return jobs.toSorted((a, b) =>
+        a.run_at.getTime() - b.run_at.getTime() || a.id.localeCompare(b.id)
+    );
 };
 
 /**

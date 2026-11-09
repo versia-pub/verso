@@ -74,8 +74,7 @@ await enqueueAll(
 | ------------- | ------------------------------------------------------------------------ |
 | `dedupeKey`   | while a job with this key is queued, enqueueing another does nothing     |
 | `group`       | puts the job in a group, such as its instance, which the queue can limit |
-| `runAt`       | when it may first run; now by default                                    |
-| `priority`    | higher runs first among due jobs                                         |
+| `runAt`       | when it may first run; now by default, or when its group's pause ends    |
 | `maxAttempts` | how many tries before it gives up; 10 by default                         |
 | `keepUntil`   | keeps the finished job, and its dedupe key, until then                   |
 | `wake`        | wakes idle workers at once on Postgres, rather than at their next poll   |
@@ -135,8 +134,8 @@ enqueue ──► queued ──► running ─┬─ resolves ──────
                                 └─ lease runs out ───► queued again
 ```
 
-A worker claims a job once it's due and its group isn't paused. Claiming leases the job to the
-worker and uses up one attempt.
+A worker claims a job once it's due and its group isn't paused, the longest due first, then the
+oldest. Claiming leases the job to the worker and uses up one attempt.
 
 - Throwing any error retries the job after a backoff of up to 30 seconds, doubling each time to at
   most six hours, with jitter. When it runs out of attempts, it becomes a dead letter.
@@ -149,7 +148,9 @@ Dead letters stay in the table with their `last_error` for `[jobs] dead_letter_d
 so someone can look into them.
 
 `postponeGroup(ctx, queue, group, until)` pauses every job in a group until a given time, such as
-all deliveries to an instance that asked Verso to slow down. `resumeGroup` ends the pause.
+all deliveries to an instance that asked Verso to slow down. It makes the group's waiting jobs due
+then, and so are jobs enqueued to the group while it lasts, so claims don't read them meanwhile.
+`resumeGroup` ends the pause and makes them due now.
 
 ### Workers and the scheduler
 

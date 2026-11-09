@@ -3,8 +3,6 @@ export type JobsTable = {
     id: string;
     queue: string;
     payload: JobPayload;
-    /** Higher runs first among jobs that are due. */
-    priority: number;
     /**
      * When the job may next run: when enqueued, or after a retry's backoff. For a dead letter, when
      * it died.
@@ -28,7 +26,7 @@ export type JobsTable = {
 
 /**
  * A group of a queue's jobs that waits, such as deliveries to an instance that asked to be left
- * alone: none is claimed until it ends.
+ * alone: none is claimed until it ends. Its jobs are also made due then, so claims don't read them.
  */
 export type JobPausesTable = {
     queue: string;

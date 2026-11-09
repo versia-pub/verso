@@ -6,6 +6,7 @@ import type { JobsTable } from "./tables.ts";
 import {
     backoffMs,
     claim,
+    claimable,
     complete,
     deleteExpiredJobs,
     enqueue,
@@ -32,7 +33,6 @@ Deno.test("an enqueued job is due now with its attempts unused", async () => {
         id: firstId,
         queue: "deliver",
         payload: { to: "b.test", n: [1] },
-        priority: 0,
         run_at: now,
         attempts: 0,
         max_attempts: 10,
@@ -103,18 +103,18 @@ Deno.test("jobs enqueued together are all added, but for dedupe keys already que
     await enqueueAll(test.ctx, []);
 });
 
-Deno.test("claiming takes due jobs of one queue, by priority and then age", async () => {
+Deno.test("claiming takes due jobs of one queue, the longest due first, then the oldest", async () => {
     await using test = await open();
+    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
 
-    const later = new Date(test.clock.now().getTime() + minute);
     await enqueue(test.ctx, { queue: "deliver", payload: { n: 1 } });
-    await enqueue(test.ctx, { queue: "deliver", payload: { n: 2 }, priority: 5 });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 2 }, runAt: at(-1) });
     await enqueue(test.ctx, { queue: "notify", payload: { n: 3 } });
-    await enqueue(test.ctx, { queue: "deliver", payload: { n: 4 }, runAt: later });
-    test.clock.advance(1);
-    await enqueue(test.ctx, { queue: "deliver", payload: { n: 5 }, priority: 5 });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 4 }, runAt: at(1) });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 5 }, runAt: at(-1) });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 6 }, runAt: at(-2) });
 
-    assertEquals(ids(await claim(test.ctx, { ...options, limit: 2 })), [2, 5]);
+    assertEquals(ids(await claim(test.ctx, { ...options, limit: 3 })), [6, 2, 5]);
 
     const [job] = await claim(test.ctx, options);
     assertEquals(ids([job]), [1]);
@@ -124,26 +124,50 @@ Deno.test("claiming takes due jobs of one queue, by priority and then age", asyn
     assertEquals(await claim(test.ctx, options), []);
 });
 
-Deno.test("claiming finds due jobs by an index of only the jobs that can run", async () => {
+Deno.test("claiming reads only due jobs, by an index of the jobs that can run", async () => {
     await using test = await open();
     const { db } = test.ctx;
-    // As `claim` selects them.
-    const due = db.selectFrom("jobs").select("id")
-        .where("queue", "=", "deliver")
-        .where("run_at", "<=", test.ctx.clock.now())
-        .where("finished_at", "is", null)
-        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
-        .orderBy("priority", "desc").orderBy("run_at").orderBy("id")
-        .compile();
+    const now = test.clock.now();
+    const later = new Date(now.getTime() + minute);
 
-    const sqlite = testDatabaseKind === "sqlite";
-    // With so few rows, Postgres would rather scan the table, unless told not to.
-    if (!sqlite) await sql`set enable_seqscan = off`.execute(db);
-    const plan = await db.executeQuery(
-        CompiledQuery.raw(`explain ${sqlite ? "query plan " : ""}${due.sql}`, [...due.parameters]),
+    // Waiting jobs that a claim must not read: a paused group's, and ones not due yet.
+    await enqueueAll(
+        test.ctx,
+        Array.from({ length: 200 }, (_, n) => ({
+            queue: "deliver",
+            payload: { n },
+            group: "b.example",
+        })),
     );
+    await postponeGroup(test.ctx, "deliver", "b.example", later);
+    await enqueueAll(
+        test.ctx,
+        Array.from({ length: 200 }, (_, n) => ({ queue: "deliver", payload: { n }, runAt: later })),
+    );
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: "due" }, group: "c.example" });
 
-    assertStringIncludes(JSON.stringify(plan.rows), "jobs_claimable");
+    const due = claimable(test.ctx, options, now).compile();
+
+    if (testDatabaseKind === "sqlite") {
+        const plan = await db.executeQuery<{ detail: string }>(
+            CompiledQuery.raw(`explain query plan ${due.sql}`, [...due.parameters]),
+        );
+        const details = plan.rows.map((row) => row.detail).join("\n");
+        assertStringIncludes(details, "jobs_claimable (queue=? AND run_at<?)");
+        return;
+    }
+
+    // With so few rows, Postgres would rather scan the table, unless told not to.
+    await sql`set enable_seqscan = off`.execute(db);
+    const plan = await db.executeQuery(
+        CompiledQuery.raw(`explain (analyze, format json) ${due.sql}`, [...due.parameters]),
+    );
+    const text = JSON.stringify(plan.rows);
+    assertStringIncludes(text, "jobs_claimable");
+    // The index scan read only the due job, none of the waiting ones.
+    const scans = [...text.matchAll(/"Index Name":"jobs_claimable"[^}]*?"Actual Rows":(\d+)/g)];
+    assertEquals(scans.map((scan) => scan[1]), ["1"]);
+    assertEquals(/"Rows Removed by Filter":[1-9]/.test(text), false);
 });
 
 Deno.test("a job is claimed again only after its lease expires", async () => {
@@ -243,33 +267,96 @@ Deno.test("claiming can skip groups, but never jobs without one", async () => {
 Deno.test("a paused group's jobs aren't claimed until the pause ends", async () => {
     await using test = await open();
     const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
-    const add = (n: number, job: { queue?: string; group?: string }) =>
+    const add = (n: number, job: { queue?: string; group?: string; runAt?: Date }) =>
         enqueue(test.ctx, { queue: "deliver", payload: { n }, ...job });
+    const runAts = async () => {
+        const rows = await test.ctx.db.selectFrom("jobs").select(["payload", "run_at"]).execute();
+        return Object.fromEntries(rows.map((row) => [row.payload.n, row.run_at]));
+    };
 
     await add(1, { group: "b.example" });
     await add(2, { group: "c.example" });
     await add(3, {});
     await add(4, { queue: "notify", group: "b.example" });
+    await add(6, { group: "b.example" });
+    await add(7, { group: "b.example", runAt: at(20) });
+    const [running] = await claim(test.ctx, { ...options, limit: 1 });
+    assertEquals(running.payload.n, 1);
     await postponeGroup(test.ctx, "deliver", "b.example", at(10));
     // A shorter pause doesn't shorten it.
     await postponeGroup(test.ctx, "deliver", "b.example", at(5));
     await add(5, { group: "b.example" });
+    await add(8, { group: "b.example", runAt: at(15) });
+
+    // Its waiting jobs, and those enqueued since, are due when it ends, so claims don't read
+    // them. A running job, and ones due after the pause anyway, are left as they are.
+    assertEquals(await runAts(), {
+        1: at(0),
+        2: at(0),
+        3: at(0),
+        4: at(0),
+        5: at(10),
+        6: at(10),
+        7: at(20),
+        8: at(15),
+    });
 
     const claimed = await claim(test.ctx, options);
     assertEquals(ids(claimed), [2, 3]);
-    for (const job of claimed) await complete(test.ctx, job);
+    for (const job of [running, ...claimed]) await complete(test.ctx, job);
     assertEquals(ids(await claim(test.ctx, { ...options, queue: "notify" })), [4]);
 
     test.clock.advance(10 * minute - 1);
     assertEquals(await claim(test.ctx, options), []);
     test.clock.advance(1);
-    assertEquals(ids(await claim(test.ctx, options)), [1, 5]);
+    // In the order they were made.
+    assertEquals(ids(await claim(test.ctx, options)), [6, 5]);
 
-    // Only its row is written, not each job's, and it is removed once it ends.
-    const rows = await test.ctx.db.selectFrom("jobs").select(["run_at"]).execute();
-    assertEquals(rows.every((row) => row.run_at <= at(0)), true);
     await deleteExpiredJobs(test.ctx);
     assertEquals(await test.ctx.db.selectFrom("job_pauses").selectAll().execute(), []);
+});
+
+Deno.test("pausing a group leaves its finished and dead jobs as they are", async () => {
+    await using test = await open();
+    const start = test.clock.now();
+    const at = (minutes: number) => new Date(start.getTime() + minutes * minute);
+
+    await enqueue(test.ctx, {
+        queue: "deliver",
+        payload: { n: 1 },
+        group: "b.example",
+        keepUntil: at(60),
+    });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 2 }, group: "b.example" });
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 3 }, group: "b.example" });
+    const [finished, dead, abandoned] = await claim(test.ctx, options);
+    await complete(test.ctx, finished);
+    await giveUp(test.ctx, dead, "invalid");
+
+    // The third job's lease has just run out, so it waits again, with the group.
+    test.clock.advance(minute);
+    await postponeGroup(test.ctx, "deliver", "b.example", at(11));
+    await enqueueAll(test.ctx, [{ queue: "deliver", payload: { n: 4 }, group: "b.example" }]);
+
+    const rows = await test.ctx.db.selectFrom("jobs").select(["id", "run_at"]).orderBy("id")
+        .execute();
+    assertEquals(rows.map((row) => row.run_at), [at(0), at(0), at(11), at(11)]);
+    assertEquals(rows[2].id, abandoned.id);
+});
+
+Deno.test("a group's due jobs still aren't claimed while it is paused", async () => {
+    await using test = await open();
+    const later = new Date(test.clock.now().getTime() + minute);
+
+    // As a job enqueued while the pause was being written would be: due, though the pause isn't
+    // over.
+    await postponeGroup(test.ctx, "deliver", "b.example", later);
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 1 }, group: "b.example" });
+    await test.ctx.db.updateTable("jobs").set({ run_at: test.clock.now() }).execute();
+
+    assertEquals(await claim(test.ctx, options), []);
+    test.clock.advance(minute);
+    assertEquals(ids(await claim(test.ctx, options)), [1]);
 });
 
 Deno.test("a group's waiting jobs are made due together when it is resumed", async () => {
