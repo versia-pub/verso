@@ -4,8 +4,8 @@
  * than going through their modules, so that each takes one query.
  * @module
  */
-import { sql } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
+import { setsBy } from "../db/grouping.ts";
 import type { Excluded } from "../graph/blocks.ts";
 import type { Context } from "../kernel/context.ts";
 import type { ReactionRow } from "./reaction_queries.ts";
@@ -55,22 +55,41 @@ const reactionsBy = async (
 };
 
 /**
- * The reactions to each of `noteIds`, by status, and by emoji in the order they were first used,
- * with whether `viewerId` made each, if there is a viewer, and without those of the accounts it
- * blocks, `blocked`. It reads the `emojis`, `instances` and `media` tables directly rather than
- * going through their modules, so that it takes one query, and one more for `blocked`.
+ * Which of the reactions to `noteIds` each of `accountIds` made, by account, by {@link emojiKey}.
+ */
+const reactedAmong = async (
+    ctx: Context,
+    accountIds: readonly string[],
+    noteIds: readonly string[],
+): Promise<Map<string, Set<string>>> => {
+    if (accountIds.length === 0) return new Map();
+
+    const rows = await ctx.db.selectFrom("reactions")
+        .select(["account_id", "note_id", "text", "emoji_id"])
+        .where("account_id", "in", accountIds)
+        .where("note_id", "in", noteIds)
+        .execute();
+    return setsBy(rows, (row) => row.account_id, emojiKey);
+};
+
+/**
+ * The reactions to each of `noteIds`, as each viewer in `viewers` sees them, by viewer, then by
+ * status, and by emoji in the order they were first used: with whether the viewer made each, if
+ * it isn't `null`, and without those of the accounts it blocks, its value. It reads the `emojis`,
+ * `instances` and `media` tables directly rather than going through their modules, so that it
+ * takes one query for everyone, one more for the reactions of the viewers, and one for each that
+ * blocks some.
  *
  * The blocked accounts' reactions are counted from those accounts and taken away, rather than
  * each reaction's account being looked up among them. An emoji first used by one of them keeps
  * its place.
  */
-export const reactionsOf = async (
+export const reactionsFor = async (
     ctx: Context,
     noteIds: readonly string[],
-    viewerId: string | null,
-    blocked: Excluded | null,
-): Promise<Map<string, ReactionGroup[]>> => {
-    if (noteIds.length === 0) return new Map();
+    viewers: ReadonlyMap<string | null, Excluded | null>,
+): Promise<Map<string | null, Map<string, ReactionGroup[]>>> => {
+    if (noteIds.length === 0) return new Map([...viewers.keys()].map((id) => [id, new Map()]));
 
     const rows = await ctx.db.selectFrom("reactions")
         .leftJoin("emojis", "emojis.id", "reactions.emoji_id")
@@ -91,11 +110,6 @@ export const reactionsOf = async (
             "media.processed_at",
             countAll(eb),
             eb.fn.min("reactions.id").as("first_id"),
-            eb.fn.max(
-                sql<number>`case when ${
-                    eb.ref("reactions.account_id")
-                } = ${viewerId} then 1 else 0 end`,
-            ).as("me"),
         ])
         .where("reactions.note_id", "in", noteIds)
         .groupBy([
@@ -114,19 +128,42 @@ export const reactionsOf = async (
         ])
         .orderBy("first_id")
         .execute();
-    const uncounted = blocked === null ? new Map() : await reactionsBy(ctx, noteIds, blocked);
+    if (rows.length === 0) return new Map([...viewers.keys()].map((id) => [id, new Map()]));
 
-    const groups = new Map<string, ReactionGroup[]>();
-    for (const { first_id: _, ...row } of rows) {
-        const count = readCount(row) - (uncounted.get(emojiKey(row)) ?? 0);
-        if (count === 0) continue;
+    const signedIn = [...viewers.keys()].filter((id) => id !== null);
+    const reacted = await reactedAmong(ctx, signedIn, noteIds);
 
-        const group = { ...row, count, me: Number(row.me) === 1 };
-        groups.set(row.note_id, [...groups.get(row.note_id) ?? [], group]);
+    const rendered = new Map<string | null, Map<string, ReactionGroup[]>>();
+    for (const [viewerId, blocked] of viewers) {
+        const uncounted = blocked === null ? new Map() : await reactionsBy(ctx, noteIds, blocked);
+        const own = viewerId === null ? undefined : reacted.get(viewerId);
+
+        const groups = new Map<string, ReactionGroup[]>();
+        for (const { first_id: _, ...row } of rows) {
+            const key = emojiKey(row);
+            const count = readCount(row) - (uncounted.get(key) ?? 0);
+            if (count === 0) continue;
+
+            const group = { ...row, count, me: own?.has(key) ?? false };
+            groups.set(row.note_id, [...groups.get(row.note_id) ?? [], group]);
+        }
+        rendered.set(viewerId, groups);
     }
 
-    return groups;
+    return rendered;
 };
+
+/**
+ * The reactions to each of `noteIds`, by status, as `viewerId` sees them without those of the
+ * accounts it blocks, `blocked`, as {@link reactionsFor} finds them.
+ */
+export const reactionsOf = async (
+    ctx: Context,
+    noteIds: readonly string[],
+    viewerId: string | null,
+    blocked: Excluded | null,
+): Promise<Map<string, ReactionGroup[]>> =>
+    (await reactionsFor(ctx, noteIds, new Map([[viewerId, blocked]]))).get(viewerId) ?? new Map();
 
 /** A reaction's emoji, and the custom emoji's picture, if it is one. */
 export type ReactionWithEmoji = Omit<ReactionGroup, "note_id" | "count" | "me"> & {

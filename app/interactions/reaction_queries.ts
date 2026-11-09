@@ -2,6 +2,7 @@ import type { Insertable, Selectable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, notExcluded } from "../graph/blocks.ts";
+import type { AccountIdQuery } from "../graph/follow_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import type { ReactionsTable } from "./tables.ts";
 
@@ -21,6 +22,10 @@ export const emojiOf = (row: Pick<ReactionRow, "text" | "emoji_id">): ReactionEm
 
     throw new Error("A reaction has neither text nor a custom emoji");
 };
+
+/** The accounts that reacted to any of `noteIds`, as a subquery. */
+export const reactorIdsQuery = (ctx: Context, noteIds: readonly string[]): AccountIdQuery =>
+    ctx.db.selectFrom("reactions").select("account_id").where("note_id", "in", noteIds);
 
 /**
  * Adds a local reaction, unless the account already reacts to the status with that emoji. Returns

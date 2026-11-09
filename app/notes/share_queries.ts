@@ -1,8 +1,10 @@
 import { uncountStatusesFor } from "../accounts/count_queries.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { countAll, readCount } from "../db/count.ts";
+import { setsBy } from "../db/grouping.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, notExcluded } from "../graph/blocks.ts";
+import type { AccountIdQuery } from "../graph/follow_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
 import type { NoteIdQuery } from "./removal_queries.ts";
@@ -84,19 +86,23 @@ export const deleteShare = async (
         .returningAll()
         .executeTakeFirst();
 
-/** Which of `noteIds` the account has boosted. */
+/** The accounts that boosted any of `noteIds`, as a subquery. */
+export const sharerIdsQuery = (ctx: Context, noteIds: readonly string[]): AccountIdQuery =>
+    ctx.db.selectFrom("notes").select("account_id").where("reblog_of_id", "in", noteIds);
+
+/** Which of `noteIds` each of `accountIds` has boosted, by account. */
 export const sharedAmong = async (
     ctx: Context,
-    accountId: string,
+    accountIds: readonly string[],
     noteIds: readonly string[],
-): Promise<Set<string>> => {
-    if (noteIds.length === 0) return new Set();
+): Promise<Map<string, Set<string>>> => {
+    if (accountIds.length === 0 || noteIds.length === 0) return new Map();
 
-    const rows = await ctx.db.selectFrom("notes").select("reblog_of_id")
-        .where("account_id", "=", accountId)
+    const rows = await ctx.db.selectFrom("notes").select(["account_id", "reblog_of_id"])
+        .where("account_id", "in", accountIds)
         .where("reblog_of_id", "in", noteIds)
         .execute();
-    return new Set(rows.flatMap((row) => row.reblog_of_id ?? []));
+    return setsBy(rows, (row) => row.account_id, (row) => row.reblog_of_id ?? "");
 };
 
 /** The boosts of `noteId` with one of `visibilities`. */

@@ -26,12 +26,18 @@ Deno.test("a note is liked once, and counted once, however often it is liked", a
     assertEquals((await like(test.ctx, "bob", note.id))?.likes_count, 1);
     assertEquals((await like(test.ctx, "bob", note.id))?.likes_count, 1);
     assertEquals((await like(test.ctx, "dave", note.id))?.likes_count, 2);
-    assertEquals(await likedAmong(test.ctx, "bob", [note.id, "other"]), new Set([note.id]));
+    assertEquals(
+        await likedAmong(test.ctx, ["bob", "dave", "alice"], [note.id, "other"]),
+        new Map([["bob", new Set([note.id])], ["dave", new Set([note.id])]]),
+    );
 
     assertEquals((await unlike(test.ctx, "bob", note.id))?.likes_count, 1);
     assertEquals((await unlike(test.ctx, "bob", note.id))?.likes_count, 1);
     assertEquals(await findLike(test.ctx, "bob", note.id), undefined);
-    assertEquals(await likedAmong(test.ctx, "bob", [note.id]), new Set());
+    assertEquals(
+        await likedAmong(test.ctx, ["bob", "dave"], [note.id]),
+        new Map([["dave", new Set([note.id])]]),
+    );
 });
 
 Deno.test("only a note the liker may see can be liked", async () => {

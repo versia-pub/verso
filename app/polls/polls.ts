@@ -116,7 +116,8 @@ export const castVotes = async (
     const { blocking, blockedBy } = await blocksBetween(ctx, accountId, [note.account_id]);
     if (blocking.size > 0 || blockedBy.size > 0) throw new NotPermitted();
 
-    const voted = (await votesAmong(ctx, accountId, [poll.id])).get(poll.id) ?? [];
+    const voted = (await votesAmong(ctx, [accountId], [poll.id])).get(accountId)?.get(poll.id) ??
+        [];
     if (resent && choices.every((choice) => voted.includes(choice))) return poll;
 
     // As Mastodon words its errors.

@@ -8,9 +8,10 @@ import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { activeFiltersAmong, filterResults } from "../filters/matching.ts";
 import { renderEmojis } from "../emojis/render.ts";
-import { type Excluded, viewerBlocks } from "../graph/blocks.ts";
-import { countLikesBy, likedAmong } from "../interactions/like_queries.ts";
-import { reactionsOf } from "../interactions/reaction_render_queries.ts";
+import { blockingAny, type Excluded, viewerBlocks } from "../graph/blocks.ts";
+import { countLikesBy, likedAmong, likerIdsQuery } from "../interactions/like_queries.ts";
+import { reactorIdsQuery } from "../interactions/reaction_queries.ts";
+import { reactionsFor } from "../interactions/reaction_render_queries.ts";
 import { reactionEmojis, renderReactions } from "../interactions/render.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml } from "../kernel/html.ts";
@@ -21,8 +22,8 @@ import { entityUrl } from "../kernel/urls.ts";
 import { findNotes, mentionsOf, type NoteRow, tagsOf, versionsOf } from "./note_queries.ts";
 import { notesSeenBy, quoteCounts } from "./thread_queries.ts";
 import { everyone } from "./audience.ts";
-import { quoteApproval, quoteViews } from "./quotes.ts";
-import { countSharesBy, sharedAmong } from "./share_queries.ts";
+import { quoteApproval, type QuoteView, quoteViews } from "./quotes.ts";
+import { countSharesBy, sharedAmong, sharerIdsQuery } from "./share_queries.ts";
 import { pinnedAmong } from "./pin_queries.ts";
 import { bookmarkedAmong } from "./bookmark_queries.ts";
 import { mutedThreadsAmong } from "./thread_mute_queries.ts";
@@ -30,7 +31,7 @@ import { isPinnable } from "./pins.ts";
 import { totalsOf } from "./total_queries.ts";
 import { onlookerOf } from "./visibility.ts";
 import { pollOf } from "../polls/poll_queries.ts";
-import { renderPolls } from "../polls/render.ts";
+import { renderPollsFor } from "../polls/render.ts";
 import { cardsOf } from "../previews/card_queries.ts";
 import { renderCard } from "../previews/render.ts";
 import { displayNamesOf } from "../tags/tag_queries.ts";
@@ -67,131 +68,187 @@ const viewerFlags = (
     ...pinned === undefined ? {} : { pinned },
 });
 
+/** Someone statuses are rendered for, or `null` for anyone. */
+type ViewerId = string | null;
+
 /**
- * The statuses boosted by `shares` that `viewerId` may see, as rendered statuses by id. A boosted
- * status may have been made private since. Boosted statuses aren't boosts themselves, so this goes
- * no deeper.
+ * The statuses boosted by `shares` that each of `viewerIds` may see, as rendered statuses by id, by
+ * viewer. A boosted status may have been made private since. Boosted statuses aren't boosts
+ * themselves, so this goes no deeper.
  */
 const sharedStatuses = async (
     ctx: Context,
     shares: readonly NoteRow[],
-    viewerId: string | null,
-): Promise<Map<string, Status>> => {
+    viewerIds: readonly ViewerId[],
+): Promise<Map<ViewerId, Map<string, Status>>> => {
     const ids = [...new Set(shares.flatMap((note) => note.reblog_of_id ?? []))];
     if (ids.length === 0) return new Map();
 
-    const seen = await notesSeenBy(ctx, ids, onlookerOf(ctx, viewerId));
-    const notes = (await findNotes(ctx, ids)).filter((note) => seen.has(note.id));
-    const statuses = await renderStatuses(ctx, notes, viewerId);
-    return new Map(statuses.map((status) => [status.id, status]));
+    const seen = new Map<ViewerId, Set<string>>();
+    for (const viewerId of viewerIds) {
+        seen.set(viewerId, await notesSeenBy(ctx, ids, onlookerOf(ctx, viewerId)));
+    }
+    const notes = (await findNotes(ctx, ids)).filter((note) =>
+        viewerIds.some((viewerId) => seen.get(viewerId)?.has(note.id))
+    );
+    const statuses = await renderStatusesFor(ctx, notes, viewerIds);
+
+    return new Map(viewerIds.map((viewerId) => [
+        viewerId,
+        new Map(
+            (statuses.get(viewerId) ?? []).flatMap((status) =>
+                seen.get(viewerId)?.has(status.id) ? [[status.id, status] as const] : []
+            ),
+        ),
+    ]));
 };
 
 /**
- * The quotes that `notes` have, by status, as `viewerId` sees them. The quoted statuses are shown by
- * id if `nested`, and otherwise rendered, as quotes inside them are shown by id.
+ * The quotes that `notes` have, by viewer, then by status, as each of `viewerIds` sees them. The
+ * quoted statuses are shown by id if `nested`, and otherwise rendered, as quotes inside them are
+ * shown by id.
  */
 const quotedStatuses = async (
     ctx: Context,
     notes: readonly NoteRow[],
-    viewerId: string | null,
+    viewerIds: readonly ViewerId[],
     nested: boolean,
-): Promise<Map<string, Quote | ShallowQuote>> => {
+): Promise<Map<ViewerId, Map<string, Quote | ShallowQuote>>> => {
     const quoting = new Map(
         notes.flatMap((note) =>
             note.quote_id === null || note.reblog_of_id !== null ? [] : [[note.id, note.quote_id]]
         ),
     );
-    const views = await quoteViews(ctx, quoting, viewerId);
+    if (quoting.size === 0) return new Map();
+
+    const views = new Map<ViewerId, Map<string, QuoteView>>();
+    for (const viewerId of viewerIds) views.set(viewerId, await quoteViews(ctx, quoting, viewerId));
     if (nested) {
-        return new Map([...views].map(([id, { state, note }]) => [id, {
-            state,
-            quoted_status_id: note?.id ?? null,
-        }]));
+        return new Map([...views].map(([viewerId, each]) => [
+            viewerId,
+            new Map([...each].map(([id, { state, note }]) => [id, {
+                state,
+                quoted_status_id: note?.id ?? null,
+            }])),
+        ]));
     }
 
     const shown = [
         ...new Map(
-            [...views.values()].flatMap(({ note }) =>
+            [...views.values()].flatMap((each) => [...each.values()]).flatMap(({ note }) =>
                 note === null ? [] : [[note.id, note] as const]
             ),
         ).values(),
     ];
-    const statuses = new Map(
-        (await renderStatuses(ctx, shown, viewerId, { nested: true })).map((
-            status,
-        ) => [status.id, status]),
-    );
+    const statuses = await renderStatusesFor(ctx, shown, viewerIds, { nested: true });
 
-    return new Map([...views].map(([id, { state, note }]) => [id, {
-        state,
-        quoted_status: (note && statuses.get(note.id)) ?? null,
-    }]));
+    return new Map([...views].map(([viewerId, each]) => {
+        const rendered = new Map(
+            (statuses.get(viewerId) ?? []).map((status) => [status.id, status]),
+        );
+        return [
+            viewerId,
+            new Map([...each].map(([id, { state, note }]) => [id, {
+                state,
+                quoted_status: (note && rendered.get(note.id)) ?? null,
+            }])),
+        ];
+    }));
 };
 
 /**
- * How many likes and boosts of each of `noteIds` are by the accounts `blocked`, which the viewer
- * blocks and isn't shown.
+ * How many likes and boosts of each of `noteIds` are by the accounts each viewer blocks, the value
+ * of `blocked`, which it isn't shown, by viewer.
  */
 const blockedCounts = async (
     ctx: Context,
     noteIds: readonly string[],
-    blocked: Excluded | null,
+    blocked: ReadonlyMap<ViewerId, Excluded | null>,
 ) => {
-    if (blocked === null) return { likes: new Map<string, number>(), shares: new Map() };
+    const counts = new Map<ViewerId, { likes: Map<string, number>; shares: Map<string, number> }>();
+    for (const [viewerId, excluded] of blocked) {
+        if (excluded === null) continue;
 
-    return {
-        likes: await countLikesBy(ctx, noteIds, blocked),
-        shares: await countSharesBy(ctx, noteIds, blocked),
-    };
+        counts.set(viewerId, {
+            likes: await countLikesBy(ctx, noteIds, excluded),
+            shares: await countSharesBy(ctx, noteIds, excluded),
+        });
+    }
+
+    return counts;
 };
 
 /**
- * Renders statuses in the order given, as `viewerId` sees them, or as anyone sees them if it is
- * `null`. Each status's author must exist, which the database guarantees. A boost has the status it
- * boosts as its `reblog`, and is omitted if the viewer may not see that. A remote status shows the
- * larger of Verso's own count and the count its instance reports, as Mastodon does. The likes,
- * boosts and reactions of the accounts the viewer blocks aren't counted. A viewer is told which of
- * their filters each status matches. With `source`, statuses carry the text their authors wrote, as
- * Mastodon returns a deleted status for redrafting. A status that quotes another has it as its
- * `quote`, which is shown by id only if `nested`, as it is inside a quote, so a quote goes no deeper.
+ * The accounts each of `viewerIds` blocks, for those that block some who liked, boosted or reacted
+ * to any of `noteIds`, by viewer. The others have nothing of theirs to take out.
  */
-export const renderStatuses = async (
+const blockedAmong = async (
+    ctx: Context,
+    noteIds: readonly string[],
+    viewerIds: readonly ViewerId[],
+): Promise<Map<ViewerId, Excluded | null>> => {
+    const signedIn = viewerIds.filter((viewerId) => viewerId !== null);
+    const interacting = likerIdsQuery(ctx, noteIds)
+        .unionAll(sharerIdsQuery(ctx, noteIds))
+        .unionAll(reactorIdsQuery(ctx, noteIds));
+    const blocking = await blockingAny(ctx, signedIn, interacting);
+
+    return new Map(viewerIds.map((viewerId) => [
+        viewerId,
+        viewerId !== null && blocking.has(viewerId) ? viewerBlocks(ctx, viewerId) : null,
+    ]));
+};
+
+/**
+ * Renders statuses in the order given, as each of `viewerIds` sees them, or as anyone sees them for
+ * `null`, by viewer. Each status's author must exist, which the database guarantees. A boost has
+ * the status it boosts as its `reblog`, and is omitted if the viewer may not see that. A remote
+ * status shows the larger of Verso's own count and the count its instance reports, as Mastodon
+ * does. The likes, boosts and reactions of the accounts the viewer blocks aren't counted. A viewer
+ * is told which of their filters each status matches. With `source`, statuses carry the text their
+ * authors wrote, as Mastodon returns a deleted status for redrafting. A status that quotes another
+ * has it as its `quote`, which is shown by id only if `nested`, as it is inside a quote, so a quote
+ * goes no deeper.
+ *
+ * What is the same for every viewer is looked up once, and what isn't, for all of them together,
+ * except whether each may see a boosted or quoted status, and for those that block some who liked,
+ * boosted or reacted to the statuses, those likes, boosts and reactions.
+ */
+export const renderStatusesFor = async (
     ctx: Context,
     notes: readonly NoteRow[],
-    viewerId: string | null,
+    viewerIds: readonly ViewerId[],
     options: { readonly source?: boolean; readonly nested?: boolean } = {},
-): Promise<Status[]> => {
+): Promise<Map<ViewerId, Status[]>> => {
+    const viewers = [...new Set(viewerIds)];
+    if (notes.length === 0) return new Map(viewers.map((viewerId) => [viewerId, []]));
+
+    const signedIn = viewers.filter((viewerId) => viewerId !== null);
     const noteIds = notes.map((note) => note.id);
     const mentions = await mentionsOf(ctx, noteIds);
     const tags = await tagsOf(ctx, noteIds);
     const tagNames = await displayNamesOf(ctx, [...tags.values()].flat());
     const attachments = await attachmentsOf(ctx, noteIds);
     const emojis = await emojisOfNotes(ctx, noteIds);
-    const blocked = viewerBlocks(ctx, viewerId);
-    const reactions = await reactionsOf(ctx, noteIds, viewerId, blocked);
+    const blocked = await blockedAmong(ctx, noteIds, viewers);
+    const reactions = await reactionsFor(ctx, noteIds, blocked);
     const uncounted = await blockedCounts(ctx, noteIds, blocked);
     const totals = await totalsOf(ctx, noteIds);
-    const liked = viewerId === null ? new Set() : await likedAmong(ctx, viewerId, noteIds);
-    const shared = viewerId === null ? new Set() : await sharedAmong(ctx, viewerId, noteIds);
-    const pinned = viewerId === null ? new Set() : await pinnedAmong(ctx, viewerId, noteIds);
-    const bookmarked = viewerId === null
-        ? new Set()
-        : await bookmarkedAmong(ctx, viewerId, noteIds);
-    const mutedThreads = viewerId === null
-        ? new Set()
-        : await mutedThreadsAmong(ctx, viewerId, notes.map((note) => note.thread_id));
-    const reblogs = await sharedStatuses(ctx, notes, viewerId);
-    const quotes = await quotedStatuses(ctx, notes, viewerId, options.nested ?? false);
-    const quoted = await quoteCounts(ctx, noteIds, everyone);
-    const polls = await renderPolls(ctx, notes, viewerId);
-    const cards = new Map(
-        [...await cardsOf(ctx, noteIds)].map((
-            [id, card],
-        ) => [id, renderCard(ctx, card, card.link, viewerId)]),
+    const liked = await likedAmong(ctx, signedIn, noteIds);
+    const shared = await sharedAmong(ctx, signedIn, noteIds);
+    const pinned = await pinnedAmong(ctx, signedIn, noteIds);
+    const bookmarked = await bookmarkedAmong(ctx, signedIn, noteIds);
+    const mutedThreads = await mutedThreadsAmong(
+        ctx,
+        signedIn,
+        notes.map((note) => note.thread_id),
     );
-    const filters = viewerId === null
-        ? undefined
-        : (await activeFiltersAmong(ctx, [viewerId])).get(viewerId) ?? [];
+    const reblogs = await sharedStatuses(ctx, notes, viewers);
+    const quotes = await quotedStatuses(ctx, notes, viewers, options.nested ?? false);
+    const quoted = await quoteCounts(ctx, noteIds, everyone);
+    const polls = await renderPollsFor(ctx, notes, viewers);
+    const cards = await cardsOf(ctx, noteIds);
+    const filters = await activeFiltersAmong(ctx, signedIn);
 
     const accountIds = [
         ...new Set([...notes.map((note) => note.account_id), ...[...mentions.values()].flat()]),
@@ -200,86 +257,107 @@ export const renderStatuses = async (
     const domains = new Map(rows.map((row) => [row.id, row.domain]));
     const accounts = await publicAccountsOf(ctx, rows);
 
-    const rendered = notes.flatMap((note): Status[] => {
-        const reblog = note.reblog_of_id === null ? null : reblogs.get(note.reblog_of_id);
-        if (reblog === undefined) return [];
+    const renderFor = (viewerId: ViewerId): Status[] => {
+        const noted = (sets: ReadonlyMap<string, ReadonlySet<string>>, id: string) =>
+            viewerId !== null && (sets.get(viewerId)?.has(id) ?? false);
+        const reactionsOf = reactions.get(viewerId) ?? new Map();
 
-        const account = accounts.get(note.account_id);
-        if (account === undefined) throw new Error(`Note ${note.id} has no author`);
-        const domain = domains.get(note.account_id) ?? null;
+        const rendered = notes.flatMap((note): Status[] => {
+            const reblog = note.reblog_of_id === null
+                ? null
+                : reblogs.get(viewerId)?.get(note.reblog_of_id);
+            if (reblog === undefined) return [];
 
-        return [{
-            id: note.id,
-            uri: noteUri(ctx, note, domain).href,
-            created_at: note.created_at.toISOString(),
-            account,
-            content: domain === null ? note.content_html : sanitizeHtml(note.content_html),
-            visibility: note.visibility,
-            sensitive: note.sensitive,
-            spoiler_text: note.spoiler_text,
-            media_attachments: (attachments.get(note.id) ?? []).map((row) =>
-                renderAttachment(ctx, row)
-            ),
-            mentions: (mentions.get(note.id) ?? []).flatMap((id) => {
-                const mentioned = accounts.get(id);
-                return mentioned
-                    ? [{
-                        id,
-                        username: mentioned.username,
-                        // Verso has no profile pages, so it links to the account's Versia URI.
-                        url: mentioned.uri,
-                        acct: mentioned.acct,
-                    }]
-                    : [];
-            }),
-            tags: (tags.get(note.id) ?? []).map((name) => ({
-                name: tagNames.get(name) ?? name,
-                url: ctx.urls.url`/tags/${name}`,
-            })),
-            emojis: renderEmojis(ctx, [
-                ...emojis.get(note.id) ?? [],
-                ...reactionEmojis(reactions.get(note.id) ?? []),
-            ]),
-            reactions: renderReactions(ctx, reactions.get(note.id) ?? [], viewerId !== null),
-            reblogs_count: Math.max(note.shares_count, totals.get(note.id)?.shares ?? 0) -
-                (uncounted.shares.get(note.id) ?? 0),
-            favourites_count: Math.max(note.likes_count, totals.get(note.id)?.likes ?? 0) -
-                (uncounted.likes.get(note.id) ?? 0),
-            replies_count: Math.max(note.replies_count, totals.get(note.id)?.replies ?? 0),
-            quotes_count: quoted.get(note.id) ?? 0,
-            // Verso has no web pages for statuses, so this is the same as `uri`.
-            url: noteUri(ctx, note, domain).href,
-            in_reply_to_id: note.in_reply_to_id,
-            in_reply_to_account_id: note.in_reply_to_account_id,
-            reblog,
-            quote: quotes.get(note.id) ?? null,
-            quote_approval: reblog?.quote_approval ?? quoteApproval(note, viewerId),
-            poll: polls.get(note.id) ?? null,
-            card: cards.get(note.id) ?? null,
-            language: note.language,
-            text: options.source ? note.content : null,
-            edited_at: note.edited_at?.toISOString() ?? null,
-            ...(viewerId === null ? {} : viewerFlags(
-                liked.has(note.id),
-                shared.has(note.id),
-                mutedThreads.has(note.thread_id),
-                bookmarked.has(note.id),
-                isPinnable(note, viewerId) ? pinned.has(note.id) : undefined,
-            )),
-        }];
-    });
-    if (filters === undefined) return rendered;
+            const account = accounts.get(note.account_id);
+            if (account === undefined) throw new Error(`Note ${note.id} has no author`);
+            const domain = domains.get(note.account_id) ?? null;
+            const card = cards.get(note.id);
 
-    // A boost and the status it boosts match the same filters, as on Mastodon.
-    return rendered.map((status) => {
-        const filtered = filterResults(filters, status);
-        return {
-            ...status,
-            filtered,
-            reblog: status.reblog && { ...status.reblog, filtered },
-        };
-    });
+            return [{
+                id: note.id,
+                uri: noteUri(ctx, note, domain).href,
+                created_at: note.created_at.toISOString(),
+                account,
+                content: domain === null ? note.content_html : sanitizeHtml(note.content_html),
+                visibility: note.visibility,
+                sensitive: note.sensitive,
+                spoiler_text: note.spoiler_text,
+                media_attachments: (attachments.get(note.id) ?? []).map((row) =>
+                    renderAttachment(ctx, row)
+                ),
+                mentions: (mentions.get(note.id) ?? []).flatMap((id) => {
+                    const mentioned = accounts.get(id);
+                    return mentioned
+                        ? [{
+                            id,
+                            username: mentioned.username,
+                            // Verso has no profile pages, so it links to the account's Versia URI.
+                            url: mentioned.uri,
+                            acct: mentioned.acct,
+                        }]
+                        : [];
+                }),
+                tags: (tags.get(note.id) ?? []).map((name) => ({
+                    name: tagNames.get(name) ?? name,
+                    url: ctx.urls.url`/tags/${name}`,
+                })),
+                emojis: renderEmojis(ctx, [
+                    ...emojis.get(note.id) ?? [],
+                    ...reactionEmojis(reactionsOf.get(note.id) ?? []),
+                ]),
+                reactions: renderReactions(ctx, reactionsOf.get(note.id) ?? [], viewerId !== null),
+                reblogs_count: Math.max(note.shares_count, totals.get(note.id)?.shares ?? 0) -
+                    (uncounted.get(viewerId)?.shares.get(note.id) ?? 0),
+                favourites_count: Math.max(note.likes_count, totals.get(note.id)?.likes ?? 0) -
+                    (uncounted.get(viewerId)?.likes.get(note.id) ?? 0),
+                replies_count: Math.max(note.replies_count, totals.get(note.id)?.replies ?? 0),
+                quotes_count: quoted.get(note.id) ?? 0,
+                // Verso has no web pages for statuses, so this is the same as `uri`.
+                url: noteUri(ctx, note, domain).href,
+                in_reply_to_id: note.in_reply_to_id,
+                in_reply_to_account_id: note.in_reply_to_account_id,
+                reblog,
+                quote: quotes.get(viewerId)?.get(note.id) ?? null,
+                quote_approval: reblog?.quote_approval ?? quoteApproval(note, viewerId),
+                poll: polls.get(viewerId)?.get(note.id) ?? null,
+                card: card === undefined ? null : renderCard(ctx, card, card.link, viewerId),
+                language: note.language,
+                text: options.source ? note.content : null,
+                edited_at: note.edited_at?.toISOString() ?? null,
+                ...(viewerId === null ? {} : viewerFlags(
+                    noted(liked, note.id),
+                    noted(shared, note.id),
+                    noted(mutedThreads, note.thread_id),
+                    noted(bookmarked, note.id),
+                    isPinnable(note, viewerId) ? noted(pinned, note.id) : undefined,
+                )),
+            }];
+        });
+        if (viewerId === null) return rendered;
+
+        // A boost and the status it boosts match the same filters, as on Mastodon.
+        const active = filters.get(viewerId) ?? [];
+        return rendered.map((status) => {
+            const filtered = filterResults(active, status);
+            return {
+                ...status,
+                filtered,
+                reblog: status.reblog && { ...status.reblog, filtered },
+            };
+        });
+    };
+
+    return new Map(viewers.map((viewerId) => [viewerId, renderFor(viewerId)]));
 };
+
+/** Renders statuses in the order given, as `viewerId` sees them, as {@link renderStatusesFor} does. */
+export const renderStatuses = async (
+    ctx: Context,
+    notes: readonly NoteRow[],
+    viewerId: ViewerId,
+    options: { readonly source?: boolean; readonly nested?: boolean } = {},
+): Promise<Status[]> =>
+    (await renderStatusesFor(ctx, notes, [viewerId], options)).get(viewerId) ?? [];
 
 /**
  * What a status said before each edit, oldest first, and what it says now, last. A status that was

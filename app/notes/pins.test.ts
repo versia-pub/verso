@@ -30,15 +30,17 @@ Deno.test("an author pins their notes, once each, and unpins them", async () => 
     assertEquals(await test.pinning(note.id), note.id);
     assertEquals(await test.pinning(other.id), other.id);
     assertEquals(
-        await pinnedAmong(test.ctx, "alice", [note.id, other.id]),
-        new Set([note.id, other.id]),
+        // Only alice has pinned them.
+        await pinnedAmong(test.ctx, ["alice", "bob"], [note.id, other.id]),
+        new Map([["alice", new Set([note.id, other.id])]]),
     );
-    // Only alice has pinned them.
-    assertEquals((await pinnedAmong(test.ctx, "bob", [note.id])).size, 0);
 
     assertEquals((await unpin(test.ctx, "alice", note.id))?.id, note.id);
     assertEquals((await unpin(test.ctx, "alice", note.id))?.id, note.id);
-    assertEquals(await pinnedAmong(test.ctx, "alice", [note.id, other.id]), new Set([other.id]));
+    assertEquals(
+        await pinnedAmong(test.ctx, ["alice"], [note.id, other.id]),
+        new Map([["alice", new Set([other.id])]]),
+    );
     assertEquals(await unpin(test.ctx, "alice", "missing"), undefined);
 });
 

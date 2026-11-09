@@ -2,11 +2,22 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { Status, StatusEdit } from "@versia/client-api";
 import { publicAccounts } from "../accounts/public.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
+import { createFilter } from "../filters/filters.ts";
+import { block } from "../graph/blocks.ts";
+import { blockDomainFor } from "../graph/domain_blocks.ts";
+import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
+import { like } from "../interactions/likes.ts";
+import { react } from "../interactions/reactions.ts";
+import { pollOf } from "../polls/poll_queries.ts";
+import { addPoll, vote } from "../polls/polls.ts";
 import { createTestContext } from "../testing/context.ts";
-import { keepVersion } from "./note_queries.ts";
-import { renderHistory, renderStatuses } from "./render.ts";
-import { createNote } from "./testing.ts";
+import { bookmark } from "./bookmarks.ts";
+import { findNote, keepVersion } from "./note_queries.ts";
+import { pin } from "./pins.ts";
+import { renderHistory, renderStatuses, renderStatusesFor } from "./render.ts";
+import { createNote, createShare } from "./testing.ts";
+import { setThreadMuted } from "./thread_mutes.ts";
 
 const open = async () => {
     const test = await createTestContext();
@@ -116,6 +127,126 @@ Deno.test("a logged-in viewer is told what they did to each, and a redraft is gi
         [false, false, false],
     );
     assertEquals(await renderStatuses(test.ctx, [], null), []);
+});
+
+Deno.test("statuses rendered for many viewers at once are as each sees them alone", async () => {
+    await using test = await open();
+    for (const id of ["bob", "dave", "erin", "frank", "grace"]) {
+        await createLocalAccount(test.ctx, id);
+    }
+    const posted = await createNote(test.ctx, "alice", {
+        content: "Hello there",
+        content_html: "<p>Hello there</p>",
+    });
+    await addPoll(test.ctx, posted.id, {
+        options: ["Red", "Blue"],
+        expiresIn: 3600,
+        multiple: false,
+        hideTotals: false,
+    });
+    await vote(test.ctx, "bob", (await pollOf(test.ctx, posted.id))?.id ?? "", [0]);
+    await pin(test.ctx, "alice", posted.id);
+    for (const by of ["bob", "frank"]) await like(test.ctx, by, posted.id);
+    await createShare(test.ctx, "bob", posted.id);
+    await createShare(test.ctx, "carol", posted.id, { instance_id: "b.example", remote_id: "s" });
+    await bookmark(test.ctx, "bob", posted.id);
+    await react(test.ctx, "bob", posted.id, "👍");
+    for (const emoji of ["👍", "🎉"]) await react(test.ctx, "frank", posted.id, emoji);
+    await setThreadMuted(test.ctx, "bob", posted.id, true);
+    await createFilter(test.ctx, "bob", {
+        title: "Greetings",
+        context: ["home"],
+        action: "warn",
+        expiresIn: null,
+    }, [{ keyword: "hello", whole_word: true }]);
+    // dave doesn't see frank's like and reactions, nor erin carol's boost.
+    await block(test.ctx, "dave", "frank");
+    await blockDomainFor(test.ctx, "erin", "b.example");
+    // Only frank, who follows grace, may see her private status, boosted and quoted.
+    await follow(test.ctx, "frank", "grace");
+    const secret = await createNote(test.ctx, "grace", { visibility: "private" });
+    const boost = await createShare(test.ctx, "grace", secret.id);
+    const quoting = await createNote(test.ctx, "bob", { quote_id: secret.id });
+    const note = await findNote(test.ctx, posted.id);
+    if (note === undefined) throw new Error("No note");
+
+    const notes = [note, boost, quoting];
+    const viewers = ["alice", "bob", "dave", "erin", "frank", null];
+    const together = await renderStatusesFor(test.ctx, notes, viewers);
+    for (const viewer of viewers) {
+        assertEquals(together.get(viewer), await renderStatuses(test.ctx, notes, viewer));
+    }
+
+    const shown = (viewer: string | null) => together.get(viewer)?.[0];
+    assertEquals(viewers.map((viewer) => shown(viewer)?.favourited), [
+        false,
+        true,
+        false,
+        false,
+        true,
+        undefined,
+    ]);
+    assertEquals(
+        [shown("bob")?.reblogged, shown("bob")?.bookmarked, shown("bob")?.muted],
+        [true, true, true],
+    );
+    assertEquals([shown("alice")?.pinned, shown("bob")?.pinned], [true, undefined]);
+    assertEquals(
+        [shown("bob")?.poll?.voted, shown("erin")?.poll?.voted, shown(null)?.poll?.voted],
+        [true, false, undefined],
+    );
+    assertEquals(
+        viewers.map((viewer) => [
+            shown(viewer)?.favourites_count,
+            shown(viewer)?.reblogs_count,
+            shown(viewer)?.reactions?.map((reaction) => [reaction.name, reaction.count]),
+        ]),
+        [
+            [2, 2, [["👍", 2], ["🎉", 1]]],
+            [2, 2, [["👍", 2], ["🎉", 1]]],
+            [1, 2, [["👍", 1]]],
+            [2, 1, [["👍", 2], ["🎉", 1]]],
+            [2, 2, [["👍", 2], ["🎉", 1]]],
+            [2, 2, [["👍", 2], ["🎉", 1]]],
+        ],
+    );
+    assertEquals(shown("bob")?.reactions?.map((reaction) => reaction.me), [true, false]);
+    assertEquals(shown("frank")?.reactions?.map((reaction) => reaction.me), [true, true]);
+    assertEquals(
+        viewers.map((viewer) => shown(viewer)?.filtered?.map((result) => result.filter.title)),
+        [[], ["Greetings"], [], [], [], undefined],
+    );
+    assertEquals(
+        viewers.map((viewer) => together.get(viewer)?.map((status) => status.id)),
+        viewers.map((viewer) =>
+            viewer === "frank" || viewer === "grace"
+                ? [note.id, boost.id, quoting.id]
+                : [note.id, quoting.id]
+        ),
+    );
+    const quote = (viewer: string) => together.get(viewer)?.at(-1)?.quote;
+    assertEquals(quote("frank"), {
+        state: "accepted",
+        quoted_status: together.get("frank")?.[1].reblog ?? null,
+    });
+    assertEquals(quote("erin"), { state: "unauthorized", quoted_status: null });
+});
+
+Deno.test("a viewer isn't counted the reactions of those they block, who did nothing else", async () => {
+    await using test = await open();
+    for (const id of ["bob", "dave"]) await createLocalAccount(test.ctx, id);
+    const note = await createNote(test.ctx, "alice");
+    await react(test.ctx, "bob", note.id, "👍");
+    await block(test.ctx, "dave", "bob");
+
+    const shown = await renderStatusesFor(test.ctx, [note], ["alice", "dave"]);
+
+    assertEquals(
+        ["alice", "dave"].map((viewer) =>
+            shown.get(viewer)?.[0].reactions?.map((reaction) => [reaction.name, reaction.count])
+        ),
+        [[["👍", 1]], []],
+    );
 });
 
 Deno.test("a note's history is what it said before each edit, oldest first, then now", async () => {

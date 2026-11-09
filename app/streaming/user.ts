@@ -9,11 +9,13 @@
 import { findPublishedAnnouncement } from "../announcements/announcement_queries.ts";
 import { reactionsOf } from "../announcements/reaction_queries.ts";
 import { renderAnnouncements, renderReaction } from "../announcements/render.ts";
+import { batchesOf } from "../db/batches.ts";
 import { followersAmong } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { grants } from "../kernel/scopes.ts";
-import { homeReachOf, homeStatus } from "../notes/stream_lookups.ts";
+import { homeNote, homeReachOf, statusesFor } from "../notes/stream_lookups.ts";
+import type { NoteRow } from "../notes/note_queries.ts";
 import { shownNotification } from "../notifications/render.ts";
 import { followingAnyTagAmong, tagFollowersAmong } from "../tags/tag_follow_queries.ts";
 import { atMost, type Sessions, type StreamViewer } from "./dispatcher.ts";
@@ -23,8 +25,14 @@ import type { StatusMessage } from "./statuses.ts";
 /** A session, with its viewer. */
 type Entry = { readonly viewer: StreamViewer; readonly session: Session };
 
-/** How many viewers a status is rendered for at once, each with queries of its own. */
+/**
+ * How many viewers' home timelines a status is looked up on at once, or notifications rendered for,
+ * each with queries of its own.
+ */
 const viewersAtOnce = 8;
+
+/** How many viewers a status is rendered for together, so that its queries list them all. */
+const renderedTogether = 500;
 
 /**
  * The streams a session is sent its viewer's notifications on. As on Mastodon, the `user` stream
@@ -35,13 +43,13 @@ const notificationStreams = (viewer: StreamViewer) =>
         ? ["user", "user:notification"]
         : ["user:notification"];
 
-/** Of `entries`, those whose viewers may `permission`, checked one at a time, as each may query. */
+/**
+ * Of `entries`, those whose viewers may `permission`. A viewer's permissions are looked up once,
+ * for all its sessions, and kept until its roles change, so most are known already.
+ */
 const allowed = async (entries: readonly Entry[], permission: Permission) => {
-    const found = [];
-    for (const entry of entries) {
-        if ((await entry.viewer.permissions()).has(permission)) found.push(entry);
-    }
-    return found;
+    const granted = await Promise.all(entries.map((entry) => entry.viewer.permissions()));
+    return entries.filter((_, index) => granted[index].has(permission));
 };
 
 /**
@@ -72,8 +80,8 @@ const couldSee = async (
 /**
  * What the sessions of the process `ctx` belongs to are sent of their viewers' `user` streams. A
  * status is looked up for the viewers it could reach, its author, their followers and those who
- * follow its hashtags, and sent if it is on their home timeline when it is heard of, rendered once
- * for each of them, as they see it. A notification is rendered once for its viewer. Each is sent as
+ * follow its hashtags, and sent if it is on their home timeline when it is heard of, rendered for
+ * all of them together, as each sees it. A notification is rendered once for its viewer. Each is sent as
  * long as they may read statuses and their notifications, as on the routes for them. An announcement
  * is rendered once, as anyone sees it, for every session.
  */
@@ -123,11 +131,24 @@ export const userStreams = (ctx: Context): Sessions => {
                 "read:note",
             );
 
-            await deliverEach(
-                reached,
-                (viewerId) => homeStatus(ctx, viewerId, message.noteId),
-                ({ session }, payload) => session.deliver(["user"], message.event, payload),
-            );
+            const byViewer = Map.groupBy(reached, (entry) => entry.viewer.accountId);
+            const home: [string, NoteRow][] = [];
+            await atMost(viewersAtOnce, [...byViewer.keys()], async (viewerId) => {
+                const note = await homeNote(ctx, viewerId, message.noteId);
+                if (note) home.push([viewerId, note]);
+            });
+            const note = home[0]?.[1];
+            if (note === undefined) return;
+
+            await atMost(1, batchesOf(home, renderedTogether), async (batch) => {
+                const shown = await statusesFor(ctx, note, batch.map(([viewerId]) => viewerId));
+                for (const [viewerId, status] of shown) {
+                    const payload = JSON.stringify(status);
+                    for (const { session } of byViewer.get(viewerId) ?? []) {
+                        session.deliver(["user"], message.event, payload);
+                    }
+                }
+            });
         },
         notifications: async (message) => {
             const subscribed = [...sessions].filter(({ viewer, session }) =>

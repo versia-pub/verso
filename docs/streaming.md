@@ -71,13 +71,15 @@ Every stream but `user:notification` needs `read:statuses`, and `user:notificati
 `read:notifications`. The `user` stream only includes notifications if the token can read them.
 Whose list it is takes a query, so a `list` subscription starts once that's known.
 
-Home statuses are rendered separately for each viewer, 8 viewers at a time. Public and hashtag
-statuses are rendered once for everyone, in [`app/streaming/shared.ts`](../app/streaming/shared.ts),
-and aren't sent to viewers who block or mute the author. Each viewer's copy gets `filtered`, the
-viewer's filters that the status matches. Permissions are checked for each message, so a viewer
-whose roles no longer give `read:note` stops getting statuses. So is
-[`[timelines_access]`](configuration.md): a viewer who may not see statuses from where a status is
-from, because that is `disabled` and their roles lack `feeds`, isn't sent it.
+Each viewer's home timeline is checked separately, 8 viewers at a time. Then a home status is
+rendered for up to 500 of its viewers at once, as each sees it, with one query for all of them for
+each part that differs between them, such as what each liked. Public and hashtag statuses are
+rendered once for everyone, in [`app/streaming/shared.ts`](../app/streaming/shared.ts), and aren't
+sent to viewers who block or mute the author. Each viewer's copy gets `filtered`, the viewer's
+filters that the status matches. Permissions are checked for each message, so a viewer whose roles
+no longer give `read:note` stops getting statuses. So is [`[timelines_access]`](configuration.md): a
+viewer who may not see statuses from where a status is from, because that is `disabled` and their
+roles lack `feeds`, isn't sent it.
 
 A home status goes to its author, their followers, and the users who follow one of its hashtags, if
 it's on their home timeline. A list's status goes to its owner if its author is in the list and it's

@@ -1,8 +1,10 @@
 import type { Insertable, Selectable } from "kysely";
 import type { Visibility } from "../kernel/visibility.ts";
 import { countAll, readCount } from "../db/count.ts";
+import { setsBy } from "../db/grouping.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, notExcluded } from "../graph/blocks.ts";
+import type { AccountIdQuery } from "../graph/follow_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import type { LikeKind, LikesTable } from "./tables.ts";
 import { uncountLikesOn } from "../notes/note_queries.ts";
@@ -75,20 +77,24 @@ export const findLike = async (
         .where("note_id", "=", noteId)
         .executeTakeFirst();
 
-/** Which of `noteIds` the account likes. */
+/** The accounts that like or dislike any of `noteIds`, as a subquery. */
+export const likerIdsQuery = (ctx: Context, noteIds: readonly string[]): AccountIdQuery =>
+    ctx.db.selectFrom("likes").select("account_id").where("note_id", "in", noteIds);
+
+/** Which of `noteIds` each of `accountIds` likes, by account. */
 export const likedAmong = async (
     ctx: Context,
-    accountId: string,
+    accountIds: readonly string[],
     noteIds: readonly string[],
-): Promise<Set<string>> => {
-    if (noteIds.length === 0) return new Set();
+): Promise<Map<string, Set<string>>> => {
+    if (accountIds.length === 0 || noteIds.length === 0) return new Map();
 
-    const rows = await ctx.db.selectFrom("likes").select("note_id")
-        .where("account_id", "=", accountId)
+    const rows = await ctx.db.selectFrom("likes").select(["account_id", "note_id"])
+        .where("account_id", "in", accountIds)
         .where("note_id", "in", noteIds)
         .where("kind", "=", "like")
         .execute();
-    return new Set(rows.map((row) => row.note_id));
+    return setsBy(rows, (row) => row.account_id, (row) => row.note_id);
 };
 
 /**

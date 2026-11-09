@@ -9,8 +9,9 @@
  */
 import { findAccount } from "../accounts/account_queries.ts";
 import type { Context } from "../kernel/context.ts";
-import { blockedIdsQuery, deleteBlock, insertBlock } from "./block_queries.ts";
-import { domainBlockedInstancesQuery } from "./domain_block_queries.ts";
+import { blockedIdsQuery, blockingAmong, deleteBlock, insertBlock } from "./block_queries.ts";
+import { domainBlockedInstancesQuery, domainBlockingAmong } from "./domain_block_queries.ts";
+import type { AccountIdQuery } from "./follow_queries.ts";
 import { type Excluded, excluded } from "./excluded_queries.ts";
 
 export { type Excluded, isExcluded, notExcluded } from "./excluded_queries.ts";
@@ -40,6 +41,23 @@ export const unblock = (ctx: Context, accountId: string, targetId: string): Prom
  */
 export const blockedByAccount = (ctx: Context, accountId: string): Excluded =>
     excluded(ctx, blockedIdsQuery(ctx, accountId), domainBlockedInstancesQuery(ctx, accountId));
+
+/**
+ * Which of `accountIds` block any of `targets`, individually or by their domain, so must have what
+ * those did taken out of what they are shown.
+ */
+export const blockingAny = async (
+    ctx: Context,
+    accountIds: readonly string[],
+    targets: AccountIdQuery,
+): Promise<Set<string>> => {
+    if (accountIds.length === 0) return new Set();
+
+    return new Set([
+        ...await blockingAmong(ctx, accountIds, targets),
+        ...await domainBlockingAmong(ctx, accountIds, targets),
+    ]);
+};
 
 /**
  * The accounts a viewer blocks, as {@link blockedByAccount} returns them, or none without a viewer.

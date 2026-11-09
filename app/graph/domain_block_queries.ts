@@ -3,6 +3,7 @@ import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
 import type { InstanceIdQuery } from "./excluded_queries.ts";
+import type { AccountIdQuery } from "./follow_queries.ts";
 
 /** Adds a domain block, unless the account already blocks the domain. */
 export const insertDomainBlock = async (
@@ -113,6 +114,26 @@ export const domainBlockersAmong = async (
         .select("account_domain_blocks.account_id")
         .where("accounts.id", "=", accountId)
         .where("account_domain_blocks.account_id", "in", otherIds)
+        .execute();
+    return rows.map((row) => row.account_id);
+};
+
+/**
+ * Which of `accountIds` block the domain of any of `targets`, or a domain it is under. It reads the
+ * `accounts` and `instances` tables directly rather than going through their modules, so that it
+ * takes one query.
+ */
+export const domainBlockingAmong = async (
+    ctx: Context,
+    accountIds: readonly string[],
+    targets: AccountIdQuery,
+): Promise<string[]> => {
+    const rows = await ctx.db.selectFrom("accounts")
+        .innerJoin("instances", "instances.id", "accounts.instance_id")
+        .innerJoin("account_domain_blocks", (join) => join.on(blocksDomainOf))
+        .select("account_domain_blocks.account_id").distinct()
+        .where("accounts.id", "in", targets)
+        .where("account_domain_blocks.account_id", "in", accountIds)
         .execute();
     return rows.map((row) => row.account_id);
 };

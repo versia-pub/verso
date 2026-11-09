@@ -1,4 +1,5 @@
 import type { Selectable } from "kysely";
+import { setsBy } from "../db/grouping.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
 import type { BookmarksTable } from "./tables.ts";
@@ -34,19 +35,19 @@ export const deleteBookmark = async (
         .returning("id")
         .executeTakeFirst()) !== undefined;
 
-/** Which of `noteIds` the account has bookmarked. */
+/** Which of `noteIds` each of `accountIds` has bookmarked, by account. */
 export const bookmarkedAmong = async (
     ctx: Context,
-    accountId: string,
+    accountIds: readonly string[],
     noteIds: readonly string[],
-): Promise<Set<string>> => {
-    if (noteIds.length === 0) return new Set();
+): Promise<Map<string, Set<string>>> => {
+    if (accountIds.length === 0 || noteIds.length === 0) return new Map();
 
-    const rows = await ctx.db.selectFrom("bookmarks").select("note_id")
-        .where("account_id", "=", accountId)
+    const rows = await ctx.db.selectFrom("bookmarks").select(["account_id", "note_id"])
+        .where("account_id", "in", accountIds)
         .where("note_id", "in", noteIds)
         .execute();
-    return new Set(rows.map((row) => row.note_id));
+    return setsBy(rows, (row) => row.account_id, (row) => row.note_id);
 };
 
 /** A page of an account's bookmarks, latest bookmarked first. */

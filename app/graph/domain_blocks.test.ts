@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { block, blockedByAccount, type Excluded, isExcluded } from "./blocks.ts";
+import { block, blockedByAccount, blockingAny, type Excluded, isExcluded } from "./blocks.ts";
 import { domainBlockedAmong, domainBlockPage } from "./domain_block_queries.ts";
 import { blockDomainFor, unblockDomainFor } from "./domain_blocks.ts";
 import { hiddenAmong, hiddenFrom, hidingAmong } from "./hidden.ts";
@@ -139,4 +139,28 @@ Deno.test("who an account is hidden from is asked of 1000 accounts at a time", a
 
     assertEquals([...await hidingAmong({ ...test.ctx, db }, "sub", asked)], ["alice", "bob"]);
     assertEquals(queries, 6);
+});
+
+Deno.test("of some accounts, those that block one of some others, or their domain, are found", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "carol");
+    await block(test.ctx, "alice", "exact");
+    await blockDomainFor(test.ctx, "bob", "b.example");
+    // carol blocks them both, but isn't asked about.
+    await block(test.ctx, "carol", "exact");
+    await blockDomainFor(test.ctx, "carol", "b.example");
+    const accounts = (ids: string[]) =>
+        test.ctx.db.selectFrom("accounts").select("accounts.id as account_id")
+            .where("accounts.id", "in", ids);
+
+    assertEquals(
+        await blockingAny(test.ctx, ["alice", "bob"], accounts(["exact"])),
+        new Set(["alice", "bob"]),
+    );
+    assertEquals(
+        await blockingAny(test.ctx, ["alice", "bob"], accounts(["sub"])),
+        new Set(["bob"]),
+    );
+    assertEquals(await blockingAny(test.ctx, ["alice", "bob"], accounts(["other"])), new Set());
+    assertEquals(await blockingAny(test.ctx, [], accounts(["exact"])), new Set());
 });

@@ -1,13 +1,14 @@
 /**
  * Single statuses of timelines, looked up for streaming them as they appear. Those of the public
  * and hashtag timelines are rendered as anyone sees them, as Mastodon streams them, so that each is
- * rendered once for every viewer. Those of home timelines and lists are rendered for each viewer.
+ * rendered once for every viewer. Those of home timelines are rendered for all their viewers
+ * together, as each sees them, and those of lists for each list's owner.
  * @module
  */
 import type { Status } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import { findNote, type NoteRow, tagsOf } from "./note_queries.ts";
-import { renderStatuses } from "./render.ts";
+import { renderStatuses, renderStatusesFor } from "./render.ts";
 import type { ListRow } from "../lists/list_queries.ts";
 import { findHashtagNote, findHomeNote, findListNote, findPublicNote } from "./timeline_queries.ts";
 import { homeSourcesOf, listSourcesOf } from "./timeline_sources.ts";
@@ -75,15 +76,29 @@ export const homeReachOf = async (
     return { authorId: note.account_id, tags: tags ?? [] };
 };
 
-/** The status `noteId` as `viewerId` sees it, if it is on their home timeline. */
-export const homeStatus = async (
+/** The status `noteId`, if it is on `viewerId`'s home timeline. */
+export const homeNote = (
     ctx: Context,
     viewerId: string,
     noteId: string,
-): Promise<Status | undefined> => {
-    const note = await findHomeNote(ctx, viewerId, homeSourcesOf(ctx, viewerId), noteId);
+): Promise<NoteRow | undefined> =>
+    findHomeNote(ctx, viewerId, homeSourcesOf(ctx, viewerId), noteId);
 
-    return note && (await renderStatuses(ctx, [note], viewerId))[0];
+/**
+ * The status `note` as each of `viewerIds` sees it, rendered for all of them together, by viewer.
+ * A boost of a status a viewer may not see renders as nothing, so they are left out.
+ */
+export const statusesFor = async (
+    ctx: Context,
+    note: NoteRow,
+    viewerIds: readonly string[],
+): Promise<Map<string, Status>> => {
+    const rendered = await renderStatusesFor(ctx, [note], viewerIds);
+
+    return new Map(viewerIds.flatMap((viewerId) => {
+        const [status] = rendered.get(viewerId) ?? [];
+        return status === undefined ? [] : [[viewerId, status]];
+    }));
 };
 
 /** Who posted or boosted `noteId`, whose lists could have it, if it exists. */

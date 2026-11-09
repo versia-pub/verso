@@ -137,23 +137,32 @@ export const findPoll = async (
     return poll && await pollOf(ctx, poll.note_id);
 };
 
-/** The options `accountId` voted for in each of `pollIds` they voted in, in order. */
+/**
+ * The options each of `accountIds` voted for in each of `pollIds` they voted in, in order, by
+ * account, then by poll.
+ */
 export const votesAmong = async (
     ctx: Context,
-    accountId: string,
+    accountIds: readonly string[],
     pollIds: readonly string[],
-): Promise<Map<string, number[]>> => {
-    if (pollIds.length === 0) return new Map();
+): Promise<Map<string, Map<string, number[]>>> => {
+    if (accountIds.length === 0 || pollIds.length === 0) return new Map();
 
     const rows = await ctx.db.selectFrom("poll_votes")
-        .select(["poll_id", "choice"])
-        .where("account_id", "=", accountId)
+        .select(["account_id", "poll_id", "choice"])
+        .where("account_id", "in", accountIds)
         .where("poll_id", "in", pollIds)
         .orderBy("choice")
         .execute();
 
-    const votes = new Map<string, number[]>();
-    for (const row of rows) votes.set(row.poll_id, [...votes.get(row.poll_id) ?? [], row.choice]);
+    const votes = new Map<string, Map<string, number[]>>();
+    for (const row of rows) {
+        const byPoll = votes.get(row.account_id) ?? new Map<string, number[]>();
+        votes.set(
+            row.account_id,
+            byPoll.set(row.poll_id, [...byPoll.get(row.poll_id) ?? [], row.choice]),
+        );
+    }
     return votes;
 };
 

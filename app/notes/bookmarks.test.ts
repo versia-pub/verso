@@ -41,7 +41,7 @@ Deno.test("bookmarking a status gives it back bookmarked, for the viewer alone",
     const bookmarked = await test.request("POST", `${path}/bookmark`);
     assertEquals([bookmarked.status, bookmarked.body.bookmarked], [200, true]);
     assertEquals((await test.request("POST", `${path}/bookmark`)).body.bookmarked, true);
-    assertEquals((await bookmarkedAmong(test.ctx, "dave", [note.id])).size, 0);
+    assertEquals(await bookmarkedAmong(test.ctx, ["dave"], [note.id]), new Map());
 
     const undone = await test.request("POST", `${path}/unbookmark`);
     assertEquals([undone.status, undone.body.bookmarked], [200, false]);

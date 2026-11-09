@@ -1,3 +1,4 @@
+import { setsBy } from "../db/grouping.ts";
 import type { Context } from "../kernel/context.ts";
 
 /** Mutes a thread for an account, unless it already is. */
@@ -29,19 +30,19 @@ export const deleteThreadMute = async (
         .execute();
 };
 
-/** Which of `threadIds` the account mutes. */
+/** Which of `threadIds` each of `accountIds` mutes, by account. */
 export const mutedThreadsAmong = async (
     ctx: Context,
-    accountId: string,
+    accountIds: readonly string[],
     threadIds: readonly string[],
-): Promise<Set<string>> => {
-    if (threadIds.length === 0) return new Set();
+): Promise<Map<string, Set<string>>> => {
+    if (accountIds.length === 0 || threadIds.length === 0) return new Map();
 
-    const rows = await ctx.db.selectFrom("thread_mutes").select("thread_id")
-        .where("account_id", "=", accountId)
+    const rows = await ctx.db.selectFrom("thread_mutes").select(["account_id", "thread_id"])
+        .where("account_id", "in", accountIds)
         .where("thread_id", "in", [...new Set(threadIds)])
         .execute();
-    return new Set(rows.map((row) => row.thread_id));
+    return setsBy(rows, (row) => row.account_id, (row) => row.thread_id);
 };
 
 /** Which of `accountIds` mute the thread `threadId`. */

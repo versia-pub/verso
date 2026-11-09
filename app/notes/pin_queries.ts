@@ -1,6 +1,7 @@
 import { hasAttachments } from "../media/attachment_queries.ts";
 import type { Selectable } from "kysely";
 import { countAll, readCount } from "../db/count.ts";
+import { setsBy } from "../db/grouping.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import type { NoteRow } from "./note_queries.ts";
@@ -37,19 +38,19 @@ export const countPins = async (ctx: Context, accountId: string): Promise<number
             .executeTakeFirstOrThrow(),
     );
 
-/** Which of `noteIds` the account has pinned. */
+/** Which of `noteIds` each of `accountIds` has pinned, by account. */
 export const pinnedAmong = async (
     ctx: Context,
-    accountId: string,
+    accountIds: readonly string[],
     noteIds: readonly string[],
-): Promise<Set<string>> => {
-    if (noteIds.length === 0) return new Set();
+): Promise<Map<string, Set<string>>> => {
+    if (accountIds.length === 0 || noteIds.length === 0) return new Map();
 
-    const rows = await ctx.db.selectFrom("note_pins").select("note_id")
-        .where("account_id", "=", accountId)
+    const rows = await ctx.db.selectFrom("note_pins").select(["account_id", "note_id"])
+        .where("account_id", "in", accountIds)
         .where("note_id", "in", noteIds)
         .execute();
-    return new Set(rows.map((row) => row.note_id));
+    return setsBy(rows, (row) => row.account_id, (row) => row.note_id);
 };
 
 /** The statuses an account has pinned with one of `visibilities`, latest pinned first. */

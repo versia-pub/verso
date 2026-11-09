@@ -8,7 +8,7 @@ import { createInstance } from "../instances/testing.ts";
 import { registry } from "../registry.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findNote, notePageBy } from "./note_queries.ts";
-import { countSharesBy } from "./share_queries.ts";
+import { countSharesBy, sharedAmong } from "./share_queries.ts";
 import { removeNote } from "./removal.ts";
 import { canSee } from "./visibility.ts";
 import { knownNote } from "./remote.ts";
@@ -152,4 +152,25 @@ Deno.test("the shares the accounts someone blocks make are counted by note", asy
         await countSharesBy(test.ctx, [first.id, second.id], blockedByAccount(test.ctx, "alice")),
         new Map([[first.id, 1]]),
     );
+});
+
+Deno.test("of some accounts, which of some statuses each boosted is found", async () => {
+    await using test = await open();
+    const first = await createNote(test.ctx, "carol", {
+        instance_id: "b.example",
+        remote_id: "n1",
+    });
+    const second = await createNote(test.ctx, "carol", {
+        instance_id: "b.example",
+        remote_id: "n2",
+    });
+    await createShare(test.ctx, "alice", first.id);
+    await createShare(test.ctx, "alice", second.id);
+    await createShare(test.ctx, "carol", first.id, { instance_id: "b.example", remote_id: "s1" });
+
+    assertEquals(
+        await sharedAmong(test.ctx, ["alice", "bob"], [first.id]),
+        new Map([["alice", new Set([first.id])]]),
+    );
+    assertEquals(await sharedAmong(test.ctx, [], [first.id]), new Map());
 });

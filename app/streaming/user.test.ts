@@ -412,6 +412,31 @@ Deno.test("a status is looked up for its author and their followers only, once f
     assertEquals(many.queries(), one.queries());
 });
 
+Deno.test("a status is rendered once for all its viewers, who each only cost their home lookup", async () => {
+    await using test = await open();
+    const followers = Array.from({ length: 20 }, (_, n) => `follower${n}`);
+    for (const id of followers) {
+        await createLocalAccount(test.ctx, id);
+        await follow(test.ctx, id, "bob");
+    }
+    const streamed = [1, 2, 20].map((count) => {
+        const { sessions, queries } = test.counted();
+        const sent = followers.slice(0, count).map((accountId) =>
+            test.streaming(accountId, ["user"], { sessions }).sent
+        );
+        return { sent, queries };
+    });
+
+    const note = await test.post("bob", "Hi");
+
+    for (const { sent } of streamed) {
+        assertEquals(sent, sent.map(() => [["user", "update", note]]));
+    }
+    const [one, two, twenty] = streamed.map(({ queries }) => queries());
+    // Each viewer's own queries are the three of `findHomeNote`.
+    assertEquals([two - one, twenty - one], [3, 19 * 3]);
+});
+
 Deno.test("a notification is rendered once for each viewer, however many sessions they have", async () => {
     await using test = await open();
     const one = test.counted();

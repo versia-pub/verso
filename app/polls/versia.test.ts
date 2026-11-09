@@ -174,7 +174,10 @@ Deno.test("a remote poll sent again with new counts isn't edited, and keeps loca
 
     assertEquals((await test.asked())?.options, [["Red", 8], ["Blue", 4]]);
     assertEquals((await test.kept()).edited_at, null);
-    assertEquals((await votesAmong(test.a, "alice", [poll?.id ?? ""])).get(poll?.id ?? ""), [0]);
+    assertEquals(
+        await votesAmong(test.a, ["alice"], [poll?.id ?? ""]),
+        new Map([["alice", new Map([[poll?.id ?? "", [0]]])]]),
+    );
 });
 
 Deno.test("a remote poll that asks something else, or is removed, is an edit", async () => {
@@ -186,7 +189,7 @@ Deno.test("a remote poll that asks something else, or is removed, is an edit", a
     await test.send(note({ options: [text("Red"), text("Green")], votes: [0, 1] }));
     assertEquals((await test.kept()).edited_at, test.network.clock.now());
     assertEquals((await test.asked())?.options, [["Red", 0], ["Green", 1]]);
-    assertEquals(await votesAmong(test.a, "alice", [poll?.id ?? ""]), new Map());
+    assertEquals(await votesAmong(test.a, ["alice"], [poll?.id ?? ""]), new Map());
 
     await test.send(note({ options: [text("Red"), text("Green")], multiple_choice: true }));
     assertEquals((await test.kept()).edited_at, test.network.clock.now());
