@@ -7,9 +7,9 @@
 import { parseReference, v0_6 } from "@versia/protocol";
 import { instancesHosting } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
-import { queueDeliveriesTo } from "../federation/deliver.ts";
+import { type Audience, queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
-import { followerInstances, hasFollowers } from "../graph/follows.ts";
+import { hasFollowers } from "../graph/follows.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { everyone, instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
@@ -50,11 +50,15 @@ const renderVersiaShare = async (
  * The remote instances a local user's boost of a status is sent to: those of their followers, and
  * the instance of the status's author, which must be told. Local users' boosts are never direct.
  */
-const audienceOfShare = async (ctx: Context, accountId: string, noteId: string) => {
+const audienceOfShare = async (
+    ctx: Context,
+    accountId: string,
+    noteId: string,
+): Promise<Audience> => {
     const note = await findNote(ctx, noteId);
     const author = note ? await instancesHosting(ctx, [note.account_id]) : [];
 
-    return [...new Set([...await followerInstances(ctx, accountId), ...author])].toSorted();
+    return { instanceIds: author, followersOf: accountId };
 };
 
 /** Sends local users' boosts, and a Delete when they undo one. */

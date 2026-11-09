@@ -35,7 +35,8 @@ const sendNote = async (ctx: Context, noteId: string, others: readonly string[] 
     const [entity] = await renderVersiaNotes(ctx, [note]);
     const quoted = note.quote_id === null ? undefined : await findNote(ctx, note.quote_id);
     const audience = await audienceOf(ctx, note, mentionIds, quoted?.account_id);
-    await queueDeliveriesTo(ctx, entity, [...new Set([...audience, ...others])].toSorted());
+    const instanceIds = [...new Set([...audience.instanceIds, ...others])].toSorted();
+    await queueDeliveriesTo(ctx, entity, { ...audience, instanceIds });
 };
 
 /**

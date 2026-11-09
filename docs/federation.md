@@ -5,7 +5,7 @@ spec, and covers only Verso's side of it. Entities move in four ways:
 
 ```
 Receiving   remote ── POST inbox ──► inbox route ── job ──► inbox worker ──► type.receive
-Sending     subscriber ── job ──► delivery worker ── POST inbox ──► remote
+Sending     subscriber ── job ──► fan-out ── jobs ──► delivery worker ── POST inbox ──► remote
 Fetching    resolver ── GET entity ──► remote ──► type.receive
 Serving     remote ── GET entity ──► entity routes ──► type.find
 ```
@@ -79,15 +79,21 @@ Report, has no id to tell it by, so it is stored with a hash of itself, in case 
 ## Sending
 
 Each module's subscribers decide who gets an entity, and pass it to `queueDeliveriesTo` in
-[`app/federation/deliver.ts`](../app/federation/deliver.ts) with the instances to send it to. For a
-new status, `noteDeliveries` sends it to the instances of its audience, which
-[`app/notes/audience.ts`](../app/notes/audience.ts) works out.
+[`app/federation/deliver.ts`](../app/federation/deliver.ts) with its audience: the instances to send
+it to, and the account whose followers get it too, if any. For a new status, `noteDeliveries` sends
+it to its audience, which [`app/notes/audience.ts`](../app/notes/audience.ts) works out.
 
-Each instance gets its own job in the `versia-deliver` queue, grouped by domain. The entity is
-serialised once, when the jobs are queued, so later changes don't alter what is sent. It is stored
-once in `delivery_bodies`, and each job holds only its id. Nothing is sent to blocked instances, or
-to instances that haven't answered for `[federation] unreachable_days`, until Verso hears from them
-again.
+The entity is serialised once, when it is queued, so later changes don't alter what is sent, and
+stored once in `delivery_bodies`. In the same transaction, one job in the `versia-fan-out` queue is
+queued. That job finds the instances the followers are on as they are when it runs, so a post costs
+the same however many followers its author has. It skips blocked instances, and instances that
+haven't answered for `[federation] unreachable_days`, until Verso hears from them again.
+
+The fan-out queues a job per instance in the `versia-deliver` queue, grouped by domain, holding only
+the entity's id. Each is due when the fan-out was queued, and one fan-out runs at a time per worker,
+so entities queued earlier are sent first. With several workers, a later entity can still be sent
+first if its fan-out finishes first. A fan-out that runs again skips the deliveries still queued,
+but resends those already sent.
 
 The worker signs the body and posts it:
 

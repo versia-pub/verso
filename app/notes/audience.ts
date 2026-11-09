@@ -4,7 +4,8 @@
  */
 import { instancesHosting } from "../accounts/account_queries.ts";
 import type { Visibility } from "../kernel/visibility.ts";
-import { followerInstances, hasFollowersOn } from "../graph/follows.ts";
+import type { Audience } from "../federation/deliver.ts";
+import { hasFollowersOn } from "../graph/follows.ts";
 import { findInstanceId } from "../instances/instance_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { mentionsOf, type NoteRow } from "./note_queries.ts";
@@ -23,15 +24,14 @@ export const audienceOf = async (
     note: Pick<NoteRow, "account_id" | "visibility" | "in_reply_to_account_id">,
     mentionIds: readonly string[],
     quotedAccountId: string | null = null,
-): Promise<string[]> => {
+): Promise<Audience> => {
     const linked = [note.in_reply_to_account_id, quotedAccountId].flatMap((id) => id ?? []);
     const replied = everyone.includes(note.visibility) ? linked : [];
-    const followers = note.visibility === "direct"
-        ? []
-        : await followerInstances(ctx, note.account_id);
+    const instanceIds = await instancesHosting(ctx, [...mentionIds, ...replied]);
 
-    return [...new Set([...await instancesHosting(ctx, [...mentionIds, ...replied]), ...followers])]
-        .toSorted();
+    return note.visibility === "direct"
+        ? { instanceIds }
+        : { instanceIds, followersOf: note.account_id };
 };
 
 /**

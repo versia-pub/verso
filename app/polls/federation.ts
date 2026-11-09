@@ -47,7 +47,7 @@ export const voteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
             poll,
             option: vote.choice,
         };
-        await queueDeliveriesTo(ctx, entity, audience);
+        await queueDeliveriesTo(ctx, entity, { instanceIds: audience });
     }
 };
 

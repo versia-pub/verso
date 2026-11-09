@@ -1,19 +1,27 @@
 /**
- * Sending entities to remote Versia instances: one job per instance, for the delivery worker, each
- * referring to the entity, which is stored once.
+ * Sending entities to remote Versia instances. The entity is stored once, and one fan-out job finds
+ * the instances to send it to, outside the request, then queues one delivery job per instance for
+ * the delivery worker, each referring to the entity.
  * @see https://versia.pub/federation/http
  * @module
  */
 import type { SelectQueryBuilder } from "kysely";
 import { z } from "zod";
 import type { Database } from "../db/database.ts";
+import { batchesOf } from "../db/batches.ts";
 import { instancesHosting } from "../accounts/account_queries.ts";
+import { followerInstances } from "../graph/follows.ts";
 import { reachableDomainsOf } from "../instances/instance_queries.ts";
-import { enqueueAll } from "../jobs/job_queries.ts";
+import { type DeadPayload, enqueue, enqueueAll } from "../jobs/job_queries.ts";
+import type { JobPayload, JobsTable } from "../jobs/tables.ts";
+import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 
 /** Versia's own queue, so deliveries of other protocols can't hold it up. */
 export const deliverQueue = "versia-deliver";
+
+/** The queue of fan-out jobs, which each queue an entity's deliveries. */
+export const fanOutQueue = "versia-fan-out";
 
 /** The payload of a delivery job. */
 export const DeliverJob = z.union([
@@ -28,28 +36,49 @@ export const DeliverJob = z.union([
 ]);
 export type DeliverJob = z.infer<typeof DeliverJob>;
 
+/** The payload of a fan-out job. */
+export const FanOutJob = z.object({
+    /** The entity's row in `delivery_bodies`. */
+    bodyId: z.string(),
+    /** The instances to send it to, by id. */
+    instanceIds: z.array(z.string()),
+    /** An account whose followers' instances are sent it too, found when the job runs. */
+    followersOf: z.string().optional(),
+});
+export type FanOutJob = z.infer<typeof FanOutJob>;
+
+/** What a fan-out job stores once it dies: the entity, without the instances it was for. */
+export const fanOutDeadPayload: DeadPayload = (payload: JobPayload): JobPayload => {
+    const job = FanOutJob.safeParse(payload);
+    return job.success ? { bodyId: job.data.bodyId } : {};
+};
+
 /**
  * More than are ever made: deliveries are given up on by age, after as long as the settings say (at
  * most 30 days), with at most six hours between attempts.
  */
 const maxAttempts = 1000;
 
+/** Where an entity is sent. */
+export type Audience = {
+    /** Instances, by id. */
+    readonly instanceIds: readonly string[];
+    /** An account, whose followers' instances are sent it too, as they are when it is sent. */
+    readonly followersOf?: string;
+};
+
 /**
- * Queues `entity` for delivery to each of `instanceIds` that is a Versia instance, grouped by
- * instance so each can be rate limited. Skips blocked instances, and instances that couldn't be
- * reached for as long as the settings say, as on Mastodon, until they are heard from again.
+ * Queues `entity` for delivery to its audience. Only the entity and one fan-out job are written
+ * here, so sending costs the same however many followers are in the audience: the job finds their
+ * instances, and queues the deliveries.
  */
 export const queueDeliveriesTo = async (
     ctx: Context,
     entity: object,
-    instanceIds: readonly string[],
+    audience: Audience,
 ): Promise<void> => {
-    const before = new Date(ctx.clock.now().getTime() - ctx.settings.unreachableMs);
-    const domains = [];
-    for (const domain of await reachableDomainsOf(ctx, instanceIds, "versia", before)) {
-        if (!await ctx.federation.isBlocked(ctx, domain)) domains.push(domain);
-    }
-    if (domains.length === 0) return;
+    const { instanceIds, followersOf } = audience;
+    if (instanceIds.length === 0 && followersOf === undefined) return;
 
     // Stored once, however many instances it goes to.
     const bodyId = ctx.ids();
@@ -57,17 +86,9 @@ export const queueDeliveriesTo = async (
         .values({ id: bodyId, body: JSON.stringify(entity), created_at: ctx.clock.now() })
         .execute();
 
-    await enqueueAll(
-        ctx,
-        domains.map((domain) => ({
-            queue: deliverQueue,
-            payload: { domain, bodyId } satisfies DeliverJob,
-            maxAttempts,
-            group: domain,
-            // Deliveries are numerous, so workers find them by polling.
-            wake: false,
-        })),
-    );
+    const payload: FanOutJob = { bodyId, instanceIds: [...instanceIds] };
+    if (followersOf !== undefined) payload.followersOf = followersOf;
+    await enqueue(ctx, { queue: fanOutQueue, payload });
 };
 
 /**
@@ -80,7 +101,71 @@ export const queueDeliveries = async (
     ctx: Context,
     entity: object,
     recipients: readonly string[],
-): Promise<void> => await queueDeliveriesTo(ctx, entity, await instancesHosting(ctx, recipients));
+): Promise<void> =>
+    await queueDeliveriesTo(ctx, entity, { instanceIds: await instancesHosting(ctx, recipients) });
+
+/** The instances in an audience, by id, in order, with those of the followers it names. */
+export const audienceInstances = async (ctx: Context, audience: Audience): Promise<string[]> => {
+    const followers = audience.followersOf === undefined
+        ? []
+        : await followerInstances(ctx, audience.followersOf);
+
+    return [...new Set([...audience.instanceIds, ...followers])].toSorted();
+};
+
+/**
+ * The domains a fan-out job sends to: each of its instances that is a Versia instance, and isn't
+ * blocked, nor couldn't be reached for as long as the settings say, as on Mastodon, until it is
+ * heard from again.
+ */
+const domainsOf = async (ctx: Context, job: FanOutJob) => {
+    const ids = await audienceInstances(ctx, job);
+    const before = new Date(ctx.clock.now().getTime() - ctx.settings.unreachableMs);
+
+    const domains = [];
+    for (const batch of batchesOf(ids)) {
+        for (const domain of await reachableDomainsOf(ctx, batch, "versia", before)) {
+            if (!await ctx.federation.isBlocked(ctx, domain)) domains.push(domain);
+        }
+    }
+
+    return domains;
+};
+
+/**
+ * Runs fan-out jobs: queues a delivery of the entity to each instance it goes to, grouped by
+ * instance so each can be rate limited, or deletes the entity if it goes to none. A job run again
+ * doesn't queue a delivery that is still queued, but may queue one that was already sent again.
+ * The deliveries are due when the job was queued, so the entities queued earlier are sent first.
+ */
+export const fanOutHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
+    const payload = FanOutJob.safeParse(job.payload);
+    if (!payload.success) throw new PermanentFailure("The job isn't a fan-out job");
+    const { bodyId } = payload.data;
+
+    const domains = await domainsOf(ctx, payload.data);
+
+    await ctx.transaction(async (tx) => {
+        if (domains.length === 0) {
+            await tx.db.deleteFrom("delivery_bodies").where("id", "=", bodyId).execute();
+            return;
+        }
+
+        await enqueueAll(
+            tx,
+            domains.map((domain) => ({
+                queue: deliverQueue,
+                payload: { domain, bodyId } satisfies DeliverJob,
+                runAt: job.created_at,
+                maxAttempts,
+                dedupeKey: `${deliverQueue}:${bodyId}:${domain}`,
+                group: domain,
+                // Deliveries are numerous, so workers find them by polling.
+                wake: false,
+            })),
+        );
+    });
+};
 
 /**
  * The entity a delivery job sends, and when it was queued, or undefined if it was deleted, as it is

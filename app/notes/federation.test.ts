@@ -2,6 +2,7 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { v0_6 } from "@versia/protocol";
 import { encode } from "fast-png";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
+import { audienceInstances } from "../federation/deliver.ts";
 import { queuedDeliveries } from "../federation/testing.ts";
 import { fetchSigned } from "../federation/request.ts";
 import type { CollectionProvider } from "../federation/registry.ts";
@@ -311,27 +312,31 @@ Deno.test("a note is shown on the instances of who it mentions, the followers, a
         in_reply_to_account_id: replyTo,
     });
 
-    assertEquals(await audienceOf(test.ctx, note("public"), []), ["b.example", "c.example"]);
-    assertEquals(await audienceOf(test.ctx, note("unlisted"), []), ["b.example", "c.example"]);
-    assertEquals(await audienceOf(test.ctx, note("private"), []), ["b.example"]);
-    assertEquals(await audienceOf(test.ctx, note("direct"), []), []);
-    assertEquals(await audienceOf(test.ctx, note("direct"), ["alice", "bob", "erin"]), [
+    // Its followers' instances are found when it is sent.
+    const shownOn = async (shown: ReturnType<typeof note>, mentionIds: string[], quoted?: string) =>
+        await audienceInstances(test.ctx, await audienceOf(test.ctx, shown, mentionIds, quoted));
+
+    assertEquals(await shownOn(note("public"), []), ["b.example", "c.example"]);
+    assertEquals(await shownOn(note("unlisted"), []), ["b.example", "c.example"]);
+    assertEquals(await shownOn(note("private"), []), ["b.example"]);
+    assertEquals(await shownOn(note("direct"), []), []);
+    assertEquals(await shownOn(note("direct"), ["alice", "bob", "erin"]), [
         "c.example",
     ]);
-    assertEquals(await audienceOf(test.ctx, note("public", null), []), ["b.example"]);
+    assertEquals(await shownOn(note("public", null), []), ["b.example"]);
 
     // The instance of the author of the status it quotes, shown the same way.
-    assertEquals(await audienceOf(test.ctx, note("public", null), [], "frank"), [
+    assertEquals(await shownOn(note("public", null), [], "frank"), [
         "b.example",
         "d.example",
     ]);
-    assertEquals(await audienceOf(test.ctx, note("unlisted", "erin"), [], "frank"), [
+    assertEquals(await shownOn(note("unlisted", "erin"), [], "frank"), [
         "b.example",
         "c.example",
         "d.example",
     ]);
-    assertEquals(await audienceOf(test.ctx, note("private", null), [], "frank"), ["b.example"]);
-    assertEquals(await audienceOf(test.ctx, note("direct", null), [], "frank"), []);
+    assertEquals(await shownOn(note("private", null), [], "frank"), ["b.example"]);
+    assertEquals(await shownOn(note("direct", null), [], "frank"), []);
 });
 
 Deno.test("a user's outbox is their public and unlisted notes, oldest first", async () => {

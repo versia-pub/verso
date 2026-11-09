@@ -69,7 +69,8 @@ export const reportDeliveries = async (ctx: Context, event: DomainEvent): Promis
         tags: [report.category],
         ...report.comment !== "" && { comment: report.comment },
     };
-    await queueDeliveriesTo(ctx, entity, await forwardInstances(ctx, target, notes, event.domains));
+    const instanceIds = await forwardInstances(ctx, target, notes, event.domains);
+    await queueDeliveriesTo(ctx, entity, { instanceIds });
 };
 
 /** The category of a received report: the first of its tags that is one, other than `violation`. */

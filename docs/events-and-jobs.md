@@ -43,7 +43,9 @@ Subscribers run inside the transaction, so if one throws, the whole change rolls
 when it's called outside a transaction.
 
 A subscriber only writes rows, queues jobs and publishes messages. Requests to other servers, and
-anything else slow, go in a job.
+anything else slow, go in a job. So does work that grows with someone's followers: the delivery
+subscribers queue one fan-out job, which finds the instances they are on (see
+[Sending](federation.md#sending)).
 
 The order of subscribers only matters where a comment says so. For example, `acceptWhenUnlocked`
 runs before `profileDeliveries`, so a follower it accepts gets the profile too.

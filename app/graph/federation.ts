@@ -19,7 +19,7 @@ import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { isFollowEvent } from "./events.ts";
 import { countFollows, followIdsFrom, followsFrom, type FollowSide } from "./follow_queries.ts";
-import { acceptFollow, follow, followerInstances, rejectFollow, unfollow } from "./follows.ts";
+import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
 
 /**
  * A local user's followers or follows, oldest first, so pages stay stable as more arrive. A user
@@ -112,7 +112,7 @@ export const profileDeliveries = async (ctx: Context, event: DomainEvent): Promi
     const user = await localVersiaUser(ctx, event.accountId);
     if (user === undefined) return;
 
-    await queueDeliveriesTo(ctx, user, await followerInstances(ctx, event.accountId));
+    await queueDeliveriesTo(ctx, user, { instanceIds: [], followersOf: event.accountId });
 };
 
 /** The author of an entity sent by their instance, which only they may send. */

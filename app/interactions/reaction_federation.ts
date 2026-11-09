@@ -9,9 +9,8 @@ import { instancesHosting } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import type { RemoteEmoji } from "../emojis/emojis.ts";
 import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
-import { queueDeliveriesTo } from "../federation/deliver.ts";
+import { type Audience, queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
-import { followerInstances } from "../graph/follows.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { everyone, instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
@@ -68,13 +67,16 @@ const renderVersiaReaction = async (
  * author, which must be told, and for a status anyone may see, those of the reactor's followers, as
  * Versia specifies. Other instances aren't told of reactions to statuses they may not see.
  */
-const audienceOfReaction = async (ctx: Context, accountId: string, note: NoteRow) => {
+const audienceOfReaction = async (
+    ctx: Context,
+    accountId: string,
+    note: NoteRow,
+): Promise<Audience> => {
     const author = await instancesHosting(ctx, [note.account_id]);
-    const followers = everyone.includes(note.visibility)
-        ? await followerInstances(ctx, accountId)
-        : [];
 
-    return [...new Set([...followers, ...author])].toSorted();
+    return everyone.includes(note.visibility)
+        ? { instanceIds: author, followersOf: accountId }
+        : { instanceIds: author };
 };
 
 /** Sends local users' reactions, and a Delete when they undo one. */

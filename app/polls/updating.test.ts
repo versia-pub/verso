@@ -1,6 +1,6 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
-import { deliverQueue } from "../federation/deliver.ts";
+import { queuedDeliveries } from "../federation/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
@@ -38,9 +38,7 @@ const open = async (hideTotals = false) => {
             .map((job) => [job.run_at.getTime() - test.clock.now().getTime(), job.payload]);
 
     /** The notes queued for delivery, which a poll update sends. */
-    const sendsOf = async () =>
-        (await test.ctx.db.selectFrom("jobs").select("payload")
-            .where("queue", "=", deliverQueue).execute()).length;
+    const sendsOf = async () => (await queuedDeliveries(test.ctx)).length;
 
     return { ...test, note, poll, queued, sendsOf };
 };

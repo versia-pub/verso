@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import { fanOutQueue } from "../federation/deliver.ts";
 import { deliveryOf } from "../federation/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { enqueue } from "./job_queries.ts";
@@ -16,4 +17,8 @@ Deno.test("delivered entities are cleaned up every hour", async () => {
     await drain(test.ctx, { [queue]: queues[queue] });
 
     assertEquals(await test.ctx.db.selectFrom("delivery_bodies").selectAll().execute(), []);
+});
+
+Deno.test("each worker fans out one entity at a time, so they are sent in order", () => {
+    assertEquals(queues[fanOutQueue].concurrency, 1);
 });
