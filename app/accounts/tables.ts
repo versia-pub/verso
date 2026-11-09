@@ -21,7 +21,7 @@ export type ProfileField = {
 /**
  * A local or remote user. Rich text, such as the bio, is stored as HTML, which every account has,
  * and, for local accounts, as its owner wrote it, for them to edit. Local HTML is generated when
- * the text is written. Remote HTML is stored as received, and sanitised when displayed.
+ * the text is written. Remote HTML is sanitised when it is stored.
  */
 export type AccountsTable = {
     id: string;
@@ -41,6 +41,11 @@ export type AccountsTable = {
     /** The bio, as HTML. */
     note_html: Generated<string>;
     fields: Generated<ProfileField[]>;
+    /**
+     * For a remote account, the version of the sanitiser its bio and fields went through, or 0 if
+     * none.
+     */
+    html_version: Generated<number>;
     /** Whether follow requests wait for approval. */
     locked: Generated<boolean>;
     bot: Generated<boolean>;

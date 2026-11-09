@@ -8,6 +8,7 @@ import { findRemoteNoteAt, mentionsOf, tagsOf, versionsOf } from "./note_queries
 import { editNote, postNote } from "./notes.ts";
 import { removeNote } from "./removal.ts";
 import { createNote } from "./testing.ts";
+import { sanitizerVersion } from "../kernel/html.ts";
 import type { Settings } from "../kernel/settings.ts";
 import type { Context } from "../kernel/context.ts";
 import { attachedTo } from "../media/attachments.ts";
@@ -478,6 +479,34 @@ Deno.test("a note sent again is marked edited when it says something else", asyn
         ["<p>Bye</p>", ""],
         ["<p>Bye</p>", "Spoilers"],
     ]);
+});
+
+Deno.test("a note's HTML is sanitised, and kept unsanitised before, isn't edited by being sent again", async () => {
+    await using test = await open();
+    const unsafe = '<p onclick="x">Hi #Verso</p><script>bad()</script>';
+    const sent = note("n1", {
+        mentions: [`a.test:${test.alice}`],
+        content: { "text/html": { content: unsafe, remote: false } },
+    });
+    await test.send(sent);
+    const kept = await test.kept("n1");
+    assertEquals(
+        [kept?.content_html, kept?.html_version],
+        ["<p>Hi #Verso</p>", sanitizerVersion],
+    );
+
+    await test.a.db.updateTable("notes")
+        .set({ content_html: unsafe, html_version: 0 })
+        .where("id", "=", kept?.id ?? "")
+        .execute();
+    await test.send(sent);
+
+    const again = await test.kept("n1");
+    assertEquals(
+        [again?.content_html, again?.html_version, again?.edited_at],
+        ["<p>Hi #Verso</p>", sanitizerVersion, null],
+    );
+    assertEquals(await versionsOf(test.a, kept?.id ?? ""), []);
 });
 
 Deno.test("a note sent again for others is counted anew", async () => {

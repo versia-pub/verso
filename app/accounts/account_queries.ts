@@ -225,6 +225,7 @@ export type RemoteProfile = Required<
         | "note_format"
         | "note_html"
         | "fields"
+        | "html_version"
         | "locked"
         | "indexable"
     >

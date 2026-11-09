@@ -20,7 +20,7 @@ import { pollOf } from "../polls/poll_queries.ts";
 import { editsRemotePoll, keepRemotePoll, remotePollOf } from "../polls/versia.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import { textOfHtml } from "../kernel/html.ts";
+import { sanitizerVersion, shownHtml, textOfHtml } from "../kernel/html.ts";
 import { renderText, scanText } from "../kernel/markup.ts";
 import {
     findNote,
@@ -196,6 +196,7 @@ export const receiveNote = async (
         content: content.text,
         content_format: content.format,
         content_html: content.html,
+        html_version: sanitizerVersion,
         spoiler_text: note.subject ?? "",
         sensitive: note.is_sensitive,
         fetched_at: ctx.clock.now(),
@@ -219,7 +220,8 @@ export const receiveNote = async (
         const previousPoll = await pollOf(ctx, existing.id);
         const edited = changes.content !== existing.content ||
             changes.content_format !== existing.content_format ||
-            changes.content_html !== existing.content_html ||
+            // Stored before it was sanitised on arrival, it is compared as it was shown.
+            changes.content_html !== shownHtml(existing.content_html, existing.html_version) ||
             changes.spoiler_text !== existing.spoiler_text ||
             changes.sensitive !== existing.sensitive ||
             changesRemoteAttachments(ctx, await attachedTo(ctx, existing.id), files) ||

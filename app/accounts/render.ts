@@ -14,7 +14,7 @@ import type {
 } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import { entityUrl } from "../kernel/urls.ts";
-import { sanitizeHtml } from "../kernel/html.ts";
+import { shownHtml } from "../kernel/html.ts";
 import { fileUrl } from "../media/render.ts";
 import type { AccountRow } from "./account_queries.ts";
 import type { Permission } from "../kernel/permissions.ts";
@@ -106,9 +106,10 @@ export const renderAccount = (
     );
     const local = row.domain === null;
 
-    // Verso's own HTML is made safe when it is written; remote instances' HTML is stored as they
-    // sent it.
-    const html = local ? (html: string) => html : sanitizeHtml;
+    // Verso's own HTML is made safe when it is written, and remote instances' when it is stored.
+    const html = local
+        ? (html: string) => html
+        : (html: string) => shownHtml(html, row.html_version);
 
     const uri = userUri(ctx, row);
 

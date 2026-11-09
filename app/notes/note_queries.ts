@@ -92,6 +92,7 @@ export const keepVersion = async (ctx: Context, note: NoteRow): Promise<void> =>
             id: ctx.ids(),
             note_id: note.id,
             content_html: note.content_html,
+            html_version: note.html_version,
             spoiler_text: note.spoiler_text,
             sensitive: note.sensitive,
             media: media.map((row) => ({ id: row.id, description: row.description })),

@@ -14,7 +14,7 @@ import { reactorIdsQuery } from "../interactions/reaction_queries.ts";
 import { reactionsFor } from "../interactions/reaction_render_queries.ts";
 import { reactionEmojis, renderReactions } from "../interactions/render.ts";
 import type { Context } from "../kernel/context.ts";
-import { sanitizeHtml } from "../kernel/html.ts";
+import { shownHtml } from "../kernel/html.ts";
 import { attachmentsOf, findMediaRows } from "../media/attachment_queries.ts";
 import { asVersionMedia, attachedTo } from "../media/attachments.ts";
 import { renderAttachment } from "../media/render.ts";
@@ -301,7 +301,9 @@ export const renderStatusesFor = async (
                 uri: noteUri(ctx, note, domain).href,
                 created_at: note.created_at.toISOString(),
                 account,
-                content: domain === null ? note.content_html : sanitizeHtml(note.content_html),
+                content: domain === null
+                    ? note.content_html
+                    : shownHtml(note.content_html, note.html_version),
                 visibility: note.visibility,
                 sensitive: note.sensitive,
                 spoiler_text: note.spoiler_text,
@@ -407,7 +409,9 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
     // uses now.
     const emojis = renderEmojis(ctx, (await emojisOfNotes(ctx, [note.id])).get(note.id) ?? []);
     return versions.map((version): StatusEdit => ({
-        content: author.domain === null ? version.content_html : sanitizeHtml(version.content_html),
+        content: author.domain === null
+            ? version.content_html
+            : shownHtml(version.content_html, version.html_version),
         spoiler_text: version.spoiler_text,
         sensitive: version.sensitive,
         created_at: version.created_at.toISOString(),

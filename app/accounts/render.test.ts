@@ -2,6 +2,7 @@ import { assertEquals, assertExists } from "@std/assert";
 import { Account, CredentialAccount } from "@versia/client-api";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
+import { sanitizerVersion } from "../kernel/html.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findAccount } from "./account_queries.ts";
 import { saveRemoteAccount } from "./remote.ts";
@@ -81,6 +82,8 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
                 name_html: "Site",
                 value_html: unsafe,
             }],
+            // Stored as received, before HTML was sanitised on arrival.
+            html_version: 0,
             locked: false,
             indexable: true,
         },
@@ -104,6 +107,41 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
     assertEquals(account.avatar_description, "Bob");
     assertEquals(account.header, `https://social.example/accounts/${id}/header.png`);
     assertEquals(account.header_description, "");
+});
+
+Deno.test("a remote account's HTML, sanitised when it was stored, is shown as it is", async () => {
+    await using test = await createTestContext();
+    const instanceId = await createInstance(test.ctx, "b.example");
+    // Not as this sanitiser would leave it, to show it isn't sanitised again.
+    const stored = '<p onclick="x">Hi</p>';
+    const id = await saveRemoteAccount(test.ctx, {
+        instanceId,
+        remoteId: "bob",
+        createdAt: test.clock.now(),
+        profile: {
+            username: "bob",
+            display_name: "",
+            note: "Hi",
+            note_format: "text/plain",
+            note_html: stored,
+            fields: [{
+                name: "Site",
+                value: "Hi",
+                format: "text/plain",
+                name_html: "Site",
+                value_html: stored,
+            }],
+            html_version: sanitizerVersion,
+            locked: false,
+            indexable: true,
+        },
+        avatar: null,
+        header: null,
+        emojis: [],
+    });
+
+    const account = renderAccount(test.ctx, await find(test.ctx, id), [], []);
+    assertEquals([account.note, account.fields[0].value], [stored, stored]);
 });
 
 Deno.test("others see the bio and fields as HTML, and their owner as written", async () => {

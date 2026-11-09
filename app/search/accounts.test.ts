@@ -47,6 +47,7 @@ const bob: RemoteAccount = {
         note_format: "text/plain",
         note_html: "",
         fields: [],
+        html_version: 0,
         locked: false,
         indexable: true,
     },

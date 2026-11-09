@@ -177,9 +177,14 @@ through `ctx.webTransport`, which allows ports 80 and 443 and those in
 `[federation] extra_web_ports`, so they can't make Verso probe other services on a public host.
 `allow_internal_addresses` lifts the port limit too.
 
-Remote HTML is sanitised when it's rendered, by [`app/kernel/html.ts`](../app/kernel/html.ts).
-Images and anything else that loads from elsewhere are removed: Verso doesn't proxy remote media,
-and loading it would reveal readers' IP addresses.
+Remote HTML is sanitised when it's stored, by [`app/kernel/html.ts`](../app/kernel/html.ts). Images
+and anything else that loads from elsewhere are removed: Verso doesn't proxy remote media, and
+loading it would reveal readers' IP addresses.
+
+Each row records which version of the sanitiser its HTML went through. When the version goes up, a
+job sanitises the stored HTML again, and until then it is sanitised when shown. Sanitising again can
+only remove more, so what a new version allows that an old one removed comes back only when the
+status or profile is fetched again.
 
 Signed routes are rate limited per instance, as described in [HTTP](http.md#rate-limits).
 

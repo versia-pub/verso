@@ -12,6 +12,7 @@ const profile: RemoteProfile = {
     note_format: "text/plain",
     note_html: "<p>Hi</p>",
     fields: [],
+    html_version: 0,
     locked: false,
     indexable: true,
 };

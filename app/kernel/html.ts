@@ -75,6 +75,7 @@ const webAddress = (href: string | undefined) => {
     return url?.protocol === "http:" || url?.protocol === "https:" ? href : undefined;
 };
 
+// Raise `sanitizerVersion` whenever these change.
 const options: sanitize.IOptions = {
     allowedTags,
     allowedAttributes: {
@@ -107,6 +108,20 @@ const options: sanitize.IOptions = {
  * The text of anything else is retained, except of scripts, styles and the like.
  */
 export const sanitizeHtml = (html: string): string => sanitize(html, options);
+
+/**
+ * Which version of the options remote HTML is sanitised with. Remote HTML is stored sanitised, with
+ * the version it was sanitised with, or 0 if it was stored as received.
+ */
+export const sanitizerVersion = 1;
+
+/**
+ * Stored remote HTML as it may be shown: as it is, if sanitised with this version, or else
+ * sanitised now. Sanitising again can only remove more, so what a later version allows that an
+ * earlier one removed comes back only when the status or profile is fetched again.
+ */
+export const shownHtml = (html: string, version: number): string =>
+    version === sanitizerVersion ? html : sanitizeHtml(html);
 
 /** What `sanitize` writes as entities in text, and the characters they stand for. */
 const entities: readonly [string, string][] = [

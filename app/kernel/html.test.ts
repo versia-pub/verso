@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { sanitizeHtml, textOfHtml } from "./html.ts";
+import { sanitizeHtml, sanitizerVersion, shownHtml, textOfHtml } from "./html.ts";
 
 const link = 'rel="nofollow noopener noreferrer" target="_blank"';
 
@@ -78,4 +78,12 @@ Deno.test("HTML as text keeps only the text, with blocks and line breaks as spac
         ),
         "Hi @alice and  #tag !",
     );
+});
+
+Deno.test("stored HTML is shown as it is if this sanitiser went through it, and sanitised if not", () => {
+    const html = '<p onclick="x">Hi</p>';
+
+    assertEquals(shownHtml(html, sanitizerVersion), html);
+    assertEquals(shownHtml(html, 0), "<p>Hi</p>");
+    assertEquals(shownHtml(html, sanitizerVersion + 1), "<p>Hi</p>");
 });

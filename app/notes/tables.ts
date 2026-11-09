@@ -18,9 +18,11 @@ export type NotesTable = {
     content_format: TextFormat;
     /**
      * As HTML: Verso's rendering for local statuses, and the remote instance's own for remote
-     * statuses, sanitised when displayed.
+     * statuses, sanitised when stored.
      */
     content_html: string;
+    /** For a remote status, the version of the sanitiser its HTML went through, or 0 if none. */
+    html_version: Generated<number>;
     /** A warning shown in place of the content until it is opened, or empty for none. */
     spoiler_text: Generated<string>;
     sensitive: Generated<boolean>;
@@ -74,6 +76,8 @@ export type NoteVersionsTable = {
     id: string;
     note_id: string;
     content_html: string;
+    /** As the status's `html_version` was. */
+    html_version: Generated<number>;
     spoiler_text: string;
     sensitive: boolean;
     /** The media it had attached, in order, with their descriptions at the time. */

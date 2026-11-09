@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { fanOutQueue } from "../federation/deliver.ts";
+import { resanitiseQueue, resanitiseStartQueue } from "../federation/resanitising.ts";
 import { deliveryOf } from "../federation/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { enqueue } from "./job_queries.ts";
@@ -21,4 +22,11 @@ Deno.test("delivered entities are cleaned up every hour", async () => {
 
 Deno.test("each worker fans out one entity at a time, so they are sent in order", () => {
     assertEquals(queues[fanOutQueue].concurrency, 1);
+});
+
+Deno.test("stored remote HTML is sanitised again from an hourly start, one job at a time", () => {
+    assertEquals(tasks.filter((task) => task.queue === resanitiseStartQueue), [
+        { queue: resanitiseStartQueue, every: "hour" },
+    ]);
+    assertEquals(queues[resanitiseQueue].concurrency, 1);
 });

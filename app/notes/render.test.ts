@@ -9,6 +9,7 @@ import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import { like } from "../interactions/likes.ts";
 import { react } from "../interactions/reactions.ts";
+import { sanitizerVersion } from "../kernel/html.ts";
 import { pollOf } from "../polls/poll_queries.ts";
 import { addPoll, vote } from "../polls/polls.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -299,4 +300,25 @@ Deno.test("a remote note's history is sanitised", async () => {
 
     const history = await renderHistory(test.ctx, note);
     assertEquals(history.map((version) => version.content), ["<p>Hi</p>", "<p>Hi</p>"]);
+});
+
+Deno.test("a remote note's HTML, sanitised when it was stored, is shown as it is", async () => {
+    await using test = await open();
+    // Not as this sanitiser would leave it, to show it isn't sanitised again.
+    const stored = '<p onclick="x">Hi</p>';
+    const note = await createNote(test.ctx, "carol", {
+        instance_id: "b.example",
+        remote_id: "c1",
+        content_html: stored,
+        html_version: sanitizerVersion,
+    });
+    await keepVersion(test.ctx, note);
+
+    const [status] = await renderStatuses(test.ctx, [note], null);
+    const history = await renderHistory(test.ctx, note);
+    assertEquals([status.content, ...history.map((version) => version.content)], [
+        stored,
+        stored,
+        stored,
+    ]);
 });

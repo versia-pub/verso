@@ -10,6 +10,12 @@ import {
 } from "../federation/deliver.ts";
 import { deliverDeadPayload, deliverHandler } from "../federation/deliver_worker.ts";
 import { inboxQueue } from "../federation/inbox.ts";
+import {
+    resanitiseHandler,
+    resanitiseQueue,
+    resanitiseStartQueue,
+    startResanitising,
+} from "../federation/resanitising.ts";
 import { undoneReactionsHandler, undoneReactionsQueue } from "../interactions/reactions.ts";
 import { inboxDeadPayload, inboxHandler } from "../federation/inbox_worker.ts";
 import { messageHandler, messageQueue } from "../federation/messaging.ts";
@@ -38,6 +44,7 @@ const hourly: Record<string, Queue["handler"]> = {
     "oauth-cleanup": (ctx) => deleteExpiredFlows(ctx),
     "rate-limits-cleanup": (ctx) => deleteEndedRateLimits(ctx),
     [unusedMediaQueue]: (ctx) => removeUnusedMedia(ctx),
+    [resanitiseStartQueue]: (ctx) => startResanitising(ctx),
 };
 
 /** Work the scheduler enqueues every minute, as `hourly` is every hour. */
@@ -77,6 +84,8 @@ export const queues: Record<string, Queue> = {
     [pushQueue]: { handler: pushHandler, concurrency: 8, perGroup: 2 },
     // Each job runs vips a few times, a minute each at most, and uses memory while it does.
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
+    // One at a time, so each version's work goes through the rows in order, once.
+    [resanitiseQueue]: { handler: resanitiseHandler, concurrency: 1 },
     ...Object.fromEntries(
         Object.entries({ ...hourly, ...everyMinute })
             .map(([queue, handler]) => [queue, { handler, concurrency: 1 }]),

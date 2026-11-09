@@ -4,6 +4,7 @@ import { encode } from "fast-png";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
+import { sanitizerVersion } from "../kernel/html.ts";
 import { createNetwork } from "../testing/network.ts";
 import { remoteAccountOf } from "./federation.ts";
 import { updateProfile } from "./profile.ts";
@@ -271,8 +272,10 @@ Deno.test("a remote user becomes an account, with its text as written and as HTM
                 value: "b.test",
                 format: "text/plain",
                 name_html: "Site",
-                value_html: '<a href="https://b.test">b.test</a>',
+                value_html:
+                    '<a rel="nofollow noopener noreferrer" target="_blank" href="https://b.test">b.test</a>',
             }],
+            html_version: sanitizerVersion,
             locked: true,
             indexable: true,
         },
@@ -333,6 +336,30 @@ Deno.test("remote text without HTML is made into HTML, and HTML alone is kept", 
 
     const none = remoteAccountOf("b.test", user());
     assertEquals([none.profile.display_name, none.profile.note_html], ["", ""]);
+});
+
+Deno.test("a remote account's HTML is sanitised", () => {
+    const unsafe = '<p onclick="x">Hi</p><script>bad()</script>';
+    const account = remoteAccountOf(
+        "b.test",
+        user({
+            bio: { "text/html": { content: unsafe, remote: false } },
+            fields: [{
+                key: { "text/html": { content: unsafe, remote: false } },
+                value: { "text/html": { content: unsafe, remote: false } },
+            }],
+        }),
+    );
+
+    assertEquals(
+        [
+            account.profile.note_html,
+            account.profile.fields[0].name_html,
+            account.profile.fields[0].value_html,
+            account.profile.html_version,
+        ],
+        ["<p>Hi</p>", "<p>Hi</p>", "<p>Hi</p>", sanitizerVersion],
+    );
 });
 
 Deno.test("a remote picture is the first version clients can show, at a web address", () => {

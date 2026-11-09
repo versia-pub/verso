@@ -86,6 +86,7 @@ import { policyForBots } from "./0084_policy_for_bots.ts";
 import { claimsByTime } from "./0085_claims_by_time.ts";
 import { deadLetterIndex } from "./0086_dead_letter_index.ts";
 import { deliveryBodies } from "./0087_delivery_bodies.ts";
+import { htmlVersions } from "./0088_html_versions.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -179,4 +180,5 @@ export const migrations: Record<string, Migration> = {
     "0085_claims_by_time": claimsByTime,
     "0086_dead_letter_index": deadLetterIndex,
     "0087_delivery_bodies": deliveryBodies,
+    "0088_html_versions": htmlVersions,
 };
