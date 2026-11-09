@@ -10,6 +10,7 @@ import { domainsCommand } from "./domain_commands.ts";
 import { keysCommand } from "./key_commands.ts";
 import { reportsCommand } from "./report_commands.ts";
 import { rolesCommand } from "./role_commands.ts";
+import { statusesCommand } from "./status_commands.ts";
 import { trendsCommand } from "./trend_commands.ts";
 import { usersCommand } from "./user_commands.ts";
 
@@ -26,5 +27,6 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
         .command("keys", keysCommand(io))
         .command("reports", reportsCommand(io))
         .command("roles", rolesCommand(io))
+        .command("statuses", statusesCommand(io))
         .command("users", usersCommand(io))
         .reset();

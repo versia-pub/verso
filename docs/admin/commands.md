@@ -103,6 +103,19 @@ $ verso admin reports list
 
 `rule_ids` are the numbers of the instance's rules, in the order the config lists them.
 
+### `verso admin statuses`
+
+| Command                | Does                                         |
+| ---------------------- | -------------------------------------------- |
+| `statuses delete <id>` | deletes any status or boost, local or remote |
+
+```sh
+$ verso admin statuses delete 01a189a2-…
+{"id":"01a189a2-…","deleted":true}
+```
+
+See [Removing statuses](moderating.md#removing-statuses) for what it does.
+
 ### `verso admin roles`
 
 Roles give accounts permissions on top of what `[permissions] default` gives everyone.

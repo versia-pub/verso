@@ -1,7 +1,7 @@
 # Moderating
 
-For now, Verso's moderation tools are blocking instances, giving moderators roles, reading reports
-and managing custom emoji. There are no suspensions or ways to remove other users' statuses yet.
+For now, Verso's moderation tools are blocking instances, removing statuses, giving moderators
+roles, reading reports and managing custom emoji. There are no suspensions yet.
 
 ## Blocking instances
 
@@ -29,6 +29,13 @@ for themselves from their app, which only hides it from them.
 Users report accounts and statuses from their apps, and other instances send reports too. List the
 ones no one has dealt with, and mark them as dealt with, using
 [`verso admin reports`](commands.md#verso-admin-reports).
+
+## Removing statuses
+
+Delete any status or boost by its id with
+[`verso admin statuses delete`](commands.md#verso-admin-statuses), as its author would. Boosts of it
+go too. A local status's media is deleted at once, and other instances are told it's gone. A remote
+status is only deleted here, and comes back if its instance sends it again.
 
 ## Moderators
 

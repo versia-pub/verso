@@ -272,6 +272,21 @@ Deno.test("a domain to block must be a domain name", async () => {
     }
 });
 
+Deno.test("any status is deleted by its id, and unknown ones refused", async () => {
+    await using test = await createTestContext();
+    await createLocalAccount(test.ctx, "alice");
+    const note = await createNote(test.ctx, "alice");
+
+    const deleted = await admin(test.ctx, "statuses", "delete", note.id);
+    assertEquals(JSON.parse(deleted.printed.join("")), { id: note.id, deleted: true });
+
+    const error = await assertRejects(
+        () => admin(test.ctx, "statuses", "delete", note.id),
+        AdminError,
+    );
+    assertEquals(error.message, `There is no status ${note.id}`);
+});
+
 Deno.test("reports are listed until they are resolved, and unknown ones refused", async () => {
     await using test = await createTestContext();
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
