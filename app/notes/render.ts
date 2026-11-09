@@ -225,37 +225,60 @@ export const renderStatusesFor = async (
 
     const signedIn = viewers.filter((viewerId) => viewerId !== null);
     const noteIds = notes.map((note) => note.id);
-    const mentions = await mentionsOf(ctx, noteIds);
-    const tags = await tagsOf(ctx, noteIds);
-    const tagNames = await displayNamesOf(ctx, [...tags.values()].flat());
-    const attachments = await attachmentsOf(ctx, noteIds);
-    const emojis = await emojisOfNotes(ctx, noteIds);
-    const blocked = await blockedAmong(ctx, noteIds, viewers);
-    const reactions = await reactionsFor(ctx, noteIds, blocked);
-    const uncounted = await blockedCounts(ctx, noteIds, blocked);
-    const totals = await totalsOf(ctx, noteIds);
-    const liked = await likedAmong(ctx, signedIn, noteIds);
-    const shared = await sharedAmong(ctx, signedIn, noteIds);
-    const pinned = await pinnedAmong(ctx, signedIn, noteIds);
-    const bookmarked = await bookmarkedAmong(ctx, signedIn, noteIds);
-    const mutedThreads = await mutedThreadsAmong(
-        ctx,
-        signedIn,
-        notes.map((note) => note.thread_id),
-    );
-    const reblogs = await sharedStatuses(ctx, notes, viewers);
-    const quotes = await quotedStatuses(ctx, notes, viewers, options.nested ?? false);
-    const quoted = await quoteCounts(ctx, noteIds, everyone);
-    const polls = await renderPollsFor(ctx, notes, viewers);
-    const cards = await cardsOf(ctx, noteIds);
-    const filters = await activeFiltersAmong(ctx, signedIn);
-
-    const accountIds = [
-        ...new Set([...notes.map((note) => note.account_id), ...[...mentions.values()].flat()]),
-    ];
-    const rows = await findAccounts(ctx, accountIds);
-    const domains = new Map(rows.map((row) => [row.id, row.domain]));
-    const accounts = await publicAccountsOf(ctx, rows);
+    // None of these depend on each other, so on Postgres they run at once, each on a connection of
+    // its own. In a transaction, they share its connection and run one after another.
+    const [
+        [mentions, domains, accounts],
+        [tags, tagNames],
+        attachments,
+        emojis,
+        [reactions, uncounted],
+        totals,
+        liked,
+        shared,
+        pinned,
+        bookmarked,
+        mutedThreads,
+        reblogs,
+        quotes,
+        quoted,
+        polls,
+        cards,
+        filters,
+    ] = await Promise.all([
+        mentionsOf(ctx, noteIds).then(async (mentions) => {
+            const accountIds = new Set([
+                ...notes.map((note) => note.account_id),
+                ...[...mentions.values()].flat(),
+            ]);
+            const rows = await findAccounts(ctx, [...accountIds]);
+            const domains = new Map(rows.map((row) => [row.id, row.domain]));
+            return [mentions, domains, await publicAccountsOf(ctx, rows)] as const;
+        }),
+        tagsOf(ctx, noteIds).then(async (tags) =>
+            [tags, await displayNamesOf(ctx, [...tags.values()].flat())] as const
+        ),
+        attachmentsOf(ctx, noteIds),
+        emojisOfNotes(ctx, noteIds),
+        blockedAmong(ctx, noteIds, viewers).then((blocked) =>
+            Promise.all([
+                reactionsFor(ctx, noteIds, blocked),
+                blockedCounts(ctx, noteIds, blocked),
+            ])
+        ),
+        totalsOf(ctx, noteIds),
+        likedAmong(ctx, signedIn, noteIds),
+        sharedAmong(ctx, signedIn, noteIds),
+        pinnedAmong(ctx, signedIn, noteIds),
+        bookmarkedAmong(ctx, signedIn, noteIds),
+        mutedThreadsAmong(ctx, signedIn, notes.map((note) => note.thread_id)),
+        sharedStatuses(ctx, notes, viewers),
+        quotedStatuses(ctx, notes, viewers, options.nested ?? false),
+        quoteCounts(ctx, noteIds, everyone),
+        renderPollsFor(ctx, notes, viewers),
+        cardsOf(ctx, noteIds),
+        activeFiltersAmong(ctx, signedIn),
+    ]);
 
     const renderFor = (viewerId: ViewerId): Status[] => {
         const noted = (sets: ReadonlyMap<string, ReadonlySet<string>>, id: string) =>
