@@ -37,18 +37,23 @@ const mergePages = (pages: readonly NoteRow[][], page: PageBounds) => {
         : newestFirst.slice(-page.limit);
 };
 
-/** Reads the page `page` of each of `queries`, and combines them. */
+/**
+ * Reads the page `page` of each of `queries`, and combines them. On Postgres the queries run at
+ * once, each on a connection of its own; in a transaction, or on SQLite, one after another.
+ */
 const readPages = async (
     queries: readonly SelectQueryBuilder<Database, "notes", NoteRow>[],
     page: PageBounds,
-): Promise<NoteRow[]> => {
-    const pages = [];
-    for (const query of queries) pages.push(await readPage(query, "notes.id", page));
+): Promise<NoteRow[]> =>
+    mergePages(
+        await Promise.all(queries.map((query) => readPage(query, "notes.id", page))),
+        page,
+    );
 
-    return mergePages(pages, page);
-};
-
-/** The status `noteId`, if any of `queries` finds it. */
+/**
+ * The status `noteId`, if any of `queries` finds it. They run one after another, so a status found
+ * early costs fewer queries: streaming runs this for every viewer of a status.
+ */
 const findIn = async (
     queries: readonly SelectQueryBuilder<Database, "notes", NoteRow>[],
     noteId: string,
