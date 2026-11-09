@@ -20,6 +20,15 @@ Deno.test("sqlite waits for another writer instead of failing at once", async ()
     assertEquals(rows, [{ timeout: 5000 }]);
 });
 
+Deno.test("sqlite commits without waiting for the disk", async () => {
+    await using db = openDatabase({ sqlite: ":memory:" });
+
+    const { rows } = await sql<{ synchronous: number }>`pragma synchronous`.execute(db);
+
+    // NORMAL.
+    assertEquals(rows, [{ synchronous: 1 }]);
+});
+
 Deno.test("a postgres config doesn't connect until the first query", async () => {
     await using _db = openDatabase({
         postgres: "postgresql://nowhere.invalid/verso",

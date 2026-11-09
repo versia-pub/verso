@@ -153,11 +153,17 @@ export const connect = <DB = Database>(dialect: Dialect): Kysely<DB> =>
  * Opens a SQLite file so `verso serve` and `verso work` can share it: in WAL mode, readers don't
  * wait for a writer, and a writer waits up to five seconds for another instead of failing
  * immediately.
+ *
+ * Commits don't wait for the disk, only checkpoints do, which makes writing about four times as
+ * fast. A power cut or OS crash can lose the last commits, but never corrupts the file.
+ *
+ * @see https://www.sqlite.org/pragma.html#pragma_synchronous
  */
 const openSqlite = (path: string) => {
     const database = new DatabaseSync(path);
     database.exec("PRAGMA journal_mode = WAL");
     database.exec("PRAGMA busy_timeout = 5000");
+    database.exec("PRAGMA synchronous = NORMAL");
     return database;
 };
 

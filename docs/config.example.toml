@@ -16,7 +16,8 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # database = { sqlite = "verso.db" }
 # SQLite suits one process, running `verso all`: processes on it can't tell each other what
 # changed, so a domain block made with `verso admin`, say, applies elsewhere within a minute, and
-# streaming reaches only clients connected to the process where something happened.
+# streaming reaches only clients connected to the process where something happened. A power cut
+# can lose its last few commits, though never corrupt it.
 # A PostgreSQL database must be UTF-8, as `createdb` makes it on most systems; in another
 # encoding, search misses words with letters outside ASCII.
 # With PostgreSQL, also how many connections each process may have, how long to wait for one, and
