@@ -1,7 +1,7 @@
 import { announcementsQueue, publishDueAnnouncements } from "../announcements/announcements.ts";
 import { deleteExpiredFlows } from "../auth/flow_queries.ts";
 import { acceptHandler, acceptQueue } from "../graph/follows.ts";
-import { deliverQueue } from "../federation/deliver.ts";
+import { deleteExpiredDeliveryBodies, deliverQueue } from "../federation/deliver.ts";
 import { deliverDeadPayload, deliverHandler } from "../federation/deliver_worker.ts";
 import { inboxQueue } from "../federation/inbox.ts";
 import { undoneReactionsHandler, undoneReactionsQueue } from "../interactions/reactions.ts";
@@ -28,6 +28,7 @@ import type { Queue } from "./worker.ts";
 /** Work the scheduler enqueues every hour, each in its own queue, one job at a time. */
 const hourly: Record<string, Queue["handler"]> = {
     "jobs-cleanup": (ctx) => deleteExpiredJobs(ctx),
+    "delivery-bodies-cleanup": (ctx) => deleteExpiredDeliveryBodies(ctx),
     "oauth-cleanup": (ctx) => deleteExpiredFlows(ctx),
     "rate-limits-cleanup": (ctx) => deleteEndedRateLimits(ctx),
     [unusedMediaQueue]: (ctx) => removeUnusedMedia(ctx),

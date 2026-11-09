@@ -162,10 +162,11 @@ long each time, up to ten seconds, though never past when its next job is due. W
 worker stops claiming jobs and waits for running ones to finish.
 
 The scheduler, in [`app/jobs/scheduler.ts`](../app/jobs/scheduler.ts), queues recurring work. The
-tasks in `queues.ts` run hourly: cleaning up finished jobs, ended login flows, rate limit counts and
-unused media. Finding the polls that ended, posting the scheduled statuses that are due, and scoring
-what is trending (hashtags, links, statuses) run every minute. Every worker runs the scheduler, and
-a dedupe key per period makes sure each task is queued once per period.
+tasks in `queues.ts` run hourly: cleaning up finished jobs, delivered entities, ended login flows,
+rate limit counts and unused media. Finding the polls that ended, posting the scheduled statuses
+that are due, and scoring what is trending (hashtags, links, statuses) run every minute. Every
+worker runs the scheduler, and a dedupe key per period makes sure each task is queued once per
+period.
 
 ## Messages between processes
 

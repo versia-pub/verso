@@ -84,15 +84,17 @@ new status, `noteDeliveries` sends it to the instances of its audience, which
 [`app/notes/audience.ts`](../app/notes/audience.ts) works out.
 
 Each instance gets its own job in the `versia-deliver` queue, grouped by domain. The entity is
-serialised once, when the job is queued, so later changes don't alter what is sent. Nothing is sent
-to blocked instances, or to instances that haven't answered for `[federation] unreachable_days`,
-until Verso hears from them again.
+serialised once, when the jobs are queued, so later changes don't alter what is sent. It is stored
+once in `delivery_bodies`, and each job holds only its id. Nothing is sent to blocked instances, or
+to instances that haven't answered for `[federation] unreachable_days`, until Verso hears from them
+again.
 
 The worker signs the body and posts it:
 
 - A 2xx answer means it's delivered.
 - A 4xx answer, other than 408 and 429, fails the job permanently.
-- Anything else is retried for `[federation] delivery_hours`, 48 by default.
+- Anything else is retried for `[federation] delivery_hours`, 48 by default, counted from when the
+  entity was queued. An hourly task then deletes the entity.
 - If the instance sends `Retry-After` or `RateLimit-Remaining: 0`, the whole group of deliveries to
   it waits until then.
 

@@ -1,7 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
-import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
+import { queuedDeliveries } from "../federation/testing.ts";
 import { follow } from "../graph/follows.ts";
 import type { App } from "../http/app.ts";
 import { routes } from "../http/routes.ts";
@@ -520,9 +520,8 @@ Deno.test("a share is undone by deleting it, can't be edited, and stands for its
     ]);
     assertEquals(await findNote(test.ctx, shared.id), undefined);
     assertEquals((await findNote(test.ctx, note.id))?.shares_count, 0);
-    const queued = await test.ctx.db.selectFrom("jobs").select("payload")
-        .where("queue", "=", deliverQueue).execute();
-    const deletes = queued.map((job) => JSON.parse(DeliverJob.parse(job.payload).body))
+    const queued = await queuedDeliveries(test.ctx);
+    const deletes = queued.map((job) => JSON.parse(job.body))
         .filter((entity) => entity.type === "Delete")
         .map((entity) => entity.deleted_type);
     assertEquals(deletes, ["pub.versia:share/Share"]);

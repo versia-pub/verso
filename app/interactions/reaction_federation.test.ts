@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { deleteEmoji } from "../emojis/emojis.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
-import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
+import { queuedDeliveries } from "../federation/testing.ts";
 import { fetchSigned } from "../federation/request.ts";
 import { follow } from "../graph/follows.ts";
 import { queues } from "../jobs/queues.ts";
@@ -67,9 +67,7 @@ const open = async () => {
 
 /** The reactions and Deletes queued to be sent, with the instance each is for. */
 const sent = async (ctx: Context) =>
-    (await ctx.db.selectFrom("jobs").select("payload").where("queue", "=", deliverQueue)
-        .orderBy("id").execute())
-        .map((job) => DeliverJob.parse(job.payload))
+    (await queuedDeliveries(ctx))
         .map((job): [string, Record<string, unknown>] => [job.domain, JSON.parse(job.body)])
         .filter(([, entity]) => entity.type !== "FollowAccept");
 

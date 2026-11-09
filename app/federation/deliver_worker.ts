@@ -11,7 +11,7 @@ import type { JobPayload, JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure, RetryAt } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { versiaUrl } from "../kernel/urls.ts";
-import { DeliverJob, deliverQueue } from "./deliver.ts";
+import { DeliverJob, deliverQueue, deliveryBody } from "./deliver.ts";
 import { type FederationReply, sendSigned, Unreachable } from "./request.ts";
 
 const logger = getLogger(["verso", "federation"]);
@@ -73,16 +73,21 @@ export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload
 export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = DeliverJob.safeParse(job.payload);
     if (!payload.success) throw new PermanentFailure("The job isn't a delivery job");
-    const { domain, body } = payload.data;
+    const { domain } = payload.data;
 
     if (await ctx.federation.isBlocked(ctx, domain)) {
         logger.info("Dropping a delivery to {domain}, since it is now blocked", { domain });
         return;
     }
 
-    const now = ctx.clock.now();
-    const giveUpAt = new Date(job.created_at.getTime() + ctx.settings.deliveryMs);
     const tried = `${ctx.settings.deliveryMs / 3_600_000} hours`;
+    const entity = await deliveryBody(ctx, payload.data, job.created_at);
+    if (!entity) throw new PermanentFailure(`${domain} couldn't be reached in ${tried}`);
+    const { body } = entity;
+
+    // Given up on by the entity's age, which is when its deliveries were all queued.
+    const now = ctx.clock.now();
+    const giveUpAt = new Date(entity.queuedAt.getTime() + ctx.settings.deliveryMs);
     if (now >= giveUpAt) throw new PermanentFailure(`${domain} couldn't be reached in ${tried}`);
 
     const parked = await parkedUntil(ctx, domain);

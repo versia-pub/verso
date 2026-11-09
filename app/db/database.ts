@@ -25,6 +25,7 @@ import type {
 } from "../graph/tables.ts";
 import type { LikesTable, ReactionsTable } from "../interactions/tables.ts";
 import type { RateLimitsTable } from "../http/tables.ts";
+import type { DeliveryBodiesTable } from "../federation/tables.ts";
 import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
 import type { JobPausesTable, JobsTable } from "../jobs/tables.ts";
 import type { MediaTable, NoteMediaTable, ScheduledNoteMediaTable } from "../media/tables.ts";
@@ -101,6 +102,7 @@ export type Database = {
     instances: InstancesTable;
     jobs: JobsTable;
     job_pauses: JobPausesTable;
+    delivery_bodies: DeliveryBodiesTable;
     likes: LikesTable;
     list_accounts: ListAccountsTable;
     lists: ListsTable;

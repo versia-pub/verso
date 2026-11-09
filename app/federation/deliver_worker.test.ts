@@ -10,6 +10,7 @@ import type { Settings } from "../kernel/settings.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { type DeliverJob, deliverQueue } from "./deliver.ts";
+import { deliveryOf } from "./testing.ts";
 import {
     deliverDeadPayload,
     deliverHandler,
@@ -33,8 +34,8 @@ const open = async (settings: Partial<Settings> = {}) => {
     });
 
     /** Queues a delivery to b.example and returns its id. */
-    const queue = async () => {
-        const payload: DeliverJob = { domain: "b.example", body: '{"type": "Thing"}' };
+    const queue = async (payload?: DeliverJob) => {
+        payload ??= await deliveryOf(test.ctx, "b.example", '{"type": "Thing"}');
         const id = await enqueue(test.ctx, {
             queue: deliverQueue,
             payload,
@@ -76,7 +77,7 @@ Deno.test("an entity is delivered, signed, and its instance takes it in", async 
 
     await updateProfile(a, alice, { displayName: "Alice" });
     const user = await registry.types.get("User")?.find?.(a, alice, "");
-    const payload: DeliverJob = { domain: "b.test", body: JSON.stringify(user) };
+    const payload = await deliveryOf(a, "b.test", JSON.stringify(user));
     await enqueue(a, { queue: deliverQueue, payload });
     await network.drain();
 
@@ -190,7 +191,7 @@ Deno.test("an instance that can't be reached is left alone, but for a probe", as
     assertEquals(sent(), 6);
 
     // Once a probe gets through, every delivery goes, even one waiting out a long backoff.
-    const payload: DeliverJob = { domain: "b.example", body: "{}" };
+    const payload = await deliveryOf(test.ctx, "b.example", "{}");
     const runAt = new Date(test.clock.now().getTime() + hour);
     ids.push(
         await enqueue(test.ctx, { queue: deliverQueue, payload, group: "b.example", runAt }) ??
@@ -253,6 +254,42 @@ Deno.test("a delivery is given up on after as long as settings say", async () =>
     assertEquals(job?.last_error?.includes("couldn't be reached in 2 hours"), true);
 });
 
+Deno.test("a delivery is given up on by when its entity was queued, not when it was", async () => {
+    await using test = await open();
+    test.transport.down.add("b.example");
+    const payload = await deliveryOf(test.ctx, "b.example", "{}");
+
+    test.clock.advance(47 * hour);
+    const id = await test.queue(payload);
+    await drain(test.ctx, queues);
+    assertEquals(test.outcome(await test.job(id)), "retried");
+
+    test.clock.advance(hour);
+    await drain(test.ctx, queues);
+    assertEquals(test.outcome(await test.job(id)), "given up");
+});
+
+Deno.test("a delivery whose entity is gone is given up on, without sending anything", async () => {
+    await using test = await open();
+    const id = await test.queue();
+
+    await test.ctx.db.deleteFrom("delivery_bodies").execute();
+    await drain(test.ctx, queues);
+
+    assertEquals(test.outcome(await test.job(id)), "given up");
+    assertEquals(test.received, []);
+});
+
+Deno.test("a delivery queued with its entity, as before entities were stored once, is sent", async () => {
+    await using test = await open();
+    const id = await test.queue({ domain: "b.example", body: '{"type": "Old"}' });
+
+    await drain(test.ctx, queues);
+
+    assertEquals(test.outcome(await test.job(id)), "done");
+    assertEquals(await test.received[0].text(), '{"type": "Old"}');
+});
+
 Deno.test("a delivery to an instance blocked since it was queued is dropped", async () => {
     await using test = await open();
     const id = await test.queue();
@@ -292,6 +329,7 @@ Deno.test("Retry-After is read as seconds or a date", () => {
 });
 
 Deno.test("a dead delivery keeps the instance it was for, without the entity", () => {
+    assertEquals(deliverDeadPayload({ domain: "b.example", bodyId: "1" }), { domain: "b.example" });
     assertEquals(deliverDeadPayload({ domain: "b.example", body: "{}" }), { domain: "b.example" });
-    assertEquals(deliverDeadPayload({ body: "{}" }), {});
+    assertEquals(deliverDeadPayload({ bodyId: "1" }), {});
 });

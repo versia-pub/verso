@@ -2,7 +2,7 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { v0_6 } from "@versia/protocol";
 import { encode } from "fast-png";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
-import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
+import { queuedDeliveries } from "../federation/testing.ts";
 import { fetchSigned } from "../federation/request.ts";
 import type { CollectionProvider } from "../federation/registry.ts";
 import { follow } from "../graph/follows.ts";
@@ -56,9 +56,7 @@ const open = async (options: TestContextOptions = {}) => {
 
 /** The Notes and Deletes queued for delivery, with the instance each is for. */
 const queued = async (ctx: Context) =>
-    (await ctx.db.selectFrom("jobs").select("payload").where("queue", "=", deliverQueue)
-        .orderBy("id").execute())
-        .map((job) => DeliverJob.parse(job.payload))
+    (await queuedDeliveries(ctx))
         .map((job): [string, Record<string, unknown>] => [job.domain, JSON.parse(job.body)])
         .filter(([, entity]) => entity.type === "Note" || entity.type === "Delete");
 

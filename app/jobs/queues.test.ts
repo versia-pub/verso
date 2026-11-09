@@ -1,0 +1,19 @@
+import { assertEquals } from "@std/assert";
+import { deliveryOf } from "../federation/testing.ts";
+import { createTestContext } from "../testing/context.ts";
+import { enqueue } from "./job_queries.ts";
+import { queues, tasks } from "./queues.ts";
+import { drain } from "./worker.ts";
+
+Deno.test("delivered entities are cleaned up every hour", async () => {
+    await using test = await createTestContext();
+    const queue = "delivery-bodies-cleanup";
+    assertEquals(tasks.filter((task) => task.queue === queue), [{ queue, every: "hour" }]);
+
+    await deliveryOf(test.ctx, "b.example", "{}");
+    test.clock.advance(test.ctx.settings.deliveryMs);
+    await enqueue(test.ctx, { queue, payload: {} });
+    await drain(test.ctx, { [queue]: queues[queue] });
+
+    assertEquals(await test.ctx.db.selectFrom("delivery_bodies").selectAll().execute(), []);
+});

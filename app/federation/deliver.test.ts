@@ -1,4 +1,5 @@
-import { assertEquals, assertExists, assertRejects } from "@std/assert";
+import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "@std/assert";
+import { CompiledQuery, type KyselyPlugin, sql } from "kysely";
 import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { recordReached, recordUnreachable } from "../instances/reachability.ts";
@@ -7,8 +8,17 @@ import type { Context, DomainEvent, Subscriber } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { registry } from "../registry.ts";
+import { testDatabaseKind } from "../db/testing.ts";
+import { hearJobWakeups } from "../jobs/wakeups.ts";
+import type { Settings } from "../kernel/settings.ts";
 import { createTestContext } from "../testing/context.ts";
-import { DeliverJob, deliverQueue, queueDeliveries } from "./deliver.ts";
+import {
+    deleteExpiredDeliveryBodies,
+    deliverQueue,
+    expiredDeliveryBodies,
+    queueDeliveries,
+} from "./deliver.ts";
+import { queuedDeliveries } from "./testing.ts";
 
 /** An event only these tests emit: an account, to deliver to some recipients. */
 type Tested = DomainEvent & { readonly accountId: string; readonly recipients: string[] };
@@ -27,8 +37,8 @@ const deliverTested: Subscriber = async (ctx, event) => {
 /**
  * alice is local, two users are on b.example, one on c.example, and one on the blocked d.example.
  */
-const open = async () => {
-    const test = await createTestContext({ subscribers: [deliverTested] });
+const open = async (settings: Partial<Settings> = {}) => {
+    const test = await createTestContext({ subscribers: [deliverTested], settings });
     const alice = await createLocalAccount(test.ctx, "alice");
 
     const remote = async (id: string, instance: string) => {
@@ -58,12 +68,14 @@ const open = async () => {
 
     /** The queued deliveries, by domain. */
     const queued = async () =>
-        (await test.ctx.db.selectFrom("jobs").select("payload").where("queue", "=", deliverQueue)
-            .execute())
-            .map((job) => DeliverJob.parse(job.payload))
-            .sort((a, b) => a.domain.localeCompare(b.domain));
+        (await queuedDeliveries(test.ctx)).sort((a, b) => a.domain.localeCompare(b.domain));
 
-    return { ...test, alice, send, queued };
+    /** The stored entities, oldest first. */
+    const bodies = async () =>
+        (await test.ctx.db.selectFrom("delivery_bodies").select("id").orderBy("id").execute())
+            .map((row) => row.id);
+
+    return { ...test, alice, send, queued, bodies };
 };
 
 Deno.test("an entity is queued once for each instance its recipients are on", async () => {
@@ -73,8 +85,17 @@ Deno.test("an entity is queued once for each instance its recipients are on", as
 
     const jobs = await test.queued();
     assertEquals(jobs.map((job) => job.domain), ["b.example", "c.example"]);
-    assertEquals(jobs[0].body, jobs[1].body);
     assertEquals(JSON.parse(jobs[0].body).username, "alice");
+
+    // The entity is stored once, and each job refers to it.
+    const [bodyId] = await test.bodies();
+    const payloads = await test.ctx.db.selectFrom("jobs").select("payload")
+        .where("queue", "=", deliverQueue).execute();
+    assertEquals(payloads.map((job) => Object.keys(job.payload).sort()), [
+        ["bodyId", "domain"],
+        ["bodyId", "domain"],
+    ]);
+    assertEquals(payloads.map((job) => job.payload.bodyId), [bodyId, bodyId]);
 
     // Grouped by instance, and given up on by age, not by number of attempts.
     const rows = await test.ctx.db.selectFrom("jobs").select(["group_key", "max_attempts"])
@@ -83,6 +104,22 @@ Deno.test("an entity is queued once for each instance its recipients are on", as
         { group_key: "b.example", max_attempts: 1000 },
         { group_key: "c.example", max_attempts: 1000 },
     ]);
+});
+
+Deno.test({
+    name: "deliveries don't wake idle workers, which find them by polling",
+    ignore: testDatabaseKind !== "sqlite",
+    fn: async () => {
+        await using test = await open();
+        await using wakeups = hearJobWakeups(test.ctx);
+        let woken = false;
+        wakeups.addEventListener(deliverQueue, () => woken = true);
+
+        await test.send(["b1", "c1"]);
+
+        assertEquals((await test.queued()).length, 2);
+        assertEquals(woken, false);
+    },
 });
 
 Deno.test("an instance unreached for as long as settings say is sent nothing, until it answers", async () => {
@@ -114,6 +151,7 @@ Deno.test("nothing is queued without remote recipients", async () => {
     await test.send([test.alice, "d1"]);
 
     assertEquals(await test.queued(), []);
+    assertEquals(await test.bodies(), []);
 });
 
 Deno.test("what is sent is the entity as it was when queued", async () => {
@@ -137,4 +175,66 @@ Deno.test("a change that fails queues nothing", async () => {
     );
 
     assertEquals(await test.queued(), []);
+    assertEquals(await test.bodies(), []);
+});
+
+Deno.test("entities are deleted once their deliveries are given up on, a batch at a time", async () => {
+    await using test = await open();
+    const hour = 60 * 60_000;
+
+    for (let n = 0; n < 5; n++) await test.send(["b1"]);
+    test.clock.advance(hour);
+    await test.send(["b1"]);
+    const [kept] = (await test.bodies()).slice(-1);
+
+    test.clock.advance(47 * hour);
+    let deletes = 0;
+    const counting: KyselyPlugin = {
+        transformQuery: ({ node }) => {
+            if (node.kind === "DeleteQueryNode") deletes++;
+            return node;
+        },
+        transformResult: ({ result }) => Promise.resolve(result),
+    };
+    await deleteExpiredDeliveryBodies({ ...test.ctx, db: test.ctx.db.withPlugin(counting) }, 2);
+
+    assertEquals(await test.bodies(), [kept]);
+    // Two, two, then the last one.
+    assertEquals(deletes, 3);
+});
+
+Deno.test("entities are deleted as long after they were queued as settings say", async () => {
+    await using test = await open({ deliveryMs: 60_000 });
+
+    await test.send(["b1"]);
+    test.clock.advance(59_999);
+    await deleteExpiredDeliveryBodies(test.ctx);
+    assertEquals((await test.bodies()).length, 1);
+
+    test.clock.advance(1);
+    await deleteExpiredDeliveryBodies(test.ctx);
+    assertEquals(await test.bodies(), []);
+});
+
+Deno.test("old entities are found by when they were queued", async () => {
+    await using test = await open();
+    const { db } = test.ctx;
+
+    const old = expiredDeliveryBodies(test.ctx, test.clock.now()).limit(1000).compile();
+    if (testDatabaseKind === "sqlite") {
+        const plan = await db.executeQuery<{ detail: string }>(
+            CompiledQuery.raw(`explain query plan ${old.sql}`, [...old.parameters]),
+        );
+        assertStringIncludes(
+            plan.rows.map((row) => row.detail).join("\n"),
+            "delivery_bodies_created_at (created_at<?)",
+        );
+        return;
+    }
+
+    await sql`set enable_seqscan = off`.execute(db);
+    const plan = await db.executeQuery(
+        CompiledQuery.raw(`explain (format json) ${old.sql}`, [...old.parameters]),
+    );
+    assertStringIncludes(JSON.stringify(plan.rows), '"Index Name":"delivery_bodies_created_at"');
 });

@@ -1,9 +1,12 @@
 /**
- * Sending entities to remote Versia instances: one job per instance, for the delivery worker.
+ * Sending entities to remote Versia instances: one job per instance, for the delivery worker, each
+ * referring to the entity, which is stored once.
  * @see https://versia.pub/federation/http
  * @module
  */
+import type { SelectQueryBuilder } from "kysely";
 import { z } from "zod";
+import type { Database } from "../db/database.ts";
 import { instancesHosting } from "../accounts/account_queries.ts";
 import { reachableDomainsOf } from "../instances/instance_queries.ts";
 import { enqueueAll } from "../jobs/job_queries.ts";
@@ -13,12 +16,16 @@ import type { Context } from "../kernel/context.ts";
 export const deliverQueue = "versia-deliver";
 
 /** The payload of a delivery job. */
-export const DeliverJob = z.object({
-    /** The domain of the instance to send it to. */
-    domain: z.string(),
-    /** The entity, serialised once when queued, so later changes can't alter what is sent. */
-    body: z.string(),
-});
+export const DeliverJob = z.union([
+    z.object({
+        /** The domain of the instance to send it to. */
+        domain: z.string(),
+        /** The entity's row in `delivery_bodies`, shared by its deliveries to every instance. */
+        bodyId: z.string(),
+    }),
+    // Queued before bodies were stored once: the entity itself.
+    z.object({ domain: z.string(), body: z.string() }),
+]);
 export type DeliverJob = z.infer<typeof DeliverJob>;
 
 /**
@@ -37,18 +44,30 @@ export const queueDeliveriesTo = async (
     entity: object,
     instanceIds: readonly string[],
 ): Promise<void> => {
-    const body = JSON.stringify(entity);
-
-    const jobs = [];
     const before = new Date(ctx.clock.now().getTime() - ctx.settings.unreachableMs);
+    const domains = [];
     for (const domain of await reachableDomainsOf(ctx, instanceIds, "versia", before)) {
-        if (await ctx.federation.isBlocked(ctx, domain)) continue;
-
-        const payload: DeliverJob = { domain, body };
-        // Deliveries are numerous, so workers find them by polling.
-        jobs.push({ queue: deliverQueue, payload, maxAttempts, group: domain, wake: false });
+        if (!await ctx.federation.isBlocked(ctx, domain)) domains.push(domain);
     }
-    await enqueueAll(ctx, jobs);
+    if (domains.length === 0) return;
+
+    // Stored once, however many instances it goes to.
+    const bodyId = ctx.ids();
+    await ctx.db.insertInto("delivery_bodies")
+        .values({ id: bodyId, body: JSON.stringify(entity), created_at: ctx.clock.now() })
+        .execute();
+
+    await enqueueAll(
+        ctx,
+        domains.map((domain) => ({
+            queue: deliverQueue,
+            payload: { domain, bodyId } satisfies DeliverJob,
+            maxAttempts,
+            group: domain,
+            // Deliveries are numerous, so workers find them by polling.
+            wake: false,
+        })),
+    );
 };
 
 /**
@@ -62,3 +81,47 @@ export const queueDeliveries = async (
     entity: object,
     recipients: readonly string[],
 ): Promise<void> => await queueDeliveriesTo(ctx, entity, await instancesHosting(ctx, recipients));
+
+/**
+ * The entity a delivery job sends, and when it was queued, or undefined if it was deleted, as it is
+ * once its deliveries are given up on.
+ */
+export const deliveryBody = async (
+    ctx: Context,
+    job: DeliverJob,
+    queuedAt: Date,
+): Promise<{ body: string; queuedAt: Date } | undefined> => {
+    if ("body" in job) return { body: job.body, queuedAt };
+
+    const row = await ctx.db.selectFrom("delivery_bodies").select(["body", "created_at"])
+        .where("id", "=", job.bodyId).executeTakeFirst();
+    return row && { body: row.body, queuedAt: row.created_at };
+};
+
+/**
+ * The entities queued before `before`, which is as long ago as deliveries are tried. Exported for
+ * the tests of its query plan.
+ */
+export const expiredDeliveryBodies = (
+    ctx: Context,
+    before: Date,
+): SelectQueryBuilder<Database, "delivery_bodies", { id: string }> =>
+    ctx.db.selectFrom("delivery_bodies").select("id").where("created_at", "<=", before);
+
+/**
+ * Deletes the entities whose deliveries have all been given up on, `batchSize` at a time. Each
+ * delivery is given up on as long after its entity was queued as the settings say, so none needs
+ * them any more.
+ */
+export const deleteExpiredDeliveryBodies = async (
+    ctx: Context,
+    batchSize = 1000,
+): Promise<void> => {
+    const before = new Date(ctx.clock.now().getTime() - ctx.settings.deliveryMs);
+    for (;;) {
+        const deleted = await ctx.db.deleteFrom("delivery_bodies")
+            .where("id", "in", expiredDeliveryBodies(ctx, before).limit(batchSize))
+            .executeTakeFirst();
+        if (deleted.numDeletedRows < BigInt(batchSize)) break;
+    }
+};

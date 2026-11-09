@@ -1,7 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
-import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
+import { queuedDeliveries } from "../federation/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { blockDomainFor } from "../graph/domain_blocks.ts";
 import { follow } from "../graph/follows.ts";
@@ -55,9 +55,7 @@ const open = async () => {
 
     /** The domains Verso queued deliveries to, of entities of `type`. */
     const delivered = async (type: string) => {
-        const queued = await test.ctx.db.selectFrom("jobs").select("payload")
-            .where("queue", "=", deliverQueue).execute();
-        return queued.map((job) => DeliverJob.parse(job.payload))
+        return (await queuedDeliveries(test.ctx))
             .filter((job) => JSON.parse(job.body).type === type)
             .map((job) => job.domain).toSorted();
     };
@@ -397,9 +395,8 @@ Deno.test("a quote is sent to the instance of the quoted author, and so is its d
 
     const posted = await test.quote(remote.id, "alice");
     assertEquals(await test.delivered("Note"), ["d.example"]);
-    const sent = await test.ctx.db.selectFrom("jobs").select("payload")
-        .where("queue", "=", deliverQueue).executeTakeFirstOrThrow();
-    assertEquals(JSON.parse(DeliverJob.parse(sent.payload).body).quotes, "d.example:f");
+    const [sent] = await queuedDeliveries(test.ctx);
+    assertEquals(JSON.parse(sent.body).quotes, "d.example:f");
 
     await removeNote(test.ctx, posted.body.id);
     assertEquals(await test.delivered("Delete"), ["d.example"]);

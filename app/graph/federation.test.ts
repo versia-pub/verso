@@ -2,7 +2,7 @@ import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { updateProfile } from "../accounts/profile.ts";
 import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
-import { DeliverJob, deliverQueue } from "../federation/deliver.ts";
+import { queuedDeliveries } from "../federation/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { registry } from "../registry.ts";
@@ -92,9 +92,7 @@ Deno.test("only local users' follows are given, as Users' collections", async ()
 
 /** The entities queued for remote instances, by domain. */
 const queued = async (ctx: Context) =>
-    (await ctx.db.selectFrom("jobs").select("payload").where("queue", "=", deliverQueue)
-        .orderBy("id").execute())
-        .map((job) => DeliverJob.parse(job.payload))
+    (await queuedDeliveries(ctx))
         .map((job) => [job.domain, JSON.parse(job.body)]);
 
 Deno.test("only what local users do to follows with other instances' users is sent", async () => {

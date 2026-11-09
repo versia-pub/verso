@@ -13,7 +13,8 @@ import { blockDomain } from "../moderation/domain_blocks.ts";
 import { registry } from "../registry.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork, type Network } from "../testing/network.ts";
-import { type DeliverJob, deliverQueue, queueDeliveries } from "./deliver.ts";
+import { deliverQueue, queueDeliveries } from "./deliver.ts";
+import { deliveryOf } from "./testing.ts";
 
 const minute = 60_000;
 
@@ -199,7 +200,7 @@ Deno.test("a blocked instance is neither asked, delivered to, nor heard", async 
     assertEquals(sentTo(network, "b.test"), before);
 
     // What it sends is rejected, so it gives up.
-    const payload: DeliverJob = { domain: "a.test", body: JSON.stringify(await userOf(b, carol)) };
+    const payload = await deliveryOf(b, "a.test", JSON.stringify(await userOf(b, carol)));
     await enqueue(b, { queue: deliverQueue, payload, group: "a.test" });
     await network.drain();
 
