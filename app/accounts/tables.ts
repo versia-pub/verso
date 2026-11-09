@@ -83,6 +83,8 @@ export type AccountsTable = {
     header_id: string | null;
     /** When a remote account was last fetched or received, or `null` for local accounts. */
     fetched_at: Date | null;
+    /** When an admin suspended it, or `null` if it isn't suspended. */
+    suspended_at: Date | null;
 };
 
 /** A login at an OpenID issuer, linked to a local account. */

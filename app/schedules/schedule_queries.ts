@@ -67,11 +67,17 @@ export const deleteScheduled = async (ctx: Context, id: string): Promise<boolean
     return numDeletedRows > 0n;
 };
 
-/** Up to `limit` of the scheduled statuses that are due by now, the first due first. */
+/**
+ * Up to `limit` of the scheduled statuses that are due by now, the first due first. Those of
+ * suspended users wait until they aren't.
+ */
 export const dueScheduled = (ctx: Context, limit: number): Promise<ScheduledNoteRow[]> =>
-    ctx.db.selectFrom("scheduled_notes").selectAll()
-        .where("scheduled_at", "<=", ctx.clock.now())
-        .orderBy("scheduled_at")
-        .orderBy("id")
+    ctx.db.selectFrom("scheduled_notes")
+        .innerJoin("accounts", "accounts.id", "scheduled_notes.account_id")
+        .selectAll("scheduled_notes")
+        .where("scheduled_notes.scheduled_at", "<=", ctx.clock.now())
+        .where("accounts.suspended_at", "is", null)
+        .orderBy("scheduled_notes.scheduled_at")
+        .orderBy("scheduled_notes.id")
         .limit(limit)
         .execute();

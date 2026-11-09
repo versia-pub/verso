@@ -2,12 +2,14 @@ import { assertEquals } from "@std/assert";
 import type { Context } from "../kernel/context.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
+import { setSuspendedAt } from "../accounts/account_queries.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
+import { suspend, unsuspend } from "../moderation/suspensions.ts";
 import { registerApp } from "./apps.ts";
 import { authRoutes } from "./routes.ts";
 import { routes } from "../kernel/pubsub.ts";
 import { hashToken, randomToken } from "./secrets.ts";
-import { registerTestApp } from "./testing.ts";
+import { registerTestApp, tokenFor } from "./testing.ts";
 import { authenticateToken, watchToken } from "./tokens.ts";
 
 const open = async (options: TestContextOptions = {}) => {
@@ -370,6 +372,52 @@ Deno.test("watchers find their token was revoked before they watched, or while m
     kept.unwatch();
     await heard.missed();
     assertEquals([told(), kept.told()], [["app"], []]);
+});
+
+Deno.test("a suspended user's tokens are kept, but say so, and their app can still revoke them", async () => {
+    await using test = await open();
+    const alice = (await test.exchange(await test.allowedCode())).body.access_token;
+    const app = (await test.token({ ...test.credentials, grant_type: "client_credentials" }))
+        .body.access_token;
+
+    assertEquals((await authenticateToken(test.ctx, alice))?.suspended, false);
+    await suspend(test.ctx, "alice");
+    assertEquals((await authenticateToken(test.ctx, alice))?.suspended, true);
+    assertEquals((await authenticateToken(test.ctx, app))?.suspended, false);
+    await unsuspend(test.ctx, "alice");
+    assertEquals((await authenticateToken(test.ctx, alice))?.suspended, false);
+
+    await suspend(test.ctx, "alice");
+    assertEquals((await test.revoke({ ...test.credentials, token: alice })).status, 200);
+    assertEquals(await authenticateToken(test.ctx, alice), undefined);
+});
+
+Deno.test("watchers hear their user is suspended, or find it while messages were missed", async () => {
+    const heard = routes();
+    await using test = await open({
+        pubsub: { send: heard.deliver, subscribe: heard.subscribe, onMissed: heard.onMissed },
+    });
+    await createLocalAccount(test.ctx, "bob");
+    const { told } = watching(test, {
+        alice: await idOf(test, await tokenFor(test.ctx, "alice")),
+        alsoAlice: await idOf(test, await tokenFor(test.ctx, "alice")),
+        bob: await idOf(test, await tokenFor(test.ctx, "bob")),
+        app: await idOf(test, await tokenFor(test.ctx, null)),
+    });
+
+    await suspend(test.ctx, "alice");
+    assertEquals(told().toSorted(), ["alice", "alsoAlice"]);
+
+    // One who starts watching after finds it at once. Deno fails the test if it isn't told.
+    const later = await idOf(test, await tokenFor(test.ctx, "alice"));
+    await new Promise<void>((resolve) => {
+        const unwatch = watchToken(test.ctx, later, () => resolve(unwatch()));
+    });
+
+    await setSuspendedAt(test.ctx, "bob", test.clock.now());
+    assertEquals(told().toSorted(), ["alice", "alsoAlice"]);
+    await heard.missed();
+    assertEquals(told().toSorted(), ["alice", "alsoAlice", "bob"]);
 });
 
 Deno.test("watchers that stopped don't hear their token is revoked", async () => {

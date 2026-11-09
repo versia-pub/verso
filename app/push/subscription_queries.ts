@@ -12,17 +12,29 @@ export const findSubscription = (
     ctx.db.selectFrom("push_subscriptions").selectAll().where("token_id", "=", tokenId)
         .executeTakeFirst();
 
-/** The subscriptions of the user `accountId`, one for each token they subscribed with. */
+/**
+ * The subscriptions of the user `accountId`, one for each token they subscribed with, or none while
+ * they are suspended.
+ */
 export const subscriptionsOf = (ctx: Context, accountId: string): Promise<PushSubscriptionRow[]> =>
-    ctx.db.selectFrom("push_subscriptions").selectAll().where("account_id", "=", accountId)
+    ctx.db.selectFrom("push_subscriptions")
+        .innerJoin("accounts", "accounts.id", "push_subscriptions.account_id")
+        .selectAll("push_subscriptions")
+        .where("push_subscriptions.account_id", "=", accountId)
+        .where("accounts.suspended_at", "is", null)
         .execute();
 
-/** The subscription `id`, if it still exists. */
+/** The subscription `id`, if it still exists, and its user isn't suspended. */
 export const findSubscriptionById = (
     ctx: Context,
     id: string,
 ): Promise<PushSubscriptionRow | undefined> =>
-    ctx.db.selectFrom("push_subscriptions").selectAll().where("id", "=", id).executeTakeFirst();
+    ctx.db.selectFrom("push_subscriptions")
+        .innerJoin("accounts", "accounts.id", "push_subscriptions.account_id")
+        .selectAll("push_subscriptions")
+        .where("push_subscriptions.id", "=", id)
+        .where("accounts.suspended_at", "is", null)
+        .executeTakeFirst();
 
 /** Deletes the subscription `id`, such as when its push service says it has gone. */
 export const deleteSubscriptionById = async (ctx: Context, id: string): Promise<void> => {

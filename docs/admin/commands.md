@@ -41,6 +41,23 @@ Admin commands print one line of JSON, so scripts can read their output. If a co
 prints why and exits with 1. If it's used wrongly, such as with a missing argument, it prints its
 help and exits with 2.
 
+### `verso admin accounts`
+
+| Command                     | Does                          |
+| --------------------------- | ----------------------------- |
+| `accounts suspend <acct>`   | suspends an account           |
+| `accounts unsuspend <acct>` | lifts an account's suspension |
+
+`<acct>` is `username` for a local account, or `username@domain` for a remote one. `changed` is
+`false` if the account already was, or wasn't, suspended.
+
+```sh
+$ verso admin accounts suspend spam@remote.example
+{"account":"spam@remote.example","suspended":true,"changed":true}
+```
+
+See [Suspending accounts](moderating.md#suspending-accounts) for what it does.
+
 ### `verso admin announcements`
 
 Announcements are shown to every user in their apps. They're plain text, and can mention accounts,

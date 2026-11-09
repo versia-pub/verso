@@ -33,6 +33,8 @@ export type Viewer = {
     /** The user the app acts for, or `null` if the app acts for itself. */
     readonly accountId: string | null;
     readonly scopes: readonly Scope[];
+    /** Whether the user is suspended, so the token can't be used. */
+    readonly suspended?: boolean;
 };
 
 /** Who is calling, as a route's handler sees them. */

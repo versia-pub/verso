@@ -108,6 +108,7 @@ Deno.test("a new account starts with the name claim and default settings", async
         avatar_id: null,
         header_id: null,
         fetched_at: null,
+        suspended_at: null,
         trendable: null,
     });
 });

@@ -10,12 +10,13 @@ import type { Permission } from "../kernel/permissions.ts";
 import { grants } from "../kernel/scopes.ts";
 import { clientIp } from "./client_ip.ts";
 import type { AppEnv, AppServices } from "./env.ts";
-import { Forbidden, NotPermitted, Unauthorized, UserRequired } from "./errors.ts";
+import { Forbidden, LoginDisabled, NotPermitted, Unauthorized, UserRequired } from "./errors.ts";
 import type { Route, RouteViewer, Viewer } from "./route.ts";
 
 /**
  * Who is calling, validated against the route's `auth` as Mastodon validates it. A token sent where
- * none is needed is ignored; on other routes, a token sent must be valid.
+ * none is needed is ignored; on other routes, a token sent must be valid, and its user not
+ * suspended.
  */
 export const viewerOf = async (
     ctx: Context,
@@ -32,6 +33,7 @@ export const viewerOf = async (
     const viewer = await bearerOf(ctx, c, services, route.tokenElsewhere ?? false);
 
     if (!viewer) throw new Unauthorized();
+    if (viewer.suspended) throw new LoginDisabled();
     if (route.auth.require === "user" && viewer.accountId === null) throw new UserRequired();
     if (route.auth.scope && !grants(viewer.scopes, route.auth.scope)) throw new Forbidden();
 

@@ -6,6 +6,7 @@ import {
     createRole,
     giveRole,
 } from "../accounts/testing.ts";
+import { findAccount } from "../accounts/account_queries.ts";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
 import { Config } from "../kernel/config.ts";
@@ -285,6 +286,50 @@ Deno.test("any status is deleted by its id, and unknown ones refused", async () 
         AdminError,
     );
     assertEquals(error.message, `There is no status ${note.id}`);
+});
+
+Deno.test("accounts are suspended and unsuspended once, local or remote, and unknown ones refused", async () => {
+    await using test = await createTestContext();
+    await createLocalAccount(test.ctx, "alice");
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "carol", "b.example");
+    const json = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "accounts", ...args)).printed.join(""));
+
+    assertEquals(await json("suspend", "alice"), {
+        account: "alice",
+        suspended: true,
+        changed: true,
+    });
+    assertEquals(await json("suspend", "@alice"), {
+        account: "alice",
+        suspended: true,
+        changed: false,
+    });
+    assertEquals(await json("suspend", "carol@b.example"), {
+        account: "carol@b.example",
+        suspended: true,
+        changed: true,
+    });
+    assertEquals((await findAccount(test.ctx, "carol"))?.suspended_at, test.clock.now());
+
+    assertEquals(await json("unsuspend", "carol@b.example"), {
+        account: "carol@b.example",
+        suspended: false,
+        changed: true,
+    });
+    assertEquals(await json("unsuspend", "carol@b.example"), {
+        account: "carol@b.example",
+        suspended: false,
+        changed: false,
+    });
+    assertEquals((await findAccount(test.ctx, "carol"))?.suspended_at, null);
+    assertNotEquals((await findAccount(test.ctx, "alice"))?.suspended_at, null);
+
+    for (const acct of ["nobody", "nobody@b.example", "not an address"]) {
+        const error = await assertRejects(() => json("suspend", acct), AdminError);
+        assertEquals(error.message, `There is no account ${acct}`);
+    }
 });
 
 Deno.test("reports are listed until they are resolved, and unknown ones refused", async () => {

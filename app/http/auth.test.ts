@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Permission } from "../kernel/permissions.ts";
 import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts";
 import { tokenFor } from "../auth/testing.ts";
+import { suspend, unsuspend } from "../moderation/suspensions.ts";
 import type { Permissions } from "../kernel/config_sections.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createTestApp } from "../testing/app.ts";
@@ -154,6 +155,24 @@ Deno.test("with optional auth, a token sent must still be valid", async () => {
     assertEquals((await test.call("/maybe")).body.account, null);
     assertEquals((await test.call("/maybe", `Bearer ${token}`)).body.account, "alice");
     assertEquals((await test.call("/maybe", "Bearer unknown")).status, 401);
+});
+
+Deno.test("a suspended user's token is refused as a disabled login, an app's own token isn't", async () => {
+    await using test = await open();
+    const token = `Bearer ${await tokenFor(test.ctx, "alice", ["read"])}`;
+    const appToken = `Bearer ${await tokenFor(test.ctx, null, ["read"])}`;
+    await suspend(test.ctx, "alice");
+
+    const disabled = { status: 403, body: { error: "Your login is currently disabled" } };
+    assertEquals(await test.call("/me", token), disabled);
+    assertEquals(await test.call("/maybe", token), disabled);
+    assertEquals((await test.call("/app", appToken)).status, 200);
+    // Said before the token is found to lack the route's scope.
+    const writer = `Bearer ${await tokenFor(test.ctx, "alice", ["write"])}`;
+    assertEquals(await test.call("/me", writer), disabled);
+
+    await unsuspend(test.ctx, "alice");
+    assertEquals((await test.call("/me", token)).body.account, "alice");
 });
 
 Deno.test("a route without auth ignores tokens", async () => {

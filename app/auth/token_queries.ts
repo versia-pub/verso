@@ -20,22 +20,34 @@ export const countAccountsWithTokensSince = async (
     return readCount(await query.executeTakeFirstOrThrow());
 };
 
-/** The token with this hash, which is all that is stored of it. */
+/**
+ * The token with this hash, which is all that is stored of it, and when its user was suspended, if
+ * it has one who is.
+ */
 export const findTokenByHash = async (
     ctx: Context,
     hash: string,
-): Promise<AccessTokensTable | undefined> =>
+): Promise<(AccessTokensTable & { suspended_at: Date | null }) | undefined> =>
     await ctx.db.selectFrom("access_tokens")
-        .selectAll()
+        .leftJoin("accounts", "accounts.id", "access_tokens.account_id")
+        .selectAll("access_tokens")
+        .select("accounts.suspended_at")
         .where("token_hash", "=", hash)
         .executeTakeFirst();
 
-/** Whether a token with this id is still issued. */
-export const tokenExists = async (ctx: Context, id: string): Promise<boolean> =>
+/** Whether a token with this id is still issued, and its user, if it has one, isn't suspended. */
+export const tokenUsable = async (ctx: Context, id: string): Promise<boolean> =>
     await ctx.db.selectFrom("access_tokens")
-        .select("id")
-        .where("id", "=", id)
+        .leftJoin("accounts", "accounts.id", "access_tokens.account_id")
+        .select("access_tokens.id")
+        .where("access_tokens.id", "=", id)
+        .where("accounts.suspended_at", "is", null)
         .executeTakeFirst() !== undefined;
+
+/** The ids of the tokens issued to the user `accountId`. */
+export const tokenIdsOf = async (ctx: Context, accountId: string): Promise<string[]> =>
+    (await ctx.db.selectFrom("access_tokens").select("id").where("account_id", "=", accountId)
+        .execute()).map((row) => row.id);
 
 /** Stores a new token, by its hash. */
 export const insertToken = async (

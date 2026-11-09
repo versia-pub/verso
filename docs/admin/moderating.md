@@ -1,7 +1,7 @@
 # Moderating
 
-For now, Verso's moderation tools are blocking instances, removing statuses, giving moderators
-roles, reading reports and managing custom emoji. There are no suspensions yet.
+For now, Verso's moderation tools are blocking instances, suspending accounts, removing statuses,
+giving moderators roles, reading reports and managing custom emoji.
 
 ## Blocking instances
 
@@ -29,6 +29,18 @@ for themselves from their app, which only hides it from them.
 Users report accounts and statuses from their apps, and other instances send reports too. List the
 ones no one has dealt with, and mark them as dealt with, using
 [`verso admin reports`](commands.md#verso-admin-reports).
+
+## Suspending accounts
+
+Suspend an account, local or remote, with
+[`verso admin accounts suspend`](commands.md#verso-admin-accounts). Nothing is deleted, so lifting
+the suspension restores everything.
+
+A suspended local user's apps are refused with a `403`, and their streams close. Their scheduled
+statuses wait, and nothing is pushed to them. Other instances aren't told.
+
+For now, that is all a suspension does. Suspended accounts and their statuses are still shown, and
+remote ones can still send Verso their statuses.
 
 ## Removing statuses
 

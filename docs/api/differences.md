@@ -121,7 +121,6 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   Mastodon's `view_feeds`.
 - Hashtag and trending link timelines share one setting, as on Mastodon. A link timeline asks for
   both local and remote statuses whatever it is sent.
-- Verso has no suspended users, so no stream is closed by one.
 
 ## Search
 

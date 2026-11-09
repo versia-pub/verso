@@ -123,9 +123,10 @@ export const streamingRoutes = (
                             );
                             socket.onmessage = ({ data }) => session.receive(data);
 
-                            // Mastodon closes it too, though without saying why.
+                            // Once the token is revoked or its user suspended. Mastodon closes it
+                            // too, though without saying why.
                             const unwatch = watchToken(ctx, viewer.tokenId, () => {
-                                socket.close(1000, "The access token was revoked");
+                                socket.close(1000, "The access token can't be used any more");
                             });
                             // A socket may stay open for days, through changes to what it may read.
                             const unwatchRoles = watchRoles(

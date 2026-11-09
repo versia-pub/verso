@@ -8,7 +8,13 @@ import { findAppByClientId } from "./app_queries.ts";
 import { deleteFlow, setCodeToken, useCode } from "./flow_queries.ts";
 import { requestedScopes } from "../kernel/scopes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
-import { deleteToken, findTokenByHash, insertToken, tokenExists } from "./token_queries.ts";
+import {
+    deleteToken,
+    findTokenByHash,
+    insertToken,
+    tokenIdsOf,
+    tokenUsable,
+} from "./token_queries.ts";
 import type { AppsTable } from "./tables.ts";
 
 const logger = getLogger(["verso", "auth"]);
@@ -26,15 +32,26 @@ const revoke = async (ctx: Context, tokenId: string) => {
 };
 
 /**
- * Calls `onRevoked` once the token is revoked, until the function returned is called. It is called
- * at once if the token already was, and may be called more than once. A process that may have
- * missed being told checks the token is still issued.
+ * Tells every process, once the current transaction commits, to stop serving what the tokens of
+ * `accountId` opened, as if they were revoked, though they are kept. Run it once the user is
+ * suspended, so the tokens can't be used again.
+ */
+export const endSessionsOf = async (ctx: Context, accountId: string): Promise<void> => {
+    for (const tokenId of await tokenIdsOf(ctx, accountId)) {
+        await publish(ctx, revoked, { tokenId });
+    }
+};
+
+/**
+ * Calls `onRevoked` once the token is revoked, or its user suspended, until the function returned
+ * is called. It is called at once if that already happened, and may be called more than once. A
+ * process that may have missed being told checks the token can still be used.
  */
 export const watchToken = (ctx: Context, tokenId: string, onRevoked: () => void): () => void => {
     let watching = true;
     // Not once stopped, though a check was running.
     const check = async () => {
-        if (!await tokenExists(ctx, tokenId) && watching) onRevoked();
+        if (!await tokenUsable(ctx, tokenId) && watching) onRevoked();
     };
 
     const unsubscribe = subscribe(ctx, revoked, (message) => {
@@ -71,6 +88,7 @@ export const authenticateToken = async (
         appId: row.app_id,
         accountId: row.account_id,
         scopes: row.scopes,
+        suspended: row.suspended_at !== null,
     };
 };
 

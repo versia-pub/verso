@@ -329,6 +329,24 @@ export const deleteAccount = async (ctx: Context, id: string): Promise<void> => 
     await ctx.db.deleteFrom("accounts").where("id", "=", id).execute();
 };
 
+/**
+ * Suspends the account `id` from `at`, or unsuspends it if `at` is `null`. Returns whether that
+ * changed it: an account already suspended stays suspended from when it first was.
+ */
+export const setSuspendedAt = async (
+    ctx: Context,
+    id: string,
+    at: Date | null,
+): Promise<boolean> => {
+    const { numUpdatedRows } = await ctx.db.updateTable("accounts")
+        .set({ suspended_at: at })
+        .where("id", "=", id)
+        .where("suspended_at", at === null ? "is not" : "is", null)
+        .executeTakeFirst();
+
+    return numUpdatedRows > 0n;
+};
+
 /** Columns of an account to update. */
 export type AccountChanges = Updateable<AccountsTable>;
 

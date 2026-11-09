@@ -155,8 +155,8 @@ These newer parts of Mastodon's API aren't in Verso. Apps get a `404`.
 - ❌ The `standard` flag on push subscriptions and the OAuth `userinfo` endpoint, from 4.4.
 - ❌ The `untrusted_*` counts of remote accounts.
 
-Verso doesn't delete or suspend accounts, and it keeps remote handles as they are, so `suspended`
-and `invalid_handle` are never set on an account.
+Verso doesn't yet say an account is suspended, and it keeps remote handles as they are, so
+`suspended` and `invalid_handle` are never set on an account.
 
 ## Timelines
 

@@ -4,6 +4,7 @@
  * @module
  */
 import { Command } from "@cliffy/command";
+import { accountsCommand } from "./account_commands.ts";
 import { announcementsCommand } from "./announcement_commands.ts";
 import { type AdminIo, missingCommand } from "./admin_io.ts";
 import { domainsCommand } from "./domain_commands.ts";
@@ -21,6 +22,7 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
     new Command<{ config: string }>()
         .description("Manage the instance.")
         .action(missingCommand)
+        .command("accounts", accountsCommand(io))
         .command("announcements", announcementsCommand(io))
         .command("trends", trendsCommand(io))
         .command("domains", domainsCommand(io))

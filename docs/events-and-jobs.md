@@ -180,13 +180,13 @@ streaming clients should see. These go through `ctx.pubsub`, with `publish` and 
 [`app/kernel/pubsub.ts`](../app/kernel/pubsub.ts). Each kind of message is a `Channel`, with a name
 and a Zod schema:
 
-| Channel                 | Says                                        | Heard by               |
-| ----------------------- | ------------------------------------------- | ---------------------- |
-| `federation.changed`    | the instance key or blocked domains changed | every process's caches |
-| `roles.changed`         | an account's roles changed                  | streaming sessions     |
-| `tokens.revoked`        | an access token was revoked                 | streaming sessions     |
-| `streaming.statuses`    | a status appeared, changed or went          | streaming sessions     |
-| `notifications.created` | a notification was made                     | streaming sessions     |
+| Channel                 | Says                                               | Heard by               |
+| ----------------------- | -------------------------------------------------- | ---------------------- |
+| `federation.changed`    | the instance key or blocked domains changed        | every process's caches |
+| `roles.changed`         | an account's roles changed                         | streaming sessions     |
+| `tokens.revoked`        | an access token was revoked, or its user suspended | streaming sessions     |
+| `streaming.statuses`    | a status appeared, changed or went                 | streaming sessions     |
+| `notifications.created` | a notification was made                            | streaming sessions     |
 
 `publish` sends after commit, so no process hears about a change that rolled back. Every process
 gets every message, including the one that sent it. On SQLite, messages stay in the process that

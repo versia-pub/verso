@@ -3,6 +3,7 @@ import { grantRoleTo } from "../accounts/roles.ts";
 import { createLocalAccount, createRole } from "../accounts/testing.ts";
 import { registerTestApp, tokenFor } from "../auth/testing.ts";
 import { issueToken, revokeToken } from "../auth/tokens.ts";
+import { suspend } from "../moderation/suspensions.ts";
 import { StreamingLimits } from "../kernel/config_sections.ts";
 import type { PubSub } from "../kernel/context.ts";
 import { memoryPubSub } from "../kernel/pubsub.ts";
@@ -214,12 +215,22 @@ Deno.test("a WebSocket closes once its token is revoked, and stops watching it o
     assertEquals(test.pubsub.live(), before + 7 + 8);
 
     await revokeToken(test.ctx, app, issued.token);
-    assertEquals(await revoked.closed(), [1000, "The access token was revoked"]);
+    assertEquals(await revoked.closed(), [1000, "The access token can't be used any more"]);
     await until(() => test.pubsub.live() === before + 7 + 4);
 
     kept.socket.close();
     await kept.closed();
     await until(() => test.pubsub.live() === before + 7);
+});
+
+Deno.test("a WebSocket closes once its user is suspended", async () => {
+    await using test = await open();
+    await using server = listen(test.app);
+    const socket = await connect(`ws://127.0.0.1:${server.addr.port}/api/v1/streaming`, test.token);
+
+    await suspend(test.ctx, "alice");
+
+    assertEquals(await socket.closed(), [1000, "The access token can't be used any more"]);
 });
 
 Deno.test("a WebSocket streams what its user may read once their roles change, without reconnecting", async () => {

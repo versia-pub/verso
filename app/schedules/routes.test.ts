@@ -6,6 +6,7 @@ import { queues, tasks } from "../jobs/queues.ts";
 import { removeUnusedMedia } from "../media/cleanup.ts";
 import { attachmentsOf } from "../media/attachment_queries.ts";
 import { findMedia } from "../media/media_queries.ts";
+import { suspend, unsuspend } from "../moderation/suspensions.ts";
 import { mediaRoutes } from "../media/routes.ts";
 import { upload } from "../media/uploads.ts";
 import { noteRoutes } from "../notes/routes.ts";
@@ -404,6 +405,19 @@ Deno.test("all that is due is posted, once, however many are due and post at onc
     await Promise.all([publishDue(test.ctx), publishDue(test.ctx)]);
 
     assertEquals((await test.posted()).length, 101);
+});
+
+Deno.test("a suspended user's scheduled statuses wait until the suspension is lifted", async () => {
+    await using test = await open();
+    await test.schedule(test.inMs(60 * minute));
+    await suspend(test.ctx, "alice");
+
+    await test.publish(60 * minute);
+    assertEquals(await test.posted(), []);
+
+    await unsuspend(test.ctx, "alice");
+    await test.publish(0);
+    assertEquals((await test.posted()).length, 1);
 });
 
 Deno.test("a scheduled status that can't be posted any more is dropped", async () => {

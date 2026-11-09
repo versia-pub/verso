@@ -60,6 +60,13 @@ export class NotPermitted extends HttpError {
     }
 }
 
+/** The caller's user is suspended, as Mastodon says. */
+export class LoginDisabled extends HttpError {
+    constructor() {
+        super(403, "Your login is currently disabled");
+    }
+}
+
 export class NotFound extends HttpError {
     constructor(description?: string) {
         super(404, "Record not found", description);

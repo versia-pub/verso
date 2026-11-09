@@ -5,6 +5,7 @@ import { registerTestApp } from "../auth/testing.ts";
 import { issueToken } from "../auth/tokens.ts";
 import { follow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
+import { suspend } from "../moderation/suspensions.ts";
 import { drain, PermanentFailure } from "../jobs/worker.ts";
 import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
 import { editNote, postNote } from "../notes/notes.ts";
@@ -288,6 +289,21 @@ Deno.test("nothing is pushed if the user isn't shown the notification, or unsubs
         await test.ctx.db.selectFrom("jobs").select("id").where("queue", "=", "push").execute(),
         [],
     );
+});
+
+Deno.test("nothing is pushed to a suspended user, whose subscriptions are kept", async () => {
+    await using test = await open();
+    const { id } = await test.subscribe("alice", "alice");
+
+    // Pushed after the suspension, and not queued at all.
+    await test.post("bob", "Hi @alice");
+    await suspend(test.ctx, "alice");
+    await test.post("bob", "Still there, @alice?");
+
+    assertEquals(await test.drain(), 1);
+    assertEquals(test.pushed, []);
+    const kept = await test.ctx.db.selectFrom("push_subscriptions").select("id").execute();
+    assertEquals(kept, [{ id }]);
 });
 
 Deno.test("a subscription its push service says is gone is deleted, and others are retried", async () => {
