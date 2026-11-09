@@ -164,8 +164,10 @@ commit the new snapshot, so the change shows up in review.
 
 ## Health
 
-`GET /health/live` returns `ok` in plain text, for load balancers. It isn't a route object, so it's
-neither rate limited nor in the OpenAPI document.
+`GET /health/live` and `GET /health/ready` return `ok` in plain text, for load balancers.
+`/health/ready` is a 503 naming what isn't ready, from `unready` in
+[`app/http/readiness.ts`](../app/http/readiness.ts). They aren't route objects, so they're neither
+rate limited nor in the OpenAPI document.
 
 ## Tests
 

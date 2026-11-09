@@ -19,6 +19,8 @@ export type PostgresPubSub = PubSub & AsyncDisposable & {
      * whether it does at first. Subscribing starts it, so a process that only sends never listens.
      */
     readonly listen: () => Promise<boolean>;
+    /** Whether it hears messages now: it listens, and its connection hasn't dropped. */
+    readonly listening: () => boolean;
 };
 
 /** How long to wait before listening again, at first, and at most, in milliseconds. */
@@ -113,6 +115,7 @@ export const postgresPubSub = <DB>(
         },
         onMissed: subscribed.onMissed,
         listen,
+        listening: () => client !== undefined,
         [Symbol.asyncDispose]: async () => {
             disposed = true;
             clearTimeout(retry);

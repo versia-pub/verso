@@ -629,7 +629,15 @@ Deno.test("routes read headers by lowercase name", async () => {
 Deno.test("nothing may cache a reply, an error or a check", async () => {
     await using test = await open();
 
-    for (const path of ["/agent", "/missing", "/health/live", "/welcome?name=away"]) {
+    for (
+        const path of [
+            "/agent",
+            "/missing",
+            "/health/live",
+            "/health/ready",
+            "/welcome?name=away",
+        ]
+    ) {
         const response = await test.app.request(path, { headers: { "user-agent": "Tusky" } });
         assertEquals(response.headers.get("cache-control"), "no-store", path);
     }

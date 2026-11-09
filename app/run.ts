@@ -8,7 +8,7 @@ import type { Kysely } from "kysely";
 import { devLogin } from "./auth/dev_login.ts";
 import { oidcProviders } from "./auth/oidc.ts";
 import { type Database, openDatabase } from "./db/database.ts";
-import { postgresPubSub } from "./db/postgres_pubsub.ts";
+import { type PostgresPubSub, postgresPubSub } from "./db/postgres_pubsub.ts";
 import { migrate } from "./db/migrate.ts";
 import { forgetWhenTold } from "./federation/caches.ts";
 import { createApp } from "./http/app.ts";
@@ -49,6 +49,7 @@ const serve = (
     ctx: Context,
     config: Config,
     served: readonly Route[],
+    listening: () => boolean,
     signal: AbortSignal,
 ): Promise<void> => {
     // deno-lint-ignore no-console -- the banner is command output, not a log line
@@ -87,6 +88,7 @@ const serve = (
             trustedProxies: config.http.trusted_proxies,
             permissions: config.permissions,
             silentBlocks: config.federation.silent_blocks,
+            listening,
         }).fetch,
     );
     return server.finished;
@@ -96,10 +98,15 @@ const serve = (
  * Sends messages to other processes through Postgres. SQLite has no notifications, so there only
  * this process hears them.
  */
-export const pubSubFor = (config: Config, db: Kysely<Database>): PubSub & AsyncDisposable =>
-    "postgres" in config.database
-        ? postgresPubSub(db, config.database.postgres)
-        : { ...memoryPubSub(), [Symbol.asyncDispose]: () => Promise.resolve() };
+export const pubSubFor = (
+    config: Config,
+    db: Kysely<Database>,
+): PubSub & AsyncDisposable & Pick<PostgresPubSub, "listening"> =>
+    "postgres" in config.database ? postgresPubSub(db, config.database.postgres) : {
+        ...memoryPubSub(),
+        listening: () => true,
+        [Symbol.asyncDispose]: () => Promise.resolve(),
+    };
 
 /** The context every command runs with, and the development login's routes if it is on. */
 export const contextFor = (
@@ -208,9 +215,13 @@ export const run = async (role: Role, config: Config): Promise<number> => {
     }
 
     await Promise.all([
-        role === "work"
-            ? undefined
-            : serve(ctx, config, [...routes(config), ...devRoutes], stopping.signal),
+        role === "work" ? undefined : serve(
+            ctx,
+            config,
+            [...routes(config), ...devRoutes],
+            pubsub.listening,
+            stopping.signal,
+        ),
         role === "serve" ? undefined : work(ctx, queues, {
             worker,
             pollMs: 1000,

@@ -10,6 +10,7 @@ import { ContentTooLarge, Defederated, HttpError, NotFound } from "./errors.ts";
 import { useHeaders } from "./headers.ts";
 import { asOAuthError, inputOf } from "./input.ts";
 import { checkRateLimit, rateLimit, type RateLimits } from "./rate_limits.ts";
+import { unready } from "./readiness.ts";
 import { checkReply, send } from "./reply.ts";
 import type { Route } from "./route.ts";
 import { signReply, verifyRequest } from "./signatures.ts";
@@ -61,6 +62,8 @@ export type AppOptions = {
     readonly permissions?: Permissions;
     /** Responds to blocked instances as if nothing were wrong, rather than with 403. */
     readonly silentBlocks?: boolean;
+    /** Whether the process hears other processes' messages. Without it, it always does. */
+    readonly listening?: () => boolean;
 };
 
 /** Every route the server serves. Tests call its `fetch` directly, with no network in between. */
@@ -167,8 +170,13 @@ export const createApp = (
         });
     };
 
-    // For load balancers and orchestrators, not clients, so it stays plain text.
+    // For load balancers and orchestrators, not clients, so they stay plain text. Ready is whether
+    // the process can serve: the database answers and the process hears the others.
     app.get("/health/live", (c) => c.text("ok"));
+    app.get("/health/ready", async (c) => {
+        const reason = await unready(ctx, options.listening ?? (() => true));
+        return reason === undefined ? c.text("ok") : c.text(reason, 503);
+    });
 
     // Before the clients' rate limit, which runs only for what is added after it. Signed routes are
     // limited by who signed, once the signature is validated, and routes with a bucket in it.

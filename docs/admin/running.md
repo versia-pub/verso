@@ -90,3 +90,11 @@ Each part of Verso logs under its own category, such as `verso.federation` or `v
 
 `GET /health/live` returns `ok` while the process is up, for load balancers and container health
 checks. Like Mastodon, Verso also has `GET /api/v1/streaming/health`, which returns `OK`.
+
+`GET /health/ready` returns `ok` once the process can serve, or a 503 with what isn't ready:
+
+- `database`: the database didn't answer within 3 seconds.
+- `pubsub`: on Postgres, the process doesn't hear the other processes, so what it caches, such as
+  blocked domains, may be stale.
+
+The log says why.

@@ -137,6 +137,7 @@ Deno.test({
         subscribe(test.ctx, said, (text) => Promise.resolve(void heard.push(text)));
         pubsub.onMissed(() => Promise.resolve(void (missed += 1)));
         assertEquals(await pubsub.listen(), true);
+        assertEquals(pubsub.listening(), true);
 
         for (const round of [1, 2]) {
             await sql`
@@ -144,7 +145,7 @@ Deno.test({
                 where datname = current_database() and query = ${`listen ${messagesChannel}`}
             `.execute(db);
             await until(() => missed === round);
-            assertEquals(missed, round);
+            assertEquals([missed, pubsub.listening()], [round, true]);
         }
 
         await publish(test.ctx, said, "again");
@@ -213,5 +214,5 @@ Deno.test("when Postgres can't be reached, a process hears nothing", async () =>
     await using test = await createTestContext();
     await using pubsub = postgresPubSub(test.ctx.db, "postgres://verso@127.0.0.1:1/verso");
 
-    assertEquals(await pubsub.listen(), false);
+    assertEquals([await pubsub.listen(), pubsub.listening()], [false, false]);
 });
