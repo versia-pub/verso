@@ -5,7 +5,7 @@ import { connect, type Database } from "../db/database.ts";
 import { testDatabaseKind, testPostgresUrl } from "../db/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { enqueue, enqueueAll } from "./job_queries.ts";
-import { listenForJobs } from "./wakeups.ts";
+import { hearJobWakeups, listenForJobs } from "./wakeups.ts";
 import { work } from "./worker.ts";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -129,4 +129,42 @@ Deno.test("when Postgres can't be reached, workers are left to poll", async () =
         await listenForJobs({ postgres: "postgres://verso@127.0.0.1:1/verso" }),
         undefined,
     );
+});
+
+Deno.test({
+    name: "on SQLite, enqueueing wakes each queue that got a job, once its transaction commits",
+    ignore: testDatabaseKind !== "sqlite",
+    fn: async () => {
+        await using test = await createTestContext();
+
+        const ctx = test.ctx;
+        await using wakeups = hearJobWakeups(ctx);
+        const heard: string[] = [];
+        for (const queue of ["deliver", "fetch", "quiet"]) {
+            wakeups.addEventListener(queue, () => heard.push(queue));
+        }
+
+        await assertRejects(() =>
+            ctx.transaction(async (tx) => {
+                await enqueue(tx, { queue: "deliver", payload: {} });
+                throw new Error("rolled back");
+            })
+        );
+
+        await ctx.transaction(async (tx) => {
+            await enqueue(tx, { queue: "deliver", payload: {} });
+            await enqueueAll(tx, [
+                { queue: "fetch", payload: {} },
+                { queue: "quiet", payload: {}, wake: false },
+            ]);
+            await enqueue(tx, { queue: "quiet", payload: {}, wake: false });
+            assertEquals(heard, []);
+        });
+
+        assertEquals(heard, ["deliver", "fetch"]);
+
+        await wakeups[Symbol.asyncDispose]();
+        await enqueue(ctx, { queue: "deliver", payload: {} });
+        assertEquals(heard, ["deliver", "fetch"]);
+    },
 });

@@ -1,7 +1,8 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
+import type { KyselyPlugin } from "kysely";
 import { createTestContext } from "../testing/context.ts";
 import { enqueue } from "./job_queries.ts";
-import { drain, pause, PermanentFailure, type Queue, RetryAt, work } from "./worker.ts";
+import { drain, idleWaitMs, pause, PermanentFailure, type Queue, RetryAt, work } from "./worker.ts";
 
 const open = () => createTestContext();
 
@@ -315,4 +316,86 @@ Deno.test("a pause removes every listener it added, however it ends", async () =
     await woken;
 
     assertEquals(events.listening, 0);
+});
+
+Deno.test("an idle queue waits twice as long each time, up to a limit, and no later than a job is due", () => {
+    const waits = [1, 2, 3, 4, 5].map((idle) => idleWaitMs(100, 500, idle));
+    assertEquals(waits, [100, 200, 400, 500, 500]);
+    assertEquals(idleWaitMs(100, 500, 4, 250), 250);
+    // A limit below the poll doesn't shorten it.
+    assertEquals(idleWaitMs(100, 50, 3), 100);
+});
+
+Deno.test("an idle queue still runs a job when it becomes due", async () => {
+    await using test = await open();
+
+    let ran = false;
+    const controller = new AbortController();
+    const done = work(
+        test.ctx,
+        { deliver: { handler: () => Promise.resolve(void (ran = true)), concurrency: 1 } },
+        { worker: "w1", pollMs: 5, idlePollMs: 60_000, signal: controller.signal },
+    );
+
+    await enqueue(test.ctx, {
+        queue: "deliver",
+        payload: {},
+        runAt: new Date(test.clock.now().getTime() + 50),
+    });
+    // Long enough to find nothing many times, after which the wait would be over a second.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    test.clock.advance(50);
+
+    const deadline = Date.now() + 500;
+    while (!ran && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 5));
+    controller.abort();
+    await done;
+
+    assertEquals(ran, true);
+});
+
+Deno.test("an idle queue looks less and less often, until a job is due", async () => {
+    await using test = await open();
+
+    let queries = 0;
+    const counting: KyselyPlugin = {
+        transformQuery: ({ node }) => {
+            queries++;
+            return node;
+        },
+        transformResult: ({ result }) => Promise.resolve(result),
+    };
+    const ctx = { ...test.ctx, db: test.ctx.db.withPlugin(counting) };
+
+    let ran = 0;
+    const controller = new AbortController();
+    const done = work(
+        ctx,
+        { deliver: { handler: () => Promise.resolve(void ran++), concurrency: 1 } },
+        { worker: "w1", pollMs: 5, idlePollMs: 100, signal: controller.signal },
+    );
+
+    // A job due much later doesn't keep it looking.
+    const hour = 60 * 60_000;
+    await enqueue(test.ctx, {
+        queue: "deliver",
+        payload: {},
+        runAt: new Date(test.clock.now().getTime() + hour),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Polling every 5 ms would look about 200 times; waiting up to 100 ms, about 15.
+    const looked = queries;
+    assert(looked < 80, `looked ${looked} times`);
+
+    // Having found a job, it looks often again.
+    await enqueue(test.ctx, { queue: "deliver", payload: {} });
+    while (ran === 0) await new Promise((resolve) => setTimeout(resolve, 5));
+    queries = 0;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const afterJob = queries;
+
+    controller.abort();
+    await done;
+
+    assert(afterJob >= 4, `looked ${afterJob} times`);
 });

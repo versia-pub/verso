@@ -23,7 +23,7 @@ import { indexUnindexedAccounts } from "./search/accounts.ts";
 import { indexUnindexed } from "./search/notes.ts";
 import { queues, tasks } from "./jobs/queues.ts";
 import { runScheduler } from "./jobs/scheduler.ts";
-import { listenForJobs } from "./jobs/wakeups.ts";
+import { hearJobWakeups, listenForJobs } from "./jobs/wakeups.ts";
 import { work } from "./jobs/worker.ts";
 import { systemClock } from "./kernel/clock.ts";
 import type { Config } from "./kernel/config.ts";
@@ -198,7 +198,11 @@ export const run = async (role: Role, config: Config): Promise<number> => {
 
     const worker = ctx.ids();
 
-    await using wakeups = role === "serve" ? undefined : await listenForJobs(config.database);
+    await using wakeups = role === "serve"
+        ? undefined
+        : "sqlite" in config.database
+        ? hearJobWakeups(ctx)
+        : await listenForJobs(config.database);
     if (role !== "serve") {
         logger.info("Working on {queues} as {worker}", { queues: Object.keys(queues), worker });
     }
@@ -207,9 +211,13 @@ export const run = async (role: Role, config: Config): Promise<number> => {
         role === "work"
             ? undefined
             : serve(ctx, config, [...routes(config), ...devRoutes], stopping.signal),
-        role === "serve"
-            ? undefined
-            : work(ctx, queues, { worker, pollMs: 1000, signal: stopping.signal, wakeups }),
+        role === "serve" ? undefined : work(ctx, queues, {
+            worker,
+            pollMs: 1000,
+            idlePollMs: 10_000,
+            signal: stopping.signal,
+            wakeups,
+        }),
         role === "serve"
             ? undefined
             : runScheduler(ctx, tasks, { intervalMs: 60_000, signal: stopping.signal }),

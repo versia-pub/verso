@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
-import { CompiledQuery, sql } from "kysely";
+import { CompiledQuery, type KyselyPlugin, sql } from "kysely";
 import { testDatabaseKind } from "../db/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import type { JobsTable } from "./tables.ts";
@@ -8,11 +8,13 @@ import {
     claim,
     claimable,
     complete,
+    deadLetters,
     deleteExpiredJobs,
     enqueue,
     enqueueAll,
     fail,
     giveUp,
+    nextRunAt,
     postpone,
     release,
 } from "./job_queries.ts";
@@ -264,6 +266,60 @@ Deno.test("claiming can skip groups, but never jobs without one", async () => {
     assertEquals(ids(await claim(test.ctx, { ...options, skipGroups: [] })).toSorted(), [1, 4]);
 });
 
+Deno.test({
+    name: "on SQLite, claiming from a queue with nothing due writes nothing",
+    ignore: testDatabaseKind !== "sqlite",
+    fn: async () => {
+        await using test = await open();
+        const kinds: string[] = [];
+        const counting: KyselyPlugin = {
+            transformQuery: ({ node }) => {
+                kinds.push(node.kind);
+                return node;
+            },
+            transformResult: ({ result }) => Promise.resolve(result),
+        };
+        const ctx = { ...test.ctx, db: test.ctx.db.withPlugin(counting) };
+
+        await enqueue(test.ctx, { queue: "notify", payload: { n: 1 } });
+        await enqueue(test.ctx, {
+            queue: "deliver",
+            payload: { n: 2 },
+            runAt: new Date(test.clock.now().getTime() + minute),
+        });
+
+        assertEquals(await claim(ctx, options), []);
+        assertEquals(kinds, ["SelectQueryNode"]);
+
+        test.clock.advance(minute);
+        assertEquals(ids(await claim(ctx, options)), [2]);
+    },
+});
+
+Deno.test("an idle worker learns when the next job of its queue is due", async () => {
+    await using test = await open();
+    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
+    const add = (n: number, job: { queue?: string; runAt?: Date; keepUntil?: Date }) =>
+        enqueue(test.ctx, { queue: "deliver", payload: { n }, ...job });
+
+    assertEquals(await nextRunAt(test.ctx, "deliver"), undefined);
+
+    // Neither one due already, nor one that finished or died, nor another queue's, is next.
+    await add(1, {});
+    await add(2, { keepUntil: at(60) });
+    await add(3, {});
+    await add(4, { queue: "notify", runAt: at(1) });
+    const [, finished, dead] = await claim(test.ctx, options);
+    await complete(test.ctx, finished);
+    await giveUp(test.ctx, dead, "invalid");
+    await test.ctx.db.updateTable("jobs").set({ run_at: at(1) })
+        .where("id", "in", [finished.id, dead.id]).execute();
+    await add(5, { runAt: at(3) });
+    await add(6, { runAt: at(2) });
+
+    assertEquals(await nextRunAt(test.ctx, "deliver"), at(2));
+});
+
 Deno.test("a paused group's jobs aren't claimed until the pause ends", async () => {
     await using test = await open();
     const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
@@ -437,6 +493,68 @@ Deno.test("a dead letter is deleted 30 days after it died, and a job being retri
     test.clock.advance(day);
     await deleteExpiredJobs(test.ctx);
     assertEquals(await queues(), ["retried"]);
+});
+
+Deno.test("expired jobs are deleted a batch at a time, until none are left", async () => {
+    await using test = await createTestContext({ settings: { deadLetterMs: minute } });
+    const later = new Date(test.clock.now().getTime() + minute);
+
+    for (const n of [1, 2, 3, 4, 5]) {
+        await enqueue(test.ctx, { queue: "done", payload: { n }, keepUntil: later });
+        await enqueue(test.ctx, { queue: "dead", payload: { n } });
+    }
+    // Neither a job that hasn't run, whatever its `keepUntil`, nor a finished one still kept, though
+    // it used every attempt, has expired.
+    await enqueue(test.ctx, { queue: "waiting", payload: {}, keepUntil: later });
+    await enqueue(test.ctx, {
+        queue: "kept",
+        payload: {},
+        maxAttempts: 1,
+        keepUntil: new Date(later.getTime() + minute),
+    });
+    for (const queue of ["done", "kept"]) {
+        for (const job of await claim(test.ctx, { ...options, queue })) {
+            await complete(test.ctx, job);
+        }
+    }
+    for (const job of await claim(test.ctx, { ...options, queue: "dead" })) {
+        await giveUp(test.ctx, job, "invalid");
+    }
+
+    test.clock.advance(minute);
+    await deleteExpiredJobs(test.ctx, 2);
+
+    const left = await test.ctx.db.selectFrom("jobs").select("queue").orderBy("queue").execute();
+    assertEquals(left.map((job) => job.queue), ["kept", "waiting"]);
+});
+
+Deno.test("dead letters are found by an index of them only", async () => {
+    await using test = await open();
+    const { db } = test.ctx;
+
+    await enqueueAll(
+        test.ctx,
+        Array.from({ length: 200 }, (_, n) => ({ queue: "deliver", payload: { n } })),
+    );
+    const dead = deadLetters(test.ctx, test.clock.now()).limit(1000).compile();
+
+    if (testDatabaseKind === "sqlite") {
+        const plan = await db.executeQuery<{ detail: string }>(
+            CompiledQuery.raw(`explain query plan ${dead.sql}`, [...dead.parameters]),
+        );
+        assertStringIncludes(plan.rows.map((row) => row.detail).join("\n"), "jobs_dead (run_at<?)");
+        return;
+    }
+
+    await sql`set enable_seqscan = off`.execute(db);
+    const plan = await db.executeQuery(
+        CompiledQuery.raw(`explain (analyze, format json) ${dead.sql}`, [...dead.parameters]),
+    );
+    const text = JSON.stringify(plan.rows);
+    // The index holds none of the waiting jobs, so the scan reads none.
+    const scans = [...text.matchAll(/"Index Name":"jobs_dead"[^}]*?"Actual Rows":(\d+)/g)];
+    assertEquals(scans.map((scan) => scan[1]), ["0"]);
+    assertEquals(/"Rows Removed by Filter":[1-9]/.test(text), false);
 });
 
 Deno.test("dead letters are kept for as long as settings say", async () => {

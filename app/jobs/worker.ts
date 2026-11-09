@@ -6,6 +6,7 @@ import {
     type DeadPayload,
     fail,
     giveUp,
+    nextRunAt,
     postpone,
     release,
 } from "./job_queries.ts";
@@ -39,6 +40,11 @@ export type WorkOptions = {
     readonly worker: string;
     /** How long to wait before looking again when a queue has nothing due. */
     readonly pollMs: number;
+    /**
+     * How long a queue that keeps having nothing due may wait, waiting twice as long each time it
+     * finds nothing, though never past when its next job is due. Defaults to `pollMs`.
+     */
+    readonly idlePollMs?: number;
     /** Stops claiming jobs; `work` resolves once the jobs already running have finished. */
     readonly signal: AbortSignal;
     /** Fires an event named after a queue when it gets a new job, to look before the next poll. */
@@ -130,6 +136,18 @@ export const pause = (
         for (const { events, name } of wakeups) events.addEventListener(name, done);
     });
 
+/**
+ * How long to wait after finding nothing due `idle` times in a row: `pollMs` the first time, twice
+ * as long each time after, at most `idlePollMs`, and no longer than `untilDueMs`, until the next
+ * job is due.
+ */
+export const idleWaitMs = (
+    pollMs: number,
+    idlePollMs: number,
+    idle: number,
+    untilDueMs = Infinity,
+): number => Math.min(pollMs * 2 ** (idle - 1), Math.max(idlePollMs, pollMs), untilDueMs);
+
 const workQueue = async (ctx: Context, name: string, queue: Queue, options: WorkOptions) => {
     const running = new Set<Promise<void>>();
 
@@ -145,6 +163,26 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
     const groups = new Map<string, number>();
     const perGroup = queue.perGroup ?? Infinity;
     const isFull = (group: string) => (groups.get(group) ?? 0) >= perGroup;
+
+    // How many claims in a row found nothing, and how long to wait after the last.
+    let idle = 0;
+    const waitMs = async () => {
+        if (idle === 0 || (options.idlePollMs ?? 0) <= options.pollMs) return options.pollMs;
+
+        let untilDueMs: number | undefined;
+        try {
+            const next = await nextRunAt(ctx, name);
+            if (next) untilDueMs = next.getTime() - ctx.clock.now().getTime();
+        } catch (error) {
+            logger.error("Couldn't find when {queue} has a job due: {error}", {
+                queue: name,
+                error,
+            });
+            return options.pollMs;
+        }
+
+        return idleWaitMs(options.pollMs, options.idlePollMs ?? 0, idle, untilDueMs);
+    };
 
     while (!options.signal.aborted) {
         const free = queue.concurrency - running.size;
@@ -195,8 +233,9 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
         // A full batch means more may be due, and so may a slot freed in the meantime. Otherwise
         // wait for a free slot, a new job or the next poll.
         const waiting = limit <= 0 || jobs.length < limit;
+        if (limit > 0) idle = jobs.length === 0 ? idle + 1 : 0;
         if (waiting && finishedCount === finishedBefore) {
-            await pause(options.pollMs, options.signal, wakeups);
+            await pause(await waitMs(), options.signal, wakeups);
         }
     }
 

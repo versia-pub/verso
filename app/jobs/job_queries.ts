@@ -1,12 +1,14 @@
 import type { SelectQueryBuilder } from "kysely";
 import { batchesOf } from "../db/batches.ts";
+import { usesSqlite } from "../db/columns.ts";
 import type { Database } from "../db/database.ts";
 import { skippingLocked } from "../db/locking.ts";
 import { notify } from "../db/notify.ts";
 import type { Context } from "../kernel/context.ts";
+import { publish } from "../kernel/pubsub.ts";
 import { type PauseEnds, pausesOf } from "./job_pause_queries.ts";
 import type { JobPayload, JobsTable } from "./tables.ts";
-import { jobsChannel } from "./wakeups.ts";
+import { jobsChannel, jobWakeups } from "./wakeups.ts";
 
 export type NewJob = {
     readonly queue: string;
@@ -56,8 +58,18 @@ const rowOf = (ctx: Context, job: NewJob, pauses: PauseEnds) => {
 };
 
 /**
+ * Wakes `queue`'s idle workers once the current transaction commits: on Postgres with a
+ * notification, which workers in every process hear, and on SQLite, whose workers run in this
+ * process, with a message.
+ */
+const wake = async (ctx: Context, queue: string) => {
+    await notify(ctx.db, jobsChannel, queue);
+    if (usesSqlite(ctx.db)) await publish(ctx, jobWakeups, queue);
+};
+
+/**
  * Adds a job inside the caller's transaction, so it exists exactly when the change that caused it
- * commits, and wakes idle workers on Postgres once it does. Returns its id, or `undefined` when its
+ * commits, and wakes idle workers once it does. Returns its id, or `undefined` when its
  * dedupe key is already queued.
  */
 export const enqueue = async (
@@ -70,7 +82,7 @@ export const enqueue = async (
         .returning("id")
         .executeTakeFirst();
 
-    if (inserted && job.wake !== false) await notify(ctx.db, jobsChannel, job.queue);
+    if (inserted && job.wake !== false) await wake(ctx, job.queue);
     return inserted?.id;
 };
 
@@ -91,7 +103,7 @@ export const enqueueAll = async (ctx: Context, jobs: readonly NewJob[]): Promise
     // A queue is woken if any job it received asks to be.
     const waking = new Set(jobs.filter((job) => job.wake !== false).map((job) => job.queue));
 
-    for (const queue of woken) if (waking.has(queue)) await notify(ctx.db, jobsChannel, queue);
+    for (const queue of woken) if (waking.has(queue)) await wake(ctx, queue);
 };
 
 export type ClaimOptions = {
@@ -150,6 +162,12 @@ export const claimable = (
 export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTable[]> => {
     const now = ctx.clock.now();
 
+    // An update takes SQLite's only write lock even when it changes nothing, so look first.
+    if (usesSqlite(ctx.db)) {
+        const due = await claimable(ctx, { ...options, limit: 1 }, now).executeTakeFirst();
+        if (due === undefined) return [];
+    }
+
     const jobs = await ctx.db.updateTable("jobs")
         .set((eb) => ({
             lease_owner: options.worker,
@@ -163,6 +181,24 @@ export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTa
     return jobs.toSorted((a, b) =>
         a.run_at.getTime() - b.run_at.getTime() || a.id.localeCompare(b.id)
     );
+};
+
+/**
+ * When the next of `queue`'s jobs that aren't due yet becomes due, if it has any, so an idle worker
+ * can look again then. Jobs already due aren't counted: those it couldn't claim, such as a paused
+ * group's, wait for something else.
+ */
+export const nextRunAt = async (ctx: Context, queue: string): Promise<Date | undefined> => {
+    const next = await ctx.db.selectFrom("jobs").select("run_at")
+        .where("queue", "=", queue)
+        .where("run_at", ">", ctx.clock.now())
+        .where("finished_at", "is", null)
+        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
+        .orderBy("run_at")
+        .limit(1)
+        .executeTakeFirst();
+
+    return next?.run_at;
 };
 
 /**
@@ -203,22 +239,42 @@ export const complete = async (ctx: Context, job: JobsTable): Promise<void> => {
 };
 
 /**
- * Deletes finished jobs that no longer need to be retained, dead letters retained as long as the
- * settings say, and pauses that ended.
+ * The dead letters that died by `before`, which is when they were given up on. Exported for the
+ * tests of its query plan.
  */
-export const deleteExpiredJobs = async (ctx: Context): Promise<void> => {
-    const now = ctx.clock.now();
-
-    await ctx.db.deleteFrom("jobs")
-        .where("finished_at", "is not", null)
-        .where("keep_until", "<=", now)
-        .execute();
-
-    await ctx.db.deleteFrom("jobs")
+export const deadLetters = (
+    ctx: Context,
+    before: Date,
+): SelectQueryBuilder<Database, "jobs", { id: string }> =>
+    ctx.db.selectFrom("jobs").select("id")
         .where("finished_at", "is", null)
         .where((eb) => eb("attempts", ">=", eb.ref("max_attempts")))
-        .where("run_at", "<=", new Date(now.getTime() - ctx.settings.deadLetterMs))
-        .execute();
+        .where("run_at", "<=", before);
+
+/**
+ * Deletes finished jobs that no longer need to be retained, dead letters retained as long as the
+ * settings say, and pauses that ended. Jobs go `batchSize` at a time, so no one delete holds the
+ * table, or SQLite's write lock, for long.
+ */
+export const deleteExpiredJobs = async (ctx: Context, batchSize = 1000): Promise<void> => {
+    const now = ctx.clock.now();
+    const deadBefore = new Date(now.getTime() - ctx.settings.deadLetterMs);
+
+    const expired = [
+        ctx.db.selectFrom("jobs").select("id")
+            .where("finished_at", "is not", null)
+            .where("keep_until", "<=", now),
+        deadLetters(ctx, deadBefore),
+    ];
+
+    for (const jobs of expired) {
+        for (;;) {
+            const deleted = await ctx.db.deleteFrom("jobs")
+                .where("id", "in", jobs.limit(batchSize))
+                .executeTakeFirst();
+            if (deleted.numDeletedRows < BigInt(batchSize)) break;
+        }
+    }
 
     await ctx.db.deleteFrom("job_pauses").where("until", "<=", now).execute();
 };

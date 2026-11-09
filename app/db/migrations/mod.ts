@@ -84,6 +84,7 @@ import { attributionDomains } from "./0082_attribution_domains.ts";
 import { profileTabs } from "./0083_profile_tabs.ts";
 import { policyForBots } from "./0084_policy_for_bots.ts";
 import { claimsByTime } from "./0085_claims_by_time.ts";
+import { deadLetterIndex } from "./0086_dead_letter_index.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -175,4 +176,5 @@ export const migrations: Record<string, Migration> = {
     "0083_profile_tabs": profileTabs,
     "0084_policy_for_bots": policyForBots,
     "0085_claims_by_time": claimsByTime,
+    "0086_dead_letter_index": deadLetterIndex,
 };

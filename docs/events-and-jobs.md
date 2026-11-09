@@ -77,7 +77,7 @@ await enqueueAll(
 | `runAt`       | when it may first run; now by default, or when its group's pause ends    |
 | `maxAttempts` | how many tries before it gives up; 10 by default                         |
 | `keepUntil`   | keeps the finished job, and its dedupe key, until then                   |
-| `wake`        | wakes idle workers at once on Postgres, rather than at their next poll   |
+| `wake`        | wakes idle workers at once, rather than at their next poll               |
 
 ### Queues
 
@@ -155,8 +155,10 @@ then, and so are jobs enqueued to the group while it lasts, so claims don't read
 ### Workers and the scheduler
 
 `verso work` and `verso all` run `work` from [`app/jobs/worker.ts`](../app/jobs/worker.ts), which
-loops over every queue and claims jobs as slots free up. On Postgres, `enqueue` sends a `NOTIFY` on
-commit, so idle workers start straight away. Otherwise they poll every second. When stopped, a
+loops over every queue and claims jobs as slots free up. Once its transaction commits, `enqueue`
+wakes idle workers, so they start straight away: on Postgres with a `NOTIFY`, and on SQLite within
+the process. Otherwise a queue with nothing due waits a second before looking again, then twice as
+long each time, up to ten seconds, though never past when its next job is due. When stopped, a
 worker stops claiming jobs and waits for running ones to finish.
 
 The scheduler, in [`app/jobs/scheduler.ts`](../app/jobs/scheduler.ts), queues recurring work. The
