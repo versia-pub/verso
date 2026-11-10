@@ -6,7 +6,7 @@
 import type { Selectable, SqlBool } from "kysely";
 import { sql } from "kysely";
 import { batchesOf } from "../db/batches.ts";
-import { notExcluded } from "../graph/blocks.ts";
+import { notExcluded, notSuspendedOrSilenced } from "../graph/excluded_queries.ts";
 import { blockerIdsQuery } from "../graph/block_queries.ts";
 import { hiddenFrom } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
@@ -35,7 +35,7 @@ export const trendingTags = async (ctx: Context): Promise<TrendingTag[]> =>
 
 /**
  * The hashtags that at least `accounts` accounts used in public statuses, not boosts, since
- * `since`.
+ * `since`. Suspended and silenced accounts' statuses don't count, as on Mastodon.
  */
 export const hashtagsUsedBy = async (
     ctx: Context,
@@ -49,6 +49,7 @@ export const hashtagsUsedBy = async (
         .where("notes.visibility", "=", "public")
         .where("notes.reblog_of_id", "is", null)
         .where("notes.created_at", ">=", since)
+        .where(notSuspendedOrSilenced(ctx, "notes.account_id"))
         .groupBy("note_tags.name")
         .having((eb) => eb(eb.fn.count("notes.account_id").distinct(), ">=", accounts))
         .execute();
@@ -118,7 +119,8 @@ export type StatusCandidate = {
 /**
  * The statuses since `since` that could trend, with at least `interactions` likes and boosts:
  * public ones, but not boosts, replies or ones that are sensitive or have a content warning, by
- * local accounts that are discoverable and by remote accounts, which have no say in it.
+ * local accounts that are discoverable and by remote accounts, which have no say in it, but not by
+ * suspended or silenced accounts, as on Mastodon.
  */
 export const statusCandidates = async (
     ctx: Context,
@@ -142,6 +144,8 @@ export const statusCandidates = async (
                 eb("accounts.discoverable", "=", true),
             ])
         )
+        .where("accounts.suspended_at", "is", null)
+        .where("accounts.silenced_at", "is", null)
         .where(sql<boolean>`${total} >= ${interactions}`)
         .execute();
 
@@ -193,7 +197,9 @@ export const approvedTrendingStatuses = async (
         .innerJoin("accounts", "accounts.id", "notes.account_id")
         .selectAll("notes")
         .where(approved("accounts.trendable", byDefault))
-        .where("notes.visibility", "=", "public");
+        .where("notes.visibility", "=", "public")
+        // Mastodon drops a suspended account's statuses from trends at once.
+        .where("accounts.suspended_at", "is", null);
 
     if (viewerId !== null) {
         query = query

@@ -1,11 +1,14 @@
 import { assertEquals } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { createInstance } from "../instances/testing.ts";
+import { silence, unsilence } from "../moderation/silences.ts";
+import { suspend, unsuspend } from "../moderation/suspensions.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { setLink } from "../previews/card_queries.ts";
 import { createCard } from "../previews/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { refreshTrendingLinks, refreshTrendingStatuses, refreshTrendingTags } from "./refresh.ts";
+import { approvedTrendingStatuses } from "./trend_queries.ts";
 
 const hour = 60 * 60 * 1000;
 
@@ -390,4 +393,73 @@ Deno.test("a trending link nobody shared today stays until its peak has decayed 
     test.clock.advance(16 * hour);
     await refreshTrendingLinks(test.ctx);
     assertEquals(await trendingCardScores(test), [4]);
+});
+
+Deno.test("suspended and silenced accounts' statuses don't count toward hashtags trending", async () => {
+    await using test = await open();
+    const accounts = ["alice", "b", "c", "d", "e"];
+    for (const id of accounts.slice(1)) await createLocalAccount(test.ctx, id);
+    await use(test, "cats", accounts);
+
+    /** The names of the hashtags trending after a refresh. */
+    const trending = async () => {
+        await refreshTrendingTags(test.ctx);
+        return (await tagNames(test)).map(([name]) => name);
+    };
+
+    await silence(test.ctx, "e");
+    assertEquals(await trending(), []);
+
+    await unsilence(test.ctx, "e");
+    await suspend(test.ctx, "d");
+    assertEquals(await trending(), []);
+
+    await unsuspend(test.ctx, "d");
+    assertEquals(await trending(), ["cats"]);
+});
+
+Deno.test("suspended and silenced accounts' statuses don't trend, and suspended ones stop showing at once", async () => {
+    await using test = await open();
+    await test.ctx.db.updateTable("accounts").set({ discoverable: true }).execute();
+    const local = await createNote(test.ctx, "alice", { likes_count: 10 });
+    const remote = await createNote(test.ctx, "rem", { likes_count: 10 });
+    const shown = async () =>
+        (await approvedTrendingStatuses(test.ctx, true, null, 40, 0)).map((note) => note.id);
+
+    await refreshTrendingStatuses(test.ctx);
+    assertEquals((await shown()).toSorted(), [local.id, remote.id].toSorted());
+
+    await suspend(test.ctx, "alice");
+    await silence(test.ctx, "rem");
+    assertEquals(await shown(), [remote.id]);
+
+    await refreshTrendingStatuses(test.ctx);
+    assertEquals(await trendingStatuses(test), []);
+});
+
+Deno.test("a link shared by a suspended or silenced account, or boosted from one, doesn't count", async () => {
+    await using test = await open();
+    for (const id of [...sharers.slice(1), "f", "g", "h"]) await createLocalAccount(test.ctx, id);
+
+    // Alice shared one, and the others boosted her status, but e is silenced.
+    const first = await share(test, ["alice"]);
+    for (const id of sharers.slice(1)) await createShare(test.ctx, id, first.notes[0]);
+    await silence(test.ctx, "e");
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), []);
+
+    await createShare(test.ctx, "f", first.notes[0]);
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), [16]);
+
+    // Boosts of a suspended account's status don't count either, though there are enough.
+    const second = await share(test, ["g"]);
+    for (const id of ["b", "c", "d", "f", "h"]) await createShare(test.ctx, id, second.notes[0]);
+    await suspend(test.ctx, "g");
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), [16]);
+
+    await unsuspend(test.ctx, "g");
+    await refreshTrendingLinks(test.ctx);
+    assertEquals(await trendingCardScores(test), [16, 25]);
 });

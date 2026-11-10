@@ -21,7 +21,7 @@ export const insertDismissal = async (
  * Whether the account of `table`, an alias of `accounts`, could be suggested to `viewerId`: it isn't
  * them, and isn't followed or requested by them, hidden from them, blocking them or dismissed by
  * them. Local accounts must be discoverable, while remote ones, which have no such setting, always
- * are.
+ * are. Suspended and silenced accounts aren't suggested, as on Mastodon.
  *
  * This reads the follows of the graph module, to be one query with the others here.
  */
@@ -39,6 +39,8 @@ const suggestible = (ctx: Context, viewerId: string, table: string): Filter => (
             eb(sql.ref<string | null>(`${table}.instance_id`), "is not", null),
             eb(sql.ref<boolean>(`${table}.discoverable`), "=", true),
         ]),
+        eb(sql.ref<Date | null>(`${table}.suspended_at`), "is", null),
+        eb(sql.ref<Date | null>(`${table}.silenced_at`), "is", null),
         eb(id, "<>", viewerId),
         eb(id, "not in", followed),
         eb(id, "not in", dismissed),

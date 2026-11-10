@@ -3,6 +3,8 @@ import { tokenFor } from "../auth/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
+import { silence, unsilence } from "../moderation/silences.ts";
+import { suspend, unsuspend } from "../moderation/suspensions.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
 import { directoryRoutes } from "./directory.ts";
@@ -68,4 +70,16 @@ Deno.test("the directory leaves out who the viewer blocks or mutes, and who bloc
     assertEquals(await test.list("/api/v1/directory"), []);
     assertEquals(await test.list("/api/v1/directory", null), ["cat", "ann", "bea"]);
     assertEquals(await test.list("/api/v1/directory", "bea"), ["cat", "ann", "bea"]);
+});
+
+Deno.test("the directory leaves out suspended and silenced accounts", async () => {
+    await using test = await open();
+    await suspend(test.ctx, "ann");
+    await silence(test.ctx, "bea");
+
+    assertEquals(await test.list("/api/v1/directory", null), ["cat"]);
+
+    await unsuspend(test.ctx, "ann");
+    await unsilence(test.ctx, "bea");
+    assertEquals(await test.list("/api/v1/directory", null), ["cat", "ann", "bea"]);
 });

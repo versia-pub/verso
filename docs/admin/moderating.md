@@ -47,7 +47,8 @@ ones.
 
 Local users see a suspended account's profile blank, and can't follow it or mention it. Its
 statuses, follows, favourites and boosts, and its notifications to them, are hidden, and searches
-don't find it unless its full address is given.
+don't find it unless its full address is given. It isn't in the directory or suggested, and nothing
+of its trends.
 
 ## Silencing accounts
 
@@ -58,7 +59,8 @@ of threads, status search and lists of quotes for anyone who doesn't follow it, 
 still opens. Its notifications to users who don't follow it go through their policy for limited
 accounts, which filters them unless they change it. Its follows are requests, even to unlocked
 accounts, and stay requests when an account is unlocked. A silenced local user's public statuses are
-posted unlisted. Other instances aren't told.
+posted unlisted. It isn't in the directory or suggested, and what it posts and boosts doesn't count
+toward trends. Other instances aren't told.
 
 ## Removing statuses
 

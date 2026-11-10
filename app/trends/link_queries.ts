@@ -6,7 +6,7 @@
 import { type Selectable, sql, type SqlBool } from "kysely";
 import { batchesOf } from "../db/batches.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
-import { type Excluded, notExcluded } from "../graph/blocks.ts";
+import { type Excluded, notExcluded, notSuspendedOrSilenced } from "../graph/excluded_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
 import type { NoteRow } from "../notes/note_queries.ts";
@@ -24,7 +24,8 @@ export type TrendingCard = PreviewCardRow & { readonly score: number };
  * The statuses since `since` that share a card that could trend, and the cards: public statuses,
  * and public boosts of public statuses, but not of ones that are sensitive or have a content
  * warning. A card could trend if it is for an article with a title, a description, an image and a
- * provider, as Mastodon requires. Boosts count for the cards of the statuses they share.
+ * provider, as Mastodon requires. Boosts count for the cards of the statuses they share. Neither
+ * the author nor the booster may be suspended or silenced, as on Mastodon.
  */
 const sharesSince = (ctx: Pick<Context, "db">, since: Date) =>
     ctx.db.selectFrom("notes")
@@ -38,6 +39,8 @@ const sharesSince = (ctx: Pick<Context, "db">, since: Date) =>
         .where("notes.created_at", ">=", since)
         .where("notes.visibility", "=", "public")
         .where("original.visibility", "=", "public")
+        .where(notSuspendedOrSilenced(ctx, "notes.account_id"))
+        .where(notSuspendedOrSilenced(ctx, "original.account_id"))
         .where("original.spoiler_text", "=", "")
         .where("original.sensitive", "=", false)
         .where("preview_cards.link_type", "=", "article")

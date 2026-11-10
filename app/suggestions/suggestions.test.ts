@@ -5,6 +5,8 @@ import { blockDomainFor } from "../graph/domain_blocks.ts";
 import { insertFollow } from "../graph/follow_queries.ts";
 import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
+import { silence, unsilence } from "../moderation/silences.ts";
+import { suspend, unsuspend } from "../moderation/suspensions.ts";
 import { createTestContext } from "../testing/context.ts";
 import { friendsOfFriends } from "./suggestion_queries.ts";
 import { dismissSuggestion, suggestionsFor } from "./suggestions.ts";
@@ -217,4 +219,16 @@ Deno.test("the picks that Verso doesn't know are not looked up on their instance
         "dan: friends_of_friends",
     ]);
     assertEquals(test.transport.sent.length, 0);
+});
+
+Deno.test("suspended and silenced accounts aren't suggested, from either source", async () => {
+    await using test = await open();
+    await suspend(test.ctx, "cat");
+    await silence(test.ctx, "dan");
+
+    assertEquals(await test.suggested(["cat", "dan", "eve"]), ["eve: featured"]);
+
+    await unsuspend(test.ctx, "cat");
+    await unsilence(test.ctx, "dan");
+    assertEquals(await test.suggested(), ["cat: friends_of_friends", "dan: friends_of_friends"]);
 });

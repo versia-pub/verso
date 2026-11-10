@@ -1,5 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
+import { silence } from "../moderation/silences.ts";
+import { suspend } from "../moderation/suspensions.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { decideTag } from "./review.ts";
@@ -40,4 +42,16 @@ Deno.test("a hashtag's name is looked up in lower case, with or without its #", 
     assertEquals(await decideTag(test.ctx, "#cats", false), true);
     assertEquals(await trendable(), false);
     assertEquals(await setTagTrendable(test.ctx, "dogs", true), false);
+});
+
+Deno.test("suspended and silenced accounts' uses of a hashtag don't count", async () => {
+    await using test = await createTestContext();
+    for (const id of accounts) await createLocalAccount(test.ctx, id);
+    const since = new Date("2025-12-31T00:00:00Z");
+    for (const id of accounts) await createNote(test.ctx, id, {}, [], ["cats"]);
+
+    await silence(test.ctx, "d");
+    await suspend(test.ctx, "e");
+    assertEquals(await hashtagsUsedBy(test.ctx, since, 4), []);
+    assertEquals(await hashtagsUsedBy(test.ctx, since, 3), ["cats"]);
 });

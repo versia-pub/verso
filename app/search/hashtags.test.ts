@@ -1,6 +1,8 @@
 import { assertEquals } from "@std/assert";
 import type { Visibility } from "../kernel/visibility.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
+import { silence } from "../moderation/silences.ts";
+import { suspend } from "../moderation/suspensions.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { type HashtagSearch, renderHashtags, searchHashtags } from "./hashtags.ts";
@@ -103,4 +105,21 @@ Deno.test("a hashtag shows how public and unlisted statuses used it each day of 
         },
     ]);
     assertEquals(await renderHashtags(test.ctx, [], null), []);
+});
+
+Deno.test("a hashtag's history leaves out suspended and silenced accounts' statuses", async () => {
+    await using test = await open();
+    for (const id of ["bob", "carol"]) await createLocalAccount(test.ctx, id);
+    for (const id of ["alice", "bob", "carol"]) await createNote(test.ctx, id, {}, [], ["verso"]);
+
+    const today = async () => {
+        const [rendered] = await renderHashtags(test.ctx, ["verso"], null);
+        const { uses, accounts } = rendered.history[0];
+        return [uses, accounts];
+    };
+    assertEquals(await today(), ["3", "3"]);
+
+    await silence(test.ctx, "bob");
+    await suspend(test.ctx, "carol");
+    assertEquals(await today(), ["1", "1"]);
 });

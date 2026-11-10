@@ -79,10 +79,10 @@ export const notSuspended =
 
 /**
  * Whether the account whose id is in `column` is neither suspended nor silenced. Mastodon leaves
- * both out of its public timelines.
+ * both out of its public timelines, directory, suggestions and trends.
  */
 export const notSuspendedOrSilenced =
-    (ctx: Context, column: string): Filter =>
+    (ctx: Pick<Context, "db">, column: string): Filter =>
     <DB, TB extends keyof DB>(eb: ExpressionBuilder<DB, TB>): Expression<SqlBool> =>
         eb.not(eb.exists(
             ctx.db.selectFrom("accounts as restricted").select("restricted.id")

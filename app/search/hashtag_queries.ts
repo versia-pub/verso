@@ -5,6 +5,7 @@
  */
 import { type Expression, type RawBuilder, sql, type SqlBool } from "kysely";
 import { usesSqlite } from "../db/columns.ts";
+import { notSuspendedOrSilenced } from "../graph/excluded_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
 import type { Visibility } from "../kernel/visibility.ts";
@@ -78,7 +79,8 @@ export const dayOf = (days: readonly Date[]): RawBuilder<number> =>
 /**
  * How statuses of the visibilities `visibilities`, public and unlisted unless said otherwise, used
  * each of `names` on each of the days that start at `days`, newest first, each a day long, as
- * Mastodon counts its uses. Days they weren't used are left out.
+ * Mastodon counts its uses. Days they weren't used are left out, and so are statuses by suspended or
+ * silenced accounts, which Mastodon doesn't count.
  *
  * Only statuses whose ids are from the oldest day on are counted, so that the hashtags' index
  * reads only those, not every use there ever was. Ids have the time a status was made, except a
@@ -108,6 +110,7 @@ export const hashtagUses = async (
         .where("note_tags.name", "in", names)
         .where("note_tags.note_id", ">=", firstIdAt(oldest))
         .where("notes.visibility", "in", visibilities)
+        .where(notSuspendedOrSilenced(ctx, "notes.account_id"))
         .where("notes.created_at", ">=", oldest)
         .where("notes.created_at", "<", new Date(newest.getTime() + 24 * 60 * 60 * 1000))
         .groupBy(["note_tags.name", sql`day`])
