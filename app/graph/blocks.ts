@@ -3,8 +3,9 @@
  * Mastodon, a block is the blocker's alone, for their safety: the blocked account is never
  * notified, nor can it tell, so it ends no follows, and nothing about it is sent to remote
  * instances. A blocked follower stops being shown the blocker's followers-only statuses, as if the
- * blocker had stopped posting them, unless a status mentions it. Only those whose role lets them see everyone's blocks, such as moderators, see who
- * blocks an account.
+ * blocker had stopped posting them, unless a status mentions it: they aren't sent, nor given, to an
+ * instance where every follower is one the blocker blocks, individually or by domain. Only those
+ * whose role lets them see everyone's blocks, such as moderators, see who blocks an account.
  * @see https://docs.joinmastodon.org/methods/accounts/#block
  * @module
  */

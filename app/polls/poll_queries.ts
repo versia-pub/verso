@@ -1,5 +1,6 @@
 import { type Selectable, sql } from "kysely";
 import { skippingLocked } from "../db/locking.ts";
+import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { PollOptionsTable, PollsTable, PollVotesTable } from "./tables.ts";
 
@@ -210,13 +211,20 @@ export const findVotes = (ctx: Context, ids: readonly string[]): Promise<PollVot
         : ctx.db.selectFrom("poll_votes").selectAll().where("id", "in", ids).orderBy("choice")
             .execute();
 
-/** The instances of the remote accounts that voted in `pollId`. */
-export const voterInstances = async (ctx: Context, pollId: string): Promise<string[]> =>
+/** The instances of the remote accounts that voted in `pollId`, other than `skipped`. */
+export const voterInstances = async (
+    ctx: Context,
+    pollId: string,
+    skipped?: AccountIdQuery,
+): Promise<string[]> =>
     (await ctx.db.selectFrom("poll_votes")
         .innerJoin("accounts", "accounts.id", "poll_votes.account_id")
         .select("accounts.instance_id")
         .distinct()
         .where("poll_votes.poll_id", "=", pollId)
+        .$call((query) =>
+            skipped === undefined ? query : query.where("poll_votes.account_id", "not in", skipped)
+        )
         .execute()).flatMap((row) => row.instance_id ?? []);
 
 /**

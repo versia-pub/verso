@@ -19,15 +19,18 @@ import { pinnedNotes } from "./pin_queries.ts";
 import { knownNote, prepareNote, receiveNote } from "./remote.ts";
 import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";
 import { deleteEntity } from "../federation/delete.ts";
+import { blockedByAccount } from "../graph/blocks.ts";
 import { isPollEnded, isPollUpdated } from "../polls/events.ts";
 import { voterInstances } from "../polls/poll_queries.ts";
 
 /**
- * Sends a local status that was just posted or edited to the instances of its audience, and to
- * `others`. Versia has no edits, so an edited status is sent again in full and replaces the version
- * the remote instance has.
+ * Sends a local status that was just posted or edited to the instances of its audience, and if it
+ * has a poll that ended or whose votes were counted, to those of its voters. Versia has no edits,
+ * so an edited status is sent again in full and replaces the version the remote instance has. A
+ * followers-only status isn't sent to the followers, nor the voters, that its author blocks, unless
+ * it mentions them.
  */
-const sendNote = async (ctx: Context, noteId: string, others: readonly string[] = []) => {
+const sendNote = async (ctx: Context, noteId: string, pollId?: string) => {
     const note = await findNote(ctx, noteId);
     if (note === undefined || note.instance_id !== null) return;
 
@@ -35,8 +38,14 @@ const sendNote = async (ctx: Context, noteId: string, others: readonly string[] 
     const [entity] = await renderVersiaNotes(ctx, [note]);
     const quoted = note.quote_id === null ? undefined : await findNote(ctx, note.quote_id);
     const audience = await audienceOf(ctx, note, mentionIds, quoted?.account_id);
-    const instanceIds = [...new Set([...audience.instanceIds, ...others])].toSorted();
-    await queueDeliveriesTo(ctx, entity, { ...audience, instanceIds });
+    const unblockedFollowers = note.visibility === "private";
+    const voters = pollId === undefined ? [] : await voterInstances(
+        ctx,
+        pollId,
+        unblockedFollowers ? blockedByAccount(ctx, note.account_id).all : undefined,
+    );
+    const instanceIds = [...new Set([...audience.instanceIds, ...voters])].toSorted();
+    await queueDeliveriesTo(ctx, entity, { ...audience, instanceIds, unblockedFollowers });
 };
 
 /**
@@ -49,7 +58,7 @@ const sendNote = async (ctx: Context, noteId: string, others: readonly string[] 
 export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (isNotePosted(event) || isNoteEdited(event)) return await sendNote(ctx, event.noteId);
     if (isPollEnded(event) || isPollUpdated(event)) {
-        return await sendNote(ctx, event.noteId, await voterInstances(ctx, event.pollId));
+        return await sendNote(ctx, event.noteId, event.pollId);
     }
     if (!isNoteDeleted(event)) return;
 

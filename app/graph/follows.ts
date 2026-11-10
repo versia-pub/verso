@@ -9,6 +9,7 @@ import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
+import { blockedByAccount } from "./blocks.ts";
 import type { FollowEvent } from "./events.ts";
 import {
     acceptPendingFollow,
@@ -212,21 +213,32 @@ export const followersAmong = async (
 };
 
 /**
- * Whether an account that follows `accountId`, and was accepted, and isn't suspended, is on the
- * instance `instanceId`.
+ * Whether an account that follows `accountId`, and was accepted, and isn't suspended, nor blocked by
+ * it, individually or by its domain, is on the instance `instanceId`: one that may see its
+ * followers-only statuses.
  */
-export const hasFollowersOn = (
+export const hasUnblockedFollowersOn = (
     ctx: Context,
     accountId: string,
     instanceId: string,
-): Promise<boolean> => anyFollowerOn(ctx, accountId, instanceId);
+): Promise<boolean> =>
+    anyFollowerOn(ctx, accountId, instanceId, blockedByAccount(ctx, accountId).all);
 
 /**
  * The remote instances that accounts following `accountId`, and accepted, are on, other than
- * suspended ones.
+ * suspended ones, and if `unblocked`, those it blocks, individually or by their domain, so that
+ * its followers-only statuses don't reach them.
  */
-export const followerInstances = (ctx: Context, accountId: string): Promise<string[]> =>
-    followerInstanceIds(ctx, accountId);
+export const followerInstances = (
+    ctx: Context,
+    accountId: string,
+    unblocked = false,
+): Promise<string[]> =>
+    followerInstanceIds(
+        ctx,
+        accountId,
+        unblocked ? blockedByAccount(ctx, accountId).all : undefined,
+    );
 
 /**
  * The accounts `accountId` follows, and was accepted by, as a subquery, for timelines and threads.

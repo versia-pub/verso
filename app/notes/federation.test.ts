@@ -6,6 +6,7 @@ import { audienceInstances } from "../federation/deliver.ts";
 import { queuedDeliveries } from "../federation/testing.ts";
 import { fetchSigned } from "../federation/request.ts";
 import type { CollectionProvider } from "../federation/registry.ts";
+import { block } from "../graph/blocks.ts";
 import { follow } from "../graph/follows.ts";
 import { addFollowers } from "../graph/testing.ts";
 import { setNoteEmojis } from "../emojis/emoji_queries.ts";
@@ -491,6 +492,35 @@ Deno.test("a deleted local note is deleted where it was sent, and a remote one n
         deleted_type: "Note",
         deleted: note.id,
     });
+});
+
+Deno.test("a followers-only note doesn't reach an instance where its author blocks every follower, unless it mentions one", async () => {
+    await using test = await open();
+    await follow(test.ctx, "erin", "alice");
+    await block(test.ctx, "alice", "carol");
+
+    const hidden = await post(test.ctx, "alice", "Hi", "private");
+    const mentioning = await post(test.ctx, "alice", "Hi @carol@b.example", "private");
+    const shown = await post(test.ctx, "alice", "Hi");
+    await removeNote(test.ctx, hidden?.id ?? "");
+
+    assertEquals((await sent(test.ctx)).toSorted(), [
+        ["b.example", "Delete", hidden?.id],
+        ["b.example", "Note", mentioning?.id],
+        ["b.example", "Note", shown?.id],
+        ["c.example", "Delete", hidden?.id],
+        ["c.example", "Note", hidden?.id],
+        ["c.example", "Note", mentioning?.id],
+        ["c.example", "Note", shown?.id],
+    ]);
+    assertEquals(await test.find(hidden?.id ?? "", "b.example"), undefined);
+    assertEquals((await test.find(mentioning?.id ?? "", "b.example"))?.id, mentioning?.id);
+
+    // Another follower there brings it back.
+    await createRemoteAccount(test.ctx, "dave", "b.example");
+    await follow(test.ctx, "dave", "alice");
+    const again = await createNote(test.ctx, "alice", { visibility: "private" });
+    assertEquals((await test.find(again.id, "b.example"))?.id, again.id);
 });
 
 Deno.test("a note reaches the instances of more followers than one query can name", async () => {

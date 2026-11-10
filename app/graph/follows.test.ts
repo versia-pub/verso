@@ -7,6 +7,8 @@ import { drain } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
+import { block } from "./blocks.ts";
+import { blockDomainFor } from "./domain_blocks.ts";
 import { followsFrom, followsOf, unsilencedRequestIds } from "./follow_queries.ts";
 import {
     acceptFollow,
@@ -15,7 +17,7 @@ import {
     follow,
     followerInstances,
     hasFollowers,
-    hasFollowersOn,
+    hasUnblockedFollowersOn,
     rejectFollow,
     unfollow,
 } from "./follows.ts";
@@ -284,8 +286,35 @@ Deno.test("an account's followers are found by their other instances, once each"
     // Suspended followers don't count, though they still follow.
     for (const id of ["carol", "dan"]) await setSuspendedAt(test.ctx, id, test.clock.now());
     assertEquals(await followerInstances(test.ctx, "alice"), ["c.example"]);
-    const on = (domain: string) => hasFollowersOn(test.ctx, "alice", domain);
+    const on = (domain: string) => hasUnblockedFollowersOn(test.ctx, "alice", domain);
     assertEquals([await on("b.example"), await on("c.example")], [false, true]);
+});
+
+Deno.test("the followers an account blocks, or whose domains it blocks, can be left out", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "c.example");
+    for (const id of ["dan", "erin"]) await createRemoteAccount(test.ctx, id, "c.example");
+    await createInstance(test.ctx, "d.example");
+    await createRemoteAccount(test.ctx, "gus", "d.example");
+    for (const id of ["carol", "dan", "erin", "gus"]) await follow(test.ctx, id, "alice");
+    await block(test.ctx, "alice", "carol");
+    await block(test.ctx, "alice", "dan");
+    await blockDomainFor(test.ctx, "alice", "d.example");
+    // Bob's blocks don't matter to alice's followers.
+    await block(test.ctx, "bob", "erin");
+
+    assertEquals((await followerInstances(test.ctx, "alice")).toSorted(), [
+        "b.example",
+        "c.example",
+        "d.example",
+    ]);
+    assertEquals(await followerInstances(test.ctx, "alice", true), ["c.example"]);
+
+    const on = (domain: string) => hasUnblockedFollowersOn(test.ctx, "alice", domain);
+    assertEquals(
+        [await on("b.example"), await on("c.example"), await on("d.example")],
+        [false, true, false],
+    );
 });
 
 Deno.test("an account has followers only once one is accepted", async () => {

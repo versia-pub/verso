@@ -3,6 +3,7 @@ import { findRemoteAccountAt } from "../accounts/account_queries.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { queuedDeliveries } from "../federation/testing.ts";
 import { block } from "../graph/blocks.ts";
+import { blockDomainFor } from "../graph/domain_blocks.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
@@ -195,6 +196,48 @@ const open = async (options: { multiple?: boolean; visibility?: Visibility } = {
         [Symbol.asyncDispose]: network[Symbol.asyncDispose],
     };
 };
+
+Deno.test("a followers-only poll that ends isn't sent to the voters its author blocks since, but a public one is", async () => {
+    await using test = await createTestContext();
+    await createLocalAccount(test.ctx, "alice");
+    const accounts = [["erin", "c.example"], ["frank", "d.example"], ["gus", "g.example"], [
+        "hank",
+        "h.example",
+    ]];
+    for (const [id, domain] of accounts) {
+        await createRemoteAccount(test.ctx, id, await createInstance(test.ctx, domain));
+    }
+    // Gus doesn't follow alice, so votes only in the public poll.
+    for (const id of ["erin", "frank", "hank"]) await follow(test.ctx, id, "alice");
+    const [followersOnly, open] = [
+        await ask(test.ctx, "alice", { visibility: "private" }),
+        await ask(test.ctx, "alice"),
+    ];
+    for (const id of ["frank", "hank"]) {
+        await test.ctx.transaction((tx) => castVotes(tx, id, followersOnly.poll.id, [1]));
+    }
+    await test.ctx.transaction((tx) => castVotes(tx, "gus", open.poll.id, [1]));
+    await block(test.ctx, "alice", "frank");
+    await block(test.ctx, "alice", "gus");
+    await blockDomainFor(test.ctx, "alice", "h.example");
+    const before = (await sent(test.ctx, "Note")).length;
+
+    test.clock.advance(3600_000);
+    await endPolls(test.ctx);
+
+    const again = (await sent(test.ctx, "Note")).slice(before)
+        .map(([domain, entity]) => [domain, entity.id]);
+    assertEquals(
+        again.toSorted(),
+        [
+            ["c.example", followersOnly.note.id],
+            ["c.example", open.note.id],
+            ["d.example", open.note.id],
+            ["g.example", open.note.id],
+            ["h.example", open.note.id],
+        ].toSorted(),
+    );
+});
 
 Deno.test("a remote vote in a local poll is counted once, however often it is sent", async () => {
     await using test = await open();

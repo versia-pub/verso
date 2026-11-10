@@ -45,6 +45,8 @@ export const FanOutJob = z.object({
     instanceIds: z.array(z.string()),
     /** An account whose followers' instances are sent it too, found when the job runs. */
     followersOf: z.string().optional(),
+    /** Whether the followers that account blocks are left out, as for its followers-only statuses. */
+    unblockedFollowers: z.boolean().optional(),
     /** Whether every instance Verso knows is sent it, as they are when the job runs. */
     everyInstance: z.boolean().optional(),
 });
@@ -68,6 +70,11 @@ export type Audience = {
     readonly instanceIds: readonly string[];
     /** An account, whose followers' instances are sent it too, as they are when it is sent. */
     readonly followersOf?: string;
+    /**
+     * Whether the followers that account blocks, individually or by their domain, are left out, so
+     * that its followers-only statuses don't reach an instance only they follow it from.
+     */
+    readonly unblockedFollowers?: boolean;
     /** Whether every instance Verso knows is sent it, as they are when it is sent. */
     readonly everyInstance?: boolean;
 };
@@ -82,7 +89,7 @@ export const queueDeliveriesTo = async (
     entity: object,
     audience: Audience,
 ): Promise<void> => {
-    const { instanceIds, followersOf, everyInstance } = audience;
+    const { instanceIds, followersOf, unblockedFollowers, everyInstance } = audience;
     if (instanceIds.length === 0 && followersOf === undefined && everyInstance !== true) return;
 
     // Stored once, however many instances it goes to.
@@ -93,6 +100,7 @@ export const queueDeliveriesTo = async (
 
     const payload: FanOutJob = { bodyId, instanceIds: [...instanceIds] };
     if (followersOf !== undefined) payload.followersOf = followersOf;
+    if (unblockedFollowers === true) payload.unblockedFollowers = true;
     if (everyInstance === true) payload.everyInstance = true;
     await enqueue(ctx, { queue: fanOutQueue, payload });
 };
@@ -119,7 +127,7 @@ export const audienceInstances = async (ctx: Context, audience: Audience): Promi
 
     const followers = audience.followersOf === undefined
         ? []
-        : await followerInstances(ctx, audience.followersOf);
+        : await followerInstances(ctx, audience.followersOf, audience.unblockedFollowers);
 
     return [...new Set([...audience.instanceIds, ...followers])].toSorted();
 };

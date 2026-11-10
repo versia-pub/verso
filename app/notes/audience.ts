@@ -5,7 +5,7 @@
 import { instancesHosting } from "../accounts/account_queries.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import type { Audience } from "../federation/deliver.ts";
-import { hasFollowersOn } from "../graph/follows.ts";
+import { hasUnblockedFollowersOn } from "../graph/follows.ts";
 import { findInstanceId } from "../instances/instance_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { mentionsOf, type NoteRow } from "./note_queries.ts";
@@ -37,8 +37,8 @@ export const audienceOf = async (
 /**
  * Whether the remote instance `requester` may see a local status. Anyone may see a public or
  * unlisted status. Otherwise an instance may see it if any of its users is in the audience, as
- * {@link audienceOf} computes it, without having to find every instance the author's followers are
- * on.
+ * {@link audienceOf} computes it and a followers-only status is sent, without having to find every
+ * instance the author's followers are on.
  */
 export const instanceMaySee = async (
     ctx: Context,
@@ -53,7 +53,8 @@ export const instanceMaySee = async (
     const mentionIds = (await mentionsOf(ctx, [note.id])).get(note.id) ?? [];
     if ((await instancesHosting(ctx, mentionIds)).includes(instanceId)) return true;
 
-    return note.visibility === "private" && await hasFollowersOn(ctx, note.account_id, instanceId);
+    return note.visibility === "private" &&
+        await hasUnblockedFollowersOn(ctx, note.account_id, instanceId);
 };
 
 /**
