@@ -185,7 +185,9 @@ export const insertDraft = async (
         throw new NotFound("The post you are trying to quote does not appear to exist.");
     }
 
-    const requested = draft.visibility ?? author.default_visibility;
+    const chosen = draft.visibility ?? author.default_visibility;
+    // A silenced user's public statuses are unlisted, as on Mastodon.
+    const requested = chosen === "public" && author.silenced_at !== null ? "unlisted" : chosen;
     const visibility = quoted?.visibility === "private" &&
             (requested === "public" || requested === "unlisted")
         ? "private"

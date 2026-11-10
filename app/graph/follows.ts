@@ -1,6 +1,6 @@
 /** Following accounts, local or remote. */
 import { z } from "zod";
-import { findAccount } from "../accounts/account_queries.ts";
+import { findAccount, isAccountSilenced } from "../accounts/account_queries.ts";
 import { countFollow, uncountFollowers, uncountFollowing } from "../accounts/count_queries.ts";
 import { isAccountDeleting, isProfileUpdated } from "../accounts/events.ts";
 import { batchesOf, batchSize } from "../db/batches.ts";
@@ -20,12 +20,12 @@ import {
     everyListedQuery,
     followedIdsQuery,
     followerInstanceIds,
-    followIdsFrom,
     type FollowOptions,
     followsFrom,
     followsOf,
     insertFollow,
     sharingIdsQuery,
+    unsilencedRequestIds,
     updateFollowOptions,
 } from "./follow_queries.ts";
 
@@ -54,7 +54,8 @@ const emitFollow = (
 
 /**
  * Has `followerId` follow `followeeId`, or request to follow if the followee is locked or on a
- * remote instance, which accepts for it. Following again only changes the options given.
+ * remote instance, which accepts for it, or the follower is silenced, as on Mastodon. Following
+ * again only changes the options given.
  */
 export const follow = (
     ctx: Context,
@@ -71,7 +72,8 @@ export const follow = (
             return "blocked";
         }
 
-        const accepted = followee.domain === null && !followee.locked;
+        const accepted = followee.domain === null && !followee.locked &&
+            !await isAccountSilenced(tx, followerId);
         const added = await insertFollow(tx, { followerId, followeeId, accepted, options });
 
         if (added) {
@@ -155,8 +157,8 @@ export const acceptQueue = "follow-requests";
 const AcceptJob = z.object({ accountId: z.string() });
 
 /**
- * Accepts all follow requests to an account once it is unlocked, as Mastodon does. A job does it,
- * so an account with many pending requests can be saved at once.
+ * Accepts all follow requests to an account once it is unlocked, except silenced accounts', as
+ * Mastodon does. A job does it, so an account with many pending requests can be saved at once.
  */
 export const acceptWhenUnlocked = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isProfileUpdated(event) || !event.unlocked) return;
@@ -174,7 +176,7 @@ export const acceptHandler: Handler = async (ctx: Context, job: JobsTable): Prom
     const { accountId } = payload.data;
 
     for (;;) {
-        const followerIds = await followIdsFrom(ctx, "requests", accountId, 0, batchSize);
+        const followerIds = await unsilencedRequestIds(ctx, accountId, batchSize);
         if (followerIds.length === 0) return;
 
         await ctx.transaction(async (tx) => {

@@ -397,6 +397,13 @@ export const isAccountSuspended = async (ctx: Context, accountId: string): Promi
         .where("suspended_at", "is not", null)
         .executeTakeFirst() !== undefined;
 
+/** Whether the account `accountId`, local or remote, is silenced. */
+export const isAccountSilenced = async (ctx: Context, accountId: string): Promise<boolean> =>
+    await ctx.db.selectFrom("accounts").select("id")
+        .where("id", "=", accountId)
+        .where("silenced_at", "is not", null)
+        .executeTakeFirst() !== undefined;
+
 /** Columns of an account to update. */
 export type AccountChanges = Updateable<AccountsTable>;
 

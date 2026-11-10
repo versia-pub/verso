@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { findAccount } from "../accounts/account_queries.ts";
+import { findAccount, setSilencedAt } from "../accounts/account_queries.ts";
 import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";
@@ -96,6 +96,20 @@ Deno.test("a note is written in Markdown if its author says so", async () => {
         [note?.content, note?.content_format, note?.content_html],
         ["Hi *@bob*", "text/markdown", `<p>Hi <em>${mention(`${user}/bob`, "bob")}</em></p>`],
     );
+});
+
+Deno.test("a silenced user's public notes are unlisted, by default or not", async () => {
+    await using test = await open();
+    await setSilencedAt(test.ctx, "bob", test.clock.now());
+    const visibility = async (draft: Partial<Draft> = {}) =>
+        (await post(test.ctx, "bob", "Hi", draft))?.visibility;
+
+    assertEquals(await visibility(), "unlisted");
+    assertEquals(await visibility({ visibility: "public" }), "unlisted");
+    assertEquals(await visibility({ visibility: "private" }), "private");
+    assertEquals(await visibility({ visibility: "direct" }), "direct");
+    await setSilencedAt(test.ctx, "bob", null);
+    assertEquals(await visibility(), "public");
 });
 
 Deno.test("a note has its author's defaults, unless they choose, and a warning makes it sensitive", async () => {

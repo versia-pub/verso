@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { setSuspendedAt } from "../accounts/account_queries.ts";
+import { setSilencedAt, setSuspendedAt } from "../accounts/account_queries.ts";
 import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -7,7 +7,7 @@ import { drain } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
 import { createTestContext, type TestContextOptions } from "../testing/context.ts";
-import { followsFrom, followsOf } from "./follow_queries.ts";
+import { followsFrom, followsOf, unsilencedRequestIds } from "./follow_queries.ts";
 import {
     acceptFollow,
     acceptHandler,
@@ -62,6 +62,24 @@ Deno.test("a locked account, or one on another instance, is asked, and not count
         (await followsFrom(test.ctx, "alice", ["bob", "carol"])).map((row) => row.accepted),
         [false, false],
     );
+});
+
+Deno.test("a silenced account only asks to follow, even an unlocked one", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "dave");
+    await setSilencedAt(test.ctx, "alice", test.clock.now());
+    await setSilencedAt(test.ctx, "dave", test.clock.now());
+
+    assertEquals(await follow(test.ctx, "alice", "bob"), "requested");
+    assertEquals(await follow(test.ctx, "bob", "dave"), "following");
+    await setSilencedAt(test.ctx, "alice", null);
+    assertEquals(await follow(test.ctx, "alice", "dave"), "following");
+    assertEquals(await counts(test.ctx), {
+        alice: [1, 0],
+        bob: [1, 0],
+        carol: [0, 0],
+        dave: [0, 2],
+    });
 });
 
 Deno.test("following again only changes the options given, and counts once", async () => {
@@ -202,23 +220,47 @@ Deno.test("unlocking an account accepts everyone asking to follow it", async () 
     await follow(test.ctx, "bob", "alice");
     await follow(test.ctx, "carol", "alice");
     await follow(test.ctx, "dave", "bob");
+    await createLocalAccount(test.ctx, "erin");
+    await follow(test.ctx, "erin", "alice");
+    await setSilencedAt(test.ctx, "erin", test.clock.now());
 
     await updateProfile(test.ctx, "alice", { locked: false });
     const accepted = async () =>
-        (await followsOf(test.ctx, "alice", ["bob", "carol"])).map((row) => row.accepted);
+        (await followsOf(test.ctx, "alice", ["bob", "carol", "erin"])).map((row) => row.accepted);
 
-    // A job accepts them, after the profile is saved.
-    assertEquals(await accepted(), [false, false]);
+    // A job accepts them, after the profile is saved, except silenced ones.
+    assertEquals(await accepted(), [false, false, false]);
     const queues = { [acceptQueue]: { handler: acceptHandler, concurrency: 1 } };
     assertEquals(await drain(test.ctx, queues), 1);
-    assertEquals(await accepted(), [true, true]);
+    assertEquals(await accepted(), [true, true, false]);
     assertEquals((await followsOf(test.ctx, "bob", ["dave"]))[0]?.accepted, false);
     assertEquals(await counts(test.ctx), {
         alice: [0, 2],
         bob: [1, 0],
         carol: [1, 0],
         dave: [0, 0],
+        erin: [0, 0],
     });
+});
+
+Deno.test("requests to accept are found oldest first, a batch at a time, without silenced ones", async () => {
+    await using test = await open();
+    for (const id of ["dave", "erin", "frank"]) await createLocalAccount(test.ctx, id);
+    await lock(test.ctx, "alice");
+    for (const id of ["bob", "erin", "dave"]) await follow(test.ctx, id, "alice");
+    await setSilencedAt(test.ctx, "bob", test.clock.now());
+    // Ordered by id, whatever order the rows were stored in.
+    await test.ctx.db.insertInto("follows").values({
+        id: "0",
+        follower_id: "frank",
+        followee_id: "alice",
+        accepted: false,
+        languages: null,
+        created_at: test.clock.now(),
+    }).execute();
+
+    assertEquals(await unsilencedRequestIds(test.ctx, "alice", 2), ["frank", "erin"]);
+    assertEquals(await unsilencedRequestIds(test.ctx, "alice", 5), ["frank", "erin", "dave"]);
 });
 
 Deno.test("an account's followers are found by their other instances, once each", async () => {

@@ -187,6 +187,24 @@ export const followIdsFrom = async (
         .execute())
         .map((row) => row.account_id);
 
+/**
+ * The ids of up to `limit` accounts that have requested to follow `accountId`, oldest first, other
+ * than silenced ones, whose requests Mastodon leaves waiting when an account is unlocked.
+ */
+export const unsilencedRequestIds = async (
+    ctx: Context,
+    accountId: string,
+    limit: number,
+): Promise<string[]> =>
+    (await listed(ctx, "requests", accountId)
+        .innerJoin("accounts", "accounts.id", "follows.follower_id")
+        .select("follows.follower_id")
+        .where("accounts.silenced_at", "is", null)
+        .orderBy("follows.id")
+        .limit(limit)
+        .execute())
+        .map((row) => row.follower_id);
+
 /** Every account on one of an account's lists, as a subquery. */
 export const everyListedQuery = (
     ctx: Context,
