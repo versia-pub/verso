@@ -2,14 +2,22 @@
  * Blocks: an account blocking another, so what the blocked account does doesn't reach it. Unlike on
  * Mastodon, a block is the blocker's alone, for their safety: the blocked account is never
  * notified, nor can it tell, so it ends no follows, and nothing about it is sent to remote
- * instances. Only those whose role lets them see everyone's blocks, such as moderators, see who
+ * instances. A blocked follower stops being shown the blocker's followers-only statuses, as if the
+ * blocker had stopped posting them, unless a status mentions it. Only those whose role lets them see everyone's blocks, such as moderators, see who
  * blocks an account.
  * @see https://docs.joinmastodon.org/methods/accounts/#block
  * @module
  */
 import { findAccount } from "../accounts/account_queries.ts";
 import type { Context } from "../kernel/context.ts";
-import { blockedIdsQuery, blockingAmong, deleteBlock, insertBlock } from "./block_queries.ts";
+import {
+    blockedIdsQuery,
+    blockerIdsQuery,
+    blockersAmong,
+    blockingAmong,
+    deleteBlock,
+    insertBlock,
+} from "./block_queries.ts";
 import { domainBlockedInstancesQuery, domainBlockingAmong } from "./domain_block_queries.ts";
 import type { AccountIdQuery } from "./follow_queries.ts";
 import { type Excluded, excluded } from "./excluded_queries.ts";
@@ -58,6 +66,20 @@ export const blockingAny = async (
         ...await domainBlockingAmong(ctx, accountIds, targets),
     ]);
 };
+
+/**
+ * The accounts that block `accountId`, as a subquery, so that their followers-only statuses can be
+ * kept from it.
+ */
+export const blockersSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
+    blockerIdsQuery(ctx, accountId);
+
+/** Whether `blockerId` blocks `accountId`. */
+export const isBlockedBy = async (
+    ctx: Context,
+    accountId: string,
+    blockerId: string,
+): Promise<boolean> => (await blockersAmong(ctx, accountId, [blockerId])).length > 0;
 
 /**
  * The accounts a viewer blocks, as {@link blockedByAccount} returns them, or none without a viewer.

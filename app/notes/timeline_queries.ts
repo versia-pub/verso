@@ -83,6 +83,8 @@ const findIn = async (
 export type HomeSources = {
     /** The accounts they follow, and were accepted by. */
     readonly followed: AccountIdQuery;
+    /** The accounts that block them, whose followers-only statuses they aren't shown. */
+    readonly blockers: AccountIdQuery;
     /** The accounts of `followed` whose boosts they see. */
     readonly sharing: AccountIdQuery;
     /** The hashtags they follow. */
@@ -105,7 +107,7 @@ export type HomeSources = {
  * than one of them.
  */
 const homeQueries = (ctx: Context, viewerId: string, sources: HomeSources) => {
-    const { followed, sharing, followedTags, exclusive, hidden } = sources;
+    const { followed, blockers, sharing, followedTags, exclusive, hidden } = sources;
     const notes = ctx.db.selectFrom("notes").selectAll()
         .where(without(hidden))
         .where(unsuspended(ctx));
@@ -122,7 +124,12 @@ const homeQueries = (ctx: Context, viewerId: string, sources: HomeSources) => {
         .where((eb) =>
             eb.and([
                 eb.or([
-                    eb("visibility", "!=", "direct"),
+                    eb("visibility", "=", "public"),
+                    eb("visibility", "=", "unlisted"),
+                    eb.and([
+                        eb("visibility", "=", "private"),
+                        eb("account_id", "not in", blockers),
+                    ]),
                     eb.exists(
                         eb.selectFrom("note_mentions").select("note_mentions.note_id")
                             .whereRef("note_mentions.note_id", "=", "notes.id")
@@ -174,6 +181,8 @@ export type ListSources = {
     readonly members: AccountIdQuery;
     /** The accounts the owner follows, and was accepted by. */
     readonly followed: AccountIdQuery;
+    /** The accounts that block the owner, whose followers-only statuses it isn't shown. */
+    readonly blockers: AccountIdQuery;
     /** The accounts of `followed` whose boosts the owner sees. */
     readonly sharing: AccountIdQuery;
     readonly repliesPolicy: RepliesPolicy;
@@ -183,14 +192,15 @@ export type ListSources = {
 
 /**
  * The statuses on one of `ownerId`'s lists, as Mastodon fills it: the statuses of its members, but
- * direct ones, and the boosts of those whose boosts the owner sees, or the owner's. A reply must be
- * to its own author, to the owner, or as the list's replies policy allows, to someone the owner
- * follows or to a member. Nothing from the accounts the owner blocks or mutes, or from suspended
- * accounts, is included, nor anyone's boosts of their statuses. They are two queries, as on home.
+ * direct ones and the followers-only ones of members who block the owner and don't mention it, and
+ * the boosts of those whose boosts the owner sees, or the owner's. A reply must be to its own
+ * author, to the owner, or as the list's replies policy allows, to someone the owner follows or to a
+ * member. Nothing from the accounts the owner blocks or mutes, or from suspended accounts, is
+ * included, nor anyone's boosts of their statuses. They are two queries, as on home.
  * @see https://github.com/mastodon/mastodon/blob/main/app/lib/feed_manager.rb
  */
 const listQueries = (ctx: Context, ownerId: string, sources: ListSources) => {
-    const { members, followed, sharing, repliesPolicy, hidden } = sources;
+    const { members, followed, blockers, sharing, repliesPolicy, hidden } = sources;
     const notes = ctx.db.selectFrom("notes").selectAll()
         .where(without(hidden))
         .where(unsuspended(ctx))
@@ -202,6 +212,17 @@ const listQueries = (ctx: Context, ownerId: string, sources: ListSources) => {
     const statuses = notes
         .where("reblog_of_id", "is", null)
         .where("visibility", "!=", "direct")
+        .where((eb) =>
+            eb.or([
+                eb("visibility", "!=", "private"),
+                eb("account_id", "not in", blockers),
+                eb.exists(
+                    eb.selectFrom("note_mentions").select("note_mentions.note_id")
+                        .whereRef("note_mentions.note_id", "=", "notes.id")
+                        .where("note_mentions.account_id", "=", ownerId),
+                ),
+            ])
+        )
         .where((eb) =>
             eb.or([
                 eb("in_reply_to_account_id", "is", null),

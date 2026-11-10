@@ -57,7 +57,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 
 - Blocking an account isn't federated, and doesn't remove follows. It hides the account from the
   blocker in timelines, notifications, and lists of likes and boosts. A blocked account stays in the
-  blocker's lists.
+  blocker's lists. A blocked follower stops seeing the blocker's followers-only statuses, unless one
+  mentions it, and its votes in the blocker's polls still count.
 - Blocking a domain with `POST /api/v1/domain_blocks` blocks every account on that domain and its
   subdomains, just like blocking each one would. It isn't federated either, and the user's followers
   there stay, and can still be followed. The domain must be a domain name.

@@ -235,7 +235,7 @@ Deno.test("a remote vote that Mastodon wouldn't allow is given up on", async () 
     assertStringIncludes(errors[2], "The poll has already ended");
 });
 
-Deno.test("a remote vote by someone who may not see the poll, or is blocked, is given up on", async () => {
+Deno.test("a remote vote by someone who may not see the poll is given up on, and one by someone blocked counts", async () => {
     await using test = await open({ visibility: "private" });
     await test.send(voteFor("v1", `a.test:${test.note.id}`, 1));
 
@@ -246,11 +246,13 @@ Deno.test("a remote vote by someone who may not see the poll, or is blocked, is 
     await test.send(voteFor("v2", `a.test:${note.id}`, 1));
 
     assertEquals(await test.counts(), [[0, 0], 0]);
-    assertEquals((await pollOf(test.a, note.id))?.voters_count, 0);
+    assertEquals((await pollOf(test.a, note.id))?.options.map((option) => option.votes_count), [
+        0,
+        1,
+    ]);
     const errors = await test.errors();
-    assertEquals(errors.length, 2);
+    assertEquals(errors.length, 1);
     assertStringIncludes(errors[0], "may not see");
-    assertStringIncludes(errors[1], "may not vote");
 });
 
 Deno.test("a remote vote in a poll that isn't local, or a status without one, is dropped", async () => {

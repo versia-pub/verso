@@ -113,8 +113,9 @@ export const castVotes = async (
     const note = poll && await visibleNote(ctx, poll.note_id, accountId);
     if (poll === undefined || note === undefined) return undefined;
 
-    const { blocking, blockedBy } = await blocksBetween(ctx, accountId, [note.account_id]);
-    if (blocking.size > 0 || blockedBy.size > 0) throw new NotPermitted();
+    // A vote from an account the author blocks counts, so that it can't tell it is blocked.
+    const { blocking } = await blocksBetween(ctx, accountId, [note.account_id]);
+    if (blocking.size > 0) throw new NotPermitted();
 
     const voted = (await votesAmong(ctx, [accountId], [poll.id])).get(accountId)?.get(poll.id) ??
         [];

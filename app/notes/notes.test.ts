@@ -2,6 +2,7 @@ import { assertEquals } from "@std/assert";
 import { findAccount, setSilencedAt } from "../accounts/account_queries.ts";
 import { deleteRemoteAccount } from "../accounts/remote.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
+import { block } from "../graph/blocks.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
@@ -10,7 +11,7 @@ import { createNetwork } from "../testing/network.ts";
 import { findNote, mentionsOf, tagsOf, versionsOf } from "./note_queries.ts";
 import { type Draft, type Edit, editNote, postNote } from "./notes.ts";
 import { removeNote } from "./removal.ts";
-import { canSee, visibleNote } from "./visibility.ts";
+import { canSee, seenAmong, visibilitiesFor, visibleNote } from "./visibility.ts";
 import { createNote } from "./testing.ts";
 
 const open = async (options: TestContextOptions = {}) => {
@@ -319,6 +320,37 @@ Deno.test("who may see a note goes by its visibility, its followers and its ment
     assertEquals(await seenBy("unlisted"), everyone);
     assertEquals(await seenBy("private"), ["alice", "bob", "carol"]);
     assertEquals(await seenBy("direct"), ["alice", "carol"]);
+});
+
+Deno.test("a follower the author blocks isn't shown its followers-only notes, unless mentioned", async () => {
+    await using test = await open();
+    await follow(test.ctx, "carol", "alice");
+    await follow(test.ctx, "erin", "alice");
+    await test.ctx.db.updateTable("follows").set({ accepted: true }).execute();
+    await block(test.ctx, "alice", "bob");
+    await block(test.ctx, "alice", "carol");
+    await block(test.ctx, "erin", "alice");
+    const note = await createNote(test.ctx, "alice", { visibility: "private" }, ["carol"]);
+
+    const viewers = ["alice", "bob", "carol", "erin"];
+    const seen = [];
+    for (const viewer of viewers) if (await canSee(test.ctx, note, viewer)) seen.push(viewer);
+    assertEquals(seen, ["alice", "carol", "erin"]);
+    assertEquals(await visibleNote(test.ctx, note.id, "bob"), undefined);
+
+    for (const viewer of viewers) {
+        assertEquals(
+            (await seenAmong(test.ctx, [note.id], viewer)).has(note.id),
+            seen.includes(viewer),
+        );
+    }
+
+    assertEquals(await visibilitiesFor(test.ctx, "alice", "bob"), ["public", "unlisted"]);
+    assertEquals(await visibilitiesFor(test.ctx, "alice", "erin"), [
+        "public",
+        "unlisted",
+        "private",
+    ]);
 });
 
 Deno.test("a note is found only by those who may see it", async () => {

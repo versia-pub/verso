@@ -179,6 +179,21 @@ Deno.test("home has nothing of the accounts the viewer blocks, nor others' share
     assertEquals(await test.home(), ["carol's", "carol's other share"]);
 });
 
+Deno.test("home and lists leave out the followers-only notes of those who block the viewer, unless they mention it", async () => {
+    await using test = await open();
+    const listId = await test.makeList(["bob", "carol"]);
+    await test.add("public", "bob");
+    await test.add("private", "bob", { visibility: "private" });
+    await test.add("private to alice", "bob", { visibility: "private" }, ["alice"]);
+    await test.add("carol's private", "carol", { visibility: "private" });
+    await block(test.ctx, "bob", "alice");
+    // Blocking someone else doesn't hide carol's.
+    await block(test.ctx, "carol", "dave");
+
+    assertEquals(await test.home(), ["carol's private", "private to alice", "public"]);
+    assertEquals(await test.onList(listId), ["carol's private", "private to alice", "public"]);
+});
+
 Deno.test("home has the public statuses with the hashtags the viewer follows, each once", async () => {
     await using test = await open();
     await followTag(test.ctx, "alice", "Cats");

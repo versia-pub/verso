@@ -1,5 +1,6 @@
 import type { Visibility } from "../kernel/visibility.ts";
 import { isAccountSuspended } from "../accounts/account_queries.ts";
+import { blockersSubquery, isBlockedBy } from "../graph/blocks.ts";
 import { followedSubquery, isFollowing } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, findNotes, isMentioned, type NoteRow } from "./note_queries.ts";
@@ -7,7 +8,8 @@ import { notesSeenBy, type Onlooker } from "./thread_queries.ts";
 
 /**
  * Whether `viewerId`, or anyone if it is `null`, may see `note`. Public and unlisted statuses are
- * visible to anyone, private ones to the author's followers, and direct ones to the users they
+ * visible to anyone, private ones to the author's followers that the author doesn't block, and
+ * direct ones to the users they
  * mention. Mentioned users and the author may always see a status. A boost is visible only to those
  * who may also see the status it boosts, which may have been made private since. Nobody may see a
  * suspended account's statuses, as on Mastodon.
@@ -27,13 +29,18 @@ export const canSee = async (
     if (viewerId === null) return false;
     if (viewerId === note.account_id || await isMentioned(ctx, note.id, viewerId)) return true;
 
-    return note.visibility === "private" && await isFollowing(ctx, viewerId, note.account_id);
+    return note.visibility === "private" && await seesFollowersOnly(ctx, viewerId, note.account_id);
 };
+
+/** Whether `viewerId` is shown `authorId`'s followers-only statuses: it follows them, unblocked. */
+const seesFollowersOnly = async (ctx: Context, viewerId: string, authorId: string) =>
+    await isFollowing(ctx, viewerId, authorId) && !await isBlockedBy(ctx, viewerId, authorId);
 
 /** A local user viewing statuses, in the form queries over many statuses take. */
 export const signedInOnlooker = (ctx: Context, viewerId: string): Exclude<Onlooker, null> => ({
     id: viewerId,
     followed: followedSubquery(ctx, viewerId),
+    blockers: blockersSubquery(ctx, viewerId),
 });
 
 /** Someone viewing statuses, in the form queries over many statuses take, or `null` for anyone. */
@@ -52,8 +59,8 @@ export const seenAmong = (
 
 /**
  * The visibilities of an account's statuses that `viewerId` (or anyone if it is `null`) can see:
- * all of them for the account itself, private ones too for its followers, and otherwise public and
- * unlisted ones. Direct statuses that mention the viewer aren't among them, as on Mastodon.
+ * all of them for the account itself, private ones too for its followers that it doesn't block, and
+ * otherwise public and unlisted ones. Direct statuses that mention the viewer aren't among them, as on Mastodon.
  */
 export const visibilitiesFor = async (
     ctx: Context,
@@ -61,7 +68,7 @@ export const visibilitiesFor = async (
     viewerId: string | null,
 ): Promise<Visibility[]> => {
     if (viewerId === accountId) return ["public", "unlisted", "private", "direct"];
-    if (viewerId !== null && await isFollowing(ctx, viewerId, accountId)) {
+    if (viewerId !== null && await seesFollowersOnly(ctx, viewerId, accountId)) {
         return ["public", "unlisted", "private"];
     }
 

@@ -8,14 +8,21 @@ import { type ExpressionBuilder, type ExpressionWrapper, sql, type SqlBool } fro
 import { type Excluded, type Filter, notExcluded } from "../graph/excluded_queries.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 
-/** Someone viewing statuses, with the accounts they follow, or `null` for anyone. */
-export type Onlooker = { readonly id: string; readonly followed: AccountIdQuery } | null;
+/**
+ * Someone viewing statuses, with the accounts they follow and the accounts that block them, or
+ * `null` for anyone.
+ */
+export type Onlooker = {
+    readonly id: string;
+    readonly followed: AccountIdQuery;
+    readonly blockers: AccountIdQuery;
+} | null;
 
 /**
  * Whether `onlooker` may see a status, as `canSee` decides for one status at a time: public and
- * unlisted statuses are visible to anyone, private ones to the author's followers, and direct ones
- * to the users they mention. Mentioned users and the author may always see a status. Nobody may
- * see a suspended account's, as on Mastodon.
+ * unlisted statuses are visible to anyone, private ones to the author's followers that the author
+ * doesn't block, and direct ones to the users they mention. Mentioned users and the author may
+ * always see a status. Nobody may see a suspended account's, as on Mastodon.
  */
 const seenBy = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">) => {
     const unsuspended = eb.not(eb.exists(
@@ -34,6 +41,7 @@ const seenBy = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">
             eb.and([
                 eb("notes.visibility", "=", "private"),
                 eb("notes.account_id", "in", onlooker.followed),
+                eb("notes.account_id", "not in", onlooker.blockers),
             ]),
             eb.exists(
                 eb.selectFrom("note_mentions").select("note_mentions.note_id")

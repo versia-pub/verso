@@ -218,12 +218,14 @@ Deno.test("a vote is counted once per account, and once per option in a poll of 
     assertEquals([both.body.votes_count, both.body.voters_count], [5, 2]);
 });
 
-Deno.test("a vote is refused once the poll has ended, or between accounts that block", async () => {
+Deno.test("a vote is refused once the poll has ended, or by an account blocking the author", async () => {
     await using test = await open();
     const { pollId } = await test.ask();
 
+    // The author blocking an account doesn't stop its vote, so that it can't tell.
     await block(test.ctx, "alice", "carol");
-    assertEquals((await test.vote(pollId, [0], "carol")).status, 403);
+    const blocked = await test.vote(pollId, [0], "carol");
+    assertEquals([blocked.status, blocked.body.voters_count], [200, 1]);
     await block(test.ctx, "bob", "alice");
     assertEquals((await test.vote(pollId, [0], "bob")).status, 403);
 
