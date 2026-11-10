@@ -2,7 +2,12 @@ import type { Insertable, Selectable, SelectQueryBuilder } from "kysely";
 import { batchesOf } from "../db/batches.ts";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
-import { type Excluded, type Filter, notExcluded } from "../graph/excluded_queries.ts";
+import {
+    type Excluded,
+    type Filter,
+    notExcluded,
+    notSuspended,
+} from "../graph/excluded_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NotificationsTable, NotificationType } from "./tables.ts";
 
@@ -101,13 +106,14 @@ export type NotificationFilter = {
 type ShownQuery = SelectQueryBuilder<Database, "notifications", Record<never, never>>;
 
 /**
- * The notifications of `accountId` that `shown` allows: not from the accounts it hides, and about
- * no status, or one they may see.
+ * The notifications of `accountId` that `shown` allows: not from the accounts it hides, nor from
+ * suspended accounts, and about no status, or one they may see.
  */
 export const shownQuery = (ctx: Context, accountId: string, shown: Shown): ShownQuery =>
     ctx.db.selectFrom("notifications")
         .where("account_id", "=", accountId)
         .where(notExcluded(shown.hidden, "notifications.from_account_id"))
+        .where(notSuspended(ctx, "notifications.from_account_id"))
         .where((eb) =>
             eb.or([
                 eb("notifications.note_id", "is", null),

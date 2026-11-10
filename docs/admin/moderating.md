@@ -45,8 +45,9 @@ From a suspended remote user, Verso only accepts deletions, profile changes, and
 Their follows stay, but their instance isn't sent statuses for them, nor may it see followers-only
 ones.
 
-Local users see a suspended account's profile blank, can't follow it, and can't see its statuses or
-follows. For now, its statuses still show in timelines.
+Local users see a suspended account's profile blank, and can't follow it or mention it. Its
+statuses, follows, favourites and boosts, and its notifications to them, are hidden, and searches
+don't find it unless its full address is given.
 
 ## Removing statuses
 

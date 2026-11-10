@@ -63,3 +63,16 @@ export const notExcluded =
     (excluded: Excluded, column: string): Filter =>
     <DB, TB extends keyof DB>(eb: ExpressionBuilder<DB, TB>): Expression<SqlBool> =>
         eb.not(isExcluded(excluded, column)(eb));
+
+/**
+ * Whether the account whose id is in `column` isn't suspended. Mastodon leaves suspended accounts,
+ * and what they did, out of what anyone is shown.
+ */
+export const notSuspended =
+    (ctx: Context, column: string): Filter =>
+    <DB, TB extends keyof DB>(eb: ExpressionBuilder<DB, TB>): Expression<SqlBool> =>
+        eb.not(eb.exists(
+            ctx.db.selectFrom("accounts as suspended").select("suspended.id")
+                .where("suspended.id", "=", sql.ref<string>(column))
+                .where("suspended.suspended_at", "is not", null),
+        ));

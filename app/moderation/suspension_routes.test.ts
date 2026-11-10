@@ -9,6 +9,10 @@ import { createLocalAccount, createRole, giveRole } from "../accounts/testing.ts
 import { tokenFor } from "../auth/testing.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
 import { follow } from "../graph/follows.ts";
+import { like } from "../interactions/likes.ts";
+import { share } from "../interactions/shares.ts";
+import { addListAccounts, createList } from "../lists/lists.ts";
+import { indexUnindexedAccounts } from "../search/accounts.ts";
 import { routes } from "../http/routes.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { postNote } from "../notes/notes.ts";
@@ -24,6 +28,8 @@ const open = async () => {
     const test = await createTestContext();
     const app = createTestApp(test.ctx, routes(defaultSettings()), { checkResponses: true });
     for (const id of ["alice", "bob", "carol"]) await createLocalAccount(test.ctx, id);
+    await follow(test.ctx, "alice", "carol");
+    await follow(test.ctx, "carol", "bob");
     await createLocalEmoji(test.ctx, "blob");
     await updateProfile(test.ctx, "carol", {
         displayName: "Carol :blob:",
@@ -58,8 +64,6 @@ const open = async () => {
     await createRole(test.ctx, "Admin", []);
     await test.ctx.db.updateTable("roles").set({ visible: true }).execute();
     await giveRole(test.ctx, "carol", "Admin");
-    await follow(test.ctx, "alice", "carol");
-    await follow(test.ctx, "carol", "bob");
     const draft = { format: "text/plain", spoilerText: "" } as const;
     const status = await postNote(test.ctx, "carol", { ...draft, text: "Hi" });
     const reply = await postNote(test.ctx, "bob", {
@@ -214,4 +218,125 @@ Deno.test("relationships leave out suspended accounts, unless asked for them", a
     // One account's relationship, after unfollowing it, is still given.
     const unfollowed = await test.request("POST", "/api/v1/accounts/carol/unfollow");
     assertEquals([unfollowed.status, unfollowed.body.following], [200, false]);
+});
+
+Deno.test("what a suspended account did is left out of timelines, notifications and search", async () => {
+    await using test = await open();
+    await follow(test.ctx, "alice", "bob");
+    await share(test.ctx, "bob", test.statusId);
+    await postNote(test.ctx, "carol", {
+        format: "text/plain",
+        spoilerText: "",
+        text: "#cats",
+    });
+    const own = await postNote(test.ctx, "alice", {
+        format: "text/plain",
+        spoilerText: "",
+        text: "Hello",
+    });
+    await like(test.ctx, "carol", own?.id ?? "");
+    await share(test.ctx, "carol", own?.id ?? "");
+    const list = await createList(test.ctx, "alice", {
+        title: "Friends",
+        replies_policy: "list",
+        exclusive: false,
+    });
+    const listId = list === "full" ? "" : list.id;
+    await addListAccounts(test.ctx, "alice", listId, ["carol"]);
+    await indexUnindexedAccounts(test.ctx);
+
+    /** Who wrote or boosted what is shown at each path, for anyone or for alice. */
+    const shown = async () => {
+        const authors = async (path: string, signedIn = true) =>
+            ((await test.request("GET", path, signedIn)).body as { account: { id: string } }[])
+                .map((status) => status.account.id).toSorted();
+        const ids = async (path: string) =>
+            ((await test.request("GET", path)).body as { id: string }[]).map((each) => each.id);
+
+        return {
+            public: await authors("/api/v1/timelines/public", false),
+            tag: await authors("/api/v1/timelines/tag/cats", false),
+            home: await authors("/api/v1/timelines/home"),
+            list: await authors(`/api/v1/timelines/list/${listId}`),
+            notifications: ((await test.request("GET", "/api/v1/notifications")).body as {
+                account: { id: string };
+            }[]).map((each) => each.account.id),
+            grouped: ((await test.request("GET", "/api/v2/notifications")).body as {
+                notification_groups: unknown[];
+            }).notification_groups.length,
+            favouritedBy: await ids(`/api/v1/statuses/${own?.id}/favourited_by`),
+            rebloggedBy: await ids(`/api/v1/statuses/${own?.id}/reblogged_by`),
+            search: ((await test.request("GET", "/api/v2/search?q=caro&type=accounts")).body as {
+                accounts: { id: string }[];
+            }).accounts.map((account) => account.id),
+        };
+    };
+
+    const before = await shown();
+    assertEquals(before, {
+        public: ["alice", "carol", "carol"],
+        tag: ["carol"],
+        home: ["alice", "bob", "bob", "carol", "carol", "carol"],
+        list: ["carol", "carol", "carol"],
+        notifications: ["carol", "carol"],
+        grouped: 2,
+        favouritedBy: ["carol"],
+        rebloggedBy: ["carol"],
+        search: ["carol"],
+    });
+
+    await suspend(test.ctx, "carol");
+    assertEquals(await shown(), {
+        public: ["alice"],
+        tag: [],
+        home: ["alice", "bob"],
+        list: [],
+        notifications: [],
+        grouped: 0,
+        favouritedBy: [],
+        rebloggedBy: [],
+        search: [],
+    });
+    // Its full address still finds it, as on Mastodon.
+    const exact = await test.request("GET", "/api/v2/search?q=carol@social.example&type=accounts");
+    assertEquals(exact.body.accounts.map((account: { id: string }) => account.id), ["carol"]);
+
+    await unsuspend(test.ctx, "carol");
+    assertEquals(await shown(), before);
+});
+
+Deno.test("a suspended account can't be mentioned", async () => {
+    await using test = await open();
+    await suspend(test.ctx, "carol");
+
+    const note = await postNote(test.ctx, "alice", {
+        format: "text/plain",
+        spoilerText: "",
+        text: "Hi @carol and @bob",
+    });
+    const status = (await test.request("GET", `/api/v1/statuses/${note?.id}`)).body;
+
+    assertEquals(status.mentions.map((mention: { id: string }) => mention.id), ["bob"]);
+    assertEquals(status.content.includes("@<span>carol</span>"), false);
+    assertEquals(status.content.includes("@carol"), true);
+});
+
+Deno.test("boosts of a suspended account's statuses don't take up a feed's pages", async () => {
+    await using test = await open();
+    await follow(test.ctx, "alice", "bob");
+    const list = await createList(test.ctx, "alice", {
+        title: "Friends",
+        replies_policy: "list",
+        exclusive: false,
+    });
+    const listId = list === "full" ? "" : list.id;
+    await addListAccounts(test.ctx, "alice", listId, ["bob", "carol"]);
+    // bob's boost is the newest status of both feeds.
+    await share(test.ctx, "bob", test.statusId);
+    await suspend(test.ctx, "carol");
+
+    for (const path of ["/api/v1/timelines/home", `/api/v1/timelines/list/${listId}`]) {
+        const { body } = await test.request("GET", `${path}?limit=1`);
+        assertEquals(body.map((status: { id: string }) => status.id), [test.replyId], path);
+    }
 });

@@ -3,6 +3,7 @@ import type { ExpressionBuilder, ExpressionWrapper, SelectQueryBuilder, SqlBool 
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
+import { notSuspended } from "../graph/excluded_queries.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { RepliesPolicy } from "../lists/tables.ts";
@@ -20,6 +21,20 @@ const without = (hidden: Excluded) => (eb: ExpressionBuilder<Database, "notes">)
                     .whereRef("shared.id", "=", "notes.reblog_of_id")
                     .where(isExcluded(hidden, "shared.account_id")),
             )),
+        ]),
+    ]);
+
+/** Excludes the statuses and boosts of suspended accounts, and any boosts of their statuses. */
+const unsuspended = (ctx: Context) => (eb: ExpressionBuilder<Database, "notes">) =>
+    eb.and([
+        notSuspended(ctx, "notes.account_id")(eb),
+        eb.or([
+            eb("notes.reblog_of_id", "is", null),
+            eb.exists(
+                eb.selectFrom("notes as shared").select("shared.id")
+                    .whereRef("shared.id", "=", "notes.reblog_of_id")
+                    .where(notSuspended(ctx, "shared.account_id")),
+            ),
         ]),
     ]);
 
@@ -83,14 +98,17 @@ export type HomeSources = {
  * the accounts they follow that they may see, and the boosts of those whose boosts they see, but
  * for the accounts in their exclusive lists, as on Mastodon. Of those statuses, a direct one must
  * mention them, and a reply must be to them or to someone they follow, with its author among them,
- * as on Mastodon. Nothing from the accounts they block or mute is included, nor anyone's boosts of
- * their statuses. The public statuses that use the hashtags they follow are included too, replies
- * as well, as on Mastodon. They are four queries, so each can use the index that suits it, however
- * many accounts and hashtags they follow. A status can be in more than one of them.
+ * as on Mastodon. Nothing from the accounts they block or mute, or from suspended accounts, is
+ * included, nor anyone's boosts of their statuses. The public statuses that use the hashtags they
+ * follow are included too, replies as well, as on Mastodon. They are four queries, so each can use
+ * the index that suits it, however many accounts and hashtags they follow. A status can be in more
+ * than one of them.
  */
 const homeQueries = (ctx: Context, viewerId: string, sources: HomeSources) => {
     const { followed, sharing, followedTags, exclusive, hidden } = sources;
-    const notes = ctx.db.selectFrom("notes").selectAll().where(without(hidden));
+    const notes = ctx.db.selectFrom("notes").selectAll()
+        .where(without(hidden))
+        .where(unsuspended(ctx));
     const followedNotes = notes.where("account_id", "not in", exclusive);
 
     const own = notes.where("account_id", "=", viewerId);
@@ -167,14 +185,15 @@ export type ListSources = {
  * The statuses on one of `ownerId`'s lists, as Mastodon fills it: the statuses of its members, but
  * direct ones, and the boosts of those whose boosts the owner sees, or the owner's. A reply must be
  * to its own author, to the owner, or as the list's replies policy allows, to someone the owner
- * follows or to a member. Nothing from the accounts the owner blocks or mutes is included, nor
- * anyone's boosts of their statuses. They are two queries, as on home.
+ * follows or to a member. Nothing from the accounts the owner blocks or mutes, or from suspended
+ * accounts, is included, nor anyone's boosts of their statuses. They are two queries, as on home.
  * @see https://github.com/mastodon/mastodon/blob/main/app/lib/feed_manager.rb
  */
 const listQueries = (ctx: Context, ownerId: string, sources: ListSources) => {
     const { members, followed, sharing, repliesPolicy, hidden } = sources;
     const notes = ctx.db.selectFrom("notes").selectAll()
         .where(without(hidden))
+        .where(unsuspended(ctx))
         .where("account_id", "in", members);
 
     const shares = notes
@@ -222,8 +241,8 @@ export type Origin = "all" | "local" | "remote";
 
 /**
  * The statuses on the public timeline: public statuses, without replies (except replies to their
- * own authors) or boosts, as on Mastodon. If there is a viewer, the statuses of the accounts they
- * block or mute, `hidden`, are omitted.
+ * own authors) or boosts, and none of suspended accounts', as on Mastodon. If there is a viewer,
+ * the statuses of the accounts they block or mute, `hidden`, are omitted.
  */
 const publicQuery = (ctx: Context, hidden: Excluded | null) => {
     const query = ctx.db.selectFrom("notes").selectAll()
@@ -234,7 +253,8 @@ const publicQuery = (ctx: Context, hidden: Excluded | null) => {
                 eb("in_reply_to_account_id", "is", null),
                 eb("in_reply_to_account_id", "=", eb.ref("account_id")),
             ])
-        );
+        )
+        .where(notSuspended(ctx, "notes.account_id"));
 
     return hidden === null ? query : query.where(without(hidden));
 };
@@ -301,13 +321,14 @@ export const usesAny = (names: readonly string[]): NoteCondition => (eb) =>
 /**
  * The statuses that could be on a hashtag's timeline: public ones, replies too, as on Mastodon.
  * Boosts use no hashtags, so are on none, and leaving them out lets the public timelines' index
- * find the rest. If there is a viewer, the statuses of the accounts they block or mute, `hidden`,
- * are omitted.
+ * find the rest. Suspended accounts' are left out. If there is a viewer, the statuses of the
+ * accounts they block or mute, `hidden`, are omitted.
  */
 const hashtagQuery = (ctx: Context, hidden: Excluded | null) => {
     const query = ctx.db.selectFrom("notes").selectAll()
         .where("visibility", "=", "public")
-        .where("reblog_of_id", "is", null);
+        .where("reblog_of_id", "is", null)
+        .where(notSuspended(ctx, "notes.account_id"));
     return hidden === null ? query : query.where(without(hidden));
 };
 

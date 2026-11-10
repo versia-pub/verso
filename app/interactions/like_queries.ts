@@ -4,6 +4,7 @@ import { countAll, readCount } from "../db/count.ts";
 import { setsBy } from "../db/grouping.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, notExcluded } from "../graph/blocks.ts";
+import { notSuspended } from "../graph/excluded_queries.ts";
 import type { AccountIdQuery } from "../graph/follow_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import type { LikeKind, LikesTable } from "./tables.ts";
@@ -98,8 +99,8 @@ export const likedAmong = async (
 };
 
 /**
- * A page of the likes (not dislikes) of a status, excluding those by the accounts `blocked`, or by
- * an account, newest first.
+ * A page of the likes (not dislikes) of a status, excluding those by the accounts `blocked` and by
+ * suspended accounts, or by an account, newest first.
  */
 export const likePage = async (
     ctx: Context,
@@ -110,7 +111,7 @@ export const likePage = async (
 ): Promise<LikeRow[]> => {
     const likes = ctx.db.selectFrom("likes").selectAll().where("kind", "=", "like");
     let query = "noteId" in by
-        ? likes.where("note_id", "=", by.noteId)
+        ? likes.where("note_id", "=", by.noteId).where(notSuspended(ctx, "likes.account_id"))
         : likes.where("account_id", "=", by.accountId);
     if ("noteId" in by && by.blocked !== null) {
         query = query.where(notExcluded(by.blocked, "likes.account_id"));

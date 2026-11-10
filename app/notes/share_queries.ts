@@ -4,6 +4,7 @@ import { countAll, readCount } from "../db/count.ts";
 import { setsBy } from "../db/grouping.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, notExcluded } from "../graph/blocks.ts";
+import { notSuspended } from "../graph/excluded_queries.ts";
 import type { AccountIdQuery } from "../graph/follow_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
@@ -138,7 +139,7 @@ export const countSharesOf = async (
 
 /**
  * A page of the boosts of a status with one of `visibilities`, excluding those by the accounts
- * `blocked`, newest first.
+ * `blocked` and by suspended accounts, newest first.
  */
 export const sharePage = async (
     ctx: Context,
@@ -149,7 +150,8 @@ export const sharePage = async (
 ): Promise<NoteRow[]> => {
     let query = ctx.db.selectFrom("notes").selectAll()
         .where("reblog_of_id", "=", noteId)
-        .where("visibility", "in", visibilities);
+        .where("visibility", "in", visibilities)
+        .where(notSuspended(ctx, "notes.account_id"));
     if (blocked !== null) query = query.where(notExcluded(blocked, "notes.account_id"));
 
     return await readPage(query, "id", page);

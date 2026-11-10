@@ -87,8 +87,8 @@ const mentionsMs = 15_000;
 /**
  * The accounts that `mentions` refer to, by {@link mentionKey}, fetching remote users if Verso
  * doesn't have them, from one shared budget, so a post can't make Verso fetch without end. Mentions
- * of nonexistent accounts are dropped, and so are those beyond the number of accounts the settings
- * allow.
+ * of nonexistent or suspended accounts are dropped, left as plain text, as on Mastodon, and so are
+ * those beyond the number of accounts the settings allow.
  */
 const mentioned = async (ctx: Context, mentions: readonly Mention[]) => {
     const budget = fetchBudget(20, ctx.clock.now().getTime() + mentionsMs);
@@ -102,7 +102,7 @@ const mentioned = async (ctx: Context, mentions: readonly Mention[]) => {
         const { username, domain } = mention;
         const address = parseAddress(ctx, domain === null ? username : `${username}@${domain}`);
         const row = address && await findAccountByAddress(ctx, address, { fetch: true, budget });
-        if (row) accounts.set(key, row);
+        if (row && row.suspended_at === null) accounts.set(key, row);
     }
 
     return accounts;
