@@ -16,6 +16,7 @@ import { upload } from "../media/uploads.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { createNote } from "../notes/testing.ts";
 import { fileReport } from "../reports/reports.ts";
+import { FanOutJob, fanOutQueue } from "../federation/deliver.ts";
 import { createTestContext } from "../testing/context.ts";
 import { keptColumns, purgedColumns } from "./account_deletion_queries.ts";
 import { deleteLocalAccount } from "./account_deletions.ts";
@@ -53,6 +54,21 @@ const rowsOf = async (ctx: Context, table: string, column = "account_id") =>
         (await sql<{ n: number }>`select count(*) as n from ${sql.table(table)}
             where ${sql.ref(column)} = 'alice'`.execute(ctx.db)).rows[0].n,
     );
+
+/** The Deletes of users queued for every instance, by the user they delete. */
+const userDeletes = async (ctx: Context) => {
+    const jobs = await ctx.db.selectFrom("jobs").select("payload")
+        .where("queue", "=", fanOutQueue).execute();
+    const bodies = await ctx.db.selectFrom("delivery_bodies").select(["id", "body"]).execute();
+    const bodyOf = new Map(bodies.map((row) => [row.id, JSON.parse(row.body)]));
+
+    return jobs.map((job) => FanOutJob.parse(job.payload)).map((job) => ({
+        entity: bodyOf.get(job.bodyId),
+        every: job.everyInstance,
+    }))
+        .filter(({ entity }) => entity?.type === "Delete" && entity.deleted_type === "User")
+        .map(({ entity, every }) => [entity.author, entity.deleted, every]);
+};
 
 /** A file that isn't a picture, so it is stored as it is. */
 const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]);
@@ -192,6 +208,7 @@ Deno.test("a deleted account is kept empty and suspended, with its login and the
     );
     assertEquals(await rowsOf(test.ctx, "identities"), 1);
     assertEquals(await rowsOf(test.ctx, "reports", "target_account_id"), 1);
+    assertEquals(await userDeletes(test.ctx), [["alice", "alice", true]]);
 
     // It stays suspended, and deleting it again later changes nothing.
     test.clock.advance(60_000);
@@ -199,6 +216,7 @@ Deno.test("a deleted account is kept empty and suspended, with its login and the
     assertEquals(await deleteLocalAccount(test.ctx, "alice", { tombstone: true }), false);
     const again = await findAccount(test.ctx, "alice");
     assertEquals([again?.suspended_at, again?.deleted_at], [deletedAt, deletedAt]);
+    assertEquals((await userDeletes(test.ctx)).length, 1);
 
     // Logging in again finds it, still empty, and without the roles the login's claims give.
     await createRole(test.ctx, "Admin", ["roles"]);
@@ -233,6 +251,7 @@ Deno.test("an account deleted without a tombstone is removed, with its login and
     assertEquals(await test.ctx.files.get(file.sha256 ?? ""), undefined);
     assertEquals(await rowsOf(test.ctx, "identities"), 0);
     assertEquals(await rowsOf(test.ctx, "reports", "target_account_id"), 0);
+    assertEquals(await userDeletes(test.ctx), [["alice", "alice", true]]);
 
     // Its login can make a new account.
     await createLocalAccount(test.ctx, "alice");

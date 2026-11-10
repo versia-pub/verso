@@ -17,6 +17,10 @@ export const instanceDomains = async (ctx: Context): Promise<string[]> =>
     (await ctx.db.selectFrom("instances").select("domain").orderBy("domain").execute())
         .map((row) => row.domain);
 
+/** The ids of every other instance this one has stored. */
+export const allInstanceIds = async (ctx: Context): Promise<string[]> =>
+    (await ctx.db.selectFrom("instances").select("id").execute()).map((row) => row.id);
+
 /** How many other instances this one has stored. */
 export const countInstances = async (ctx: Context): Promise<number> =>
     readCount(await ctx.db.selectFrom("instances").select(countAll).executeTakeFirstOrThrow());

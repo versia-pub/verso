@@ -4,7 +4,7 @@
  * @module
  */
 import { parseReference } from "@versia/protocol";
-import { isSuspended } from "../accounts/account_queries.ts";
+import { hasLocalUser, isSuspended } from "../accounts/account_queries.ts";
 import type { Context } from "../kernel/context.ts";
 
 /**
@@ -17,6 +17,15 @@ export const authorOf = (entity: unknown): string | undefined => {
     const reference = type === "User" ? id : author;
 
     return typeof reference === "string" ? reference : undefined;
+};
+
+/** Whether `entity`, made here, is by a local user Verso no longer has, such as one removed since. */
+export const byRemovedUser = async (ctx: Context, entity: unknown): Promise<boolean> => {
+    const reference = authorOf(entity);
+    const author = reference === undefined ? undefined : parseReference(reference, ctx.urls.domain);
+    if (author?.host !== ctx.urls.domain) return false;
+
+    return !await hasLocalUser(ctx, author.id);
 };
 
 /** Whether `entity`, from the instance `origin`, is by a user Verso has suspended. */

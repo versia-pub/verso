@@ -1,6 +1,7 @@
 import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "@std/assert";
 import { CompiledQuery, type KyselyPlugin, sql } from "kysely";
 import { updateProfile } from "../accounts/profile.ts";
+import { deleteAccount } from "../accounts/account_queries.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { recordReached, recordUnreachable } from "../instances/reachability.ts";
 import { createInstance } from "../instances/testing.ts";
@@ -26,6 +27,7 @@ import {
     queueDeliveries,
     queueDeliveriesTo,
 } from "./deliver.ts";
+import { deleteEntity } from "./delete.ts";
 import { fanOut, queuedDeliveries } from "./testing.ts";
 
 /** An event only these tests emit: an account, to deliver to some recipients. */
@@ -350,6 +352,33 @@ Deno.test("followers on more instances than a query can name are all sent it", a
     assertEquals((await test.queued()).length, domains.length);
     // Looked up a batch at a time, so no query names too many.
     assertEquals(lookups, 2);
+});
+
+Deno.test("an entity for every instance goes to each one Verso knows and may send to", async () => {
+    await using test = await open();
+
+    await test.ctx.transaction((tx) =>
+        queueDeliveriesTo(tx, { type: "Tested" }, { instanceIds: [], everyInstance: true })
+    );
+
+    assertEquals((await test.queued()).map((job) => job.domain), ["b.example", "c.example"]);
+});
+
+Deno.test("what a local user deleted since queued isn't sent, except their Deletes", async () => {
+    await using test = await open();
+    await test.send(["b1"]);
+    const removed = deleteEntity(test.ctx, test.alice, "User", test.alice);
+    await test.ctx.transaction((tx) =>
+        queueDeliveriesTo(tx, removed, { instanceIds: ["c.example"] })
+    );
+
+    await deleteAccount(test.ctx, test.alice);
+
+    const jobs = await test.queued();
+    assertEquals(jobs.map((job) => [job.domain, JSON.parse(job.body).type]), [
+        ["c.example", "Delete"],
+    ]);
+    assertEquals((await test.bodies()).length, 1);
 });
 
 Deno.test("a fan-out run again queues no delivery twice", async () => {

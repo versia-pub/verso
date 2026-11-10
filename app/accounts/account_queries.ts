@@ -430,6 +430,13 @@ export const isSuspended = async (
         undefined;
 };
 
+/** Whether Verso has the local user `id`, which it doesn't once they are removed. */
+export const hasLocalUser = async (ctx: Context, id: string): Promise<boolean> =>
+    await ctx.db.selectFrom("accounts").select("id")
+        .where("instance_id", "is", null)
+        .where("id", "=", id)
+        .executeTakeFirst() !== undefined;
+
 /** Whether the account `accountId`, local or remote, is suspended. */
 export const isAccountSuspended = async (ctx: Context, accountId: string): Promise<boolean> =>
     await ctx.db.selectFrom("accounts").select("id")

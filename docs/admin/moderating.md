@@ -70,6 +70,8 @@ kept empty, with its login, its poll votes and the reports and mentions of it, s
 its username and its owner can't sign up again. Logging in again gives it back no roles. It can't be
 unsuspended. Deleting it again finishes a deletion that stopped part way.
 
+Every instance Verso knows is told, so they delete the account and its statuses too.
+
 With `--no-tombstone`, the account is removed too, with its login and the reports about it, so its
 username and login can be used again.
 

@@ -9,6 +9,8 @@ import type { AccountDeleting } from "../accounts/events.ts";
 import { deleteEmojisOf } from "../emojis/emojis.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
+import { deleteEntity } from "../federation/delete.ts";
+import { queueDeliveriesTo } from "../federation/deliver.ts";
 import { deleteFileIfUnused } from "../media/cleanup.ts";
 import { deleteMediaOf } from "../media/upload_queries.ts";
 import { removeNotesOf } from "../notes/removal.ts";
@@ -19,8 +21,9 @@ import { suspend } from "./suspensions.ts";
  * Deletes the local account `accountId`: suspends it, so its sessions end, then deletes its
  * statuses, media, emojis, follows and everything else it has, keeping its login and the reports by
  * and about it. With `tombstone` false, the account is removed too, with its login and reports, so
- * the username and login can be used again. Deleting an account again finishes a deletion that
- * stopped part way. Returns whether it wasn't deleted already.
+ * the username and login can be used again. Every instance Verso knows is sent a Delete of the user.
+ * Deleting an account again finishes a deletion that stopped part way. Returns whether it wasn't
+ * deleted already.
  */
 export const deleteLocalAccount = async (
     ctx: Context,
@@ -38,6 +41,11 @@ export const deleteLocalAccount = async (
         const deleted = tombstone ? await emptyAccount(tx, accountId, tx.clock.now()) : true;
         const keys = await deleteMediaOf(tx, accountId);
         if (!tombstone) await deleteAccount(tx, accountId);
+        // As on Mastodon, every instance is told, since any may have the user's statuses.
+        if (deleted) {
+            const entity = deleteEntity(tx, accountId, "User", accountId);
+            await queueDeliveriesTo(tx, entity, { instanceIds: [], everyInstance: true });
+        }
 
         return { deleted, keys };
     });

@@ -11,12 +11,12 @@ import type { Database } from "../db/database.ts";
 import { batchesOf } from "../db/batches.ts";
 import { instancesHosting } from "../accounts/account_queries.ts";
 import { followerInstances } from "../graph/follows.ts";
-import { reachableDomainsOf } from "../instances/instance_queries.ts";
+import { allInstanceIds, reachableDomainsOf } from "../instances/instance_queries.ts";
 import { type DeadPayload, enqueue, enqueueAll } from "../jobs/job_queries.ts";
 import type { JobPayload, JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
-import { bySuspendedUser } from "./authors.ts";
+import { byRemovedUser, bySuspendedUser } from "./authors.ts";
 
 /** Versia's own queue, so deliveries of other protocols can't hold it up. */
 export const deliverQueue = "versia-deliver";
@@ -45,6 +45,8 @@ export const FanOutJob = z.object({
     instanceIds: z.array(z.string()),
     /** An account whose followers' instances are sent it too, found when the job runs. */
     followersOf: z.string().optional(),
+    /** Whether every instance Verso knows is sent it, as they are when the job runs. */
+    everyInstance: z.boolean().optional(),
 });
 export type FanOutJob = z.infer<typeof FanOutJob>;
 
@@ -66,6 +68,8 @@ export type Audience = {
     readonly instanceIds: readonly string[];
     /** An account, whose followers' instances are sent it too, as they are when it is sent. */
     readonly followersOf?: string;
+    /** Whether every instance Verso knows is sent it, as they are when it is sent. */
+    readonly everyInstance?: boolean;
 };
 
 /**
@@ -78,8 +82,8 @@ export const queueDeliveriesTo = async (
     entity: object,
     audience: Audience,
 ): Promise<void> => {
-    const { instanceIds, followersOf } = audience;
-    if (instanceIds.length === 0 && followersOf === undefined) return;
+    const { instanceIds, followersOf, everyInstance } = audience;
+    if (instanceIds.length === 0 && followersOf === undefined && everyInstance !== true) return;
 
     // Stored once, however many instances it goes to.
     const bodyId = ctx.ids();
@@ -89,6 +93,7 @@ export const queueDeliveriesTo = async (
 
     const payload: FanOutJob = { bodyId, instanceIds: [...instanceIds] };
     if (followersOf !== undefined) payload.followersOf = followersOf;
+    if (everyInstance === true) payload.everyInstance = true;
     await enqueue(ctx, { queue: fanOutQueue, payload });
 };
 
@@ -105,8 +110,13 @@ export const queueDeliveries = async (
 ): Promise<void> =>
     await queueDeliveriesTo(ctx, entity, { instanceIds: await instancesHosting(ctx, recipients) });
 
-/** The instances in an audience, by id, in order, with those of the followers it names. */
+/**
+ * The instances in an audience, by id, in order, with those of the followers it names, or every
+ * instance if it says so.
+ */
 export const audienceInstances = async (ctx: Context, audience: Audience): Promise<string[]> => {
+    if (audience.everyInstance === true) return (await allInstanceIds(ctx)).toSorted();
+
     const followers = audience.followersOf === undefined
         ? []
         : await followerInstances(ctx, audience.followersOf);
@@ -133,21 +143,26 @@ const domainsOf = async (ctx: Context, job: FanOutJob) => {
     return domains;
 };
 
-/** Whether the entity stored as `bodyId` is by a suspended local user, and isn't a Delete. */
+/**
+ * Whether the entity stored as `bodyId` is by a local user suspended or removed since, and isn't a
+ * Delete.
+ */
 const withheld = async (ctx: Context, bodyId: string) => {
     const row = await ctx.db.selectFrom("delivery_bodies").select("body").where("id", "=", bodyId)
         .executeTakeFirst();
     if (row === undefined) return false;
 
     const entity: unknown = JSON.parse(row.body);
-    return (entity as { type?: unknown }).type !== "Delete" &&
-        await bySuspendedUser(ctx, entity, ctx.urls.domain);
+    if ((entity as { type?: unknown }).type === "Delete") return false;
+
+    return await bySuspendedUser(ctx, entity, ctx.urls.domain) ||
+        await byRemovedUser(ctx, entity);
 };
 
 /**
  * Runs fan-out jobs: queues a delivery of the entity to each instance it goes to, grouped by
  * instance so each can be rate limited, or deletes the entity if it goes to none, or is by a
- * suspended user, unless it deletes something. A job run again
+ * suspended or removed user, unless it deletes something. A job run again
  * doesn't queue a delivery that is still queued, but may queue one that was already sent again.
  * The deliveries are due when the job was queued, so the entities queued earlier are sent first.
  */
