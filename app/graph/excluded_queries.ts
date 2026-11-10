@@ -76,3 +76,21 @@ export const notSuspended =
                 .where("suspended.id", "=", sql.ref<string>(column))
                 .where("suspended.suspended_at", "is not", null),
         ));
+
+/**
+ * Whether the account whose id is in `column` is neither suspended nor silenced. Mastodon leaves
+ * both out of its public timelines.
+ */
+export const notSuspendedOrSilenced =
+    (ctx: Context, column: string): Filter =>
+    <DB, TB extends keyof DB>(eb: ExpressionBuilder<DB, TB>): Expression<SqlBool> =>
+        eb.not(eb.exists(
+            ctx.db.selectFrom("accounts as restricted").select("restricted.id")
+                .where("restricted.id", "=", sql.ref<string>(column))
+                .where((inner) =>
+                    inner.or([
+                        inner("restricted.suspended_at", "is not", null),
+                        inner("restricted.silenced_at", "is not", null),
+                    ])
+                ),
+        ));

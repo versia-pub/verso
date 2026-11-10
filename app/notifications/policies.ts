@@ -46,13 +46,15 @@ type Relation = {
     readonly newAccount: boolean;
     readonly privateMention: boolean;
     readonly bot: boolean;
+    readonly limited: boolean;
 };
 
 /**
  * Whether `policy` does `action` with a notification from an account `relation` describes, as
- * Mastodon asks: limited accounts, which Verso doesn't have, then the others in its order.
+ * Mastodon asks, in its order.
  */
 const doesWith = (policy: Policy, action: PolicyAction, relation: Relation) =>
+    (policy.for_limited_accounts === action && relation.limited && relation.notFollowing) ||
     (policy.for_not_following === action && relation.notFollowing) ||
     (policy.for_not_followers === action && relation.notFollower) ||
     (policy.for_new_accounts === action && relation.newAccount && relation.notFollowing) ||
@@ -107,10 +109,9 @@ export const verdictsOf = async (
     if (!filterable.has(type)) return verdicts;
 
     const policies = await policiesOf(ctx, accountIds);
-    const applying = accountIds.filter((id) => {
-        const { for_limited_accounts: _, ...applied } = policies.get(id) ?? {};
-        return Object.values(applied).some((action) => action !== "accept");
-    });
+    const applying = accountIds.filter((id) =>
+        Object.values(policies.get(id) ?? {}).some((action) => action !== "accept")
+    );
     // Those who accepted the account's request let all its notifications through.
     const permitting = await permittingAmong(ctx, fromId, applying);
     const strict = applying.filter((id) => !permitting.has(id));
@@ -143,6 +144,7 @@ export const verdictsOf = async (
             newAccount: from.created_at.getTime() > now - newAccountMs,
             privateMention: direct && !answered.has(accountId),
             bot: from.bot,
+            limited: from.silenced_at !== null,
         };
         if (doesWith(policy, "drop", relation)) verdicts.set(accountId, "drop");
         else if (doesWith(policy, "filter", relation)) verdicts.set(accountId, "filter");

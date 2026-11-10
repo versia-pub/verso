@@ -2,13 +2,14 @@ import { assertEquals } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";
 import { like } from "../interactions/likes.ts";
-import { share } from "../interactions/shares.ts";
+import { share, unshare } from "../interactions/shares.ts";
 import { dayMs } from "../kernel/clock.ts";
 import { subscribe } from "../kernel/pubsub.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { createTestContext } from "../testing/context.ts";
+import { silence, unsilence } from "../moderation/silences.ts";
 import { notified } from "./notifications.ts";
 import { defaultPolicy, type Policy, savePolicy } from "./policy_queries.ts";
 
@@ -170,7 +171,7 @@ Deno.test("a policy for bots applies to bots the user doesn't follow", async () 
     assertEquals((await test.of("alice")).at(0), "follow bob");
 });
 
-Deno.test("edits of boosted statuses aren't filtered, nor anything from limited accounts", async () => {
+Deno.test("edits of boosted statuses aren't filtered, nor anything from accounts that aren't limited", async () => {
     await using test = await open();
     await test.policy("alice", { for_limited_accounts: "drop" });
     const note = await test.post("bob", "Hi", { public: true });
@@ -181,6 +182,50 @@ Deno.test("edits of boosted statuses aren't filtered, nor anything from limited 
     await editNote(test.ctx, "bob", note, { text: "Hello" });
     await drain(test.ctx, queues);
     assertEquals(await test.of("alice"), ["update bob", "favourite bob"]);
+});
+
+Deno.test("a policy for limited accounts applies to silenced accounts the user doesn't follow", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "dave");
+    await silence(test.ctx, "bob");
+    const note = await test.post("alice", "Hi", { public: true });
+
+    // Filtered by default, whatever else the policy does.
+    await like(test.ctx, "bob", note);
+    await like(test.ctx, "carol", note);
+    await test.policy("alice", { for_bots: "filter" });
+    await share(test.ctx, "bob", note);
+    assertEquals(await test.of("alice"), [
+        "reblog bob filtered",
+        "favourite carol",
+        "favourite bob filtered",
+    ]);
+
+    await test.policy("alice", { for_limited_accounts: "drop" });
+    await share(test.ctx, "carol", note);
+    await like(test.ctx, "dave", note);
+    await silence(test.ctx, "dave");
+    await share(test.ctx, "dave", note);
+    assertEquals((await test.of("alice")).slice(0, 2), ["favourite dave", "reblog carol"]);
+
+    await test.policy("alice", { for_limited_accounts: "accept" });
+    await unshare(test.ctx, "dave", note);
+    await share(test.ctx, "dave", note);
+    assertEquals((await test.of("alice")).at(0), "reblog dave");
+
+    // Even if the policy does nothing else.
+    await test.policy("alice", { for_private_mentions: "accept" });
+    await like(test.ctx, "dave", await test.post("alice", "More", { public: true }));
+    assertEquals((await test.of("alice")).at(0), "favourite dave filtered");
+
+    await test.policy("alice", { for_limited_accounts: "drop" });
+    await follow(test.ctx, "alice", "bob");
+    await test.post("bob", "@alice Hi", { public: true });
+    assertEquals((await test.of("alice")).at(0), "mention bob");
+
+    await unsilence(test.ctx, "dave");
+    await test.post("dave", "@alice Hi", { public: true });
+    assertEquals((await test.of("alice")).at(0), "mention dave");
 });
 
 Deno.test("quotes are filtered and kept in a request, but edits of quoted statuses aren't", async () => {

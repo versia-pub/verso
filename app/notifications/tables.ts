@@ -82,7 +82,7 @@ export type NotificationPoliciesTable = {
     for_new_accounts: PolicyAction;
     /** Of direct statuses that aren't replies to the user's own, from accounts they don't follow. */
     for_private_mentions: PolicyAction;
-    /** From accounts a moderator limited, which Verso has none of yet. */
+    /** From accounts an admin silenced, which Mastodon calls limited. */
     for_limited_accounts: PolicyAction;
     /** From accounts that say they are bots, that the user doesn't follow. */
     for_bots: PolicyAction;

@@ -5,6 +5,7 @@
 import { Command } from "@cliffy/command";
 import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import type { Context } from "../kernel/context.ts";
+import { silence, unsilence } from "../moderation/silences.ts";
 import { suspend, unsuspend } from "../moderation/suspensions.ts";
 import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
 
@@ -17,20 +18,28 @@ const accountAt = async (ctx: Context, acct: string) => {
     return account;
 };
 
-/** Suspends the account at `acct`, or lifts its suspension, and prints whether that changed it. */
-const suspension =
-    (io: AdminIo, suspended: boolean) => async ({ config }: { config: string }, acct: string) => {
-        const result = await io.withContext(config, async (ctx) => {
-            const account = await accountAt(ctx, acct);
-            const changed = await (suspended ? suspend : unsuspend)(ctx, account.id);
-            const name = account.domain === null
-                ? account.username
-                : `${account.username}@${account.domain}`;
+/**
+ * A command that does `action` to the account at `acct` and prints whether that changed it, with
+ * `key` set to `value`.
+ */
+const moderation = (
+    io: AdminIo,
+    key: "suspended" | "silenced",
+    value: boolean,
+    action: (ctx: Context, accountId: string) => Promise<boolean>,
+) =>
+async ({ config }: { config: string }, acct: string) => {
+    const result = await io.withContext(config, async (ctx) => {
+        const account = await accountAt(ctx, acct);
+        const changed = await action(ctx, account.id);
+        const name = account.domain === null
+            ? account.username
+            : `${account.username}@${account.domain}`;
 
-            return { account: name, suspended, changed };
-        });
-        io.print(JSON.stringify(result));
-    };
+        return { account: name, [key]: value, changed };
+    });
+    io.print(JSON.stringify(result));
+};
 
 /** The `accounts` group of commands. */
 export const accountsCommand = (io: AdminIo): Command<{ config: string }> =>
@@ -38,7 +47,14 @@ export const accountsCommand = (io: AdminIo): Command<{ config: string }> =>
         .description("Moderate accounts, local or remote.")
         .action(missingCommand)
         .command("suspend <acct:string>", "Suspend an account, keeping all it has.")
-        .action(suspension(io, true))
+        .action(moderation(io, "suspended", true, suspend))
         .command("unsuspend <acct:string>", "Lift an account's suspension.")
-        .action(suspension(io, false))
+        .action(moderation(io, "suspended", false, unsuspend))
+        .command(
+            "silence <acct:string>",
+            "Silence an account, keeping its statuses out of the public timelines.",
+        )
+        .action(moderation(io, "silenced", true, silence))
+        .command("unsilence <acct:string>", "Lift an account's silence.")
+        .action(moderation(io, "silenced", false, unsilence))
         .reset();

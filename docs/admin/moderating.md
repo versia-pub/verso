@@ -1,7 +1,7 @@
 # Moderating
 
-For now, Verso's moderation tools are blocking instances, suspending accounts, removing statuses,
-giving moderators roles, reading reports and managing custom emoji.
+For now, Verso's moderation tools are blocking instances, suspending and silencing accounts,
+removing statuses, giving moderators roles, reading reports and managing custom emoji.
 
 ## Blocking instances
 
@@ -48,6 +48,14 @@ ones.
 Local users see a suspended account's profile blank, and can't follow it or mention it. Its
 statuses, follows, favourites and boosts, and its notifications to them, are hidden, and searches
 don't find it unless its full address is given.
+
+## Silencing accounts
+
+Silence an account, local or remote, with
+[`verso admin accounts silence`](commands.md#verso-admin-accounts), which Mastodon calls limiting.
+Apps are told it's limited. Its statuses are left out of the public and hashtag timelines, and its
+notifications to users who don't follow it go through their policy for limited accounts, which
+filters them unless they change it. Other instances aren't told.
 
 ## Removing statuses
 

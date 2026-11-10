@@ -181,6 +181,7 @@ export const renderAccount = (
         // Verso has no collections, so nobody can feature anyone.
         feature_approval: { automatic: [], manual: [], current_user: "denied" },
         ...(suspended ? { suspended: true } : {}),
+        ...(row.silenced_at === null ? {} : { limited: true }),
     };
 };
 

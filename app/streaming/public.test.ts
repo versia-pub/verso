@@ -7,6 +7,7 @@ import { block } from "../graph/blocks.ts";
 import { createFilter } from "../filters/filters.ts";
 import { blockDomainFor } from "../graph/domain_blocks.ts";
 import { mute } from "../graph/mutes.ts";
+import { silence, unsilence } from "../moderation/silences.ts";
 import { TimelinesAccess } from "../kernel/config_sections.ts";
 import { createInstance } from "../instances/testing.ts";
 import { like } from "../interactions/likes.ts";
@@ -230,6 +231,17 @@ Deno.test("only statuses of the public timeline are sent, and only deletes of pu
     assertEquals(alice.sent, everyStream.map((stream) => [stream, "delete", reply]));
     // Those passed over didn't fail.
     assertEquals(logged, []);
+});
+
+Deno.test("statuses of silenced accounts aren't sent, as they aren't on the public timeline", async () => {
+    await using test = await open();
+    const alice = test.streaming("alice", ["public"]);
+    await silence(test.ctx, "bob");
+    await test.post("bob");
+    await unsilence(test.ctx, "bob");
+    const shown = await test.post("bob");
+
+    assertEquals(alice.sent, [["public", "update", shown]]);
 });
 
 Deno.test("statuses are rendered as anyone sees them", async () => {

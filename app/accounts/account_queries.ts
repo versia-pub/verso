@@ -351,6 +351,24 @@ export const setSuspendedAt = async (
 };
 
 /**
+ * Silences the account `id` from `at`, or lifts its silence if `at` is `null`. Returns whether that
+ * changed it: an account already silenced stays silenced from when it first was.
+ */
+export const setSilencedAt = async (
+    ctx: Context,
+    id: string,
+    at: Date | null,
+): Promise<boolean> => {
+    const { numUpdatedRows } = await ctx.db.updateTable("accounts")
+        .set({ silenced_at: at })
+        .where("id", "=", id)
+        .where("silenced_at", at === null ? "is not" : "is", null)
+        .executeTakeFirst();
+
+    return numUpdatedRows > 0n;
+};
+
+/**
  * Whether the user `id` on the instance `domain`, or the local user `id` if `domain` is `null`, is
  * one Verso has and has suspended.
  */

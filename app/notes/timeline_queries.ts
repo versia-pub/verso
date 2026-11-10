@@ -3,7 +3,7 @@ import type { ExpressionBuilder, ExpressionWrapper, SelectQueryBuilder, SqlBool 
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, isExcluded, notExcluded } from "../graph/blocks.ts";
-import { notSuspended } from "../graph/excluded_queries.ts";
+import { notSuspended, notSuspendedOrSilenced } from "../graph/excluded_queries.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { RepliesPolicy } from "../lists/tables.ts";
@@ -241,8 +241,8 @@ export type Origin = "all" | "local" | "remote";
 
 /**
  * The statuses on the public timeline: public statuses, without replies (except replies to their
- * own authors) or boosts, and none of suspended accounts', as on Mastodon. If there is a viewer,
- * the statuses of the accounts they block or mute, `hidden`, are omitted.
+ * own authors) or boosts, and none of suspended or silenced accounts', as on Mastodon. If there is a
+ * viewer, the statuses of the accounts they block or mute, `hidden`, are omitted.
  */
 const publicQuery = (ctx: Context, hidden: Excluded | null) => {
     const query = ctx.db.selectFrom("notes").selectAll()
@@ -254,7 +254,7 @@ const publicQuery = (ctx: Context, hidden: Excluded | null) => {
                 eb("in_reply_to_account_id", "=", eb.ref("account_id")),
             ])
         )
-        .where(notSuspended(ctx, "notes.account_id"));
+        .where(notSuspendedOrSilenced(ctx, "notes.account_id"));
 
     return hidden === null ? query : query.where(without(hidden));
 };
@@ -321,14 +321,14 @@ export const usesAny = (names: readonly string[]): NoteCondition => (eb) =>
 /**
  * The statuses that could be on a hashtag's timeline: public ones, replies too, as on Mastodon.
  * Boosts use no hashtags, so are on none, and leaving them out lets the public timelines' index
- * find the rest. Suspended accounts' are left out. If there is a viewer, the statuses of the
+ * find the rest. Suspended and silenced accounts' are left out. If there is a viewer, the statuses of the
  * accounts they block or mute, `hidden`, are omitted.
  */
 const hashtagQuery = (ctx: Context, hidden: Excluded | null) => {
     const query = ctx.db.selectFrom("notes").selectAll()
         .where("visibility", "=", "public")
         .where("reblog_of_id", "is", null)
-        .where(notSuspended(ctx, "notes.account_id"));
+        .where(notSuspendedOrSilenced(ctx, "notes.account_id"));
     return hidden === null ? query : query.where(without(hidden));
 };
 

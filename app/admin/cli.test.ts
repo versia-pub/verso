@@ -332,6 +332,38 @@ Deno.test("accounts are suspended and unsuspended once, local or remote, and unk
     }
 });
 
+Deno.test("accounts are silenced and unsilenced once", async () => {
+    await using test = await createTestContext();
+    await createLocalAccount(test.ctx, "alice");
+    const json = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "accounts", ...args)).printed.join(""));
+
+    assertEquals(await json("silence", "alice"), {
+        account: "alice",
+        silenced: true,
+        changed: true,
+    });
+    assertEquals(await json("silence", "alice"), {
+        account: "alice",
+        silenced: true,
+        changed: false,
+    });
+    assertEquals((await findAccount(test.ctx, "alice"))?.silenced_at, test.clock.now());
+    assertEquals((await findAccount(test.ctx, "alice"))?.suspended_at, null);
+
+    assertEquals(await json("unsilence", "alice"), {
+        account: "alice",
+        silenced: false,
+        changed: true,
+    });
+    assertEquals(await json("unsilence", "alice"), {
+        account: "alice",
+        silenced: false,
+        changed: false,
+    });
+    assertEquals((await findAccount(test.ctx, "alice"))?.silenced_at, null);
+});
+
 Deno.test("reports are listed until they are resolved, and unknown ones refused", async () => {
     await using test = await createTestContext();
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
