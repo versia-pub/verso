@@ -24,6 +24,8 @@ export type Settings = {
     readonly deliveryMs: number;
     /** How long a push service has to respond. */
     readonly pushTimeoutMs: number;
+    /** How old statuses from other instances are pruned at, or `null` to keep them. */
+    readonly remoteStatusMs: number | null;
 };
 
 /** The settings `config` produces. */
@@ -38,6 +40,9 @@ export const settingsOf = (
     unattachedMs: config.media.unattached_hours * hourMs,
     deliveryMs: config.federation.delivery_hours * hourMs,
     pushTimeoutMs: config.push.timeout_seconds * 1000,
+    remoteStatusMs: config.federation.remote_status_days === undefined
+        ? null
+        : config.federation.remote_status_days * dayMs,
 });
 
 /** The settings an instance has when its config leaves them out. */
@@ -50,4 +55,5 @@ export const defaultSettings: Settings = {
     unattachedMs: 24 * hourMs,
     deliveryMs: 48 * hourMs,
     pushTimeoutMs: 10_000,
+    remoteStatusMs: null,
 };

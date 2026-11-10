@@ -23,6 +23,7 @@ import { deleteEndedRateLimits } from "../http/rate_limit_queries.ts";
 import { removeUnusedMedia, unusedMediaQueue } from "../media/cleanup.ts";
 import { mediaHandler } from "../media/processing.ts";
 import { mediaQueue } from "../media/uploads.ts";
+import { pruneHandler, pruneQueue, pruneStartQueue, startPruning } from "../notes/pruning.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
 import { endedPollsQueue, endPolls } from "../polls/ending.ts";
@@ -45,6 +46,11 @@ const hourly: Record<string, Queue["handler"]> = {
     "rate-limits-cleanup": (ctx) => deleteEndedRateLimits(ctx),
     [unusedMediaQueue]: (ctx) => removeUnusedMedia(ctx),
     [resanitiseStartQueue]: (ctx) => startResanitising(ctx),
+};
+
+/** Work the scheduler enqueues every day, as `hourly` is every hour. */
+const daily: Record<string, Queue["handler"]> = {
+    [pruneStartQueue]: (ctx) => startPruning(ctx),
 };
 
 /** Work the scheduler enqueues every minute, as `hourly` is every hour. */
@@ -86,14 +92,17 @@ export const queues: Record<string, Queue> = {
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
     // One at a time, so each version's work goes through the rows in order, once.
     [resanitiseQueue]: { handler: resanitiseHandler, concurrency: 1 },
+    // One at a time, so each pass goes through the statuses in order, once.
+    [pruneQueue]: { handler: pruneHandler, concurrency: 1 },
     ...Object.fromEntries(
-        Object.entries({ ...hourly, ...everyMinute })
+        Object.entries({ ...daily, ...hourly, ...everyMinute })
             .map(([queue, handler]) => [queue, { handler, concurrency: 1 }]),
     ),
 };
 
 /** Recurring work the scheduler enqueues. */
 export const tasks: readonly Task[] = [
+    ...Object.keys(daily).map((queue): Task => ({ queue, every: "day" })),
     ...Object.keys(hourly).map((queue): Task => ({ queue, every: "hour" })),
     ...Object.keys(everyMinute).map((queue): Task => ({ queue, every: "minute" })),
 ];

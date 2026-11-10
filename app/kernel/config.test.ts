@@ -119,6 +119,11 @@ Deno.test("a minimal config gets the defaults", async () => {
     });
 });
 
+Deno.test("remote statuses are kept for good by default", async () => {
+    const result = await parseConfig(minimal);
+    assertEquals(result.ok && settingsOf(result.config).remoteStatusMs, null);
+});
+
 Deno.test("a full config is read as written", async () => {
     const result = await parseConfig(`
 domain = "Social.Example"
@@ -193,6 +198,7 @@ default = ["owner:account"]
 extra_web_ports = [8443]
 unreachable_days = 3
 delivery_hours = 24
+remote_status_days = 30
 
 [streaming]
 sockets_per_account = 4
@@ -280,6 +286,7 @@ level = "debug"
                 silent_blocks: false,
                 unreachable_days: 3,
                 delivery_hours: 24,
+                remote_status_days: 30,
                 rate_limit: { limit: 3000, window_seconds: 300 },
                 fetch_limit: { limit: 600, window_seconds: 300 },
             },
@@ -337,6 +344,7 @@ level = "debug"
         },
     });
     assertEquals(result.ok && settingsOf(result.config).pushTimeoutMs, 5000);
+    assertEquals(result.ok && settingsOf(result.config).remoteStatusMs, 30 * 86_400_000);
 });
 
 const errors = async (toml: string) => {

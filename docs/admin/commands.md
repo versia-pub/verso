@@ -128,16 +128,34 @@ $ verso admin reports list
 
 ### `verso admin statuses`
 
-| Command                | Does                                         |
-| ---------------------- | -------------------------------------------- |
-| `statuses delete <id>` | deletes any status or boost, local or remote |
+| Command                | Does                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| `statuses delete <id>` | deletes any status or boost, local or remote                 |
+| `statuses prune`       | deletes old statuses from other instances that aren't needed |
 
 ```sh
 $ verso admin statuses delete 01a189a2-…
 {"id":"01a189a2-…","deleted":true}
+$ verso admin statuses prune --days 90
+{"deleted":1204}
 ```
 
-See [Removing statuses](moderating.md#removing-statuses) for what it does.
+See [Removing statuses](moderating.md#removing-statuses) for what `delete` does.
+
+`prune` deletes statuses and boosts from other instances older than `--days`, 90 by default, as
+Mastodon's `tootctl statuses remove` does. It keeps one that:
+
+- has a reply, or replies to, boosts or quotes a local status
+- was boosted or quoted by a local user or an account one follows, or boosted since the cutoff
+- is pinned, or mentions a local user
+- a local user liked, bookmarked, reacted to or voted on
+- is by an account a local user follows, or has a hashtag one follows, unless `--clean-followed` is
+  given
+
+So home timelines keep what they show. `--clean-followed` also stops boosts and quotes by followed
+accounts from keeping a status. Reported statuses aren't kept, as on Mastodon. Their authors' status
+counts go down, so they count what is stored here. Their media is deleted by the hourly cleanup.
+`[federation] remote_status_days` runs the same pruning daily, without `--clean-followed`.
 
 ### `verso admin roles`
 

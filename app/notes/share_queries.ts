@@ -18,13 +18,19 @@ export const countShare = async (ctx: Context, noteId: string, by: 1 | -1): Prom
         .execute();
 };
 
-/**
- * Decrements the boost counts of the statuses boosted by `notes`. An account boosts a status once,
- * and `notes` all belong to one account.
- */
+/** Decrements the boost counts of the statuses boosted by `notes`, by how many of them boost each. */
 export const uncountSharesAmong = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
     await ctx.db.updateTable("notes")
-        .set((eb) => ({ shares_count: eb("shares_count", "-", 1) }))
+        .set((eb) => ({
+            shares_count: eb(
+                "shares_count",
+                "-",
+                eb.selectFrom("notes as share")
+                    .select((count) => count.fn.countAll<number>().as("count"))
+                    .whereRef("share.reblog_of_id", "=", "notes.id")
+                    .where("share.id", "in", notes),
+            ),
+        }))
         .where("id", "in", (eb) =>
             eb.selectFrom("notes as share").select("share.reblog_of_id")
                 .where("share.id", "in", notes)

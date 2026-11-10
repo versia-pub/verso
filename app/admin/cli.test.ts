@@ -9,6 +9,7 @@ import {
 import { findAccount } from "../accounts/account_queries.ts";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
+import { dayMs } from "../kernel/clock.ts";
 import { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -286,6 +287,43 @@ Deno.test("any status is deleted by its id, and unknown ones refused", async () 
         AdminError,
     );
     assertEquals(error.message, `There is no status ${note.id}`);
+});
+
+Deno.test("remote statuses older than --days are pruned, and followed accounts' with --clean-followed", async () => {
+    await using test = await createTestContext();
+    await createInstance(test.ctx, "b.example");
+    await createLocalAccount(test.ctx, "alice");
+    await createRemoteAccount(test.ctx, "carol", "b.example");
+    await createRemoteAccount(test.ctx, "dave", "b.example");
+    await test.ctx.db.insertInto("follows")
+        .values({
+            id: test.ctx.ids(),
+            follower_id: "alice",
+            followee_id: "carol",
+            accepted: true,
+            created_at: test.clock.now(),
+        })
+        .execute();
+    const remote = (accountId: string) => {
+        const id = test.ctx.ids();
+        return createNote(test.ctx, accountId, { id, instance_id: "b.example", remote_id: id });
+    };
+    await remote("carol");
+    await remote("dave");
+    test.clock.advance(10 * dayMs);
+    await remote("dave");
+    test.clock.advance(80 * dayMs + 1);
+
+    const pruned = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "statuses", "prune", ...args)).printed.join(""));
+    assertEquals(await pruned(), { deleted: 1 });
+    assertEquals(await pruned("--days", "90"), { deleted: 0 });
+    assertEquals(await pruned("--clean-followed"), { deleted: 1 });
+    assertEquals(await pruned("--days", "80"), { deleted: 1 });
+    assertEquals(await test.ctx.db.selectFrom("notes").select("id").execute(), []);
+
+    const error = await assertRejects(() => pruned("--days", "0"), AdminError);
+    assertEquals(error.message, "--days must be at least 1");
 });
 
 Deno.test("accounts are suspended and unsuspended once, local or remote, and unknown ones refused", async () => {
