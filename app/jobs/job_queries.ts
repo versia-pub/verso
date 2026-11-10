@@ -256,6 +256,119 @@ export const deadLetters = (
         .where((eb) => eb("attempts", ">=", eb.ref("max_attempts")))
         .where("run_at", "<=", before);
 
+/** Some dead letters: those with these ids, or every one of a queue. */
+export type DeadSelection = { readonly ids: readonly string[] } | { readonly queue: string };
+
+/** The dead letters `selection` names. */
+const selectedDead = (ctx: Context, selection: DeadSelection) =>
+    deadLetters(ctx, ctx.clock.now())
+        .where((eb) =>
+            "ids" in selection ? eb("id", "in", selection.ids) : eb("queue", "=", selection.queue)
+        );
+
+/** A dead letter, as the admin commands print it. */
+export type DeadLetter =
+    & Pick<
+        JobsTable,
+        "id" | "queue" | "payload" | "attempts" | "last_error" | "created_at"
+    >
+    & { readonly died_at: Date };
+
+/** The `limit` dead letters that died last, of `queue` if given. */
+export const listDeadLetters = (
+    ctx: Context,
+    options: { readonly queue?: string; readonly limit: number },
+): Promise<DeadLetter[]> =>
+    deadLetters(ctx, ctx.clock.now()).clearSelect()
+        .select(["id", "queue", "payload", "attempts", "last_error", "created_at"])
+        .select("run_at as died_at")
+        .$call((query) =>
+            options.queue === undefined ? query : query.where("queue", "=", options.queue)
+        )
+        .orderBy("run_at", "desc")
+        .limit(options.limit)
+        .execute();
+
+/** The queues of the dead letters `selection` names, by id. */
+export const deadLetterQueues = async (
+    ctx: Context,
+    selection: DeadSelection,
+): Promise<Map<string, string>> => {
+    const rows = await selectedDead(ctx, selection).select("queue").execute();
+    return new Map(rows.map((row) => [row.id, row.queue]));
+};
+
+/**
+ * Runs the dead letters `selection` names again, as if new: their attempts start over, and they are
+ * due now, or once their group's pause ends. `batchSize` at a time, a transaction each. Returns how
+ * many.
+ */
+export const retryDeadLetters = async (
+    ctx: Context,
+    selection: DeadSelection,
+    batchSize = 1000,
+): Promise<number> => {
+    let total = 0;
+    for (;;) {
+        const retried = await ctx.transaction(async (tx) => {
+            const jobs = await selectedDead(tx, selection).select(["queue", "group_key"])
+                .limit(batchSize).execute();
+            if (jobs.length === 0) return 0;
+
+            const ids = jobs.map((job) => job.id);
+            await tx.db.updateTable("jobs")
+                .set({
+                    attempts: 0,
+                    run_at: tx.clock.now(),
+                })
+                .where("id", "in", ids)
+                .execute();
+
+            // Those of a paused group wait for it, as new jobs would.
+            const groups = new Map(
+                jobs.flatMap((job) =>
+                    job.group_key === null ? [] : [[JSON.stringify([job.queue, job.group_key]), {
+                        queue: job.queue,
+                        group: job.group_key,
+                    }]]
+                ),
+            );
+            const pauses = await pausesOf(tx, [...groups.values()]);
+            for (const { queue, group } of groups.values()) {
+                const end = pauses.get(queue, group);
+                if (!end) continue;
+
+                await tx.db.updateTable("jobs").set({ run_at: end })
+                    .where("id", "in", ids)
+                    .where("queue", "=", queue)
+                    .where("group_key", "=", group)
+                    .execute();
+            }
+
+            for (const queue of new Set(jobs.map((job) => job.queue))) await wake(tx, queue);
+            return jobs.length;
+        });
+        total += retried;
+        if (retried < batchSize) return total;
+    }
+};
+
+/** Deletes the dead letters `selection` names, `batchSize` at a time. Returns how many. */
+export const deleteDeadLetters = async (
+    ctx: Context,
+    selection: DeadSelection,
+    batchSize = 1000,
+): Promise<number> => {
+    let total = 0;
+    for (;;) {
+        const { numDeletedRows } = await ctx.db.deleteFrom("jobs")
+            .where("id", "in", selectedDead(ctx, selection).limit(batchSize))
+            .executeTakeFirst();
+        total += Number(numDeletedRows);
+        if (numDeletedRows < BigInt(batchSize)) return total;
+    }
+};
+
 /**
  * How many jobs each queue has that are neither finished nor dead, due or not, running or not.
  * Exported for the tests of its query plan.

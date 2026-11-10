@@ -1,4 +1,10 @@
-import { assertEquals, assertNotEquals, assertRejects, assertStringIncludes } from "@std/assert";
+import {
+    assert,
+    assertEquals,
+    assertNotEquals,
+    assertRejects,
+    assertStringIncludes,
+} from "@std/assert";
 import { ValidationError } from "@cliffy/command";
 import {
     createLocalAccount,
@@ -8,6 +14,9 @@ import {
 } from "../accounts/testing.ts";
 import { findAccount } from "../accounts/account_queries.ts";
 import { instanceKey } from "../instances/keys.ts";
+import { isParked } from "../instances/reachability.ts";
+import { postponeGroup } from "../jobs/job_pause_queries.ts";
+import { claim, enqueue, giveUp } from "../jobs/job_queries.ts";
 import { createInstance } from "../instances/testing.ts";
 import { insertAttachments } from "../media/attachment_queries.ts";
 import { dayMs } from "../kernel/clock.ts";
@@ -795,4 +804,85 @@ Deno.test("trending links and their websites are approved and rejected, and list
         AdminError,
     );
     assertEquals(invalid.message, "not a domain is not a domain name");
+});
+
+Deno.test("dead letters are listed, retried and purged, and those that can't run again refused", async () => {
+    await using test = await createTestContext();
+    const dead = async (queue: string, n: number) => {
+        const id = await enqueue(test.ctx, { queue, payload: { n }, maxAttempts: 1 });
+        assert(id);
+        const [job] = await claim(test.ctx, { queue, worker: "w1", limit: 1, leaseMs: 60_000 });
+        await giveUp(test.ctx, job, `failure ${n}`);
+        test.clock.advance(1000);
+        return id;
+    };
+    const one = await dead("notify", 1);
+    const two = await dead("notify", 2);
+    const delivery = await dead("versia-deliver", 3);
+    await dead("unknown", 4);
+    const waiting = await enqueue(test.ctx, { queue: "notify", payload: { n: 5 } });
+    assert(waiting);
+    const run = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "jobs", ...args)).printed.join(""));
+
+    assertEquals(await run("list"), [
+        { queue: "notify", waiting: 1, oldest_due: test.clock.now().toISOString(), dead: 2 },
+        { queue: "unknown", waiting: 0, oldest_due: null, dead: 1 },
+        { queue: "versia-deliver", waiting: 0, oldest_due: null, dead: 1 },
+    ]);
+    const listed = await run("dead", "--queue", "notify", "--limit", "1");
+    assertEquals([listed.length, listed[0].id, listed[0].last_error], [1, two, "failure 2"]);
+    assertEquals((await run("dead")).length, 4);
+
+    const refused = async (message: string, ...args: string[]) => {
+        const error = await assertRejects(() => run(...args), AdminError);
+        assertEquals(error.message, message);
+    };
+    await refused("--limit must be at least 1", "dead", "--limit", "0");
+    await refused("unknown isn't a queue Verso runs", "retry", "--queue", "unknown");
+    await refused(
+        "versia-deliver's dead letters keep only a summary of their payload, so they can't be " +
+            "retried",
+        "retry",
+        one,
+        delivery,
+    );
+    await refused(`Not dead letters: ${waiting}`, "retry", one, waiting);
+    for (const args of [["retry"], ["purge"], ["retry", one, "--queue", "notify"]]) {
+        await assertRejects(() => run(...args), ValidationError);
+    }
+
+    assertEquals(await run("retry", one), { retried: 1 });
+    assertEquals(await run("retry", "--queue", "notify"), { retried: 1 });
+    assertEquals(await run("purge", delivery), { deleted: 1 });
+    assertEquals(await run("purge", "--queue", "unknown"), { deleted: 1 });
+    assertEquals(await run("dead"), []);
+});
+
+Deno.test("an instance's waiting deliveries are sent now once it is unparked", async () => {
+    await using test = await createTestContext();
+    await createInstance(test.ctx, "b.example");
+    const later = new Date(test.clock.now().getTime() + 60 * 60_000);
+    await test.ctx.db.updateTable("instances").set({ failures: 7, parked_until: later })
+        .where("domain", "=", "b.example").execute();
+    await postponeGroup(test.ctx, "versia-deliver", "b.example", later);
+    await enqueue(test.ctx, { queue: "versia-deliver", payload: {}, group: "b.example" });
+    const unparked = async (domain: string) =>
+        JSON.parse((await admin(test.ctx, "domains", "unpark", domain)).printed.join(""));
+
+    assertEquals(await unparked("B.Example"), { domain: "b.example", was_failing: true });
+    assertEquals(await isParked(test.ctx, "b.example"), false);
+    const [job] = await test.ctx.db.selectFrom("jobs").select("run_at").execute();
+    assertEquals(job.run_at, test.clock.now());
+
+    // An instance that only asked to wait isn't failing, but its deliveries wait no more either.
+    await postponeGroup(test.ctx, "versia-deliver", "b.example", later);
+    assertEquals(await unparked("b.example"), { domain: "b.example", was_failing: false });
+    assertEquals(
+        (await test.ctx.db.selectFrom("jobs").select("run_at").executeTakeFirst())?.run_at,
+        test.clock.now(),
+    );
+
+    const error = await assertRejects(() => unparked("c.example"), AdminError);
+    assertEquals(error.message, "c.example isn't an instance Verso knows");
 });

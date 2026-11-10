@@ -60,23 +60,17 @@ it with [`verso admin keys rotate`](commands.md#verso-admin-keys).
 
 Work such as delivering to other instances runs as jobs, which are retried when they fail. A job
 that fails permanently is kept for `[jobs] dead_letter_days`, 30 by default, so you can see what
-went wrong. To list them:
+went wrong. [`verso admin jobs`](commands.md#verso-admin-jobs) lists them, and once the cause is
+fixed, runs them again or deletes them:
 
-```sql
-SELECT queue, last_error, run_at AS died_at, payload
-FROM jobs
-WHERE finished_at IS NULL AND attempts >= max_attempts
-ORDER BY run_at DESC;
-```
-
-Once the cause is fixed, you can run a job again by resetting its attempts. On PostgreSQL:
-
-```sql
-UPDATE jobs SET attempts = 0, run_at = now() WHERE id = '…';
+```sh
+verso admin jobs dead --queue notify
+verso admin jobs retry --queue notify
 ```
 
 Lots of failed deliveries to one instance usually mean it's down, or blocks yours. Deliveries stop
-being retried after `[federation] delivery_hours`, 48 by default.
+being retried after `[federation] delivery_hours`, 48 by default. Once an instance is back,
+[`verso admin domains unpark`](commands.md#verso-admin-domains) sends what is waiting for it.
 
 ## Logs
 

@@ -4,9 +4,13 @@
  */
 import { Command, ValidationError } from "@cliffy/command";
 import { canonicalizeDomain } from "@versia/protocol";
+import { deliverQueue } from "../federation/deliver.ts";
+import { findInstanceId } from "../instances/instance_queries.ts";
+import { recordReached } from "../instances/reachability.ts";
+import { resumeGroup } from "../jobs/job_pause_queries.ts";
 import { listBlockedDomains } from "../moderation/domain_block_queries.ts";
 import { blockDomain, blockedByConfig, unblockDomain } from "../moderation/domain_blocks.ts";
-import { type AdminIo, missingCommand } from "./admin_io.ts";
+import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
 
 /** A domain as signatures name it, or a usage error. */
 const domainArgument = (domain: string) => {
@@ -19,8 +23,9 @@ const domainArgument = (domain: string) => {
 export const domainsCommand = (io: AdminIo): Command<{ config: string }> =>
     new Command<{ config: string }>()
         .description(
-            "Manage the instances Verso doesn't federate with, with their subdomains. " +
-                "Instances blocked in the config file can only be changed there.",
+            "Manage the instances Verso doesn't federate with, with their subdomains, and " +
+                "deliveries waiting for an instance. Instances blocked in the config file can " +
+                "only be changed there.",
         )
         .action(missingCommand)
         .command("block <domain:string>", "Block an instance.")
@@ -55,5 +60,24 @@ export const domainsCommand = (io: AdminIo): Command<{ config: string }> =>
                 ...(await listBlockedDomains(ctx)).map((block) => ({ ...block, source: "admin" })),
             ]);
             io.print(JSON.stringify(blocks));
+        })
+        .command(
+            "unpark <domain:string>",
+            "Send the deliveries waiting for an instance now: those left alone after it failed " +
+                "too often, or because it asked to wait.",
+        )
+        .action(async ({ config }, domain) => {
+            const name = domainArgument(domain);
+            const result = await io.withContext(config, (ctx) =>
+                ctx.transaction(async (tx) => {
+                    if (!await findInstanceId(tx, name)) {
+                        throw new AdminError(`${name} isn't an instance Verso knows`);
+                    }
+
+                    const wasFailing = await recordReached(tx, name);
+                    await resumeGroup(tx, deliverQueue, name);
+                    return { domain: name, was_failing: wasFailing };
+                }));
+            io.print(JSON.stringify(result));
         })
         .reset();

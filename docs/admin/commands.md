@@ -104,6 +104,7 @@ Blocks take effect without a restart: straight away on PostgreSQL, and within a 
 | `domains block <domain> [-r <reason>]` | blocks an instance, noting why                 |
 | `domains unblock <domain>`             | unblocks an instance blocked with `block`      |
 | `domains list`                         | lists every blocked domain, the config's first |
+| `domains unpark <domain>`              | sends the deliveries waiting for an instance   |
 
 ```sh
 $ verso admin domains block spam.example --reason "Spam"
@@ -116,6 +117,10 @@ $ verso admin domains list
 `changed` is `false` when there was nothing to do, such as blocking a domain twice. `by_config` is
 `true` when the config also blocks the domain, in which case unblocking it here does nothing until
 it's removed from the config too.
+
+Verso stops sending to an instance that fails too often, and tries it again after a wait of up to an
+hour. `unpark` sends what is waiting for it now, for example once you know it is back. `was_failing`
+is `false` if it hadn't been failing, but had asked Verso to wait.
 
 ### `verso admin reports`
 
@@ -197,6 +202,30 @@ $ verso admin media prune --days 7
 default, as Mastodon's `tootctl media remove` does. They are fetched again if anyone asks for them.
 Avatars, headers and custom emojis are kept. `[media] remote_media_days` runs the same pruning
 daily.
+
+### `verso admin jobs`
+
+Shows the work Verso has queued, and runs again or deletes its dead letters, the jobs that failed
+for good. See [Failed jobs](running.md#failed-jobs).
+
+| Command                           | Does                                              |
+| --------------------------------- | ------------------------------------------------- |
+| `jobs list`                       | lists each queue's waiting jobs and dead letters  |
+| `jobs dead [--queue] [--limit]`   | lists the dead letters that died last, 20 at most |
+| `jobs retry <id>… \| --queue <q>` | runs dead letters again, from their first attempt |
+| `jobs purge <id>… \| --queue <q>` | deletes dead letters                              |
+
+```sh
+$ verso admin jobs list
+[{"queue":"notify","waiting":3,"oldest_due":"2026-11-10T21:41:14.387Z","dead":2}]
+
+$ verso admin jobs retry --queue notify
+{"retried":2}
+```
+
+Deliveries, and the jobs that receive and send out entities, keep only a summary of their payload
+once they die, so they can't be retried. Retried jobs start straight away on PostgreSQL, and within
+10 seconds on SQLite.
 
 ### `verso admin roles`
 

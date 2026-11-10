@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
+import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { CompiledQuery, type KyselyPlugin, sql } from "kysely";
 import { testDatabaseKind } from "../db/testing.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -9,19 +9,25 @@ import {
     claimable,
     complete,
     deadCounts,
+    deadLetterQueues,
     deadLetters,
+    deleteDeadLetters,
     deleteExpiredJobs,
     enqueue,
     enqueueAll,
     fail,
     giveUp,
+    listDeadLetters,
     nextRunAt,
     postpone,
     queueStats,
     release,
+    retryDeadLetters,
     waitingCounts,
 } from "./job_queries.ts";
+import { subscribe } from "../kernel/pubsub.ts";
 import { postponeGroup, resumeGroup } from "./job_pause_queries.ts";
+import { jobWakeups } from "./wakeups.ts";
 
 const firstId = "019b76da-a800-7000-8000-000000000001";
 
@@ -697,4 +703,116 @@ Deno.test("backoff doubles from 30 seconds up to six hours, with jitter", () => 
 
     assertEquals(backoffMs(1, () => 0), 15_000);
     assertEquals(backoffMs(30, () => 1), 6 * 60 * minute);
+});
+
+/** Adds a job per `n` to `queue`, in `group` if given, and gives each up, one minute apart. */
+const deadLetter = async (
+    test: Awaited<ReturnType<typeof open>>,
+    queue: string,
+    n: number,
+    group?: string,
+) => {
+    const id = await enqueue(test.ctx, { queue, payload: { n }, group, maxAttempts: 3 });
+    assert(id);
+    const [job] = await claim(test.ctx, { ...options, queue });
+    await giveUp(test.ctx, job, `failure ${n}`);
+    test.clock.advance(minute);
+    return id;
+};
+
+Deno.test("dead letters are listed last died first, a queue's if asked, up to a limit", async () => {
+    await using test = await open();
+    const died = test.clock.now();
+    const first = await deadLetter(test, "deliver", 1);
+    await deadLetter(test, "notify", 2);
+    await deadLetter(test, "deliver", 3);
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 4 } });
+
+    const all = await listDeadLetters(test.ctx, { limit: 10 });
+    assertEquals(all.map((job) => job.payload.n), [3, 2, 1]);
+    assertEquals(all[2], {
+        id: first,
+        queue: "deliver",
+        payload: { n: 1 },
+        attempts: 3,
+        last_error: "failure 1",
+        created_at: died,
+        died_at: died,
+    });
+
+    assertEquals(ids(await listDeadLetters(test.ctx, { queue: "deliver", limit: 10 })), [3, 1]);
+    assertEquals(ids(await listDeadLetters(test.ctx, { limit: 2 })), [3, 2]);
+});
+
+Deno.test("retried dead letters run again from their first attempt, after their group's pause", async () => {
+    await using test = await open();
+    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
+    await deadLetter(test, "deliver", 1);
+    await deadLetter(test, "deliver", 2, "b.example");
+    await deadLetter(test, "deliver", 3, "c.example");
+    await deadLetter(test, "notify", 4);
+    await enqueue(test.ctx, { queue: "deliver", payload: { n: 5 }, runAt: at(5) });
+    await postponeGroup(test.ctx, "deliver", "b.example", at(10));
+    await postponeGroup(test.ctx, "notify", "c.example", at(10));
+
+    const heard: string[] = [];
+    subscribe(test.ctx, jobWakeups, (queue) => Promise.resolve(void heard.push(queue)));
+
+    assertEquals(await retryDeadLetters(test.ctx, { queue: "deliver" }, 2), 3);
+    // Idle workers are woken on SQLite, whose workers run in this process.
+    if (testDatabaseKind === "sqlite") assertEquals(heard, ["deliver", "deliver"]);
+
+    const rows = await test.ctx.db.selectFrom("jobs").select(["payload", "attempts", "run_at"])
+        .orderBy("created_at").execute();
+    assertEquals(rows.map((row) => [row.payload.n, row.attempts, row.run_at]), [
+        [1, 0, at(0)],
+        [2, 0, at(10)],
+        [3, 0, at(0)],
+        [4, 3, at(-1)],
+        [5, 0, at(5)],
+    ]);
+    assertEquals(await listDeadLetters(test.ctx, { queue: "deliver", limit: 10 }), []);
+});
+
+Deno.test("a retried dead letter waits only for its own queue's pause of its group", async () => {
+    await using test = await open();
+    const later = new Date(test.clock.now().getTime() + 10 * minute);
+    const delivery = await deadLetter(test, "deliver", 1, "b.example");
+    const notification = await deadLetter(test, "notify", 2, "b.example");
+    await postponeGroup(test.ctx, "deliver", "b.example", later);
+
+    assertEquals(await retryDeadLetters(test.ctx, { ids: [delivery, notification] }), 2);
+    const rows = await test.ctx.db.selectFrom("jobs").select("run_at").orderBy("created_at")
+        .execute();
+    assertEquals(rows.map((row) => row.run_at), [later, test.clock.now()]);
+});
+
+Deno.test("only the dead letters given are retried or deleted", async () => {
+    await using test = await open();
+    const one = await deadLetter(test, "deliver", 1);
+    const two = await deadLetter(test, "deliver", 2);
+    await deadLetter(test, "deliver", 3);
+    const waiting = await enqueue(test.ctx, { queue: "deliver", payload: { n: 4 } });
+    assert(waiting);
+
+    assertEquals(await retryDeadLetters(test.ctx, { ids: [one, waiting] }), 1);
+    assertEquals(await deleteDeadLetters(test.ctx, { ids: [one, two] }), 1);
+
+    const rows = await test.ctx.db.selectFrom("jobs").select("payload").orderBy("created_at")
+        .execute();
+    assertEquals(ids(rows), [1, 3, 4]);
+    assertEquals(
+        await deadLetterQueues(test.ctx, { ids: [one, two, waiting] }),
+        new Map(),
+    );
+});
+
+Deno.test("a queue's dead letters are deleted a batch at a time, until none are left", async () => {
+    await using test = await open();
+    for (const n of [1, 2, 3, 4, 5]) await deadLetter(test, "deliver", n);
+    await deadLetter(test, "notify", 6);
+
+    assertEquals(await deleteDeadLetters(test.ctx, { queue: "deliver" }, 2), 5);
+    const rows = await test.ctx.db.selectFrom("jobs").select("payload").execute();
+    assertEquals(ids(rows), [6]);
 });
