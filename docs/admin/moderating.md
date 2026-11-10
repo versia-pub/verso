@@ -53,11 +53,12 @@ don't find it unless its full address is given.
 
 Silence an account, local or remote, with
 [`verso admin accounts silence`](commands.md#verso-admin-accounts), which Mastodon calls limiting.
-Apps are told it's limited. Its statuses are left out of the public and hashtag timelines, and its
-notifications to users who don't follow it go through their policy for limited accounts, which
-filters them unless they change it. Its follows are requests, even to unlocked accounts, and stay
-requests when an account is unlocked. A silenced local user's public statuses are posted unlisted.
-Other instances aren't told.
+Apps are told it's limited. Its statuses are left out of the public and hashtag timelines, and out
+of threads, status search and lists of quotes for anyone who doesn't follow it, though a link to one
+still opens. Its notifications to users who don't follow it go through their policy for limited
+accounts, which filters them unless they change it. Its follows are requests, even to unlocked
+accounts, and stay requests when an account is unlocked. A silenced local user's public statuses are
+posted unlisted. Other instances aren't told.
 
 ## Removing statuses
 

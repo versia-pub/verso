@@ -4,7 +4,7 @@ import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { block } from "../graph/blocks.ts";
 import { blockDomainFor } from "../graph/domain_blocks.ts";
-import { follow, unfollow } from "../graph/follows.ts";
+import { acceptFollow, follow, unfollow } from "../graph/follows.ts";
 import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
 import { like } from "../interactions/likes.ts";
@@ -16,6 +16,7 @@ import { drain } from "../jobs/worker.ts";
 import type { NotesTable } from "../notes/tables.ts";
 import { createNote } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";
+import { silence, unsilence } from "../moderation/silences.ts";
 import { indexUnindexed } from "./notes.ts";
 import { searchStatuses, type StatusSearch } from "./statuses.ts";
 
@@ -131,6 +132,8 @@ Deno.test("a status the viewer may no longer see isn't found", async () => {
     await using test = await open();
     await follow(test.ctx, "alice", "carol");
     await drain(test.ctx, queues);
+    // One the viewer may see, which mustn't let them find the other.
+    await test.post("bob", "Public");
     const id = await test.post("carol", "Followers only", { visibility: "private" });
     await like(test.ctx, "alice", id);
     assertEquals(await test.find("followers"), [id]);
@@ -262,4 +265,25 @@ Deno.test("statuses are found by Mastodon's prefixes: author, properties, langua
 
     // An author asked for narrows it down too.
     assertEquals(await test.find("is:reply", { accountId: "bob" }), [two]);
+});
+
+Deno.test("statuses by silenced authors are found only by their followers and themselves", async () => {
+    await using test = await open();
+    const bobs = await test.post("bob", "Quick fox");
+    const alices = await test.post("alice", "Quick fox");
+    await silence(test.ctx, "bob");
+
+    assertEquals(await test.find("quick"), [alices]);
+    assertEquals(await test.find("quick", { viewerId: "bob" }), [bobs]);
+
+    // A request isn't a follow.
+    await updateProfile(test.ctx, "bob", { locked: true });
+    await follow(test.ctx, "carol", "bob");
+    assertEquals(await test.find("quick", { viewerId: "carol" }), []);
+
+    await acceptFollow(test.ctx, "carol", "bob");
+    assertEquals(await test.find("quick", { viewerId: "carol" }), [bobs]);
+
+    await unsilence(test.ctx, "bob");
+    assertEquals(await test.find("quick"), [alices, bobs]);
 });

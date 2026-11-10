@@ -9,7 +9,7 @@ import type { Database } from "../db/database.ts";
 import { type Excluded, notExcluded } from "../graph/excluded_queries.ts";
 import { hasAttachments } from "../media/attachment_queries.ts";
 import type { Context } from "../kernel/context.ts";
-import { isSeenBy, type Onlooker } from "../notes/thread_queries.ts";
+import { type Onlooker, shownTo } from "../notes/thread_queries.ts";
 import { usesAny } from "../notes/timeline_queries.ts";
 import { matching, noteIndex } from "./index_queries.ts";
 
@@ -139,7 +139,7 @@ export type NoteMatch = {
  * Statuses, newest first, with what each of `terms` says, of those Mastodon searches in `scope`:
  * public statuses whose authors are `indexable`, and those the viewer wrote, was mentioned in,
  * liked or boosted. Of those, only the ones the viewer may see, by authors they don't block or
- * mute, are found, and never boosts.
+ * mute, and not by silenced authors they don't follow, are found, and never boosts.
  *
  * Only what an index narrows down is searched: statuses with a word, phrase or hashtag, by an
  * author, or in the viewer's library. Anything else, such as `is:sensitive` alone, finds nothing,
@@ -173,7 +173,7 @@ export const noteIdsMatching = async (
             if (match.scope === "library") return inLibraryOf(viewerId)(eb);
             return eb.or([findable(eb), inLibraryOf(viewerId)(eb)]);
         })
-        .where(isSeenBy(ctx, match.onlooker, "notes.id"))
+        .where(shownTo(match.onlooker))
         .where(notExcluded(match.hidden, "notes.account_id"));
     if (match.accountId !== null) query = query.where("notes.account_id", "=", match.accountId);
     if (match.minId !== null) query = query.where("notes.id", ">", match.minId);

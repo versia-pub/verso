@@ -4,7 +4,7 @@ import type { Database } from "../db/database.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import type { NoteRow } from "./note_queries.ts";
-import { type ExpressionBuilder, sql } from "kysely";
+import { type ExpressionBuilder, type ExpressionWrapper, sql, type SqlBool } from "kysely";
 import { type Excluded, type Filter, notExcluded } from "../graph/excluded_queries.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 
@@ -45,6 +45,51 @@ const seenBy = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">
 };
 
 /**
+ * Whether a status is shown to `onlooker` despite its author being silenced: it isn't, or they are
+ * the author, or follow them, as Mastodon's status filter decides for threads, status search and
+ * quotes. A follow request isn't enough.
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/status_filter.rb
+ */
+const unsilencedFor = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">) => {
+    const unsilenced = eb.not(eb.exists(
+        eb.selectFrom("accounts").select("accounts.id")
+            .whereRef("accounts.id", "=", "notes.account_id")
+            .where("accounts.silenced_at", "is not", null),
+    ));
+    if (onlooker === null) return unsilenced;
+
+    return eb.or([
+        unsilenced,
+        eb("notes.account_id", "=", onlooker.id),
+        eb("notes.account_id", "in", onlooker.followed),
+    ]);
+};
+
+/**
+ * Whether `onlooker` may see a status in `notes` and is shown it despite a silenced author, as
+ * threads and status search show statuses.
+ */
+export const shownTo = (
+    onlooker: Onlooker,
+): (eb: ExpressionBuilder<Database, "notes">) => ExpressionWrapper<Database, "notes", SqlBool> =>
+(eb) => eb.and([seenBy(onlooker)(eb), unsilencedFor(onlooker)(eb)]);
+
+/** Which of `ids` are statuses `onlooker` may see and is shown despite silenced authors. */
+export const notesShownTo = async (
+    ctx: Context,
+    ids: readonly string[],
+    onlooker: Onlooker,
+): Promise<Set<string>> => {
+    if (ids.length === 0) return new Set();
+
+    const rows = await ctx.db.selectFrom("notes").select("id")
+        .where("id", "in", ids)
+        .where(shownTo(onlooker))
+        .execute();
+    return new Set(rows.map((row) => row.id));
+};
+
+/**
  * Whether the status whose id is in `column`, such as `notifications.note_id`, is one `onlooker`
  * may see, for another module's query.
  */
@@ -72,7 +117,7 @@ export const notesSeenBy = async (
 
 /**
  * The replies to any of `noteIds`, oldest first, at most `limit`, with whether `onlooker` may see
- * each.
+ * each and is shown it despite a silenced author.
  */
 export const repliesTo = async (
     ctx: Context,
@@ -83,7 +128,7 @@ export const repliesTo = async (
     if (noteIds.length === 0) return [];
 
     const rows = await ctx.db.selectFrom("notes").selectAll()
-        .select((eb) => seenBy(onlooker)(eb).as("seen"))
+        .select((eb) => shownTo(onlooker)(eb).as("seen"))
         .where("in_reply_to_id", "in", noteIds)
         .orderBy("id")
         .limit(limit)
@@ -159,13 +204,15 @@ export const quoteCounts = async (
 
 /**
  * A page of the statuses with one of `visibilities` that quote `noteId`, excluding those by the
- * accounts `hidden`, newest first. Boosts aren't quotes.
+ * accounts `hidden`, and those by silenced accounts unless `silencedFor` is shown them, newest
+ * first. Boosts aren't quotes.
  */
 export const quotePage = async (
     ctx: Context,
     noteId: string,
     visibilities: readonly Visibility[],
     hidden: Excluded | null,
+    silencedFor: { readonly onlooker: Onlooker } | null,
     page: PageBounds,
 ): Promise<NoteRow[]> => {
     let query = ctx.db.selectFrom("notes").selectAll()
@@ -173,6 +220,7 @@ export const quotePage = async (
         .where("visibility", "in", visibilities)
         .where("reblog_of_id", "is", null);
     if (hidden !== null) query = query.where(notExcluded(hidden, "notes.account_id"));
+    if (silencedFor !== null) query = query.where(unsilencedFor(silencedFor.onlooker));
 
     return await readPage(query, "id", page);
 };

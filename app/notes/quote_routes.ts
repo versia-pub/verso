@@ -9,7 +9,7 @@ import { everyone } from "./audience.ts";
 import { findNote } from "./note_queries.ts";
 import { renderStatuses } from "./render.ts";
 import { quotePage } from "./thread_queries.ts";
-import { seenAmong, visibleOriginal } from "./visibility.ts";
+import { onlookerOf, seenAmong, visibleOriginal } from "./visibility.ts";
 
 export const quoteRoutes: readonly Route[] = [
     defineRoute({
@@ -28,7 +28,9 @@ export const quoteRoutes: readonly Route[] = [
             const note = await visibleOriginal(ctx, params.id, viewerId);
             if (note === undefined) throw new NotFound();
 
-            // Those a viewer may see among all the quotes are found after the page is read.
+            // Those a viewer may see among all the quotes are found after the page is read, but
+            // those by silenced accounts are left out of it, except for the quoted author, as on
+            // Mastodon.
             const visibilities = viewerId === null
                 ? everyone
                 : ["public", "unlisted", "private", "direct"] as const;
@@ -37,6 +39,7 @@ export const quoteRoutes: readonly Route[] = [
                 note.id,
                 visibilities,
                 viewerHidden(ctx, viewerId),
+                viewerId === note.account_id ? null : { onlooker: onlookerOf(ctx, viewerId) },
                 query,
             );
             const visible = await seenAmong(ctx, quotes.map((quote) => quote.id), viewerId);

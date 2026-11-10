@@ -10,6 +10,7 @@ import { follow } from "../graph/follows.ts";
 import { routes } from "../http/routes.ts";
 import { defaultSettings } from "../instances/testing.ts";
 import { postNote } from "../notes/notes.ts";
+import { createNote } from "../notes/testing.ts";
 import { indexUnindexedAccounts } from "../search/accounts.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -71,4 +72,71 @@ Deno.test("a silenced account is said to be limited, and its statuses kept off t
 
     await unsilence(test.ctx, "carol");
     assertEquals(await shown(), before);
+});
+
+Deno.test("a silenced account's statuses are left out of threads and quotes for those who don't follow it", async () => {
+    await using test = await createTestContext();
+    const app = createTestApp(test.ctx, routes(defaultSettings()), { checkResponses: true });
+    for (const id of ["alice", "bob", "carol", "dan"]) await createLocalAccount(test.ctx, id);
+    await follow(test.ctx, "bob", "carol");
+    const root = await createNote(test.ctx, "dan");
+    const middle = await createNote(test.ctx, "carol", { in_reply_to_id: root.id });
+    const leaf = await createNote(test.ctx, "dan", { in_reply_to_id: middle.id });
+    const quoting = await createNote(test.ctx, "carol", { quote_id: root.id });
+    const quoted = await createNote(test.ctx, "dan", { quote_id: middle.id });
+    const tokens = new Map<string, string>();
+    for (const id of ["alice", "bob", "carol", "dan"]) {
+        tokens.set(id, await tokenFor(test.ctx, id));
+    }
+
+    /** What `viewerId`, or anyone if it is `null`, is shown around carol's statuses. */
+    const shown = async (viewerId: string | null) => {
+        const get = async (path: string) => {
+            const token = viewerId === null ? undefined : tokens.get(viewerId);
+            const response = await app.request(path, {
+                headers: token === undefined ? {} : { authorization: `Bearer ${token}` },
+            });
+            return { status: response.status, body: await response.json() };
+        };
+        const ids = (statuses: { id: string }[]) => statuses.map((status) => status.id);
+        const above = (await get(`/api/v1/statuses/${leaf.id}/context`)).body;
+        const below = (await get(`/api/v1/statuses/${root.id}/context`)).body;
+        const quote = (await get(`/api/v1/statuses/${quoted.id}`)).body.quote;
+
+        return {
+            status: (await get(`/api/v1/statuses/${middle.id}`)).status,
+            middle: ids((await get(`/api/v1/statuses/${middle.id}/context`)).body.descendants),
+            ancestors: ids(above.ancestors),
+            descendants: ids(below.descendants),
+            quotes: ids((await get(`/api/v1/statuses/${root.id}/quotes`)).body),
+            quote: { state: quote.state, id: quote.quoted_status?.id },
+        };
+    };
+
+    const all = {
+        status: 200,
+        middle: [leaf.id],
+        ancestors: [root.id, middle.id],
+        descendants: [middle.id, leaf.id],
+        quotes: [quoting.id],
+        quote: { state: "accepted", id: middle.id },
+    };
+    for (const viewerId of [null, "alice", "bob", "carol", "dan"]) {
+        assertEquals(await shown(viewerId), all, `${viewerId}`);
+    }
+
+    // Replies under carol's are kept, and a quote of carol's still shows what it quotes, as on
+    // Mastodon. Dan wrote what carol quoted, so he is still shown the quote.
+    await silence(test.ctx, "carol");
+    const hidden = { ...all, ancestors: [root.id], descendants: [leaf.id], quotes: [] };
+    for (const viewerId of [null, "alice"]) {
+        assertEquals(await shown(viewerId), hidden, `${viewerId}`);
+    }
+    for (const viewerId of ["bob", "carol"]) {
+        assertEquals(await shown(viewerId), all, `${viewerId}`);
+    }
+    assertEquals(await shown("dan"), { ...hidden, quotes: [quoting.id] });
+
+    await unsilence(test.ctx, "carol");
+    assertEquals(await shown("alice"), all);
 });

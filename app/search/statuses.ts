@@ -47,7 +47,7 @@ const authorOf = async (ctx: Context, term: QueryTerm, viewerId: string): Promis
 
 /**
  * The statuses `search` finds, newest first: those with what its query says, that the viewer may
- * see, by authors they don't block or mute.
+ * see, by authors they don't block or mute, and not by silenced authors they don't follow.
  */
 export const searchStatuses = async (ctx: Context, search: StatusSearch): Promise<NoteRow[]> => {
     const { viewerId } = search;

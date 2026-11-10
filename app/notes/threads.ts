@@ -6,7 +6,7 @@
 import { hiddenAmong } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, type NoteRow } from "./note_queries.ts";
-import { notesSeenBy, type Onlooker, repliesTo } from "./thread_queries.ts";
+import { notesShownTo, type Onlooker, repliesTo } from "./thread_queries.ts";
 import { onlookerOf } from "./visibility.ts";
 
 /** How many statuses up a thread are examined, as Mastodon shows to anyone. */
@@ -48,8 +48,8 @@ const hiddenOf = async (ctx: Context, notes: readonly NoteRow[], onlooker: Onloo
 /**
  * The replies to `note`, and their replies, that `onlooker` may see, in thread order: each reply
  * followed by the replies under it, oldest first. Those nearest `note` are found first, so a long
- * thread loses its deepest replies. Replies under a reply the viewer may not see are shown too, as
- * on Mastodon, but not those under a reply by an account they block or mute, which are omitted
+ * thread loses its deepest replies. Replies under a reply the viewer may not see, or by a silenced
+ * account they don't follow, are shown too, as on Mastodon, but not those under a reply by an account they block or mute, which are omitted
  * along with it.
  */
 const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) => {
@@ -88,7 +88,8 @@ const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) =>
 /**
  * The thread around `note`, as `viewerId` sees it, or as anyone sees it if it is `null`: the
  * statuses it replies to, oldest first, and the replies under it, in thread order, omitting those
- * they may not see and those by the accounts they block or mute.
+ * they may not see, those by silenced accounts they don't follow, and those by the accounts they
+ * block or mute.
  */
 export const threadOf = async (
     ctx: Context,
@@ -98,7 +99,7 @@ export const threadOf = async (
     const onlooker = onlookerOf(ctx, viewerId);
 
     const ancestors = await ancestorsOf(ctx, note);
-    const seen = await notesSeenBy(ctx, ancestors.map((each) => each.id), onlooker);
+    const seen = await notesShownTo(ctx, ancestors.map((each) => each.id), onlooker);
     const hidden = await hiddenOf(ctx, ancestors, onlooker);
 
     return {
