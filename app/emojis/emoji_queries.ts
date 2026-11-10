@@ -114,6 +114,13 @@ export const updateEmojiById = async (
     await ctx.db.updateTable("emojis").set(changes).where("id", "=", id).execute();
 };
 
+/** The ids of the local user `accountId`'s own emojis. */
+export const emojiIdsOf = async (ctx: Context, accountId: string): Promise<string[]> =>
+    (await ctx.db.selectFrom("emojis").select("id")
+        .where("account_id", "=", accountId)
+        .execute())
+        .map((row) => row.id);
+
 /** Deletes the emoji `id`. */
 export const deleteEmojiById = async (ctx: Context, id: string): Promise<void> => {
     await ctx.db.deleteFrom("emojis").where("id", "=", id).execute();

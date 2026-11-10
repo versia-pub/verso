@@ -14,6 +14,7 @@ import { updateDescription } from "../media/upload_queries.ts";
 import { uploadPicture } from "../media/uploads.ts";
 import {
     deleteEmojiById,
+    emojiIdsOf,
     findLocalEmoji,
     findRemoteEmoji,
     hasUsableEmoji,
@@ -246,4 +247,16 @@ export const deleteEmoji = async (
         await deleteEmojiById(tx, id);
     });
     return true;
+};
+
+/**
+ * Deletes the local user `accountId`'s own emojis, as {@link deleteEmoji} does, for an account
+ * being deleted. Their pictures are deleted with the account's other media.
+ */
+export const deleteEmojisOf = async (ctx: Context, accountId: string): Promise<void> => {
+    for (const id of await emojiIdsOf(ctx, accountId)) {
+        const event: EmojiDeleted = { type: "emojis.deleted", emojiId: id };
+        await emit(ctx, event);
+        await deleteEmojiById(ctx, id);
+    }
 };

@@ -65,7 +65,7 @@ const uncountAmong = async (ctx: Context, notes: NoteIdQuery) => {
 const removalBatch = 500;
 
 /**
- * Removes the statuses and boosts of `accountId`, a remote account about to be deleted,
+ * Removes the statuses and boosts of `accountId`, an account about to be deleted,
  * decrementing the counts that depend on them, one batch at a time, each in its own transaction, so
  * that an account with many statuses doesn't hold all its locks at once. Deleting the account then
  * decrements the counts of any it posted in the meantime.

@@ -38,9 +38,10 @@ export const isProfileUpdated = (event: DomainEvent): event is ProfileUpdated =>
     event.type === "accounts.profile_updated";
 
 /**
- * An account is about to be deleted, along with everything in other modules that cascades from it.
- * It is emitted in the transaction that deletes it, while its rows still exist, so modules can fix
- * the counts those rows contributed to other accounts and statuses.
+ * An account is about to be deleted, along with everything in other modules that cascades from it,
+ * or emptied and kept as a deleted local account. It is emitted in the transaction that deletes its
+ * rows, while they still exist, so modules can fix the counts those rows contributed to other
+ * accounts and statuses.
  */
 export type AccountDeleting = {
     readonly type: "accounts.deleting";

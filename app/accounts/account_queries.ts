@@ -334,20 +334,60 @@ export const deleteAccount = async (ctx: Context, id: string): Promise<void> => 
 
 /**
  * Suspends the account `id` from `at`, or unsuspends it if `at` is `null`. Returns whether that
- * changed it: an account already suspended stays suspended from when it first was.
+ * changed it: an account already suspended stays suspended from when it first was, and a deleted
+ * one stays suspended.
  */
 export const setSuspendedAt = async (
     ctx: Context,
     id: string,
     at: Date | null,
 ): Promise<boolean> => {
-    const { numUpdatedRows } = await ctx.db.updateTable("accounts")
+    let query = ctx.db.updateTable("accounts")
         .set({ suspended_at: at })
         .where("id", "=", id)
-        .where("suspended_at", at === null ? "is not" : "is", null)
-        .executeTakeFirst();
+        .where("suspended_at", at === null ? "is not" : "is", null);
+    if (at === null) query = query.where("deleted_at", "is", null);
+
+    const { numUpdatedRows } = await query.executeTakeFirst();
 
     return numUpdatedRows > 0n;
+};
+
+/**
+ * Empties the local account `id` of its profile and counts, and marks it deleted from `at`, unless
+ * it already was. Its pictures go when its media is deleted. Returns whether it wasn't deleted
+ * before.
+ */
+export const emptyAccount = async (ctx: Context, id: string, at: Date): Promise<boolean> => {
+    const before = await ctx.db.selectFrom("accounts").select("deleted_at")
+        .where("id", "=", id)
+        .where("instance_id", "is", null)
+        .executeTakeFirst();
+    if (before === undefined) return false;
+
+    await ctx.db.updateTable("accounts")
+        .set({
+            display_name: "",
+            note: "",
+            note_format: "text/plain",
+            note_html: "",
+            fields: [],
+            locked: false,
+            bot: false,
+            discoverable: false,
+            trendable: false,
+            indexable: false,
+            attribution_domains: [],
+            statuses_count: 0,
+            followers_count: 0,
+            following_count: 0,
+            last_status_at: null,
+            deleted_at: before.deleted_at ?? at,
+        })
+        .where("id", "=", id)
+        .execute();
+
+    return before.deleted_at === null;
 };
 
 /**
@@ -402,6 +442,13 @@ export const isAccountSilenced = async (ctx: Context, accountId: string): Promis
     await ctx.db.selectFrom("accounts").select("id")
         .where("id", "=", accountId)
         .where("silenced_at", "is not", null)
+        .executeTakeFirst() !== undefined;
+
+/** Whether the local account `accountId` was deleted and kept empty. */
+export const isAccountDeleted = async (ctx: Context, accountId: string): Promise<boolean> =>
+    await ctx.db.selectFrom("accounts").select("id")
+        .where("id", "=", accountId)
+        .where("deleted_at", "is not", null)
         .executeTakeFirst() !== undefined;
 
 /** Columns of an account to update. */

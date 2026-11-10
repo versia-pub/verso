@@ -89,6 +89,7 @@ import { deliveryBodies } from "./0087_delivery_bodies.ts";
 import { htmlVersions } from "./0088_html_versions.ts";
 import { suspensions } from "./0089_suspensions.ts";
 import { silences } from "./0090_silences.ts";
+import { accountDeletions } from "./0091_account_deletions.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -185,4 +186,5 @@ export const migrations: Record<string, Migration> = {
     "0088_html_versions": htmlVersions,
     "0089_suspensions": suspensions,
     "0090_silences": silences,
+    "0091_account_deletions": accountDeletions,
 };

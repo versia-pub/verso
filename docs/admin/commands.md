@@ -49,17 +49,20 @@ help and exits with 2.
 | `accounts unsuspend <acct>` | lifts an account's suspension |
 | `accounts silence <acct>`   | silences an account           |
 | `accounts unsilence <acct>` | lifts an account's silence    |
+| `accounts delete <acct>`    | deletes a local account       |
 
 `<acct>` is `username` for a local account, or `username@domain` for a remote one. `changed` is
-`false` if the account already was, or wasn't, suspended or silenced.
+`false` if the account already was, or wasn't, suspended, silenced or deleted. `delete` takes
+`--no-tombstone` to remove the account altogether.
 
 ```sh
 $ verso admin accounts suspend spam@remote.example
 {"account":"spam@remote.example","suspended":true,"changed":true}
 ```
 
-See [Suspending accounts](moderating.md#suspending-accounts) and
-[Silencing accounts](moderating.md#silencing-accounts) for what they do.
+See [Suspending accounts](moderating.md#suspending-accounts),
+[Silencing accounts](moderating.md#silencing-accounts) and
+[Deleting accounts](moderating.md#deleting-accounts) for what they do.
 
 ### `verso admin announcements`
 

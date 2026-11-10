@@ -5,6 +5,7 @@
 import { Command } from "@cliffy/command";
 import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import type { Context } from "../kernel/context.ts";
+import { deleteLocalAccount } from "../moderation/account_deletions.ts";
 import { silence, unsilence } from "../moderation/silences.ts";
 import { suspend, unsuspend } from "../moderation/suspensions.ts";
 import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
@@ -57,4 +58,28 @@ export const accountsCommand = (io: AdminIo): Command<{ config: string }> =>
         .action(moderation(io, "silenced", true, silence))
         .command("unsilence <acct:string>", "Lift an account's silence.")
         .action(moderation(io, "silenced", false, unsilence))
+        .command(
+            "delete <acct:string>",
+            "Delete a local account and all it has, keeping it empty so its username and login " +
+                "can't be used again.",
+        )
+        .option(
+            "--no-tombstone",
+            "Remove the account too, with the reports about it, so its username and login can be " +
+                "used again.",
+        )
+        .action(async ({ config, tombstone }, acct) => {
+            const result = await io.withContext(config, async (ctx) => {
+                const account = await accountAt(ctx, acct);
+                if (account.domain !== null) {
+                    throw new AdminError(
+                        `${acct} is a remote account, which can be suspended but not deleted`,
+                    );
+                }
+
+                const changed = await deleteLocalAccount(ctx, account.id, { tombstone });
+                return { account: account.username, deleted: true, tombstone, changed };
+            });
+            io.print(JSON.stringify(result));
+        })
         .reset();

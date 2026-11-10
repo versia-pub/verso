@@ -4,6 +4,7 @@ import type { Claims, Issuer } from "../kernel/identity.ts";
 import {
     deleteAccount,
     insertLocalAccount,
+    isAccountDeleted,
     localUsernamesStartingWith,
 } from "./account_queries.ts";
 import { linkedAccount, linkIdentity } from "./identity_queries.ts";
@@ -127,11 +128,16 @@ const linkAccount = async (tx: Context, issuer: Issuer, claims: Claims): Promise
     return { ok: true, accountId: winner, created: false };
 };
 
-/** Links a login to its account, as `linkAccount` does, and gives it the roles its claims match. */
+/**
+ * Links a login to its account, as `linkAccount` does, and gives it the roles its claims match. A
+ * deleted account gets none back.
+ */
 export const provision = (ctx: Context, issuer: Issuer, claims: Claims): Promise<Provisioned> =>
     ctx.transaction(async (tx) => {
         const provisioned = await linkAccount(tx, issuer, claims);
-        if (provisioned.ok) await syncClaimedRoles(tx, issuer, provisioned.accountId, claims);
+        if (provisioned.ok && !await isAccountDeleted(tx, provisioned.accountId)) {
+            await syncClaimedRoles(tx, issuer, provisioned.accountId, claims);
+        }
 
         return provisioned;
     });

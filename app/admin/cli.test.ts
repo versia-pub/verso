@@ -332,6 +332,35 @@ Deno.test("accounts are suspended and unsuspended once, local or remote, and unk
     }
 });
 
+Deno.test("local accounts are deleted, kept empty unless asked not to, and remote ones refused", async () => {
+    await using test = await createTestContext();
+    for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "carol", "b.example");
+    const json = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "accounts", ...args)).printed.join(""));
+
+    const deleted = { account: "alice", deleted: true, tombstone: true };
+    assertEquals(await json("delete", "alice"), { ...deleted, changed: true });
+    assertEquals(await json("delete", "alice"), { ...deleted, changed: false });
+    assertEquals((await findAccount(test.ctx, "alice"))?.deleted_at, test.clock.now());
+
+    assertEquals(await json("delete", "bob", "--no-tombstone"), {
+        account: "bob",
+        deleted: true,
+        tombstone: false,
+        changed: true,
+    });
+    assertEquals(await findAccount(test.ctx, "bob"), undefined);
+
+    const error = await assertRejects(() => json("delete", "carol@b.example"), AdminError);
+    assertEquals(
+        error.message,
+        "carol@b.example is a remote account, which can be suspended but not deleted",
+    );
+    assertEquals((await findAccount(test.ctx, "carol"))?.suspended_at, null);
+});
+
 Deno.test("accounts are silenced and unsilenced once", async () => {
     await using test = await createTestContext();
     await createLocalAccount(test.ctx, "alice");

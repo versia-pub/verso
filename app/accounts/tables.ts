@@ -87,6 +87,11 @@ export type AccountsTable = {
     suspended_at: Date | null;
     /** When an admin silenced it, or `null` if it isn't silenced. */
     silenced_at: Date | null;
+    /**
+     * When an admin deleted it, or `null` if they didn't. A deleted local account is kept empty and
+     * suspended, so its username and login can't be used again.
+     */
+    deleted_at: Date | null;
 };
 
 /** A login at an OpenID issuer, linked to a local account. */

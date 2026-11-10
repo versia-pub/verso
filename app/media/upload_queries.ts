@@ -125,6 +125,21 @@ export const deleteMedia = async (
 };
 
 /**
+ * Deletes the media of the local account `accountId`, returning the keys of the files it was stored
+ * under, which may now be unused.
+ */
+export const deleteMediaOf = async (ctx: Context, accountId: string): Promise<string[]> => {
+    const rows = await ctx.db.deleteFrom("media")
+        .where("account_id", "=", accountId)
+        .returning(["sha256", "preview_sha256", "upload_sha256"])
+        .execute();
+
+    return [
+        ...new Set(rows.flatMap((row) => [row.sha256, row.preview_sha256, row.upload_sha256])),
+    ].filter((key): key is string => key !== null);
+};
+
+/**
  * An upload stored under `key` once processed, or having it as its preview. Only local media
  * qualifies.
  */
