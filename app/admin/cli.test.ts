@@ -9,6 +9,7 @@ import {
 import { findAccount } from "../accounts/account_queries.ts";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
+import { insertAttachments } from "../media/attachment_queries.ts";
 import { dayMs } from "../kernel/clock.ts";
 import { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
@@ -345,6 +346,46 @@ Deno.test("remote accounts fetched more than --days ago that nothing refers to a
         (await test.ctx.db.selectFrom("accounts").select("id").orderBy("id").execute())
             .map((row) => row.id),
         ["alice", "carol"],
+    );
+
+    const error = await assertRejects(() => pruned("--days", "0"), AdminError);
+    assertEquals(error.message, "--days must be at least 1");
+});
+
+Deno.test("remote attachments cached more than --days ago lose their files", async () => {
+    await using test = await createTestContext();
+    await createInstance(test.ctx, "b.example");
+    await createRemoteAccount(test.ctx, "carol", "b.example");
+    const cached = (id: string, daysAgo = 0) =>
+        test.ctx.db.insertInto("media").values({
+            id,
+            instance_id: "b.example",
+            url: `https://b.example/${id}.png`,
+            media_type: "image/png",
+            sha256: "f".repeat(64),
+            cached_type: "image/png",
+            processed_at: new Date(test.clock.now().getTime() - daysAgo * dayMs),
+            created_at: test.clock.now(),
+        }).execute();
+    await cached("old");
+    test.clock.advance(10 * dayMs);
+    await cached("recent");
+    await insertAttachments(test.ctx, (await createNote(test.ctx, "carol")).id, ["old", "recent"]);
+    test.clock.advance(7 * dayMs + 1);
+    await cached("fresh", 3);
+    await insertAttachments(test.ctx, (await createNote(test.ctx, "carol")).id, ["fresh"]);
+
+    const pruned = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "media", "prune", ...args)).printed.join(""));
+    assertEquals(await pruned("--days", "8"), { cleared: 1 });
+    assertEquals(await pruned(), { cleared: 1 });
+    assertEquals(await pruned("--days", "1"), { cleared: 1 });
+    assertEquals(
+        await test.ctx.db.selectFrom("media").select(["id", "sha256"]).orderBy("id").execute(),
+        [{ id: "fresh", sha256: null }, { id: "old", sha256: null }, {
+            id: "recent",
+            sha256: null,
+        }],
     );
 
     const error = await assertRejects(() => pruned("--days", "0"), AdminError);

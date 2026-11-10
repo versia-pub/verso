@@ -42,6 +42,9 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # Whether the files of remote media, such as attachments, avatars and custom emojis, are fetched and
 # stored, so that Verso serves them. On by default, as on Mastodon.
 # cache_remote_media = true
+# After how many days the files cached for remote statuses' attachments are removed. They are
+# fetched again if anyone asks for them. 30 by default.
+# remote_media_days = 30
 
 # Where uploaded files are stored. Exactly one of these: the path of a directory, which Verso
 # creates if it doesn't exist, or a bucket on a server that speaks S3, such as AWS, Garage or MinIO.

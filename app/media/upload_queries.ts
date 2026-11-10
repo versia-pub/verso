@@ -213,9 +213,10 @@ export type RemovedMedia =
 /**
  * Removes up to `limit` media rows created before `before` that nothing uses, local or remote,
  * oldest first, starting after the row at `after`. Media is unused when no status has it attached,
- * no scheduled status has it reserved, and no account, custom emoji or preview card uses it. Anything that starts
- * using media must be added here. If a status gets attached to the media, or a scheduled one
- * reserves it, at the same moment, the removal fails instead, since media in use can't be deleted.
+ * no scheduled status has it reserved, and no account, custom emoji or preview card uses it.
+ * Anything that starts using media must be added here. If a status gets attached to the media, or a
+ * scheduled one reserves it, at the same moment, the removal fails instead, since media in use
+ * can't be deleted.
  * It reads the `accounts` and `emojis` tables directly rather than going through their modules, so
  * that it is a single query.
  */

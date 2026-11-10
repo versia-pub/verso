@@ -30,6 +30,8 @@ export type Settings = {
     readonly previewCardMs: number | null;
     /** Whether the files of remote media are cached, to be served by Verso. */
     readonly cacheRemoteMedia: boolean;
+    /** How long ago the files of remote attachments were cached when they are removed. */
+    readonly remoteMediaMs: number;
     /** How many bytes an uploaded file may have, and a remote image that is cached. */
     readonly maxUploadBytes: number;
 };
@@ -53,6 +55,7 @@ export const settingsOf = (
         ? null
         : config.media.preview_card_days * dayMs,
     cacheRemoteMedia: config.media.cache_remote_media,
+    remoteMediaMs: config.media.remote_media_days * dayMs,
     maxUploadBytes: config.media.max_upload_bytes,
 });
 
@@ -69,5 +72,6 @@ export const defaultSettings: Settings = {
     remoteStatusMs: null,
     previewCardMs: null,
     cacheRemoteMedia: true,
+    remoteMediaMs: 30 * dayMs,
     maxUploadBytes: 16 * 1024 * 1024,
 };

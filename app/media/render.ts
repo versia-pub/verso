@@ -40,9 +40,9 @@ export const proxyUrl = (ctx: Context, id: string, small = false): string =>
     small ? ctx.urls.url`/media/proxy/${id}/small` : ctx.urls.url`/media/proxy/${id}`;
 
 /**
- * Media as Mastodon's API renders it. Local media is served at Verso's URL once processed, and remote
- * media once cached; until then, remote media that will be cached is at the media proxy's URL, and
- * other remote media at the remote instance's URL.
+ * Media as Mastodon's API renders it. Local media is served at Verso's URL once processed, and
+ * remote media once cached; until then, remote media that will be cached is at the media proxy's
+ * URL, and other remote media at the remote instance's URL.
  * @see https://docs.joinmastodon.org/entities/MediaAttachment/
  */
 export const renderAttachment = (ctx: Context, row: MediaRow): MediaAttachment => {

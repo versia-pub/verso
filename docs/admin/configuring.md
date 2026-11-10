@@ -194,7 +194,10 @@ to 256 KiB. Uploads that aren't attached to a status within 24 hours are deleted
 section in the example config has the settings for each.
 
 Verso fetches and stores the files of remote attachments, avatars, headers and custom emojis, and
-serves them, as Mastodon does. `cache_remote_media = false` turns that off.
+serves them, as Mastodon does. `cache_remote_media = false` turns that off. The files of attachments
+cached more than `remote_media_days` ago, 30 by default, are removed each day, as
+[`verso admin media prune`](commands.md#verso-admin-media) does, and fetched again if anyone asks
+for them.
 
 `preview_card_days`, unset by default and at least 14, prunes preview cards whose page was fetched
 longer ago than that each day, as

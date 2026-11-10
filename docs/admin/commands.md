@@ -182,6 +182,22 @@ no status shows, unless they are trending or an admin approved or rejected them 
 that links to the page again after two weeks fetches it, and its image, again. The hourly cleanup
 deletes the images' files. `[media] preview_card_days` runs the same pruning daily.
 
+### `verso admin media`
+
+| Command       | Does                                                |
+| ------------- | --------------------------------------------------- |
+| `media prune` | removes the files cached for old remote attachments |
+
+```sh
+$ verso admin media prune --days 7
+{"cleared":5210}
+```
+
+`prune` removes the files cached for remote statuses' attachments more than `--days` ago, 7 by
+default, as Mastodon's `tootctl media remove` does. They are fetched again if anyone asks for them.
+Avatars, headers and custom emojis are kept. `[media] remote_media_days` runs the same pruning
+daily.
+
 ### `verso admin roles`
 
 Roles give accounts permissions on top of what `[permissions] default` gives everyone.

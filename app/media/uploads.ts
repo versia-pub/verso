@@ -82,7 +82,7 @@ export const pictureTypes: ReadonlySet<string> = new Set([
     "image/avif",
 ]);
 
-/** Whether remote media of the type `mediaType` is cached: an image clients display, or playable. */
+/** Whether remote media of the type `mediaType` is cached: an image clients show, or playable. */
 export const isCacheable = (mediaType: string): boolean =>
     pictureTypes.has(mediaType) || isPlayable(mediaType);
 

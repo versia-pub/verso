@@ -1,5 +1,6 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { parse as parseToml } from "@std/toml";
+import { dayMs } from "./clock.ts";
 import { parseConfig } from "./config.ts";
 import { Permissions } from "./config_sections.ts";
 import { settingsOf } from "./settings.ts";
@@ -26,6 +27,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 max_emoji_bytes: 262_144,
                 unattached_hours: 24,
                 cache_remote_media: true,
+                remote_media_days: 30,
             },
             http: {
                 port: 8080,
@@ -122,20 +124,23 @@ Deno.test("a minimal config gets the defaults", async () => {
 
 Deno.test("remote media is cached unless config says not to, up to the upload limit", async () => {
     const byDefault = await parseConfig(minimal);
-    assertEquals(byDefault.ok && settingsOf(byDefault.config).cacheRemoteMedia, true);
+    assert(byDefault.ok);
+    assertEquals(settingsOf(byDefault.config).cacheRemoteMedia, true);
+    assertEquals(settingsOf(byDefault.config).remoteMediaMs, 30 * dayMs);
 
     const result = await parseConfig(`
 domain = "social.example"
 media.storage.filesystem = "media"
 media.cache_remote_media = false
 media.max_upload_bytes = 1000
+media.remote_media_days = 3
 
 [database]
 sqlite = "verso.db"
 `);
     assert(result.ok);
-    const { cacheRemoteMedia, maxUploadBytes } = settingsOf(result.config);
-    assertEquals([cacheRemoteMedia, maxUploadBytes], [false, 1000]);
+    const { cacheRemoteMedia, maxUploadBytes, remoteMediaMs } = settingsOf(result.config);
+    assertEquals([cacheRemoteMedia, maxUploadBytes, remoteMediaMs], [false, 1000, 3 * dayMs]);
 });
 
 Deno.test("remote statuses are kept for good by default", async () => {
@@ -159,6 +164,7 @@ max_pixels = 1000000
 unattached_hours = 12
 preview_card_days = 30
 cache_remote_media = false
+remote_media_days = 7
 max_upload_bytes = 1000
 max_emoji_bytes = 100
 
@@ -271,6 +277,7 @@ level = "debug"
                 unattached_hours: 12,
                 preview_card_days: 30,
                 cache_remote_media: false,
+                remote_media_days: 7,
             },
             http: {
                 port: 3000,
@@ -472,6 +479,12 @@ Deno.test("bad configs explain what is wrong", async () => {
             `${minimal}\n[media]\npreview_card_days = 13`.replace("media.storage", "storage"),
         ),
         "→ at media.preview_card_days",
+    );
+    assertStringIncludes(
+        await errors(
+            `${minimal}\n[media]\nremote_media_days = 0`.replace("media.storage", "storage"),
+        ),
+        "→ at media.remote_media_days",
     );
 
     // More than a deleted status's message can carry.

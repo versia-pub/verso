@@ -1,9 +1,8 @@
 # Media
 
 Media is anything attached to a status, or used as an avatar, header or custom emoji. Local media is
-an uploaded file, kept in the file store. Remote media is just a URL and the metadata its instance
-sent, which Verso doesn't download or proxy. The only image it downloads is the one on a page that a
-status links to, for that page's [preview card](previews.md).
+an uploaded file, kept in the file store. Remote media is a URL and the metadata its instance sent,
+and Verso stores a copy of its file, as [Remote media](#remote-media) explains.
 
 The code is in [`app/media/`](../app/media/), with the file stores and image processing behind ports
 in [`app/kernel/`](../app/kernel/).
@@ -122,6 +121,12 @@ A job in the `media-cleanup` queue runs every hour, in
 it deletes uploads that were never attached and remote media nothing uses. A file is deleted once no
 media uses it. Files that remote media stops using, when it is deleted or its file changes, are
 deleted by a job in the `media-files` queue, after the transaction that stopped using them.
+
+A job in the `remote-media-prune` queue runs every day, in
+[`app/media/pruning.ts`](../app/media/pruning.ts). It removes the files of remote attachments cached
+more than `[media] remote_media_days` ago, 30 by default, and marks them not cached, keeping what is
+known of them. The media proxy fetches them again if anyone asks for them, as on Mastodon. Avatars,
+headers and custom emojis stay cached until nothing uses them.
 
 Deleting a file could race with something starting to use it, so both sides lock the file's key:
 `deleteFileIfUnused` while it checks and deletes, and `keepUsed` in the transaction that starts

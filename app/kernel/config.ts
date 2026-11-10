@@ -177,6 +177,11 @@ export const Config = z.strictObject({
          * other instances. On by default, as on Mastodon.
          */
         cache_remote_media: z.boolean().default(true),
+        /**
+         * After how many days the files cached for remote statuses' attachments are removed, as by
+         * `verso admin media prune`. They are fetched again if anyone asks for them. 30 by default.
+         */
+        remote_media_days: z.int().min(1).default(30),
     }),
     instance: Instance,
     limits: Limits,
