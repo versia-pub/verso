@@ -9,6 +9,7 @@ import { announcementsCommand } from "./announcement_commands.ts";
 import { type AdminIo, missingCommand } from "./admin_io.ts";
 import { domainsCommand } from "./domain_commands.ts";
 import { keysCommand } from "./key_commands.ts";
+import { previewCardsCommand } from "./preview_card_commands.ts";
 import { reportsCommand } from "./report_commands.ts";
 import { rolesCommand } from "./role_commands.ts";
 import { statusesCommand } from "./status_commands.ts";
@@ -27,6 +28,7 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
         .command("trends", trendsCommand(io))
         .command("domains", domainsCommand(io))
         .command("keys", keysCommand(io))
+        .command("preview-cards", previewCardsCommand(io))
         .command("reports", reportsCommand(io))
         .command("roles", rolesCommand(io))
         .command("statuses", statusesCommand(io))

@@ -193,6 +193,10 @@ Uploads are limited to 16 MiB, images over 3840×2160 are scaled down, and custo
 to 256 KiB. Uploads that aren't attached to a status within 24 hours are deleted. The `[media]`
 section in the example config has the settings for each.
 
+`preview_card_days`, unset by default and at least 14, prunes preview cards whose page was fetched
+longer ago than that each day, as
+[`verso admin preview-cards prune`](commands.md#verso-admin-preview-cards) does.
+
 ## Federation
 
 `blocked_domains` and `silent_blocks` block instances, as [Moderating](moderating.md) explains.

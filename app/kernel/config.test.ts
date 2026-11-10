@@ -122,6 +122,7 @@ Deno.test("a minimal config gets the defaults", async () => {
 Deno.test("remote statuses are kept for good by default", async () => {
     const result = await parseConfig(minimal);
     assertEquals(result.ok && settingsOf(result.config).remoteStatusMs, null);
+    assertEquals(result.ok && settingsOf(result.config).previewCardMs, null);
 });
 
 Deno.test("a full config is read as written", async () => {
@@ -137,6 +138,7 @@ statement_timeout_seconds = 0
 storage = { filesystem = "/var/lib/verso/media" }
 max_pixels = 1000000
 unattached_hours = 12
+preview_card_days = 30
 max_upload_bytes = 1000
 max_emoji_bytes = 100
 
@@ -247,6 +249,7 @@ level = "debug"
                 max_upload_bytes: 1000,
                 max_emoji_bytes: 100,
                 unattached_hours: 12,
+                preview_card_days: 30,
             },
             http: {
                 port: 3000,
@@ -345,6 +348,7 @@ level = "debug"
     });
     assertEquals(result.ok && settingsOf(result.config).pushTimeoutMs, 5000);
     assertEquals(result.ok && settingsOf(result.config).remoteStatusMs, 30 * 86_400_000);
+    assertEquals(result.ok && settingsOf(result.config).previewCardMs, 30 * 86_400_000);
 });
 
 const errors = async (toml: string) => {
@@ -440,6 +444,14 @@ Deno.test("bad configs explain what is wrong", async () => {
             "→ at media.max_pixels",
         );
     }
+
+    // Less than a card is reused for.
+    assertStringIncludes(
+        await errors(
+            `${minimal}\n[media]\npreview_card_days = 13`.replace("media.storage", "storage"),
+        ),
+        "→ at media.preview_card_days",
+    );
 
     // More than a deleted status's message can carry.
     assertStringIncludes(

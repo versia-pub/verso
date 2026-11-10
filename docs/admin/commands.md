@@ -165,6 +165,23 @@ accounts from keeping a status. Reported statuses aren't kept, as on Mastodon. T
 counts go down, so they count what is stored here. Their media is deleted by the hourly cleanup.
 `[federation] remote_status_days` runs the same pruning daily, without `--clean-followed`.
 
+### `verso admin preview-cards`
+
+| Command               | Does                                              |
+| --------------------- | ------------------------------------------------- |
+| `preview-cards prune` | removes the images of old cards, and unused cards |
+
+```sh
+$ verso admin preview-cards prune --days 180
+{"deleted":312,"cleared":1840}
+```
+
+`prune` takes the images off cards whose page was fetched more than `--days` ago, 180 by default and
+at least 14, as Mastodon's `tootctl preview_cards remove` does. It also deletes those of them that
+no status shows, unless they are trending or an admin approved or rejected them for trends. A status
+that links to the page again after two weeks fetches it, and its image, again. The hourly cleanup
+deletes the images' files. `[media] preview_card_days` runs the same pruning daily.
+
 ### `verso admin roles`
 
 Roles give accounts permissions on top of what `[permissions] default` gives everyone.

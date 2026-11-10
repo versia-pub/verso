@@ -26,6 +26,8 @@ export type Settings = {
     readonly pushTimeoutMs: number;
     /** How old statuses from other instances are pruned at, or `null` to keep them. */
     readonly remoteStatusMs: number | null;
+    /** How old preview cards are pruned at, or `null` to keep them. */
+    readonly previewCardMs: number | null;
 };
 
 /** The settings `config` produces. */
@@ -43,6 +45,9 @@ export const settingsOf = (
     remoteStatusMs: config.federation.remote_status_days === undefined
         ? null
         : config.federation.remote_status_days * dayMs,
+    previewCardMs: config.media.preview_card_days === undefined
+        ? null
+        : config.media.preview_card_days * dayMs,
 });
 
 /** The settings an instance has when its config leaves them out. */
@@ -56,4 +61,5 @@ export const defaultSettings: Settings = {
     deliveryMs: 48 * hourMs,
     pushTimeoutMs: 10_000,
     remoteStatusMs: null,
+    previewCardMs: null,
 };

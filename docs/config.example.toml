@@ -36,6 +36,9 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # How many hours an upload that hasn't been attached to a status is retained before it is deleted:
 # 24 by default, as Mastodon does. Also applies to unused remote media.
 # unattached_hours = 24
+# After how many days the preview cards of pages fetched that long ago lose their images, and are
+# deleted if no status shows them. At least 14. Unset, they are kept for good.
+# preview_card_days = 180
 
 # Where uploaded files are stored. Exactly one of these: the path of a directory, which Verso
 # creates if it doesn't exist, or a bucket on a server that speaks S3, such as AWS, Garage or MinIO.

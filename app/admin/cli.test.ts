@@ -351,6 +351,28 @@ Deno.test("remote accounts fetched more than --days ago that nothing refers to a
     assertEquals(error.message, "--days must be at least 1");
 });
 
+Deno.test("preview cards fetched more than --days ago lose their images, and unshown ones go", async () => {
+    await using test = await createTestContext();
+    await createLocalAccount(test.ctx, "alice");
+    const shown = await createCard(test.ctx, [(await createNote(test.ctx, "alice")).id]);
+    await createCard(test.ctx, []);
+    test.clock.advance(10 * dayMs);
+    await createCard(test.ctx, []);
+    test.clock.advance(170 * dayMs + 1);
+
+    const pruned = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "preview-cards", "prune", ...args)).printed.join(""));
+    assertEquals(await pruned(), { deleted: 1, cleared: 1 });
+    assertEquals(await pruned("--days", "170"), { deleted: 1, cleared: 0 });
+    assertEquals(
+        await test.ctx.db.selectFrom("preview_cards").select(["id", "image_id"]).execute(),
+        [{ id: shown, image_id: null }],
+    );
+
+    const error = await assertRejects(() => pruned("--days", "13"), AdminError);
+    assertEquals(error.message, "--days must be at least 14");
+});
+
 Deno.test("accounts are suspended and unsuspended once, local or remote, and unknown ones refused", async () => {
     await using test = await createTestContext();
     await createLocalAccount(test.ctx, "alice");

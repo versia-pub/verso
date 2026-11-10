@@ -30,6 +30,12 @@ import { removeUnusedMedia, unusedMediaQueue } from "../media/cleanup.ts";
 import { mediaHandler } from "../media/processing.ts";
 import { mediaQueue } from "../media/uploads.ts";
 import { pruneHandler, pruneQueue, pruneStartQueue, startPruning } from "../notes/pruning.ts";
+import {
+    cardPruneHandler,
+    cardPruneQueue,
+    cardPruneStartQueue,
+    startCardPruning,
+} from "../previews/pruning.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
 import { endedPollsQueue, endPolls } from "../polls/ending.ts";
@@ -58,6 +64,7 @@ const hourly: Record<string, Queue["handler"]> = {
 const daily: Record<string, Queue["handler"]> = {
     [pruneStartQueue]: (ctx) => startPruning(ctx),
     [accountPruneStartQueue]: (ctx) => startAccountPruning(ctx),
+    [cardPruneStartQueue]: (ctx) => startCardPruning(ctx),
 };
 
 /** Work the scheduler enqueues every minute, as `hourly` is every hour. */
@@ -99,9 +106,10 @@ export const queues: Record<string, Queue> = {
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
     // One at a time, so each version's work goes through the rows in order, once.
     [resanitiseQueue]: { handler: resanitiseHandler, concurrency: 1 },
-    // One at a time, so each pass goes through the statuses, or accounts, in order, once.
+    // One at a time, so each pass goes through the statuses, accounts or cards in order, once.
     [pruneQueue]: { handler: pruneHandler, concurrency: 1 },
     [accountPruneQueue]: { handler: accountPruneHandler, concurrency: 1 },
+    [cardPruneQueue]: { handler: cardPruneHandler, concurrency: 1 },
     ...Object.fromEntries(
         Object.entries({ ...daily, ...hourly, ...everyMinute })
             .map(([queue, handler]) => [queue, { handler, concurrency: 1 }]),
