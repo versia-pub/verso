@@ -25,7 +25,7 @@ const AccountStatusesQuery = PageQuery({ default: 20, max: 40 }).extend({
     tagged: z.string().optional(),
 });
 
-/** An account's statuses the viewer may see, newest first. */
+/** An account's statuses the viewer may see, newest first, or none if it is suspended. */
 export const accountStatusesRoute = defineRoute({
     method: "GET",
     path: "/api/v1/accounts/:id/statuses",
@@ -41,6 +41,8 @@ export const accountStatusesRoute = defineRoute({
         const viewerId = viewer?.accountId ?? null;
         const account = await findAccount(ctx, params.id);
         if (account === undefined) throw new NotFound();
+        // A suspended account shows nothing, as on Mastodon.
+        if (account.suspended_at !== null) return { status: 200, body: [], cursors: {} };
 
         const seen = await visibilitiesFor(ctx, account.id, viewerId);
         const visibilities = query.exclude_direct

@@ -26,7 +26,10 @@ const FollowOptions = z.object({
     languages: z.array(z.string().regex(/^[a-z]{2}$/)).optional(),
 });
 
-/** An account's followers or follows, which an account that hides them shows only to itself. */
+/**
+ * An account's followers or follows, which an account that hides them shows only to itself, and a
+ * suspended account to nobody.
+ */
 const followList = (side: FollowSide) =>
     defineRoute({
         method: "GET",
@@ -54,7 +57,8 @@ const followList = (side: FollowSide) =>
         handler: async (ctx, { params, query, viewer }) => {
             const account = await findAccount(ctx, params.id);
             if (account === undefined) throw new NotFound();
-            if (account.hide_collections && viewer?.accountId !== account.id) {
+            const hidden = account.hide_collections && viewer?.accountId !== account.id;
+            if (hidden || account.suspended_at !== null) {
                 return { status: 200, body: [], cursors: {} };
             }
 
@@ -197,11 +201,14 @@ export const graphRoutes: readonly Route[] = [
         query: z.object({
             id: z.union([z.string().transform((id) => [id]), z.array(z.string())]).default([])
                 .pipe(z.array(z.string()).max(80, { error: "Must be at most 80 ids" })),
+            with_suspended: Flag.default(false).meta({
+                description: "Whether relationships should be returned for suspended users",
+            }),
         }),
         responses: { 200: z.array(Relationship) },
         handler: async (ctx, { query, viewer }) => ({
             status: 200,
-            body: await relationships(ctx, viewer, query.id),
+            body: await relationships(ctx, viewer, query.id, query.with_suspended),
         }),
     }),
     defineRoute({

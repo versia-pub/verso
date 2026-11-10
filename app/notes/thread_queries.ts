@@ -14,24 +14,33 @@ export type Onlooker = { readonly id: string; readonly followed: AccountIdQuery 
 /**
  * Whether `onlooker` may see a status, as `canSee` decides for one status at a time: public and
  * unlisted statuses are visible to anyone, private ones to the author's followers, and direct ones
- * to the users they mention. Mentioned users and the author may always see a status.
+ * to the users they mention. Mentioned users and the author may always see a status. Nobody may
+ * see a suspended account's, as on Mastodon.
  */
 const seenBy = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">) => {
+    const unsuspended = eb.not(eb.exists(
+        eb.selectFrom("accounts").select("accounts.id")
+            .whereRef("accounts.id", "=", "notes.account_id")
+            .where("accounts.suspended_at", "is not", null),
+    ));
     const listed = eb("notes.visibility", "in", ["public", "unlisted"]);
-    if (onlooker === null) return listed;
+    if (onlooker === null) return eb.and([unsuspended, listed]);
 
-    return eb.or([
-        listed,
-        eb("notes.account_id", "=", onlooker.id),
-        eb.and([
-            eb("notes.visibility", "=", "private"),
-            eb("notes.account_id", "in", onlooker.followed),
+    return eb.and([
+        unsuspended,
+        eb.or([
+            listed,
+            eb("notes.account_id", "=", onlooker.id),
+            eb.and([
+                eb("notes.visibility", "=", "private"),
+                eb("notes.account_id", "in", onlooker.followed),
+            ]),
+            eb.exists(
+                eb.selectFrom("note_mentions").select("note_mentions.note_id")
+                    .whereRef("note_mentions.note_id", "=", "notes.id")
+                    .where("note_mentions.account_id", "=", onlooker.id),
+            ),
         ]),
-        eb.exists(
-            eb.selectFrom("note_mentions").select("note_mentions.note_id")
-                .whereRef("note_mentions.note_id", "=", "notes.id")
-                .where("note_mentions.account_id", "=", onlooker.id),
-        ),
     ]);
 };
 

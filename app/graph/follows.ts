@@ -33,7 +33,7 @@ export type { AccountIdQuery };
 
 /** The result of requesting to follow an account. */
 export type FollowResult =
-    /** There is no such account, or it is the follower's own. */
+    /** There is no such account, it is the follower's own, or it is suspended. */
     | "missing"
     /** Its instance is blocked. */
     | "blocked"
@@ -64,7 +64,9 @@ export const follow = (
 ): Promise<FollowResult> =>
     ctx.transaction(async (tx) => {
         const followee = await findAccount(tx, followeeId);
-        if (followee === undefined || followeeId === followerId) return "missing";
+        if (followee === undefined || followeeId === followerId || followee.suspended_at !== null) {
+            return "missing";
+        }
         if (followee.domain !== null && await tx.federation.isBlocked(tx, followee.domain)) {
             return "blocked";
         }

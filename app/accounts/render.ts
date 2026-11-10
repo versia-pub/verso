@@ -83,25 +83,53 @@ const pictureUrls = (
     return { url: file, still: preview === null ? file : fileUrl(ctx, preview) };
 };
 
-/** An account as anyone sees it, with its roles, highest first, and the custom emojis it uses. */
+/**
+ * The profile of a suspended account as it is shown: blank, with the default pictures, as on
+ * Mastodon. Anything else is shown as it is.
+ */
+const suspendedAs = (row: AccountRow): AccountRow =>
+    row.suspended_at === null ? row : {
+        ...row,
+        display_name: "",
+        note_html: "",
+        avatar_url: null,
+        avatar_sha256: null,
+        avatar_preview_sha256: null,
+        avatar_description: null,
+        header_url: null,
+        header_sha256: null,
+        header_preview_sha256: null,
+        header_description: null,
+        locked: false,
+        fields: [],
+        bot: false,
+        discoverable: false,
+        indexable: false,
+    };
+
+/**
+ * An account as anyone sees it, with its roles, highest first, and the custom emojis it uses. A
+ * suspended account says so, and shows nothing of its profile, as on Mastodon.
+ */
 export const renderAccount = (
     ctx: Context,
     row: AccountRow,
     roles: readonly RoleRow[],
     emojis: readonly CustomEmoji[],
 ): Account => {
+    const shown = suspendedAs(row);
     const avatar = pictureUrls(
         ctx,
-        row.avatar_url,
-        row.avatar_sha256,
-        row.avatar_preview_sha256,
+        shown.avatar_url,
+        shown.avatar_sha256,
+        shown.avatar_preview_sha256,
         ctx.urls.url`/accounts/${row.id}/avatar.png`,
     );
     const header = pictureUrls(
         ctx,
-        row.header_url,
-        row.header_sha256,
-        row.header_preview_sha256,
+        shown.header_url,
+        shown.header_sha256,
+        shown.header_preview_sha256,
         ctx.urls.url`/accounts/${row.id}/header.png`,
     );
     const local = row.domain === null;
@@ -112,6 +140,7 @@ export const renderAccount = (
         : (html: string) => shownHtml(html, row.html_version);
 
     const uri = userUri(ctx, row);
+    const suspended = row.suspended_at !== null;
 
     return {
         id: row.id,
@@ -120,21 +149,21 @@ export const renderAccount = (
         // Verso has no profile pages to link to, so this is the same as `uri`.
         url: uri,
         uri,
-        display_name: row.display_name,
-        note: html(row.note_html),
+        display_name: shown.display_name,
+        note: html(shown.note_html),
         avatar: avatar.url,
         avatar_static: avatar.still,
-        avatar_description: row.avatar_description ?? "",
+        avatar_description: shown.avatar_description ?? "",
         header: header.url,
         header_static: header.still,
-        header_description: row.header_description ?? "",
-        locked: row.locked,
-        fields: renderFields(row.fields, (field) => html(field.value_html)),
-        emojis: [...emojis],
-        bot: row.bot,
+        header_description: shown.header_description ?? "",
+        locked: shown.locked,
+        fields: renderFields(shown.fields, (field) => html(field.value_html)),
+        emojis: suspended ? [] : [...emojis],
+        bot: shown.bot,
         group: false,
-        discoverable: row.discoverable,
-        indexable: row.indexable,
+        discoverable: shown.discoverable,
+        indexable: shown.indexable,
         created_at: midnight(row.created_at).toISOString(),
         last_status_at: row.last_status_at?.toISOString().slice(0, 10) ?? null,
         statuses_count: row.statuses_count,
@@ -146,11 +175,12 @@ export const renderAccount = (
         show_featured: row.show_featured,
         // Only the roles shown on profiles. Remote accounts have none stored.
         roles: local
-            ? roles.filter((role) => role.visible)
+            ? (suspended ? [] : roles).filter((role) => role.visible)
                 .map((role) => ({ id: role.id, name: role.name, color: role.color }))
             : null,
         // Verso has no collections, so nobody can feature anyone.
         feature_approval: { automatic: [], manual: [], current_user: "denied" },
+        ...(suspended ? { suspended: true } : {}),
     };
 };
 

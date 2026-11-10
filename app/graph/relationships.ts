@@ -16,18 +16,20 @@ import { renderRelationship } from "./render.ts";
 import { Relationship } from "@versia/client-api";
 
 /**
- * How the viewer is connected to each of `ids` that is an account, in the order requested. Only a
- * viewer whose role lets them see everyone's blocks is shown who blocks them; to others, no one
- * does, so a block can't be found out.
+ * How the viewer is connected to each of `ids` that is an account, in the order requested, leaving
+ * out suspended accounts unless `withSuspended`, as Mastodon does. Only a viewer whose role lets
+ * them see everyone's blocks is shown who blocks them; to others, no one does, so a block can't be
+ * found out.
  */
 export const relationships = async (
     ctx: Context,
     viewer: UserViewer,
     ids: readonly string[],
+    withSuspended = true,
 ): Promise<Relationship[]> => {
     const viewerId = viewer.accountId;
     const asked = [...new Set(ids)];
-    const known = new Set(await existingAccountIds(ctx, asked));
+    const known = new Set(await existingAccountIds(ctx, asked, withSuspended));
     const outgoing = new Map(
         (await followsFrom(ctx, viewerId, asked)).map((row) => [row.followee_id, row]),
     );

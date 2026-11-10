@@ -2339,6 +2339,18 @@
                                 }
                             ]
                         }
+                    },
+                    {
+                        "name": "with_suspended",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "description": "Whether relationships should be returned for suspended users",
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
                     }
                 ],
                 "responses": {

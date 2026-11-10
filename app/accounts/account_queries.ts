@@ -108,14 +108,17 @@ export const findRemoteAccountByName = (
 ): Promise<AccountRow | undefined> =>
     accountRows(ctx).where(named(instanceId, username)).executeTakeFirst();
 
-/** Which of `ids` are accounts, in no particular order. */
+/** Which of `ids` are accounts, in no particular order, other than suspended ones unless `withSuspended`. */
 export const existingAccountIds = async (
     ctx: Context,
     ids: readonly string[],
+    withSuspended = true,
 ): Promise<string[]> => {
     if (ids.length === 0) return [];
 
-    const rows = await ctx.db.selectFrom("accounts").select("id").where("id", "in", ids).execute();
+    let query = ctx.db.selectFrom("accounts").select("id").where("id", "in", ids);
+    if (!withSuspended) query = query.where("suspended_at", "is", null);
+    const rows = await query.execute();
 
     return rows.map((row) => row.id);
 };
@@ -368,6 +371,13 @@ export const isSuspended = async (
     return await query.where("accounts.suspended_at", "is not", null).executeTakeFirst() !==
         undefined;
 };
+
+/** Whether the account `accountId`, local or remote, is suspended. */
+export const isAccountSuspended = async (ctx: Context, accountId: string): Promise<boolean> =>
+    await ctx.db.selectFrom("accounts").select("id")
+        .where("id", "=", accountId)
+        .where("suspended_at", "is not", null)
+        .executeTakeFirst() !== undefined;
 
 /** Columns of an account to update. */
 export type AccountChanges = Updateable<AccountsTable>;

@@ -1,4 +1,5 @@
 import type { Visibility } from "../kernel/visibility.ts";
+import { isAccountSuspended } from "../accounts/account_queries.ts";
 import { followedSubquery, isFollowing } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { findNote, findNotes, isMentioned, type NoteRow } from "./note_queries.ts";
@@ -8,7 +9,8 @@ import { notesSeenBy, type Onlooker } from "./thread_queries.ts";
  * Whether `viewerId`, or anyone if it is `null`, may see `note`. Public and unlisted statuses are
  * visible to anyone, private ones to the author's followers, and direct ones to the users they
  * mention. Mentioned users and the author may always see a status. A boost is visible only to those
- * who may also see the status it boosts, which may have been made private since.
+ * who may also see the status it boosts, which may have been made private since. Nobody may see a
+ * suspended account's statuses, as on Mastodon.
  */
 export const canSee = async (
     ctx: Context,
@@ -20,6 +22,7 @@ export const canSee = async (
         if (shared === undefined || !await canSee(ctx, shared, viewerId)) return false;
     }
 
+    if (await isAccountSuspended(ctx, note.account_id)) return false;
     if (note.visibility === "public" || note.visibility === "unlisted") return true;
     if (viewerId === null) return false;
     if (viewerId === note.account_id || await isMentioned(ctx, note.id, viewerId)) return true;
