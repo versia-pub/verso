@@ -24,8 +24,7 @@ import {
     storeRemoteMedia,
 } from "./media_queries.ts";
 import { finishCaching } from "./upload_queries.ts";
-import { isPlayable, keepUsed } from "./uploads.ts";
-import { pictureTypes } from "./versia.ts";
+import { isCacheable, keepUsed, pictureTypes } from "./uploads.ts";
 
 const logger = getLogger(["verso", "media"]);
 
@@ -36,10 +35,6 @@ const CacheJob = z.object({ mediaId: z.string(), url: z.string() });
 
 /** The largest video or audio file that is cached, as on Mastodon. */
 const playableBytes = 99 * 1024 * 1024;
-
-/** Whether remote media of the type `mediaType` is cached: an image clients display, or playable. */
-export const isCacheable = (mediaType: string): boolean =>
-    pictureTypes.has(mediaType) || isPlayable(mediaType);
 
 /**
  * Stores remote media for the instance `instanceId`, as {@link storeRemoteMedia} does, and queues
@@ -178,8 +173,43 @@ const cache = async (
 };
 
 /**
- * Caches the remote media in the job, unless it was cached already, its URL changed, which queues
- * caching the new one, or its instance or the host of its file is blocked. Media that can't be cached is marked so, and isn't tried again.
+ * Fetches and stores the file of the remote media `row` now, unless its instance or the host of its
+ * file is blocked. Media that can't be cached is marked so, and isn't tried again, unless fetching
+ * failed only for now; then it is left uncached, and this is `"retry"`.
+ */
+export const cacheNow = async (
+    ctx: Context,
+    row: MediaRow & { instance_id: string; url: string },
+    lastAttempt: boolean,
+): Promise<"done" | "retry"> => {
+    // Nothing is fetched from blocked instances, and there is nothing more to do. The media stays
+    // uncached, should they be unblocked.
+    const instance = await domainOf(ctx, row.instance_id);
+    for (const domain of [instance, new URL(row.url).hostname]) {
+        if (domain !== undefined && await ctx.federation.isBlocked(ctx, domain)) return "done";
+    }
+
+    const cached = await cache(ctx, row, lastAttempt);
+    if (cached === "retry") return "retry";
+
+    const finished = await ctx.transaction(async (tx) => {
+        if (cached === "failed") return await finishCaching(tx, row.id, row.url, {});
+
+        for (const { file, mediaType } of cached.files) await keepUsed(tx, file, mediaType);
+        return await finishCaching(tx, row.id, row.url, cached.columns);
+    });
+
+    // If the media changed or was cached meanwhile, what this run stored may be unused.
+    if (!finished && cached !== "failed") {
+        for (const { file } of cached.files) await deleteFileIfUnused(ctx, file.sha256);
+    }
+
+    return "done";
+};
+
+/**
+ * Caches the remote media in the job, as {@link cacheNow} does, unless it was cached already, or
+ * its URL changed, which queues caching the new one.
  */
 export const remoteMediaHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = CacheJob.safeParse(job.payload);
@@ -189,24 +219,11 @@ export const remoteMediaHandler: Handler = async (ctx: Context, job: JobsTable):
     const row = await findMedia(ctx, mediaId);
     if (row === undefined || row.instance_id === null || row.processed_at !== null) return;
     if (row.url !== url) return;
-    // Nothing is fetched from blocked instances. The media stays uncached, should they be unblocked.
-    const instance = await domainOf(ctx, row.instance_id);
-    for (const domain of [instance, new URL(url).hostname]) {
-        if (domain !== undefined && await ctx.federation.isBlocked(ctx, domain)) return;
-    }
 
-    const cached = await cache(ctx, { ...row, url }, job.attempts >= job.max_attempts);
-    if (cached === "retry") throw new Error(`Couldn't cache ${mediaId} yet`);
-
-    const finished = await ctx.transaction(async (tx) => {
-        if (cached === "failed") return await finishCaching(tx, mediaId, url, {});
-
-        for (const { file, mediaType } of cached.files) await keepUsed(tx, file, mediaType);
-        return await finishCaching(tx, mediaId, url, cached.columns);
-    });
-
-    // If the media changed or was cached meanwhile, what this run stored may be unused.
-    if (!finished && cached !== "failed") {
-        for (const { file } of cached.files) await deleteFileIfUnused(ctx, file.sha256);
-    }
+    const outcome = await cacheNow(
+        ctx,
+        { ...row, instance_id: row.instance_id, url },
+        job.attempts >= job.max_attempts,
+    );
+    if (outcome === "retry") throw new Error(`Couldn't cache ${mediaId} yet`);
 };

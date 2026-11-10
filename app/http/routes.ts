@@ -11,6 +11,7 @@ import { filterRoutes } from "../filters/routes.ts";
 import { interactionRoutes } from "../interactions/routes.ts";
 import { listRoutes } from "../lists/routes.ts";
 import { markerRoutes } from "../markers/routes.ts";
+import { mediaProxyRoutes } from "../media/proxy.ts";
 import { mediaRoutes } from "../media/routes.ts";
 import { entityRoutes } from "../federation/registry.ts";
 import { graphRoutes } from "../graph/routes.ts";
@@ -77,6 +78,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...markerRoutes,
         ...streamingRoutes(settings.streaming, settings.timelines_access),
         ...mediaRoutes(settings.media, settings.limits),
+        ...mediaProxyRoutes,
         ...emojiRoutes(settings.media, settings.limits),
         ...roleRoutes,
         ...webfingerRoutes,

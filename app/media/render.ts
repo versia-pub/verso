@@ -1,7 +1,7 @@
 import type { MediaAttachment } from "@versia/client-api";
 import type { Context } from "../kernel/context.ts";
 import type { MediaRow } from "./media_queries.ts";
-import { isPlayable } from "./uploads.ts";
+import { isCacheable, isPlayable, pictureTypes } from "./uploads.ts";
 
 /**
  * Where the local file stored under `key` is served: by the file store if it serves files,
@@ -29,9 +29,20 @@ const typeOf = (row: MediaRow): MediaAttachment["type"] => {
     return kind === "image" || kind === "video" || kind === "audio" ? kind : "unknown";
 };
 
+/** Whether `row` is remote media not cached yet, which the media proxy caches when asked for. */
+export const proxied = (ctx: Context, row: MediaRow): boolean =>
+    // Only remote media has a URL.
+    row.url !== null && row.processed_at === null && ctx.settings.cacheRemoteMedia &&
+    isCacheable(row.media_type);
+
+/** Where the media proxy serves the media `id`, or its preview if `small`. */
+export const proxyUrl = (ctx: Context, id: string, small = false): string =>
+    small ? ctx.urls.url`/media/proxy/${id}/small` : ctx.urls.url`/media/proxy/${id}`;
+
 /**
  * Media as Mastodon's API renders it. Local media is served at Verso's URL once processed, and remote
- * media once cached; until then, remote media is served at the remote instance's URL.
+ * media once cached; until then, remote media that will be cached is at the media proxy's URL, and
+ * other remote media at the remote instance's URL.
  * @see https://docs.joinmastodon.org/entities/MediaAttachment/
  */
 export const renderAttachment = (ctx: Context, row: MediaRow): MediaAttachment => {
@@ -44,9 +55,19 @@ export const renderAttachment = (ctx: Context, row: MediaRow): MediaAttachment =
     return {
         id: row.id,
         type: typeOf(row),
-        // Local media has no URL of its own, so it has none until processed.
-        url: row.processed_at !== null && row.sha256 !== null ? fileUrl(ctx, row.sha256) : row.url,
-        preview_url: row.preview_sha256 ? fileUrl(ctx, row.preview_sha256) : null,
+        ...proxied(ctx, row)
+            ? {
+                url: proxyUrl(ctx, row.id),
+                // Only images get a preview.
+                preview_url: pictureTypes.has(row.media_type) ? proxyUrl(ctx, row.id, true) : null,
+            }
+            : {
+                // Local media has no URL of its own, so it has none until processed.
+                url: row.processed_at !== null && row.sha256 !== null
+                    ? fileUrl(ctx, row.sha256)
+                    : row.url,
+                preview_url: row.preview_sha256 ? fileUrl(ctx, row.preview_sha256) : null,
+            },
         // Local media has no remote URL.
         remote_url: row.url,
         // A preview is only made for an image whose size is known.

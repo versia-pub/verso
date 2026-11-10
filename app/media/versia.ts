@@ -8,16 +8,7 @@ import type { Context } from "../kernel/context.ts";
 import type { MediaRow, RemoteMedia } from "./media_queries.ts";
 import { fileUrl } from "./render.ts";
 import { servedTypeOf } from "./serving.ts";
-import { isPlayable } from "./uploads.ts";
-
-/** Image types clients can be counted on to display. */
-export const pictureTypes = new Set([
-    "image/png",
-    "image/jpeg",
-    "image/gif",
-    "image/webp",
-    "image/avif",
-]);
+import { isPlayable, pictureTypes } from "./uploads.ts";
 
 /** The longest URL and media type Verso stores for remote media. */
 const maxUrlLength = 2048;

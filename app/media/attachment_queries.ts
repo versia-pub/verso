@@ -56,6 +56,11 @@ export const insertAttachments = async (
         .execute();
 };
 
+/** The statuses the media `mediaId` is attached to. */
+export const notesWith = async (ctx: Context, mediaId: string): Promise<string[]> =>
+    (await ctx.db.selectFrom("note_media").select("note_id").where("media_id", "=", mediaId)
+        .execute()).map((row) => row.note_id);
+
 /** Reserves the media `mediaIds` for the scheduled status `scheduledId`, in that order. */
 export const insertReservations = async (
     ctx: Context,

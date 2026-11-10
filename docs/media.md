@@ -104,8 +104,16 @@ tried again until its URL or hash changes.
 
 `url`, `media_type` and `remote_sha256` keep what the remote instance said. `sha256`, `cached_type`
 and the preview columns describe the stored file. Once stored, the file is served as `cached_type`
-and rendered at Verso's URL; until then, or if fetching failed, at the remote instance's. Custom
-emojis are still sent to other instances at their own instance's URL.
+and rendered at Verso's URL. Custom emojis are still sent to other instances at their own instance's
+URL.
+
+Until then, an attachment that will be cached is rendered at the media proxy, `/media/proxy/:id` and
+`/media/proxy/:id/small` for the preview, in [`app/media/proxy.ts`](../app/media/proxy.ts), as on
+Mastodon. The proxy fetches and stores the file on the spot, then redirects to it. It answers 404,
+fetching nothing, for media that isn't attached to a status the viewer may see, that failed to
+cache, or whose instance or host is blocked. If fetching fails, it answers 404 and leaves the media
+for the job. Its requests are counted in their own rate limit bucket. Other remote media, and media
+that failed to cache, is rendered at the remote instance's URL.
 
 ## Cleaning up
 

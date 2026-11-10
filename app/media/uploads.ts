@@ -73,6 +73,19 @@ const playableTypes = new Set([
  */
 export const isPlayable = (mediaType: string): boolean => playableTypes.has(mediaType);
 
+/** Image types clients can be counted on to display. */
+export const pictureTypes: ReadonlySet<string> = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "image/avif",
+]);
+
+/** Whether remote media of the type `mediaType` is cached: an image clients display, or playable. */
+export const isCacheable = (mediaType: string): boolean =>
+    pictureTypes.has(mediaType) || isPlayable(mediaType);
+
 /**
  * The type a file is stored with, which the file store may serve it as. An image's type comes from
  * its bytes. Any other file gets the client's declared type only if it is playable, so no one can

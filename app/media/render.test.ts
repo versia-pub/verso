@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { findMedia, type RemoteMedia } from "./media_queries.ts";
@@ -18,7 +18,7 @@ const rendered = async (media: RemoteMedia) => {
     return renderAttachment(test.ctx, row);
 };
 
-Deno.test("another instance's file is at its own URL", async () => {
+Deno.test("another instance's file is at the media proxy until cached", async () => {
     const attachment = await rendered({
         url: "https://b.example/bob.png",
         mediaType: "image/png",
@@ -30,13 +30,37 @@ Deno.test("another instance's file is at its own URL", async () => {
     assertEquals(attachment, {
         id: attachment.id,
         type: "image",
-        url: "https://b.example/bob.png",
-        preview_url: null,
+        url: `https://social.example/media/proxy/${attachment.id}`,
+        preview_url: `https://social.example/media/proxy/${attachment.id}/small`,
         remote_url: "https://b.example/bob.png",
         meta: { original: { width: 64, height: 48, size: "64x48", aspect: 64 / 48 } },
         description: "Bob, smiling",
         blurhash: null,
     });
+
+    // Only images have a preview.
+    const video = await rendered({ url: "https://b.example/bob.mp4", mediaType: "video/mp4" });
+    assertEquals([video.url, video.preview_url], [
+        `https://social.example/media/proxy/${video.id}`,
+        null,
+    ]);
+});
+
+Deno.test("another instance's file that won't be cached is at its own URL", async () => {
+    const url = "https://b.example/notes.zip";
+    const zip = await rendered({ url, mediaType: "application/zip" });
+    assertEquals([zip.url, zip.preview_url, zip.remote_url], [url, null, url]);
+
+    await using test = await createTestContext({ settings: { cacheRemoteMedia: false } });
+    await createInstance(test.ctx, "b.example");
+    const id = await saveRemoteMedia(test.ctx, "b.example", null, {
+        url: "https://b.example/bob.png",
+        mediaType: "image/png",
+    });
+    const row = await findMedia(test.ctx, id);
+    assert(row);
+    const uncached = renderAttachment(test.ctx, row);
+    assertEquals([uncached.url, uncached.preview_url], ["https://b.example/bob.png", null]);
 });
 
 Deno.test("another instance's file is of the kind its type says", async () => {
@@ -66,7 +90,7 @@ Deno.test("a size of nothing isn't given", async () => {
     assertEquals((await rendered({ url, mediaType: "image/png", width: 64 })).meta, null);
 });
 
-Deno.test("another instance's file is served by Verso once cached, and at its own URL until then", async () => {
+Deno.test("another instance's file is served by Verso once cached, and at its own URL if that failed", async () => {
     await using test = await createTestContext();
     await createInstance(test.ctx, "b.example");
     const url = "https://b.example/bob.png";
@@ -80,7 +104,11 @@ Deno.test("another instance's file is served by Verso once cached, and at its ow
     };
 
     // Not cached yet.
-    assertEquals(await shown(), { url, preview_url: null, remote_url: url });
+    assertEquals(await shown(), {
+        url: `https://social.example/media/proxy/${id}`,
+        preview_url: `https://social.example/media/proxy/${id}/small`,
+        remote_url: url,
+    });
 
     await test.ctx.db.updateTable("media")
         .set({ sha256: "ab", preview_sha256: "cd", processed_at: test.clock.now() })

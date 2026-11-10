@@ -15147,6 +15147,86 @@
                 }
             }
         },
+        "/media/proxy/{id}": {
+            "get": {
+                "summary": "Get remote media",
+                "description": "Redirects to the file of remote media attached to a status, caching it first.\n\nNeeds the `read:note` permission.",
+                "tags": [
+                    "media"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "A redirect",
+                        "headers": {
+                            "location": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/media/proxy/{id}/small": {
+            "get": {
+                "summary": "Get remote media preview",
+                "description": "Redirects to the preview of remote media attached to a status, caching it first.\n\nNeeds the `read:note` permission.",
+                "tags": [
+                    "media"
+                ],
+                "security": [
+                    {},
+                    {
+                        "OAuth2": [
+                            "read:statuses"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "A redirect",
+                        "headers": {
+                            "location": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/custom_emojis": {
             "get": {
                 "summary": "View all custom emoji",
