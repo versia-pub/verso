@@ -7,6 +7,7 @@ import { Command } from "@cliffy/command";
 import { accountsCommand } from "./account_commands.ts";
 import { announcementsCommand } from "./announcement_commands.ts";
 import { type AdminIo, missingCommand } from "./admin_io.ts";
+import { backUpSqlite } from "./backup_commands.ts";
 import { domainsCommand } from "./domain_commands.ts";
 import { jobsCommand } from "./job_commands.ts";
 import { keysCommand } from "./key_commands.ts";
@@ -27,6 +28,17 @@ export const adminCommand = (io: AdminIo): Command<{ config: string }> =>
         .action(missingCommand)
         .command("accounts", accountsCommand(io))
         .command("announcements", announcementsCommand(io))
+        .command(
+            "backup <path:string>",
+            "Copy the SQLite database to a new file while Verso runs. On PostgreSQL, use pg_dump.",
+        )
+        .action(async ({ config }, path) => {
+            const bytes = await io.withContext(
+                config,
+                (_ctx, { database }) => backUpSqlite(database, path),
+            );
+            io.print(JSON.stringify({ path, bytes }));
+        })
         .command("trends", trendsCommand(io))
         .command("domains", domainsCommand(io))
         .command("jobs", jobsCommand(io))

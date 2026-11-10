@@ -301,3 +301,14 @@ Replaces the instance's signing key pair, for example if the old one may have le
 deleted straight away. Other instances fetch the new one when signatures stop verifying, so
 federation carries on. The Web Push keys are never rotated, because that would break every push
 subscription.
+
+### `verso admin backup`
+
+```sh
+$ verso admin backup /var/lib/verso/backup.sqlite
+{"path":"/var/lib/verso/backup.sqlite","bytes":633667584}
+```
+
+Copies the SQLite database to a new file, while Verso keeps running. It won't overwrite a file. On
+NixOS, `verso-admin` can only write under `/var/lib/verso`. On PostgreSQL, use `pg_dump` instead.
+[Backing up](running.md#backing-up) lists what else to keep.

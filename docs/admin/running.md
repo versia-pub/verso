@@ -48,9 +48,13 @@ each other what changed, such as a new status for streaming clients. SQLite can'
 
 Back these up together:
 
-- the database, with `pg_dump`, or by copying the SQLite file while Verso is stopped;
+- the database, with `pg_dump`, or with [`verso admin backup`](commands.md#verso-admin-backup) on
+  SQLite;
 - media: the `[media] storage` directory, or the S3 bucket;
 - the config, and the secrets it reads.
+
+To restore a SQLite copy, stop Verso, delete the database's `-wal` and `-shm` files, and put the
+copy in place of the database file.
 
 The database holds the instance's key pairs as well as users' data. Without them, other instances
 can't trust what Verso sends, and push subscriptions stop working. If a key may have leaked, replace

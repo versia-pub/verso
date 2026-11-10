@@ -6,6 +6,7 @@ import {
     assertStringIncludes,
 } from "@std/assert";
 import { ValidationError } from "@cliffy/command";
+import { DatabaseSync } from "node:sqlite";
 import {
     createLocalAccount,
     createRemoteAccount,
@@ -37,15 +38,15 @@ const config = Config.parse({
     federation: { blocked_domains: ["config.example"] },
 });
 
-/** Runs `verso admin` with `args` on `ctx`, and returns its output. */
-const admin = async (ctx: Context, ...args: string[]) => {
+/** Runs `verso admin` with `args` on `ctx` and `given`, and returns its output. */
+const adminWith = async (ctx: Context, given: Config, ...args: string[]) => {
     const printed: string[] = [];
     const paths: string[] = [];
 
     await adminCommand({
         withContext: (path, work) => {
             paths.push(path);
-            return work(ctx, config);
+            return work(ctx, given);
         },
         print: (line) => printed.push(line),
     })
@@ -55,6 +56,9 @@ const admin = async (ctx: Context, ...args: string[]) => {
 
     return { printed, paths };
 };
+
+/** Runs `verso admin` with `args` on `ctx`, and returns its output. */
+const admin = (ctx: Context, ...args: string[]) => adminWith(ctx, config, ...args);
 
 Deno.test("rotating the key prints the new public key, and the old key is gone", async () => {
     await using test = await createTestContext();
@@ -885,4 +889,58 @@ Deno.test("an instance's waiting deliveries are sent now once it is unparked", a
 
     const error = await assertRejects(() => unparked("c.example"), AdminError);
     assertEquals(error.message, "c.example isn't an instance Verso knows");
+});
+
+Deno.test("the SQLite database is copied to a new file, and PostgreSQL's refused", async () => {
+    await using test = await createTestContext();
+    const dir = await Deno.makeTempDir();
+    const source = `${dir}/verso.sqlite`;
+    const path = `${dir}/backup.sqlite`;
+    const on = (database: object) =>
+        Config.parse({
+            domain: "social.example",
+            database,
+            media: { storage: { filesystem: "media" } },
+        });
+
+    try {
+        {
+            using database = new DatabaseSync(source);
+            database.exec("CREATE TABLE notes (text TEXT); INSERT INTO notes VALUES ('kept')");
+        }
+
+        const { printed } = await adminWith(test.ctx, on({ sqlite: source }), "backup", path);
+        assertEquals(JSON.parse(printed.join("")), { path, bytes: (await Deno.stat(path)).size });
+
+        using copy = new DatabaseSync(path, { readOnly: true });
+        assertEquals(copy.prepare("SELECT text FROM notes").all(), [{ text: "kept" }]);
+
+        const exists = await assertRejects(
+            () => adminWith(test.ctx, on({ sqlite: source }), "backup", path),
+            AdminError,
+        );
+        assertEquals(exists.message, `${path} already exists`);
+
+        // A wrong path to the database isn't made into an empty one, nor backed up.
+        await assertRejects(() =>
+            adminWith(test.ctx, on({ sqlite: `${dir}/missing.sqlite` }), "backup", `${path}2`)
+        );
+        assertEquals(
+            await Array.fromAsync(Deno.readDir(dir), (entry) => entry.name).then((names) =>
+                names.sort()
+            ),
+            [
+                "backup.sqlite",
+                "verso.sqlite",
+            ],
+        );
+
+        const postgres = await assertRejects(
+            () => adminWith(test.ctx, on({ postgres: "postgres://verso" }), "backup", `${path}2`),
+            AdminError,
+        );
+        assertStringIncludes(postgres.message, "pg_dump");
+    } finally {
+        await Deno.remove(dir, { recursive: true });
+    }
 });
