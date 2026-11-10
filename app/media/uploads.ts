@@ -132,6 +132,8 @@ const store = async (
         media_type: format === undefined ? claimed : type,
         size: file.size,
         sha256: file.sha256,
+        remote_sha256: null,
+        cached_type: null,
         width: null,
         height: null,
         thumbhash: null,

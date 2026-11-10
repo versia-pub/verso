@@ -1,7 +1,8 @@
 import { assertEquals } from "@std/assert";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { deleteMedia, findMedia, saveRemoteMedia } from "./media_queries.ts";
+import { findMedia } from "./media_queries.ts";
+import { deleteRemoteMedia, saveRemoteMedia } from "./remote_cache.ts";
 
 const picture = {
     url: "https://b.example/bob.png",
@@ -26,7 +27,9 @@ Deno.test("a remote file is kept with what its instance said about it", async ()
         url: picture.url,
         media_type: "image/png",
         size: 1234,
-        sha256: picture.sha256,
+        sha256: null,
+        remote_sha256: picture.sha256,
+        cached_type: null,
         width: 64,
         height: 48,
         thumbhash: picture.thumbhash,
@@ -70,7 +73,7 @@ Deno.test("a deleted file is gone", async () => {
     await createInstance(test.ctx, "b.example");
     const id = await saveRemoteMedia(test.ctx, "b.example", null, picture);
 
-    await deleteMedia(test.ctx, id);
+    await deleteRemoteMedia(test.ctx, [id]);
 
     assertEquals(await findMedia(test.ctx, id), undefined);
 });

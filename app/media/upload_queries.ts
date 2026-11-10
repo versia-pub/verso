@@ -55,9 +55,44 @@ export const finishUpload = async (
     return numUpdatedRows > 0n;
 };
 
+/** What caching remote media sets: the file it is stored as, and what is known of it. */
+export type CachedColumns = Pick<
+    Updateable<MediaTable>,
+    | "sha256"
+    | "cached_type"
+    | "size"
+    | "width"
+    | "height"
+    | "thumbhash"
+    | "blurhash"
+    | "preview_sha256"
+    | "preview_width"
+    | "preview_height"
+>;
+
 /**
- * Whether any media is stored under `key`, or has it as its preview, or an upload of it is waiting
- * to be processed.
+ * Marks the remote media `id` as cached as `columns`, or as failed to cache if they don't give a
+ * file, unless it already is, or its URL is no longer `url`. Returns whether it changed.
+ */
+export const finishCaching = async (
+    ctx: Context,
+    id: string,
+    url: string,
+    columns: CachedColumns,
+): Promise<boolean> => {
+    const { numUpdatedRows } = await ctx.db.updateTable("media")
+        .set({ ...columns, processed_at: ctx.clock.now() })
+        .where("id", "=", id)
+        .where("url", "=", url)
+        .where("processed_at", "is", null)
+        .executeTakeFirst();
+
+    return numUpdatedRows > 0n;
+};
+
+/**
+ * Whether any media, local or cached remote, is stored under `key`, or has it as its preview, or an
+ * upload of it is waiting to be processed.
  */
 export const isFileUsed = async (ctx: Context, key: string): Promise<boolean> =>
     await ctx.db.selectFrom("media").select("id")
@@ -68,7 +103,6 @@ export const isFileUsed = async (ctx: Context, key: string): Promise<boolean> =>
                 eb.and([eb("upload_sha256", "=", key), eb("processed_at", "is", null)]),
             ])
         )
-        .where("instance_id", "is", null)
         .executeTakeFirst() !== undefined;
 
 /** The upload `id`, if `accountId` uploaded it. */
@@ -162,7 +196,7 @@ export const findServedFile = (
  */
 export type MediaCursor = Pick<MediaRow, "created_at" | "id">;
 
-/** Removed media, with its location and the keys of the files a local one stored. */
+/** Removed media, with its location and the keys of the files it stored. */
 export type RemovedMedia =
     & MediaCursor
     & Pick<MediaRow, "instance_id" | "sha256" | "preview_sha256" | "upload_sha256">;

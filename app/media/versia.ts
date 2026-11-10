@@ -11,7 +11,13 @@ import { servedTypeOf } from "./serving.ts";
 import { isPlayable } from "./uploads.ts";
 
 /** Image types clients can be counted on to display. */
-const pictureTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"]);
+export const pictureTypes = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "image/avif",
+]);
 
 /** The longest URL and media type Verso stores for remote media. */
 const maxUrlLength = 2048;

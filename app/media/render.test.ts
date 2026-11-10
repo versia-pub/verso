@@ -1,7 +1,8 @@
 import { assertEquals } from "@std/assert";
 import { createInstance } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findMedia, type RemoteMedia, saveRemoteMedia } from "./media_queries.ts";
+import { findMedia, type RemoteMedia } from "./media_queries.ts";
+import { saveRemoteMedia } from "./remote_cache.ts";
 import { renderAttachment } from "./render.ts";
 
 /** Remote media, as Mastodon's API renders it. */

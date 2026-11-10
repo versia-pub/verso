@@ -9,7 +9,7 @@ import { mute } from "../graph/mutes.ts";
 import { createInstance } from "../instances/testing.ts";
 import { like } from "../interactions/likes.ts";
 import { insertAttachments } from "../media/attachment_queries.ts";
-import { saveRemoteMedia } from "../media/media_queries.ts";
+import { saveRemoteMedia } from "../media/remote_cache.ts";
 import { share } from "../interactions/shares.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";

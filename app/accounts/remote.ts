@@ -6,12 +6,8 @@ import { setAccountEmojis } from "../emojis/emoji_queries.ts";
 import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import {
-    deleteMedia,
-    deleteMediaAmong,
-    type RemoteMedia,
-    saveRemoteMedia,
-} from "../media/media_queries.ts";
+import type { RemoteMedia } from "../media/media_queries.ts";
+import { deleteRemoteMedia, saveRemoteMedia } from "../media/remote_cache.ts";
 import type { AccountDeleting, AccountReceived } from "./events.ts";
 import {
     type AccountPictures,
@@ -51,7 +47,7 @@ export const saveRemoteAccount = (ctx: Context, account: RemoteAccount): Promise
 
         const picture = async (current: string | null, media: RemoteMedia | null) => {
             if (media) return await saveRemoteMedia(tx, account.instanceId, current, media);
-            if (current !== null) await deleteMedia(tx, current);
+            if (current !== null) await deleteRemoteMedia(tx, [current]);
             return null;
         };
 
@@ -105,5 +101,5 @@ export const removeRemoteAccounts = async (
     await deleteAccounts(ctx, accounts.map((account) => account.id));
     const pictures = accounts.flatMap((account) => [account.avatar_id, account.header_id])
         .filter((picture) => picture !== null);
-    if (pictures.length > 0) await deleteMediaAmong(ctx, pictures);
+    await deleteRemoteMedia(ctx, pictures);
 };

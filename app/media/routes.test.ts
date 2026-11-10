@@ -12,7 +12,8 @@ import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
 import { createNote } from "../notes/testing.ts";
 import { insertAttachments } from "./attachment_queries.ts";
-import { findMedia, saveRemoteMedia } from "./media_queries.ts";
+import { findMedia } from "./media_queries.ts";
+import { saveRemoteMedia } from "./remote_cache.ts";
 import { mediaRoutes } from "./routes.ts";
 import { uploadPicture } from "./uploads.ts";
 

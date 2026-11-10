@@ -193,6 +193,9 @@ Uploads are limited to 16 MiB, images over 3840×2160 are scaled down, and custo
 to 256 KiB. Uploads that aren't attached to a status within 24 hours are deleted. The `[media]`
 section in the example config has the settings for each.
 
+Verso fetches and stores the files of remote attachments, avatars, headers and custom emojis, as
+Mastodon does. `cache_remote_media = false` turns that off.
+
 `preview_card_days`, unset by default and at least 14, prunes preview cards whose page was fetched
 longer ago than that each day, as
 [`verso admin preview-cards prune`](commands.md#verso-admin-preview-cards) does.

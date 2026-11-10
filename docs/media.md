@@ -90,12 +90,28 @@ Each store's `check` runs at startup, so Verso fails then if it can't write to t
 than at the first upload. Files never change, since their key is their hash, so `/media/<key>` is
 cached for a year.
 
+## Remote media
+
+When Verso receives remote media, a job in the `remote-media` queue fetches its file, in
+[`app/media/remote_cache.ts`](../app/media/remote_cache.ts), unless `[media] cache_remote_media` is
+off. Images are processed as uploads are. Video and audio are stored as fetched, up to 99 MiB, as on
+Mastodon. Other files aren't fetched. A file that doesn't match the hash its instance gave isn't
+stored.
+
+The job is grouped by the host the file is on, so one host is fetched from once at a time. It is
+tried three times. Media that can't be fetched by then is marked processed with no file, and isn't
+tried again until its URL or hash changes.
+
+`url`, `media_type` and `remote_sha256` keep what the remote instance said. `sha256`, `cached_type`
+and the preview columns describe the stored file.
+
 ## Cleaning up
 
 A job in the `media-cleanup` queue runs every hour, in
 [`app/media/cleanup.ts`](../app/media/cleanup.ts). After `[media] unattached_hours`, 24 by default,
 it deletes uploads that were never attached and remote media nothing uses. A file is deleted once no
-media uses it.
+media uses it. Files that remote media stops using, when it is deleted or its file changes, are
+deleted by a job in the `media-files` queue, after the transaction that stopped using them.
 
 Deleting a file could race with something starting to use it, so both sides lock the file's key:
 `deleteFileIfUnused` while it checks and deletes, and `keepUsed` in the transaction that starts

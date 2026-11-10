@@ -1,22 +1,28 @@
 /**
- * Media such as an image. Remote media is stored by URL and the metadata its instance provided;
- * local media is an upload stored in the file store under its SHA-256.
+ * Media such as an image. Remote media is stored by URL and the metadata its instance provided, and
+ * a copy of its file is cached in the file store; local media is an upload stored in the file store
+ * under its SHA-256.
  */
 export type MediaTable = {
     id: string;
     /** The instance the media belongs to, in `instances`, or `null` for the local instance. */
     instance_id: string | null;
-    /** Where remote media is hosted. Verso doesn't download it; clients load it from there. */
+    /** Where remote media is hosted. */
     url: string | null;
-    /** Such as `image/png`. */
+    /** Such as `image/png`. For remote media, the type its instance gave. */
     media_type: string;
     /** In bytes. */
     size: number | null;
     /**
-     * The SHA-256 of the file in hex, which a local file is stored under. `null` for a local image
-     * that couldn't be processed; nothing is stored for it, as it may hold metadata.
+     * The SHA-256 of the file in hex, which it is stored under. `null` for a local image that
+     * couldn't be processed, as nothing is stored for it, as it may hold metadata, and for remote
+     * media that isn't cached.
      */
     sha256: string | null;
+    /** The SHA-256 in hex that the remote instance gave for its media's file, if it gave one. */
+    remote_sha256: string | null;
+    /** The type the cached file of remote media is served as. */
+    cached_type: string | null;
     /** In pixels, for pictures and videos. */
     width: number | null;
     height: number | null;
@@ -35,9 +41,12 @@ export type MediaTable = {
      * processed into another file without its metadata; any other file is stored as uploaded.
      */
     upload_sha256: string | null;
-    /** When local media was processed, or `null` while it is being processed. */
+    /**
+     * When local media was processed, or `null` while it is being processed. When remote media was
+     * cached, or `null` until it is; if caching failed, `sha256` is `null`.
+     */
     processed_at: Date | null;
-    /** A smaller WebP preview image of local media: its SHA-256 and size. */
+    /** A smaller WebP preview image: its SHA-256 and size. */
     preview_sha256: string | null;
     preview_width: number | null;
     preview_height: number | null;

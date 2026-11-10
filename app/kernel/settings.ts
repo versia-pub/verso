@@ -28,6 +28,10 @@ export type Settings = {
     readonly remoteStatusMs: number | null;
     /** How old preview cards are pruned at, or `null` to keep them. */
     readonly previewCardMs: number | null;
+    /** Whether the files of remote media are cached, to be served by Verso. */
+    readonly cacheRemoteMedia: boolean;
+    /** How many bytes an uploaded file may have, and a remote image that is cached. */
+    readonly maxUploadBytes: number;
 };
 
 /** The settings `config` produces. */
@@ -48,6 +52,8 @@ export const settingsOf = (
     previewCardMs: config.media.preview_card_days === undefined
         ? null
         : config.media.preview_card_days * dayMs,
+    cacheRemoteMedia: config.media.cache_remote_media,
+    maxUploadBytes: config.media.max_upload_bytes,
 });
 
 /** The settings an instance has when its config leaves them out. */
@@ -62,4 +68,6 @@ export const defaultSettings: Settings = {
     pushTimeoutMs: 10_000,
     remoteStatusMs: null,
     previewCardMs: null,
+    cacheRemoteMedia: true,
+    maxUploadBytes: 16 * 1024 * 1024,
 };

@@ -258,7 +258,7 @@ Deno.test("a note's files are kept, each as the version clients can best show", 
     ]);
     const [picture] = files;
     assertEquals(
-        [picture.size, picture.sha256, picture.thumbhash, picture.width, picture.height],
+        [picture.size, picture.remote_sha256, picture.thumbhash, picture.width, picture.height],
         [100, hash.toLowerCase(), "abc", 2, 3],
     );
     assertEquals(files.map((row) => row.description), ["A red square", null, null]);

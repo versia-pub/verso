@@ -14,7 +14,7 @@ import { like } from "../interactions/likes.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import { publish } from "../kernel/pubsub.ts";
 import { insertAttachments } from "../media/attachment_queries.ts";
-import { saveRemoteMedia } from "../media/media_queries.ts";
+import { saveRemoteMedia } from "../media/remote_cache.ts";
 import type { NotesTable } from "../notes/tables.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { createTestContext } from "../testing/context.ts";

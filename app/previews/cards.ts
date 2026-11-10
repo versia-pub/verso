@@ -13,12 +13,13 @@ import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { bytesSource } from "../kernel/files.ts";
 import { imageFormatOf } from "../kernel/images.ts";
+import { fetchLimited } from "../kernel/web_fetch.ts";
 import { insertUpload } from "../media/upload_queries.ts";
 import { keepUsed } from "../media/uploads.ts";
 import { isNoteEdited, isNotePosted, isNoteReceived } from "../notes/events.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { findCard, linkOf, removeLink, saveCard, setLink } from "./card_queries.ts";
-import { decodePage, fetchLimited, imageBytes, pageBytes } from "./fetching.ts";
+import { decodePage, imageBytes, pageBytes } from "./fetching.ts";
 import { firstLink } from "./links.ts";
 import { readPage } from "./page.ts";
 

@@ -93,6 +93,7 @@ import { accountDeletions } from "./0091_account_deletions.ts";
 import { remoteNotePruning } from "./0092_remote_note_pruning.ts";
 import { remoteAccountPruning } from "./0093_remote_account_pruning.ts";
 import { previewCardPruning } from "./0094_preview_card_pruning.ts";
+import { remoteMediaCache } from "./0095_remote_media_cache.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -193,4 +194,5 @@ export const migrations: Record<string, Migration> = {
     "0092_remote_note_pruning": remoteNotePruning,
     "0093_remote_account_pruning": remoteAccountPruning,
     "0094_preview_card_pruning": previewCardPruning,
+    "0095_remote_media_cache": remoteMediaCache,
 };

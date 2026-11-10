@@ -26,8 +26,14 @@ import { undoneReactionsHandler, undoneReactionsQueue } from "../interactions/re
 import { inboxDeadPayload, inboxHandler } from "../federation/inbox_worker.ts";
 import { messageHandler, messageQueue } from "../federation/messaging.ts";
 import { deleteEndedRateLimits } from "../http/rate_limit_queries.ts";
-import { removeUnusedMedia, unusedMediaQueue } from "../media/cleanup.ts";
+import {
+    fileCleanupHandler,
+    fileCleanupQueue,
+    removeUnusedMedia,
+    unusedMediaQueue,
+} from "../media/cleanup.ts";
 import { mediaHandler } from "../media/processing.ts";
+import { remoteMediaHandler, remoteMediaQueue } from "../media/remote_cache.ts";
 import { mediaQueue } from "../media/uploads.ts";
 import { pruneHandler, pruneQueue, pruneStartQueue, startPruning } from "../notes/pruning.ts";
 import {
@@ -104,6 +110,14 @@ export const queues: Record<string, Queue> = {
     [pushQueue]: { handler: pushHandler, concurrency: 8, perGroup: 2 },
     // Each job runs vips a few times, a minute each at most, and uses memory while it does.
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
+    // By the host the file is fetched from. Each job fetches a file, and runs vips on an image.
+    [remoteMediaQueue]: {
+        handler: remoteMediaHandler,
+        concurrency: 4,
+        perGroup: 1,
+        leaseMs: 15 * 60_000,
+    },
+    [fileCleanupQueue]: { handler: fileCleanupHandler, concurrency: 2 },
     // One at a time, so each version's work goes through the rows in order, once.
     [resanitiseQueue]: { handler: resanitiseHandler, concurrency: 1 },
     // One at a time, so each pass goes through the statuses, accounts or cards in order, once.

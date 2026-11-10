@@ -14,7 +14,8 @@ import {
     insertReservations,
     unattachedUploads,
 } from "./attachment_queries.ts";
-import { type MediaRow, type RemoteMedia, saveRemoteMedia } from "./media_queries.ts";
+import type { MediaRow, RemoteMedia } from "./media_queries.ts";
+import { saveRemoteMedia } from "./remote_cache.ts";
 import { describeUpload, processingFailed, type UploadDescription } from "./uploads.ts";
 
 /**

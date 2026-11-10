@@ -9,7 +9,8 @@ import { NotPermitted, Unprocessable } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import type { Fit } from "../kernel/images.ts";
-import { type RemoteMedia, saveRemoteMedia } from "../media/media_queries.ts";
+import type { RemoteMedia } from "../media/media_queries.ts";
+import { saveRemoteMedia } from "../media/remote_cache.ts";
 import { updateDescription } from "../media/upload_queries.ts";
 import { uploadPicture } from "../media/uploads.ts";
 import {

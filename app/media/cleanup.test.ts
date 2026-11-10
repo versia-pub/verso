@@ -11,8 +11,9 @@ import { removeNote } from "../notes/removal.ts";
 import type { Settings } from "../kernel/settings.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createInstance } from "../instances/testing.ts";
-import { findMedia, saveRemoteMedia } from "./media_queries.ts";
-import { removeUnusedMedia } from "./cleanup.ts";
+import { findMedia } from "./media_queries.ts";
+import { saveRemoteMedia } from "./remote_cache.ts";
+import { enqueueFileCleanup, fileCleanupQueue, removeUnusedMedia } from "./cleanup.ts";
 import { upload } from "./uploads.ts";
 
 const hour = 60 * 60 * 1000;
@@ -192,4 +193,15 @@ Deno.test("a file attached to a note can't be deleted", async () => {
     await test.post([file]);
 
     await assertRejects(() => test.ctx.db.deleteFrom("media").where("id", "=", file).execute());
+});
+
+Deno.test("files no longer used are queued for removal once each", async () => {
+    await using test = await createTestContext();
+
+    await enqueueFileCleanup(test.ctx, ["a", null, "b", "a"]);
+    await enqueueFileCleanup(test.ctx, [null]);
+
+    const jobs = await test.ctx.db.selectFrom("jobs").select("payload")
+        .where("queue", "=", fileCleanupQueue).execute();
+    assertEquals(jobs, [{ payload: { keys: ["a", "b"] } }]);
 });

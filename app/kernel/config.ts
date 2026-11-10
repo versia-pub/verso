@@ -171,6 +171,12 @@ export const Config = z.strictObject({
          * prune`. At least 14, the time a card is reused for. Unset by default, keeping them.
          */
         preview_card_days: z.int().min(14).optional(),
+        /**
+         * Whether the files of remote media, such as statuses' attachments, avatars and custom
+         * emojis, are fetched and stored, so that Verso serves them and clients needn't reach
+         * other instances. On by default, as on Mastodon.
+         */
+        cache_remote_media: z.boolean().default(true),
     }),
     instance: Instance,
     limits: Limits,

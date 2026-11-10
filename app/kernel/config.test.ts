@@ -1,4 +1,4 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { parse as parseToml } from "@std/toml";
 import { parseConfig } from "./config.ts";
 import { Permissions } from "./config_sections.ts";
@@ -25,6 +25,7 @@ Deno.test("a minimal config gets the defaults", async () => {
                 max_upload_bytes: 16_777_216,
                 max_emoji_bytes: 262_144,
                 unattached_hours: 24,
+                cache_remote_media: true,
             },
             http: {
                 port: 8080,
@@ -119,6 +120,24 @@ Deno.test("a minimal config gets the defaults", async () => {
     });
 });
 
+Deno.test("remote media is cached unless config says not to, up to the upload limit", async () => {
+    const byDefault = await parseConfig(minimal);
+    assertEquals(byDefault.ok && settingsOf(byDefault.config).cacheRemoteMedia, true);
+
+    const result = await parseConfig(`
+domain = "social.example"
+media.storage.filesystem = "media"
+media.cache_remote_media = false
+media.max_upload_bytes = 1000
+
+[database]
+sqlite = "verso.db"
+`);
+    assert(result.ok);
+    const { cacheRemoteMedia, maxUploadBytes } = settingsOf(result.config);
+    assertEquals([cacheRemoteMedia, maxUploadBytes], [false, 1000]);
+});
+
 Deno.test("remote statuses are kept for good by default", async () => {
     const result = await parseConfig(minimal);
     assertEquals(result.ok && settingsOf(result.config).remoteStatusMs, null);
@@ -139,6 +158,7 @@ storage = { filesystem = "/var/lib/verso/media" }
 max_pixels = 1000000
 unattached_hours = 12
 preview_card_days = 30
+cache_remote_media = false
 max_upload_bytes = 1000
 max_emoji_bytes = 100
 
@@ -250,6 +270,7 @@ level = "debug"
                 max_emoji_bytes: 100,
                 unattached_hours: 12,
                 preview_card_days: 30,
+                cache_remote_media: false,
             },
             http: {
                 port: 3000,

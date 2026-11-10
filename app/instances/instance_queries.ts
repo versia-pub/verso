@@ -43,6 +43,11 @@ export const reachabilityCounts = async (
     return { parked: readCount(parked), unreachable: readCount(unreachable) };
 };
 
+/** The domain of the instance `id`, if there is one. */
+export const domainOf = async (ctx: Context, id: string): Promise<string | undefined> =>
+    (await ctx.db.selectFrom("instances").select("domain").where("id", "=", id)
+        .executeTakeFirst())?.domain;
+
 /** The domains of the instances `ids` that are on `protocol`, sorted. */
 export const domainsOf = async (
     ctx: Context,
