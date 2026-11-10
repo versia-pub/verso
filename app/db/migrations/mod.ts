@@ -91,6 +91,7 @@ import { suspensions } from "./0089_suspensions.ts";
 import { silences } from "./0090_silences.ts";
 import { accountDeletions } from "./0091_account_deletions.ts";
 import { remoteNotePruning } from "./0092_remote_note_pruning.ts";
+import { remoteAccountPruning } from "./0093_remote_account_pruning.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -189,4 +190,5 @@ export const migrations: Record<string, Migration> = {
     "0090_silences": silences,
     "0091_account_deletions": accountDeletions,
     "0092_remote_note_pruning": remoteNotePruning,
+    "0093_remote_account_pruning": remoteAccountPruning,
 };

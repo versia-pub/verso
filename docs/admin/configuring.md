@@ -201,9 +201,11 @@ Deliveries are retried for `delivery_hours`, 48 by default. Verso stops sending 
 hasn't reached for `unreachable_days`, 7 by default, until it hears from it again.
 `remote_status_days`, unset by default, prunes statuses from other instances older than that each
 day, as [`verso admin statuses prune`](commands.md#verso-admin-statuses) does. Unlike Mastodon's
-`content_cache_retention_period`, it keeps what local users refer to or follow.
-`[federation.fetch_limit]` limits how much Verso fetches from any one instance, and
-`[federation.rate_limit]` limits how much one instance can send.
+`content_cache_retention_period`, it keeps what local users refer to or follow. It also prunes
+accounts from other instances that nothing here refers to, as
+[`verso admin accounts prune`](commands.md#verso-admin-accounts) does. `[federation.fetch_limit]`
+limits how much Verso fetches from any one instance, and `[federation.rate_limit]` limits how much
+one instance can send.
 
 ## Limits
 

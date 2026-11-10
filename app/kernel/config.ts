@@ -134,7 +134,9 @@ export const Config = z.strictObject({
         delivery_hours: z.int().min(1).max(720).default(48),
         /**
          * After how many days statuses from other instances are deleted, unless something here
-         * needs them, as by `verso admin statuses prune`. Unset by default, keeping them for good.
+         * needs them, as by `verso admin statuses prune`, and accounts from other instances last
+         * fetched that long ago that nothing here refers to, as by `verso admin accounts prune`.
+         * Unset by default, keeping them for good.
          */
         remote_status_days: z.int().min(1).optional(),
         /**

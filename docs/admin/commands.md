@@ -43,13 +43,14 @@ help and exits with 2.
 
 ### `verso admin accounts`
 
-| Command                     | Does                          |
-| --------------------------- | ----------------------------- |
-| `accounts suspend <acct>`   | suspends an account           |
-| `accounts unsuspend <acct>` | lifts an account's suspension |
-| `accounts silence <acct>`   | silences an account           |
-| `accounts unsilence <acct>` | lifts an account's silence    |
-| `accounts delete <acct>`    | deletes a local account       |
+| Command                     | Does                           |
+| --------------------------- | ------------------------------ |
+| `accounts suspend <acct>`   | suspends an account            |
+| `accounts unsuspend <acct>` | lifts an account's suspension  |
+| `accounts silence <acct>`   | silences an account            |
+| `accounts unsilence <acct>` | lifts an account's silence     |
+| `accounts delete <acct>`    | deletes a local account        |
+| `accounts prune`            | deletes unused remote accounts |
 
 `<acct>` is `username` for a local account, or `username@domain` for a remote one. `changed` is
 `false` if the account already was, or wasn't, suspended, silenced or deleted. `delete` takes
@@ -63,6 +64,13 @@ $ verso admin accounts suspend spam@remote.example
 See [Suspending accounts](moderating.md#suspending-accounts),
 [Silencing accounts](moderating.md#silencing-accounts) and
 [Deleting accounts](moderating.md#deleting-accounts) for what they do.
+
+`prune` deletes accounts from other instances last fetched more than `--days` ago, 90 by default,
+that nothing here refers to, as Mastodon's `tootctl accounts prune` does. An account is kept while
+it has statuses here, follows or is followed, or is blocked, muted, mentioned, reported, listed,
+endorsed or noted, or has liked, reacted, voted or notified a local user. Suspended, silenced and
+bot accounts are kept. Other instances aren't told. `[federation] remote_status_days` runs the same
+pruning daily, so an account goes a day after its last status is pruned.
 
 ### `verso admin announcements`
 

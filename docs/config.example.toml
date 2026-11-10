@@ -111,7 +111,8 @@ roles = [{ claim = "groups", contains = "social-admins", role = "Admin" }]
 # For how many hours a delivery to an instance is retried before it is given up on, at most 720.
 # delivery_hours = 48
 # After how many days statuses from other instances are deleted, unless a local user follows their
-# author or something here refers to them. Unset, they are kept for good.
+# author or something here refers to them, and accounts from other instances last fetched that long
+# ago that nothing here refers to. Unset, they are kept for good.
 # remote_status_days = 90
 
 [federation.fetch_limit]

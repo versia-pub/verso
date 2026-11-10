@@ -332,6 +332,11 @@ export const deleteAccount = async (ctx: Context, id: string): Promise<void> => 
     await ctx.db.deleteFrom("accounts").where("id", "=", id).execute();
 };
 
+/** Deletes the accounts `ids`, at least one, with everything that refers to them. */
+export const deleteAccounts = async (ctx: Context, ids: readonly string[]): Promise<void> => {
+    await ctx.db.deleteFrom("accounts").where("id", "in", ids).execute();
+};
+
 /**
  * Suspends the account `id` from `at`, or unsuspends it if `at` is `null`. Returns whether that
  * changed it: an account already suspended stays suspended from when it first was, and a deleted

@@ -1,3 +1,9 @@
+import {
+    accountPruneHandler,
+    accountPruneQueue,
+    accountPruneStartQueue,
+    startAccountPruning,
+} from "../accounts/pruning.ts";
 import { announcementsQueue, publishDueAnnouncements } from "../announcements/announcements.ts";
 import { deleteExpiredFlows } from "../auth/flow_queries.ts";
 import { acceptHandler, acceptQueue } from "../graph/follows.ts";
@@ -51,6 +57,7 @@ const hourly: Record<string, Queue["handler"]> = {
 /** Work the scheduler enqueues every day, as `hourly` is every hour. */
 const daily: Record<string, Queue["handler"]> = {
     [pruneStartQueue]: (ctx) => startPruning(ctx),
+    [accountPruneStartQueue]: (ctx) => startAccountPruning(ctx),
 };
 
 /** Work the scheduler enqueues every minute, as `hourly` is every hour. */
@@ -92,8 +99,9 @@ export const queues: Record<string, Queue> = {
     [mediaQueue]: { handler: mediaHandler, concurrency: 2, leaseMs: 15 * 60_000 },
     // One at a time, so each version's work goes through the rows in order, once.
     [resanitiseQueue]: { handler: resanitiseHandler, concurrency: 1 },
-    // One at a time, so each pass goes through the statuses in order, once.
+    // One at a time, so each pass goes through the statuses, or accounts, in order, once.
     [pruneQueue]: { handler: pruneHandler, concurrency: 1 },
+    [accountPruneQueue]: { handler: accountPruneHandler, concurrency: 1 },
     ...Object.fromEntries(
         Object.entries({ ...daily, ...hourly, ...everyMinute })
             .map(([queue, handler]) => [queue, { handler, concurrency: 1 }]),

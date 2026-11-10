@@ -69,3 +69,8 @@ export const findMedia = (ctx: Context, id: string): Promise<MediaRow | undefine
 export const deleteMedia = async (ctx: Context, id: string): Promise<void> => {
     await ctx.db.deleteFrom("media").where("id", "=", id).execute();
 };
+
+/** Deletes the media `ids`, at least one, as {@link deleteMedia} does. */
+export const deleteMediaAmong = async (ctx: Context, ids: readonly string[]): Promise<void> => {
+    await ctx.db.deleteFrom("media").where("id", "in", ids).execute();
+};

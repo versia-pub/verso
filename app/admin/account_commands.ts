@@ -4,6 +4,8 @@
  */
 import { Command } from "@cliffy/command";
 import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
+import { pruneRemoteAccounts } from "../accounts/pruning.ts";
+import { dayMs } from "../kernel/clock.ts";
 import type { Context } from "../kernel/context.ts";
 import { deleteLocalAccount } from "../moderation/account_deletions.ts";
 import { silence, unsilence } from "../moderation/silences.ts";
@@ -81,5 +83,24 @@ export const accountsCommand = (io: AdminIo): Command<{ config: string }> =>
                 return { account: account.username, deleted: true, tombstone, changed };
             });
             io.print(JSON.stringify(result));
+        })
+        .reset()
+        .command(
+            "prune",
+            "Delete accounts from other instances last fetched more than some days ago that " +
+                "nothing here refers to, as the `remote_status_days` config option does each day.",
+        )
+        .option("--days <days:integer>", "How long ago they were fetched, in days.", {
+            default: 90,
+        })
+        .action(async ({ config, days }) => {
+            if (days < 1) throw new AdminError("--days must be at least 1");
+
+            const deleted = await io.withContext(
+                config,
+                (ctx) =>
+                    pruneRemoteAccounts(ctx, new Date(ctx.clock.now().getTime() - days * dayMs)),
+            );
+            io.print(JSON.stringify({ deleted }));
         })
         .reset();

@@ -6,10 +6,16 @@ import { setAccountEmojis } from "../emojis/emoji_queries.ts";
 import { keepRemoteEmojis, type RemoteEmoji } from "../emojis/emojis.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import { deleteMedia, type RemoteMedia, saveRemoteMedia } from "../media/media_queries.ts";
+import {
+    deleteMedia,
+    deleteMediaAmong,
+    type RemoteMedia,
+    saveRemoteMedia,
+} from "../media/media_queries.ts";
 import type { AccountDeleting, AccountReceived } from "./events.ts";
 import {
-    deleteAccount,
+    type AccountPictures,
+    deleteAccounts,
     findRemoteAccount,
     releaseRemoteUsername,
     type RemoteProfile,
@@ -79,12 +85,25 @@ export const deleteRemoteAccount = (
 ): Promise<void> =>
     ctx.transaction(async (tx) => {
         const account = await findRemoteAccount(tx, instanceId, remoteId);
-        if (!account) return;
-
-        const event: AccountDeleting = { type: "accounts.deleting", accountId: account.id };
-        await emit(tx, event);
-        await deleteAccount(tx, account.id);
-        for (const picture of [account.avatar_id, account.header_id]) {
-            if (picture !== null) await deleteMedia(tx, picture);
-        }
+        if (account) await removeRemoteAccounts(tx, [account]);
     });
+
+/**
+ * Deletes remote accounts with their pictures, as {@link deleteRemoteAccount} does, in the caller's
+ * transaction, all in one statement after other modules are notified of each.
+ */
+export const removeRemoteAccounts = async (
+    ctx: Context,
+    accounts: readonly AccountPictures[],
+): Promise<void> => {
+    if (accounts.length === 0) return;
+
+    for (const account of accounts) {
+        const event: AccountDeleting = { type: "accounts.deleting", accountId: account.id };
+        await emit(ctx, event);
+    }
+    await deleteAccounts(ctx, accounts.map((account) => account.id));
+    const pictures = accounts.flatMap((account) => [account.avatar_id, account.header_id])
+        .filter((picture) => picture !== null);
+    if (pictures.length > 0) await deleteMediaAmong(ctx, pictures);
+};

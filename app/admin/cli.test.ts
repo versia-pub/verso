@@ -326,6 +326,31 @@ Deno.test("remote statuses older than --days are pruned, and followed accounts' 
     assertEquals(error.message, "--days must be at least 1");
 });
 
+Deno.test("remote accounts fetched more than --days ago that nothing refers to are pruned", async () => {
+    await using test = await createTestContext();
+    await createInstance(test.ctx, "b.example");
+    await createLocalAccount(test.ctx, "alice");
+    await createRemoteAccount(test.ctx, "carol", "b.example");
+    await createRemoteAccount(test.ctx, "dave", "b.example");
+    test.clock.advance(10 * dayMs);
+    await createRemoteAccount(test.ctx, "erin", "b.example");
+    await createNote(test.ctx, "alice", {}, ["carol"]);
+    test.clock.advance(80 * dayMs + 1);
+
+    const pruned = async (...args: string[]) =>
+        JSON.parse((await admin(test.ctx, "accounts", "prune", ...args)).printed.join(""));
+    assertEquals(await pruned(), { deleted: 1 });
+    assertEquals(await pruned("--days", "80"), { deleted: 1 });
+    assertEquals(
+        (await test.ctx.db.selectFrom("accounts").select("id").orderBy("id").execute())
+            .map((row) => row.id),
+        ["alice", "carol"],
+    );
+
+    const error = await assertRejects(() => pruned("--days", "0"), AdminError);
+    assertEquals(error.message, "--days must be at least 1");
+});
+
 Deno.test("accounts are suspended and unsuspended once, local or remote, and unknown ones refused", async () => {
     await using test = await createTestContext();
     await createLocalAccount(test.ctx, "alice");
