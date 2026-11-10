@@ -38,12 +38,38 @@ Deno.test("an emoji Verso stores is shown once processed, with its preview as it
     assertEquals(renderEmojis(test.ctx, [{ ...emoji, processed_at }]), []);
 });
 
-Deno.test("a remote emoji is shown at its URL, which is its still too, and not in the picker", async () => {
+Deno.test("a remote emoji is shown at its URL until cached, which is its still too, and not in the picker", async () => {
     await using test = await createTestContext();
     const url = "https://b.example/blob.gif";
+    const remote = { ...emoji, instance_id: "b", url };
 
-    const [shown] = renderEmojis(test.ctx, [{ ...emoji, instance_id: "b", url, sha256: "ab" }]);
-    assertEquals([shown?.url, shown?.static_url, shown?.visible_in_picker], [url, url, false]);
+    // Not cached yet, or caching failed.
+    for (const picture of [{ sha256: "ab" }, { processed_at: test.clock.now() }]) {
+        const [shown] = renderEmojis(test.ctx, [{ ...remote, ...picture }]);
+        assertEquals([shown?.url, shown?.static_url, shown?.visible_in_picker], [url, url, false]);
+    }
+});
+
+Deno.test("a cached remote emoji is shown from Verso, with its preview as its still", async () => {
+    await using test = await createTestContext();
+    const remote = {
+        ...emoji,
+        instance_id: "b",
+        url: "https://b.example/blob.gif",
+        sha256: "ab",
+        processed_at: test.clock.now(),
+    };
+
+    const [shown] = renderEmojis(test.ctx, [{ ...remote, preview_sha256: "cd" }]);
+    assertEquals([shown?.url, shown?.static_url, shown?.visible_in_picker], [
+        "https://social.example/media/ab",
+        "https://social.example/media/cd",
+        false,
+    ]);
+    assertEquals(
+        renderEmojis(test.ctx, [remote])[0]?.static_url,
+        "https://social.example/media/ab",
+    );
 });
 
 Deno.test("a local emoji is shown with whose it is and its alt text, and no URLs until processed", async () => {

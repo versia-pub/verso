@@ -45,8 +45,9 @@ const open = async () => {
         instance_id: null,
         url,
         media_type: "image/png",
-        sha256: id,
-        preview_sha256: `${id}-still`,
+        // A picture at a URL isn't cached.
+        sha256: url === null ? id : null,
+        preview_sha256: url === null ? `${id}-still` : null,
         description,
         processed_at: test.ctx.clock.now(),
         created_at: test.ctx.clock.now(),

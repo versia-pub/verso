@@ -58,7 +58,7 @@ const accountRows = (ctx: Pick<Context, "db">) =>
         .select((eb) => [
             "instances.domain",
             "avatar.url as avatar_url",
-            // A local picture's key, once processed; until then it is the upload's.
+            // A picture's key, once processed or cached; until then it is the upload's, or none.
             eb.case().when("avatar.processed_at", "is not", null).then(eb.ref("avatar.sha256"))
                 .else(null).end().as("avatar_sha256"),
             "avatar.preview_sha256 as avatar_preview_sha256",

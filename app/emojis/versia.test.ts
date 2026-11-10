@@ -94,6 +94,26 @@ Deno.test("emojis are sent by name, with their pictures, once ready", async () =
         },
     );
 
+    // A remote emoji is sent at its own URL, even once cached.
+    assertEquals(
+        sent({
+            instance_id: "b",
+            url: "https://b.example/blob.gif",
+            sha256: "ab",
+            processed_at: test.clock.now(),
+        }),
+        {
+            "pub.versia:custom_emojis": {
+                emojis: [{
+                    name: ":blob:",
+                    content: {
+                        "image/gif": { content: "https://b.example/blob.gif", remote: true },
+                    },
+                }],
+            },
+        },
+    );
+
     // Stored, but not processed, or processing failed.
     assertEquals(sent({ url: null, sha256: "ab" }), undefined);
     assertEquals(sent({ url: null, processed_at: test.clock.now() }), undefined);

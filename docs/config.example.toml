@@ -40,7 +40,7 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # deleted if no status shows them. At least 14. Unset, they are kept for good.
 # preview_card_days = 180
 # Whether the files of remote media, such as attachments, avatars and custom emojis, are fetched and
-# stored. On by default, as on Mastodon.
+# stored, so that Verso serves them. On by default, as on Mastodon.
 # cache_remote_media = true
 
 # Where uploaded files are stored. Exactly one of these: the path of a directory, which Verso

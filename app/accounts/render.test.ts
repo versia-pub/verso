@@ -107,6 +107,26 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
     assertEquals(account.avatar_description, "Bob");
     assertEquals(account.header, `https://social.example/accounts/${id}/header.png`);
     assertEquals(account.header_description, "");
+
+    // Once cached, the pictures are served by Verso, with the preview as the still.
+    const { avatar_id } = await find(test.ctx, id);
+    assertExists(avatar_id);
+    await test.ctx.db.updateTable("media")
+        .set({ sha256: "ab", preview_sha256: "cd", processed_at: test.clock.now() })
+        .where("id", "=", avatar_id)
+        .execute();
+    const cached = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], []));
+    assertEquals([cached.avatar, cached.avatar_static], [
+        "https://social.example/media/ab",
+        "https://social.example/media/cd",
+    ]);
+
+    // Caching that failed leaves the picture at its URL.
+    await test.ctx.db.updateTable("media").set({ sha256: null }).execute();
+    assertEquals(
+        Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], [])).avatar,
+        "https://pictures.example/bob.png",
+    );
 });
 
 Deno.test("a remote account's HTML, sanitised when it was stored, is shown as it is", async () => {

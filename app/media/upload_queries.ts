@@ -173,16 +173,25 @@ export const deleteMediaOf = async (ctx: Context, accountId: string): Promise<st
     ].filter((key): key is string => key !== null);
 };
 
+/** What says which type a file is served as. */
+export type ServedRow = Pick<
+    MediaRow,
+    "instance_id" | "media_type" | "cached_type" | "preview_sha256"
+>;
+
 /**
- * An upload stored under `key` once processed, or having it as its preview. Only local media
- * qualifies.
+ * Media stored under `key` once processed, or cached, or having it as its preview, local or remote.
  */
 export const findServedFile = (
     ctx: Context,
     key: string,
-): Promise<Pick<MediaRow, "media_type" | "preview_sha256"> | undefined> =>
-    ctx.db.selectFrom("media").select(["media_type", "preview_sha256"])
-        .where("instance_id", "is", null)
+): Promise<ServedRow | undefined> =>
+    ctx.db.selectFrom("media").select([
+        "instance_id",
+        "media_type",
+        "cached_type",
+        "preview_sha256",
+    ])
         .where((eb) =>
             eb.or([
                 eb.and([eb("sha256", "=", key), eb("processed_at", "is not", null)]),

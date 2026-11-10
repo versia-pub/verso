@@ -44,14 +44,15 @@ export const remoteEmojisOf = (
 
 /**
  * The `extensions` of an entity whose text uses `emojis`, or `undefined` if it uses none. Emojis
- * whose pictures aren't ready are omitted.
+ * whose pictures aren't ready are omitted. A remote emoji is given at its instance's URL, as the type
+ * its instance gave, not as Verso caches it.
  */
 export const emojiExtensions = (
     ctx: Context,
     emojis: readonly (EmojiPicture & { readonly shortcode: string })[],
 ): v0_6.Entity["extensions"] => {
     const shown = emojis.flatMap((emoji): v0_6.CustomEmoji[] => {
-        const picture = emojiPicture(ctx, emoji);
+        const picture = emoji.url === null ? emojiPicture(ctx, emoji) : { url: emoji.url };
         if (picture === undefined) return [];
 
         return [{

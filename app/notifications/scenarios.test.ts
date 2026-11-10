@@ -98,15 +98,16 @@ Deno.test("a remote reply with media and its author's own emoji, and a like, not
         ["follow", "bob@b.test"],
     ]);
 
-    // Served by b.test, where they are kept.
+    // Served by a.test, which cached them from b.test.
     const [, mention] = (await test.alice("GET", "/api/v1/notifications")).body;
     const [attachment] = mention.status.media_attachments;
     const [blobfox] = mention.status.emojis;
     assertEquals([attachment.type, attachment.description], ["image", "A square"]);
+    assertEquals(new URL(attachment.remote_url).host, "b.test");
     assertEquals(blobfox.shortcode, "blobfox");
     for (const url of [attachment.url, blobfox.url, blobfox.static_url]) {
-        assertEquals(new URL(url).host, "b.test", url);
-        const served = await test.b.app.request(url);
+        assertEquals(new URL(url).host, "a.test", url);
+        const served = await test.a.app.request(url);
         assertEquals(served.status, 200, url);
         await served.body?.cancel();
     }

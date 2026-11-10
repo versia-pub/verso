@@ -30,13 +30,11 @@ const typeOf = (row: MediaRow): MediaAttachment["type"] => {
 };
 
 /**
- * Media as Mastodon's API renders it. Local media is served at Verso's URL once processed; remote
- * media is served at the remote instance's URL.
+ * Media as Mastodon's API renders it. Local media is served at Verso's URL once processed, and remote
+ * media once cached; until then, remote media is served at the remote instance's URL.
  * @see https://docs.joinmastodon.org/entities/MediaAttachment/
  */
 export const renderAttachment = (ctx: Context, row: MediaRow): MediaAttachment => {
-    const local = row.instance_id === null;
-    const ready = !local || row.processed_at !== null;
     const original = dimensions(row.width, row.height);
     const small = dimensions(row.preview_width, row.preview_height);
     const focus = row.focus_x === null || row.focus_y === null
@@ -46,7 +44,8 @@ export const renderAttachment = (ctx: Context, row: MediaRow): MediaAttachment =
     return {
         id: row.id,
         type: typeOf(row),
-        url: local ? (ready && row.sha256 ? fileUrl(ctx, row.sha256) : null) : row.url,
+        // Local media has no URL of its own, so it has none until processed.
+        url: row.processed_at !== null && row.sha256 !== null ? fileUrl(ctx, row.sha256) : row.url,
         preview_url: row.preview_sha256 ? fileUrl(ctx, row.preview_sha256) : null,
         // Local media has no remote URL.
         remote_url: row.url,

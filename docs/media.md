@@ -103,7 +103,9 @@ tried three times. Media that can't be fetched by then is marked processed with 
 tried again until its URL or hash changes.
 
 `url`, `media_type` and `remote_sha256` keep what the remote instance said. `sha256`, `cached_type`
-and the preview columns describe the stored file.
+and the preview columns describe the stored file. Once stored, the file is served as `cached_type`
+and rendered at Verso's URL; until then, or if fetching failed, at the remote instance's. Custom
+emojis are still sent to other instances at their own instance's URL.
 
 ## Cleaning up
 

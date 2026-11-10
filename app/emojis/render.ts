@@ -8,22 +8,25 @@ import { fileUrl } from "../media/render.ts";
 import type { EmojiPicture, LocalEmoji, ShownEmoji } from "./emoji_queries.ts";
 
 /**
- * The URLs of an emoji's picture and of a still version of it: a remote emoji's own at its URL,
- * which has no still version, or one Verso stores, with its still preview, once processed. Until
- * then, or if processing failed, it is `undefined`, and the emoji isn't shown.
+ * The URLs of an emoji's picture and of a still version of it: the one Verso stores, with its still
+ * preview, once processed or cached, else a remote emoji's own at its URL, which has no still
+ * version. A local emoji's is `undefined` until processed, or if processing failed, and the emoji
+ * isn't shown.
  */
 export const emojiPicture = (
     ctx: Context,
     picture: EmojiPicture,
 ): { url: string; still: string } | undefined => {
+    if (picture.processed_at !== null && picture.sha256 !== null) {
+        const url = fileUrl(ctx, picture.sha256);
+        return {
+            url,
+            still: picture.preview_sha256 === null ? url : fileUrl(ctx, picture.preview_sha256),
+        };
+    }
     if (picture.url !== null) return { url: picture.url, still: picture.url };
-    if (picture.processed_at === null || picture.sha256 === null) return undefined;
 
-    const url = fileUrl(ctx, picture.sha256);
-    return {
-        url,
-        still: picture.preview_sha256 === null ? url : fileUrl(ctx, picture.preview_sha256),
-    };
+    return undefined;
 };
 
 /**

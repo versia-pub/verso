@@ -356,20 +356,16 @@ Deno.test("a picture is served once it is processed, with its preview", async ()
     assertEquals([preview.status, preview.type, preview.disposition], [200, "image/webp", null]);
 });
 
-Deno.test("only local files that are kept are served", async () => {
+Deno.test("only files that are kept or cached are served", async () => {
     await using test = await open();
     const key = await test.ctx.files.put(await bytesSource(zip), "application/zip");
     await createInstance(test.ctx, "b.example");
+    // Remote media isn't served by the hash its instance gave.
     await saveRemoteMedia(test.ctx, "b.example", null, {
         url: "https://b.example/notes.zip",
         mediaType: "application/zip",
         sha256: key,
     });
-    // Even if it were marked processed, or had the key as its preview.
-    await test.ctx.db.updateTable("media")
-        .set({ processed_at: new Date(), preview_sha256: key })
-        .where("instance_id", "is not", null)
-        .execute();
 
     const { body } = await test.upload(png(4, 4), "image/png");
     await drain(test.ctx, queues);
@@ -380,6 +376,63 @@ Deno.test("only local files that are kept are served", async () => {
         const missing = await test.download(`https://social.example/media/${path}`);
         assertEquals([missing.status, missing.cache], [404, "no-store"], path);
     }
+});
+
+Deno.test("another instance's file is served once cached, as what it was cached as", async () => {
+    await using test = await open();
+    await createInstance(test.ctx, "b.example");
+    const picture = png(4, 4);
+    const key = await test.ctx.files.put(await bytesSource(picture), "image/png");
+    const preview = await test.ctx.files.put(await bytesSource(png(2, 2)), "image/webp");
+    const sound = await test.ctx.files.put(await bytesSource(zip), "audio/ogg");
+    const cache = async (
+        mediaType: string,
+        cached: { sha256: string; preview_sha256?: string; cached_type?: string },
+    ) => {
+        const id = await saveRemoteMedia(test.ctx, "b.example", null, {
+            url: "https://b.example/file",
+            mediaType,
+        });
+        await test.ctx.db.updateTable("media")
+            .set({ ...cached, processed_at: test.clock.now() })
+            .where("id", "=", id)
+            .execute();
+    };
+    const served = async (key: string) => {
+        const { status, type, disposition } = await test.download(
+            `https://social.example/media/${key}`,
+        );
+        return { status, type, disposition };
+    };
+
+    // Not cached yet.
+    await cache("image/jpeg", { sha256: key, preview_sha256: preview });
+    await test.ctx.db.updateTable("media").set({ processed_at: null }).execute();
+    assertEquals((await served(key)).status, 404);
+
+    // Its instance said it was a JPEG, but it is a PNG.
+    await test.ctx.db.updateTable("media")
+        .set({ cached_type: "image/png", processed_at: test.clock.now() })
+        .execute();
+    assertEquals(await served(key), { status: 200, type: "image/png", disposition: null });
+    assertEquals(await served(preview), { status: 200, type: "image/webp", disposition: null });
+    assertEquals(
+        (await test.download(`https://social.example/media/${key}`)).bytes,
+        picture,
+    );
+
+    await cache("audio/ogg", { sha256: sound, cached_type: "audio/ogg" });
+    assertEquals(await served(sound), { status: 200, type: "audio/ogg", disposition: null });
+
+    // Never as what its instance said it is, without the type it was cached as.
+    const html = new TextEncoder().encode("<script>alert(1)</script>");
+    const page = await test.ctx.files.put(await bytesSource(html), "text/html");
+    await cache("text/html", { sha256: page });
+    assertEquals(await served(page), {
+        status: 200,
+        type: "application/octet-stream",
+        disposition: "attachment",
+    });
 });
 
 Deno.test("files a store serves itself are at its URL, which Verso's redirects to", async () => {

@@ -66,8 +66,8 @@ const midnight = (date: Date) =>
 
 /**
  * The URLs of an account's picture and of a still version of it, for clients that don't animate
- * pictures: a remote account's own at `url`, a local account's own once processed, stored under
- * `key` with its still preview under `preview`, or else the default at `fallback`.
+ * pictures: the one Verso stores under `key` once processed or cached, with its still preview under
+ * `preview`, else a remote account's own at `url`, or else the default at `fallback`.
  */
 const pictureUrls = (
     ctx: Context,
@@ -76,11 +76,13 @@ const pictureUrls = (
     preview: string | null,
     fallback: string,
 ) => {
+    if (key !== null) {
+        const file = fileUrl(ctx, key);
+        return { url: file, still: preview === null ? file : fileUrl(ctx, preview) };
+    }
     if (url !== null) return { url, still: url };
-    if (key === null) return { url: fallback, still: fallback };
 
-    const file = fileUrl(ctx, key);
-    return { url: file, still: preview === null ? file : fileUrl(ctx, preview) };
+    return { url: fallback, still: fallback };
 };
 
 /**

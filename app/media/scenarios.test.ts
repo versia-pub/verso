@@ -56,12 +56,14 @@ Deno.test("a status's media reaches followers on another instance, edited, until
         return home.body.find((status: { content: string }) => status.content.includes("Look"));
     };
 
+    // Served by b.test, which cached it.
     const [remote] = (await seen()).media_attachments;
     assertEquals(
-        [remote.type, remote.url, remote.remote_url, remote.description],
-        ["image", local.url, local.url, "A square"],
+        [remote.type, remote.remote_url, remote.description],
+        ["image", local.url, "A square"],
     );
-    const served = await a.app.request(remote.url);
+    assertEquals(remote.url.startsWith("https://b.test/media/"), true, remote.url);
+    const served = await b.app.request(remote.url);
     assertEquals([served.status, served.headers.get("content-type")], [200, "image/png"]);
     await served.body?.cancel();
 
@@ -141,10 +143,11 @@ Deno.test("an avatar reaches followers on another instance once processed, until
     // Sent once, when her avatar was ready.
     assertEquals(usersSent(), 1);
 
+    // Served by b.test, which cached it.
     const own = await seen();
-    assertEquals(own.avatar.startsWith("https://a.test/media/"), true, own.avatar);
+    assertEquals(own.avatar.startsWith("https://b.test/media/"), true, own.avatar);
     assertEquals(own.avatar_description, "A square");
-    const served = await a.app.request(own.avatar);
+    const served = await b.app.request(own.avatar);
     assertEquals([served.status, served.headers.get("content-type")], [200, "image/png"]);
     await served.body?.cancel();
 
@@ -158,7 +161,11 @@ Deno.test("an avatar reaches followers on another instance once processed, until
     await removed.body?.cancel();
     await network.drain();
 
-    assertEquals((await seen()).avatar, "https://a.test/accounts/alice/avatar.png");
+    // The default avatar is cached too.
+    const without = await seen();
+    assertEquals(without.avatar.startsWith("https://b.test/media/"), true, without.avatar);
+    assertEquals(without.avatar === own.avatar, false);
+    assertEquals(without.avatar_description, "");
 });
 
 Deno.test("a profile changed with pictures that can't be processed still reaches followers", async () => {
@@ -184,10 +191,12 @@ Deno.test("a profile changed with pictures that can't be processed still reaches
     await changed.body?.cancel();
     await network.drain();
 
+    // With the default avatar, cached.
     const { body } = await bob("GET", "/api/v1/accounts/lookup?acct=alice@a.test");
-    assertEquals([body.display_name, body.avatar], [
-        "Alice",
-        "https://a.test/accounts/alice/avatar.png",
-    ]);
+    assertEquals(body.display_name, "Alice");
+    assertEquals(body.avatar.startsWith("https://b.test/media/"), true, body.avatar);
+    const avatar = await b.ctx.db.selectFrom("media").select("url")
+        .where("sha256", "=", body.avatar.slice(-64)).executeTakeFirstOrThrow();
+    assertEquals(avatar.url, "https://a.test/accounts/alice/avatar.png");
     assertEquals(usersSent(), 1);
 });
