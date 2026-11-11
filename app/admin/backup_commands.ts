@@ -7,9 +7,9 @@ import type { Config } from "../kernel/config.ts";
 import { AdminError } from "./admin_io.ts";
 
 /**
- * Copies the SQLite database to `path`, a file that doesn't exist yet, as it is at one moment, while
- * Verso keeps running: it copies every page in one step, reading as one transaction does, which in
- * WAL mode doesn't hold up Verso's writes. Returns the copy's size in bytes.
+ * Copies the SQLite database to `path`, a file that doesn't exist yet, as it is at one moment,
+ * while Verso keeps running: it copies every page in one step, reading as one transaction does,
+ * which in WAL mode doesn't hold up Verso's writes. Returns the copy's size in bytes.
  * @see https://www.sqlite.org/backup.html
  */
 export const backUpSqlite = async (database: Config["database"], path: string): Promise<number> => {

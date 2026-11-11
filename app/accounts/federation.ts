@@ -57,8 +57,8 @@ const ownPicture = async (ctx: Context, id: string | null, fallback: string) => 
 };
 
 /**
- * The migration extension of the local account `row`, with `movedTo` as the reference to the account
- * it moved to, if it says it moved from an account, or to one.
+ * The migration extension of the local account `row`, with `movedTo` as the reference to the
+ * account it moved to, if it says it moved from an account, or to one.
  */
 const migrationExtension = (
     ctx: Context,

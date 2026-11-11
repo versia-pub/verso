@@ -141,7 +141,7 @@ const configuration = (
 
 /** How many users, statuses and other instances the instance has, as it tells clients. */
 export type InstanceStats = {
-    /** Accounts that logged in in the last 30 days. */
+    /** Accounts that logged in within `activeWindowMs`. */
     readonly activeMonth: number;
     readonly users: number;
     readonly statuses: number;
@@ -160,7 +160,7 @@ export const instanceStats = async (ctx: Context): Promise<InstanceStats> => ({
     domains: await countInstances(ctx),
 });
 
-/** The instance as Mastodon's API describes it, claiming Mastodon 4.4. */
+/** The instance as Mastodon's API describes it. */
 export const renderInstance = async (
     ctx: Context,
     settings: AboutSettings,

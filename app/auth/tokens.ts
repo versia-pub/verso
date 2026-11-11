@@ -137,7 +137,7 @@ export const authenticateClient = async (
 };
 
 export type IssuedToken = {
-    /** In `access_tokens`. */
+    /** Its id in `access_tokens`. */
     readonly id: string;
     readonly token: string;
     readonly scopes: Scope[];

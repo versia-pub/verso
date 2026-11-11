@@ -104,8 +104,8 @@ export const consentRequest = async (
 };
 
 /**
- * Records the user's answer. Allowing gives the app a code, valid for ten minutes, to exchange for
- * a token; only its hash is stored. Denying ends the flow.
+ * Records the user's answer. Allowing gives the app a code, valid for `codeLifetimeMs`, to exchange
+ * for a token; only its hash is stored. Denying ends the flow.
  */
 export const decide = async (
     ctx: Context,

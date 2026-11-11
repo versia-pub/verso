@@ -74,7 +74,7 @@ const postApps = defineRoute({
 });
 
 /**
- * Any valid token works, with no scope needed, as since Mastodon 4.3.
+ * Any valid token works, with no scope needed, as in Mastodon 4.3 and later.
  * @see https://docs.joinmastodon.org/methods/apps/#verify_credentials
  */
 const verifyAppCredentials = defineRoute({

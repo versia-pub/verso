@@ -65,7 +65,7 @@ const orRefusal = <T>(result: Managed<T>): T => {
     }
 };
 
-/** The local account with this id. Remote accounts aren't shown yet, and have no roles here. */
+/** The local account with this id. Remote accounts have no roles here. */
 const localAccount = async (ctx: Context, id: string): Promise<AccountRow> => {
     const account = await findAccount(ctx, id);
     if (account?.domain !== null) throw new NotFound();

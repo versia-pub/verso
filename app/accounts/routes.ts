@@ -93,8 +93,7 @@ const profileUpdate = (
 
 /**
  * What `update_credentials` changes, within `limits`, with pictures at most as large as `media`
- * allows uploads to be. Quote policies are accepted, but not stored yet; Verso doesn't restrict
- * quotes.
+ * allows uploads to be. Quote policies are accepted but not stored; Verso doesn't restrict quotes.
  * @see https://docs.joinmastodon.org/methods/accounts/#update_credentials
  */
 const credentialChanges = (media: MediaLimits, limits: Limits) => {

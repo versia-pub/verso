@@ -108,7 +108,10 @@ export const findRemoteAccountByName = (
 ): Promise<AccountRow | undefined> =>
     accountRows(ctx).where(named(instanceId, username)).executeTakeFirst();
 
-/** Which of `ids` are accounts, in no particular order, other than suspended ones unless `withSuspended`. */
+/**
+ * Which of `ids` are accounts, in no particular order, other than suspended ones unless
+ * `withSuspended`.
+ */
 export const existingAccountIds = async (
     ctx: Context,
     ids: readonly string[],

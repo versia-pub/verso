@@ -1,7 +1,8 @@
 /**
  * Remote users moving to another account, as Versia's migration extension has them: a Migration
- * entity, or a User whose `new` names the account it moved to. Either moves it only once the account
- * it moved to, fetched again, says it moved from it, at most once a week, as Mastodon moves accounts.
+ * entity, or a User whose `new` names the account it moved to. Either moves it only once the
+ * account it moved to, fetched again, says it moved from it, at most once a week, as Mastodon moves
+ * accounts.
  * @see https://versia.pub/extensions/migration
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/activitypub/activity/move.rb
  * @module
