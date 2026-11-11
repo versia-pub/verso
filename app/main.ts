@@ -24,7 +24,7 @@ const configOrExit = async (path: string): Promise<Config> => {
 /** Reads the config at `path` and sets up logging, before any command that needs them. */
 const setUp = async (path: string): Promise<Config> => {
     const config = await configOrExit(path);
-    await setUpLogging(config.logging.level);
+    await setUpLogging(config.logging);
     return config;
 };
 

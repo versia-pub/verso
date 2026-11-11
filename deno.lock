@@ -7,7 +7,7 @@
     "jsr:@cliffy/table@^1.3.1": "1.3.1",
     "jsr:@cliffy/upgrade@^1.3.1": "1.3.1",
     "jsr:@hono/hono@4.13.13": "4.13.13",
-    "jsr:@logtape/logtape@2.4.1": "2.4.1",
+    "jsr:@logtape/logtape@2.4.2": "2.4.2",
     "jsr:@panva/jose@6.2.12": "6.2.12",
     "jsr:@panva/jose@^6.2.12": "6.2.12",
     "jsr:@panva/oauth4webapi@^3.8.8": "3.8.8",
@@ -82,8 +82,8 @@
     "@hono/hono@4.13.13": {
       "integrity": "dec817b8600fc2835c259d875a69e849a706f6d25e8d0643d75c97f7d0afcdf8"
     },
-    "@logtape/logtape@2.4.1": {
-      "integrity": "0f371ab59edecff804e444f9769f5b339d08772f59874e8de1eb88120508bcae"
+    "@logtape/logtape@2.4.2": {
+      "integrity": "308d84fb97124e5558a24eb23b94a8909fc60f4b0032e9328905a4264d14886b"
     },
     "@panva/jose@6.2.12": {
       "integrity": "45dd3888cff0c45dbd91ca5279f7fd4324227042d19df91504aa2c0678b3edcc"
@@ -519,7 +519,7 @@
     "dependencies": [
       "jsr:@cliffy/command@1.3.1",
       "jsr:@hono/hono@4.13.13",
-      "jsr:@logtape/logtape@2.4.1",
+      "jsr:@logtape/logtape@2.4.2",
       "jsr:@panva/jose@6.2.12",
       "jsr:@panva/openid-client@6.8.8",
       "jsr:@std/assert@1.0.19",

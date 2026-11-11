@@ -268,3 +268,5 @@ updated = 2026-10-01
 
 [logging]
 # level = "info"
+# "pretty", "text" or "json". Without it, "pretty" in a terminal and "text" elsewhere.
+# format = "json"

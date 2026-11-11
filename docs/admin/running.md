@@ -78,11 +78,13 @@ being retried after `[federation] delivery_hours`, 48 by default. Once an instan
 
 ## Logs
 
-Verso logs to the console at `[logging] level`, `info` by default. In a terminal, logs are coloured
-so the important parts stand out. Elsewhere, such as in journald or container logs, they're plain
-text. `NO_COLOR` turns colour off.
+Verso logs to the console at `[logging] level`, `info` by default. In a terminal, logs are pretty:
+the time, and the level on a coloured background, so the important parts stand out. Elsewhere, such
+as in journald or container logs, they're plain text with the date. With `format = "json"`, they're
+one JSON object per line, for log collectors. `NO_COLOR` turns colour off.
 
-Each part of Verso logs under its own category, such as `verso.federation` or `verso.streaming`.
+Each part of Verso logs under its own category, such as `federation` or `streaming`. JSON logs give
+it in full, as `verso.federation`.
 
 ## Health checks
 

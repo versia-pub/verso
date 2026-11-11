@@ -238,5 +238,5 @@ several web nodes share them.
 
 ## Logging
 
-`[logging] level` is `trace`, `debug`, `info` (the default), `warning`, `error` or `fatal`. See
-[Logs](running.md#logs).
+`[logging] level` is `trace`, `debug`, `info` (the default), `warning`, `error` or `fatal`.
+`[logging] format` is `pretty`, `text` or `json`. See [Logs](running.md#logs).

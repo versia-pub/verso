@@ -203,6 +203,7 @@ export const Config = z.strictObject({
     logging: z.strictObject({
         level: z.enum(["trace", "debug", "info", "warning", "error", "fatal"])
             .default("info"),
+        format: z.enum(["pretty", "text", "json"]).optional(),
     }).prefault({}),
 }).superRefine((config, ctx) => {
     if (config.mode === "production" && config.http.origin !== undefined) {
