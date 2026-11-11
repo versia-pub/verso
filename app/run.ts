@@ -36,14 +36,6 @@ import { federationTransport, fetchTransport, timedTransport } from "./kernel/tr
 import { urlBuilder } from "./kernel/urls.ts";
 import { vipsImages } from "./kernel/vips_images.ts";
 
-const banner = `
-███   ███ ████████ ███████▄  ▄███████▄  ▄██████▄
-███   ███ ███      ███   ███ ███▄▄▄▄   ███▀  ▀███
-███▄ ▄███ ███▀▀▀   ████████   ▀██████▄ ███    ███
- ▀█████▀  ███▄▄▄▄▄ ███   ███ ▄▄▄▄▄▄███ ▀███▄▄███▀
-   ▀▀▀    ▀▀▀▀▀▀▀▀ ▀▀▀   ▀▀▀  ▀▀▀▀▀▀▀    ▀▀▀▀▀▀
-`;
-
 /** Serves `served` over HTTP until `signal` aborts. */
 const serve = (
     ctx: Context,
@@ -52,9 +44,6 @@ const serve = (
     listening: () => boolean,
     signal: AbortSignal,
 ): Promise<void> => {
-    // deno-lint-ignore no-console -- the banner is command output, not a log line
-    console.log(banner);
-
     const logger = getLogger(["verso", "http"]);
 
     const onListen = ({ hostname, port }: Deno.NetAddr) =>
@@ -212,7 +201,10 @@ export const run = async (role: Role, config: Config): Promise<number> => {
         ? hearJobWakeups(ctx)
         : await listenForJobs(config.database);
     if (role !== "serve") {
-        logger.info("Working on {queues} as {worker}", { queues: Object.keys(queues), worker });
+        logger.info("Working on {count} queues as {worker}", {
+            count: Object.keys(queues).length,
+            worker,
+        });
     }
 
     await Promise.all([

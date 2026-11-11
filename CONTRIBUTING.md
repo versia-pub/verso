@@ -35,6 +35,7 @@ Nix only sees files that git knows about, so `git add` new files before running 
 | `nix flake check`               | Run everything CI runs                                     |
 | `nix build`                     | Build the server package                                   |
 | `nix run .#update-hashes`       | Update the dependency hash after changing `deno.lock`      |
+| `nix run .#dev`                 | Run a local Verso for debugging, as below                  |
 | `nix run .#dev-services`        | Run a throwaway PostgreSQL in `.dev/`                      |
 | `nix run .#banner -- --help`    | Make a Versia-branded README banner                        |
 
@@ -47,8 +48,13 @@ or a real PostgreSQL server instead, and `nix flake check` runs all three. See
 
 ## Running Verso locally
 
-Verso reads `config.toml` from where it runs; `docs/config.example.toml` lists every setting. For a
-local instance, this is enough:
+`nix run .#dev` runs Verso from the source at `http://localhost:8080`, with debug logs and a login
+that takes any username. It writes a minimal `.dev/config.toml` the first time, keeps its data in
+`.dev/`, and brings the database up to date before it starts. Edit that file to change the port or
+use the database from `nix run .#dev-services`.
+
+To run it without Nix, Verso reads `config.toml` from where it runs; `docs/config.example.toml`
+lists every setting. For a local instance, this is enough:
 
 ```toml
 mode = "development"

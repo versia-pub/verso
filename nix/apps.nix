@@ -61,6 +61,52 @@ let
       wait "$server" || true
     '';
   };
+  # Runs Verso from the source for debugging, on SQLite in .dev/, with debug logs and the dev login.
+  # It writes .dev/config.toml the first time, which can then be edited. Arguments replace `all`.
+  dev = pkgs.writeShellApplication {
+    name = "dev";
+    runtimeInputs = [
+      pkgs.deno
+      pkgs.vips
+    ];
+    runtimeEnv.DENO_NO_UPDATE_CHECK = "1";
+    text = ''
+      if [ ! -f flake.nix ]; then
+        echo "Run this from the root of the repository." >&2
+        exit 1
+      fi
+
+      config=.dev/config.toml
+      if [ ! -f "$config" ]; then
+        mkdir -p .dev
+        cat >"$config" <<'EOF'
+      mode = "development"
+      domain = "localhost"
+      database = { sqlite = ".dev/verso.db" }
+
+      [media]
+      storage = { filesystem = ".dev/media" }
+
+      [http]
+      origin = "http://localhost:8080"
+
+      [auth]
+      # A login form that takes any username, with no password.
+      dev_login = true
+
+      [logging]
+      level = "debug"
+      EOF
+        echo "Wrote $config."
+      fi
+
+      # Only its warnings and errors, so the banner comes first.
+      deno task -q verso --config "$config" migrate >/dev/null
+      if [ $# -eq 0 ]; then set -- all; fi
+      exec deno task -q verso --config "$config" "$@"
+    '';
+  };
+
   # Makes a Versia-branded banner for a README, with scripts/banner.ts. It needs no repository, so
   # other projects can run it too.
   banner = pkgs.writeShellApplication {
@@ -81,6 +127,12 @@ in
     type = "app";
     program = pkgs.lib.getExe banner;
     meta.description = "Make a Versia-branded README banner with a title and tagline";
+  };
+
+  dev = {
+    type = "app";
+    program = pkgs.lib.getExe dev;
+    meta.description = "Run a local Verso from the source, with a minimal config in .dev/";
   };
 
   dev-services = {

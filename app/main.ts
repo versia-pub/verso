@@ -8,8 +8,9 @@ import { adminCommand, AdminError, missingCommand } from "./admin/cli.ts";
 import { openDatabase } from "./db/database.ts";
 import { type Config, readConfig } from "./kernel/config.ts";
 import type { Context } from "./kernel/context.ts";
+import { getLogger } from "@logtape/logtape";
 import { setUpLogging } from "./kernel/logging.ts";
-import { contextFor, pubSubFor, run, runMigrations } from "./run.ts";
+import { contextFor, pubSubFor, type Role, run, runMigrations } from "./run.ts";
 
 /** Reads the config, or exits saying what is wrong with it. */
 const configOrExit = async (path: string): Promise<Config> => {
@@ -41,6 +42,27 @@ const withContext = async <T>(
 
 const version = `verso ${denoConfig.version}`;
 
+const banner = `
+███   ███ ████████ ███████▄  ▄███████▄  ▄██████▄
+███   ███ ███      ███   ███ ███▄▄▄▄   ███▀  ▀███
+███▄ ▄███ ███▀▀▀   ████████   ▀██████▄ ███    ███
+ ▀█████▀  ███▄▄▄▄▄ ███   ███ ▄▄▄▄▄▄███ ▀███▄▄███▀
+   ▀▀▀    ▀▀▀▀▀▀▀▀ ▀▀▀   ▀▀▀  ▀▀▀▀▀▀▀    ▀▀▀▀▀▀
+─────────────────────────────────────────────────`;
+
+/**
+ * Shows the banner before the logs, unless they are JSON, then runs as `role` with the config at
+ * `path`.
+ */
+const start = async (role: Role, path: string): Promise<number> => {
+    const config = await configOrExit(path);
+    // deno-lint-ignore no-console -- the banner is command output, not a log line
+    if (config.logging.format !== "json") console.log(banner);
+    await setUpLogging(config.logging);
+    getLogger(["verso"]).info(`Thank you for using Verso ${denoConfig.version}!`);
+    return await run(role, config);
+};
+
 const cli = new Command()
     .name("verso")
     .version(denoConfig.version)
@@ -55,15 +77,15 @@ const cli = new Command()
     .globalOption("-c, --config <path:string>", "The config file.", { default: "config.toml" })
     .action(missingCommand)
     .command("serve", "Answer HTTP requests, until stopped.")
-    .action(async ({ config }) => Deno.exit(await run("serve", await setUp(config))))
+    .action(async ({ config }) => Deno.exit(await start("serve", config)))
     .command(
         "work",
         "Run jobs, until stopped. Each worker runs as many jobs at once as its queues allow, " +
             "including per instance, so more workers send more to each instance at once.",
     )
-    .action(async ({ config }) => Deno.exit(await run("work", await setUp(config))))
+    .action(async ({ config }) => Deno.exit(await start("work", config)))
     .command("all", "Answer HTTP requests and run jobs, until stopped.")
-    .action(async ({ config }) => Deno.exit(await run("all", await setUp(config))))
+    .action(async ({ config }) => Deno.exit(await start("all", config)))
     .command("migrate", "Bring the database up to date, and make the instance's key pair.")
     .action(async ({ config }) => Deno.exit(await runMigrations(await setUp(config))))
     .command(
