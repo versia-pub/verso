@@ -60,7 +60,7 @@ app/                 the server
   accounts/ notes/ graph/ …   feature modules
   testing/           fakes and helpers for tests
 packages/
-  protocol/          @versia/protocol: Versia entities, references, signing. No I/O.
+  protocol/          @versia/protocol: Versia entities, references, signing
   client-api/        @versia/client-api: Mastodon API entities as Zod schemas, and a client
 lint/plugin.ts       Verso's own lint rules
 scripts/             import-cycle and unused-dependency checks, the README banner

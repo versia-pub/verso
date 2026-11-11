@@ -64,16 +64,7 @@ needs more looks it up. To add one, see [Adding a side effect](guides/adding-a-s
 A job is a row in the `jobs` table: a queue name, a JSON payload, and when it may run. Enqueue one
 with `enqueue` or `enqueueAll` from [`app/jobs/job_queries.ts`](../app/jobs/job_queries.ts), inside
 the same transaction as the change that caused it, so the job exists only if the change commits.
-
-```ts
-await enqueueAll(
-    ctx,
-    batchesOf(accountIds, notifiedPerJob).map((batch) => {
-        const payload: z.infer<typeof NotifyJob> = { type, noteId, accountIds: batch };
-        return { queue: notifyQueue, payload };
-    }),
-);
-```
+[Adding a job](guides/adding-a-job.md) has an example.
 
 | Option        | What it does                                                             |
 | ------------- | ------------------------------------------------------------------------ |
@@ -100,21 +91,6 @@ Limits are per worker, so three workers send an instance three times as much at 
 queue, see [Adding a job](guides/adding-a-job.md).
 
 ### Handlers
-
-```ts
-export const notifyHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
-    const payload = NotifyJob.safeParse(job.payload);
-    if (!payload.success) throw new PermanentFailure("The job isn't a notify job");
-
-    const { type, noteId, accountIds } = payload.data;
-    await ctx.transaction(async (tx) => {
-        const note = await findNote(tx, noteId);
-        if (note === undefined) return;
-
-        await notifyAll(tx, accountIds, type, note.account_id, { noteId });
-    });
-};
-```
 
 Validate the payload with Zod, since it may have been written by an older version of Verso. A
 payload that doesn't parse will never succeed, so throw `PermanentFailure`.
@@ -178,15 +154,8 @@ scheduler, and a dedupe key per period makes sure each task is queued once per p
 Some things need to reach every process, not just one worker, such as a stale cache or a status that
 streaming clients should see. These go through `ctx.pubsub`, with `publish` and `subscribe` from
 [`app/kernel/pubsub.ts`](../app/kernel/pubsub.ts). Each kind of message is a `Channel`, with a name
-and a Zod schema:
-
-| Channel                 | Says                                               | Heard by               |
-| ----------------------- | -------------------------------------------------- | ---------------------- |
-| `federation.changed`    | the instance key or blocked domains changed        | every process's caches |
-| `roles.changed`         | an account's roles changed                         | streaming sessions     |
-| `tokens.revoked`        | an access token was revoked, or its user suspended | streaming sessions     |
-| `streaming.statuses`    | a status appeared, changed or went                 | streaming sessions     |
-| `notifications.created` | a notification was made                            | streaming sessions     |
+and a Zod schema, declared by the module that publishes it, such as `filtersChanged` in
+[`app/filters/filters.ts`](../app/filters/filters.ts).
 
 `publish` sends after commit, so no process hears about a change that rolled back. Every process
 gets every message, including the one that sent it. On SQLite, messages stay in the process that

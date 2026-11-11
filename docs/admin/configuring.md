@@ -76,8 +76,7 @@ only trend once you approve them, as [moderating](moderating.md) says, unless yo
 `trendable_by_default` to `true`.
 
 Apps suggest accounts to follow: the ones you list in `suggested_accounts`, such as
-`["alice",
-"bob@b.example"]`, and the ones followed by those a user follows. Verso must already know
+`["alice", "bob@b.example"]`, and the ones followed by those a user follows. Verso must already know
 the remote ones.
 
 `extended_description`, `privacy_policy` and `terms_of_service` are plain text, with a blank line
@@ -165,6 +164,7 @@ to the client API: other instances can still fetch public statuses over Versia.
 | `owner:notification`   | view and dismiss their own notifications                         |
 | `owner:report`         | report accounts and statuses to moderators                       |
 | `blocks`               | see who blocks each account, which moderators may need           |
+| `feeds`                | see the timelines `[timelines_access]` disables                  |
 | `emojis`               | add, change and delete any custom emoji, and make them global    |
 | `roles`                | create, change and grant lower roles, with permissions they have |
 

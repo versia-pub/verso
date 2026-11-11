@@ -145,18 +145,6 @@ There's no admin API: admins use `verso admin` instead.
 | Polls (2 methods)                                   | ✅    |                                |
 | Scheduled statuses (4 methods)                      | ✅    |                                |
 
-## Left out from Mastodon 4.4 to 4.7
-
-These newer parts of Mastodon's API aren't in Verso. Apps get a `404`.
-
-- ❌ Collections, from 4.6.
-- ❌ Annual reports, from 4.4.
-- ❌ Email subscriptions, from 4.6.
-- ❌ Donation campaigns, from 4.4.
-- ❌ The `untrusted_*` counts of remote accounts.
-
-Verso keeps remote handles as they are, so `invalid_handle` is never set on an account.
-
 ## Timelines
 
 | Method                                  | Verso | Notes                                 |
@@ -249,6 +237,18 @@ Verso keeps remote handles as they are, so `invalid_handle` is never set on an a
 | `GET /nodeinfo/2.0`                          | 🟡    | See differences              |
 | `GET /api/oembed`                            | ❌    | Needs status web pages       |
 | `GET /health`                                | ✅    | Also `/health/ready`         |
+
+## Left out from Mastodon 4.4 to 4.7
+
+These newer parts of Mastodon's API aren't in Verso. Apps get a `404`.
+
+- ❌ Collections, from 4.6.
+- ❌ Annual reports, from 4.4.
+- ❌ Email subscriptions, from 4.6.
+- ❌ Donation campaigns, from 4.4.
+- ❌ The `untrusted_*` counts of remote accounts.
+
+Verso keeps remote handles as they are, so `invalid_handle` is never set on an account.
 
 ## Admin
 

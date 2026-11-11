@@ -100,12 +100,6 @@ posted, edited and deleted everywhere it went.
 - `fakeTransport`, in [`app/kernel/fake_transport.ts`](../app/kernel/fake_transport.ts), routes
   requests by host to any `(request) => Response`, so a test can answer as a remote instance would.
 
-## The OpenAPI snapshot
-
-[`app/http/routes.test.ts`](../app/http/routes.test.ts) compares the OpenAPI document with
-`app/http/openapi.json`, so API changes show up in review. After an intended change, run
-`deno task update-openapi` and commit the new snapshot. See [HTTP](http.md#openapi).
-
 ## Beyond `deno task test`
 
 - `nixos-module` starts the NixOS module in a VM and checks that it serves.

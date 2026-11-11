@@ -44,15 +44,9 @@ settings are refused in production by `Config`'s `superRefine`.
 
 ## 2. Get it to the code
 
-The value reaches the code in one of three ways:
-
-| It is used by                    | Pass it through                                        |
-| -------------------------------- | ------------------------------------------------------ |
-| a service or job handler         | `Settings`, in `app/kernel/settings.ts`                |
-| a route, to check or describe    | the module's route function, from `app/http/routes.ts` |
-| an adapter, such as a file store | `contextFor` in `app/run.ts`                           |
-
-The push timeout is read by a job handler, so it goes in `Settings`, in the unit the code uses:
+The value reaches the code in one of the ways
+[Configuration](../configuration.md#how-settings-reach-the-code) lists. The push timeout is read by
+a job handler, so it goes in `Settings`, in the unit the code uses:
 
 ```ts
 // settings.ts

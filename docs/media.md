@@ -131,9 +131,3 @@ headers and custom emojis stay cached until nothing uses them.
 Deleting a file could race with something starting to use it, so both sides lock the file's key:
 `deleteFileIfUnused` while it checks and deletes, and `keepUsed` in the transaction that starts
 using the file.
-
-## Tests
-
-Tests use the real vips, which the dev shell provides, and a folder in a temporary directory.
-[`app/testing/fake_s3.ts`](../app/testing/fake_s3.ts) is an S3 server in the test process, for the
-S3 store's tests. The `federation-vms` check runs Verso with its media in Garage, in NixOS VMs.

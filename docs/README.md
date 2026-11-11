@@ -15,12 +15,13 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 - [The client API](api/README.md): logging in, scopes and permissions, ids, pages, errors, a
   TypeScript client
-- [Mastodon API compatibility](api/compatibility.md): every Mastodon 4.3 method, and whether Verso
+- [Mastodon API compatibility](api/compatibility.md): every Mastodon 4.7 method, and whether Verso
   has it
 - [Differences from Mastodon](api/differences.md): where the methods Verso has behave differently
 - [Roles](api/roles.md): the Role entity, and creating, changing and granting roles
 - [Custom emoji](api/emojis.md): adding, changing and deleting custom emoji
 - [Reactions](api/reactions.md): reacting to statuses, and reaction notifications
+- [Moving accounts](api/migration.md): moving to Verso from another account, and away from it
 
 ## How Verso works
 

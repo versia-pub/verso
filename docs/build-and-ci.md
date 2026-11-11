@@ -134,5 +134,3 @@ Only the `other` job saves it, and the rest only restore it, because a repositor
 GB and a snapshot from each job would push the others out. Magic Nix Cache hits GitHub's rate limits
 and uploads to FlakeHub by default, and Cachix costs money for private repositories, so we use this
 action instead.
-
-Actions are pinned to a commit, with the version in a comment.

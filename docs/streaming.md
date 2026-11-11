@@ -109,16 +109,9 @@ the user's roles change, `roles.changed` makes it look up its permissions again.
 
 ## Limits
 
-`[streaming]` in config limits what one user can make Verso do for each event:
-
-| Setting               | Default | Limits                                  |
-| --------------------- | ------- | --------------------------------------- |
-| `sockets_per_account` | 10      | WebSockets per account, on each process |
-| `subscriptions`       | 100     | streams per WebSocket                   |
-| `tag_length`          | 100     | a hashtag stream's tag, in characters   |
-
-Sockets are counted per process, since processes don't share counts, so with three web nodes an
-account can open 30.
+`[streaming]` in config limits how many WebSockets an account may open, how many streams each may
+have, and how long a hashtag stream's tag may be. Sockets are counted per process, since processes
+don't share counts, so with three web nodes an account can open three times as many.
 
 ## SQLite
 

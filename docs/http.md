@@ -128,18 +128,14 @@ Any other error is logged and sent as a 500 with no details.
 
 ## Auth, scopes and permissions
 
-Three checks decide who may call a route:
-
-1. `require`: `"user"` needs a user's token, `"app"` takes any token, and `"optional"` allows
-   anyone, though a token that is sent must be valid. Without `auth`, tokens are ignored.
-2. `scope`: the token must have this scope, or one that covers it, as `read` covers `read:statuses`.
-   The scopes are Mastodon's, in [`app/kernel/scopes.ts`](../app/kernel/scopes.ts).
-3. `permission`: what the caller may do on this instance. `[permissions]` in config sets what
-   everyone and every user may do, and roles add more. The names come from Versia Server, in
-   [`app/kernel/permissions.ts`](../app/kernel/permissions.ts).
+`require` says who may call: `"user"` needs a user's token, `"app"` takes any token, and
+`"optional"` allows anyone, though a token that is sent must be valid. Without `auth`, tokens are
+ignored. The token must have the route's `scope`, and the caller its `permission`, as
+[Logging in and permissions](auth.md#permissions-and-roles) explains. A user who moved away is also
+refused, unless the route sets `whileMoved: true`.
 
 The app gets tokens and roles through `AppServices`, which [`app/services.ts`](../app/services.ts)
-provides, so `http/` imports no feature module. How tokens are made is in the `auth` module.
+provides, so `http/` imports no feature module.
 
 ## Rate limits
 
@@ -171,9 +167,3 @@ rate limited nor in the OpenAPI document.
 
 `GET /metrics`, from [`app/http/metrics.ts`](../app/http/metrics.ts), is there only when config sets
 `[metrics] token`, and is rate limited, so the token can't be guessed quickly.
-
-## Tests
-
-`createTestApp(ctx, routes)` in [`app/testing/app.ts`](../app/testing/app.ts) builds the app with
-the real services, unless a test replaces some. Call `app.request(…)` on it, with no network in
-between.

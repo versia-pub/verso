@@ -32,11 +32,9 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   `quote_approval` always says so. A quote of a private status is posted as private. A direct quote
   has to be of the sender or of someone it mentions.
 - Verso doesn't tell a blocked account that it can't quote, so a user who blocks the quoted author
-  can't quote them, but one the author blocks can. Quotes can't be revoked:
-  `POST
-  /api/v1/statuses/:id/quotes/:quote_id/revoke` answers `403`. A quote's state is never
-  `pending`, `rejected`, `revoked` or `deleted`; a status whose quoted status is deleted has no
-  quote.
+  can't quote them, but one the author blocks can. Quotes can't be revoked: revoking one answers
+  `403`. A quote's state is never `pending`, `rejected`, `revoked` or `deleted`; a status whose
+  quoted status is deleted has no quote.
 - A status that quotes can't be edited to have no text.
 - `/api/v1/statuses/:id/context` only includes the replies Verso already has. It doesn't fetch the
   rest of a remote thread.

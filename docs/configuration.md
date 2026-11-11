@@ -48,35 +48,16 @@ and errors say where the reference is, never what it read.
 The config is read once, in [`app/main.ts`](../app/main.ts), and passed down. Nothing reads it
 again, and nothing reads environment variables except through the config's `${env:…}` references.
 
-| What                                       | Gets the config through                            |
-| ------------------------------------------ | -------------------------------------------------- |
-| adapters, such as the file store           | `contextFor` in [`app/run.ts`](../app/run.ts)      |
-| values services use as they run            | `ctx.settings`, from `settingsOf`                  |
-| limits routes check, such as `[search]`    | the module's route function, from `routes(config)` |
-| the HTTP app: rate limits, trusted proxies | `createApp`'s options, in `run.ts`                 |
+| What                                       | Gets the config through                       |
+| ------------------------------------------ | --------------------------------------------- |
+| adapters, such as the file store           | `contextFor` in [`app/run.ts`](../app/run.ts) |
+| values services use as they run            | `ctx.settings`, from `settingsOf`             |
+| limits routes check, such as `[search]`    | the module's route function, from `routes`    |
+| the HTTP app: rate limits, trusted proxies | `createApp`'s options, in `run.ts`            |
 
 `ctx.settings` is a [`Settings`](../app/kernel/settings.ts), in the units the code uses, such as
 `deliveryMs` for `[federation] delivery_hours`. Tests start from `defaultSettings` and only change
 what they test. To add a setting, see [Adding a config option](guides/adding-a-config-option.md).
-
-## Sections
-
-| Section              | Sets                                                                 |
-| -------------------- | -------------------------------------------------------------------- |
-| top level            | `mode`, `domain`, `database`                                         |
-| `[media]`            | upload limits, cleanup, and `storage`: a folder or S3                |
-| `[http]`             | the port, the trusted proxies, and `[http.rate_limit]`               |
-| `[auth]`             | the development login, and `[[auth.issuers]]`: who users log in with |
-| `[federation]`       | blocked domains, delivery, and fetch and rate limits for instances   |
-| `[instance]`         | the name, description, contact, rules, privacy policy and terms      |
-| `[limits]`           | how long names, bios and statuses may be, and how many of each       |
-| `[permissions]`      | what logged-out visitors and every user may do                       |
-| `[streaming]`        | WebSockets and streams per user                                      |
-| `[search]`           | the longest query and largest offset                                 |
-| `[timelines_access]` | who may see the public, hashtag and link timelines                   |
-| `[push]`             | how long a push service has to answer                                |
-| `[jobs]`             | how long dead letters are kept                                       |
-| `[logging]`          | the log level                                                        |
 
 ## NixOS
 

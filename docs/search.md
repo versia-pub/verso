@@ -63,8 +63,8 @@ The query syntax is Mastodon's, parsed in [`app/search/query.ts`](../app/search/
 | `before:`, `after:`, `during:`          | by day (`2024-05-01`, in UTC) or by millisecond |
 | `in:public`, `in:library`, `in:all`     | among those statuses                            |
 
-Unknown prefixes are searched as words. Verso has no polls or link previews yet, so `has:poll` and
-the like find nothing.
+Unknown prefixes are searched as words. `has:poll`, `has:link` and Mastodon's other properties find
+nothing yet.
 
 A query has to narrow the search through an index, with a word, a phrase, a hashtag, `from:`,
 `in:library` or `account_id`. A query without one, such as `is:sensitive` alone, finds nothing
@@ -93,16 +93,7 @@ account or status) finds only that entity, fetched if Verso doesn't have it. See
 
 ## Limits
 
-`[search]` in config limits how much a single search can ask for. Mastodon has no such limits.
-
-| Setting        | Default | Limits                               |
-| -------------- | ------- | ------------------------------------ |
-| `query_length` | 500     | the length of a query, in characters |
-| `max_offset`   | 10,000  | how many results a search may skip   |
+`[search]` in config limits a query's length and how many results a search may skip. Mastodon has no
+such limits.
 
 Routes need the `search` permission, and `/api/v2/search` the `read:search` scope.
-
-## Tests
-
-Search tests run on whichever database the tests use, so `nix flake check` runs them on PGlite,
-SQLite and Postgres. See [Database](database.md#tests).

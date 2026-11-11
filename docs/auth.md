@@ -83,6 +83,7 @@ app's own token) and its scopes. Tokens are looked up by hashing what the client
 
 Tokens don't expire. An app revokes one with `POST /oauth/revoke`, which deletes it and tells every
 process on the `tokens.revoked` channel, so streams opened with the token close straight away.
+Suspending a user closes their streams the same way, though their tokens are kept.
 
 Push subscriptions are the one place a token is stored in full, so pushes can include it as
 Mastodon's do. See
@@ -128,8 +129,3 @@ have themselves. Admins can also use `verso admin roles` and `verso admin users 
 
 When an account's roles change, every process hears about it on `roles.changed` and looks the
 permissions up again, so open streams pick up the change.
-
-## Tests
-
-[`app/testing/fake_idp.ts`](../app/testing/fake_idp.ts) is an OpenID Connect provider in the test
-process, so tests can run the whole login, from `/oauth/authorize` to a token.

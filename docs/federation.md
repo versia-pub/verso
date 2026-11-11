@@ -176,8 +176,9 @@ in [`app/federation/request.ts`](../app/federation/request.ts).
 Admins block instances in config, with `[federation] blocked_domains`, or with
 `verso admin domains block`. Blocking a domain blocks its subdomains too. Verso then refuses
 everything the instance sends, sends it nothing, and fetches nothing from it. With `silent_blocks`,
-Verso answers as if nothing were wrong, so the instance can't tell it's blocked. See
-[`app/moderation/domain_blocks.ts`](../app/moderation/domain_blocks.ts).
+Verso answers as if nothing were wrong, so the instance can't tell it's blocked. Every process
+caches the blocked domains and the instance key, and reloads both when either changes, on
+`federation.changed`. See [`app/moderation/domain_blocks.ts`](../app/moderation/domain_blocks.ts).
 
 Users' own domain blocks are a different thing. They hide an instance from one user, and live in
 `graph`.
@@ -243,11 +244,3 @@ upstream.
 - Extension keys that break the naming rules are rejected with a 422.
 - [JSON](https://versia.pub/json) keys can't contain `$` or `+`, but entities have `$schema`, and
   content types such as `image/svg+xml`. Verso allows `+` anywhere and `$` at the start.
-
-## Tests
-
-Federation tests run complete instances that talk to each other in one process.
-[`app/testing/network.ts`](../app/testing/network.ts) gives each instance a domain on a fake
-network, and `drain` runs every instance's jobs. [`app/testing/evil.ts`](../app/testing/evil.ts) is
-an instance that misbehaves on purpose, with bad signatures, rotated keys or unexpected answers.
-`nix flake check` also runs `federation-vms`, which federates NixOS VMs over a real network.

@@ -22,12 +22,14 @@ event subscriber. It notifies:
 | `follow`         | an account someone followed                                 |
 | `follow_request` | a locked account someone asked to follow                    |
 | `update`         | users who boosted a status that was edited                  |
+| `quote`          | the author of a quoted status                               |
+| `quoted_update`  | users who quoted a status that was edited                   |
 | `poll`           | the author of a poll that ended, and local users who voted  |
 
 Most notifications are created straight away, in the same transaction as what caused them. A status
-can have a lot of followers or boosters, though, so `status` and `update` notifications are created
-by jobs in the `notify` queue, 100 users per job. The users are found in the transaction, and a job
-whose status has since been deleted does nothing.
+can have a lot of followers or boosters, though, so `status`, `update` and `quoted_update`
+notifications are created by jobs in the `notify` queue, 100 users per job. The users are found in
+the transaction, and a job whose status has since been deleted does nothing.
 
 Undoing the action, or deleting the status, deletes the notification. Nobody is notified about their
 own actions, except a poll's author, and a follower who is mentioned doesn't also get a `status`
@@ -46,8 +48,8 @@ pushed, streamed or added to a conversation. Filtered mentions are counted per a
 
 `/api/v1/notifications` lists them one by one, newest first, with Mastodon's `types`,
 `exclude_types` and `account_id` filters. `/api/v2/notifications` lists them in groups, like
-Mastodon 4.3. A group is one type of notification about one status, or all follows, within 12 hours.
-The group key is stored on each notification when it's created. Reactions are grouped too.
+Mastodon. A group is one type of notification about one status, or all follows, within 12 hours. The
+group key is stored on each notification when it's created. Reactions are grouped too.
 
 Notifications from accounts the user blocks, directly or by domain, or mutes including
 notifications, are hidden by `shownQuery` in
