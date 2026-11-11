@@ -36,6 +36,7 @@ const instance = {
             max_expiration: 2_629_746,
         },
         translation: { enabled: false },
+        permissions: { anonymous: ["read:note"] },
     },
     registrations: { enabled: false, approval_required: false, message: null, url: null },
     api_versions: { mastodon: 2 },

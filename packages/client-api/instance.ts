@@ -112,6 +112,11 @@ export const Instance = z.object({
         }).optional(),
         /** Whether it federates only with instances it allows. Mastodon 4.4 and later. */
         limited_federation: z.boolean().optional(),
+        /** Verso-specific field */
+        permissions: z.object({
+            /** Permission names, such as `read:note`, for requests without a user. */
+            anonymous: z.array(z.string()),
+        }),
     }),
     registrations: z.object({
         /** Whether clients may offer to sign up. */

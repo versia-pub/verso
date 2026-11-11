@@ -23,6 +23,7 @@ import type { Config } from "../kernel/config.ts";
 import type { MediaLimits } from "../kernel/config_sections.ts";
 import { imageFormats } from "../kernel/images.ts";
 import type { Context } from "../kernel/context.ts";
+import { permissionNames } from "../kernel/permissions.ts";
 import { charactersPerLink } from "../kernel/markup.ts";
 import { pinLimit } from "../notes/pins.ts";
 import { vapidPublicKey } from "../push/keys.ts";
@@ -31,7 +32,10 @@ import { countInstances } from "./instance_queries.ts";
 
 /** What the instance's description is built from. */
 export type AboutSettings =
-    & Pick<Config, "instance" | "limits" | "auth" | "streaming" | "search" | "timelines_access">
+    & Pick<
+        Config,
+        "instance" | "limits" | "auth" | "streaming" | "search" | "timelines_access" | "permissions"
+    >
     & {
         readonly media: MediaLimits;
         readonly federation: Pick<Config["federation"], "blocked_domains">;
@@ -84,14 +88,15 @@ export const renderRules = (instance: AboutSettings["instance"]): Rule[] =>
     }));
 
 /**
- * What clients may send, limited by the configured limits, and where they connect and subscribe to
- * Web Push with.
+ * What clients may send, limited by the configured limits, where they connect and subscribe to Web
+ * Push with, and what logged-out visitors may do.
  */
 const configuration = (
     ctx: Context,
     limits: AboutSettings["limits"],
     media: MediaLimits,
     timelines: AboutSettings["timelines_access"],
+    permissions: AboutSettings["permissions"],
     vapidKey: string,
 ): Instance["configuration"] => ({
     urls: { streaming: ctx.urls.origin.replace(/^http/, "ws") },
@@ -137,6 +142,7 @@ const configuration = (
     },
     // Verso federates with every instance it hasn't blocked.
     limited_federation: false,
+    permissions: { anonymous: permissionNames(permissions.anonymous) },
 });
 
 /** How many users, statuses and other instances the instance has, as it tells clients. */
@@ -187,6 +193,7 @@ export const renderInstance = async (
             limits,
             settings.media,
             settings.timelines_access,
+            settings.permissions,
             await vapidPublicKey(ctx),
         ),
         // Accounts are created by logging in, never by a client's sign-up form.

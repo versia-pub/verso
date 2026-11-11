@@ -9,7 +9,7 @@ Deno.test("an account that moved shows the account it moved to", () => {
     assertFalse(Account.safeParse({ ...account, moved: { id: "1" } }).success);
 });
 
-Deno.test("an account's own view adds its settings and role", () => {
+Deno.test("an account's own view adds its settings, role and permissions", () => {
     const own = {
         ...account,
         source: {
@@ -33,13 +33,16 @@ Deno.test("an account's own view adds its settings and role", () => {
             highlighted: false,
             collection_limit: 0,
         },
+        permissions: ["owner:account"],
     } satisfies CredentialAccount;
 
     assertEquals(CredentialAccount.parse(own), own);
     const { source: _, ...withoutSource } = own;
     const { role: __, ...withoutRole } = own;
+    const { permissions: ___, ...withoutPermissions } = own;
     assertFalse(CredentialAccount.safeParse(withoutSource).success);
     assertFalse(CredentialAccount.safeParse(withoutRole).success);
+    assertFalse(CredentialAccount.safeParse(withoutPermissions).success);
 });
 
 Deno.test("dates are as Mastodon sends them", () => {

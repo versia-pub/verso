@@ -20452,6 +20452,12 @@
                     },
                     "role": {
                         "$ref": "#/components/schemas/Role"
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 },
                 "required": [
@@ -20487,7 +20493,8 @@
                     "roles",
                     "feature_approval",
                     "source",
-                    "role"
+                    "role",
+                    "permissions"
                 ]
             },
             "CredentialApplication": {
@@ -21326,6 +21333,20 @@
                             },
                             "limited_federation": {
                                 "type": "boolean"
+                            },
+                            "permissions": {
+                                "type": "object",
+                                "properties": {
+                                    "anonymous": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "anonymous"
+                                ]
                             }
                         },
                         "required": [
@@ -21335,7 +21356,8 @@
                             "statuses",
                             "media_attachments",
                             "polls",
-                            "translation"
+                            "translation",
+                            "permissions"
                         ]
                     },
                     "registrations": {

@@ -2,6 +2,7 @@ import {
     Instance,
     Limits,
     MediaLimits,
+    Permissions,
     SearchLimits,
     StreamingLimits,
     TimelinesAccess,
@@ -36,6 +37,7 @@ export const defaultSettings = (): AboutSettings => ({
     search: SearchLimits.parse({}),
     timelines_access: TimelinesAccess.parse({}),
     federation: { blocked_domains: [] },
+    permissions: Permissions.parse({}),
 });
 
 /** An instance's key pair, with its public half as InstanceMetadata shows it. */

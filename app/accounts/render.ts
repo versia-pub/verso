@@ -17,7 +17,7 @@ import { entityUrl } from "../kernel/urls.ts";
 import { shownHtml } from "../kernel/html.ts";
 import { fileUrl } from "../media/render.ts";
 import type { AccountRow } from "./account_queries.ts";
-import type { Permission } from "../kernel/permissions.ts";
+import { type Permission, permissionNames } from "../kernel/permissions.ts";
 import { mastodonPermissions } from "./permissions.ts";
 import type { RoleRow } from "./role_queries.ts";
 import type { ProfileField } from "./tables.ts";
@@ -219,6 +219,7 @@ export const renderCredentialAccount = (
         quote_policy: "public",
     },
     role: renderRole(roles, permissions),
+    permissions: permissionNames(permissions),
 });
 
 /**

@@ -193,7 +193,7 @@ Deno.test("others see the bio and fields as HTML, and their owner as written", a
     assertEquals(own.source.fields, [{ name: "Site", value: "*me*", verified_at: null }]);
 });
 
-Deno.test("an owner sees their settings, and the role everyone has", async () => {
+Deno.test("an owner sees their settings, the role everyone has, and their permissions in order", async () => {
     await using test = await createTestContext();
     const id = await createLocalAccount(test.ctx, "alice");
     await test.ctx.db.updateTable("accounts")
@@ -201,15 +201,23 @@ Deno.test("an owner sees their settings, and the role everyone has", async () =>
         .execute();
 
     const own = CredentialAccount.parse(
-        renderCredentialAccount(test.ctx, await find(test.ctx, id), [], [], ["owner:account"], 0),
+        renderCredentialAccount(
+            test.ctx,
+            await find(test.ctx, id),
+            [],
+            [],
+            ["roles", "owner:account", "roles"],
+            0,
+        ),
     );
 
     assertEquals(own.source.privacy, "unlisted");
     assertEquals(own.source.sensitive, true);
     assertEquals(own.source.language, "fr");
     assertEquals(own.source.quote_policy, "public");
-    assertEquals(own.role.permissions, "0");
+    assertEquals(own.role.permissions, "131072");
     assertEquals(own.role.id, "-99");
+    assertEquals(own.permissions, ["owner:account", "roles"]);
 });
 
 Deno.test("an account that doesn't exist isn't found", async () => {

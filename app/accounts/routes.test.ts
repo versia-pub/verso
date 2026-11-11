@@ -9,7 +9,7 @@ import { createInstance } from "../instances/testing.ts";
 import { featureTag } from "../tags/featured_tags.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
-import { Limits, MediaLimits } from "../kernel/config_sections.ts";
+import { Limits, MediaLimits, Permissions } from "../kernel/config_sections.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestContext } from "../testing/context.ts";
 import { accountRoutes } from "./routes.ts";
@@ -625,7 +625,7 @@ Deno.test("only a token that may write accounts changes a profile", async () => 
     );
 });
 
-Deno.test("accounts show their roles, and their owner the highest, with what they may do", async () => {
+Deno.test("accounts show their roles, and their owner the highest, and everything they may do", async () => {
     await using test = await openApi();
     await createRole(test.ctx, "Admin", ["roles"]);
     await createRole(test.ctx, "Mod", []);
@@ -652,6 +652,11 @@ Deno.test("accounts show their roles, and their owner the highest, with what the
         collection_limit: 0,
     });
     assertEquals(updated.body.role.id, "Admin");
+    assertEquals(own.body.permissions.length, Permissions.parse({}).default.length + 1);
+    assertEquals(own.body.permissions[0], "read:account");
+    assertEquals(own.body.permissions.at(-1), "roles");
+    assertEquals(updated.body.permissions, own.body.permissions);
+    assertEquals((await test.get("/api/v1/accounts/alice")).body.permissions, undefined);
     assertEquals((await test.get("/api/v1/accounts/alice")).body.roles, shown);
     assertEquals((await test.get("/api/v1/accounts/lookup?acct=alice")).body.roles, shown);
 });

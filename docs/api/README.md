@@ -52,6 +52,10 @@ get the instance's anonymous [permissions](../admin/configuring.md#permissions).
 A request needs both the method's scope in its token and the method's permission for its user, or it
 gets a `403`. `/docs` lists each method's scope and permission.
 
+Apps can show only what the user may do. `permissions` on the user's own Account, from
+`verify_credentials`, lists theirs, and `configuration.permissions.anonymous` on
+`GET /api/v2/instance` lists what logged-out requests get. Both are Verso's.
+
 ## Ids, pages and errors
 
 Ids are strings holding UUIDs rather than numbers. They're UUIDv7s, so they sort by creation time,

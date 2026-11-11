@@ -161,6 +161,11 @@ export type AccountSource = z.infer<typeof AccountSource>;
 export const CredentialAccount = Account.extend({
     source: AccountSource,
     role: Role,
+    /**
+     * Permission names, such as `roles` or `owner:account`: what every user may do and what the
+     * account's roles add. Verso-specific field
+     */
+    permissions: z.array(z.string()),
 });
 export type CredentialAccount = z.infer<typeof CredentialAccount>;
 

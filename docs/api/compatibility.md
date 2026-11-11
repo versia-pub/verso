@@ -260,6 +260,7 @@ the [`verso admin` commands](../admin/commands.md) instead.
 Verso also has:
 
 - roles, with `/api/v1/roles` and `/api/v1/accounts/:id/roles`, from Versia Server
+- the user's [permissions](README.md#scopes-and-permissions), and what logged-out requests get
 - custom emoji management, with `/api/v1/emojis`, from Versia Server
 - reactions to statuses, with `reactions` on each status and `/api/v1/statuses/:id/react/:name`,
   from glitch-soc, and `/api/v1/statuses/:id/reactions`, from Versia Server

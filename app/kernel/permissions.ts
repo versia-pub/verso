@@ -67,3 +67,10 @@ export const permissions = [
 
 export const Permission = z.enum(permissions, { error: "Unknown permission" });
 export type Permission = z.infer<typeof Permission>;
+
+/** The permissions in `granted`, each once, in the order `permissions` lists them. */
+export const permissionNames = (granted: Iterable<Permission>): Permission[] => {
+    const set = new Set(granted);
+
+    return permissions.filter((permission) => set.has(permission));
+};

@@ -58,6 +58,19 @@ remote = "authenticated"
     });
 });
 
+Deno.test("an instance says what logged-out visitors may do, each once, in order", async () => {
+    await using test = await open(
+        await configured(`
+[permissions]
+anonymous = ["search", "read:note", "search"]
+`),
+    );
+
+    assertEquals((await test.get()).configuration.permissions, {
+        anonymous: ["read:note", "search"],
+    });
+});
+
 Deno.test("an instance with no settings goes by its domain, and claims Mastodon 4.7", async () => {
     await using test = await open();
 
@@ -122,6 +135,17 @@ Deno.test("an instance with no settings goes by its domain, and claims Mastodon 
                 trending_link_feeds: { local: "public", remote: "public" },
             },
             limited_federation: false,
+            permissions: {
+                anonymous: [
+                    "read:account",
+                    "read:account_follows",
+                    "read:note",
+                    "read:note_likes",
+                    "read:note_boosts",
+                    "read:reaction",
+                    "search",
+                ],
+            },
         },
         registrations: {
             enabled: false,
