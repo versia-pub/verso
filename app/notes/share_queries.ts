@@ -18,7 +18,9 @@ export const countShare = async (ctx: Context, noteId: string, by: 1 | -1): Prom
         .execute();
 };
 
-/** Decrements the boost counts of the statuses boosted by `notes`, by how many of them boost each. */
+/**
+ * Decrements the boost counts of the statuses boosted by `notes`, by how many of them boost each.
+ */
 export const uncountSharesAmong = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
     await ctx.db.updateTable("notes")
         .set((eb) => ({

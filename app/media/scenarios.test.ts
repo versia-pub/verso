@@ -1,7 +1,7 @@
 /**
  * Media end to end, between complete instances, through the client API: a status's media reaching
- * followers on another instance, served by the instance that stores it, edited, and removed once the
- * status is deleted, and avatars reaching followers once processed.
+ * followers on another instance, served by the instance that stores it, edited, and removed once
+ * the status is deleted, and avatars reaching followers once processed.
  * @module
  */
 import { assertEquals } from "@std/assert";

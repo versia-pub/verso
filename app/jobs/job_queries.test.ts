@@ -512,8 +512,8 @@ Deno.test("expired jobs are deleted a batch at a time, until none are left", asy
         await enqueue(test.ctx, { queue: "done", payload: { n }, keepUntil: later });
         await enqueue(test.ctx, { queue: "dead", payload: { n } });
     }
-    // Neither a job that hasn't run, whatever its `keepUntil`, nor a finished one still kept, though
-    // it used every attempt, has expired.
+    // Neither a job that hasn't run, whatever its `keepUntil`, nor a finished one still kept,
+    // though it used every attempt, has expired.
     await enqueue(test.ctx, { queue: "waiting", payload: {}, keepUntil: later });
     await enqueue(test.ctx, {
         queue: "kept",

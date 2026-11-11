@@ -10,8 +10,8 @@ import { findNote, type NoteRow } from "./note_queries.ts";
 import { visibleNote, visibleOriginal } from "./visibility.ts";
 
 /**
- * Bookmarks a status for `accountId`, or the status a boost boosts, as Mastodon does. Returns it, or
- * `undefined` if there is none `accountId` may see.
+ * Bookmarks a status for `accountId`, or the status a boost boosts, as Mastodon does. Returns it,
+ * or `undefined` if there is none `accountId` may see.
  */
 export const bookmark = (
     ctx: Context,

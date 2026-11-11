@@ -189,7 +189,7 @@ export const setCardTrendable = async (
  * A page of the public statuses whose first link is the card `cardId`, newest first, as Mastodon
  * lists them: by accounts that are discoverable, and if there is a viewer, not by those they block
  * or mute, `hidden`, and only those from `origin`.
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/link_feed.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/link_feed.rb
  */
 export const linkPage = async (
     ctx: Context,

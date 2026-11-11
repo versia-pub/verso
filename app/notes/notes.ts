@@ -122,8 +122,8 @@ const renderDraft = (
 });
 
 /**
- * Links the custom emojis named in a local status's text, as `found`, and in its content warning and
- * poll options, that its author may use, replacing the ones it linked before.
+ * Links the custom emojis named in a local status's text, as `found`, and in its content warning
+ * and poll options, that its author may use, replacing the ones it linked before.
  */
 const useEmojis = async (
     ctx: Context,

@@ -33,8 +33,8 @@ export const oldRemoteNotesQuery = (
  * Which of the remote statuses `ids`, at least one, nothing here needs, so they can be pruned. One
  * is kept if it has replies, is pinned, mentions a local user, was liked, bookmarked, reacted to or
  * voted on by one, was boosted or quoted by one, replies to, boosts or quotes a local status, or
- * was boosted since `before`. Unless `keepFollowed` is false, so is one that home timelines show: by
- * an account a local user follows, boosted or quoted by one, or with a hashtag one follows.
+ * was boosted since `before`. Unless `keepFollowed` is false, so is one that home timelines show:
+ * by an account a local user follows, boosted or quoted by one, or with a hashtag one follows.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/lib/mastodon/cli/statuses.rb
  */
 export const prunableNoteIds = async (

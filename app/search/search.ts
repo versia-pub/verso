@@ -1,7 +1,7 @@
 /**
  * Searching accounts, statuses and hashtags at once, as Mastodon's `/api/v2/search` does, or what a
  * URL names when asked to resolve it.
- * @see https://github.com/mastodon/mastodon/blob/main/app/services/search_service.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/search_service.rb
  * @module
  */
 import type { AccountRow } from "../accounts/account_queries.ts";

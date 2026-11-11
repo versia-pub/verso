@@ -2,7 +2,7 @@
  * Finding what a URL names, as Mastodon's search does when asked to resolve it: a Versia User or
  * Note at its entity URL, which is the `uri` Verso shows for an account or status, fetched if Verso
  * doesn't have it.
- * @see https://github.com/mastodon/mastodon/blob/main/app/services/resolve_url_service.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/resolve_url_service.rb
  * @module
  */
 import { parseReference } from "@versia/protocol";

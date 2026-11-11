@@ -102,8 +102,8 @@ export const backfillLater = async (
  * Fetches the replies of the remote status `root`, and of the replies under it, depth first, up to
  * `max` of each, for at most 4 minutes. A reply whose replies were fetched in the last 15 minutes
  * is skipped, as is one on a blocked instance. Failing to fetch `root`'s replies is thrown, so the
- * job is retried; failing for a reply under it only skips that reply. Each reply Verso hadn't stored
- * counts as a result of `root`'s refresh, if it has one.
+ * job is retried; failing for a reply under it only skips that reply. Each reply Verso hadn't
+ * stored counts as a result of `root`'s refresh, if it has one.
  */
 export const fetchReplies = async (
     ctx: Context,
@@ -181,8 +181,8 @@ export const fetchReplies = async (
 };
 
 /**
- * Fetches the replies of the status in the job, unless it has been deleted since, and then marks its
- * refresh finished, whether or not it failed, as Mastodon does.
+ * Fetches the replies of the status in the job, unless it has been deleted since, and then marks
+ * its refresh finished, whether or not it failed, as Mastodon does.
  */
 export const backfillHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = BackfillJob.safeParse(job.payload);

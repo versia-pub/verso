@@ -16,12 +16,9 @@ export const Preferences = z.object({
     "posting:default:quote_policy": z.enum(["public", "followers", "nobody"]),
     /** Default for adding a content warning for new posts. */
     "posting:default:spoiler_field": z.boolean(),
-    /**
-     * Whether media attachments should be automatically displayed or blurred/hidden: hidden only if
-     * marked sensitive by `default`, always shown by `show_all`, or always hidden by `hide_all`.
-     */
+    /** Hides media if sensitive for `default`, never for `show_all`, and always for `hide_all`. */
     "reading:expand:media": z.enum(["default", "show_all", "hide_all"]),
-    /** Whether CWs should be expanded by default. */
+    /** Whether content warnings are opened by default. */
     "reading:expand:spoilers": z.boolean(),
     /** Whether animated GIFs play on their own. */
     "reading:autoplay:gifs": z.boolean(),

@@ -1,3 +1,8 @@
+/**
+ * Queries for follow suggestions. Some read `accounts`, and the graph module's `follows`, directly,
+ * so each takes one query.
+ * @module
+ */
 import { sql } from "kysely";
 import { countAll } from "../db/count.ts";
 import { type Filter, notExcluded } from "../graph/excluded_queries.ts";
@@ -18,12 +23,10 @@ export const insertDismissal = async (
 };
 
 /**
- * Whether the account of `table`, an alias of `accounts`, could be suggested to `viewerId`: it isn't
- * them, and isn't followed or requested by them, hidden from them, blocking them or dismissed by
- * them. Local accounts must be discoverable, while remote ones, which have no such setting, always
- * are. Suspended and silenced accounts, and those that moved, aren't suggested, as on Mastodon.
- *
- * This reads the follows of the graph module, to be one query with the others here.
+ * Whether the account of `table`, an alias of `accounts`, could be suggested to `viewerId`: it
+ * isn't them, and isn't followed or requested by them, hidden from them, blocking them or dismissed
+ * by them. Local accounts must be discoverable, while remote ones, which have no such setting,
+ * always are. As on Mastodon, suspended and silenced accounts, and those that moved, aren't.
  */
 const suggestible = (ctx: Context, viewerId: string, table: string): Filter => (eb) => {
     const id = sql.ref<string>(`${table}.id`);
@@ -50,10 +53,7 @@ const suggestible = (ctx: Context, viewerId: string, table: string): Filter => (
     ]);
 };
 
-/**
- * Which of `ids` could be suggested to `viewerId`, in the order of `ids`. It reads `accounts` to
- * check which are discoverable.
- */
+/** Which of `ids` could be suggested to `viewerId`, in the order of `ids`. */
 export const suggestibleAmong = async (
     ctx: Context,
     viewerId: string,
@@ -75,8 +75,6 @@ export const suggestibleAmong = async (
  * Up to `limit` accounts that the accounts `viewerId` follows follow, and that could be suggested
  * to them, the ones followed by most of them first, then the ones with fewest followers. Those who
  * hide their follows aren't counted, as on Mastodon.
- *
- * This reads the `follows` of the graph module and `accounts`, to be one query.
  */
 export const friendsOfFriends = async (
     ctx: Context,

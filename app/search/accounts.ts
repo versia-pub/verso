@@ -1,7 +1,7 @@
 /**
  * Finding accounts, local and remote, by their address, or by the start of the words of their
  * names and domain, as Mastodon does.
- * @see https://github.com/mastodon/mastodon/blob/main/app/services/account_search_service.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/account_search_service.rb
  * @module
  */
 import { type AccountRow, findAccounts } from "../accounts/account_queries.ts";

@@ -6,7 +6,7 @@
 export const searchWords = (text: string): string[] =>
     text.normalize("NFKD")
         .replaceAll(/\p{M}/gu, "")
-        // Puts back together what the decomposition split but are letters of their own, like Hangul.
+        // Puts back together what decomposition split but are letters of their own, like Hangul.
         .normalize("NFC")
         .toLowerCase()
         .match(/[\p{L}\p{N}]+/gu) ?? [];

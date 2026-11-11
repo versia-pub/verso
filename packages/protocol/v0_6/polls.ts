@@ -19,8 +19,8 @@ export const Polls = z.object({
 export type Polls = z.infer<typeof Polls>;
 
 /**
- * `author` votes for the option at index `option` of the poll on the Note `poll`. A vote for several
- * options is a Vote for each.
+ * `author` votes for the option at index `option` of the poll on the Note `poll`. A vote for
+ * several options is a Vote for each.
  * @see https://versia.pub/extensions/polls
  */
 export const Vote = Entity.extend({

@@ -31,7 +31,9 @@ const stateOf = (trendable: boolean | null, byDefault: boolean): TrendState => {
     return trendable ? "approved" : "rejected";
 };
 
-/** The domain of a card's website, and each domain it is a subdomain of, the most specific first. */
+/**
+ * The domain of a card's website, and each domain it is a subdomain of, the most specific first.
+ */
 export const websiteDomains = (url: string): string[] => {
     const { hostname } = new URL(url);
     const labels = (canonicalizeDomain(hostname) ?? hostname).split(".");

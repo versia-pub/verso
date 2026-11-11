@@ -86,8 +86,8 @@ export const visibleNote = async (
 };
 
 /**
- * The statuses of `ids` that exist and `viewerId` may see, as {@link visibleNote} finds each, in the
- * order of `ids`.
+ * The statuses of `ids` that exist and `viewerId` may see, as {@link visibleNote} finds each, in
+ * the order of `ids`.
  */
 export const visibleNotes = async (
     ctx: Context,

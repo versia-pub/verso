@@ -34,8 +34,8 @@ const never = sql<SqlBool>`1 = 0`;
 
 /**
  * Whether a status has `property`, as Mastodon's search names them. Verso's media are images, and
- * it has no polls or link previews, so a status never has the others.
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/concerns/status/search_concern.rb
+ * it doesn't yet search polls or link previews, so the others match nothing.
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/concerns/status/search_concern.rb
  */
 const hasProperty = (property: string) => (eb: ExpressionBuilder<Database, "notes">) => {
     if (property === "media" || property === "image") return hasAttachments(eb);
@@ -144,7 +144,7 @@ export type NoteMatch = {
  * Only what an index narrows down is searched: statuses with a word, phrase or hashtag, by an
  * author, or in the viewer's library. Anything else, such as `is:sensitive` alone, finds nothing,
  * rather than passing every status.
- * @see https://github.com/mastodon/mastodon/blob/main/app/services/statuses_search_service.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/statuses_search_service.rb
  */
 export const noteIdsMatching = async (
     ctx: Context,

@@ -12,7 +12,9 @@ import {
 } from "../instance.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
 
-/** What the instance says about itself. Anyone may ask, unless the instance keeps some of it back. */
+/**
+ * What the instance says about itself. Anyone may ask, unless the instance keeps some of it back.
+ */
 export class InstanceMethods {
     constructor(private readonly http: Http) {}
 

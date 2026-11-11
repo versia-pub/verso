@@ -48,7 +48,7 @@ type Peak = { readonly max_score: number; readonly max_score_at: Date };
 
 /**
  * A trend's peak and current score, if `score` now, with the peak it had before, `before`, leaves
- * it at least `decayThreshold`. A peak is remembered for two days, and halves every `halfLifeMs`.
+ * it at least `decayThreshold`. A peak counts for `peakCooldownMs`, and halves every `halfLifeMs`.
  */
 const trendOf = (
     score: number,
@@ -72,8 +72,7 @@ const trendOf = (
 
 /**
  * Scores the hashtags that accounts used today, and those already trending, and keeps those whose
- * decayed peak is still high enough. A hashtag's peak is remembered for two days, and halves every
- * four hours.
+ * decayed peak is still high enough.
  */
 export const refreshTrendingTags = async (ctx: Context): Promise<void> => {
     const now = ctx.clock.now();
@@ -110,8 +109,8 @@ export const refreshTrendingTags = async (ctx: Context): Promise<void> => {
 
 /**
  * Scores the links that accounts shared today, and those already trending, and keeps those whose
- * decayed peak is still high enough, as for hashtags, except that a link's peak halves every eight
- * hours. Statuses and boosts both count.
+ * decayed peak is still high enough, as for hashtags, except that a link's peak halves every
+ * `linkPeakHalfLifeMs`. Statuses and boosts both count.
  */
 export const refreshTrendingLinks = async (ctx: Context): Promise<void> => {
     const now = ctx.clock.now();
@@ -144,7 +143,10 @@ export const refreshTrendingLinks = async (ctx: Context): Promise<void> => {
     await replaceTrendingLinks(ctx, trending);
 };
 
-/** How far back a status can have been posted and still trend, as its score halves every hour. */
+/**
+ * How far back a status can be posted and still trend, as its score halves every
+ * `statusHalfLifeMs` in `scoring.ts`.
+ */
 const statusWindowMs = 2 * dayMs;
 
 /**

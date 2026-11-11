@@ -26,7 +26,9 @@ const open = async (settings: { remoteStatusMs?: number | null } = {}) => {
     return test;
 };
 
-/** Prunes the accounts fetched before now, as the command does, and returns the remote ones left. */
+/**
+ * Prunes the accounts fetched before now, as the command does, and returns the remote ones left.
+ */
 const prune = async (ctx: Context) => {
     await pruneRemoteAccounts(ctx, new Date(ctx.clock.now().getTime() + 1));
     return await remoteAccountIds(ctx);

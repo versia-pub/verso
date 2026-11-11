@@ -15,8 +15,8 @@ import { createTestContext } from "../testing/context.ts";
 import { removeStatus } from "./statuses.ts";
 
 /**
- * alice and bob are local, carol is on b.example, and erin, who follows alice, on c.example. `events`
- * are what happened.
+ * alice and bob are local, carol is on b.example, and erin, who follows alice, on c.example.
+ * `events` are what happened.
  */
 const open = async () => {
     const events: DomainEvent[] = [];

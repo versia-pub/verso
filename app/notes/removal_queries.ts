@@ -46,7 +46,7 @@ export const uncountRepliesAmong = async (ctx: Context, notes: NoteIdQuery): Pro
                     .where("reply.visibility", "in", ["public", "unlisted"]),
             ),
         }))
-        // Only update the statuses replied to, rather than every status (where it would subtract 0).
+        // Only update the statuses replied to, rather than every status, which would subtract 0.
         .where("id", "in", (eb) =>
             eb.selectFrom("notes as reply").select("reply.in_reply_to_id")
                 .where("reply.id", "in", notes))

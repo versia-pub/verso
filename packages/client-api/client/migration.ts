@@ -30,8 +30,8 @@ export class MigrationMethods {
     }
 
     /**
-     * Moves the viewer to the account at `acct`, which must say it moved from theirs, at most once a
-     * month. Their followers then follow it instead.
+     * Moves the viewer to the account at `acct`, which must say it moved from theirs, at most once
+     * a month. Their followers then follow it instead.
      */
     move(acct: string, options?: CallOptions): Promise<AccountMigration> {
         return this.http.json(AccountMigration, "POST", "/api/v1/migration/move", {

@@ -19,7 +19,9 @@ export const authorOf = (entity: unknown): string | undefined => {
     return typeof reference === "string" ? reference : undefined;
 };
 
-/** Whether `entity`, made here, is by a local user Verso no longer has, such as one removed since. */
+/**
+ * Whether `entity`, made here, is by a local user Verso no longer has, such as one removed since.
+ */
 export const byRemovedUser = async (ctx: Context, entity: unknown): Promise<boolean> => {
     const reference = authorOf(entity);
     const author = reference === undefined ? undefined : parseReference(reference, ctx.urls.domain);

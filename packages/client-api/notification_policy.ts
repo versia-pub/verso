@@ -16,7 +16,9 @@ export const NotificationPolicy = z.object({
     for_not_followers: PolicyAction,
     /** From accounts made in the last 30 days. */
     for_new_accounts: PolicyAction,
-    /** Of direct statuses, unless they reply to the viewer's own, or are from accounts they follow. */
+    /**
+     * Of direct statuses, unless they reply to the viewer's own, or are from accounts they follow.
+     */
     for_private_mentions: PolicyAction,
     /** From accounts a moderator limited. */
     for_limited_accounts: PolicyAction,

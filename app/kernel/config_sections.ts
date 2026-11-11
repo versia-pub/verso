@@ -152,8 +152,8 @@ export const Instance = z.strictObject({
      */
     show_trends: z.boolean().default(true),
     /**
-     * Whether hashtags, accounts and links trend before an admin approves them. Either way, an admin
-     * can reject what they don't want.
+     * Whether hashtags, accounts and links trend before an admin approves them. Either way, an
+     * admin can reject what they don't want.
      */
     trendable_by_default: z.boolean().default(false),
     /**

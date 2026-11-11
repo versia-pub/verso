@@ -194,8 +194,8 @@ export type ListSources = {
  * The statuses on one of `ownerId`'s lists, as Mastodon fills it: the statuses of its members, but
  * direct ones and the followers-only ones of members who block the owner and don't mention it, and
  * the boosts of those whose boosts the owner sees, or the owner's. A reply must be to its own
- * author, to the owner, or as the list's replies policy allows, to someone the owner follows or to a
- * member. Nothing from the accounts the owner blocks or mutes, or from suspended accounts, is
+ * author, to the owner, or as the list's replies policy allows, to someone the owner follows or to
+ * a member. Nothing from the accounts the owner blocks or mutes, or from suspended accounts, is
  * included, nor anyone's boosts of their statuses. They are two queries, as on home.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/feed_manager.rb
  */
@@ -262,8 +262,8 @@ export type Origin = "all" | "local" | "remote";
 
 /**
  * The statuses on the public timeline: public statuses, without replies (except replies to their
- * own authors) or boosts, and none of suspended or silenced accounts', as on Mastodon. If there is a
- * viewer, the statuses of the accounts they block or mute, `hidden`, are omitted.
+ * own authors) or boosts, and none of suspended or silenced accounts', as on Mastodon. If there is
+ * a viewer, the statuses of the accounts they block or mute, `hidden`, are omitted.
  */
 const publicQuery = (ctx: Context, hidden: Excluded | null) => {
     const query = ctx.db.selectFrom("notes").selectAll()

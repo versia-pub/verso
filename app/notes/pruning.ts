@@ -85,10 +85,10 @@ export const pruneRemoteNotes = async (ctx: Context, pruning: Pruning): Promise<
 };
 
 /**
- * Deletes the prunable statuses among the next batch after `after`, decrementing the reply and boost
- * counts of the statuses they replied to and boosted, and the status counts of their authors and of
- * the authors of the boosts deleted with them, so that one fetched again isn't counted twice.
- * Returns the last status looked at, unless there were none, and how many were deleted.
+ * Deletes the prunable statuses among the next batch after `after`, decrementing the reply and
+ * boost counts of the statuses they replied to and boosted, and the status counts of their authors
+ * and of the authors of the boosts deleted with them, so that one fetched again isn't counted
+ * twice. Returns the last status looked at, unless there were none, and how many were deleted.
  */
 const pruneBatch = async (
     ctx: Context,

@@ -2,8 +2,8 @@ import { z } from "zod";
 import { Account } from "./account.ts";
 
 /**
- * Where the viewer's account moved from, and to, as Verso's migration methods show it. Verso's own, as
- * Mastodon has no such methods, and Versia only names a single account a user moved from.
+ * Where the viewer's account moved from, and to, as Verso's migration methods show it. Verso's own,
+ * as Mastodon has no such methods, and Versia only names a single account a user moved from.
  * @see https://versia.pub/extensions/migration
  */
 export const AccountMigration = z.object({

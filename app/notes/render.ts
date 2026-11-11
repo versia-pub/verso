@@ -375,7 +375,9 @@ export const renderStatusesFor = async (
     return new Map(viewers.map((viewerId) => [viewerId, renderFor(viewerId)]));
 };
 
-/** Renders statuses in the order given, as `viewerId` sees them, as {@link renderStatusesFor} does. */
+/**
+ * Renders statuses in the order given, as `viewerId` sees them, as {@link renderStatusesFor} does.
+ */
 export const renderStatuses = async (
     ctx: Context,
     notes: readonly NoteRow[],

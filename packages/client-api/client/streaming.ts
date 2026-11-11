@@ -69,7 +69,9 @@ export type StreamEvent =
         readonly stream: readonly string[];
     }
     | {
-        /** A direct conversation has a new status, lost its latest, or was marked read or unread. */
+        /**
+         * A direct conversation has a new status, lost its latest, or was marked read or unread.
+         */
         readonly event: "conversation";
         readonly stream: readonly string[];
         readonly conversation: Conversation;

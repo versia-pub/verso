@@ -65,8 +65,8 @@ export const changesPoll = (
 };
 
 /**
- * Changes the poll of the status `noteId`, which is `poll`, as {@link changesPoll} says. A poll that
- * asks something else loses its votes.
+ * Changes the poll of the status `noteId`, which is `poll`, as {@link changesPoll} says. A poll
+ * that asks something else loses its votes.
  */
 export const changePoll = async (
     ctx: Context,

@@ -165,8 +165,8 @@ export const Config = z.strictObject({
          */
         unattached_hours: z.int().min(1).default(24),
         /**
-         * After how many days the preview cards of pages fetched that long ago lose their images, as
-         * on Mastodon, and are deleted if no status shows them, as by `verso admin preview-cards
+         * After how many days the preview cards of pages fetched that long ago lose their images,
+         * as on Mastodon, and are deleted if no status shows them, as by `verso admin preview-cards
          * prune`. At least 14, the time a card is reused for. Unset, they are kept.
          */
         preview_card_days: z.int().min(14).optional(),

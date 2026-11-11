@@ -67,7 +67,9 @@ export type StatusChanges = {
 
 /** How to share a status. */
 export type ReblogOptions = {
-    /** Who sees the share. Defaults to the viewer's default, or followers only if that is direct. */
+    /**
+     * Who sees the share. Defaults to the viewer's default, or followers only if that is direct.
+     */
     readonly visibility?: Exclude<Visibility, "direct">;
 };
 

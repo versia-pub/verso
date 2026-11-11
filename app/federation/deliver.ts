@@ -45,7 +45,9 @@ export const FanOutJob = z.object({
     instanceIds: z.array(z.string()),
     /** An account whose followers' instances are sent it too, found when the job runs. */
     followersOf: z.string().optional(),
-    /** Whether the followers that account blocks are left out, as for its followers-only statuses. */
+    /**
+     * Whether the followers that account blocks are left out, as for its followers-only statuses.
+     */
     unblockedFollowers: z.boolean().optional(),
     /** Whether every instance Verso knows is sent it, as they are when the job runs. */
     everyInstance: z.boolean().optional(),

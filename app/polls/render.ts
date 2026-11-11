@@ -69,7 +69,9 @@ export const renderPollsFor = async (
     ]));
 };
 
-/** The polls of those of `notes` that have one, by status, as {@link renderPollsFor} renders them. */
+/**
+ * The polls of those of `notes` that have one, by status, as {@link renderPollsFor} renders them.
+ */
 export const renderPolls = async (
     ctx: Context,
     notes: readonly { readonly id: string; readonly account_id: string }[],

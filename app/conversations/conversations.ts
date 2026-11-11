@@ -101,7 +101,9 @@ export const addToConversationsOf = async (
     }
 };
 
-/** Marks `accountId`'s conversation `id` as {@link markConversation} does, telling their streams. */
+/**
+ * Marks `accountId`'s conversation `id` as {@link markConversation} does, telling their streams.
+ */
 export const markConversationAs = async (
     ctx: Context,
     accountId: string,

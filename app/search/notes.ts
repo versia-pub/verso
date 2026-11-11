@@ -15,7 +15,7 @@ import { searchWords } from "./words.ts";
 /**
  * Indexes the words of each of `noteIds`, as Mastodon does: its content warning, its text, and
  * the descriptions of its media. These are never boosts, which have no words of their own.
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/concerns/status/search_concern.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/concerns/status/search_concern.rb
  */
 const indexNotes = async (ctx: Pick<Context, "db">, noteIds: readonly string[]) => {
     const notes = await findNotes(ctx, noteIds);

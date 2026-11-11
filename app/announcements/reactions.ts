@@ -69,7 +69,9 @@ export type ReactResult =
     /** They reacted with it already. */
     | "duplicate";
 
-/** Reacts to the published announcement `id` for `accountId`, a local user, with the emoji `name`. */
+/**
+ * Reacts to the published announcement `id` for `accountId`, a local user, with the emoji `name`.
+ */
 export const reactToAnnouncement = (
     ctx: Context,
     accountId: string,

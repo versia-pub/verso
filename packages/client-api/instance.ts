@@ -239,13 +239,13 @@ export type Language = z.infer<typeof Language>;
  * @see https://docs.joinmastodon.org/entities/DomainBlock/
  */
 export const DomainBlock = z.object({
-    /** The domain which is blocked. This may be obfuscated or partially censored. */
+    /** The domain, perhaps with some of its characters hidden. */
     domain: z.string(),
-    /** The SHA256 hash digest of the domain string. */
+    /** The domain's SHA-256 hash. */
     digest: z.string(),
-    /** The level to which the domain is blocked. */
+    /** How it is blocked. */
     severity: z.enum(["silence", "suspend"]),
-    /** An optional reason for the domain block. */
+    /** Why it is blocked, if the instance says. */
     comment: z.string().nullish(),
 });
 export type DomainBlock = z.infer<typeof DomainBlock>;

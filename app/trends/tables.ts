@@ -4,7 +4,7 @@ export type TrendingTagsTable = {
     name: string;
     /** How much it is trending now, after its peak decayed. */
     score: number;
-    /** The highest score it had in the last two days. */
+    /** Its peak score, which counts for `peakCooldownMs` in `scoring.ts`. */
     max_score: number;
     /** When it had `max_score`. */
     max_score_at: Date;
@@ -25,7 +25,7 @@ export type TrendingLinksTable = {
     card_id: string;
     /** How much it is trending now, after its peak decayed. */
     score: number;
-    /** The highest score it had in the last two days. */
+    /** Its peak score, which counts for `peakCooldownMs` in `scoring.ts`. */
     max_score: number;
     /** When it had `max_score`. */
     max_score_at: Date;

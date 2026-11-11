@@ -9,7 +9,9 @@ export type Query = Readonly<
     Record<string, string | number | boolean | readonly string[] | undefined | null>
 >;
 
-/** A form field's value. Objects and arrays are sent with Rails-style names, as `a[b]` and `a[0]`. */
+/**
+ * A form field's value. Objects and arrays are sent with Rails-style names, as `a[b]` and `a[0]`.
+ */
 export type FormValue =
     | string
     | number

@@ -1,8 +1,8 @@
 /**
- * How much hashtags and statuses are trending, with Mastodon's formulas and defaults.
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/tags.rb
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/statuses.rb
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/links.rb
+ * How much hashtags, links and statuses are trending, with Mastodon's formulas and defaults.
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/trends/tags.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/trends/statuses.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/trends/links.rb
  * @module
  */
 

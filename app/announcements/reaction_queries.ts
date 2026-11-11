@@ -12,7 +12,9 @@ export type AnnouncementEmoji =
     | { readonly text: string; readonly emoji_id: null }
     | { readonly text: null; readonly emoji_id: string };
 
-/** The reactions to an announcement with one emoji, and the custom emoji's picture, if it is one. */
+/**
+ * The reactions to an announcement with one emoji, and the custom emoji's picture, if it is one.
+ */
 export type ReactionGroup = {
     readonly announcement_id: string;
     readonly text: string | null;

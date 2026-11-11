@@ -2,8 +2,8 @@
  * Reading a status search's query as Mastodon does: words, quoted phrases and hashtags that a
  * status must have, or with a `-`, mustn't, and the prefixes Mastodon knows, such as `from:` and
  * `before:`. A `prefix:` Mastodon doesn't know is searched as words.
- * @see https://github.com/mastodon/mastodon/blob/main/app/lib/search_query_parser.rb
- * @see https://github.com/mastodon/mastodon/blob/main/app/lib/search_query_transformer.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/search_query_parser.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/search_query_transformer.rb
  * @module
  */
 import { HttpError } from "../http/errors.ts";

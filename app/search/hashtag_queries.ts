@@ -29,7 +29,7 @@ const startsWith = (ctx: Pick<Context, "db">, start: string): Expression<SqlBool
  * Up to `limit` hashtags, after the first `offset`, that start with `start` and are used by a
  * public or unlisted status, shortest first, as Mastodon lists them. Hashtags used only where few
  * can see them stay unknown.
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/tag.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/tag.rb
  */
 export const hashtagsStartingWith = async (
     ctx: Pick<Context, "db">,
@@ -79,14 +79,14 @@ export const dayOf = (days: readonly Date[]): RawBuilder<number> =>
 /**
  * How statuses of the visibilities `visibilities`, public and unlisted unless said otherwise, used
  * each of `names` on each of the days that start at `days`, newest first, each a day long, as
- * Mastodon counts its uses. Days they weren't used are left out, and so are statuses by suspended or
- * silenced accounts, which Mastodon doesn't count.
+ * Mastodon counts its uses. Days they weren't used are left out, and so are statuses by suspended
+ * or silenced accounts, which Mastodon doesn't count.
  *
  * Only statuses whose ids are from the oldest day on are counted, so that the hashtags' index
  * reads only those, not every use there ever was. Ids have the time a status was made, except a
  * remote status dated after it arrived, whose id has when it arrived, so one of those that arrived
  * before the oldest day isn't counted.
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/trends/tags.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/trends/tags.rb
  */
 export const hashtagUses = async (
     ctx: Pick<Context, "db">,

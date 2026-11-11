@@ -80,8 +80,8 @@ export const updateNote = async (
 };
 
 /**
- * Saves the current text, media and poll options of `note`, before it is edited, as a version in its
- * history.
+ * Saves the current text, media and poll options of `note`, before it is edited, as a version in
+ * its history.
  */
 export const keepVersion = async (ctx: Context, note: NoteRow): Promise<void> => {
     const media = (await attachmentsOf(ctx, [note.id])).get(note.id) ?? [];

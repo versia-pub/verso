@@ -138,8 +138,8 @@ const dueJobs = (ctx: Context, queue: string, now: Date) =>
         );
 
 /**
- * The ids of the jobs `claim` leases, in the order it leases them: due, not running, of a group that
- * isn't paused or skipped. Exported for the tests of its query plan.
+ * The ids of the jobs `claim` leases, in the order it leases them: due, not running, of a group
+ * that isn't paused or skipped. Exported for the tests of its query plan.
  */
 export const claimable = (
     ctx: Context,
@@ -159,10 +159,10 @@ export const claimable = (
         .$call((query) => skippingLocked(ctx.db, query));
 
 /**
- * Leases up to `limit` due jobs from one queue, the longest due first, then the oldest, so a group's
- * jobs that waited out a pause together run in the order they were made. Jobs of a paused group are
- * skipped. Each claim uses up an attempt. A job whose lease expired, say because its worker crashed,
- * is due again, so a job may run more than once and every handler must be idempotent.
+ * Leases up to `limit` due jobs from one queue, the longest due first, then the oldest, so a
+ * group's jobs that waited out a pause together run in the order they were made. Jobs of a paused
+ * group are skipped. Each claim uses up an attempt. A job whose lease expired, say because its
+ * worker crashed, is due again, so a job may run more than once: every handler must be idempotent.
  */
 export const claim = async (ctx: Context, options: ClaimOptions): Promise<JobsTable[]> => {
     const now = ctx.clock.now();

@@ -317,7 +317,7 @@ Deno.test("the quotes of a status are listed, as those the viewer may see and ha
     assertStringIncludes(page.link ?? "", `max_id=${carol}`);
     assertEquals(ids(await test.request("GET", `${path}?limit=1&max_id=${carol}`, null)), [bob]);
 
-    // Of a boost, the quotes of the status it boosts, and not those of a status the viewer can't see.
+    // Of a boost, the quotes of the status it boosts, not those of one the viewer can't see.
     const boost = await createShare(test.ctx, "dave", note.id);
     assertEquals(ids(await test.request("GET", `/api/v1/statuses/${boost.id}/quotes`, null)), [
         carol,

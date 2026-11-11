@@ -49,10 +49,10 @@ export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload
 /**
  * Runs delivery jobs: signs each entity and posts it to the instance's inbox. If the instance
  * rejects it with a 4xx other than 408 and 429, the delivery is given up on. Any other failure is
- * retried, for as long as the settings say (two days by default), at the times the instance asks
- * for, if it does. A delivery to an instance blocked since is dropped. An instance that asks to
- * wait, or has no requests left, isn't sent any delivery until then, and nor is one that couldn't
- * be reached too often in a row, except for an occasional probe.
+ * retried, for as long as the settings say, at the times the instance asks for, if it does. A
+ * delivery to an instance blocked since is dropped. An instance that asks to wait, or has no
+ * requests left, isn't sent any delivery until then, and nor is one that couldn't be reached too
+ * often in a row, except for an occasional probe.
  *
  * How the pausing works, from the start:
  * 1. An instance that fails (`Unreachable` or a 5xx or 408 reply) is counted by
@@ -64,8 +64,9 @@ export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload
  *    `Retry-After` and from a rate limit with nothing left.
  * 3. `postponeGroup` also makes the instance's waiting deliveries due when the pause ends, and
  *    `enqueue` does the same for new ones, so claims don't read them meanwhile. `claim` skips any
- *    of the group's jobs due before then all the same, so its deliveries aren't leased at all. A delivery already leased, and so not skipped, does the same
- *    as the probe: `parkedUntil` makes it throw `RetryAt`, which only moves its own `run_at`.
+ *    of the group's jobs due before then all the same, so its deliveries aren't leased at all. A
+ *    delivery already leased, and so not skipped, does the same as the probe: `parkedUntil` makes
+ *    it throw `RetryAt`, which only moves its own `run_at`.
  * 4. Any reply but a server failure is `recordReached`: if the instance had been failing or parked,
  *    `resumeGroup` deletes the pause and makes the waiting deliveries due now. Otherwise the pause
  *    just ends at its time, and the deliveries are claimed again.

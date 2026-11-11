@@ -48,7 +48,7 @@ const forwardInstances = async (
 
 /**
  * Sends a local user's report of a remote account on to the instances they asked for, without
- * saying who filed it, with its category as its tag. Rules are this instance's, so they aren't sent.
+ * saying who filed it, with its category as its tag. This instance's rules aren't sent.
  */
 export const reportDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isReportForwarded(event)) return;

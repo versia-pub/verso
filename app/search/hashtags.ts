@@ -1,6 +1,6 @@
 /**
  * Finding hashtags by how they start, as Mastodon does.
- * @see https://github.com/mastodon/mastodon/blob/main/app/services/tag_search_service.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/tag_search_service.rb
  * @module
  */
 import type { Tag } from "@versia/client-api";

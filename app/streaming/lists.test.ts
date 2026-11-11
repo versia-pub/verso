@@ -31,8 +31,8 @@ const open = async () => {
     await addListAccounts(test.ctx, "alice", list.id, ["bob"]);
 
     /**
-     * What `accountId` is sent on the stream `stream`, of the list `listId` if it is `list`, as each
-     * event's stream, type, and status or id.
+     * What `accountId` is sent on the stream `stream`, of the list `listId` if it is `list`, as
+     * each event's stream, type, and status or id.
      */
     const streaming = async (accountId: string, stream: string, listId?: string) => {
         const sent: unknown[] = [];

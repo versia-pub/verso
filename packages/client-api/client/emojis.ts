@@ -7,7 +7,7 @@ import { type CallOptions, type Http, path } from "./http.ts";
 export type EmojiDraft = {
     /** Letters, digits and underscores, at least 2. */
     readonly shortcode: string;
-    /** Its picture, of at most 256 KiB. */
+    /** Its picture, no larger than the instance allows. */
     readonly element: Blob;
     readonly category?: string;
     /** Alt text, for those who can't see it. */
@@ -35,7 +35,9 @@ export class EmojiMethods {
         return this.http.json(z.array(CustomEmoji), "GET", "/api/v1/custom_emojis", options);
     }
 
-    /** A custom emoji, if it is global or the viewer's, or the viewer has the `emojis` permission. */
+    /**
+     * A custom emoji, if it is global or the viewer's, or the viewer has the `emojis` permission.
+     */
     get(id: string, options?: CallOptions): Promise<VersiaEmoji> {
         return this.http.json(VersiaEmoji, "GET", path`/api/v1/emojis/${id}`, options);
     }
