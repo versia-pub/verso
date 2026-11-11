@@ -295,11 +295,11 @@ const open = async () => {
     return { ...test, app, send };
 };
 
-Deno.test("the liveness check answers ok", async () => {
+Deno.test("the liveness check answers OK, as Mastodon's does", async () => {
     await using test = await open();
-    const response = await test.app.request("/health/live");
+    const response = await test.app.request("/health");
 
-    assertEquals(await response.text(), "ok");
+    assertEquals([response.status, await response.text()], [200, "OK"]);
 });
 
 Deno.test("a route gets its validated input and sends its reply", async () => {
@@ -633,7 +633,7 @@ Deno.test("nothing may cache a reply, an error or a check", async () => {
         const path of [
             "/agent",
             "/missing",
-            "/health/live",
+            "/health",
             "/health/ready",
             "/welcome?name=away",
         ]

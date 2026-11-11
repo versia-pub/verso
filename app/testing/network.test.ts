@@ -8,11 +8,11 @@ Deno.test("instances reach each other at their domains, until one goes down", as
     await using network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"].ctx;
 
-    const response = await a.transport(new Request("https://b.test/health/live"));
-    assertEquals(await response.text(), "ok");
+    const response = await a.transport(new Request("https://b.test/health"));
+    assertEquals(await response.text(), "OK");
 
     network.transport.down.add("b.test");
-    await assertRejects(() => a.transport(new Request("https://b.test/health/live")), TypeError);
+    await assertRejects(() => a.transport(new Request("https://b.test/health")), TypeError);
 });
 
 Deno.test("instances share one clock", async () => {

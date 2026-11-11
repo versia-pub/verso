@@ -127,7 +127,7 @@ in
     testScript = ''
       machine.wait_for_unit("verso.service")
       machine.wait_for_open_port(8080)
-      machine.succeed("curl --fail --silent localhost:8080/health/live | grep -x ok")
+      machine.succeed("curl --fail --silent localhost:8080/health | grep -x OK")
       owner = machine.succeed(
           "sudo -u postgres psql -tAc \"select pg_get_userbyid(datdba) from pg_database where datname = 'verso'\""
       )

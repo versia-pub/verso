@@ -798,6 +798,30 @@ Deno.test("only a domain name can be blocked or unblocked", async () => {
     }
 });
 
+Deno.test("a domain block's preview says no follows would be lost, since they're kept", async () => {
+    await using test = await open();
+    await test.request("POST", "/api/v1/accounts/carol/follow");
+    const path = "/api/v1/domain_blocks/preview";
+
+    assertEquals(await test.request("GET", `${path}?domain=B.Example`), {
+        status: 200,
+        body: { following_count: 0, followers_count: 0 },
+    });
+    for (const query of ["", "?domain=example", "?domain=not%20a%20domain"]) {
+        assertEquals((await test.request("GET", `${path}${query}`)).status, 422, query);
+    }
+    assertEquals(
+        (await test.request("GET", `${path}?domain=b.example`, { scopes: ["read:blocks"] }))
+            .status,
+        403,
+    );
+    assertEquals(
+        (await test.request("GET", `${path}?domain=b.example`, { scopes: ["write:blocks"] }))
+            .status,
+        200,
+    );
+});
+
 Deno.test("the domains the viewer blocks are listed, the latest blocked first, a page at a time", async () => {
     await using test = await open();
     for (const domain of ["b.example", "c.example"]) {
@@ -849,8 +873,15 @@ Deno.test("blocking domains needs a token that may write blocks, and a role that
     const app = createTestApp(limited.ctx, graphRoutes, {
         permissions: { anonymous: [], default: ["read:account"] },
     });
-    for (const method of ["POST", "DELETE", "GET"]) {
-        const response = await app.request("/api/v1/domain_blocks", {
+    for (
+        const [method, path] of [
+            ["POST", "/api/v1/domain_blocks"],
+            ["DELETE", "/api/v1/domain_blocks"],
+            ["GET", "/api/v1/domain_blocks"],
+            ["GET", "/api/v1/domain_blocks/preview?domain=b.example"],
+        ]
+    ) {
+        const response = await app.request(path, {
             method,
             body: method === "GET" ? undefined : body,
             headers: {
@@ -859,6 +890,6 @@ Deno.test("blocking domains needs a token that may write blocks, and a role that
             },
         });
         await response.body?.cancel();
-        assertEquals(response.status, 403, method);
+        assertEquals(response.status, 403, path);
     }
 });

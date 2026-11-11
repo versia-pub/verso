@@ -336,7 +336,7 @@ Deno.test("a user follows, is followed back on request, and sees both sides", as
     assertEquals((await alice.followRequests.reject(bobId)).followed_by, false);
 });
 
-Deno.test("a user blocks, mutes and notes accounts, and blocks a domain", async () => {
+Deno.test("a user blocks, mutes and notes accounts, and previews and blocks a domain", async () => {
     await using test = await open();
     const alice = await test.as("alice");
     await test.as("bob");
@@ -354,6 +354,10 @@ Deno.test("a user blocks, mutes and notes accounts, and blocks a domain", async 
 
     assertEquals((await alice.accounts.note(bobId, "Met at a café")).note, "Met at a café");
 
+    assertEquals(await alice.domainBlocks.preview("spam.example"), {
+        following_count: 0,
+        followers_count: 0,
+    });
     await alice.domainBlocks.block("spam.example");
     assertEquals((await alice.domainBlocks.list()).items, ["spam.example"]);
     await alice.domainBlocks.unblock("spam.example");

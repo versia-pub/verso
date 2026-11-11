@@ -1701,6 +1701,61 @@
                 }
             }
         },
+        "/api/v1/domain_blocks/preview": {
+            "get": {
+                "summary": "Preview a domain block",
+                "description": "How many followers and followed accounts blocking a domain would remove.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:block` permission.",
+                "tags": [
+                    "domain_blocks"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:blocks"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "domain",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Domain to preview blocking."
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "following_count": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                        },
+                                        "followers_count": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                        }
+                                    },
+                                    "required": [
+                                        "following_count",
+                                        "followers_count"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/mutes": {
             "get": {
                 "summary": "View muted accounts",

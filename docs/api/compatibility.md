@@ -86,7 +86,7 @@ There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/domain_blocks`                       | ✅    |                                   |
 | `POST /api/v1/domain_blocks`                      | 🟡    | Keeps followers there             |
 | `DELETE /api/v1/domain_blocks`                    | ✅    |                                   |
-| `GET /api/v1/domain_blocks/preview`               | ❌    |                                   |
+| `GET /api/v1/domain_blocks/preview`               | 🟡    | Always 0, as follows are kept     |
 | `GET /api/v1/follow_requests`                     | ✅    |                                   |
 | `POST /api/v1/follow_requests/:id/authorize`      | ✅    |                                   |
 | `POST /api/v1/follow_requests/:id/reject`         | ✅    |                                   |
@@ -222,32 +222,32 @@ Verso keeps remote handles as they are, so `invalid_handle` is never set on an a
 
 ## Instance
 
-| Method                                       | Verso | Notes                                            |
-| -------------------------------------------- | ----- | ------------------------------------------------ |
-| `GET /api/v2/instance`                       | ✅    |                                                  |
-| `GET /api/v1/instance`                       | ✅    | Deprecated by Mastodon                           |
-| `GET /api/v1/instance/rules`                 | ✅    |                                                  |
-| `GET /api/v1/instance/extended_description`  | ✅    |                                                  |
-| `GET /api/v1/instance/privacy_policy`        | ✅    |                                                  |
-| `GET /api/v1/instance/terms_of_service`      | ✅    | Also `/:date`                                    |
-| `GET /api/v1/instance/peers`                 | ✅    |                                                  |
-| `GET /api/v1/instance/activity`              | 🟡    | Logins are counted by tokens                     |
-| `GET /api/v1/instance/domain_blocks`         | ✅    |                                                  |
-| `GET /api/v1/instance/languages`             | ✅    |                                                  |
-| `GET /api/v1/instance/translation_languages` | ❌    |                                                  |
-| `GET /api/v1/custom_emojis`                  | ✅    |                                                  |
-| `GET /api/v1/directory`                      | 🟡    | Local accounts only                              |
-| `GET /api/v1/trends/tags`                    | ✅    |                                                  |
-| `GET /api/v1/trends`                         | ✅    | The same as `/trends/tags`                       |
-| `GET /api/v1/trends/statuses`                | 🟡    | See differences                                  |
-| `GET /api/v1/trends/links`                   | 🟡    | See differences                                  |
-| `GET /api/v1/announcements`                  | ✅    |                                                  |
-| `POST /api/v1/announcements/:id/dismiss`     | ✅    |                                                  |
-| Announcement reactions (2 methods)           | ✅    |                                                  |
-| `GET /.well-known/nodeinfo`                  | ✅    | NodeInfo 2.0                                     |
-| `GET /nodeinfo/2.0`                          | 🟡    | See differences                                  |
-| `GET /api/oembed`                            | ❌    |                                                  |
-| `GET /health`                                | ❌    | Verso has `GET /health/live` and `/health/ready` |
+| Method                                       | Verso | Notes                        |
+| -------------------------------------------- | ----- | ---------------------------- |
+| `GET /api/v2/instance`                       | ✅    |                              |
+| `GET /api/v1/instance`                       | ✅    | Deprecated by Mastodon       |
+| `GET /api/v1/instance/rules`                 | ✅    |                              |
+| `GET /api/v1/instance/extended_description`  | ✅    |                              |
+| `GET /api/v1/instance/privacy_policy`        | ✅    |                              |
+| `GET /api/v1/instance/terms_of_service`      | ✅    | Also `/:date`                |
+| `GET /api/v1/instance/peers`                 | ✅    |                              |
+| `GET /api/v1/instance/activity`              | 🟡    | Logins are counted by tokens |
+| `GET /api/v1/instance/domain_blocks`         | ✅    |                              |
+| `GET /api/v1/instance/languages`             | ✅    |                              |
+| `GET /api/v1/instance/translation_languages` | ❌    |                              |
+| `GET /api/v1/custom_emojis`                  | ✅    |                              |
+| `GET /api/v1/directory`                      | 🟡    | Local accounts only          |
+| `GET /api/v1/trends/tags`                    | ✅    |                              |
+| `GET /api/v1/trends`                         | ✅    | The same as `/trends/tags`   |
+| `GET /api/v1/trends/statuses`                | 🟡    | See differences              |
+| `GET /api/v1/trends/links`                   | 🟡    | See differences              |
+| `GET /api/v1/announcements`                  | ✅    |                              |
+| `POST /api/v1/announcements/:id/dismiss`     | ✅    |                              |
+| Announcement reactions (2 methods)           | ✅    |                              |
+| `GET /.well-known/nodeinfo`                  | ✅    | NodeInfo 2.0                 |
+| `GET /nodeinfo/2.0`                          | 🟡    | See differences              |
+| `GET /api/oembed`                            | ❌    | Needs status web pages       |
+| `GET /health`                                | ✅    | Also `/health/ready`         |
 
 ## Admin
 

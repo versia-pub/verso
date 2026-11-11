@@ -105,11 +105,11 @@ Deno.test("HSTS is only sent when the instance is reached over HTTPS", async () 
     await using http = await open("http://localhost:8080");
 
     assertEquals(
-        (await headersOf(await https.app.request("/health/live"))).get("strict-transport-security"),
+        (await headersOf(await https.app.request("/health"))).get("strict-transport-security"),
         "max-age=31536000",
     );
     assertEquals(
-        (await headersOf(await http.app.request("/health/live"))).get("strict-transport-security"),
+        (await headersOf(await http.app.request("/health"))).get("strict-transport-security"),
         null,
     );
 });

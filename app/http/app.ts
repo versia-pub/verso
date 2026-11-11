@@ -174,9 +174,9 @@ export const createApp = (
         });
     };
 
-    // For load balancers and orchestrators, not clients, so they stay plain text. Ready is whether
-    // the process can serve: the database answers and the process hears the others.
-    app.get("/health/live", (c) => c.text("ok"));
+    // For load balancers and orchestrators, not clients, so they stay plain text, as on Mastodon. Ready
+    // is whether the process can serve: the database answers and the process hears the others.
+    app.get("/health", (c) => c.text("OK"));
     app.get("/health/ready", async (c) => {
         const reason = await unready(ctx, options.listening ?? (() => true));
         return reason === undefined ? c.text("ok") : c.text(reason, 503);

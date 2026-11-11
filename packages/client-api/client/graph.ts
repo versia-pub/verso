@@ -82,6 +82,8 @@ export class MuteMethods {
     }
 }
 
+const DomainBlockPreview = z.object({ following_count: z.number(), followers_count: z.number() });
+
 /** The domains the viewer blocks, which blocks each of their accounts. */
 export class DomainBlockMethods {
     constructor(private readonly http: Http) {}
@@ -108,5 +110,19 @@ export class DomainBlockMethods {
      */
     async unblock(domain: string, options?: CallOptions): Promise<void> {
         await this.http.send("DELETE", "/api/v1/domain_blocks", { ...options, json: { domain } });
+    }
+
+    /**
+     * How many of the viewer's followers, and of the accounts they follow, blocking a domain would
+     * remove. Verso keeps follows, so it's always none.
+     */
+    preview(
+        domain: string,
+        options?: CallOptions,
+    ): Promise<{ following_count: number; followers_count: number }> {
+        return this.http.json(DomainBlockPreview, "GET", "/api/v1/domain_blocks/preview", {
+            ...options,
+            query: { domain },
+        });
     }
 }

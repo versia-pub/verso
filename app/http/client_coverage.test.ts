@@ -111,6 +111,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/domain_blocks": (c) => c.domainBlocks.list(),
     "POST /api/v1/domain_blocks": (c) => c.domainBlocks.block("b.example"),
     "DELETE /api/v1/domain_blocks": (c) => c.domainBlocks.unblock("b.example"),
+    "GET /api/v1/domain_blocks/preview": (c) => c.domainBlocks.preview("b.example"),
 
     "POST /api/v1/statuses": (c) => c.statuses.post({ status: "Hi" }),
     "GET /api/v1/statuses": (c) => c.statuses.getMany(["1"]),

@@ -124,6 +124,25 @@ const unblockDomainRoute = defineRoute({
     },
 });
 
+/**
+ * What blocking a domain would cost the viewer: how many of their followers, and of the accounts
+ * they follow, they would lose. Verso's domain blocks keep follows, so it's always none.
+ */
+const domainBlockPreview = defineRoute({
+    method: "GET",
+    path: "/api/v1/domain_blocks/preview",
+    summary: "Preview a domain block",
+    description: "How many followers and followed accounts blocking a domain would remove.",
+    tags: ["domain_blocks"],
+    auth: { require: "user", scope: "write:blocks", permission: "owner:block" },
+    query: DomainBody("Domain to preview blocking."),
+    responses: {
+        200: z.object({ following_count: z.number().int(), followers_count: z.number().int() }),
+    },
+    handler: () =>
+        Promise.resolve({ status: 200, body: { following_count: 0, followers_count: 0 } }),
+});
+
 /** Unmutes an account. */
 const unmuteRoute = defineRoute({
     method: "POST",
@@ -219,6 +238,7 @@ export const blockRoutes: readonly Route[] = [
     blockDomainRoute,
     unblockDomainRoute,
     domainBlockList,
+    domainBlockPreview,
     muteList,
     blockList,
 ];
