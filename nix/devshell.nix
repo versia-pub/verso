@@ -14,4 +14,7 @@ mkShellNoCC {
     postgresql_18.out
     vips
   ];
+
+  # Nix pins Deno, so its notices of new releases don't apply.
+  env.DENO_NO_UPDATE_CHECK = "1";
 }
