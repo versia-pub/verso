@@ -40,8 +40,8 @@ export const isHashtagName = (name: string): boolean =>
 /**
  * Mentions, hashtags and shortcodes, as Mastodon finds them: none straight after a letter or a
  * slash, so addresses and links aren't mistaken for them, and hashtags not all digits.
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/account.rb
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/tag.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/account.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/tag.rb
  */
 const pattern = new RegExp(
     [
@@ -225,7 +225,7 @@ export const charactersPerLink = 23;
  * How long `text` is, as Mastodon counts statuses: by what readers see as one character, with each
  * web address counting as {@link charactersPerLink}, and mentions of remote users as just
  * `@username`.
- * @see https://github.com/mastodon/mastodon/blob/main/app/validators/status_length_validator.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/validators/status_length_validator.rb
  */
 export const countText = (text: string): number => {
     let counted = "";

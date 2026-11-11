@@ -65,8 +65,7 @@ export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): F
             headers: {
                 "content-type": type,
                 "cache-control": cacheControl,
-                // Served from the bucket, a file that may not be displayed is downloaded, as Verso
-                // serves it.
+                // A file that may not be displayed is downloaded, as when Verso serves it.
                 ...type === "application/octet-stream" && { "content-disposition": "attachment" },
                 "x-amz-content-sha256": sha256,
             },
@@ -90,8 +89,7 @@ export const s3Files = (bucket: S3Bucket, transport: Transport, clock: Clock): F
 
     return {
         ...publicUrl !== undefined && { publicUrl: (key: string) => `${publicUrl}/${key}` },
-        // S3 needs the body's length, which a streamed body doesn't give, so the file is read
-        // whole.
+        // S3 needs the body's length, which a stream doesn't give, so the file is read whole.
         put: async (file, mediaType) => {
             checkFileKey(file.sha256);
             const bytes = await new Response(await file.open()).bytes();

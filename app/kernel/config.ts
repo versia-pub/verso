@@ -124,19 +124,18 @@ export const Config = z.strictObject({
         silent_blocks: z.boolean().default(false),
         /**
          * How many days an instance can go unreached before Verso stops sending it anything, until
-         * it hears from it again. A week by default, as on Mastodon.
+         * it hears from it again.
          */
         unreachable_days: z.int().min(1).default(7),
         /**
-         * For how many hours a delivery to an instance is retried before it is given up on. Two
-         * days by default; at most 30 days.
+         * For how many hours a delivery to an instance is retried before it is given up on.
          */
         delivery_hours: z.int().min(1).max(720).default(48),
         /**
          * After how many days statuses from other instances are deleted, unless something here
          * needs them, as by `verso admin statuses prune`, and accounts from other instances last
          * fetched that long ago that nothing here refers to, as by `verso admin accounts prune`.
-         * Unset by default, keeping them for good.
+         * Unset, they are kept for good.
          */
         remote_status_days: z.int().min(1).optional(),
         /**
@@ -162,24 +161,24 @@ export const Config = z.strictObject({
         storage: FileStorage,
         /**
          * How many hours an upload that was never attached to a status is retained before it is
-         * removed. A day by default, as on Mastodon.
+         * removed.
          */
         unattached_hours: z.int().min(1).default(24),
         /**
          * After how many days the preview cards of pages fetched that long ago lose their images, as
          * on Mastodon, and are deleted if no status shows them, as by `verso admin preview-cards
-         * prune`. At least 14, the time a card is reused for. Unset by default, keeping them.
+         * prune`. At least 14, the time a card is reused for. Unset, they are kept.
          */
         preview_card_days: z.int().min(14).optional(),
         /**
          * Whether the files of remote media, such as statuses' attachments, avatars and custom
          * emojis, are fetched and stored, so that Verso serves them and clients needn't reach
-         * other instances. On by default, as on Mastodon.
+         * other instances.
          */
         cache_remote_media: z.boolean().default(true),
         /**
          * After how many days the files cached for remote statuses' attachments are removed, as by
-         * `verso admin media prune`. They are fetched again if anyone asks for them. 30 by default.
+         * `verso admin media prune`. They are fetched again if anyone asks for them.
          */
         remote_media_days: z.int().min(1).default(30),
     }),

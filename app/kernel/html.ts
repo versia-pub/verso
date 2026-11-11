@@ -7,7 +7,7 @@ import sanitize from "sanitize-html";
 /**
  * Text formatting, lists, quotes, headings and tables. Anything that loads from elsewhere (images,
  * video, audio) or acts like part of the page (forms, fonts and colours) is removed: Verso doesn't
- * proxy remote media, so loading it would reveal readers' addresses to whoever sent it.
+ * proxy media embedded in HTML, so loading it would reveal readers' addresses to whoever sent it.
  */
 const allowedTags = [
     "a",

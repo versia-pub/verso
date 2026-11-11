@@ -111,7 +111,7 @@ export const queues: Record<string, Queue> = {
     [undoneReactionsQueue]: { handler: undoneReactionsHandler, concurrency: 2 },
     [notifyQueue]: { handler: notifyHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
-    // By the instance of the status whose replies are fetched. Each job fetches for 4 minutes at most.
+    // By the instance of the status whose replies are fetched.
     [backfillQueue]: { handler: backfillHandler, concurrency: 2, perGroup: 1 },
     [pollUpdatesQueue]: { handler: pollUpdateHandler, concurrency: 2 },
     // By the poll's instance.
@@ -132,8 +132,7 @@ export const queues: Record<string, Queue> = {
     [fileCleanupQueue]: { handler: fileCleanupHandler, concurrency: 2 },
     // One at a time, so each version's work goes through the rows in order, once.
     [resanitiseQueue]: { handler: resanitiseHandler, concurrency: 1 },
-    // One at a time, so each pass goes through the statuses, accounts, cards or media in order,
-    // once.
+    // One at a time, so each pass goes through its rows in order, once.
     [pruneQueue]: { handler: pruneHandler, concurrency: 1 },
     [accountPruneQueue]: { handler: accountPruneHandler, concurrency: 1 },
     [cardPruneQueue]: { handler: cardPruneHandler, concurrency: 1 },

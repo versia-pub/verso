@@ -43,9 +43,9 @@ export type Budget = {
 /**
  * Verso's id for the entity of type `type` that `reference` points at, or `undefined` if there is
  * none. A local entity is looked up; a remote one is fetched if Verso doesn't have it, or had it
- * too long ago, unless its instance is blocked, isn't at a domain, or `budget` is spent. "Too long
- * ago" is `maxAgeMs`, a day unless the resolver is set otherwise. If fetching fails, the stored copy
- * is used; without one, it throws.
+ * longer ago than `maxAgeMs` (the resolver's default if not given), unless its instance is blocked,
+ * isn't at a domain, or `budget` is spent. If fetching fails, the stored copy is used; without one,
+ * it throws.
  */
 export type Resolver = (
     ctx: Context,
@@ -92,7 +92,7 @@ export type VapidKey = {
 
 /**
  * Something that happened, as a service tells the rest of Verso. Plain data, with ids rather than
- * rows, so that any module can read it. Modules' events join this as they arrive.
+ * rows, so that any module can read it.
  */
 export type DomainEvent = { readonly type: string };
 
@@ -113,8 +113,8 @@ export type Handler = (payload: string) => Promise<void>;
 export type PubSub = {
     /**
      * Sends `payload`, a message as JSON, to the subscribers of `channel`. It may be at most
-     * 7,000 bytes, as `publish` checks, so that it fits in a Postgres notification, of 8,000, with
-     * the channel's name.
+     * `maxMessageBytes` in `pubsub.ts`, as `publish` checks, so that it fits in a Postgres
+     * notification, of 8,000 bytes, with the channel's name.
      */
     readonly send: (channel: string, payload: string) => Promise<void>;
     /**
@@ -130,7 +130,7 @@ export type PubSub = {
     readonly onMissed: (handler: () => Promise<void>) => () => void;
 };
 
-/** What every service gets as its first argument. Ports join it as they are added. */
+/** What every service gets as its first argument. */
 export type Context<DB = Database> = {
     readonly clock: Clock;
     readonly ids: IdGenerator;

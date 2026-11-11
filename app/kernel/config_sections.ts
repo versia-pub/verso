@@ -74,13 +74,13 @@ export const Limits = z.strictObject({
      * the message that streams its deletion.
      */
     mentions: z.int().min(0).max(150).default(100),
-    /** A media attachment's description, its alt text. Mastodon's limit by default. */
+    /** A media attachment's description, its alt text. */
     media_description: z.int().min(1).default(4000),
-    /** How many options a poll may have, at least 2. */
+    /** How many options a poll may have. */
     poll_options: z.int().min(2).default(20),
     /** A poll's option. */
     poll_option: z.int().min(1).default(60),
-    /** How long a poll may run, at least and at most, in seconds. Mastodon's limits by default. */
+    /** How long a poll may run, at least and at most, in seconds. */
     poll_min_seconds: z.int().min(1).default(300),
     poll_max_seconds: z.int().min(1).default(2_629_746),
 })
@@ -152,8 +152,8 @@ export const Instance = z.strictObject({
      */
     show_trends: z.boolean().default(true),
     /**
-     * Whether hashtags, accounts and links trend before an admin approves them. Either way, an admin can
-     * reject what they don't want.
+     * Whether hashtags, accounts and links trend before an admin approves them. Either way, an admin
+     * can reject what they don't want.
      */
     trendable_by_default: z.boolean().default(false),
     /**
@@ -262,14 +262,11 @@ export const FileStorage = z.strictObject({
 export const MediaLimits = z.strictObject({
     /**
      * How many pixels an uploaded image may have, in each frame, before it is scaled down.
-     * Mastodon's limit, 3840×2160, by default.
      */
     max_pixels: z.int().min(1).default(8_294_400),
-    /**
-     * How many bytes an uploaded file may have. Mastodon's limit for images, 16 MiB, by default.
-     */
+    /** How many bytes an uploaded file may have. */
     max_upload_bytes: z.int().min(1).default(16 * 1024 * 1024),
-    /** How many bytes a custom emoji's uploaded picture may have. 256 KiB by default. */
+    /** How many bytes a custom emoji's uploaded picture may have. */
     max_emoji_bytes: z.int().min(1).default(256 * 1024),
 });
 
