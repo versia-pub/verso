@@ -219,6 +219,8 @@ const uncalled: Record<string, string> = {
     "GET /api/v1/streaming":
         "A WebSocket, which `streaming.connect` opens, tested in client.test.ts",
     "POST /oauth/authorize/issuer": "A page the user's browser submits, while logging in",
+    "DELETE /api/web/push_subscriptions/{token}":
+        "The `Unsubscribe-URL` of a push, for push services rather than clients",
     "GET /oauth/callback": "Where the issuer sends the user's browser back to",
     "GET /oauth/consent": "A page the user's browser shows",
     "POST /oauth/consent": "A page the user's browser submits",

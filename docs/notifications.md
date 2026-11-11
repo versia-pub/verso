@@ -97,8 +97,11 @@ them for two days if the device is offline, like Mastodon's.
 Encryption is in [`app/push/encryption.ts`](../app/push/encryption.ts) (RFC 8291), and signing in
 [`app/push/vapid.ts`](../app/push/vapid.ts) (RFC 8292). As on Mastodon, subscriptions get the older
 `aesgcm` encoding and `WebPush` signatures from these RFCs' drafts unless they ask to be `standard`.
-`verso migrate` creates the VAPID key pair once, in `vapid_keys`, and it never changes, since that
-would break every subscription. Clients get the public key from the instance and the subscription.
+Each push's `Unsubscribe-URL` removes its subscription without a token, until the push expires: it
+is a JWT of the subscription's id, signed with the VAPID key
+([`app/push/unsubscribe.ts`](../app/push/unsubscribe.ts)). `verso migrate` creates the VAPID key
+pair once, in `vapid_keys`, and it never changes, since that would break every subscription. Clients
+get the public key from the instance and the subscription.
 
 Titles are in English, since Verso has no translations yet.
 

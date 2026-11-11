@@ -9,10 +9,12 @@ import { suspend } from "../moderation/suspensions.ts";
 import { drain, PermanentFailure } from "../jobs/worker.ts";
 import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
 import { editNote, postNote } from "../notes/notes.ts";
+import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
 import { vapidKey } from "./keys.ts";
 import { pushHandler, pushQueue } from "./pushes.ts";
 import { findSubscriptionById, replaceSubscription } from "./subscription_queries.ts";
+import { unsubscribedId } from "./unsubscribe.ts";
 import type { PushAlert, PushPolicy } from "./tables.ts";
 
 const queues = {
@@ -22,6 +24,13 @@ const queues = {
 
 const base64url = (bytes: Uint8Array) =>
     bytes.toBase64({ alphabet: "base64url", omitPadding: true });
+
+/** The subscription a push's `Unsubscribe-URL` removes, if it is one of this instance's. */
+const unsubscribes = async (ctx: Context, request: Request) => {
+    const [, token] = /^https:\/\/social\.example\/api\/web\/push_subscriptions\/(.+)$/
+        .exec(request.headers.get("unsubscribe-url") ?? "") ?? [];
+    return token === undefined ? undefined : await unsubscribedId(ctx, token);
+};
 
 const hkdf = async (
     salt: Uint8Array<ArrayBuffer>,
@@ -195,7 +204,7 @@ const open = async () => {
 
 Deno.test("a notification is pushed encrypted and signed, with what Mastodon pushes", async () => {
     await using test = await open();
-    const { token } = await test.subscribe("alice", "a");
+    const { id: subscriptionId, token } = await test.subscribe("alice", "a");
 
     await test.post("bob", "Hi @alice, how are you?");
     assertEquals(await test.drain(), 1);
@@ -226,6 +235,7 @@ Deno.test("a notification is pushed encrypted and signed, with what Mastodon pus
             "Verso/0.0.0 (+https://social.example)",
         ],
     );
+    assertEquals(await unsubscribes(test.ctx, request), subscriptionId);
     assertEquals([request.headers.get("encryption"), request.headers.get("crypto-key")], [
         null,
         null,
@@ -240,11 +250,16 @@ Deno.test("a notification is pushed encrypted and signed, with what Mastodon pus
     );
     const { payload: claims } = await jwtVerify(jwt, key, { currentDate: test.clock.now() });
     assertEquals([claims.aud, claims.sub], ["https://push.example", "https://social.example"]);
+
+    test.clock.advance(172_799_000);
+    assertEquals(await unsubscribes(test.ctx, request), subscriptionId);
+    test.clock.advance(1_000);
+    assertEquals(await unsubscribes(test.ctx, request), undefined);
 });
 
 Deno.test("a subscription that isn't standard is pushed to as Mastodon's older pushes were", async () => {
     await using test = await open();
-    const { token } = await test.subscribe("alice", "a", undefined, undefined, false);
+    const { id, token } = await test.subscribe("alice", "a", undefined, undefined, false);
 
     await test.post("bob", "Hi @alice");
     assertEquals(await test.drain(), 1);
@@ -255,6 +270,7 @@ Deno.test("a subscription that isn't standard is pushed to as Mastodon's older p
     const [request] = test.transport.sent;
     const vapid = await vapidKey(test.ctx);
     assertEquals(request.headers.get("content-encoding"), "aesgcm");
+    assertEquals(await unsubscribes(test.ctx, request), id);
     assertMatch(request.headers.get("encryption") ?? "", /^salt=[A-Za-z0-9_-]{22}$/);
     assertMatch(
         request.headers.get("crypto-key") ?? "",

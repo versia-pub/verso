@@ -5,8 +5,10 @@ import { defineRoute, type Route } from "../http/route.ts";
 import { Flag } from "../http/schemas.ts";
 import { bearerToken } from "../http/viewer.ts";
 import { alertNames, renderSubscription } from "./render.ts";
+import { unsubscribedId } from "./unsubscribe.ts";
 import {
     deleteSubscription,
+    deleteSubscriptionById,
     findSubscription,
     replaceSubscription,
     updateSubscription,
@@ -155,6 +157,22 @@ export const pushRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { viewer }) => {
             await deleteSubscription(ctx, viewer.tokenId);
+            return { status: 200, body: {} };
+        },
+    }),
+    defineRoute({
+        method: "DELETE",
+        path: "/api/web/push_subscriptions/:token",
+        summary: "Unsubscribe from a push",
+        description: "Removes the subscription a push was sent to, by the link in its " +
+            "`Unsubscribe-URL` header, which expires with the push. Answers the same whether " +
+            "or not the link was valid.",
+        params: z.object({ token: z.string() }),
+        responses: { 200: z.object({}) },
+        handler: async (ctx, { params }) => {
+            const id = await unsubscribedId(ctx, params.token);
+            if (id !== undefined) await deleteSubscriptionById(ctx, id);
+
             return { status: 200, body: {} };
         },
     }),

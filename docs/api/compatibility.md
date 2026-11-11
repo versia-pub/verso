@@ -213,6 +213,7 @@ Verso keeps remote handles as they are, so `invalid_handle` is never set on an a
 | `GET /api/v1/push/subscription`                   | ✅    |                    |
 | `PUT /api/v1/push/subscription`                   | ✅    |                    |
 | `DELETE /api/v1/push/subscription`                | ✅    |                    |
+| `Unsubscribe-URL` on pushes                       | ✅    |                    |
 
 ## Search
 

@@ -24,6 +24,7 @@ import {
     type PushSubscriptionRow,
     subscriptionsOf,
 } from "./subscription_queries.ts";
+import { unsubscribeUrl } from "./unsubscribe.ts";
 import { vapidAuthorization, vapidJwt } from "./vapid.ts";
 
 export const pushQueue = "push";
@@ -200,6 +201,7 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
         method: "POST",
         headers: {
             ...headers,
+            "unsubscribe-url": await unsubscribeUrl(ctx, subscription.id, ttlSeconds),
             "user-agent": userAgent(ctx.urls.origin),
             "content-type": "application/octet-stream",
             ttl: String(ttlSeconds),

@@ -14641,6 +14641,35 @@
                 }
             }
         },
+        "/api/web/push_subscriptions/{token}": {
+            "delete": {
+                "summary": "Unsubscribe from a push",
+                "description": "Removes the subscription a push was sent to, by the link in its `Unsubscribe-URL` header, which expires with the push. Answers the same whether or not the link was valid.",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/markers": {
             "get": {
                 "summary": "Get saved timeline positions",

@@ -1,13 +1,16 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
+import { SignJWT } from "@panva/jose";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { registerTestApp } from "../auth/testing.ts";
 import { issueToken, revokeToken } from "../auth/tokens.ts";
 import type { Scope } from "../kernel/scopes.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
-import { vapidPublicKey } from "./keys.ts";
+import { vapidKey, vapidPublicKey } from "./keys.ts";
 import { pushRoutes } from "./routes.ts";
 import { findSubscription } from "./subscription_queries.ts";
+import { unsubscribeUrl } from "./unsubscribe.ts";
+import { vapidJwt } from "./vapid.ts";
 
 const path = "/api/v1/push/subscription";
 
@@ -43,7 +46,7 @@ const open = async () => {
         return { status: response.status, body: await response.json() };
     };
 
-    return { ...test, client, token, request };
+    return { ...test, app, client, token, request };
 };
 
 /** A browser's keys for a subscription, in URL-safe base64. */
@@ -216,4 +219,69 @@ Deno.test("subscriptions are refused without push, or https, or keys of the righ
 
     const reader = await test.token(["read"]);
     assertEquals((await test.request("GET", reader.token)).status, 403);
+});
+
+Deno.test("a push's unsubscribe link removes its subscription, until the push expires", async () => {
+    await using test = await open();
+    const { token, id } = await test.token();
+    await test.request("POST", token, {
+        body: { subscription: { endpoint: "https://push.example/a", keys: await browserKeys() } },
+    });
+    const subscriptionId = (await findSubscription(test.ctx, id))?.id ?? "";
+    const unsubscribe = async (url: string) => {
+        const response = await test.app.request(url, { method: "DELETE" });
+        return [response.status, await response.json()];
+    };
+
+    const expired = await unsubscribeUrl(test.ctx, subscriptionId, 1);
+    const url = await unsubscribeUrl(test.ctx, subscriptionId, 60);
+    test.clock.advance(1_000);
+    assertEquals(await unsubscribe(expired), [200, {}]);
+    assertEquals(await unsubscribe(`${url}x`), [200, {}]);
+    assertEquals((await findSubscription(test.ctx, id))?.id, subscriptionId);
+
+    test.clock.advance(58_000);
+    assertEquals(await unsubscribe(url), [200, {}]);
+    assertEquals(await findSubscription(test.ctx, id), undefined);
+    assertEquals(await unsubscribe(url), [200, {}]);
+});
+
+Deno.test("only links Verso made for unsubscribing remove subscriptions", async () => {
+    await using test = await open();
+    const { token, id } = await test.token();
+    await test.request("POST", token, {
+        body: { subscription: { endpoint: "https://push.example/a", keys: await browserKeys() } },
+    });
+    const subscriptionId = (await findSubscription(test.ctx, id))?.id ?? "";
+    const key = await vapidKey(test.ctx);
+    const now = test.clock.now();
+    const sign = (typ: string, audience: string, expires = true) => {
+        const jwt = new SignJWT({ sub: subscriptionId })
+            .setProtectedHeader({ typ, alg: "ES256" })
+            .setAudience(audience);
+        if (expires) jwt.setExpirationTime(Math.floor(now.getTime() / 1000) + 60);
+        return jwt.sign(key.privateKey);
+    };
+
+    for (
+        const forged of [
+            // What signs a push to an endpoint on this instance, naming the subscription.
+            await vapidJwt(key, "https://social.example/push", subscriptionId, now),
+            await sign("unsubscribe+jwt", "https://push.example"),
+            await sign("unsubscribe+jwt", "https://social.example", false),
+            "nope",
+        ]
+    ) {
+        const response = await test.app.request(`/api/web/push_subscriptions/${forged}`, {
+            method: "DELETE",
+        });
+        assertEquals([response.status, await response.json()], [200, {}]);
+    }
+    assertEquals((await findSubscription(test.ctx, id))?.id, subscriptionId);
+
+    await test.app.request(
+        `/api/web/push_subscriptions/${await sign("unsubscribe+jwt", "https://social.example")}`,
+        { method: "DELETE" },
+    );
+    assertEquals(await findSubscription(test.ctx, id), undefined);
 });
