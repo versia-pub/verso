@@ -3,7 +3,7 @@ import type { Generated } from "kysely";
 /** A preview of a web page, made from what the page says about itself. */
 export type PreviewCardsTable = {
     id: string;
-    /** The page's address, after redirects and, if the page names one on its own site, canonical. */
+    /** The page's address, after redirects, or its canonical one if that is on its own site. */
     url: string;
     title: string;
     description: string;
@@ -14,7 +14,7 @@ export type PreviewCardsTable = {
     author_url: string;
     provider_name: string;
     provider_url: string;
-    /** The page's image, stored as local media, or `null` if it has none, or it couldn't be used. */
+    /** The page's image, stored as local media, or `null` if it has none or it couldn't be used. */
     image_id: string | null;
     image_description: string;
     published_at: Date | null;

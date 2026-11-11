@@ -15,8 +15,8 @@ export type MediaTable = {
     size: number | null;
     /**
      * The SHA-256 of the file in hex, which it is stored under. `null` for a local image that
-     * couldn't be processed, as nothing is stored for it, as it may hold metadata, and for remote
-     * media that isn't cached.
+     * couldn't be processed, since nothing is stored for one, and for remote media that isn't
+     * cached.
      */
     sha256: string | null;
     /** The SHA-256 in hex that the remote instance gave for its media's file, if it gave one. */

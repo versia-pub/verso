@@ -43,7 +43,7 @@ export type NewUpload = {
  * accepts these too, so clients can play the file. Verso doesn't inspect the contents, so a file
  * that isn't what it declares is still served that way, but never as a page, because responses tell
  * browsers not to sniff types.
- * @see https://github.com/mastodon/mastodon/blob/v4.3.0/app/models/media_attachment.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/media_attachment.rb
  */
 const playableTypes = new Set([
     "video/webm",
@@ -248,6 +248,6 @@ export const deleteUploads = async (
 
 /**
  * Whether an upload is an image that couldn't be processed, which is neither served nor attached.
- * Until then, uploads are stored under their SHA-256.
+ * Every other upload has a SHA-256.
  */
 export const processingFailed = (upload: MediaRow): boolean => upload.sha256 === null;

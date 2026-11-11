@@ -29,9 +29,9 @@ export const oldCachedQuery = (
     .$narrowType<{ sha256: string }>();
 
 /**
- * Marks those of the remote media `ids`, at least one, cached before `before` as not cached, so that
- * the media proxy fetches them again when asked for, as Mastodon does. What is known of them, such
- * as their size and blurhash, is kept. Returns how many it marked.
+ * Marks those of the remote media `ids`, at least one, cached before `before` as not cached, so
+ * that the media proxy fetches them again when asked for, as Mastodon does. What is known of them,
+ * such as their size and blurhash, is kept. Returns how many it marked.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/vacuum/media_attachments_vacuum.rb
  */
 export const uncacheMedia = async (

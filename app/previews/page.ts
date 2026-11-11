@@ -57,7 +57,7 @@ type Tags = {
     ld: string[];
 };
 
-/** The first value of each meta tag by name or property, the tags' own title, and JSON-LD blocks. */
+/** The first value of each meta tag by name or property, the `<title>`, and JSON-LD blocks. */
 const scan = (html: string): Tags => {
     const tags: Tags = { meta: new Map(), title: "", ld: [] };
     let inTitle = false;

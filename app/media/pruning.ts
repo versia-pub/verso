@@ -64,9 +64,9 @@ export const pruneRemoteMedia = async (ctx: Context, before: Date): Promise<numb
 };
 
 /**
- * Prunes a batch of what was cached before `before`, and queues the removal of the files it stopped
- * using. Pruned media is no longer cached, so the next batch doesn't find it again. Returns how many
- * it marked as not cached.
+ * Prunes a batch of what was cached before `before`, and queues the removal of the files it
+ * stopped using. Pruned media is no longer cached, so the next batch doesn't find it again. Returns
+ * how many it marked as not cached.
  */
 const pruneBatch = async (ctx: Context, before: Date): Promise<number> => {
     const batch = await oldCachedQuery(ctx, before, mediaPerJob).execute();

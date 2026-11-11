@@ -1,3 +1,8 @@
+/**
+ * Queries on the emoji tables. Some read the `media` table directly rather than going through its
+ * module, so each takes one query.
+ * @module
+ */
 import type { ExpressionBuilder, Insertable, Selectable, Updateable } from "kysely";
 import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
@@ -43,8 +48,7 @@ const usableBy = (accountId: string | null) => (eb: ExpressionBuilder<Database, 
  * The ids of the local instance's custom emojis named any of `shortcodes` that the local user
  * `accountId` may use, by shortcode: global ones and their own, their own where both have a name,
  * or only global ones if `accountId` is `null`. Only those whose pictures are ready are, so that
- * text never uses an emoji that can't be shown. It reads the `media` table directly rather than
- * going through its module, so that it takes one query.
+ * text never uses an emoji that can't be shown.
  */
 export const usableEmojiIds = async (
     ctx: Context,
@@ -196,8 +200,7 @@ const shownColumns = [
 /**
  * The local instance's custom emojis that the local user `accountId` may use, by shortcode: global
  * ones and their own, their own where both have a name, or only global ones if `accountId` is
- * `null`. It reads the `media` table directly rather than going through its module, so that it
- * takes one query.
+ * `null`.
  */
 export const usableEmojis = async (
     ctx: Context,
@@ -222,10 +225,7 @@ export type LocalEmoji = ShownEmoji & {
     readonly description: string | null;
 };
 
-/**
- * One of the local instance's emojis, if there is one with this id. It reads the `media` table
- * directly rather than going through its module, so that it takes one query.
- */
+/** One of the local instance's emojis, if there is one with this id. */
 export const findLocalEmoji = async (ctx: Context, id: string): Promise<LocalEmoji | undefined> =>
     await ctx.db.selectFrom("emojis")
         .innerJoin("media", "media.id", "emojis.media_id")
@@ -248,10 +248,7 @@ const byUser = (rows: readonly UsedEmoji[]) => {
     return groups;
 };
 
-/**
- * The custom emojis each of `noteIds` uses, by status. It reads the `media` table directly rather
- * than going through its module, so that it takes one query.
- */
+/** The custom emojis each of `noteIds` uses, by status. */
 export const emojisOfNotes = async (
     ctx: Context,
     noteIds: readonly string[],
@@ -269,10 +266,7 @@ export const emojisOfNotes = async (
     );
 };
 
-/**
- * The custom emojis each of `accountIds` uses, by account. It reads the `media` table directly
- * rather than going through its module, so that it takes one query.
- */
+/** The custom emojis each of `accountIds` uses, by account. */
 export const emojisOfAccounts = async (
     ctx: Context,
     accountIds: readonly string[],

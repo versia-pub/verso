@@ -44,8 +44,8 @@ export const remoteEmojisOf = (
 
 /**
  * The `extensions` of an entity whose text uses `emojis`, or `undefined` if it uses none. Emojis
- * whose pictures aren't ready are omitted. A remote emoji is given at its instance's URL, as the type
- * its instance gave, not as Verso caches it.
+ * whose pictures aren't ready are omitted. A remote emoji is given at its instance's URL, as the
+ * type its instance gave, not as Verso caches it.
  */
 export const emojiExtensions = (
     ctx: Context,
