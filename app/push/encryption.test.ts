@@ -1,5 +1,12 @@
 import { assertEquals, assertNotEquals, assertRejects } from "@std/assert";
-import { encryptPush, maxPlaintextBytes, randomSender, type Sender } from "./encryption.ts";
+import {
+    encryptLegacyPush,
+    encryptPush,
+    maxPlaintextBytes,
+    randomSender,
+    type Sender,
+    senderKey,
+} from "./encryption.ts";
 
 const bytes = (base64url: string) => Uint8Array.fromBase64(base64url, { alphabet: "base64url" });
 
@@ -59,6 +66,18 @@ Deno.test("a push is encrypted as RFC 8291's example is", async () => {
     assertEquals(body, new Uint8Array([...example.header, ...example.ciphertext]));
 });
 
+Deno.test("a push to a subscription that isn't standard is encrypted in aesgcm", async () => {
+    // There is no example for `aesgcm`, so this is what Python's `http_ece` makes of RFC 8291's,
+    // with `version="aesgcm"`: two bytes of padding length, the plaintext, and AES-GCM's tag.
+    const ciphertext = bytes(
+        "4qwOLFm_mNy0vf1A8f3Bm6B5UD15y3aV_xZy14pixUhcPTIoZKHzq5i3dZ6PzqSMxBI_-VDUZ4jW04M",
+    );
+    const sender = await exampleSender();
+
+    assertEquals(await encryptLegacyPush(example.plaintext, example.keys, sender), ciphertext);
+    assertEquals(await senderKey(sender), example.serverPublic);
+});
+
 Deno.test("each push is encrypted with a key and salt of its own, which its header says", async () => {
     const senders = [await randomSender(), await randomSender()];
     const bodies = [];
@@ -83,6 +102,14 @@ Deno.test("a push is at most what push services must take", async () => {
     assertEquals(most.length, 4096);
     await assertRejects(
         () => encryptPush(new Uint8Array(maxPlaintextBytes + 1), example.keys, sender),
+        Error,
+        "Too much to push",
+    );
+
+    const legacy = await encryptLegacyPush(new Uint8Array(maxPlaintextBytes), example.keys, sender);
+    assertEquals(legacy.length, maxPlaintextBytes + 2 + 16);
+    await assertRejects(
+        () => encryptLegacyPush(new Uint8Array(maxPlaintextBytes + 1), example.keys, sender),
         Error,
         "Too much to push",
     );

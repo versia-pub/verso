@@ -43,5 +43,10 @@ export type PushSubscriptionsTable = {
     /** The types of notifications pushed, as Mastodon names them in `alerts`. */
     alerts: PushAlert[];
     policy: PushPolicy;
+    /**
+     * Whether pushes are in the `aes128gcm` encoding, rather than the older `aesgcm` one, as the
+     * client asked when subscribing.
+     */
+    standard: boolean;
     created_at: Date;
 };

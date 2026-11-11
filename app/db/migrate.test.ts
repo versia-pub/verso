@@ -240,3 +240,67 @@ Deno.test("the hashtags statuses used become known, and statuses' hashtags refer
         db.insertInto("note_tags").values({ note_id: "a", name: "unknown" }).execute()
     );
 });
+
+Deno.test("push subscriptions there were keep being pushed to in aes128gcm", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0097_standard_pushes"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    const now = new Date("2026-01-01T00:00:00Z");
+    await db.insertInto("accounts")
+        .values({
+            id: "alice",
+            username: "alice",
+            instance_id: null,
+            remote_id: null,
+            created_at: now,
+        })
+        .execute();
+    await db.insertInto("apps")
+        .values({
+            id: "app",
+            name: "App",
+            website: null,
+            redirect_uris: [],
+            scopes: ["push"],
+            client_id: "client",
+            client_secret_hash: "hash",
+            created_at: now,
+        })
+        .execute();
+    await db.insertInto("access_tokens")
+        .values({
+            id: "token",
+            token_hash: "hash",
+            app_id: "app",
+            account_id: "alice",
+            scopes: ["push"],
+            created_at: now,
+        })
+        .execute();
+    await db.insertInto("push_subscriptions")
+        // As the table was, without `standard`.
+        .values({
+            id: "subscription",
+            token_id: "token",
+            account_id: "alice",
+            access_token: "secret",
+            endpoint: "https://push.example/a",
+            p256dh: "key",
+            auth: "auth",
+            alerts: [],
+            policy: "all",
+            created_at: now,
+        } as never)
+        .execute();
+
+    assertEquals((await migrate(db)).ok, true);
+    const { standard } = await db.selectFrom("push_subscriptions").select("standard")
+        .executeTakeFirstOrThrow();
+    assertEquals(standard, true);
+    await assertRejects(() =>
+        db.updateTable("push_subscriptions").set({ standard: null as never }).execute()
+    );
+});

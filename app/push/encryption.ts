@@ -1,8 +1,10 @@
 /**
  * Encrypting what is pushed so only the browser that subscribed can read it, as Web Push requires,
- * in the `aes128gcm` content encoding.
+ * in the `aes128gcm` content encoding, or the older `aesgcm` one that subscriptions ask for unless
+ * they say they are `standard`, as on Mastodon.
  * @see https://www.rfc-editor.org/rfc/rfc8291
  * @see https://www.rfc-editor.org/rfc/rfc8188
+ * @see https://datatracker.ietf.org/doc/html/draft-ietf-webpush-encryption-04
  * @module
  */
 
@@ -69,6 +71,33 @@ export const randomSender = async (): Promise<Sender> => ({
  * `plaintext` encrypted for the browser with `keys`, as one record, with the header that says how
  * to decrypt it.
  */
+/** The sender's public key, as an uncompressed point. */
+export const senderKey = async (sender: Sender): Promise<Uint8Array<ArrayBuffer>> =>
+    new Uint8Array(await crypto.subtle.exportKey("raw", sender.keyPair.publicKey));
+
+/** The secret the sender and the browser agree on, with ECDH. */
+const sharedSecret = async (keys: BrowserKeys, sender: Sender) => {
+    const browserKey = await crypto.subtle.importKey("raw", keys.p256dh, curve, false, []);
+
+    return new Uint8Array(
+        await crypto.subtle.deriveBits(
+            { name: "ECDH", public: browserKey },
+            sender.keyPair.privateKey,
+            256,
+        ),
+    );
+};
+
+/** `record` encrypted with AES-GCM, by `cek` and `nonce`. */
+const seal = async (
+    cek: Uint8Array<ArrayBuffer>,
+    nonce: Uint8Array<ArrayBuffer>,
+    record: Uint8Array<ArrayBuffer>,
+) => {
+    const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+    return new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, record));
+};
+
 export const encryptPush = async (
     plaintext: Uint8Array,
     keys: BrowserKeys,
@@ -76,15 +105,8 @@ export const encryptPush = async (
 ): Promise<Uint8Array<ArrayBuffer>> => {
     if (plaintext.length > maxPlaintextBytes) throw new Error("Too much to push");
 
-    const browserKey = await crypto.subtle.importKey("raw", keys.p256dh, curve, false, []);
-    const ownKey = new Uint8Array(await crypto.subtle.exportKey("raw", sender.keyPair.publicKey));
-    const shared = new Uint8Array(
-        await crypto.subtle.deriveBits(
-            { name: "ECDH", public: browserKey },
-            sender.keyPair.privateKey,
-            256,
-        ),
-    );
+    const ownKey = await senderKey(sender);
+    const shared = await sharedSecret(keys, sender);
 
     const ikm = await hkdf(
         keys.auth,
@@ -95,19 +117,56 @@ export const encryptPush = async (
     const cek = await hkdf(sender.salt, ikm, encoder.encode("Content-Encoding: aes128gcm\0"), 16);
     const nonce = await hkdf(sender.salt, ikm, encoder.encode("Content-Encoding: nonce\0"), 12);
 
-    const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
     // The last record ends with 2, and has no padding.
-    const record = concat(plaintext, new Uint8Array([2]));
-    const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, record);
+    const ciphertext = await seal(cek, nonce, concat(plaintext, new Uint8Array([2])));
 
     const size = new Uint8Array(4);
     new DataView(size.buffer).setUint32(0, recordSize);
 
-    return concat(
-        sender.salt,
-        size,
-        new Uint8Array([ownKey.length]),
-        ownKey,
-        new Uint8Array(ciphertext),
+    return concat(sender.salt, size, new Uint8Array([ownKey.length]), ownKey, ciphertext);
+};
+
+/** A key's length, in two bytes, and the key, as the `aesgcm` context has them. */
+const lengthPrefixed = (key: Uint8Array) => {
+    const length = new Uint8Array(2);
+    new DataView(length.buffer).setUint16(0, key.length);
+
+    return concat(length, key);
+};
+
+/**
+ * `plaintext` encrypted for the browser with `keys`, as one record in the older `aesgcm` encoding.
+ * The salt and the sender's key go in the `Encryption` and `Crypto-Key` headers instead.
+ * @see https://datatracker.ietf.org/doc/html/draft-ietf-webpush-encryption-04#section-3
+ * @see https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-encryption-encoding-03#section-2
+ */
+export const encryptLegacyPush = async (
+    plaintext: Uint8Array,
+    keys: BrowserKeys,
+    sender: Sender,
+): Promise<Uint8Array<ArrayBuffer>> => {
+    if (plaintext.length > maxPlaintextBytes) throw new Error("Too much to push");
+
+    const shared = await sharedSecret(keys, sender);
+    const ikm = await hkdf(keys.auth, shared, encoder.encode("Content-Encoding: auth\0"), 32);
+    const context = concat(
+        encoder.encode("P-256\0"),
+        lengthPrefixed(keys.p256dh),
+        lengthPrefixed(await senderKey(sender)),
     );
+    const cek = await hkdf(
+        sender.salt,
+        ikm,
+        concat(encoder.encode("Content-Encoding: aesgcm\0"), context),
+        16,
+    );
+    const nonce = await hkdf(
+        sender.salt,
+        ikm,
+        concat(encoder.encode("Content-Encoding: nonce\0"), context),
+        12,
+    );
+
+    // Two bytes saying there is no padding come first.
+    return await seal(cek, nonce, concat(new Uint8Array(2), plaintext));
 };

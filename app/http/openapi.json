@@ -13799,6 +13799,13 @@
                                                     "p256dh",
                                                     "auth"
                                                 ]
+                                            },
+                                            "standard": {
+                                                "description": "Follow standardized webpush (RFC8030+RFC8291+RFC8292) ? Else follow legacy webpush (unpublished version, 4th draft of RFC8291 and 1st draft of RFC8292). Defaults to false.",
+                                                "type": [
+                                                    "boolean",
+                                                    "string"
+                                                ]
                                             }
                                         },
                                         "required": [
@@ -13940,6 +13947,13 @@
                                                     "p256dh",
                                                     "auth"
                                                 ]
+                                            },
+                                            "standard": {
+                                                "description": "Follow standardized webpush (RFC8030+RFC8291+RFC8292) ? Else follow legacy webpush (unpublished version, 4th draft of RFC8291 and 1st draft of RFC8292). Defaults to false.",
+                                                "type": [
+                                                    "boolean",
+                                                    "string"
+                                                ]
                                             }
                                         },
                                         "required": [
@@ -14080,6 +14094,13 @@
                                                 "required": [
                                                     "p256dh",
                                                     "auth"
+                                                ]
+                                            },
+                                            "standard": {
+                                                "description": "Follow standardized webpush (RFC8030+RFC8291+RFC8292) ? Else follow legacy webpush (unpublished version, 4th draft of RFC8291 and 1st draft of RFC8292). Defaults to false.",
+                                                "type": [
+                                                    "boolean",
+                                                    "string"
                                                 ]
                                             }
                                         },
@@ -24064,6 +24085,9 @@
                             "follower",
                             "none"
                         ]
+                    },
+                    "standard": {
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -24071,7 +24095,8 @@
                     "endpoint",
                     "alerts",
                     "server_key",
-                    "policy"
+                    "policy",
+                    "standard"
                 ]
             },
             "WeeklyActivity": {

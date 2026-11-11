@@ -38,5 +38,7 @@ export const WebPushSubscription = z.object({
      * them, or no one's.
      */
     policy: z.enum(["all", "followed", "follower", "none"]),
+    /** Whether pushes are in the standard `aes128gcm` encoding, rather than the older `aesgcm`. */
+    standard: z.boolean(),
 });
 export type WebPushSubscription = z.infer<typeof WebPushSubscription>;

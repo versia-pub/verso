@@ -11,6 +11,11 @@ export type PushEndpoint = {
         /** Its 16-byte auth secret, in URL-safe base64. */
         readonly auth: string;
     };
+    /**
+     * Whether to push in the standard `aes128gcm` encoding, which browsers take, rather than the
+     * older `aesgcm`. Defaults to false.
+     */
+    readonly standard?: boolean;
 };
 
 /** Which notifications to push. What is omitted is not pushed, and pushes are for everyone's. */

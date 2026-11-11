@@ -80,7 +80,7 @@ queuePushes (in the transaction): a push job per subscription that wants it,
 push job
   │  look up the notification as the user sees it; gone or now hidden? stop
   │  render it as Mastodon's push: title, body, icon, access token
-  │  encrypt it for the browser (aes128gcm), sign it as this instance (VAPID)
+  │  encrypt it for the browser (aes128gcm, or aesgcm), sign it as this instance (VAPID)
   ▼
 POST to the push service
   ├─ 2xx ─────────────► done
@@ -95,9 +95,10 @@ service that hangs only holds up its own pushes. A push service has 10 seconds t
 them for two days if the device is offline, like Mastodon's.
 
 Encryption is in [`app/push/encryption.ts`](../app/push/encryption.ts) (RFC 8291), and signing in
-[`app/push/vapid.ts`](../app/push/vapid.ts) (RFC 8292). `verso migrate` creates the VAPID key pair
-once, in `vapid_keys`, and it never changes, since that would break every subscription. Clients get
-the public key from the instance and the subscription.
+[`app/push/vapid.ts`](../app/push/vapid.ts) (RFC 8292). As on Mastodon, subscriptions get the older
+`aesgcm` encoding and `WebPush` signatures from these RFCs' drafts unless they ask to be `standard`.
+`verso migrate` creates the VAPID key pair once, in `vapid_keys`, and it never changes, since that
+would break every subscription. Clients get the public key from the instance and the subscription.
 
 Titles are in English, since Verso has no translations yet.
 

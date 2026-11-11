@@ -945,14 +945,17 @@ Deno.test("a user subscribes to pushes, changes which, and unsubscribes", async 
     const keys = await browserKeys();
 
     const subscribed = await alice.push.subscribe(
-        { endpoint: "https://push.example/a", keys },
+        { endpoint: "https://push.example/a", keys, standard: true },
         { alerts: { follow: true, reaction: true }, policy: "followed" },
     );
     const changed = await alice.push.update({ alerts: { mention: true } });
 
     assertEquals(subscribed.endpoint, "https://push.example/a");
     assertEquals([subscribed.alerts.follow, subscribed.alerts.mention], [true, false]);
-    assertEquals([subscribed.alerts.reaction, subscribed.policy], [true, "followed"]);
+    assertEquals(
+        [subscribed.alerts.reaction, subscribed.policy, subscribed.standard],
+        [true, "followed", true],
+    );
     assertEquals((await alice.push.get()).id, subscribed.id);
     assertEquals([changed.alerts.follow, changed.alerts.mention, changed.policy], [
         false,

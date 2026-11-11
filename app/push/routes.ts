@@ -78,6 +78,11 @@ export const pushRoutes: readonly Route[] = [
                             "random data.",
                     ),
                 }),
+                standard: Flag.optional().meta({
+                    description: "Follow standardized webpush (RFC8030+RFC8291+RFC8292) ? " +
+                        "Else follow legacy webpush (unpublished version, 4th draft of RFC8291 " +
+                        "and 1st draft of RFC8292). Defaults to false.",
+                }),
             }),
             data: Data,
         }),
@@ -96,6 +101,7 @@ export const pushRoutes: readonly Route[] = [
                 p256dh: body.subscription.keys.p256dh,
                 auth: body.subscription.keys.auth,
                 ...choices(body.data),
+                standard: body.subscription.standard ?? false,
                 created_at: ctx.clock.now(),
             };
             await ctx.transaction((tx) => replaceSubscription(tx, row));

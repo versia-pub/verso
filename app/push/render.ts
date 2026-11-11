@@ -18,4 +18,5 @@ export const renderSubscription = async (
     ),
     server_key: await vapidPublicKey(ctx),
     policy: row.policy,
+    standard: row.standard,
 });

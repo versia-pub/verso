@@ -153,7 +153,6 @@ These newer parts of Mastodon's API aren't in Verso. Apps get a `404`.
 - ❌ Annual reports, from 4.4.
 - ❌ Email subscriptions, from 4.6.
 - ❌ Donation campaigns, from 4.4.
-- ❌ The `standard` flag on push subscriptions, from 4.4.
 - ❌ The `untrusted_*` counts of remote accounts.
 
 Verso keeps remote handles as they are, so `invalid_handle` is never set on an account.

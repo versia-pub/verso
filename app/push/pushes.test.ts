@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from "@std/assert";
+import { assertEquals, assertMatch, assertRejects } from "@std/assert";
 import { jwtVerify } from "@panva/jose";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { registerTestApp } from "../auth/testing.ts";
@@ -40,14 +40,56 @@ const hkdf = async (
     );
 };
 
-/** A browser that subscribed: it decrypts what is pushed to it, as RFC 8291 has it. */
+/**
+ * A browser that subscribed: it decrypts what is pushed to it, as RFC 8291 has it, or in `aesgcm`
+ * as its draft did, by the salt and key in the headers.
+ */
 const browser = async () => {
     const curve = { name: "ECDH", namedCurve: "P-256" };
     const pair = await crypto.subtle.generateKey(curve, true, ["deriveBits"]);
     const p256dh = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
     const auth = crypto.getRandomValues(new Uint8Array(16));
 
-    const decrypt = async (body: Uint8Array<ArrayBuffer>) => {
+    const decryptLegacy = async (body: Uint8Array<ArrayBuffer>, headers: Headers) => {
+        const fromBase64 = (text: string) => Uint8Array.fromBase64(text, { alphabet: "base64url" });
+        const salt = fromBase64(/^salt=(\S+)$/.exec(headers.get("encryption") ?? "")?.[1] ?? "");
+        const serverKey = fromBase64(
+            /^dh=([^;]+);/.exec(headers.get("crypto-key") ?? "")?.[1] ?? "",
+        );
+        const sender = await crypto.subtle.importKey("raw", serverKey, curve, false, []);
+        const shared = new Uint8Array(
+            await crypto.subtle.deriveBits({ name: "ECDH", public: sender }, pair.privateKey, 256),
+        );
+
+        const ikm = await hkdf(auth, shared, "Content-Encoding: auth\0", 32);
+        const context = `P-256\0\0A${String.fromCharCode(...p256dh)}\0A${
+            String.fromCharCode(...serverKey)
+        }`;
+        const latin1 = (text: string) => Uint8Array.from(text, (char) => char.charCodeAt(0));
+        const derive = async (info: string, length: number) => {
+            const key = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
+            const bits = await crypto.subtle.deriveBits(
+                { name: "HKDF", hash: "SHA-256", salt, info: latin1(info + context) },
+                key,
+                length * 8,
+            );
+            return new Uint8Array(bits);
+        };
+        const cek = await derive("Content-Encoding: aesgcm\0", 16);
+        const nonce = await derive("Content-Encoding: nonce\0", 12);
+
+        const aes = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["decrypt"]);
+        const record = new Uint8Array(
+            await crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce }, aes, body),
+        );
+        // No padding.
+        assertEquals(record.slice(0, 2), new Uint8Array(2));
+        return JSON.parse(new TextDecoder().decode(record.slice(2)));
+    };
+
+    const decrypt = async (body: Uint8Array<ArrayBuffer>, headers: Headers) => {
+        if (headers.get("content-encoding") === "aesgcm") return await decryptLegacy(body, headers);
+
         const salt = body.slice(0, 16);
         const serverKey = body.slice(21, 86);
         const sender = await crypto.subtle.importKey("raw", serverKey, curve, false, []);
@@ -96,7 +138,7 @@ const open = async () => {
     test.transport.servers.set("push.example", async (request) => {
         const path = new URL(request.url).pathname;
         const body = new Uint8Array(await request.arrayBuffer());
-        pushed.push([path, await browsers.get(path)?.decrypt(body)]);
+        pushed.push([path, await browsers.get(path)?.decrypt(body, request.headers)]);
         if (answer instanceof Error) throw answer;
         return new Response(null, { status: answer });
     });
@@ -109,6 +151,7 @@ const open = async () => {
         name: string,
         alerts: PushAlert[] = ["mention", "follow", "favourite"],
         policy: PushPolicy = "all",
+        standard = true,
     ) => {
         const subscriber = await browser();
         browsers.set(`/${name}`, subscriber);
@@ -124,6 +167,7 @@ const open = async () => {
             auth: subscriber.auth,
             alerts,
             policy,
+            standard,
             created_at: test.clock.now(),
         });
 
@@ -182,10 +226,48 @@ Deno.test("a notification is pushed encrypted and signed, with what Mastodon pus
             "Verso/0.0.0 (+https://social.example)",
         ],
     );
+    assertEquals([request.headers.get("encryption"), request.headers.get("crypto-key")], [
+        null,
+        null,
+    ]);
     const [, jwt] = /^vapid t=(\S+), k=/.exec(request.headers.get("authorization") ?? "") ?? [];
     const key = await crypto.subtle.importKey(
         "raw",
         (await vapidKey(test.ctx)).publicKey,
+        { name: "ECDSA", namedCurve: "P-256" },
+        false,
+        ["verify"],
+    );
+    const { payload: claims } = await jwtVerify(jwt, key, { currentDate: test.clock.now() });
+    assertEquals([claims.aud, claims.sub], ["https://push.example", "https://social.example"]);
+});
+
+Deno.test("a subscription that isn't standard is pushed to as Mastodon's older pushes were", async () => {
+    await using test = await open();
+    const { token } = await test.subscribe("alice", "a", undefined, undefined, false);
+
+    await test.post("bob", "Hi @alice");
+    assertEquals(await test.drain(), 1);
+
+    const [[, payload]] = test.pushed;
+    assertEquals([payload.access_token, payload.body], [token, "Hi @alice"]);
+
+    const [request] = test.transport.sent;
+    const vapid = await vapidKey(test.ctx);
+    assertEquals(request.headers.get("content-encoding"), "aesgcm");
+    assertMatch(request.headers.get("encryption") ?? "", /^salt=[A-Za-z0-9_-]{22}$/);
+    assertMatch(
+        request.headers.get("crypto-key") ?? "",
+        new RegExp(
+            `^dh=B[A-Za-z0-9_-]{86};p256ecdsa=${
+                vapid.publicKey.toBase64({ alphabet: "base64url", omitPadding: true })
+            }$`,
+        ),
+    );
+    const [, jwt] = /^WebPush (\S+)$/.exec(request.headers.get("authorization") ?? "") ?? [];
+    const key = await crypto.subtle.importKey(
+        "raw",
+        vapid.publicKey,
         { name: "ECDSA", namedCurve: "P-256" },
         false,
         ["verify"],

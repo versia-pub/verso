@@ -87,6 +87,7 @@ Deno.test("a token subscribes to the notifications it asks for, and keeps itself
         "subscription[endpoint]": "https://push.example/a",
         "subscription[keys][p256dh]": keys.p256dh,
         "subscription[keys][auth]": keys.auth,
+        "subscription[standard]": "true",
         "data[alerts][mention]": "true",
         "data[alerts][reaction]": "1",
         "data[alerts][follow]": "false",
@@ -102,6 +103,7 @@ Deno.test("a token subscribes to the notifications it asks for, and keeps itself
         alerts: { ...none, mention: true, reaction: true },
         server_key: await vapidPublicKey(test.ctx),
         policy: "followed",
+        standard: true,
     };
     assertEquals(subscribed.body, subscription);
     assertEquals(await test.request("GET", token), { status: 200, body: subscription });
@@ -126,7 +128,10 @@ Deno.test("subscribing again replaces the token's subscription, but not other to
     const replaced = await subscribe(first.token, "https://push.example/c");
 
     assertNotEquals(replaced.body.id, old.body.id);
-    assertEquals([replaced.body.alerts, replaced.body.policy], [none, "all"]);
+    assertEquals(
+        [replaced.body.alerts, replaced.body.policy, replaced.body.standard],
+        [none, "all", false],
+    );
     assertEquals((await test.request("GET", first.token)).body.endpoint, "https://push.example/c");
     assertEquals((await test.request("GET", other.token)).body.endpoint, "https://push.example/b");
 });
@@ -141,7 +146,11 @@ Deno.test("a subscription's notifications are changed, and what isn't given is r
     for (const subscriber of [token, other.token]) {
         await test.request("POST", subscriber, {
             body: {
-                subscription: { endpoint: "https://push.example/a", keys: await browserKeys() },
+                subscription: {
+                    endpoint: "https://push.example/a",
+                    keys: await browserKeys(),
+                    standard: true,
+                },
                 data: { alerts: { mention: true }, policy: "none" },
             },
         });
@@ -150,8 +159,8 @@ Deno.test("a subscription's notifications are changed, and what isn't given is r
 
     assertEquals(changed.status, 200);
     assertEquals(
-        [changed.body.alerts, changed.body.policy],
-        [{ ...none, favourite: true, reblog: true }, "all"],
+        [changed.body.alerts, changed.body.policy, changed.body.standard],
+        [{ ...none, favourite: true, reblog: true }, "all", true],
     );
     assertEquals((await test.request("GET", token)).body.alerts, changed.body.alerts);
     assertEquals((await test.request("PUT", token, { body: {} })).body.alerts, none);

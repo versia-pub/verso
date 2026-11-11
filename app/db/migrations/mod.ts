@@ -95,6 +95,7 @@ import { remoteAccountPruning } from "./0093_remote_account_pruning.ts";
 import { previewCardPruning } from "./0094_preview_card_pruning.ts";
 import { remoteMediaCache } from "./0095_remote_media_cache.ts";
 import { remoteMediaPruning } from "./0096_remote_media_pruning.ts";
+import { standardPushes } from "./0097_standard_pushes.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -197,4 +198,5 @@ export const migrations: Record<string, Migration> = {
     "0094_preview_card_pruning": previewCardPruning,
     "0095_remote_media_cache": remoteMediaCache,
     "0096_remote_media_pruning": remoteMediaPruning,
+    "0097_standard_pushes": standardPushes,
 };

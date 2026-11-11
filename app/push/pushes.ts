@@ -17,14 +17,14 @@ import { timeoutSignal, userAgent } from "../kernel/transport.ts";
 import { isNotificationCreated, type NotificationCreated } from "../notifications/events.ts";
 import { shownNotification } from "../notifications/render.ts";
 import { isNotificationType, type NotificationType } from "../notifications/tables.ts";
-import { encryptPush, randomSender } from "./encryption.ts";
+import { encryptLegacyPush, encryptPush, randomSender, senderKey } from "./encryption.ts";
 import {
     deleteSubscriptionById,
     findSubscriptionById,
     type PushSubscriptionRow,
     subscriptionsOf,
 } from "./subscription_queries.ts";
-import { vapidAuthorization } from "./vapid.ts";
+import { vapidAuthorization, vapidJwt } from "./vapid.ts";
 
 export const pushQueue = "push";
 
@@ -127,6 +127,50 @@ const pushOf = (
     };
 };
 
+const base64url = (bytes: Uint8Array) =>
+    bytes.toBase64({ alphabet: "base64url", omitPadding: true });
+
+/**
+ * `plaintext` encrypted and signed for `subscription`, as the headers that say how, and the body.
+ * Standard subscriptions take RFC 8291 and RFC 8292, and others the drafts Mastodon used before.
+ * @see https://docs.joinmastodon.org/methods/push/#create
+ */
+const encoded = async (
+    ctx: Context,
+    subscription: PushSubscriptionRow,
+    plaintext: Uint8Array,
+): Promise<{ headers: Record<string, string>; body: Uint8Array<ArrayBuffer> }> => {
+    const keys = {
+        p256dh: Uint8Array.fromBase64(subscription.p256dh, { alphabet: "base64url" }),
+        auth: Uint8Array.fromBase64(subscription.auth, { alphabet: "base64url" }),
+    };
+    const sender = await randomSender();
+    const key = await ctx.federation.vapidKey(ctx);
+    const jwt = await vapidJwt(key, subscription.endpoint, ctx.urls.origin, ctx.clock.now());
+
+    if (subscription.standard) {
+        return {
+            headers: {
+                authorization: vapidAuthorization(jwt, key),
+                "content-encoding": "aes128gcm",
+            },
+            body: await encryptPush(plaintext, keys, sender),
+        };
+    }
+
+    return {
+        headers: {
+            authorization: `WebPush ${jwt}`,
+            "content-encoding": "aesgcm",
+            encryption: `salt=${base64url(sender.salt)}`,
+            "crypto-key": `dh=${base64url(await senderKey(sender))};p256ecdsa=${
+                base64url(key.publicKey)
+            }`,
+        },
+        body: await encryptLegacyPush(plaintext, keys, sender),
+    };
+};
+
 /**
  * Pushes a notification to a subscription, unless either has gone, its user is suspended, or they
  * aren't shown it, such as one from an account they have muted since. A subscription its push service says has gone
@@ -147,25 +191,16 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
     if (!notification || !isNotificationType(notification.type)) return;
 
     const push = pushOf(subscription, notification, notification.type);
-    const body = await encryptPush(
+    const { headers, body } = await encoded(
+        ctx,
+        subscription,
         new TextEncoder().encode(JSON.stringify(push)),
-        {
-            p256dh: Uint8Array.fromBase64(subscription.p256dh, { alphabet: "base64url" }),
-            auth: Uint8Array.fromBase64(subscription.auth, { alphabet: "base64url" }),
-        },
-        await randomSender(),
     );
     const request = new Request(subscription.endpoint, {
         method: "POST",
         headers: {
-            authorization: await vapidAuthorization(
-                await ctx.federation.vapidKey(ctx),
-                subscription.endpoint,
-                ctx.urls.origin,
-                ctx.clock.now(),
-            ),
+            ...headers,
             "user-agent": userAgent(ctx.urls.origin),
-            "content-encoding": "aes128gcm",
             "content-type": "application/octet-stream",
             ttl: String(ttlSeconds),
             urgency: "normal",

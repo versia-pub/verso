@@ -2,18 +2,21 @@ import { assertEquals, assertMatch } from "@std/assert";
 import { decodeProtectedHeader, jwtVerify } from "@panva/jose";
 import { createTestContext } from "../testing/context.ts";
 import { vapidKey } from "./keys.ts";
-import { vapidAuthorization } from "./vapid.ts";
+import { vapidAuthorization, vapidJwt } from "./vapid.ts";
 
 Deno.test("pushes are signed for the push service, for 12 hours, with the key they name", async () => {
     await using test = await createTestContext();
     const key = await vapidKey(test.ctx);
     const now = new Date("2026-01-01T00:00:00Z");
 
-    const header = await vapidAuthorization(
+    const header = vapidAuthorization(
+        await vapidJwt(
+            key,
+            "https://push.example:8443/send/abc?x=1",
+            "https://social.example",
+            now,
+        ),
         key,
-        "https://push.example:8443/send/abc?x=1",
-        "https://social.example",
-        now,
     );
 
     const [, jwt, shown] = /^vapid t=(\S+), k=(\S+)$/.exec(header) ?? [];
