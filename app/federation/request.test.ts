@@ -1,3 +1,4 @@
+import denoConfig from "../../deno.json" with { type: "json" };
 import { assertEquals, assertRejects } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { createNetwork } from "../testing/network.ts";
@@ -17,7 +18,10 @@ Deno.test("a signed GET reaches another instance, whose signed reply is given", 
     assertEquals(JSON.parse(new TextDecoder().decode(reply.body)).username, "bob");
 
     const [request] = network.transport.sent.filter((sent) => sent.url.includes("/User/"));
-    assertEquals(request.headers.get("user-agent"), "Verso/0.0.0 (+https://a.test)");
+    assertEquals(
+        request.headers.get("user-agent"),
+        `Verso/${denoConfig.version} (+https://a.test)`,
+    );
     assertEquals(request.headers.get("versia-signed-by"), "a.test");
 });
 

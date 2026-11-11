@@ -1,3 +1,4 @@
+import denoConfig from "../../deno.json" with { type: "json" };
 import { assertEquals } from "@std/assert";
 import { tokenFor } from "../auth/testing.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
@@ -52,7 +53,7 @@ Deno.test("NodeInfo describes Verso, which may be cached for half an hour", asyn
         cache: "public, max-age=1800",
         body: {
             version: "2.0",
-            software: { name: "verso", version: "0.0.0" },
+            software: { name: "verso", version: denoConfig.version },
             protocols: ["versia"],
             services: { outbound: [], inbound: [] },
             usage: {

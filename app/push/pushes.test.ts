@@ -1,3 +1,4 @@
+import denoConfig from "../../deno.json" with { type: "json" };
 import { assertEquals, assertMatch, assertRejects } from "@std/assert";
 import { jwtVerify } from "@panva/jose";
 import { createLocalAccount } from "../accounts/testing.ts";
@@ -232,7 +233,7 @@ Deno.test("a notification is pushed encrypted and signed, with what Mastodon pus
             "application/octet-stream",
             "172800",
             "normal",
-            "Verso/0.0.0 (+https://social.example)",
+            `Verso/${denoConfig.version} (+https://social.example)`,
         ],
     );
     assertEquals(await unsubscribes(test.ctx, request), subscriptionId);

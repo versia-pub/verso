@@ -1,3 +1,4 @@
+import denoConfig from "../../deno.json" with { type: "json" };
 import { assertEquals } from "@std/assert";
 import { defaultSettings } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -23,7 +24,7 @@ const fetchDocument = async (name?: string) => {
 Deno.test("the API is described by an OpenAPI document, titled with the instance's name", async () => {
     const { status, body } = await fetchDocument();
     assertEquals(status, 200);
-    assertEquals(body.info, { title: "social.example", version: "0.0.0" });
+    assertEquals(body.info, { title: "social.example", version: denoConfig.version });
     assertEquals(Object.keys(body.paths["/openapi.json"]), ["get"]);
     assertEquals(Object.keys(body.paths["/api/v1/accounts/{id}"]), ["get"]);
 

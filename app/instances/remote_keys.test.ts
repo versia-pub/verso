@@ -1,3 +1,4 @@
+import denoConfig from "../../deno.json" with { type: "json" };
 import { assert, assertEquals, assertFalse, assertRejects } from "@std/assert";
 import { fakeTransport, type Server } from "../kernel/fake_transport.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -54,7 +55,7 @@ Deno.test("a key is fetched from the instance's metadata once, then stored", asy
         [[
             "https://b.example/.versia/v0.6/instance",
             "application/vnd.versia+json; charset=utf-8",
-            "Verso/0.0.0 (+https://social.example)",
+            `Verso/${denoConfig.version} (+https://social.example)`,
         ]],
     );
     assertEquals(await test.row("b.example"), {

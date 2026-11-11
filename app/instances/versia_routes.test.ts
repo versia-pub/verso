@@ -1,3 +1,4 @@
+import denoConfig from "../../deno.json" with { type: "json" };
 import { assertEquals, assertNotEquals } from "@std/assert";
 import { firstMigratedAt } from "../db/migrate.ts";
 import { createTestApp } from "../testing/app.ts";
@@ -43,7 +44,7 @@ Deno.test("an instance describes itself to others, with its current key", async 
             type: "InstanceMetadata",
             created_at: (await firstMigratedAt(test.ctx.db)).toISOString(),
             name: "social.example",
-            software: { name: "Verso", version: "0.0.0" },
+            software: { name: "Verso", version: denoConfig.version },
             compatibility: { versions: ["0.6.0"], extensions: [] },
             domain: "social.example",
             public_key: { algorithm: "ed25519", key: (await instanceKey(test.ctx)).publicKey },
