@@ -24,6 +24,11 @@ export type Auth = {
      * every user, and what their roles allow; anyone else, what it lets anonymous visitors.
      */
     readonly permission?: Permission;
+    /**
+     * Whether a user that moved to another account may still call it, as they may their settings.
+     * Every other route for users refuses them, as Mastodon does.
+     */
+    readonly whileMoved?: true;
 };
 
 /** Who is calling, as their access token says. */
@@ -35,6 +40,8 @@ export type Viewer = {
     readonly scopes: readonly Scope[];
     /** Whether the user is suspended, so the token can't be used. */
     readonly suspended?: boolean;
+    /** Whether the user moved to another account, so only some routes may be called. */
+    readonly moved?: boolean;
 };
 
 /** Who is calling, as a route's handler sees them. */

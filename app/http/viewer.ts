@@ -16,7 +16,7 @@ import type { Route, RouteViewer, Viewer } from "./route.ts";
 /**
  * Who is calling, validated against the route's `auth` as Mastodon validates it. A token sent where
  * none is needed is ignored; on other routes, a token sent must be valid, and its user not
- * suspended.
+ * suspended. A user that moved may only call the routes for users that allow it.
  */
 export const viewerOf = async (
     ctx: Context,
@@ -36,6 +36,9 @@ export const viewerOf = async (
     if (viewer.suspended) throw new LoginDisabled();
     if (route.auth.require === "user" && viewer.accountId === null) throw new UserRequired();
     if (route.auth.scope && !grants(viewer.scopes, route.auth.scope)) throw new Forbidden();
+    if (route.auth.require === "user" && viewer.moved && !route.auth.whileMoved) {
+        throw new LoginDisabled();
+    }
 
     return viewer;
 };

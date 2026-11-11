@@ -85,7 +85,12 @@ export const migrationRoutes: readonly Route[] = [
         summary: "Get migration",
         description: "The accounts the user says they moved from, and moved to.",
         tags: ["migration"],
-        auth: { require: "user", scope: "read:accounts", permission: "owner:account" },
+        auth: {
+            require: "user",
+            scope: "read:accounts",
+            permission: "owner:account",
+            whileMoved: true,
+        },
         responses: { 200: AccountMigration },
         handler: async (ctx, { viewer }) => ({
             status: 200,
@@ -99,7 +104,12 @@ export const migrationRoutes: readonly Route[] = [
         description:
             "Says the user moved from the account at `acct`, so that it can move to theirs.",
         tags: ["migration"],
-        auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
+        auth: {
+            require: "user",
+            scope: "write:accounts",
+            permission: "owner:account",
+            whileMoved: true,
+        },
         body: z.object({ acct: z.string() }),
         responses: { 200: AccountMigration },
         handler: async (ctx, { viewer, body }) => {
@@ -115,7 +125,12 @@ export const migrationRoutes: readonly Route[] = [
         summary: "Remove previous account",
         description: "Says the user moved from no account.",
         tags: ["migration"],
-        auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
+        auth: {
+            require: "user",
+            scope: "write:accounts",
+            permission: "owner:account",
+            whileMoved: true,
+        },
         responses: { 200: AccountMigration },
         handler: async (ctx, { viewer }) => {
             await setPrevious(ctx, viewer.accountId, undefined);
@@ -130,7 +145,12 @@ export const migrationRoutes: readonly Route[] = [
         description:
             "Moves the user to the account at `acct`, which must say it moved from theirs. Their followers follow it instead.",
         tags: ["migration"],
-        auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
+        auth: {
+            require: "user",
+            scope: "write:accounts",
+            permission: "owner:account",
+            whileMoved: true,
+        },
         body: z.object({ acct: z.string() }),
         responses: { 200: AccountMigration },
         handler: async (ctx, { viewer, body }) => {
@@ -148,7 +168,12 @@ export const migrationRoutes: readonly Route[] = [
         description:
             "Says the user no longer moved. Their followers that moved stay where they are, and they can't move again until a month after they last did.",
         tags: ["migration"],
-        auth: { require: "user", scope: "write:accounts", permission: "owner:account" },
+        auth: {
+            require: "user",
+            scope: "write:accounts",
+            permission: "owner:account",
+            whileMoved: true,
+        },
         responses: { 200: AccountMigration },
         handler: async (ctx, { viewer }) => {
             await cancelMove(ctx, viewer.accountId);

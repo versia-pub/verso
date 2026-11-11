@@ -27,13 +27,15 @@ export const countAccountsWithTokensSince = async (
 export const findTokenByHash = async (
     ctx: Context,
     hash: string,
-): Promise<(AccessTokensTable & { suspended_at: Date | null }) | undefined> =>
-    await ctx.db.selectFrom("access_tokens")
-        .leftJoin("accounts", "accounts.id", "access_tokens.account_id")
-        .selectAll("access_tokens")
-        .select("accounts.suspended_at")
-        .where("token_hash", "=", hash)
-        .executeTakeFirst();
+): Promise<
+    | (AccessTokensTable & { suspended_at: Date | null; moved_to_account_id: string | null })
+    | undefined
+> => await ctx.db.selectFrom("access_tokens")
+    .leftJoin("accounts", "accounts.id", "access_tokens.account_id")
+    .selectAll("access_tokens")
+    .select(["accounts.suspended_at", "accounts.moved_to_account_id"])
+    .where("token_hash", "=", hash)
+    .executeTakeFirst();
 
 /** Whether a token with this id is still issued, and its user, if it has one, isn't suspended. */
 export const tokenUsable = async (ctx: Context, id: string): Promise<boolean> =>

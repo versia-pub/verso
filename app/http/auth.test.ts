@@ -21,6 +21,16 @@ const me = defineRoute({
         Promise.resolve({ status: 200, body: { app: viewer.appId, account: viewer.accountId } }),
 });
 
+const settings = defineRoute({
+    method: "GET",
+    path: "/settings",
+    summary: "Needs a user, even one that moved",
+    auth: { require: "user", whileMoved: true },
+    responses: { 200: Answer },
+    handler: (_, { viewer }) =>
+        Promise.resolve({ status: 200, body: { app: viewer.appId, account: viewer.accountId } }),
+});
+
 const app = defineRoute({
     method: "GET",
     path: "/app",
@@ -87,6 +97,7 @@ const permissionsRoute = defineRoute({
 
 const routes = [
     me,
+    settings,
     app,
     maybe,
     anyone,
@@ -172,6 +183,27 @@ Deno.test("a suspended user's token is refused as a disabled login, an app's own
     assertEquals(await test.call("/me", writer), disabled);
 
     await unsuspend(test.ctx, "alice");
+    assertEquals((await test.call("/me", token)).body.account, "alice");
+});
+
+Deno.test("a user that moved is refused as a disabled login, but on routes allowing it", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "bob");
+    const token = `Bearer ${await tokenFor(test.ctx, "alice", ["read"])}`;
+    const moveTo = async (id: string | null) =>
+        await test.ctx.db.updateTable("accounts").set({ moved_to_account_id: id })
+            .where("id", "=", "alice").execute();
+    await moveTo("bob");
+
+    assertEquals(await test.call("/me", token), {
+        status: 403,
+        body: { error: "Your login is currently disabled" },
+    });
+    for (const path of ["/settings", "/maybe", "/app"]) {
+        assertEquals((await test.call(path, token)).body.account, "alice", path);
+    }
+
+    await moveTo(null);
     assertEquals((await test.call("/me", token)).body.account, "alice");
 });
 

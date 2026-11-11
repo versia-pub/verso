@@ -71,7 +71,7 @@ export const streamingRoutes = (
                 "only. Clients should be configured that way if necessary.",
             docs: `${docs}/#websocket`,
             tags: ["streaming"],
-            auth: { require: "user" },
+            auth: { require: "user", whileMoved: true },
             tokenElsewhere: true,
             query: z.object({
                 stream: z.string().optional().meta({

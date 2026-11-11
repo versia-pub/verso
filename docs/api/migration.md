@@ -66,6 +66,11 @@ curl -X POST https://social.example/api/v1/migration/move \
 The user gets a `422` if the account can't be fetched, doesn't say so, is suspended, deleted or has
 moved itself, or if the user already moved to it, or moved less than 30 days ago.
 
+Once moved, the user gets a `403` with `Your login is currently disabled` from every method that
+needs a user, except these, streaming, and the account and profile settings: `verify_credentials`,
+`update_credentials`, `/api/v1/profile` and `/api/v1/preferences`. Mastodon refuses the settings
+methods too.
+
 ### `DELETE /api/v1/migration/move`
 
 Cancels the user's move, and returns the AccountMigration. Followers that already moved stay with

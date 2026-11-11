@@ -392,10 +392,14 @@ Deno.test("a user that cancels their move says they moved nowhere, and moves aga
         (await call(app, token, "POST", "/api/v1/migration/move", { acct })).status;
 
     assertEquals(await move("bea"), 200);
+    const status = async (path: string) => (await call(app, token, "GET", path)).status;
+    assertEquals(await status("/api/v1/timelines/home"), 403);
+    assertEquals(await status("/api/v1/accounts/verify_credentials"), 200);
     const movedAt = (await findAccount(ctx, alice))?.moved_at;
     const cancelled = await call(app, token, "DELETE", "/api/v1/migration/move");
     assertEquals([cancelled.status, cancelled.body.moved], [200, null]);
     assertEquals((await findAccount(ctx, alice))?.moved_at, movedAt);
+    assertEquals(await status("/api/v1/timelines/home"), 200);
     assertEquals((await localVersiaUser(ctx, alice))?.extensions, undefined);
     // The move was cancelled before its followers moved, so they don't.
     await network.drain();

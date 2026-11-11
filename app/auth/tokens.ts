@@ -89,6 +89,7 @@ export const authenticateToken = async (
         accountId: row.account_id,
         scopes: row.scopes,
         suspended: row.suspended_at !== null,
+        moved: row.moved_to_account_id !== null,
     };
 };
 

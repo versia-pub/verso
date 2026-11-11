@@ -47,3 +47,26 @@ Deno.test("the OpenAPI document is unchanged", async () => {
 
     assertEquals(body, snapshot);
 });
+
+Deno.test("a user that moved may only call the migration, settings and streaming routes", () => {
+    const allowed = routes(defaultSettings())
+        .filter((route) => route.auth?.whileMoved)
+        .map((route) => `${route.method} ${route.path}`)
+        .sort();
+
+    assertEquals(allowed, [
+        "DELETE /api/v1/migration/move",
+        "DELETE /api/v1/migration/previous",
+        "DELETE /api/v1/profile/avatar",
+        "DELETE /api/v1/profile/header",
+        "GET /api/v1/accounts/verify_credentials",
+        "GET /api/v1/migration",
+        "GET /api/v1/preferences",
+        "GET /api/v1/profile",
+        "GET /api/v1/streaming",
+        "PATCH /api/v1/accounts/update_credentials",
+        "PATCH /api/v1/profile",
+        "POST /api/v1/migration/move",
+        "PUT /api/v1/migration/previous",
+    ]);
+});
