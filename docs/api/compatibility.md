@@ -119,6 +119,7 @@ There's no admin API: admins use `verso admin` instead.
 | `PUT /api/v1/statuses/:id`                          | ✅    |                                |
 | `DELETE /api/v1/statuses/:id`                       | ✅    |                                |
 | `GET /api/v1/statuses/:id/context`                  | ✅    |                                |
+| `GET /api/v1_alpha/async_refreshes/:id`             | ✅    | Only for a thread's replies    |
 | `GET /api/v1/statuses/:id/history`                  | ✅    |                                |
 | `GET /api/v1/statuses/:id/quotes`                   | ✅    |                                |
 | `POST /api/v1/statuses/:id/quotes/:quote_id/revoke` | 🟡    | Always `403`                   |
@@ -149,7 +150,6 @@ There's no admin API: admins use `verso admin` instead.
 These newer parts of Mastodon's API aren't in Verso. Apps get a `404`.
 
 - ❌ Collections, from 4.6.
-- ❌ `GET /api/v1_alpha/async_refreshes/:id` and the `Mastodon-Async-Refresh` header, from 4.4.
 - ❌ Annual reports, from 4.4.
 - ❌ Email subscriptions, from 4.6.
 - ❌ Donation campaigns, from 4.4.

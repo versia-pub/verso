@@ -14,7 +14,14 @@ import type { JobsTable } from "../jobs/tables.ts";
 import { enqueue } from "../jobs/job_queries.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
-import { findNote, type NoteRow } from "./note_queries.ts";
+import {
+    type AsyncRefreshRow,
+    contextRefresh,
+    countResults,
+    finishRefresh,
+    startRefresh,
+} from "./async_refreshes.ts";
+import { findNote, findRemoteNoteAt, type NoteRow } from "./note_queries.ts";
 import { fetchNoteCollection } from "./totals.ts";
 
 const logger = getLogger(["verso", "notes"]);
@@ -67,13 +74,18 @@ const markFetched = async (ctx: Context, noteId: string) => {
 /**
  * Queues a job to fetch the replies of `note`, when a local user opens it, if it is a public or
  * unlisted remote status at least 5 minutes old, and they weren't fetched in the last 15 minutes.
- * Returns whether it queued one.
+ * Returns the refresh clients can follow it by, started before the job, which finishes it.
  */
-export const backfillLater = async (ctx: Context, note: NoteRow): Promise<boolean> => {
-    if (note.instance_id === null) return false;
-    if (note.visibility !== "public" && note.visibility !== "unlisted") return false;
-    if (ctx.clock.now().getTime() - note.created_at.getTime() < initialWaitMs) return false;
-    if (await fetchedRecently(ctx, note.id)) return false;
+export const backfillLater = async (
+    ctx: Context,
+    note: NoteRow,
+): Promise<AsyncRefreshRow | undefined> => {
+    if (note.instance_id === null) return undefined;
+    if (note.visibility !== "public" && note.visibility !== "unlisted") return undefined;
+    if (ctx.clock.now().getTime() - note.created_at.getTime() < initialWaitMs) return undefined;
+    if (await fetchedRecently(ctx, note.id)) return undefined;
+
+    const refresh = await startRefresh(ctx, contextRefresh(note.id));
 
     const payload: z.infer<typeof BackfillJob> = { noteId: note.id };
     await enqueue(ctx, {
@@ -83,14 +95,15 @@ export const backfillLater = async (ctx: Context, note: NoteRow): Promise<boolea
         maxAttempts: 3,
         dedupeKey: `replies:${note.id}`,
     });
-    return true;
+    return refresh;
 };
 
 /**
  * Fetches the replies of the remote status `root`, and of the replies under it, depth first, up to
  * `max` of each, for at most 4 minutes. A reply whose replies were fetched in the last 15 minutes
  * is skipped, as is one on a blocked instance. Failing to fetch `root`'s replies is thrown, so the
- * job is retried; failing for a reply under it only skips that reply.
+ * job is retried; failing for a reply under it only skips that reply. Each reply Verso hadn't stored
+ * counts as a result of `root`'s refresh, if it has one.
  */
 export const fetchReplies = async (
     ctx: Context,
@@ -121,6 +134,7 @@ export const fetchReplies = async (
 
                 const reference = parseReference(item, domain);
                 if (reference === undefined) continue;
+                const known = await findRemoteNoteAt(ctx, reference.host, reference.id);
                 const id = await ctx.federation.resolve(
                     timed,
                     reference,
@@ -134,6 +148,7 @@ export const fetchReplies = async (
                 if (id === undefined) continue;
 
                 replies++;
+                if (known === undefined) await countResults(ctx, contextRefresh(root.id), 1);
                 const reply = await findNote(ctx, id);
                 if (reply !== undefined) stack.push(reply);
             }
@@ -165,11 +180,18 @@ export const fetchReplies = async (
     }
 };
 
-/** Fetches the replies of the status in the job, unless it has been deleted since. */
+/**
+ * Fetches the replies of the status in the job, unless it has been deleted since, and then marks its
+ * refresh finished, whether or not it failed, as Mastodon does.
+ */
 export const backfillHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = BackfillJob.safeParse(job.payload);
     if (!payload.success) throw new PermanentFailure("The job isn't a reply backfill job");
 
-    const note = await findNote(ctx, payload.data.noteId);
-    if (note !== undefined) await fetchReplies(ctx, note);
+    try {
+        const note = await findNote(ctx, payload.data.noteId);
+        if (note !== undefined) await fetchReplies(ctx, note);
+    } finally {
+        await finishRefresh(ctx, contextRefresh(payload.data.noteId));
+    }
 };

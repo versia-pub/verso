@@ -8436,6 +8436,55 @@
                 }
             }
         },
+        "/api/v1_alpha/async_refreshes/{id}": {
+            "get": {
+                "summary": "Get Status of Async Refresh",
+                "description": "Sometimes an API request might not return the expected results or not all possible results as either a background job is already running to (re-)create these results or the request triggers a background job to create or fetch results.\n\nNeeds a token for a user, not one an app got for itself. Needs the `read:note` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/async_refreshes/#show"
+                },
+                "tags": [
+                    "statuses"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "async_refresh": {
+                                            "$ref": "#/components/schemas/AsyncRefresh"
+                                        }
+                                    },
+                                    "required": [
+                                        "async_refresh"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/{id}/statuses": {
             "get": {
                 "summary": "Get account's statuses",
@@ -19885,6 +19934,38 @@
                         "unsupported_policy"
                     ]
                 }
+            },
+            "AsyncRefresh": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "running",
+                            "finished"
+                        ]
+                    },
+                    "result_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "status",
+                    "result_count"
+                ]
             },
             "Context": {
                 "type": "object",

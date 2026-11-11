@@ -30,6 +30,7 @@ import type { InstanceKeysTable, InstancesTable } from "../instances/tables.ts";
 import type { JobPausesTable, JobsTable } from "../jobs/tables.ts";
 import type { MediaTable, NoteMediaTable, ScheduledNoteMediaTable } from "../media/tables.ts";
 import type {
+    AsyncRefreshesTable,
     BookmarksTable,
     NoteMentionsTable,
     NotePinsTable,
@@ -85,6 +86,7 @@ export type Database = {
     announcement_reactions: AnnouncementReactionsTable;
     announcements: AnnouncementsTable;
     apps: AppsTable;
+    async_refreshes: AsyncRefreshesTable;
     conversation_notes: ConversationNotesTable;
     conversations: ConversationsTable;
     domain_blocks: DomainBlocksTable;

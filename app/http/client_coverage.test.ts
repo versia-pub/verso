@@ -121,6 +121,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "DELETE /api/v1/statuses/{id}": (c) => c.statuses.delete("1"),
     "GET /api/v1/statuses/{id}/source": (c) => c.statuses.source("1"),
     "GET /api/v1/statuses/{id}/context": (c) => c.statuses.context("1"),
+    "GET /api/v1_alpha/async_refreshes/{id}": (c) => c.statuses.asyncRefresh("1"),
     "GET /api/v1/statuses/{id}/history": (c) => c.statuses.history("1"),
     "GET /api/v1/polls/{id}": (c) => c.polls.get("1"),
     "POST /api/v1/polls/{id}/votes": (c) => c.polls.vote("1", [0]),

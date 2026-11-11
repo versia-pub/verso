@@ -50,37 +50,37 @@ their own.
 
 ## Who owns which table
 
-| Table                                                                  | Module          |
-| ---------------------------------------------------------------------- | --------------- |
-| `accounts`, `identities`, `roles`, `account_roles`                     | `accounts`      |
-| `apps`, `oauth_flows`, `access_tokens`                                 | `auth`          |
-| `notes`, `note_mentions`, `note_tags`, `note_versions`, `note_pins`    | `notes`         |
-| `remote_note_totals`, `reply_backfills`, `bookmarks`, `thread_mutes`   | `notes`         |
-| `follows`, `blocks`, `mutes`, `account_domain_blocks`, `account_notes` | `graph`         |
-| `endorsements`                                                         | `graph`         |
-| `likes`, `reactions`                                                   | `interactions`  |
-| `polls`, `poll_options`, `poll_votes`                                  | `polls`         |
-| `scheduled_notes`                                                      | `schedules`     |
-| `emojis`, `note_emojis`, `account_emojis`                              | `emojis`        |
-| `media`, `note_media`, `scheduled_note_media`                          | `media`         |
-| `notifications`, `notification_policies`, `notification_requests`      | `notifications` |
-| `notification_permissions`                                             | `notifications` |
-| `push_subscriptions`, `vapid_keys`                                     | `push`          |
-| `note_search`, `account_search`                                        | `search`        |
-| `markers`                                                              | `markers`       |
-| `preview_cards`, `note_preview_cards`, `preview_card_providers`        | `previews`      |
-| `tags`, `featured_tags`, `tag_follows`                                 | `tags`          |
-| `lists`, `list_accounts`                                               | `lists`         |
-| `filters`, `filter_keywords`, `filter_statuses`                        | `filters`       |
-| `conversations`, `conversation_notes`                                  | `conversations` |
-| `instances`, `instance_keys`                                           | `instances`     |
-| `domain_blocks`                                                        | `moderation`    |
-| `reports`                                                              | `reports`       |
-| `announcements`, `announcement_dismissals`                             | `announcements` |
-| `trending_tags`, `trending_links`, `trending_statuses`                 | `trends`        |
-| `suggestion_dismissals`                                                | `suggestions`   |
-| `rate_limits`                                                          | `http`          |
-| `jobs`, `job_pauses`                                                   | `jobs`          |
+| Table                                                                                   | Module          |
+| --------------------------------------------------------------------------------------- | --------------- |
+| `accounts`, `identities`, `roles`, `account_roles`                                      | `accounts`      |
+| `apps`, `oauth_flows`, `access_tokens`                                                  | `auth`          |
+| `notes`, `note_mentions`, `note_tags`, `note_versions`, `note_pins`                     | `notes`         |
+| `remote_note_totals`, `reply_backfills`, `async_refreshes`, `bookmarks`, `thread_mutes` | `notes`         |
+| `follows`, `blocks`, `mutes`, `account_domain_blocks`, `account_notes`                  | `graph`         |
+| `endorsements`                                                                          | `graph`         |
+| `likes`, `reactions`                                                                    | `interactions`  |
+| `polls`, `poll_options`, `poll_votes`                                                   | `polls`         |
+| `scheduled_notes`                                                                       | `schedules`     |
+| `emojis`, `note_emojis`, `account_emojis`                                               | `emojis`        |
+| `media`, `note_media`, `scheduled_note_media`                                           | `media`         |
+| `notifications`, `notification_policies`, `notification_requests`                       | `notifications` |
+| `notification_permissions`                                                              | `notifications` |
+| `push_subscriptions`, `vapid_keys`                                                      | `push`          |
+| `note_search`, `account_search`                                                         | `search`        |
+| `markers`                                                                               | `markers`       |
+| `preview_cards`, `note_preview_cards`, `preview_card_providers`                         | `previews`      |
+| `tags`, `featured_tags`, `tag_follows`                                                  | `tags`          |
+| `lists`, `list_accounts`                                                                | `lists`         |
+| `filters`, `filter_keywords`, `filter_statuses`                                         | `filters`       |
+| `conversations`, `conversation_notes`                                                   | `conversations` |
+| `instances`, `instance_keys`                                                            | `instances`     |
+| `domain_blocks`                                                                         | `moderation`    |
+| `reports`                                                                               | `reports`       |
+| `announcements`, `announcement_dismissals`                                              | `announcements` |
+| `trending_tags`, `trending_links`, `trending_statuses`                                  | `trends`        |
+| `suggestion_dismissals`                                                                 | `suggestions`   |
+| `rate_limits`                                                                           | `http`          |
+| `jobs`, `job_pauses`                                                                    | `jobs`          |
 
 Each module's `tables.ts` has the columns, and [`app/db/database.ts`](../app/db/database.ts) lists
 every table.

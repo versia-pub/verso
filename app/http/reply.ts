@@ -108,6 +108,7 @@ export const send = (
     origin: string,
 ): Response | Promise<Response> => {
     setCookies(c, reply.cookies);
+    for (const [name, value] of Object.entries(reply.headers ?? {})) c.header(name, value);
 
     if ("cursors" in reply) {
         const asked = new URL(c.req.url);

@@ -135,5 +135,7 @@ export type CookieChanges = Readonly<Record<string, string | null>>;
 export type Reply<R extends Responses> = {
     [S in keyof R & Status]: ReplyFor<S, NonNullable<R[S]>> & {
         cookies?: CookieChanges;
+        /** Other headers to send, by name. */
+        headers?: Readonly<Record<string, string>>;
     };
 }[keyof R & Status];

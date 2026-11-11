@@ -133,3 +133,14 @@ export type ReplyBackfillsTable = {
     note_id: string;
     fetched_at: Date;
 };
+
+/**
+ * A fetch a client can follow, such as of the replies of a thread a user opened, and how many
+ * statuses it found.
+ */
+export type AsyncRefreshesTable = {
+    id: string;
+    started_at: Date;
+    finished_at: Date | null;
+    result_count: Generated<number>;
+};

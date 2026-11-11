@@ -144,6 +144,10 @@ same for each reply's replies, depth first. See [`app/notes/backfill.ts`](../app
 - A reply Verso has stored is used as it is until it is a week old, not a day.
 - Backfilled replies have their totals fetched only once they are opened.
 
+While the job runs, the thread's context carries a `Mastodon-Async-Refresh` header, and
+`GET /api/v1_alpha/async_refreshes/:id` says how many new replies it stored so far, then when it is
+done. See [`app/notes/async_refreshes.ts`](../app/notes/async_refreshes.ts).
+
 ## Serving
 
 `entityRoutes` in `app/federation/registry.ts` builds the entity and collection routes from the

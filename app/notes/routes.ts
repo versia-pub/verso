@@ -12,6 +12,12 @@ import { removeNote } from "./removal.ts";
 import { visibleNote, visibleNotes, visibleOriginal } from "./visibility.ts";
 import { threadOf } from "./threads.ts";
 import { backfillLater } from "./backfill.ts";
+import {
+    asyncRefreshRoutes,
+    contextRefresh,
+    refreshHeader,
+    runningRefresh,
+} from "./async_refreshes.ts";
 import { refreshTotals } from "./totals.ts";
 import { renderHistory, renderStatuses } from "./render.ts";
 import { accountStatusesRoute } from "./account_status_routes.ts";
@@ -150,14 +156,16 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             const viewerId = viewer?.accountId ?? null;
             const note = await visibleOriginal(ctx, params.id, viewerId);
             if (note === undefined) throw new NotFound();
+            let refresh = await runningRefresh(ctx, contextRefresh(note.id));
             if (viewerId !== null) {
                 await refreshTotals(ctx, note.id);
-                await backfillLater(ctx, note);
+                refresh ??= await backfillLater(ctx, note);
             }
 
             const thread = await threadOf(ctx, note, viewerId);
             return {
                 status: 200,
+                headers: refresh === undefined ? {} : refreshHeader(refresh),
                 body: {
                     ancestors: await renderStatuses(ctx, thread.ancestors, viewerId),
                     descendants: await renderStatuses(ctx, thread.descendants, viewerId),
@@ -165,6 +173,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             };
         },
     }),
+    ...asyncRefreshRoutes,
     accountStatusesRoute,
     pinRoute,
     unpinRoute,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { Account, type Visibility } from "../account.ts";
+import { AsyncRefresh } from "../async_refresh.ts";
 import { ScheduledStatus } from "../scheduled_status.ts";
 import { Context, Status, StatusEdit, StatusReaction, StatusSource } from "../status.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
@@ -159,6 +160,21 @@ export class StatusMethods {
      */
     context(id: string, options?: CallOptions): Promise<Context> {
         return this.http.json(Context, "GET", path`/api/v1/statuses/${id}/context`, options);
+    }
+
+    /**
+     * How a fetch named in a `Mastodon-Async-Refresh` header is going, such as of the replies under
+     * a status whose context was asked for.
+     * @see https://docs.joinmastodon.org/methods/async_refreshes/#show
+     */
+    async asyncRefresh(id: string, options?: CallOptions): Promise<AsyncRefresh> {
+        const body = await this.http.json(
+            z.object({ async_refresh: AsyncRefresh }),
+            "GET",
+            path`/api/v1_alpha/async_refreshes/${id}`,
+            options,
+        );
+        return body.async_refresh;
     }
 
     /**

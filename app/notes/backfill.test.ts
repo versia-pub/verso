@@ -97,20 +97,20 @@ Deno.test("only remote public and unlisted statuses 5 minutes old have their rep
     const visible = (visibility: NoteRow["visibility"]) => ({ ...test.copy, visibility });
 
     test.network.clock.advance(5 * 60_000 - 1);
-    assertEquals(await backfillLater(test.a, test.copy), false);
+    assertEquals(await backfillLater(test.a, test.copy), undefined);
     test.network.clock.advance(1);
-    assertEquals(await backfillLater(test.a, visible("private")), false);
-    assertEquals(await backfillLater(test.a, visible("direct")), false);
-    assertEquals(await backfillLater(test.a, await createNote(test.a, test.alice)), false);
-    assertEquals(await backfillLater(test.a, visible("unlisted")), true);
-    assertEquals(await backfillLater(test.a, test.copy), true);
+    assertEquals(await backfillLater(test.a, visible("private")), undefined);
+    assertEquals(await backfillLater(test.a, visible("direct")), undefined);
+    assertEquals(await backfillLater(test.a, await createNote(test.a, test.alice)), undefined);
+    assertExists(await backfillLater(test.a, visible("unlisted")));
+    assertExists(await backfillLater(test.a, test.copy));
     await test.network.drain();
     assertEquals(await test.under(), [test.carols.id, test.daves.id]);
 
     test.network.clock.advance(15 * 60_000 - 1);
-    assertEquals(await backfillLater(test.a, test.copy), false);
+    assertEquals(await backfillLater(test.a, test.copy), undefined);
     test.network.clock.advance(1);
-    assertEquals(await backfillLater(test.a, test.copy), true);
+    assertExists(await backfillLater(test.a, test.copy));
 });
 
 Deno.test("the start of a thread has its replies fetched each time, and others every 15 minutes", async () => {
