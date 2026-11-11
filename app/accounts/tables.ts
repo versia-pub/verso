@@ -92,6 +92,17 @@ export type AccountsTable = {
      * suspended, so its username and login can't be used again.
      */
     deleted_at: Date | null;
+
+    /**
+     * The account it says it moved from, by the domain of its instance and its id there, which an
+     * account that moves to it must be. `null` if it says none.
+     */
+    previous_host: string | null;
+    previous_id: string | null;
+    /** The account it moved to, or `null` if it didn't. */
+    moved_to_account_id: string | null;
+    /** When it last moved, or `null` if it never did. */
+    moved_at: Date | null;
 };
 
 /** A login at an OpenID issuer, linked to a local account. */

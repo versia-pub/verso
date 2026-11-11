@@ -13,6 +13,7 @@ export type AccountPruneCursor = { readonly fetchedAt: Date; readonly id: string
  */
 export const keepingColumns = [
     ["account_notes", "target_id"],
+    ["accounts", "moved_to_account_id"],
     ["blocks", "account_id"],
     ["blocks", "target_id"],
     ["endorsements", "target_id"],
@@ -74,8 +75,9 @@ export const prunableAccountsQuery = (
         .where((eb) =>
             eb.not(
                 eb.or(keepingColumns.map(([table, column]) =>
-                    sql<boolean>`exists (select 1 from ${sql.table(table)} where ${
-                        sql.ref(`${table}.${column}`)
+                    // Aliased, so that the accounts that keep one aren't the one looked at.
+                    sql<boolean>`exists (select 1 from ${sql.table(table)} as keeping where ${
+                        sql.ref(`keeping.${column}`)
                     } = ${sql.ref("accounts.id")})`
                 )),
             )

@@ -253,6 +253,7 @@ export const graphRoutes: readonly Route[] = [
 
             if (result === "missing") throw new NotFound();
             if (result === "blocked") throw new NotPermitted("Its instance is blocked");
+            if (result === "moved") throw new NotPermitted("It moved to another account");
 
             return { status: 200, body: await relationship(ctx, viewer, params.id) };
         },

@@ -98,6 +98,7 @@ import { remoteMediaPruning } from "./0096_remote_media_pruning.ts";
 import { standardPushes } from "./0097_standard_pushes.ts";
 import { replyBackfills } from "./0098_reply_backfills.ts";
 import { asyncRefreshes } from "./0099_async_refreshes.ts";
+import { accountMoves } from "./0100_account_moves.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -203,4 +204,5 @@ export const migrations: Record<string, Migration> = {
     "0097_standard_pushes": standardPushes,
     "0098_reply_backfills": replyBackfills,
     "0099_async_refreshes": asyncRefreshes,
+    "0100_account_moves": accountMoves,
 };

@@ -50,6 +50,10 @@ const references: Record<string, (ctx: Context) => Promise<unknown>> = {
                 updated_at: ctx.clock.now(),
             })
             .execute(),
+    "accounts.moved_to_account_id": (ctx) =>
+        ctx.db.updateTable("accounts").set({ moved_to_account_id: "dave" })
+            .where("id", "=", "alice")
+            .execute(),
     "blocks.account_id": (ctx) => relate(ctx, "blocks", "dave", "alice"),
     "blocks.target_id": (ctx) => relate(ctx, "blocks", "alice", "dave"),
     "endorsements.target_id": (ctx) => relate(ctx, "endorsements", "alice", "dave"),

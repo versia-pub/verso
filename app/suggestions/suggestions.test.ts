@@ -232,3 +232,13 @@ Deno.test("suspended and silenced accounts aren't suggested, from either source"
     await unsilence(test.ctx, "dan");
     assertEquals(await test.suggested(), ["cat: friends_of_friends", "dan: friends_of_friends"]);
 });
+
+Deno.test("accounts that moved aren't suggested, from either source", async () => {
+    await using test = await open();
+    await test.ctx.db.updateTable("accounts")
+        .set({ moved_to_account_id: "eve" })
+        .where("id", "in", ["cat", "dan"])
+        .execute();
+
+    assertEquals(await test.suggested(["cat", "dan", "eve"]), ["eve: featured"]);
+});

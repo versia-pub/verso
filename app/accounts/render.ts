@@ -110,14 +110,16 @@ const suspendedAs = (row: AccountRow): AccountRow =>
     };
 
 /**
- * An account as anyone sees it, with its roles, highest first, and the custom emojis it uses. A
- * suspended account says so, and shows nothing of its profile, as on Mastodon.
+ * An account as anyone sees it, with its roles, highest first, the custom emojis it uses, and the
+ * account it moved to, if it did, as that account is shown. A suspended account says so, and shows
+ * nothing of its profile, nor where it moved, as on Mastodon.
  */
 export const renderAccount = (
     ctx: Context,
     row: AccountRow,
     roles: readonly RoleRow[],
     emojis: readonly CustomEmoji[],
+    movedTo?: Account,
 ): Account => {
     const shown = suspendedAs(row);
     const avatar = pictureUrls(
@@ -182,6 +184,7 @@ export const renderAccount = (
             : null,
         // Verso has no collections, so nobody can feature anyone.
         feature_approval: { automatic: [], manual: [], current_user: "denied" },
+        ...(movedTo === undefined ? {} : { moved: suspended ? null : movedTo }),
         ...(suspended ? { suspended: true } : {}),
         ...(row.silenced_at === null ? {} : { limited: true }),
     };

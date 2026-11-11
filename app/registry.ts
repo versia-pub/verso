@@ -1,5 +1,6 @@
 import { v0_6 } from "@versia/protocol";
 import { userType } from "./accounts/federation.ts";
+import { migrationType } from "./accounts/moves.ts";
 import { deleteType } from "./federation/delete.ts";
 import { messagingExtension } from "./federation/messaging.ts";
 import { createRegistry } from "./federation/registry.ts";
@@ -39,9 +40,9 @@ const types = [user, note, ...likeTypes, shareType, reactionType, voteType];
 
 /**
  * Every Versia entity type Verso supports: the ones it stores, Delete, which deletes them, the
- * transient ones that follows and reports are sent as, and the extensions that add no types.
+ * transient ones that follows, reports and moves are sent as, and the extensions that add no types.
  */
 export const registry = createRegistry(
-    [...types, deleteType(types), ...followTypes, reportType],
+    [...types, deleteType(types), ...followTypes, reportType, migrationType],
     [v0_6.customEmojisKey, messagingExtension],
 );

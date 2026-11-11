@@ -38,6 +38,8 @@ export type FollowResult =
     | "missing"
     /** Its instance is blocked. */
     | "blocked"
+    /** It moved to another account, which is the one to follow. */
+    | "moved"
     /** Following it, now or already. */
     | "following"
     /** Waiting for it to accept, now or already. */
@@ -55,8 +57,8 @@ const emitFollow = (
 
 /**
  * Has `followerId` follow `followeeId`, or request to follow if the followee is locked or on a
- * remote instance, which accepts for it, or the follower is silenced, as on Mastodon. Following
- * again only changes the options given.
+ * remote instance, which accepts for it, or the follower is silenced, as on Mastodon. An account
+ * that moved can't be followed. Following again only changes the options given.
  */
 export const follow = (
     ctx: Context,
@@ -72,6 +74,7 @@ export const follow = (
         if (followee.domain !== null && await tx.federation.isBlocked(tx, followee.domain)) {
             return "blocked";
         }
+        if (followee.moved_to_account_id !== null) return "moved";
 
         const accepted = followee.domain === null && !followee.locked &&
             !await isAccountSilenced(tx, followerId);

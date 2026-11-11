@@ -83,3 +83,13 @@ Deno.test("the directory leaves out suspended and silenced accounts", async () =
     await unsilence(test.ctx, "bea");
     assertEquals(await test.list("/api/v1/directory", null), ["cat", "ann", "bea"]);
 });
+
+Deno.test("the directory leaves out accounts that moved", async () => {
+    await using test = await open();
+    await test.ctx.db.updateTable("accounts")
+        .set({ moved_to_account_id: "cat" })
+        .where("id", "=", "ann")
+        .execute();
+
+    assertEquals(await test.list("/api/v1/directory", null), ["cat", "bea"]);
+});

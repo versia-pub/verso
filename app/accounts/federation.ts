@@ -17,6 +17,7 @@ import {
     findRemoteAccount,
     findRemoteAccountAt,
 } from "./account_queries.ts";
+import { prepareUserMove, receiveUserMove, savePrevious } from "./moves.ts";
 import { deleteRemoteAccount, type RemoteAccount, saveRemoteAccount } from "./remote.ts";
 import type { ProfileField, TextFormat } from "./tables.ts";
 import { escapeHtml } from "./text.ts";
@@ -125,12 +126,16 @@ export const userType: EntityType<v0_6.User> = {
     resendable: true,
     // A user has no author, and lives where it came from.
     authority: (_, origin) => origin,
+    // A user that moved has the account it moved to fetched again.
+    prepare: (ctx, user, sender, budget) => prepareUserMove(ctx, user, sender.domain, budget),
     receive: async (ctx, user, sender) => {
         // Verso chooses which users it stores, so an instance can't fill it with users nobody
         // requested: a user sent unsolicited only updates a user Verso already has.
         if (!sender.fetched && !await findRemoteAccount(ctx, sender.instanceId, user.id)) return;
 
-        await saveRemoteAccount(ctx, remoteAccountOf(sender.instanceId, user));
+        const id = await saveRemoteAccount(ctx, remoteAccountOf(sender.instanceId, user));
+        await savePrevious(ctx, id, user, sender.domain);
+        await receiveUserMove(ctx, user, sender.domain);
     },
     deleteRemote: (ctx, id, sender) => deleteRemoteAccount(ctx, sender.instanceId, id),
     known: knownUser,

@@ -1,6 +1,6 @@
 /**
- * Events about accounts for the rest of Verso: accounts created or received, profiles changed, and
- * accounts deleted.
+ * Events about accounts for the rest of Verso: accounts created, received or moved, profiles
+ * changed, and accounts deleted.
  * @module
  */
 import type { DomainEvent } from "../kernel/context.ts";
@@ -50,3 +50,11 @@ export type AccountDeleting = {
 
 export const isAccountDeleting = (event: DomainEvent): event is AccountDeleting =>
     event.type === "accounts.deleting";
+
+/** A remote account moved to another account, local or remote. */
+export type AccountMoved = {
+    readonly type: "accounts.moved";
+    readonly accountId: string;
+    /** The account it moved to. */
+    readonly movedToId: string;
+};

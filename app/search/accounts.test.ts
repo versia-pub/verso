@@ -116,6 +116,16 @@ const openAnns = async () => {
     return test;
 };
 
+Deno.test("accounts that moved aren't found", async () => {
+    await using test = await openAnns();
+    await test.ctx.db.updateTable("accounts")
+        .set({ moved_to_account_id: "anna" })
+        .where("id", "in", ["annie", "anne"])
+        .execute();
+
+    assertEquals(await test.find("ann"), ["annette", "anna"]);
+});
+
 Deno.test("accounts the viewer follows or is followed by come first, then those most followed", async () => {
     await using test = await openAnns();
 

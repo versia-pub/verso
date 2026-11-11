@@ -5,6 +5,7 @@ export * from "./delete.ts";
 export * from "./follow.ts";
 export * from "./instance.ts";
 export * from "./likes.ts";
+export * from "./migration.ts";
 export * from "./note.ts";
 export * from "./polls.ts";
 export * from "./reactions.ts";

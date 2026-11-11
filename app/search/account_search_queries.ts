@@ -19,8 +19,8 @@ export type AccountMatch = {
 
 /**
  * Accounts with words that start with each of `words`, as Mastodon orders them: those the viewer
- * follows or is followed by first, then those with the most followers. Suspended accounts aren't
- * found, and no words find nothing.
+ * follows or is followed by first, then those with the most followers. Suspended accounts and those
+ * that moved aren't found, and no words find nothing.
  * @see https://github.com/mastodon/mastodon/blob/main/app/models/concerns/account/search.rb
  */
 export const accountIdsMatching = async (
@@ -34,7 +34,8 @@ export const accountIdsMatching = async (
     let query = ctx.db.selectFrom("accounts")
         .select("accounts.id")
         .where(matching(ctx, accountIndex, "accounts.id", words))
-        .where("accounts.suspended_at", "is", null);
+        .where("accounts.suspended_at", "is", null)
+        .where("accounts.moved_to_account_id", "is", null);
     if (viewerId !== null) {
         const followed = followedIdsQuery(ctx, viewerId);
         if (match.following) {

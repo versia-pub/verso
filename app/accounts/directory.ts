@@ -24,8 +24,8 @@ export type DirectoryPage = {
 };
 
 /**
- * The ids of the local discoverable accounts on `page`, but not those suspended or silenced, as on
- * Mastodon. A viewer doesn't see the accounts they block or mute, or those that block them.
+ * The ids of the local discoverable accounts on `page`, but not those suspended, silenced or moved,
+ * as on Mastodon. A viewer doesn't see the accounts they block or mute, or those that block them.
  */
 export const directoryIds = async (ctx: Context, page: DirectoryPage): Promise<string[]> => {
     let query = ctx.db.selectFrom("accounts")
@@ -33,7 +33,8 @@ export const directoryIds = async (ctx: Context, page: DirectoryPage): Promise<s
         .where("accounts.instance_id", "is", null)
         .where("accounts.discoverable", "=", true)
         .where("accounts.suspended_at", "is", null)
-        .where("accounts.silenced_at", "is", null);
+        .where("accounts.silenced_at", "is", null)
+        .where("accounts.moved_to_account_id", "is", null);
 
     if (page.viewerId !== null) {
         query = query

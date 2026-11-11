@@ -80,6 +80,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - A filter's `blur` action is stored and returned as it is. The app blurs the media.
 - `attribution_domains` are kept as lowercase domain names, and aren't used yet: Verso doesn't check
   a link's `fediverse:creator`.
+- A remote account has `moved` once the account it moved to says it moved from it, as Versia's
+  migration extension has it. Its followers here aren't moved yet.
 - Users with the `blocks` permission, usually moderators, see in `blocked_by` whether the account
   blocks them. For everyone else it's always `false`.
 - `GET /oauth/userinfo` also takes a token with `read` or `read:accounts`, as `verify_credentials`
