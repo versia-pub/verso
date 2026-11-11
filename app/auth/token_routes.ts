@@ -1,6 +1,8 @@
-import { OAuthServerMetadata, Token } from "@versia/client-api";
+import { OAuthServerMetadata, Token, UserInfo } from "@versia/client-api";
 import { z } from "zod";
-import { HttpError } from "../http/errors.ts";
+import { findAccount } from "../accounts/account_queries.ts";
+import { publicAccount } from "../accounts/public.ts";
+import { HttpError, NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { scopes } from "../kernel/scopes.ts";
 import {
@@ -117,6 +119,7 @@ const getOAuthMetadata = defineRoute({
                 authorization_endpoint: urls.url`/oauth/authorize`,
                 token_endpoint: urls.url`/oauth/token`,
                 revocation_endpoint: urls.url`/oauth/revoke`,
+                userinfo_endpoint: urls.url`/oauth/userinfo`,
                 app_registration_endpoint: urls.url`/api/v1/apps`,
                 scopes_supported: [...scopes],
                 response_types_supported: ["code"],
@@ -131,5 +134,43 @@ const getOAuthMetadata = defineRoute({
         }),
 });
 
-/** The endpoints apps call directly for tokens. */
-export const tokenRoutes: readonly Route[] = [postToken, postRevoke, getOAuthMetadata];
+/**
+ * Who the token's user is, as OpenID Connect claims. OpenID Connect asks for `POST` too.
+ * @see https://docs.joinmastodon.org/methods/oauth/#userinfo
+ */
+const userInfoRoute = (method: "GET" | "POST") =>
+    defineRoute({
+        method,
+        path: "/oauth/userinfo",
+        summary: "Retrieve user information",
+        description: "Retrieves standardised OIDC claims about the currently authenticated user.",
+        docs: "https://docs.joinmastodon.org/methods/oauth/#userinfo",
+        auth: { require: "user", scope: "profile" },
+        responses: { 200: UserInfo },
+        handler: async (ctx, { viewer }) => {
+            const row = await findAccount(ctx, viewer.accountId);
+            if (row === undefined) throw new NotFound();
+            const account = await publicAccount(ctx, row);
+
+            return {
+                status: 200,
+                body: {
+                    iss: ctx.urls.origin,
+                    sub: account.uri,
+                    name: account.display_name,
+                    preferred_username: account.username,
+                    profile: account.url,
+                    picture: account.avatar,
+                },
+            };
+        },
+    });
+
+/** The endpoints apps call directly for tokens, and to learn who a token's user is. */
+export const tokenRoutes: readonly Route[] = [
+    postToken,
+    postRevoke,
+    getOAuthMetadata,
+    userInfoRoute("GET"),
+    userInfoRoute("POST"),
+];

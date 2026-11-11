@@ -82,6 +82,9 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   a link's `fediverse:creator`.
 - Users with the `blocks` permission, usually moderators, see in `blocked_by` whether the account
   blocks them. For everyone else it's always `false`.
+- `GET /oauth/userinfo` also takes a token with `read` or `read:accounts`, as `verify_credentials`
+  does. Its `sub` and `profile` are the account's `uri`, and `iss` has no trailing slash, as in the
+  OAuth metadata.
 - `GET /api/v1/preferences` returns the user's posting defaults, which
   `PATCH /api/v1/accounts/update_credentials` sets. The other preferences are always Mastodon's
   defaults: sensitive media hidden, content warnings collapsed, and GIFs not autoplaying.

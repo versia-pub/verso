@@ -867,6 +867,60 @@
                 }
             }
         },
+        "/oauth/userinfo": {
+            "get": {
+                "summary": "Retrieve user information",
+                "description": "Retrieves standardised OIDC claims about the currently authenticated user.\n\nNeeds a token for a user, not one an app got for itself.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/oauth/#userinfo"
+                },
+                "security": [
+                    {
+                        "OAuth2": [
+                            "profile"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserInfo"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Retrieve user information",
+                "description": "Retrieves standardised OIDC claims about the currently authenticated user.\n\nNeeds a token for a user, not one an app got for itself.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/oauth/#userinfo"
+                },
+                "security": [
+                    {
+                        "OAuth2": [
+                            "profile"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserInfo"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/accounts/{id}/followers": {
             "get": {
                 "summary": "Get account's followers",
@@ -21708,6 +21762,10 @@
                         "type": "string",
                         "format": "uri"
                     },
+                    "userinfo_endpoint": {
+                        "type": "string",
+                        "format": "uri"
+                    },
                     "app_registration_endpoint": {
                         "type": "string",
                         "format": "uri"
@@ -21754,6 +21812,7 @@
                     "authorization_endpoint",
                     "token_endpoint",
                     "revocation_endpoint",
+                    "userinfo_endpoint",
                     "app_registration_endpoint",
                     "scopes_supported",
                     "response_types_supported",
@@ -23582,6 +23641,41 @@
                     "day",
                     "uses",
                     "accounts"
+                ]
+            },
+            "UserInfo": {
+                "type": "object",
+                "properties": {
+                    "iss": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "sub": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "preferred_username": {
+                        "type": "string"
+                    },
+                    "profile": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "picture": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "iss",
+                    "sub",
+                    "name",
+                    "preferred_username",
+                    "profile",
+                    "picture"
                 ]
             },
             "V1Instance": {

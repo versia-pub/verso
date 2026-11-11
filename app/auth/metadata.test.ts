@@ -19,6 +19,8 @@ Deno.test("the OAuth metadata names this server's endpoints", async () => {
         ["GET", metadata.authorization_endpoint],
         ["POST", metadata.token_endpoint],
         ["POST", metadata.revocation_endpoint],
+        ["GET", metadata.userinfo_endpoint],
+        ["POST", metadata.userinfo_endpoint],
         ["POST", metadata.app_registration_endpoint],
     ];
     for (const [method, url] of endpoints) {

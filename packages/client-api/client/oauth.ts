@@ -5,6 +5,7 @@
  */
 import { Application, CredentialApplication } from "../application.ts";
 import { OAuthServerMetadata } from "../oauth_metadata.ts";
+import { UserInfo } from "../userinfo.ts";
 import { Token } from "../token.ts";
 import type { CallOptions, Http } from "./http.ts";
 
@@ -149,6 +150,14 @@ export class OAuth {
             ...options,
             urlencoded: { ...app, token },
         });
+    }
+
+    /**
+     * The OpenID Connect claims about the user the token acts for. Needs the `profile` scope.
+     * @see https://docs.joinmastodon.org/methods/oauth/#userinfo
+     */
+    userInfo(options?: CallOptions): Promise<UserInfo> {
+        return this.http.json(UserInfo, "GET", "/oauth/userinfo", options);
     }
 
     /**

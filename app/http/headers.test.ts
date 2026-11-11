@@ -70,7 +70,7 @@ Deno.test("a preflight is answered without a token, allowing the headers asked f
     assertEquals(headers.get("access-control-allow-headers"), "authorization,content-type");
 });
 
-Deno.test("only the token endpoints of /oauth allow other sites", async () => {
+Deno.test("only the token and userinfo endpoints of /oauth allow other sites", async () => {
     await using test = await open();
     const preflight = async (path: string) =>
         await headersOf(
@@ -82,6 +82,18 @@ Deno.test("only the token endpoints of /oauth allow other sites", async () => {
 
     assertEquals((await preflight("/oauth/token")).get("access-control-allow-methods"), "POST");
     assertEquals((await preflight("/oauth/revoke")).get("access-control-allow-origin"), "*");
+    const userinfo = await headersOf(
+        await test.app.request("/oauth/userinfo", {
+            method: "OPTIONS",
+            headers: {
+                origin: "https://elk.example",
+                "access-control-request-method": "GET",
+                "access-control-request-headers": "authorization",
+            },
+        }),
+    );
+    assertEquals(userinfo.get("access-control-allow-methods"), "GET,POST");
+    assertEquals(userinfo.get("access-control-allow-headers"), "authorization");
     assertEquals((await preflight("/oauth/authorize")).get("access-control-allow-origin"), null);
 });
 

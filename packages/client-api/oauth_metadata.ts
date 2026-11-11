@@ -10,6 +10,7 @@ export const OAuthServerMetadata = z.object({
     authorization_endpoint: z.url(),
     token_endpoint: z.url(),
     revocation_endpoint: z.url(),
+    userinfo_endpoint: z.url(),
     /** Where apps register, with `POST`. Mastodon's own field. */
     app_registration_endpoint: z.url(),
     scopes_supported: z.array(z.string()),

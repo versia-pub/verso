@@ -29,6 +29,7 @@ const corsRules = [
     { path: "/api/*", methods: ["GET", "POST", "PUT", "PATCH", "DELETE"] },
     { path: "/oauth/token", methods: ["POST"] },
     { path: "/oauth/revoke", methods: ["POST"] },
+    { path: "/oauth/userinfo", methods: ["GET", "POST"] },
 ];
 
 /**

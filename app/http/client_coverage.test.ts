@@ -13,6 +13,7 @@ const calls: Record<string, (client: Client) => unknown> = {
     "POST /oauth/token": (c) => c.oauth.appToken(app),
     "POST /oauth/revoke": (c) => c.oauth.revoke(app, "token"),
     "GET /.well-known/oauth-authorization-server": (c) => c.oauth.metadata(),
+    "GET /oauth/userinfo": (c) => c.oauth.userInfo(),
 
     "GET /api/v2/instance": (c) => c.instance.get(),
     "GET /api/v1/instance": (c) => c.instance.getV1(),
@@ -221,6 +222,7 @@ const uncalled: Record<string, string> = {
     "GET /oauth/callback": "Where the issuer sends the user's browser back to",
     "GET /oauth/consent": "A page the user's browser shows",
     "POST /oauth/consent": "A page the user's browser submits",
+    "POST /oauth/userinfo": "The same as `GET`, which `oauth.userInfo` calls, for OpenID Connect",
 };
 
 const app = { client_id: "1", client_secret: "2" };
