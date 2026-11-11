@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** A check for `.refine(...notBlank("Title"))`: text that isn't blank, named `name` in the error. */
+/** A check for `.refine(...notBlank("Title"))`: text that isn't blank, named `name` in errors. */
 export const notBlank = (
     name: string,
 ): readonly [(text: string) => boolean, { readonly error: string }] => [

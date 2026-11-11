@@ -1,8 +1,9 @@
 /**
- * Giving a process's streaming sessions the statuses, notifications, filter changes,
- * conversations, merged notification requests, announcements and reactions to them they stream, from one subscription to each channel rather than one for every
- * session, through a listener for each kind of stream. Messages are handled one at a time, in the
- * order they are heard, so a session is never sent a status's delete before its update, and what published them doesn't wait for them to be
+ * Giving a process's streaming sessions what they stream (statuses, notifications, filter changes,
+ * conversations, merged notification requests, announcements and reactions to them), from one
+ * subscription to each channel rather than one for every session, through a listener for each kind
+ * of stream. Messages are handled one at a time, in the order they are heard, so a session is never
+ * sent a status's delete before its update, and what published them doesn't wait for them to be
  * streamed.
  * @module
  */

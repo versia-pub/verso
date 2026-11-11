@@ -80,12 +80,13 @@ const Message = z.object({
 
 /**
  * A session for `viewer` on `socket`, subscribed to `query.stream` if the client asked for one when
- * it connected, of the hashtag `query.tag` or the list `query.list` if it is a hashtag's or a
- * list's. A stream the client may not have, that doesn't exist, that is a hashtag's or a list's but
- * names none, or that is of a list that isn't the viewer's, as `ownsList` answers, is refused with
- * an error message, as on Mastodon. Mastodon checks the scope first, so a stream that doesn't exist
- * needs the scope of one that isn't public. So are a hashtag longer than `limits` allow, and
- * streams past as many as they allow, which Mastodon doesn't limit.
+ * it connected, with `query.tag` or `query.list` naming a hashtag's or a list's.
+ *
+ * As on Mastodon, it refuses with an error message a stream the client may not have, that doesn't
+ * exist, that is a hashtag's or a list's but names none, or that is a list that isn't the viewer's,
+ * as `ownsList` answers. Mastodon checks the scope first, so a stream that doesn't exist needs the
+ * scope of one that isn't public. It also refuses a hashtag longer than `limits` allow, and streams
+ * past as many as they allow, which Mastodon doesn't limit.
  */
 export const openSession = (
     viewer: Viewer,

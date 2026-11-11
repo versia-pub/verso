@@ -1,8 +1,8 @@
 /**
- * The `user` and `user:notification` streams: the statuses of a user's home timeline as they
- * appear, change or go, their notifications, when the notification requests they accepted are
- * merged, and on `user`, when their filters change, and the announcements published, changed or
- * taken down, as on Mastodon.
+ * The `user` and `user:notification` streams, as on Mastodon: the statuses of a user's home
+ * timeline as they appear, change or go, their notifications, and when notification requests they
+ * accepted are merged. `user` also says when their filters change, and when announcements are
+ * published, changed or taken down.
  * @see https://docs.joinmastodon.org/methods/streaming/#user
  * @module
  */
@@ -81,9 +81,9 @@ const couldSee = async (
  * What the sessions of the process `ctx` belongs to are sent of their viewers' `user` streams. A
  * status is looked up for the viewers it could reach, its author, their followers and those who
  * follow its hashtags, and sent if it is on their home timeline when it is heard of, rendered for
- * all of them together, as each sees it. A notification is rendered once for its viewer. Each is sent as
- * long as they may read statuses and their notifications, as on the routes for them. An announcement
- * is rendered once, as anyone sees it, for every session.
+ * all of them together, as each sees it. A notification is rendered once for its viewer. Each is
+ * sent as long as they may read statuses and their notifications, as on the routes for them. An
+ * announcement is rendered once, as anyone sees it, for every session.
  */
 export const userStreams = (ctx: Context): Sessions => {
     const sessions = new Set<Entry>();

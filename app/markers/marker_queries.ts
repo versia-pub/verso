@@ -18,7 +18,7 @@ export const markersOf = async (
         .execute();
 };
 
-/** Marks that `accountId` read `timeline` up to `lastReadId`, a version on from before. */
+/** Marks that `accountId` read `timeline` up to `lastReadId`, bumping the marker's version. */
 export const setMarker = async (
     ctx: Context,
     accountId: string,

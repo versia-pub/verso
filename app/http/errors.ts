@@ -106,7 +106,10 @@ export class UserRequired extends HttpError {
     }
 }
 
-/** A Versia signature made more than five minutes from now, either way. */
+/**
+ * A Versia signature made further from now, either way, than `maxClockSkewSeconds` in
+ * `packages/protocol/signing.ts` allows.
+ */
 export class StaleSignature extends HttpError {
     constructor() {
         super(422, "The signature is too old, or from the future");

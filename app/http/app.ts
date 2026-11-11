@@ -66,7 +66,7 @@ export type AppOptions = {
     readonly silentBlocks?: boolean;
     /** Whether the process hears other processes' messages. Without it, it always does. */
     readonly listening?: () => boolean;
-    /** What a scraper must send as a bearer token to read `/metrics`. Without it, there are none. */
+    /** The bearer token a scraper must send to read `/metrics`, which isn't served without it. */
     readonly metricsToken?: string;
 };
 
@@ -174,8 +174,8 @@ export const createApp = (
         });
     };
 
-    // For load balancers and orchestrators, not clients, so they stay plain text, as on Mastodon. Ready
-    // is whether the process can serve: the database answers and the process hears the others.
+    // For load balancers and orchestrators, not clients, so they stay plain text, as on Mastodon.
+    // Ready is whether it can serve: the database answers and the process hears the others.
     app.get("/health", (c) => c.text("OK"));
     app.get("/health/ready", async (c) => {
         const reason = await unready(ctx, options.listening ?? (() => true));

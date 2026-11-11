@@ -104,15 +104,15 @@ export const streamingRoutes = (
                     protocol: headers["sec-websocket-protocol"]?.split(",")[0]?.trim(),
                     socket: (socket) => {
                         socket.onopen = () => {
-                            // Counted once open, so a handshake that fails counts for nothing. Those
-                            // that open at once past the limit close at once.
+                            // Counted once open, so a handshake that fails counts for nothing.
+                            // Those that open past the limit close at once.
                             if (count(viewer.accountId, 1) > limits.sockets_per_account) {
                                 socket.onclose = () => count(viewer.accountId, -1);
                                 return socket.close(1008, "Too many WebSockets are open");
                             }
 
-                            // Events still rendering when it closes are dropped, as Deno doesn't send
-                            // on a closed WebSocket.
+                            // Events still rendering when it closes are dropped, as Deno doesn't
+                            // send on a closed WebSocket.
                             const session = openSession(
                                 viewer,
                                 socket,

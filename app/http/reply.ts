@@ -26,8 +26,8 @@ const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType 
     declared instanceof z.ZodType;
 
 /**
- * Why a response's body doesn't match `schema`, or doesn't have the `pages` it should, cursors or
- * offsets, if it is a page of a list, if it doesn't.
+ * Why a response's body doesn't match `schema`, or, for a page of a list, lacks its `pages`
+ * (cursors or offsets), if it does either.
  */
 const bodyProblem = (
     reply: Reply<Responses>,

@@ -174,8 +174,9 @@ const encoded = async (
 
 /**
  * Pushes a notification to a subscription, unless either has gone, its user is suspended, or they
- * aren't shown it, such as one from an account they have muted since. A subscription its push service says has gone
- * is deleted, as on Mastodon. A push service that takes too long isn't tried again.
+ * aren't shown it, such as one from an account they have muted since. A subscription its push
+ * service says has gone is deleted, as on Mastodon. A push service that takes too long isn't tried
+ * again.
  */
 export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = PushJob.safeParse(job.payload);

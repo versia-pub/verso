@@ -50,8 +50,7 @@ import type { Route } from "./route.ts";
 export const routes = (settings: AboutSettings): readonly Route[] => {
     const documented = [
         ...authRoutes,
-        // Before the account routes, whose `/api/v1/accounts/:id` would otherwise match their
-        // paths.
+        // Before the account routes, whose `/api/v1/accounts/:id` would take their paths.
         ...graphRoutes,
         ...tagRoutes,
         ...listRoutes,

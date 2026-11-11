@@ -1,9 +1,9 @@
 /**
  * Streams whose statuses are the same for every viewer who may see them, as the public and hashtag
- * streams are. Each status is looked up and rendered once for all of a process's sessions, as
- * anyone sees it, as Mastodon streams them, rather than once for each session, with only the
- * filters each viewer has that it matches added. It is sent to the sessions whose viewers may read
- * statuses, may see statuses from where it is from and don't hide its author.
+ * streams are. As Mastodon streams them, each status is looked up and rendered once for all of a
+ * process's sessions, as anyone sees it, rather than once for each session; only each viewer's
+ * filters that it matches are added. It is sent to the sessions whose viewers may read statuses,
+ * may see statuses from where it is from and don't hide its author.
  * @module
  */
 import type { Status } from "@versia/client-api";

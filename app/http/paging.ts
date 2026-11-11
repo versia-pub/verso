@@ -75,7 +75,7 @@ export const linkHeader = (url: URL, cursors: Cursors): string | undefined => {
  * Where the pages around a page of `size` items that starts at `offset` start, as Mastodon links
  * them: there is a next page only if this one is full, and a previous one only if it starts after
  * the first full page, so the first page isn't linked back to from the second.
- * @see https://github.com/mastodon/mastodon/blob/main/app/controllers/concerns/api/pagination.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/controllers/concerns/api/pagination.rb
  */
 export const offsetsOf = (size: number, offset: number, limit: number): Offsets => ({
     next: size >= limit ? offset + limit : undefined,
