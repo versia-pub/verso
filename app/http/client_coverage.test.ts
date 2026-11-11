@@ -215,6 +215,8 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/migration": (c) => c.migration.get(),
     "PUT /api/v1/migration/previous": (c) => c.migration.setPrevious("alice@example.com"),
     "DELETE /api/v1/migration/previous": (c) => c.migration.removePrevious(),
+    "POST /api/v1/migration/move": (c) => c.migration.move("alice@example.com"),
+    "DELETE /api/v1/migration/move": (c) => c.migration.cancelMove(),
 };
 
 /** Operations no client method makes, and why. */

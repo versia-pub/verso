@@ -51,7 +51,7 @@ export type AccountDeleting = {
 export const isAccountDeleting = (event: DomainEvent): event is AccountDeleting =>
     event.type === "accounts.deleting";
 
-/** A remote account moved to another account, local or remote. */
+/** An account, local or remote, moved to another account, local or remote. */
 export type AccountMoved = {
     readonly type: "accounts.moved";
     readonly accountId: string;

@@ -16700,7 +16700,7 @@
         "/api/v1/migration": {
             "get": {
                 "summary": "Get migration",
-                "description": "The account the user says they moved from.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "description": "The accounts the user says they moved from, and moved to.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
                 "tags": [
                     "migration"
                 ],
@@ -16799,6 +16799,104 @@
             "delete": {
                 "summary": "Remove previous account",
                 "description": "Says the user moved from no account.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "tags": [
+                    "migration"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AccountMigration"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/migration/move": {
+            "post": {
+                "summary": "Move account",
+                "description": "Moves the user to the account at `acct`, which must say it moved from theirs. Their followers follow it instead.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "tags": [
+                    "migration"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "acct": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "acct"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "acct": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "acct"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "acct": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "acct"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AccountMigration"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Cancel move",
+                "description": "Says the user no longer moved. Their followers that moved stay where they are, and they can't move again until a month after they last did.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
                 "tags": [
                     "migration"
                 ],
@@ -19776,10 +19874,21 @@
                                 "type": "null"
                             }
                         ]
+                    },
+                    "moved": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Account"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "required": [
-                    "previous"
+                    "previous",
+                    "moved"
                 ]
             },
             "AccountRole": {

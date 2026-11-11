@@ -178,12 +178,16 @@ Deno.test("a follower that blocks the account moved to, or can't follow it, keep
     // The job moves no one it couldn't before, and ends.
     await test.a.db.updateTable("accounts").set({ suspended_at: test.network.clock.now() })
         .where("id", "=", test.bob2).execute();
+    await test.a.db.updateTable("accounts").set({ moved_to_account_id: test.bob2 })
+        .where("id", "=", test.bob).execute();
     await moveHandler(test.a, {
         payload: { step: "follows", accountId: test.bob, movedToId: test.bob2 },
     } as never);
     assertEquals(await test.following(test.cid), { bob: true });
     await test.a.db.updateTable("accounts").set({ suspended_at: null })
         .where("id", "=", test.bob2).execute();
+    await test.a.db.updateTable("accounts").set({ moved_to_account_id: null })
+        .where("id", "=", test.bob).execute();
 
     await test.migrate();
     assertEquals(await test.following(test.alice), { bob: true });

@@ -56,13 +56,24 @@ const ownPicture = async (ctx: Context, id: string | null, fallback: string) => 
     return (row && versiaFile(ctx, row)) ?? picture(fallback);
 };
 
-/** The migration extension of the local account `row`, if it says it moved from an account. */
-const migrationExtension = (ctx: Context, row: AccountRow): v0_6.Entity["extensions"] => {
+/**
+ * The migration extension of the local account `row`, with `movedTo` as the reference to the account
+ * it moved to, if it says it moved from an account, or to one.
+ */
+const migrationExtension = (
+    ctx: Context,
+    row: AccountRow,
+    movedTo: string | undefined,
+): v0_6.Entity["extensions"] => {
     const { previous_host: host, previous_id: id } = row;
-    if (host === null || id === null) return undefined;
+    const previous = host === null || id === null
+        ? undefined
+        : formatReference({ host, id }, ctx.urls.domain);
+    if (previous === undefined && movedTo === undefined) return undefined;
 
     const extension: v0_6.MigrationExtension = {
-        previous: formatReference({ host, id }, ctx.urls.domain),
+        ...previous !== undefined && { previous },
+        ...movedTo !== undefined && { new: movedTo },
     };
     return { [v0_6.migrationKey]: extension };
 };
@@ -71,12 +82,16 @@ const migrationExtension = (ctx: Context, row: AccountRow): v0_6.Entity["extensi
 const someExtensions = (extensions: NonNullable<v0_6.Entity["extensions"]>) =>
     Object.keys(extensions).length === 0 ? undefined : extensions;
 
-/** A local account as a Versia User, with the custom emojis it uses and its pictures. */
+/**
+ * A local account as a Versia User, with the custom emojis it uses, its pictures, and the reference
+ * to the account it moved to, if it did.
+ */
 const renderVersiaUser = (
     ctx: Context,
     row: AccountRow,
     emojis: readonly ShownEmoji[],
     pictures: { readonly avatar: v0_6.ContentFormat; readonly header: v0_6.ContentFormat },
+    movedTo: string | undefined,
 ): v0_6.User => ({
     type: "User",
     id: row.id,
@@ -94,7 +109,7 @@ const renderVersiaUser = (
     indexable: row.indexable,
     extensions: someExtensions({
         ...emojiExtensions(ctx, emojis),
-        ...migrationExtension(ctx, row),
+        ...migrationExtension(ctx, row, movedTo),
     }),
 });
 
@@ -125,10 +140,13 @@ export const localVersiaUser = async (
     if (row === undefined) return undefined;
 
     const emojis = (await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? [];
+    const movedTo = row.moved_to_account_id === null
+        ? undefined
+        : (await userReferenceMap(ctx, [row.moved_to_account_id])).get(row.moved_to_account_id);
     return renderVersiaUser(ctx, row, emojis, {
         avatar: await ownPicture(ctx, row.avatar_id, ctx.urls.url`/accounts/${row.id}/avatar.png`),
         header: await ownPicture(ctx, row.header_id, ctx.urls.url`/accounts/${row.id}/header.png`),
-    });
+    }, movedTo);
 };
 
 /**

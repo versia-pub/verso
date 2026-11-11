@@ -178,8 +178,9 @@ const moveMutes: Step = async (ctx, from, to) => {
     }
 };
 
-/** `account`'s `username@domain`. */
-const acctOf = (account: AccountRow) => `${account.username}@${account.domain}`;
+/** `account`'s `username@domain`, or only its username if it is local, as Mastodon's `acct`. */
+const acctOf = (account: AccountRow) =>
+    account.domain === null ? account.username : `${account.username}@${account.domain}`;
 
 /** Each step, by its name in jobs. Notes come first, so blocks and mutes don't add to them. */
 const steps: Record<z.infer<typeof MoveJob>["step"], Step> = {
@@ -209,7 +210,10 @@ export const queueMoves = async (ctx: Context, event: DomainEvent): Promise<void
     }
 };
 
-/** Runs a step of a move, if both accounts are still there. */
+/**
+ * Runs a step of a move, if both accounts are still there, and the account still says it moved to
+ * the other, as a local user may cancel its move.
+ */
 export const moveHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = MoveJob.safeParse(job.payload);
     if (!payload.success) throw new PermanentFailure("The job isn't a move job");
@@ -217,7 +221,7 @@ export const moveHandler: Handler = async (ctx: Context, job: JobsTable): Promis
 
     const from = await findAccount(ctx, accountId);
     const to = await findAccount(ctx, movedToId);
-    if (from === undefined || to === undefined) return;
+    if (from === undefined || to === undefined || from.moved_to_account_id !== to.id) return;
 
     await steps[step](ctx, from, to);
 };
