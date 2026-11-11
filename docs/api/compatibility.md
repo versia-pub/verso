@@ -263,3 +263,4 @@ Verso also has:
 - custom emoji management, with `/api/v1/emojis`, from Versia Server
 - reactions to statuses, with `reactions` on each status and `/api/v1/statuses/:id/react/:name`,
   from glitch-soc, and `/api/v1/statuses/:id/reactions`, from Versia Server
+- moving accounts, with `/api/v1/migration`

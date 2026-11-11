@@ -20,8 +20,17 @@ const cooldownMs = 7 * 24 * 60 * 60_000;
 export const migrationOf = (user: v0_6.User): v0_6.MigrationExtension | undefined =>
     v0_6.MigrationExtension.safeParse(user.extensions?.[v0_6.migrationKey]).data;
 
+/** The reference to `account` that other instances use, whether it is local or remote. */
+export const referenceOf = (ctx: Context, account: AccountRow): Reference => ({
+    host: account.domain ?? ctx.urls.domain,
+    id: account.remote_id ?? account.id,
+});
+
 /** The account `reference` points at, local or remote, if Verso has it. */
-const accountAt = async (ctx: Context, reference: Reference) => {
+export const accountAt = async (
+    ctx: Context,
+    reference: Reference,
+): Promise<AccountRow | undefined> => {
     if (reference.host !== ctx.urls.domain) {
         const row = await findRemoteAccountAt(ctx, reference.host, reference.id);
         return row && await findAccount(ctx, row.id);

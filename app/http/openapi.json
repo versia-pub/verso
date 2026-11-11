@@ -16697,6 +16697,132 @@
                 }
             }
         },
+        "/api/v1/migration": {
+            "get": {
+                "summary": "Get migration",
+                "description": "The account the user says they moved from.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "tags": [
+                    "migration"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "read:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AccountMigration"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/migration/previous": {
+            "put": {
+                "summary": "Set previous account",
+                "description": "Says the user moved from the account at `acct`, so that it can move to theirs.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "tags": [
+                    "migration"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "acct": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "acct"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "acct": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "acct"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "acct": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "acct"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AccountMigration"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove previous account",
+                "description": "Says the user moved from no account.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "tags": [
+                    "migration"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AccountMigration"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/.well-known/webfinger": {
             "get": {
                 "summary": "Look up an account with WebFinger",
@@ -19636,6 +19762,24 @@
                     "show_featured",
                     "roles",
                     "feature_approval"
+                ]
+            },
+            "AccountMigration": {
+                "type": "object",
+                "properties": {
+                    "previous": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Account"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "previous"
                 ]
             },
             "AccountRole": {

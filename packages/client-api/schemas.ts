@@ -28,4 +28,5 @@ export * from "./tag.ts";
 export * from "./token.ts";
 export * from "./versia_emoji.ts";
 export * from "./versia_role.ts";
+export * from "./account_migration.ts";
 export * from "./web_push_subscription.ts";

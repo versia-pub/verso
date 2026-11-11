@@ -1,3 +1,4 @@
+import { migrationRoutes } from "../accounts/migration_routes.ts";
 import { roleRoutes } from "../accounts/role_routes.ts";
 import { directoryRoutes } from "../accounts/directory.ts";
 import { accountRoutes } from "../accounts/routes.ts";
@@ -81,6 +82,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...mediaProxyRoutes,
         ...emojiRoutes(settings.media, settings.limits),
         ...roleRoutes,
+        ...migrationRoutes,
         ...webfingerRoutes,
         ...entityRoutes(registry),
         inboxRoute(registry),

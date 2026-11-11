@@ -25,6 +25,7 @@ import {
     MarkerMethods,
     NotificationMethods,
 } from "./client/notifications.ts";
+import { MigrationMethods } from "./client/migration.ts";
 import { OAuth } from "./client/oauth.ts";
 import { PushMethods } from "./client/push.ts";
 import { RoleMethods } from "./client/roles.ts";
@@ -168,6 +169,8 @@ export class Client {
     readonly emojis: EmojiMethods;
     /** Roles, which grant permissions to the accounts that have them. */
     readonly roles: RoleMethods;
+    /** Moving the viewer from another account to theirs. */
+    readonly migration: MigrationMethods;
     /** Uploading files to attach to statuses. */
     readonly media: MediaMethods;
     /** Reporting accounts to the instance's moderators. */
@@ -209,6 +212,7 @@ export class Client {
         this.push = new PushMethods(this.#http);
         this.emojis = new EmojiMethods(this.#http);
         this.roles = new RoleMethods(this.#http);
+        this.migration = new MigrationMethods(this.#http);
         this.media = new MediaMethods(this.#http);
         this.reports = new ReportMethods(this.#http);
         this.announcements = new AnnouncementMethods(this.#http);

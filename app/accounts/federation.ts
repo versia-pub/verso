@@ -56,6 +56,21 @@ const ownPicture = async (ctx: Context, id: string | null, fallback: string) => 
     return (row && versiaFile(ctx, row)) ?? picture(fallback);
 };
 
+/** The migration extension of the local account `row`, if it says it moved from an account. */
+const migrationExtension = (ctx: Context, row: AccountRow): v0_6.Entity["extensions"] => {
+    const { previous_host: host, previous_id: id } = row;
+    if (host === null || id === null) return undefined;
+
+    const extension: v0_6.MigrationExtension = {
+        previous: formatReference({ host, id }, ctx.urls.domain),
+    };
+    return { [v0_6.migrationKey]: extension };
+};
+
+/** `extensions`, or `undefined` if there are none. */
+const someExtensions = (extensions: NonNullable<v0_6.Entity["extensions"]>) =>
+    Object.keys(extensions).length === 0 ? undefined : extensions;
+
 /** A local account as a Versia User, with the custom emojis it uses and its pictures. */
 const renderVersiaUser = (
     ctx: Context,
@@ -77,7 +92,10 @@ const renderVersiaUser = (
     header: pictures.header,
     manually_approves_followers: row.locked,
     indexable: row.indexable,
-    extensions: emojiExtensions(ctx, emojis),
+    extensions: someExtensions({
+        ...emojiExtensions(ctx, emojis),
+        ...migrationExtension(ctx, row),
+    }),
 });
 
 /** The local user with this id, or `undefined` if there is none. */
