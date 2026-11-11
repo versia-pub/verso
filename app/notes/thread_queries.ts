@@ -19,10 +19,8 @@ export type Onlooker = {
 } | null;
 
 /**
- * Whether `onlooker` may see a status, as `canSee` decides for one status at a time: public and
- * unlisted statuses are visible to anyone, private ones to the author's followers that the author
- * doesn't block, and direct ones to the users they mention. Mentioned users and the author may
- * always see a status. Nobody may see a suspended account's, as on Mastodon.
+ * Whether `onlooker` may see a status, by the rules of `canSee` in `visibility.ts`, as a query
+ * condition. It looks at one row; `visibility.ts` also checks the status a boost boosts.
  */
 const seenBy = (onlooker: Onlooker) => (eb: ExpressionBuilder<Database, "notes">) => {
     const unsuspended = eb.not(eb.exists(

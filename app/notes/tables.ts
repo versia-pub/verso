@@ -37,8 +37,7 @@ export type NotesTable = {
      */
     thread_id: string;
     /**
-     * The status it quotes, or `null` if none, or if it has been deleted. Only remote statuses
-     * quote so far.
+     * The status it quotes, or `null` if none, or if it has been deleted.
      */
     quote_id: string | null;
     /**

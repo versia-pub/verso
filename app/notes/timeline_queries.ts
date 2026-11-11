@@ -197,7 +197,7 @@ export type ListSources = {
  * author, to the owner, or as the list's replies policy allows, to someone the owner follows or to a
  * member. Nothing from the accounts the owner blocks or mutes, or from suspended accounts, is
  * included, nor anyone's boosts of their statuses. They are two queries, as on home.
- * @see https://github.com/mastodon/mastodon/blob/main/app/lib/feed_manager.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/feed_manager.rb
  */
 const listQueries = (ctx: Context, ownerId: string, sources: ListSources) => {
     const { members, followed, blockers, sharing, repliesPolicy, hidden } = sources;
@@ -342,8 +342,8 @@ export const usesAny = (names: readonly string[]): NoteCondition => (eb) =>
 /**
  * The statuses that could be on a hashtag's timeline: public ones, replies too, as on Mastodon.
  * Boosts use no hashtags, so are on none, and leaving them out lets the public timelines' index
- * find the rest. Suspended and silenced accounts' are left out. If there is a viewer, the statuses of the
- * accounts they block or mute, `hidden`, are omitted.
+ * find the rest. Suspended and silenced accounts' are left out. If there is a viewer, the statuses
+ * of the accounts they block or mute, `hidden`, are omitted.
  */
 const hashtagQuery = (ctx: Context, hidden: Excluded | null) => {
     const query = ctx.db.selectFrom("notes").selectAll()
@@ -357,7 +357,7 @@ const hashtagQuery = (ctx: Context, hidden: Excluded | null) => {
  * A page of a hashtag's timeline, newest first, as Mastodon assembles it: the statuses
  * {@link hashtagQuery} finds that use the hashtags `tags` asks for, from `origin`, and with
  * `onlyMedia`, only those with media attached.
- * @see https://github.com/mastodon/mastodon/blob/main/app/models/tag_feed.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/tag_feed.rb
  */
 export const hashtagPage = async (
     ctx: Context,

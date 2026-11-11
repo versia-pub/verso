@@ -32,7 +32,6 @@ const write = { require: "user", scope: "write:statuses", permission: "owner:not
 
 const docs = "https://docs.joinmastodon.org/methods/scheduled_statuses";
 
-/** The viewer's scheduled statuses. */
 export const scheduledRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",

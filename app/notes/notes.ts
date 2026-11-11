@@ -75,7 +75,6 @@ export type Draft = {
     readonly quotedStatusId?: string;
     /** The uploads attached to it, in order, which {@link attach} validates. */
     readonly mediaIds?: readonly string[];
-    /** A poll. */
     readonly poll?: PollDraft;
 };
 

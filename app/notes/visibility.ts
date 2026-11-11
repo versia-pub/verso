@@ -9,10 +9,9 @@ import { notesSeenBy, type Onlooker } from "./thread_queries.ts";
 /**
  * Whether `viewerId`, or anyone if it is `null`, may see `note`. Public and unlisted statuses are
  * visible to anyone, private ones to the author's followers that the author doesn't block, and
- * direct ones to the users they
- * mention. Mentioned users and the author may always see a status. A boost is visible only to those
- * who may also see the status it boosts, which may have been made private since. Nobody may see a
- * suspended account's statuses, as on Mastodon.
+ * direct ones to the users they mention. Mentioned users and the author may always see a status. A
+ * boost is visible only to those who may also see the status it boosts, which may have been made
+ * private since. Nobody may see a suspended account's statuses, as on Mastodon.
  */
 export const canSee = async (
     ctx: Context,
@@ -60,7 +59,8 @@ export const seenAmong = (
 /**
  * The visibilities of an account's statuses that `viewerId` (or anyone if it is `null`) can see:
  * all of them for the account itself, private ones too for its followers that it doesn't block, and
- * otherwise public and unlisted ones. Direct statuses that mention the viewer aren't among them, as on Mastodon.
+ * otherwise public and unlisted ones. Direct statuses that mention the viewer aren't among them,
+ * as on Mastodon.
  */
 export const visibilitiesFor = async (
     ctx: Context,

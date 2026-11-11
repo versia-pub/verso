@@ -29,7 +29,6 @@ export type ScheduledParams = {
 export type ScheduledNotesTable = {
     id: string;
     account_id: string;
-    /** When it is posted. */
     scheduled_at: Date;
     params: ScheduledParams;
     created_at: Date;
