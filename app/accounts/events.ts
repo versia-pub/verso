@@ -58,3 +58,6 @@ export type AccountMoved = {
     /** The account it moved to. */
     readonly movedToId: string;
 };
+
+export const isAccountMoved = (event: DomainEvent): event is AccountMoved =>
+    event.type === "accounts.moved";

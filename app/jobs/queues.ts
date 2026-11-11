@@ -7,6 +7,7 @@ import {
 import { announcementsQueue, publishDueAnnouncements } from "../announcements/announcements.ts";
 import { deleteExpiredFlows } from "../auth/flow_queries.ts";
 import { acceptHandler, acceptQueue } from "../graph/follows.ts";
+import { moveHandler, moveQueue } from "../graph/moves.ts";
 import {
     deleteExpiredDeliveryBodies,
     deliverQueue,
@@ -106,6 +107,7 @@ export const queues: Record<string, Queue> = {
     },
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
+    [moveQueue]: { handler: moveHandler, concurrency: 2 },
     [undoneReactionsQueue]: { handler: undoneReactionsHandler, concurrency: 2 },
     [notifyQueue]: { handler: notifyHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },

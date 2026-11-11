@@ -39,3 +39,21 @@ export const accountNotesOn = async (
         .execute();
     return new Map(rows.map((row) => [row.target_id, row.comment]));
 };
+
+/**
+ * Up to `limit` of what accounts note about `targetId`, by the noting account, from after
+ * `afterId`.
+ */
+export const accountNotesAbout = async (
+    ctx: Context,
+    targetId: string,
+    afterId: string,
+    limit: number,
+): Promise<{ account_id: string; comment: string }[]> =>
+    await ctx.db.selectFrom("account_notes")
+        .select(["account_id", "comment"])
+        .where("target_id", "=", targetId)
+        .where("account_id", ">", afterId)
+        .orderBy("account_id")
+        .limit(limit)
+        .execute();

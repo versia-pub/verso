@@ -119,3 +119,20 @@ export const blockerIdsQuery = (ctx: Context, accountId: string): AccountIdQuery
     ctx.db.selectFrom("blocks")
         .select("account_id")
         .where("target_id", "=", accountId);
+
+/** Up to `limit` of the accounts that block `targetId`, by id, from after `afterId`. */
+export const blockerIdsAfter = async (
+    ctx: Context,
+    targetId: string,
+    afterId: string,
+    limit: number,
+): Promise<string[]> => {
+    const rows = await ctx.db.selectFrom("blocks")
+        .select("account_id")
+        .where("target_id", "=", targetId)
+        .where("account_id", ">", afterId)
+        .orderBy("account_id")
+        .limit(limit)
+        .execute();
+    return rows.map((row) => row.account_id);
+};

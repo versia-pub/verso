@@ -118,3 +118,18 @@ export const mutedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =
 /** The accounts `accountId` currently mutes with their notifications, as a subquery. */
 export const notificationMutedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     mutedIdsQuery(ctx, accountId).where("notifications", "=", true);
+
+/** Up to `limit` of the current mutes of `targetId`, by muter id, from after `afterId`. */
+export const mutesAfter = async (
+    ctx: Context,
+    targetId: string,
+    afterId: string,
+    limit: number,
+): Promise<MuteRow[]> =>
+    await ctx.db.selectFrom("mutes").selectAll()
+        .where("target_id", "=", targetId)
+        .where("account_id", ">", afterId)
+        .where(ongoing(ctx.clock.now()))
+        .orderBy("account_id")
+        .limit(limit)
+        .execute();

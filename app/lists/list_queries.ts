@@ -127,6 +127,34 @@ export const insertListAccount = async (
         .execute();
 };
 
+/**
+ * Puts `member` in each list that has an account because of the follow `followId`, unless the list
+ * has it already.
+ */
+export const copyListAccounts = async (
+    ctx: Context,
+    followId: string,
+    member: { readonly accountId: string; readonly followId: string },
+): Promise<void> => {
+    const rows = await ctx.db.selectFrom("list_accounts")
+        .select("list_id")
+        .where("follow_id", "=", followId)
+        .execute();
+
+    for (const row of rows) {
+        await ctx.db.insertInto("list_accounts")
+            .values({
+                id: ctx.ids(),
+                list_id: row.list_id,
+                account_id: member.accountId,
+                follow_id: member.followId,
+                created_at: ctx.clock.now(),
+            })
+            .onConflict((conflict) => conflict.columns(["list_id", "account_id"]).doNothing())
+            .execute();
+    }
+};
+
 /** Which of `accountIds` are in the list `listId`. */
 export const listAccountsAmong = async (
     ctx: Context,

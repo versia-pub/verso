@@ -119,6 +119,27 @@ export const followsFrom = async (
         .where("followee_id", "in", followeeIds)
         .execute();
 
+/**
+ * Up to `limit` of the follows to `followeeId` from local accounts, accepted ones only, by follower
+ * id, from after `afterId`.
+ */
+export const localFollowsOf = async (
+    ctx: Context,
+    followeeId: string,
+    afterId: string,
+    limit: number,
+): Promise<FollowRow[]> =>
+    await ctx.db.selectFrom("follows")
+        .innerJoin("accounts", "accounts.id", "follows.follower_id")
+        .selectAll("follows")
+        .where("follows.followee_id", "=", followeeId)
+        .where("follows.accepted", "=", true)
+        .where("accounts.instance_id", "is", null)
+        .where("follows.follower_id", ">", afterId)
+        .orderBy("follows.follower_id")
+        .limit(limit)
+        .execute();
+
 /** The follows and follow requests to `followeeId` from any of `followerIds`. */
 export const followsOf = async (
     ctx: Context,

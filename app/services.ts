@@ -4,6 +4,7 @@ import { authenticateToken } from "./auth/tokens.ts";
 import { createResolver, type ResolverOptions } from "./federation/resolver.ts";
 import { followDeliveries, profileDeliveries } from "./graph/federation.ts";
 import { acceptWhenUnlocked, uncountFollowsOf } from "./graph/follows.ts";
+import { queueMoves } from "./graph/moves.ts";
 import type { AppServices } from "./http/env.ts";
 import { instanceKey } from "./instances/keys.ts";
 import { likeDeliveries } from "./interactions/federation.ts";
@@ -46,6 +47,7 @@ export const subscribers: readonly Subscriber[] = [
     // many followers it is for.
     // Before the profile is sent, so the followers it accepts are sent it too.
     acceptWhenUnlocked,
+    queueMoves,
     profileDeliveries,
     followDeliveries,
     noteDeliveries,
