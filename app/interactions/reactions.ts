@@ -191,8 +191,8 @@ export type RemoteReaction = {
 };
 
 /**
- * Stores a remote reaction, with its custom emoji, and emits it, unless Verso has it, or the account
- * already reacts to the status with that emoji.
+ * Stores a remote reaction, with its custom emoji, and emits it, unless Verso has it, or the
+ * account already reacts to the status with that emoji.
  */
 export const keepRemoteReaction = async (ctx: Context, reaction: RemoteReaction): Promise<void> => {
     const { emoji } = reaction;

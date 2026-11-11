@@ -3,7 +3,7 @@
  * account, by how they are related, as Mastodon's. A notification it drops isn't made. One it
  * filters is kept aside, and a filtered mention is kept in a request from its account.
  * @see https://docs.joinmastodon.org/methods/notifications/#get-policy
- * @see https://github.com/mastodon/mastodon/blob/main/app/services/notify_service.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/notify_service.rb
  * @module
  */
 import { findAccount } from "../accounts/account_queries.ts";

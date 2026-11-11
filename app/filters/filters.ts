@@ -32,7 +32,9 @@ import {
 /** Whose filters changed. */
 export type FiltersChangedMessage = { readonly accountId: string };
 
-/** Says a user's filters, or their keywords or statuses, changed, so every process can stream it. */
+/**
+ * Says a user's filters, or their keywords or statuses, changed, so every process can stream it.
+ */
 export const filtersChanged: Channel<FiltersChangedMessage> = {
     name: "filters.changed",
     schema: z.object({ accountId: z.string() }),
@@ -79,9 +81,9 @@ const idOf = (change: Exclude<KeywordChange, { add: KeywordInput }>) =>
     "change" in change ? change.change : change.remove;
 
 /**
- * Changes `accountId`'s filter `filterId`, and its keywords as `keywords` ask. Returns `"no_filter"`
- * if they have no such filter, and `"no_keyword"`, changing nothing, if one of `keywords` names a
- * keyword it doesn't have.
+ * Changes `accountId`'s filter `filterId`, and its keywords as `keywords` ask. Returns
+ * `"no_filter"` if they have no such filter, and `"no_keyword"`, changing nothing, if one of
+ * `keywords` names a keyword it doesn't have.
  */
 export const changeFilter = (
     ctx: Context,
@@ -148,7 +150,9 @@ export const changeKeyword = (
         return await updateKeyword(tx, keywordId, changes);
     });
 
-/** Removes the keyword `keywordId`, if it is in one of `accountId`'s filters. Returns whether. */
+/**
+ * Removes the keyword `keywordId` if one of `accountId`'s filters has it. Returns whether one did.
+ */
 export const removeKeyword = (
     ctx: Context,
     accountId: string,
@@ -163,8 +167,9 @@ export const removeKeyword = (
     });
 
 /**
- * Adds the status `noteId` to `accountId`'s filter `filterId`. Returns `"no_filter"` if they have no
- * such filter, `"missing"` if they can't see the status, and `"taken"` if the filter has it already.
+ * Adds the status `noteId` to `accountId`'s filter `filterId`. Returns `"no_filter"` if they have
+ * no such filter, `"missing"` if they can't see the status, and `"taken"` if the filter has it
+ * already.
  */
 export const addFilterStatus = (
     ctx: Context,
@@ -181,7 +186,9 @@ export const addFilterStatus = (
         return await insertFilterStatus(tx, filterId, noteId);
     });
 
-/** Removes the filter status `id`, if it is in one of `accountId`'s filters. Returns whether. */
+/**
+ * Removes the filter status `id` if one of `accountId`'s filters has it. Returns whether one did.
+ */
 export const removeFilterStatus = (
     ctx: Context,
     accountId: string,

@@ -216,8 +216,8 @@ export const followersAmong = async (
 };
 
 /**
- * Whether an account that follows `accountId`, and was accepted, and isn't suspended, nor blocked by
- * it, individually or by its domain, is on the instance `instanceId`: one that may see its
+ * Whether an account that follows `accountId`, and was accepted, and isn't suspended, nor blocked
+ * by it, individually or by its domain, is on the instance `instanceId`: one that may see its
  * followers-only statuses.
  */
 export const hasUnblockedFollowersOn = (

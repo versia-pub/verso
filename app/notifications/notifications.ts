@@ -77,7 +77,7 @@ const groupSpanHours = 12;
  * The group a new notification of `accountId` goes in, as on Mastodon: one of its type and status,
  * keyed by the hour it started, which notifications join for 12 hours from then. Types that aren't
  * grouped have none.
- * @see https://github.com/mastodon/mastodon/blob/main/app/services/notify_service.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/notify_service.rb
  */
 const groupOf = async (
     ctx: Context,

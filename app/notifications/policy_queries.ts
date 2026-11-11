@@ -50,8 +50,8 @@ export const savePolicy = async (
 };
 
 /**
- * Keeps the request of `fromId`'s filtered mentions and quotes of `accountId`, making it if there is
- * none, with `noteId` as its latest status and those counted again.
+ * Keeps the request of `fromId`'s filtered mentions and quotes of `accountId`, making it if there
+ * is none, with `noteId` as its latest status and those counted again.
  */
 export const saveRequest = async (
     ctx: Context,

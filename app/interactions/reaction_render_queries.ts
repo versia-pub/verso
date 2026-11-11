@@ -75,10 +75,8 @@ const reactedAmong = async (
 /**
  * The reactions to each of `noteIds`, as each viewer in `viewers` sees them, by viewer, then by
  * status, and by emoji in the order they were first used: with whether the viewer made each, if
- * it isn't `null`, and without those of the accounts it blocks, its value. It reads the `emojis`,
- * `instances` and `media` tables directly rather than going through their modules, so that it
- * takes one query for everyone, one more for the reactions of the viewers, and one for each that
- * blocks some.
+ * it isn't `null`, and without those of the accounts it blocks, its value. It takes one query for
+ * everyone, one more for the reactions of the viewers, and one for each that blocks some.
  *
  * The blocked accounts' reactions are counted from those accounts and taken away, rather than
  * each reaction's account being looked up among them. An emoji first used by one of them keeps
@@ -171,8 +169,7 @@ export type ReactionWithEmoji = Omit<ReactionGroup, "note_id" | "count" | "me"> 
 };
 
 /**
- * The emojis of the reactions `ids`, by reaction. It reads the `emojis`, `instances` and `media`
- * tables directly rather than going through their modules, so that it takes one query.
+ * The emojis of the reactions `ids`, by reaction.
  */
 export const emojisOfReactions = async (
     ctx: Context,

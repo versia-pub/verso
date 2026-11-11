@@ -1,3 +1,8 @@
+/**
+ * Queries on domain blocks. Some read the `accounts` and `instances` tables directly rather than
+ * going through their modules, so each takes one query.
+ * @module
+ */
 import { type ExpressionBuilder, sql } from "kysely";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
@@ -68,8 +73,7 @@ const blocksInstance = (accountId: string) => (eb: ExpressionBuilder<Database, "
 
 /**
  * The instances on the domains `accountId` blocks, and on their subdomains, as a subquery. They are
- * far fewer than the accounts on them. It reads the `instances` table directly rather than going
- * through its module, so that it takes one query.
+ * far fewer than the accounts on them.
  */
 export const domainBlockedInstancesQuery = (ctx: Context, accountId: string): InstanceIdQuery =>
     ctx.db.selectFrom("instances")
@@ -77,9 +81,7 @@ export const domainBlockedInstancesQuery = (ctx: Context, accountId: string): In
         .where(blocksInstance(accountId));
 
 /**
- * Which of `otherIds` are on domains `accountId` blocks, or their subdomains. It reads the
- * `accounts` and `instances` tables directly rather than going through their modules, so that it
- * takes one query.
+ * Which of `otherIds` are on domains `accountId` blocks, or their subdomains.
  */
 export const domainBlockedAmong = async (
     ctx: Context,
@@ -100,8 +102,7 @@ export const domainBlockedAmong = async (
 
 /**
  * Which of `otherIds`, of which there must be some, block the domain `accountId` is on, or a domain
- * it is under. It reads the `accounts` and `instances` tables directly rather than going through
- * their modules, so that it takes one query.
+ * it is under.
  */
 export const domainBlockersAmong = async (
     ctx: Context,
@@ -119,9 +120,7 @@ export const domainBlockersAmong = async (
 };
 
 /**
- * Which of `accountIds` block the domain of any of `targets`, or a domain it is under. It reads the
- * `accounts` and `instances` tables directly rather than going through their modules, so that it
- * takes one query.
+ * Which of `accountIds` block the domain of any of `targets`, or a domain it is under.
  */
 export const domainBlockingAmong = async (
     ctx: Context,

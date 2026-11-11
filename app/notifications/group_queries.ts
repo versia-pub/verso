@@ -36,7 +36,7 @@ export const groupKeyOf = (row: NotificationRow, grouped: readonly NotificationT
  * the groups it has found, so that it works on SQLite too. Each part finds a group at least, and
  * reads twice as many notifications as the last, so that large groups, which a part may be full
  * of, take few parts.
- * @see https://github.com/mastodon/mastodon/blob/v4.3.0/app/models/notification.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/notification.rb
  */
 export const notificationGroupPage = async (
     ctx: Context,

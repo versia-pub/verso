@@ -252,10 +252,9 @@ export const notifiedFollowerIds = async (ctx: Context, accountId: string): Prom
         .map((row) => row.follower_id);
 
 /**
- * The remote instances an account's followers are on, other than suspended ones and `skipped`. This
- * is the one
- * query here that reads another module's table: an account can have more followers than a query can
- * name, so their instances are found by joining their accounts, rather than by listing them.
+ * The remote instances an account's followers are on, other than suspended ones and `skipped`. An
+ * account can have more followers than a query can name, so this joins their accounts rather than
+ * listing them.
  */
 export const followerInstanceIds = async (
     ctx: Context,
@@ -276,8 +275,8 @@ export const followerInstanceIds = async (
 
 /**
  * Whether any of an account's followers, other than suspended ones and `skipped`, is on the
- * instance `instanceId`, joining their accounts as {@link followerInstanceIds} does, but stopping at
- * the first.
+ * instance `instanceId`, joining their accounts as {@link followerInstanceIds} does, but stopping
+ * at the first.
  */
 export const anyFollowerOn = async (
     ctx: Context,
@@ -296,9 +295,8 @@ export const anyFollowerOn = async (
 
 /**
  * The accounts `accountId` follows, as a subquery, for another module to page through what they
- * wrote. This is the other exception to keeping queries to a module's own tables: someone can
- * follow more accounts than a query can name, and a page sorted across them all can't be read in
- * batches.
+ * wrote. Someone can follow more accounts than a query can name, and a page sorted across them all
+ * can't be read in batches.
  */
 export const followedIdsQuery = (
     ctx: Context,

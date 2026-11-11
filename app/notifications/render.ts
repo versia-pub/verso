@@ -99,7 +99,7 @@ const partialAccount = (
  * as Mastodon's `partial_avatars`. Without `paged`, they are whole groups rather than a page, so
  * have no page's ids. If the client said which types it `supported`, the groups of other types
  * have a fallback.
- * @see https://github.com/mastodon/mastodon/blob/v4.3.0/app/models/notification_group.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/notification_group.rb
  */
 export const renderNotificationGroups = async (
     ctx: Context,

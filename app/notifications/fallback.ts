@@ -3,7 +3,7 @@
  * only when the app said which types it supports, and only for types that aren't Mastodon's
  * baseline ones, which every app is taken to know. Of Verso's, that is only `reaction`.
  * @see https://docs.joinmastodon.org/entities/Notification/#fallback
- * @see https://github.com/mastodon/mastodon/blob/v4.7.5/app/serializers/concerns/notification_fallback_concern.rb
+ * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/serializers/concerns/notification_fallback_concern.rb
  * @module
  */
 import type { Account, NotificationFallback } from "@versia/client-api";

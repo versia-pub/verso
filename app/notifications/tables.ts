@@ -76,11 +76,11 @@ export type NotificationPoliciesTable = {
     account_id: string;
     /** From accounts the user doesn't follow. */
     for_not_following: PolicyAction;
-    /** From accounts that don't follow the user, or only started to in the last 3 days. */
+    /** From accounts that don't follow the user, or only just started to. */
     for_not_followers: PolicyAction;
-    /** From accounts made in the last 30 days, that the user doesn't follow. */
+    /** From new accounts that the user doesn't follow. */
     for_new_accounts: PolicyAction;
-    /** Of direct statuses that aren't replies to the user's own, from accounts they don't follow. */
+    /** Of direct statuses, not replies to the user's own, from accounts they don't follow. */
     for_private_mentions: PolicyAction;
     /** From accounts an admin silenced, which Mastodon calls limited. */
     for_limited_accounts: PolicyAction;
@@ -101,7 +101,7 @@ export type NotificationRequestsTable = {
     from_account_id: string;
     /** The latest status that filtered mention is about, or `null` once it is deleted. */
     last_note_id: string | null;
-    /** How many filtered mentions there are, counting up to 100. */
+    /** How many filtered mentions there are, up to `countedAtMost` in `policy_queries.ts`. */
     notifications_count: number;
     created_at: Date;
     updated_at: Date;
