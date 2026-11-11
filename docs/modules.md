@@ -55,7 +55,7 @@ their own.
 | `accounts`, `identities`, `roles`, `account_roles`                     | `accounts`      |
 | `apps`, `oauth_flows`, `access_tokens`                                 | `auth`          |
 | `notes`, `note_mentions`, `note_tags`, `note_versions`, `note_pins`    | `notes`         |
-| `remote_note_totals`, `bookmarks`, `thread_mutes`                      | `notes`         |
+| `remote_note_totals`, `reply_backfills`, `bookmarks`, `thread_mutes`   | `notes`         |
 | `follows`, `blocks`, `mutes`, `account_domain_blocks`, `account_notes` | `graph`         |
 | `endorsements`                                                         | `graph`         |
 | `likes`, `reactions`                                                   | `interactions`  |

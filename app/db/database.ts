@@ -37,6 +37,7 @@ import type {
     NoteTagsTable,
     NoteVersionsTable,
     RemoteNoteTotalsTable,
+    ReplyBackfillsTable,
     ThreadMutesTable,
 } from "../notes/tables.ts";
 import type { DomainBlocksTable } from "../moderation/tables.ts";
@@ -128,6 +129,7 @@ export type Database = {
     rate_limits: RateLimitsTable;
     reactions: ReactionsTable;
     remote_note_totals: RemoteNoteTotalsTable;
+    reply_backfills: ReplyBackfillsTable;
     roles: RolesTable;
     scheduled_notes: ScheduledNotesTable;
     scheduled_note_media: ScheduledNoteMediaTable;

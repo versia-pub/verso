@@ -48,6 +48,7 @@ import {
     cardPruneStartQueue,
     startCardPruning,
 } from "../previews/pruning.ts";
+import { backfillHandler, backfillQueue } from "../notes/backfill.ts";
 import { totalsHandler, totalsQueue } from "../notes/totals.ts";
 import { notifyHandler, notifyQueue } from "../notifications/notifications.ts";
 import { endedPollsQueue, endPolls } from "../polls/ending.ts";
@@ -108,6 +109,8 @@ export const queues: Record<string, Queue> = {
     [undoneReactionsQueue]: { handler: undoneReactionsHandler, concurrency: 2 },
     [notifyQueue]: { handler: notifyHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },
+    // By the instance of the status whose replies are fetched. Each job fetches for 4 minutes at most.
+    [backfillQueue]: { handler: backfillHandler, concurrency: 2, perGroup: 1 },
     [pollUpdatesQueue]: { handler: pollUpdateHandler, concurrency: 2 },
     // By the poll's instance.
     [pollRefreshQueue]: { handler: pollRefreshHandler, concurrency: 4, perGroup: 2 },

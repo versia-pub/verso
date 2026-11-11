@@ -33,6 +33,11 @@ export type Budget = {
     readonly until?: number;
     /** How many of its fetched entities are resolving what they refer to now. */
     saving: number;
+    /**
+     * Whether it backfills a thread, so the statuses it stores have their totals fetched only when
+     * someone opens them.
+     */
+    readonly backfill?: boolean;
 };
 
 /**

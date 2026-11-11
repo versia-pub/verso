@@ -11,6 +11,7 @@ import { editNote, postNote } from "./notes.ts";
 import { removeNote } from "./removal.ts";
 import { visibleNote, visibleNotes, visibleOriginal } from "./visibility.ts";
 import { threadOf } from "./threads.ts";
+import { backfillLater } from "./backfill.ts";
 import { refreshTotals } from "./totals.ts";
 import { renderHistory, renderStatuses } from "./render.ts";
 import { accountStatusesRoute } from "./account_status_routes.ts";
@@ -149,7 +150,10 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             const viewerId = viewer?.accountId ?? null;
             const note = await visibleOriginal(ctx, params.id, viewerId);
             if (note === undefined) throw new NotFound();
-            if (viewerId !== null) await refreshTotals(ctx, note.id);
+            if (viewerId !== null) {
+                await refreshTotals(ctx, note.id);
+                await backfillLater(ctx, note);
+            }
 
             const thread = await threadOf(ctx, note, viewerId);
             return {

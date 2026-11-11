@@ -517,6 +517,7 @@ const references: Record<string, "kept" | "harmless"> = {
     "polls.note_id": "kept",
     "reactions.note_id": "kept",
     "remote_note_totals.note_id": "harmless",
+    "reply_backfills.note_id": "harmless",
     "trending_statuses.note_id": "harmless",
 };
 

@@ -118,7 +118,7 @@ There's no admin API: admins use `verso admin` instead.
 | `GET /api/v1/statuses`                              | ✅    | Several statuses by id         |
 | `PUT /api/v1/statuses/:id`                          | ✅    |                                |
 | `DELETE /api/v1/statuses/:id`                       | ✅    |                                |
-| `GET /api/v1/statuses/:id/context`                  | 🟡    | Only replies Verso has         |
+| `GET /api/v1/statuses/:id/context`                  | ✅    |                                |
 | `GET /api/v1/statuses/:id/history`                  | ✅    |                                |
 | `GET /api/v1/statuses/:id/quotes`                   | ✅    |                                |
 | `POST /api/v1/statuses/:id/quotes/:quote_id/revoke` | 🟡    | Always `403`                   |

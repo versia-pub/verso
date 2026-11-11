@@ -131,6 +131,19 @@ Remote content could otherwise make Verso fetch forever, so fetches are limited:
 
 Each process shares one resolver, so two resolves of the same reference make one fetch.
 
+### Replies
+
+When a local user opens the thread of a remote status, Verso fetches the replies it hasn't heard of,
+as Mastodon does. A job reads the status's `replies` collection, resolves each reply, and does the
+same for each reply's replies, depth first. See [`app/notes/backfill.ts`](../app/notes/backfill.ts).
+
+- Only public and unlisted statuses at least 5 minutes old are backfilled.
+- A status's replies are fetched again only after 15 minutes. The opened status's own replies are
+  fetched each time its job runs.
+- One backfill fetches at most 1000 replies and 500 pages, for at most 4 minutes.
+- A reply Verso has stored is used as it is until it is a week old, not a day.
+- Backfilled replies have their totals fetched only once they are opened.
+
 ## Serving
 
 `entityRoutes` in `app/federation/registry.ts` builds the entity and collection routes from the

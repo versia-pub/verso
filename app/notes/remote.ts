@@ -156,10 +156,11 @@ export const knownNoteRow = async (
  * attachments (for each, the format clients can best display) and poll. Mentioned users, and the
  * statuses it replies to or quotes, are omitted if Verso doesn't have them.
  *
- * A new status is counted, and its totals are fetched later. What it replies to and quotes is never
- * changed by a newer version. A newer version with different content is marked as edited at the
- * time it is received, since Versia doesn't say when, and the previous content is saved in its edit
- * history. A poll's counts changing isn't an edit, but its options changing is. A new status, or an edited one, is emitted.
+ * A new status is counted, and its totals are fetched later, unless it was fetched to backfill a
+ * thread. What it replies to and quotes is never changed by a newer version. A newer version with
+ * different content is marked as edited at the time it is received, since Versia doesn't say when,
+ * and the previous content is saved in its edit history. A poll's counts changing isn't an edit,
+ * but its options changing is. A new status, or an edited one, is emitted.
  */
 export const receiveNote = async (
     ctx: Context,
@@ -279,7 +280,7 @@ export const receiveNote = async (
     await attachRemote(ctx, sender.instanceId, row.id, files);
     await keepRemotePoll(ctx, row.id, undefined, poll);
     await countPosted(ctx, row, 1);
-    await fetchTotalsLater(ctx, row);
+    if (!sender.backfill) await fetchTotalsLater(ctx, row);
 
     const event: NoteReceived = {
         type: "notes.received",

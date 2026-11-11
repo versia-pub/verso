@@ -65,13 +65,20 @@ const largestTotal = 2 ** 31 - 1;
 const Total = z.object({ total: z.number().int().min(0) });
 
 /**
- * The total of one of a status's collections, or `null` if its instance doesn't have it. Requests
- * one item, as a page can't be empty.
+ * A page of the collection `name` of the remote status `remoteId` on `domain`, as JSON, or `null`
+ * if its instance doesn't have it.
  */
-const fetchTotal = async (ctx: Context, domain: string, remoteId: string, name: string) => {
+export const fetchNoteCollection = async (
+    ctx: Context,
+    domain: string,
+    remoteId: string,
+    name: string,
+    page: { readonly offset?: number; readonly limit: number },
+): Promise<unknown> => {
     const url = entityUrl(domain, "Note", remoteId);
     url.pathname += `/collections/${encodeURIComponent(name)}`;
-    url.searchParams.set("limit", "1");
+    if (page.offset !== undefined) url.searchParams.set("offset", String(page.offset));
+    url.searchParams.set("limit", String(page.limit));
 
     const reply = await fetchSigned(ctx, url);
     if (reply.status === 404 || reply.status === 410) return null;
@@ -79,13 +86,23 @@ const fetchTotal = async (ctx: Context, domain: string, remoteId: string, name: 
         throw new Error(`${domain} answered ${reply.status} for ${name} of ${remoteId}`);
     }
 
-    let parsed: ReturnType<typeof Total.safeParse> | undefined;
     try {
-        parsed = Total.safeParse(JSON.parse(new TextDecoder().decode(reply.body)));
+        return JSON.parse(new TextDecoder().decode(reply.body));
     } catch {
-        parsed = undefined;
+        throw new PermanentFailure(`${domain} sent an invalid ${name}`);
     }
-    if (!parsed?.success) throw new PermanentFailure(`${domain} sent an invalid ${name}`);
+};
+
+/**
+ * The total of one of a status's collections, or `null` if its instance doesn't have it. Requests
+ * one item, as a page can't be empty.
+ */
+const fetchTotal = async (ctx: Context, domain: string, remoteId: string, name: string) => {
+    const page = await fetchNoteCollection(ctx, domain, remoteId, name, { limit: 1 });
+    if (page === null) return null;
+
+    const parsed = Total.safeParse(page);
+    if (!parsed.success) throw new PermanentFailure(`${domain} sent an invalid ${name}`);
 
     return Math.min(parsed.data.total, largestTotal);
 };

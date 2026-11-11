@@ -127,3 +127,9 @@ export type RemoteNoteTotalsTable = {
     replies: number | null;
     fetched_at: Date;
 };
+
+/** When Verso last fetched the replies of a remote status, and of the replies under it. */
+export type ReplyBackfillsTable = {
+    note_id: string;
+    fetched_at: Date;
+};

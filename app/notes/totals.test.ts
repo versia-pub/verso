@@ -275,7 +275,8 @@ Deno.test("a user opening a note or its thread has its totals fetched again, but
     };
 
     assertEquals(await opened(`/api/v1/statuses/${row.id}`, token), 3);
-    assertEquals(await opened(`/api/v1/statuses/${row.id}/context`, token), 3);
+    // Opening the thread also fetches the replies under it, a page of them.
+    assertEquals(await opened(`/api/v1/statuses/${row.id}/context`, token), 4);
     assertEquals(await opened(`/api/v1/statuses/${row.id}`, null), 0);
     assertEquals(await opened(`/api/v1/statuses/${row.id}/context`, null), 0);
 });

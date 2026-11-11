@@ -154,7 +154,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         const instanceId = await findInstanceId(ctx, host);
         if (instanceId === undefined) throw new ResolveFailed(`${host} isn't a known instance`);
 
-        const sender = { domain: host, instanceId, fetched: true };
+        const sender = { domain: host, instanceId, fetched: true, backfill: budget.backfill };
         budget.saving++;
         try {
             await type.prepare?.(ctx, entity, sender, budget);

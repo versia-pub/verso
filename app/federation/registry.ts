@@ -45,6 +45,8 @@ export type Sender = {
     readonly instanceId: string;
     /** Whether Verso fetched the entity, rather than the instance sending it unsolicited. */
     readonly fetched: boolean;
+    /** Whether Verso fetched it to backfill a thread. */
+    readonly backfill?: boolean;
 };
 
 /**
