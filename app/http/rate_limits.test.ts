@@ -222,7 +222,7 @@ Deno.test("health checks are never limited", async () => {
     await using test = await open();
 
     for (let i = 0; i < 3; i++) {
-        for (const [path, text] of [["/health", "OK"], ["/health/ready", "ok"]]) {
+        for (const [path, text] of [["/health", "OK"], ["/health/ready", "OK"]]) {
             const response = await test.app.request(path);
             assertEquals([response.status, await response.text()], [200, text], path);
         }

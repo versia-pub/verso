@@ -179,7 +179,7 @@ export const createApp = (
     app.get("/health", (c) => c.text("OK"));
     app.get("/health/ready", async (c) => {
         const reason = await unready(ctx, options.listening ?? (() => true));
-        return reason === undefined ? c.text("ok") : c.text(reason, 503);
+        return reason === undefined ? c.text("OK") : c.text(reason, 503);
     });
 
     // Before the clients' rate limit, which runs only for what is added after it. Signed routes are

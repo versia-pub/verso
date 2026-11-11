@@ -38,8 +38,8 @@ Deno.test("the readiness check says what isn't ready, but not why", async () => 
         return [response.status, await response.text()];
     };
 
-    assertEquals(await check(createTestApp(test.ctx, [])), [200, "ok"]);
-    assertEquals(await check(createTestApp(test.ctx, [], { listening: () => true })), [200, "ok"]);
+    assertEquals(await check(createTestApp(test.ctx, [])), [200, "OK"]);
+    assertEquals(await check(createTestApp(test.ctx, [], { listening: () => true })), [200, "OK"]);
     assertEquals(
         await check(createTestApp(test.ctx, [], { listening: () => false })),
         [503, "pubsub"],
