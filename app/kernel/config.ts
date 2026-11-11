@@ -72,7 +72,7 @@ export const Config = z.strictObject({
         origin: Origin.optional(),
         /**
          * The reverse proxies in front of Verso, as addresses or CIDR ranges such as `127.0.0.1` or
-         * `10.0.0.0/8`. Only these are trusted to say who the client is.
+         * `10.0.0.0/8`. Only these are trusted to say who the client is, and the request's ID.
          */
         trusted_proxies: z.array(CidrText).default([]),
         /**

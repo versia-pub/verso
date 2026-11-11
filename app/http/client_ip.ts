@@ -1,6 +1,7 @@
 import { type Cidr, inCidr, parseIp } from "../kernel/ip.ts";
 
-const trusted = (address: string, proxies: readonly Cidr[]) => {
+/** Whether `address` is in one of `proxies`. */
+export const trusted = (address: string, proxies: readonly Cidr[]): boolean => {
     const parsed = parseIp(address);
     return parsed !== undefined && proxies.some((cidr) => inCidr(parsed, cidr));
 };

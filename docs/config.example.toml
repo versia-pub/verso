@@ -68,7 +68,7 @@ storage = { filesystem = "/var/lib/verso/media" }
 # Where the instance is reached, if not at https://<domain>. Development only.
 # origin = "http://localhost:8080"
 # The reverse proxies in front of Verso, as addresses or CIDR ranges. Only these are trusted to say
-# who the client is (the X-Forwarded-For header).
+# who the client is (the X-Forwarded-For header) and the request's ID (X-Request-Id).
 trusted_proxies = ["127.0.0.1", "::1"]
 
 [http.rate_limit]

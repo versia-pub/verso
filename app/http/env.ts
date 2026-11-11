@@ -10,7 +10,7 @@ import type { Viewer } from "./route.ts";
 export type AppEnv = {
     /** From `Deno.serve`. Tests that call the app directly may omit it. */
     Bindings: { readonly remoteAddr?: { readonly hostname: string } } | undefined;
-    Variables: { bearer?: Promise<Viewer | undefined> };
+    Variables: { bearer?: Promise<Viewer | undefined>; requestId: string };
 };
 
 /**

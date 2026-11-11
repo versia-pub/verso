@@ -86,6 +86,13 @@ one JSON object per line, for log collectors. `NO_COLOR` turns colour off.
 Each part of Verso logs under its own category, such as `federation` or `streaming`. JSON logs give
 it in full, as `verso.federation`.
 
+At `debug`, each request is logged once answered, under `http.access`, except health checks. Secret
+query parameters, such as `access_token`, show as `[FILTERED]`.
+
+Each request has an ID, sent back in `X-Request-Id` and added to every log line written while
+handling it. A trusted proxy's `X-Request-Id` is kept, so its logs and Verso's match. Lines from a
+job say its `jobId` and `queue`.
+
 ## Health checks
 
 `GET /health` returns `OK` while the process is up, for load balancers and container health checks.

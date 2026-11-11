@@ -78,6 +78,18 @@ const prettyFormatter = (colour: boolean): TextFormatter =>
 /** `text`: LogTape's plain format, with the shorter category and unquoted strings. */
 const textFormatter = getTextFormatter({ category, value });
 
+/**
+ * `json`: LogTape's JSON lines, with errors in the message as their name and message, which it
+ * would show as `{}`. The properties keep the whole error, with its stack.
+ */
+const jsonFormatter: TextFormatter = (record) =>
+    jsonLinesFormatter({
+        ...record,
+        message: record.message.map((part, index) =>
+            index % 2 === 1 && part instanceof Error ? String(part) : part
+        ),
+    });
+
 /** Writes records as `format` says. `pretty` is only in colour if `colour` is true. */
 export const formatterFor = (format: LogFormat, colour: boolean): TextFormatter => {
     switch (format) {
@@ -86,7 +98,7 @@ export const formatterFor = (format: LogFormat, colour: boolean): TextFormatter 
         case "text":
             return textFormatter;
         case "json":
-            return jsonLinesFormatter;
+            return jsonFormatter;
     }
 };
 

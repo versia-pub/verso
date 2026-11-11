@@ -1,6 +1,8 @@
+import { getLogger } from "@logtape/logtape";
 import { assert, assertEquals } from "@std/assert";
 import type { KyselyPlugin } from "kysely";
 import { createTestContext } from "../testing/context.ts";
+import { captureLogs } from "../testing/logs.ts";
 import { enqueue } from "./job_queries.ts";
 import { drain, idleWaitMs, pause, PermanentFailure, type Queue, RetryAt, work } from "./worker.ts";
 
@@ -398,4 +400,22 @@ Deno.test("an idle queue looks less and less often, until a job is due", async (
     await done;
 
     assert(afterJob >= 4, `looked ${afterJob} times`);
+});
+
+Deno.test("a job's log lines say its ID and queue", async () => {
+    await using test = await open();
+    await using logs = await captureLogs();
+    const id = await enqueue(test.ctx, { queue: "deliver", payload: {} });
+
+    await drain(test.ctx, {
+        deliver: {
+            handler: () => Promise.resolve(getLogger(["verso", "test"]).info("Delivering")),
+            concurrency: 1,
+        },
+    });
+
+    const [line] = logs.records;
+    assertEquals(logs.records.length, 1);
+    assertEquals(line.properties.jobId, id);
+    assertEquals(line.properties.queue, "deliver");
 });

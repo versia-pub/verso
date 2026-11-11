@@ -17,6 +17,7 @@ const exposed = [
     "X-RateLimit-Limit",
     "X-RateLimit-Remaining",
     "X-RateLimit-Reset",
+    "X-Request-Id",
 ];
 
 /**

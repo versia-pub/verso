@@ -14,6 +14,7 @@ import { metrics, metricsType } from "./metrics.ts";
 import { checkRateLimit, rateLimit, type RateLimits } from "./rate_limits.ts";
 import { unready } from "./readiness.ts";
 import { checkReply, send } from "./reply.ts";
+import { useRequestLog } from "./request_log.ts";
 import type { Route } from "./route.ts";
 import { signReply, verifyRequest } from "./signatures.ts";
 import { checkPermission, rateLimitKey, viewerOf, withPermissions } from "./viewer.ts";
@@ -78,6 +79,7 @@ export const createApp = (
 ): App => {
     const app = new Hono<AppEnv>();
     const permissions = options.permissions ?? Permissions.parse({});
+    useRequestLog(app, options.trustedProxies ?? []);
     useHeaders(app, ctx.urls.origin);
 
     // Responses are about one user, or carry secrets such as tokens, so nothing may cache them,

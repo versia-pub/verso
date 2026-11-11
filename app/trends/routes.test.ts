@@ -182,11 +182,8 @@ Deno.test("nothing trends when the instance doesn't show trends", async () => {
     await using test = await open({ show_trends: false, trendable_by_default: true });
 
     for (const path of ["tags", "statuses"]) {
-        assertEquals(await test.call(`/api/v1/trends/${path}`), {
-            status: 200,
-            body: [],
-            headers: (await test.call(`/api/v1/trends/${path}`)).headers,
-        });
+        const { status, body } = await test.call(`/api/v1/trends/${path}`);
+        assertEquals({ status, body }, { status: 200, body: [] });
     }
     assertEquals((await test.call("/api/v1/trends")).body, []);
 });

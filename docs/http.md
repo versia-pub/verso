@@ -58,6 +58,8 @@ The comments in `route.ts` describe the rest. To add a route, see
                              │
                              ▼
 ┌──────────────────────────────────────────────────────┐
+│ request ID, access log                               │
+├──────────────────────────────────────────────────────┤
 │ security headers, CORS, body size limit              ├──▶ 413
 ├──────────────────────────────────────────────────────┤
 │ unsigned routes: rate limit by client or bucket      ├──▶ 429
@@ -147,7 +149,9 @@ several web nodes can share them, depending on `[http.rate_limit]`. Responses ca
 code is in [`app/http/rate_limits.ts`](../app/http/rate_limits.ts).
 
 Behind a reverse proxy, list it in `http.trusted_proxies` so the client's address is read from
-`X-Forwarded-For`.
+`X-Forwarded-For`, and its `X-Request-Id` is kept. Request IDs and access logs are in
+[`app/http/request_log.ts`](../app/http/request_log.ts); [Logs](admin/running.md#logs) says what
+admins see.
 
 ## OpenAPI
 

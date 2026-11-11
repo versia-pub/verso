@@ -1,4 +1,4 @@
-import { getLogger } from "@logtape/logtape";
+import { getLogger, withContext } from "@logtape/logtape";
 import type { Context } from "../kernel/context.ts";
 import {
     claim,
@@ -97,7 +97,11 @@ const recordFailure = async (
     else await fail(ctx, job, errorText(error), { deadPayload: queue.deadPayload });
 };
 
-const runJob = async (ctx: Context, name: string, queue: Queue, job: JobsTable) => {
+/** Runs `job`, with its ID and queue on every log line it writes. */
+const runJob = (ctx: Context, name: string, queue: Queue, job: JobsTable) =>
+    withContext({ jobId: job.id, queue: name }, () => runJobAlone(ctx, name, queue, job));
+
+const runJobAlone = async (ctx: Context, name: string, queue: Queue, job: JobsTable) => {
     try {
         await queue.handler(ctx, job);
         await complete(ctx, job);

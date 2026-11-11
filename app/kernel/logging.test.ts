@@ -124,6 +124,20 @@ Deno.test("JSON logs are one object per line, with the properties", () => {
     assertEquals(parsed.properties, { port: 8080 });
 });
 
+Deno.test("JSON logs show an error in the message by its name and message", () => {
+    const error = new TypeError("boom");
+    const line = formatterFor("json", false)({
+        ...record,
+        message: ["Job ", "1", " failed: ", error, ""],
+        properties: { id: "1", error },
+    });
+    const parsed = JSON.parse(line);
+
+    assertEquals(parsed.message, 'Job "1" failed: "TypeError: boom"');
+    assertEquals(parsed.properties.error.message, "boom");
+    assertStringIncludes(parsed.properties.error.stack, "TypeError: boom");
+});
+
 Deno.test("logs are in colour unless NO_COLOR is set", async () => {
     const lines: string[] = [];
     const { console: output } = globalThis;
