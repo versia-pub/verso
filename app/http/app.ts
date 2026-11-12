@@ -6,6 +6,8 @@ import { isUniqueViolation } from "../db/errors.ts";
 import { Permissions } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Cidr } from "../kernel/ip.ts";
+import { viewPage, viewPolicy } from "../web/page.tsx";
+import { views } from "../web/views.ts";
 import type { AppEnv, AppServices } from "./env.ts";
 import { ContentTooLarge, Defederated, HttpError, NotFound } from "./errors.ts";
 import { useHeaders } from "./headers.ts";
@@ -229,19 +231,41 @@ export const createApp = (
 
     for (const route of routes) if (!unlimited(route)) handle(route);
 
-    // After the rate limit, so the page counts as any other request. The app shows its own page for
-    // the address, or its own "not found".
+    /** The web app's page, which shows its own page for the address, or its own "not found". */
+    const webPage = (c: HonoContext<AppEnv>, page: WebApp, status: 200 | 404) =>
+        c.body(page.page, status, {
+            "content-type": "text/html; charset=utf-8",
+            "content-security-policy": viewPolicy(page),
+            "cache-control": "no-cache",
+            "vary": "accept",
+        });
+
+    // Pages Verso renders itself, as an anonymous visitor sees them, whatever the request accepts,
+    // as link previews often accept anything. One that anonymous visitors may not see is left to
+    // the web app, where the visitor may be logged in.
+    for (const view of views) {
+        app.get(view.path, async (c) => {
+            const allowed = permissions.anonymous.includes(view.permission);
+            const shown = allowed ? await view.render(ctx, c.req.param()) : undefined;
+            if (shown) {
+                return c.html(await viewPage(web, shown), 200, {
+                    "content-security-policy": viewPolicy(web),
+                    "cache-control": "no-cache",
+                });
+            }
+
+            if (!web) throw new NotFound();
+            return webPage(c, web, allowed ? 404 : 200);
+        });
+    }
+
+    // After the rate limit, so the page counts as any other request.
     app.notFound((c) => {
         if (!web || !opensWebApp(c.req.method, c.req.path, c.req.header("accept") ?? "")) {
             throw new NotFound();
         }
 
-        return c.body(web.page, 200, {
-            "content-type": "text/html; charset=utf-8",
-            "content-security-policy": `${web.policy}; frame-ancestors 'none'`,
-            "cache-control": "no-cache",
-            "vary": "accept",
-        });
+        return webPage(c, web, 200);
     });
 
     app.onError(errorReply);

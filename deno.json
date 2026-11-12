@@ -11,6 +11,10 @@
         "packages/web/.svelte-kit",
         "packages/web/build"
     ],
+    "compilerOptions": {
+        "jsx": "precompile",
+        "jsxImportSource": "@hono/hono/jsx"
+    },
     "unstable": [
         "fmt-component"
     ],

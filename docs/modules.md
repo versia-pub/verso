@@ -31,6 +31,7 @@ Each folder in `app/` is a module. [Architecture](architecture.md) has the rules
 | `trends`        | trending hashtags, statuses and links        | `refresh.ts`, `scoring.ts`    |
 | `suggestions`   | accounts suggested to follow                 | `suggestions.ts`              |
 | `previews`      | preview cards of the pages statuses link to  | `cards.ts`, `fetching.ts`     |
+| `web`           | the pages Verso renders, such as profiles    | `views.ts`, `page.tsx`        |
 | `admin`         | `verso admin …` commands                     | `cli.ts`                      |
 
 Boosts are statuses that point at the status they boost, so they live in `notes`, not in a table of

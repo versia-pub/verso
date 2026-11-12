@@ -85,7 +85,7 @@ Deno.test("a built web app is read with its files' types and its inline scripts'
     assertEquals(
         web.policy,
         `default-src 'none'; script-src 'self' ${startHash} ${goHash}; ` +
-            "style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; base-uri 'none'; " +
+            "style-src 'self' 'unsafe-inline'; img-src 'self' https:; connect-src 'self'; base-uri 'none'; " +
             "form-action 'self'",
     );
 });
@@ -103,7 +103,7 @@ Deno.test("a web app that isn't built is nothing", async () => {
 Deno.test("a browser gets the web app's page at an address no route serves", async () => {
     await using test = await open();
 
-    for (const path of ["/", "/@alice", "/tags/cats", "/apiary", "/oauth/web-callback"]) {
+    for (const path of ["/", "/home", "/tags/cats", "/apiary", "/oauth/web-callback"]) {
         const response = await test.request(path, { headers: browser });
 
         assertEquals(response.status, 200, path);
@@ -129,7 +129,7 @@ Deno.test("the web app's page may run its own scripts and nothing else, and can'
 Deno.test("a HEAD request for a page gets its headers", async () => {
     await using test = await open();
 
-    const response = await test.request("/@alice", { method: "HEAD", headers: browser });
+    const response = await test.request("/home", { method: "HEAD", headers: browser });
 
     assertEquals(response.status, 200);
     assertEquals(response.headers.get("content-type"), "text/html; charset=utf-8");
@@ -139,9 +139,9 @@ Deno.test("an address no route serves is still a 404 for anything but a browser 
     await using test = await open();
 
     const cases: [string, RequestInit][] = [
-        ["/@alice", {}],
-        ["/@alice", { headers: { accept: "application/json" } }],
-        ["/@alice", { method: "POST", headers: browser }],
+        ["/home", {}],
+        ["/home", { headers: { accept: "application/json" } }],
+        ["/home", { method: "POST", headers: browser }],
         ["/api/v1/nothing", { headers: browser }],
         ["/api", { headers: browser }],
         ["/oauth/web-callback/more", { headers: browser }],

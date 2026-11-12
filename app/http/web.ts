@@ -75,7 +75,7 @@ export const pagePolicy = async (page: string): Promise<string> => {
         "default-src 'none'",
         ["script-src 'self'", ...hashes].join(" "),
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self'",
+        "img-src 'self' https:",
         "connect-src 'self'",
         "base-uri 'none'",
         "form-action 'self'",
