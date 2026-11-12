@@ -18,6 +18,7 @@ import { useRequestLog } from "./request_log.ts";
 import type { Route } from "./route.ts";
 import { signReply, verifyRequest } from "./signatures.ts";
 import { checkPermission, rateLimitKey, viewerOf, withPermissions } from "./viewer.ts";
+import { opensWebApp, type WebApp, webPrefix } from "./web.ts";
 
 const logger = getLogger(["verso", "http"]);
 
@@ -69,6 +70,8 @@ export type AppOptions = {
     readonly listening?: () => boolean;
     /** The bearer token a scraper must send to read `/metrics`, which isn't served without it. */
     readonly metricsToken?: string;
+    /** The web app, served at addresses no route serves. Without it, those are 404s. */
+    readonly web?: WebApp;
 };
 
 /** Every route the server serves. Tests call its `fetch` directly, with no network in between. */
@@ -122,7 +125,7 @@ export const createApp = (
     };
 
     /** Counts a request to a route with a bucket of its own, as its `rateLimit` says. */
-    const countInBucket = async (route: Route, c: HonoContext<AppEnv>) => {
+    const countInBucket = async (route: Pick<Route, "rateLimit">, c: HonoContext<AppEnv>) => {
         if (!limits || typeof route.rateLimit !== "object") return;
 
         const { bucket, times } = route.rateLimit;
@@ -189,6 +192,24 @@ export const createApp = (
     const unlimited = (route: Route) => route.rateLimit !== undefined || route.signed === true;
     for (const route of routes) if (unlimited(route)) handle(route);
 
+    // The web app's files. A page loads many at once, so they are counted in their own bucket, which
+    // allows ten times as many. Those under `immutable/` are named by a hash of their contents, so
+    // never change.
+    const { web } = options;
+    if (web) {
+        app.get(`${webPrefix}*`, async (c) => {
+            await countInBucket({ rateLimit: { bucket: "web", times: 10 } }, c);
+            const file = web.files.get(c.req.path);
+            if (!file) throw new NotFound();
+
+            const immutable = c.req.path.startsWith(`${webPrefix}immutable/`);
+            return c.body(file.bytes, 200, {
+                "content-type": file.type,
+                "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
+            });
+        });
+    }
+
     // Preflights were handled before this, by the CORS headers.
     if (limits) app.use(rateLimit<AppEnv>(ctx.clock, limits, clientKey));
 
@@ -208,8 +229,19 @@ export const createApp = (
 
     for (const route of routes) if (!unlimited(route)) handle(route);
 
-    app.notFound(() => {
-        throw new NotFound();
+    // After the rate limit, so the page counts as any other request. The app shows its own page for
+    // the address, or its own "not found".
+    app.notFound((c) => {
+        if (!web || !opensWebApp(c.req.method, c.req.path, c.req.header("accept") ?? "")) {
+            throw new NotFound();
+        }
+
+        return c.body(web.page, 200, {
+            "content-type": "text/html; charset=utf-8",
+            "content-security-policy": `${web.policy}; frame-ancestors 'none'`,
+            "cache-control": "no-cache",
+            "vary": "accept",
+        });
     });
 
     app.onError(errorReply);

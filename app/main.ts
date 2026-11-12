@@ -42,6 +42,12 @@ const withContext = async <T>(
 
 const version = `verso ${denoConfig.version}`;
 
+/**
+ * Where the web app is built, which the binary includes. Relative to this file, as it is to the
+ * bundle the binary runs, which sits as deep.
+ */
+const webRoot = new URL("../packages/web/build/", import.meta.url);
+
 const banner = `
 ███   ███ ████████ ███████▄  ▄███████▄  ▄██████▄
 ███   ███ ███      ███   ███ ███▄▄▄▄   ███▀  ▀███
@@ -60,7 +66,7 @@ const start = async (role: Role, path: string): Promise<number> => {
     if (config.logging.format !== "json") console.log(banner);
     await setUpLogging(config.logging);
     getLogger(["verso"]).info(`Thank you for using Verso ${denoConfig.version}!`);
-    return await run(role, config);
+    return await run(role, config, webRoot);
 };
 
 const cli = new Command()

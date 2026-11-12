@@ -16,6 +16,7 @@ import { memoryRateLimitStore } from "./http/rate_limits.ts";
 import { databaseRateLimitStore } from "./http/rate_limit_queries.ts";
 import type { Route } from "./http/route.ts";
 import { routes } from "./http/routes.ts";
+import { loadWebApp, type WebApp } from "./http/web.ts";
 import { appServices, federation, subscribers } from "./services.ts";
 import { ensureInstanceKey, instanceKey } from "./instances/keys.ts";
 import { ensureVapidKey, vapidKey } from "./push/keys.ts";
@@ -44,6 +45,7 @@ const serve = (
     served: readonly Route[],
     listening: () => boolean,
     signal: AbortSignal,
+    web: WebApp | undefined,
 ): Promise<void> => {
     const logger = getLogger(["verso", "http"]);
 
@@ -80,6 +82,7 @@ const serve = (
             silentBlocks: config.federation.silent_blocks,
             listening,
             metricsToken: config.metrics.token,
+            web,
         }).fetch,
     );
     return server.finished;
@@ -150,9 +153,10 @@ export type Role = "serve" | "work" | "all";
 
 /**
  * Runs as a web node (`serve`), a job worker (`work`) or both (`all`) until SIGINT or SIGTERM, then
- * finishes the requests and jobs in progress. Returns the exit code.
+ * finishes the requests and jobs in progress. Returns the exit code. A web node also serves the web
+ * app built into `webRoot`, if it is built.
  */
-export const run = async (role: Role, config: Config): Promise<number> => {
+export const run = async (role: Role, config: Config, webRoot: URL): Promise<number> => {
     await using db = openDatabase(config.database);
     await using pubsub = pubSubFor(config, db);
     const { ctx, devRoutes } = contextFor(config, db, pubsub);
@@ -208,6 +212,9 @@ export const run = async (role: Role, config: Config): Promise<number> => {
         });
     }
 
+    const web = role === "work" ? undefined : await loadWebApp(webRoot);
+    if (role !== "work" && !web) logger.warn("The web app isn't built, so only the API is served");
+
     await Promise.all([
         role === "work" ? undefined : serve(
             ctx,
@@ -215,6 +222,7 @@ export const run = async (role: Role, config: Config): Promise<number> => {
             [...routes(config), ...devRoutes],
             pubsub.listening,
             stopping.signal,
+            web,
         ),
         role === "serve" ? undefined : work(ctx, queues, {
             worker,

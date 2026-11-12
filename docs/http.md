@@ -171,3 +171,16 @@ rate limited nor in the OpenAPI document.
 
 `GET /metrics`, from [`app/http/metrics.ts`](../app/http/metrics.ts), is there only when config sets
 `[metrics] token`, and is rate limited, so the token can't be guessed quickly.
+
+## Web app
+
+The web app in [`packages/web`](../packages/web) is built into the binary. A web node reads it into
+memory at startup, from [`app/http/web.ts`](../app/http/web.ts). If it isn't built, the node logs a
+warning and serves only the API.
+
+Its files are served under `/_web/`, rate limited in a bucket of their own. Those under
+`/_web/immutable/` are cached for a year. A GET or HEAD that accepts HTML, for an address no route
+serves, gets the app's page, unless the address is under one of `reservedPaths`. Of those, only
+`/oauth/web-callback` gets the page. A test fails if a route is outside `reservedPaths`, so a new
+top-level path must be added there. The page's Content-Security-Policy allows its own files and the
+hash of its inline script.
