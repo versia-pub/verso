@@ -27,6 +27,10 @@ const styles = `
     .verso-view { font: 16px/1.5 system-ui, sans-serif; max-width: 40rem; margin: 0 auto; padding: 1rem; }
     .verso-view img { max-width: 100%; }
     .verso-view .avatar { width: 6rem; height: 6rem; border-radius: 0.75rem; }
+    .verso-view .status { border-top: 1px solid #8886; padding: 0.75rem 0; }
+    .verso-view .status .avatar { width: 2rem; height: 2rem; border-radius: 0.5rem; vertical-align: middle; }
+    .verso-view .status.focus .content { font-size: 1.2em; }
+    .verso-view .media img { max-height: 24rem; }
     .verso-view .emoji { height: 1.2em; vertical-align: middle; }
 `;
 

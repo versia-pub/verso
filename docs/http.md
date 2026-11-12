@@ -185,10 +185,12 @@ serves, gets the app's page, unless the address is under one of `reservedPaths`.
 top-level path must be added there. The page's Content-Security-Policy allows its own files and the
 hash of its inline script.
 
-Some addresses get a page Verso renders itself, from [`app/web/`](../app/web/), such as an account's
-at `/@alice` or `/@bob@b.example`. It is the web app's page with the view put into it, with
-OpenGraph tags for link previews, so the app still starts on top. It is rendered as an anonymous
-visitor sees it, whatever the request accepts. If anonymous visitors may not see it, the address
-gets the web app's page; if there is nothing there, the web app's page as a 404. A remote account
-Verso doesn't know isn't fetched. Pages may show pictures from any `https:` address, as remote
-accounts' are stored by URL.
+Some addresses get a page Verso renders itself, from [`app/web/`](../app/web/): an account's, at
+`/@alice` or `/@bob@b.example`, with its pinned and latest posts, and a status's, at `/@alice/:id`,
+with its thread. It is the web app's page with the view put into it, with OpenGraph tags for link
+previews, so the app still starts on top. It is rendered as an anonymous visitor sees it, whatever
+the request accepts. If anonymous visitors may not see it, the address gets the web app's page; if
+there is nothing there, the web app's page as a 404. A remote account Verso doesn't know isn't
+fetched. A status not by the account in its address, a boost, and one anonymous visitors may not see
+get a 404, including a suspended account's (Mastodon answers 403 or 410 for those). Pages may show
+pictures from any `https:` address, as remote accounts' are stored by URL.

@@ -5,67 +5,37 @@
  * @module
  */
 import { raw } from "@hono/hono/html";
-import type { Account, CustomEmoji } from "@versia/client-api";
+import type { Account, Status } from "@versia/client-api";
 import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
+import type { AccountRow } from "../accounts/account_queries.ts";
 import { publicAccount } from "../accounts/public.ts";
-import { shortcodePattern } from "../kernel/markup.ts";
 import type { Context } from "../kernel/context.ts";
-import { textOfHtml } from "../kernel/html.ts";
+import { visibilitiesFor } from "../notes/visibility.ts";
+import { notePageBy } from "../notes/note_queries.ts";
+import { pinnedNotes } from "../notes/pin_queries.ts";
+import { renderStatuses } from "../notes/render.ts";
 import type { View } from "./page.tsx";
+import { StatusEntry } from "./status.tsx";
+import { emojify, escape, fullAcct, nameOf, noindex, oneLine, truncate } from "./text.ts";
 
 /** The most of an account's bio a link preview shows, in characters, as on Mastodon. */
 const descriptionLength = 160;
 
-/** `text`, escaped for HTML. */
-const escape = (text: string): string =>
-    text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-
-/**
- * `html` with each `:shortcode:` of `emojis` in its text, not in its tags, shown as the emoji's
- * picture.
- */
-export const emojify = (html: string, emojis: readonly CustomEmoji[]): string => {
-    const byShortcode = new Map(emojis.map((emoji) => [emoji.shortcode, emoji]));
-    const shortcode = new RegExp(`:(${shortcodePattern}):`, "g");
-
-    return html.split(/(<[^>]*>)/).map((part, index) =>
-        index % 2 === 1 ? part : part.replace(shortcode, (code, name: string) => {
-            const emoji = byShortcode.get(name);
-            if (!emoji) return code;
-
-            const src = escape(emoji.static_url);
-            return `<img class="emoji" src="${src}" alt="${code}" title="${code}">`;
-        })
-    ).join("");
-};
-
-/** The account's address with its domain, such as `alice@a.example`, even for a local one. */
-const fullAcct = (ctx: Context, account: Pick<Account, "acct">): string =>
-    account.acct.includes("@") ? account.acct : `${account.acct}@${ctx.urls.domain}`;
-
-/** `text`, cut to `length` characters with an ellipsis if it is longer. */
-const truncate = (text: string, length: number): string =>
-    text.length <= length ? text : `${text.slice(0, length - 1).trimEnd()}…`;
+/** How many of an account's latest posts its page shows, besides those it pinned. */
+const postsShown = 20;
 
 /** The tags that describe the account's page to link previews and search engines. */
 const ProfileHead = (props: { ctx: Context; account: Account }) => {
     const { ctx, account } = props;
     const acct = fullAcct(ctx, account);
-    const name = account.display_name || account.username;
-    const title = `${name} (@${acct})`;
-    const description = truncate(
-        textOfHtml(account.note).replace(/\s+/g, " ").trim(),
-        descriptionLength,
-    );
-    // Remote accounts' pages copy their own instance's, and suspended ones aren't indexable.
-    const noindex = !account.indexable || account.acct.includes("@");
+    const title = `${nameOf(account)} (@${acct})`;
+    const description = truncate(oneLine(account.note), descriptionLength);
 
     return (
         <>
             <title>{title}</title>
             {description && <meta name="description" content={description} />}
-            {noindex && <meta name="robots" content="noindex, noarchive" />}
+            {noindex(account) && <meta name="robots" content="noindex, noarchive" />}
             <link rel="alternate" type="application/vnd.versia+json" href={account.uri} />
             <meta property="og:site_name" content={ctx.urls.domain} />
             <meta property="og:type" content="profile" />
@@ -82,7 +52,7 @@ const ProfileHead = (props: { ctx: Context; account: Account }) => {
 /** The account's profile: its pictures, name, bio, fields and counts. */
 const Profile = (props: { ctx: Context; account: Account }) => {
     const { ctx, account } = props;
-    const name = emojify(escape(account.display_name || account.username), account.emojis);
+    const name = emojify(escape(nameOf(account)), account.emojis);
 
     return (
         <article class="profile">
@@ -116,6 +86,22 @@ const Profile = (props: { ctx: Context; account: Account }) => {
 };
 
 /**
+ * The posts anyone may see on the account's page: those it pinned, then its latest that aren't
+ * replies to others, boosts included. A suspended account shows none, as on Mastodon.
+ */
+const postsOf = async (ctx: Context, row: AccountRow): Promise<Status[]> => {
+    if (row.suspended_at !== null) return [];
+
+    const visibilities = await visibilitiesFor(ctx, row.id, null);
+    const pinned = await pinnedNotes(ctx, row.id, visibilities);
+    const latest = await notePageBy(ctx, row.id, visibilities, { excludeReplies: true }, {
+        limit: postsShown,
+    });
+    // Rendering leaves out boosts of statuses anyone may not see.
+    return await renderStatuses(ctx, [...pinned, ...latest], null);
+};
+
+/**
  * The page of the account `acct`, such as `@alice` or `@bob@b.example`, or nothing if Verso doesn't
  * know it. A remote account Verso hasn't seen is never fetched, or anyone could make Verso fetch
  * from wherever they liked.
@@ -128,8 +114,20 @@ export const profileView = async (ctx: Context, acct: string): Promise<View | un
     if (row === undefined) return undefined;
 
     const account = await publicAccount(ctx, row);
+    const posts = await postsOf(ctx, row);
     return {
         head: <ProfileHead ctx={ctx} account={account} />,
-        body: <Profile ctx={ctx} account={account} />,
+        body: (
+            <>
+                <Profile ctx={ctx} account={account} />
+                {posts.length > 0 && (
+                    <section class="posts">
+                        {posts.map((status) => (
+                            <StatusEntry key={status.id} ctx={ctx} status={status} />
+                        ))}
+                    </section>
+                )}
+            </>
+        ),
     };
 };

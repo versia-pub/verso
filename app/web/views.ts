@@ -6,6 +6,7 @@ import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import type { View } from "./page.tsx";
 import { profileView } from "./profile.tsx";
+import { statusView } from "./status.tsx";
 
 /** A page Verso renders itself, for anyone, who is never logged in as far as it knows. */
 export type ViewRoute = {
@@ -25,5 +26,10 @@ export const views: readonly ViewRoute[] = [
         path: "/:acct{@[^/]+}",
         permission: "read:account",
         render: (ctx, params) => profileView(ctx, params.acct ?? ""),
+    },
+    {
+        path: "/:acct{@[^/]+}/:id",
+        permission: "read:note",
+        render: (ctx, params) => statusView(ctx, params.acct ?? "", params.id ?? ""),
     },
 ];

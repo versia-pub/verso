@@ -1,40 +1,8 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
-import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
-import type { WebApp } from "../http/web.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
-import { createInstance } from "../instances/testing.ts";
 import { Permissions } from "../kernel/config_sections.ts";
-import { createTestApp } from "../testing/app.ts";
-import { createTestContext } from "../testing/context.ts";
-import { emojify } from "./profile.tsx";
-
-/** A built web app's page, with an inline script the app starts with. */
-const web: WebApp = {
-    files: new Map(),
-    page: new TextEncoder().encode(
-        "<!doctype html>\n<html><head><link rel=modulepreload></head>" +
-            '<body class="app"><div><script>start()</script></div></body></html>\n',
-    ),
-    policy: "default-src 'none'; script-src 'self' 'sha256-start'",
-};
-
-/** An app with the accounts alice, and bob on b.example, and the response to a GET of `path`. */
-const open = async (
-    options: { readonly web?: WebApp; readonly permissions?: Permissions } = {},
-) => {
-    const test = await createTestContext();
-    await createLocalAccount(test.ctx, "alice");
-    await createInstance(test.ctx, "b.example");
-    await createRemoteAccount(test.ctx, "bob", "b.example");
-    const app = createTestApp(test.ctx, [], options);
-
-    const request = async (path: string, init: RequestInit = {}) => {
-        const response = await app.request(path, init);
-        return { status: response.status, headers: response.headers, body: await response.text() };
-    };
-
-    return { ...test, request, [Symbol.asyncDispose]: () => test[Symbol.asyncDispose]() };
-};
+import { createNote, createShare } from "../notes/testing.ts";
+import { open, web } from "./testing.ts";
 
 Deno.test("a local account's page shows its profile to anyone, whatever they accept", async () => {
     await using test = await open();
@@ -200,24 +168,6 @@ Deno.test("a moved account's page links to where it moved", async () => {
     );
 });
 
-Deno.test("custom emojis are shown in names and text, but not in tags", () => {
-    const emojis = [{
-        shortcode: "blob",
-        url: "https://a.example/blob.gif",
-        static_url: 'https://a.example/blob.png?a="b"',
-        visible_in_picker: true,
-        category: null,
-    }];
-
-    assertEquals(
-        emojify('<a title=":blob:">:blob: and :nope:</a>:blob:', emojis),
-        '<a title=":blob:"><img class="emoji" src="https://a.example/blob.png?a=&quot;b&quot;" ' +
-            'alt=":blob:" title=":blob:"> and :nope:</a><img class="emoji" ' +
-            'src="https://a.example/blob.png?a=&quot;b&quot;" alt=":blob:" title=":blob:">',
-    );
-    assertEquals(emojify("no emojis :blob:", []), "no emojis :blob:");
-});
-
 Deno.test("a HEAD request for an account's page gets its headers", async () => {
     await using test = await open();
 
@@ -284,4 +234,94 @@ Deno.test("a profile shows its fields and emojis in its bio and fields", async (
 
     assertStringIncludes(body, '<div class="note"><p>Hi <img class="emoji"');
     assertStringIncludes(body, '<dl class="fields"><dt>Site</dt><dd>is <img class="emoji"');
+});
+
+Deno.test("a profile shows pinned posts, then the latest, with boosts but not replies", async () => {
+    await using test = await open();
+    const first = await createNote(test.ctx, "alice", { content_html: "<p>First</p>" });
+    const bobs = await createNote(test.ctx, "bob", {
+        instance_id: "b.example",
+        remote_id: "b1",
+        content_html: "<p>By Bob</p>",
+    });
+    const hidden = await createNote(test.ctx, "bob", {
+        instance_id: "b.example",
+        remote_id: "b2",
+        content_html: "<p>Hidden</p>",
+        visibility: "private",
+    });
+    await createShare(test.ctx, "alice", bobs.id);
+    await createShare(test.ctx, "alice", hidden.id);
+    await createNote(test.ctx, "alice", {
+        content_html: "<p>A reply</p>",
+        in_reply_to_id: bobs.id,
+        in_reply_to_account_id: "bob",
+    });
+    await createNote(test.ctx, "alice", { content_html: "<p>Secret</p>", visibility: "private" });
+    await createNote(test.ctx, "alice", { content_html: "<p>Latest</p>" });
+    await test.ctx.db.insertInto("note_pins")
+        .values({
+            id: test.ctx.ids(),
+            account_id: "alice",
+            note_id: first.id,
+            created_at: test.clock.now(),
+        })
+        .execute();
+
+    const body = (await test.request("/@alice")).body;
+
+    const pinned = body.indexOf("<p>First</p>");
+    const latest = body.indexOf("<p>Latest</p>");
+    const boosted = body.indexOf("boosted</p>");
+    assert(0 < pinned && pinned < latest && latest < boosted);
+    assert(boosted < body.indexOf("<p>By Bob</p>"));
+    assert(latest < body.lastIndexOf("<p>First</p>"));
+    assert(!body.includes("A reply"));
+    assert(!body.includes("Secret"));
+    assert(!body.includes("Hidden"));
+});
+
+Deno.test("a profile shows at most 20 of the latest posts", async () => {
+    await using test = await open();
+    for (let index = 0; index < 21; index++) {
+        await createNote(test.ctx, "alice", { content_html: `<p>Post ${index}</p>` });
+    }
+
+    const body = (await test.request("/@alice")).body;
+
+    assertStringIncludes(body, "<p>Post 20</p>");
+    assertStringIncludes(body, "<p>Post 1</p>");
+    assert(!body.includes("<p>Post 0</p>"));
+});
+
+Deno.test("a suspended account's page shows none of its posts", async () => {
+    await using test = await open();
+    await createNote(test.ctx, "alice", { content_html: "<p>Posted</p>" });
+    await test.ctx.db.updateTable("accounts").set({ suspended_at: new Date() })
+        .where("id", "=", "alice").execute();
+
+    assert(!(await test.request("/@alice")).body.includes("Posted"));
+});
+
+Deno.test("a profile shows a boost only if anyone may see the status it boosts", async () => {
+    await using test = await open();
+    const bobs = await createNote(test.ctx, "bob", { instance_id: "b.example", remote_id: "b1" });
+    await createShare(test.ctx, "alice", bobs.id);
+    await test.ctx.db.updateTable("notes").set({ visibility: "private" })
+        .where("id", "=", bobs.id).execute();
+
+    const body = (await test.request("/@alice")).body;
+
+    assert(!body.includes('class="posts"'));
+    assert(!body.includes('<article class="status'));
+});
+
+Deno.test("a profile's latest posts are those anyone may see", async () => {
+    await using test = await open();
+    await createNote(test.ctx, "alice", { content_html: "<p>Public</p>" });
+    for (let index = 0; index < 20; index++) {
+        await createNote(test.ctx, "alice", { visibility: "private" });
+    }
+
+    assertStringIncludes((await test.request("/@alice")).body, "<p>Public</p>");
 });
