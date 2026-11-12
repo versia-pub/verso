@@ -97,6 +97,9 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   client, such as one running in a browser. It gets no `client_secret`, sends only its `client_id`
   to `/oauth/token` and `/oauth/revoke`, and must use PKCE. It can't use the `client_credentials`
   grant. In Mastodon, every app gets a secret.
+- Every instance has a public app with the client id `verso-web`, for Verso's web app. It has every
+  scope and redirects only to `/oauth/web-callback`. Users aren't asked to allow it, as with
+  Mastodon's own web app.
 
 ## Media
 

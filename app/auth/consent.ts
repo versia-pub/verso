@@ -14,6 +14,7 @@ import {
 import type { Scope } from "../kernel/scopes.ts";
 import { randomToken } from "./secrets.ts";
 import type { OAuthFlowsTable } from "./tables.ts";
+import { webClientId } from "./web_app.ts";
 
 const logger = getLogger(["verso", "auth"]);
 
@@ -49,8 +50,24 @@ const loginDenied = async (ctx: Context, flow: OAuthFlowsTable, description: str
         : { result: "expired" as const };
 
 /**
+ * Gives the app a code, valid for `codeLifetimeMs`, to exchange for a token; only its hash is
+ * stored. If the flow already has one, its form was sent twice at once, and only the first counts.
+ */
+const issueCode = async (
+    ctx: Context,
+    flow: OAuthFlowsTable,
+): Promise<{ readonly result: "expired" } | SendBack> => {
+    const code = randomToken();
+    const expiresAt = new Date(ctx.clock.now().getTime() + codeLifetimeMs);
+
+    return await setCode(ctx, flow.id, code, expiresAt)
+        ? sendBack(flow, { code })
+        : { result: "expired" };
+};
+
+/**
  * Finishes the login when the issuer sends the browser back. On success the user is asked to allow
- * the app. If the login failed, or the issuer's policy won't let the user register, the app is told
+ * the app, except Verso's own web app, which gets its code straight away. If the login failed, or the issuer's policy won't let the user register, the app is told
  * the user was denied.
  */
 export const finishLogin = async (
@@ -77,7 +94,8 @@ export const finishLogin = async (
 
     await markLoggedIn(ctx, flow.id, account.accountId);
 
-    return { result: "consent" };
+    const app = await getApp(ctx, flow.app_id);
+    return app.client_id === webClientId ? await issueCode(ctx, flow) : { result: "consent" };
 };
 
 export type ConsentRequest = {
@@ -103,10 +121,7 @@ export const consentRequest = async (
     };
 };
 
-/**
- * Records the user's answer. Allowing gives the app a code, valid for `codeLifetimeMs`, to exchange
- * for a token; only its hash is stored. Denying ends the flow.
- */
+/** Records the user's answer. Allowing gives the app a code, and denying ends the flow. */
 export const decide = async (
     ctx: Context,
     browserSecret: string | undefined,
@@ -121,10 +136,5 @@ export const decide = async (
         return denied(flow, "The user denied access.");
     }
 
-    const code = randomToken();
-    const expiresAt = new Date(ctx.clock.now().getTime() + codeLifetimeMs);
-
-    return await setCode(ctx, flow.id, code, expiresAt)
-        ? sendBack(flow, { code })
-        : { result: "expired" };
+    return await issueCode(ctx, flow);
 };

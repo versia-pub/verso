@@ -121,8 +121,8 @@ so a migration that rebuilds a table calls `checkForeignKeys` before it ends.
 Migrations have no time limit. Queries are held to `statement_timeout_seconds` on Postgres, but
 `verso migrate` opens the database without one.
 
-After the schema, `verso migrate` also creates the instance's keys, and indexes any statuses and
-accounts that search hasn't indexed yet.
+After the schema, `verso migrate` also creates the instance's keys, registers or updates the Verso
+Web app, and indexes any statuses and accounts that search hasn't indexed yet.
 
 To add a table, see [Adding a table](guides/adding-a-table.md).
 

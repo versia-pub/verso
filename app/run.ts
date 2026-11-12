@@ -34,6 +34,7 @@ import { idGenerator } from "./kernel/ids.ts";
 import { memoryPubSub } from "./kernel/pubsub.ts";
 import { federationTransport, fetchTransport, timedTransport } from "./kernel/transport.ts";
 import { urlBuilder } from "./kernel/urls.ts";
+import { ensureWebApp } from "./auth/web_app.ts";
 import { vipsImages } from "./kernel/vips_images.ts";
 
 /** Serves `served` over HTTP until `signal` aborts. */
@@ -255,6 +256,10 @@ export const runMigrations = async (config: Config): Promise<number> => {
     const keyed = { db, clock: systemClock, ids: idGenerator(systemClock) };
     if (await ensureInstanceKey(keyed)) logger.info("Made the instance's key pair");
     if (await ensureVapidKey(keyed)) logger.info("Made the instance's key pair for Web Push");
+    const webApp = await ensureWebApp(keyed, urlBuilder(config.domain, config.http.origin));
+    if (webApp !== "unchanged") {
+        logger.info("Registered the Verso Web app ({change})", { change: webApp });
+    }
     const statuses = await indexUnindexed(keyed);
     if (statuses > 0) logger.info("Indexed {count} statuses for search", { count: statuses });
     const accounts = await indexUnindexedAccounts(keyed);
