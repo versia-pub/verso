@@ -58,6 +58,25 @@ export const userUri = (ctx: Context, row: AccountRow): string => {
     return entityUrl(row.domain, "User", row.remote_id).href;
 };
 
+/** The account's web page on this instance: `/@username`, or `/@username@domain` if remote. */
+export const profileUrl = (
+    ctx: Context,
+    row: Pick<AccountRow, "username" | "domain">,
+): string =>
+    row.domain === null
+        ? ctx.urls.url`/@${row.username}`
+        : ctx.urls.url`/@${row.username}@${row.domain}`;
+
+/** The web page on this instance of the status `id` by the account `row`, under its profile's. */
+export const statusUrl = (
+    ctx: Context,
+    row: Pick<AccountRow, "username" | "domain">,
+    id: string,
+): string =>
+    row.domain === null
+        ? ctx.urls.url`/@${row.username}/${id}`
+        : ctx.urls.url`/@${row.username}@${row.domain}/${id}`;
+
 /**
  * Midnight UTC on the day of `date`, which is all Mastodon shows of when an account was created.
  */
@@ -150,8 +169,7 @@ export const renderAccount = (
         id: row.id,
         username: row.username,
         acct: local ? row.username : `${row.username}@${row.domain}`,
-        // Verso has no profile pages to link to, so this is the same as `uri`.
-        url: uri,
+        url: profileUrl(ctx, row),
         uri,
         display_name: shown.display_name,
         note: html(shown.note_html),

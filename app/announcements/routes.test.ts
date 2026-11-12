@@ -58,7 +58,7 @@ Deno.test("announcements are listed with what they link to, and whether they wer
         mentions: [{
             id: "bob",
             username: "bob",
-            url: "https://social.example/.versia/v0.6/entities/User/bob",
+            url: "https://social.example/@bob",
             acct: "bob",
         }],
         statuses: [note.id],

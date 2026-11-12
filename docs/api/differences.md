@@ -9,8 +9,9 @@ Verso federates over Versia, not ActivityPub. Search and follows work with accou
 instances, but accounts on Mastodon and other ActivityPub servers can't be found or followed.
 
 - `uri` on accounts and statuses is the entity's Versia URL, which `resolve` in search can look up.
-- `url` on accounts and statuses is the same as `uri`, because Verso has no web pages for them. Apps
-  that open a status or profile in the browser get the Versia entity instead.
+- `url` on accounts and statuses is their page on this instance, such as `/@alice` and
+  `/@alice/<id>`. A remote one's is too, such as `/@bob@b.example/<id>`, where Mastodon links to its
+  own instance. A boost's `url` is its `uri`.
 - A remote account's `acct` is `username@domain`.
 - NodeInfo says the software is `verso` and the protocol `versia`, which the NodeInfo schema has no
   name for; Mastodon says `mastodon` and `activitypub`. `openRegistrations` is always `false`, as in

@@ -44,7 +44,7 @@ Deno.test("a user's OpenID claims name their account, for a GET or a POST", asyn
         sub: "https://social.example/.versia/v0.6/entities/User/alice",
         name: "Alice",
         preferred_username: "alice",
-        profile: "https://social.example/.versia/v0.6/entities/User/alice",
+        profile: "https://social.example/@alice",
         picture: "https://social.example/media/moving",
     };
 

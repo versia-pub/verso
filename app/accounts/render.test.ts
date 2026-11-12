@@ -28,7 +28,7 @@ Deno.test("a local account links to itself on this instance", async () => {
 
     assertEquals(account.acct, "alice");
     assertEquals(account.uri, "https://social.example/.versia/v0.6/entities/User/alice");
-    assertEquals(account.url, account.uri);
+    assertEquals(account.url, "https://social.example/@alice");
     assertEquals(account.avatar, "https://social.example/accounts/alice/avatar.png");
     assertEquals(account.header_static, "https://social.example/accounts/alice/header.png");
     assertEquals(account.created_at, "2026-01-31T00:00:00.000Z");
@@ -54,7 +54,7 @@ Deno.test("a remote account links to its own instance", async () => {
 
     assertEquals(account.acct, "bob@b.example");
     assertEquals(account.uri, "https://b.example/.versia/v0.6/entities/User/a%2Fb");
-    assertEquals(account.url, account.uri);
+    assertEquals(account.url, "https://social.example/@bob@b.example");
     assertEquals(account.avatar, "https://social.example/accounts/r/avatar.png");
     assertEquals(account.last_status_at, "2026-02-01");
     assertEquals(account.roles, null);

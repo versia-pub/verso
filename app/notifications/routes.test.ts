@@ -166,7 +166,7 @@ Deno.test("a client that says what it supports gets a fallback for the types it 
     const [liked, carolReacted, bobReacted] = await test.ids();
 
     const named = (id: string) =>
-        `<a href="https://social.example/.versia/v0.6/entities/User/${id}">@${id}</a>`;
+        `<a href="https://social.example/@${id}">@${id}</a>`;
     const fallback = {
         title: `${named("carol")} reacted to your post`,
         summary: "Your app doesn't support this kind of notification.",

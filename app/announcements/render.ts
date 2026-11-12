@@ -88,7 +88,7 @@ export const renderAnnouncements = async (
             mentions: row.account_ids.flatMap((id) => {
                 const account = accounts.get(id);
                 return account
-                    ? [{ id, username: account.username, url: account.uri, acct: account.acct }]
+                    ? [{ id, username: account.username, url: account.url, acct: account.acct }]
                     : [];
             }),
             statuses: row.note_ids.flatMap((id) => statuses.get(id) ?? []),

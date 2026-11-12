@@ -51,7 +51,7 @@ Deno.test("a local note is a status, with its mentions, hashtags and the note it
         ["carol"],
         ["Verso", "verso"],
     );
-    const [alice, carol] = await publicAccounts(test.ctx, ["alice", "carol"]);
+    const [alice] = await publicAccounts(test.ctx, ["alice"]);
 
     const [status] = await renderStatuses(test.ctx, [{ ...note, replies_count: 2 }], null);
     assertEquals(status, {
@@ -64,14 +64,19 @@ Deno.test("a local note is a status, with its mentions, hashtags and the note it
         sensitive: true,
         spoiler_text: "Hello",
         media_attachments: [],
-        mentions: [{ id: "carol", username: "carol", url: carol.uri, acct: "carol@b.example" }],
+        mentions: [{
+            id: "carol",
+            username: "carol",
+            url: "https://social.example/@carol@b.example",
+            acct: "carol@b.example",
+        }],
         tags: [{ name: "Verso", url: "https://social.example/tags/verso" }],
         emojis: [],
         reactions: [],
         reblogs_count: 0,
         favourites_count: 0,
         replies_count: 2,
-        url: `https://social.example/.versia/v0.6/entities/Note/${note.id}`,
+        url: `https://social.example/@alice/${note.id}`,
         in_reply_to_id: parent.id,
         in_reply_to_account_id: "carol",
         reblog: null,
@@ -97,9 +102,37 @@ Deno.test("a remote note is sanitised, and has its instance's id", async () => {
 
     const [status] = await renderStatuses(test.ctx, [note], "alice");
     assertEquals(
-        [status.uri, status.content],
-        ["https://b.example/.versia/v0.6/entities/Note/c1", "<p>Hi</p>"],
+        [status.uri, status.url, status.content],
+        [
+            "https://b.example/.versia/v0.6/entities/Note/c1",
+            `https://social.example/@carol@b.example/${note.id}`,
+            "<p>Hi</p>",
+        ],
     );
+});
+
+Deno.test("a boost has no page of its own, so its url is its uri", async () => {
+    await using test = await open();
+    const posted = await createNote(test.ctx, "alice");
+    const local = await createShare(test.ctx, "alice", posted.id);
+    const remote = await createShare(test.ctx, "carol", posted.id, {
+        instance_id: "b.example",
+        remote_id: "s",
+    });
+
+    const statuses = await renderStatuses(test.ctx, [local, remote], null);
+    assertEquals(statuses.map((status) => [status.uri, status.url, status.reblog?.url]), [
+        [
+            `https://social.example/.versia/v0.6/entities/pub.versia%3Ashare%2FShare/${local.id}`,
+            `https://social.example/.versia/v0.6/entities/pub.versia%3Ashare%2FShare/${local.id}`,
+            `https://social.example/@alice/${posted.id}`,
+        ],
+        [
+            "https://b.example/.versia/v0.6/entities/Note/s",
+            "https://b.example/.versia/v0.6/entities/Note/s",
+            `https://social.example/@alice/${posted.id}`,
+        ],
+    ]);
 });
 
 Deno.test("a remote note without its instance's id is a mistake", async () => {

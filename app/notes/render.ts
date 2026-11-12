@@ -4,6 +4,7 @@
  */
 import type { Quote, ShallowQuote, Status, StatusEdit } from "@versia/client-api";
 import { findAccounts } from "../accounts/account_queries.ts";
+import { statusUrl } from "../accounts/render.ts";
 import { publicAccount, publicAccountsOf } from "../accounts/public.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { activeFiltersAmong, filterResults } from "../filters/matching.ts";
@@ -228,7 +229,7 @@ export const renderStatusesFor = async (
     // None of these depend on each other, so on Postgres they run at once, each on a connection of
     // its own. In a transaction, they share its connection and run one after another.
     const [
-        [mentions, domains, accounts],
+        [mentions, authors, accounts],
         [tags, tagNames],
         attachments,
         emojis,
@@ -252,8 +253,8 @@ export const renderStatusesFor = async (
                 ...[...mentions.values()].flat(),
             ]);
             const rows = await findAccounts(ctx, [...accountIds]);
-            const domains = new Map(rows.map((row) => [row.id, row.domain]));
-            return [mentions, domains, await publicAccountsOf(ctx, rows)] as const;
+            const authors = new Map(rows.map((row) => [row.id, row]));
+            return [mentions, authors, await publicAccountsOf(ctx, rows)] as const;
         }),
         tagsOf(ctx, noteIds).then(async (tags) =>
             [tags, await displayNamesOf(ctx, [...tags.values()].flat())] as const
@@ -293,7 +294,9 @@ export const renderStatusesFor = async (
 
             const account = accounts.get(note.account_id);
             if (account === undefined) throw new Error(`Note ${note.id} has no author`);
-            const domain = domains.get(note.account_id) ?? null;
+            const author = authors.get(note.account_id);
+            if (author === undefined) throw new Error(`Note ${note.id} has no author row`);
+            const domain = author.domain;
             const card = cards.get(note.id);
 
             return [{
@@ -316,8 +319,7 @@ export const renderStatusesFor = async (
                         ? [{
                             id,
                             username: mentioned.username,
-                            // Verso has no profile pages, so it links to the account's Versia URI.
-                            url: mentioned.uri,
+                            url: mentioned.url,
                             acct: mentioned.acct,
                         }]
                         : [];
@@ -337,8 +339,10 @@ export const renderStatusesFor = async (
                     (uncounted.get(viewerId)?.likes.get(note.id) ?? 0),
                 replies_count: Math.max(note.replies_count, totals.get(note.id)?.replies ?? 0),
                 quotes_count: quoted.get(note.id) ?? 0,
-                // Verso has no web pages for statuses, so this is the same as `uri`.
-                url: noteUri(ctx, note, domain).href,
+                // As on Mastodon, a boost has no page of its own, so it links to its Versia entity.
+                url: note.reblog_of_id === null
+                    ? statusUrl(ctx, author, note.id)
+                    : noteUri(ctx, note, domain).href,
                 in_reply_to_id: note.in_reply_to_id,
                 in_reply_to_account_id: note.in_reply_to_account_id,
                 reblog,
