@@ -18,9 +18,10 @@
 
       packages = forAllSystems (pkgs: rec {
         deps = pkgs.callPackage ./nix/deps.nix { };
+        linked-deps = pkgs.callPackage ./nix/linked-deps.nix { inherit deps; };
         vips = pkgs.callPackage ./nix/vips.nix { };
         default = pkgs.callPackage ./nix/package.nix {
-          inherit deps vips;
+          inherit linked-deps vips;
           esbuild = pkgs.callPackage ./nix/esbuild.nix { };
         };
         image = pkgs.callPackage ./nix/image.nix { verso = default; };
@@ -42,7 +43,12 @@
           inherit pkgs;
           src = self;
           module = self.nixosModules.default;
-          inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) deps image vips;
+          inherit (self.packages.${pkgs.stdenv.hostPlatform.system})
+            deps
+            linked-deps
+            image
+            vips
+            ;
         }
       );
     };

@@ -5,7 +5,7 @@
   deno,
   jq,
   vips,
-  deps,
+  linked-deps,
   esbuild,
 }:
 
@@ -46,7 +46,9 @@ stdenvNoCC.mkDerivation {
     runHook preBuild
 
     export DENO_DIR="$TMPDIR/deno" DENO_NO_UPDATE_CHECK=1
-    cp -r --no-preserve=mode ${deps}/vendor ${deps}/node_modules .
+    cp -r --no-preserve=mode ${linked-deps}/vendor ${linked-deps}/node_modules .
+
+    (cd packages/web && deno task --frozen build)
 
     # Where Deno looks for esbuild before downloading it.
     mkdir -p "$DENO_DIR/dl/esbuild-${esbuild.version}-1"
@@ -71,9 +73,10 @@ stdenvNoCC.mkDerivation {
     # libraries and system information stay denied.
     # The program stores each file's modification time, so make them the same on every build.
     touch --date=@1 dist/verso.js dist/verso.js.map
+    find packages/web/build -exec touch --no-dereference --date=@1 {} +
     DENORT_BIN=${deno.denort}/bin/denort deno compile --no-check --no-config --no-remote --no-npm \
       --allow-net --allow-read --allow-write --allow-env --allow-run=vips,vipsheader \
-      --include dist/verso.js.map --output dist/verso dist/verso.js
+      --include dist/verso.js.map --include packages/web/build --output dist/verso dist/verso.js
 
     runHook postBuild
   '';

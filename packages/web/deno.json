@@ -1,0 +1,15 @@
+{
+    "version": "0.0.0",
+    "license": "AGPL-3.0-or-later",
+    "tasks": {
+        "build": "vite build",
+        "dev": "vite dev"
+    },
+    "imports": {
+        "@sveltejs/adapter-static": "npm:@sveltejs/adapter-static@4.0.1",
+        "@sveltejs/kit": "npm:@sveltejs/kit@3.1.1",
+        "@sveltejs/vite-plugin-svelte": "npm:@sveltejs/vite-plugin-svelte@7.3.1",
+        "svelte": "npm:svelte@5.57.3",
+        "vite": "npm:vite@8.3.7"
+    }
+}

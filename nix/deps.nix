@@ -25,13 +25,21 @@ runCommand "verso-deno-deps"
       jq
     ];
     outputHashMode = "recursive";
-    outputHash = "sha256-sdUZ3YtCpE45Z0/UtZvKJcH6jnretJXvxZyzlG7V4yk=";
+    passthru = { inherit src; };
+    outputHash = "sha256-i9Ql4RyonDP/wCd9AWZUW/dTBzt0t0A2YVkeT8vxFyo=";
   }
   ''
     export DENO_DIR="$TMPDIR/deno" DENO_NO_UPDATE_CHECK=1
     cp -r --no-preserve=mode ${src} "$TMPDIR/src"
     cd "$TMPDIR/src"
-    deno install --frozen
+
+    # Vite's native packages are per platform. Install both, so the hash doesn't depend on the
+    # builder. Each install removes the other platform's, so keep the first's aside.
+    deno install --frozen --os linux --arch x64
+    mkdir "$TMPDIR/x64"
+    mv node_modules/.deno/*linux-x64* "$TMPDIR/x64/"
+    deno install --frozen --os linux --arch arm64
+    mv "$TMPDIR"/x64/* node_modules/.deno/
 
     # Each JSR meta.json lists every published version, so it changes whenever a package
     # releases. Keep only the versions deno.lock pins.

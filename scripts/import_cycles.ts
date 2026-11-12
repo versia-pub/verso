@@ -3,7 +3,7 @@
  * `deno info --json` gives the graph as Deno resolves it, so this doesn't parse imports itself.
  */
 
-const skipped = new Set(["vendor", "node_modules", ".git", ".direnv"]);
+const skipped = new Set(["vendor", "node_modules", ".git", ".direnv", ".svelte-kit", "build"]);
 
 const typeScriptFiles = async (directory: string): Promise<string[]> => {
     const files: string[] = [];

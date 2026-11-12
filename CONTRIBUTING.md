@@ -31,6 +31,7 @@ Nix only sees files that git knows about, so `git add` new files before running 
 | `deno task import-cycles`       | Find imports that go round in a circle                     |
 | `deno task update-openapi`      | Rewrite the OpenAPI snapshot after a deliberate API change |
 | `deno task verso <command>`     | Run Verso, as below                                        |
+| `deno task build-web`           | Build the web frontend into `packages/web/build`           |
 | `nix fmt`                       | Format the Nix files                                       |
 | `nix flake check`               | Run everything CI runs                                     |
 | `nix build`                     | Build the server package                                   |

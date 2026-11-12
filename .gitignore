@@ -15,3 +15,7 @@ node_modules/
 
 # Services from `nix run .#dev-services`
 /.dev/
+
+# The web frontend's build and SvelteKit's generated files
+/packages/web/build/
+/packages/web/.svelte-kit/

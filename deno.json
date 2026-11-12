@@ -4,7 +4,15 @@
     "vendor": true,
     "workspace": [
         "./packages/client-api",
-        "./packages/protocol"
+        "./packages/protocol",
+        "./packages/web"
+    ],
+    "exclude": [
+        "packages/web/.svelte-kit",
+        "packages/web/build"
+    ],
+    "unstable": [
+        "fmt-component"
     ],
     "tasks": {
         "fmt": "deno fmt",
@@ -13,6 +21,7 @@
         "test": "deno test --parallel --v8-flags=--expose-gc --allow-read=node_modules,docs/config.example.toml,$TMPDIR --allow-write=$TMPDIR --allow-env --allow-run=vips,vipsheader --allow-net=127.0.0.1",
         "import-cycles": "deno run --allow-read=. --allow-run=deno scripts/import_cycles.ts",
         "update-openapi": "UPDATE_OPENAPI=1 deno test --allow-read=node_modules --allow-env --allow-write=app/http/openapi.json app/http/routes.test.ts && deno fmt app/http/openapi.json",
+        "build-web": "deno task --cwd packages/web build",
         "verso": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run=vips,vipsheader app/main.ts",
         "unused-dependencies": "deno run --allow-read=. --allow-run=deno scripts/unused_dependencies.ts"
     },

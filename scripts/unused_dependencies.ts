@@ -4,7 +4,7 @@
  */
 import denoConfig from "../deno.json" with { type: "json" };
 
-const skipped = new Set(["vendor", "node_modules", ".git", ".direnv"]);
+const skipped = new Set(["vendor", "node_modules", ".git", ".direnv", ".svelte-kit", "build"]);
 
 const typeScriptFiles = async (directory: string): Promise<string[]> => {
     const files: string[] = [];

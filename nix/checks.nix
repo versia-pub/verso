@@ -2,6 +2,7 @@
   pkgs,
   src,
   deps,
+  linked-deps,
   image,
   module,
   vips,
@@ -13,6 +14,7 @@ let
   denoTaskWith =
     name: task:
     {
+      source ? src,
       packages ? [ ],
       setup ? "",
       # A test that hangs fails the check, rather than holding it up forever. Deno names a test
@@ -21,8 +23,8 @@ let
     }:
     pkgs.runCommand name { nativeBuildInputs = [ pkgs.deno ] ++ packages; } ''
       export DENO_DIR="$TMPDIR/deno" DENO_NO_UPDATE_CHECK=1
-      cp -r --no-preserve=mode ${src} "$TMPDIR/src"
-      cp -r --no-preserve=mode ${deps}/vendor ${deps}/node_modules "$TMPDIR/src/"
+      cp -r --no-preserve=mode ${source} "$TMPDIR/src"
+      cp -r --no-preserve=mode ${linked-deps}/vendor ${linked-deps}/node_modules "$TMPDIR/src/"
       chmod -R a-w "$TMPDIR/src"
       ${setup}
       cd "$TMPDIR/src"
@@ -36,11 +38,20 @@ let
   # keeps some of what its files used until its process ends, so shorter processes use less memory,
   # and they are no slower.
   testShards = 4;
+  # The tests don't use the web frontend, so a change there reuses their last results. Its deno.json
+  # stays, as the workspace lists it.
+  backendSrc = pkgs.lib.fileset.toSource {
+    root = ../.;
+    fileset = pkgs.lib.fileset.difference ../. (
+      pkgs.lib.fileset.difference ../packages/web ../packages/web/deno.json
+    );
+  };
   testTask =
     name: jobs: args:
     denoTaskWith name "test" (
       args
       // {
+        source = backendSrc;
         setup = ''
           export DENO_JOBS=${toString jobs}
           ${args.setup or ""}
@@ -80,6 +91,9 @@ in
       trap 'pg_ctl --pgdata="$TMPDIR/pg" --mode=immediate stop' EXIT
       export VERSO_TEST_DATABASE=postgresql://postgres@127.0.0.1:5432/postgres
     '';
+  };
+  web = denoTaskWith "web" "build-web" {
+    run = "chmod -R u+w packages/web && timeout --kill-after=10 600 deno task build-web";
   };
   import-cycles = denoTask "import-cycles" "import-cycles";
   unused-dependencies = denoTask "unused-dependencies" "unused-dependencies";
