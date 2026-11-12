@@ -5,6 +5,7 @@ import { schedule } from "../jobs/scheduler.ts";
 import { drain } from "../jobs/worker.ts";
 import type { IdentityProvider } from "../kernel/identity.ts";
 import { createTestContext } from "../testing/context.ts";
+import type { AppRegistration } from "./apps.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
 import { flowCookie, formTokenIn, registerTestApp, stubProvider } from "./testing.ts";
@@ -16,13 +17,16 @@ const issuerDown: IdentityProvider = {
 };
 const issuerB = stubProvider({ url: "https://b.example", name: "Example B" });
 
-const open = async (providers: IdentityProvider[] = [issuerA]) => {
+const open = async (
+    providers: IdentityProvider[] = [issuerA],
+    registration: Partial<AppRegistration> = {},
+) => {
     const test = await createTestContext({
         identityProviders: Object.fromEntries(providers.map((p) => [p.issuer.url, p])),
     });
     const http = createTestApp(test.ctx, authRoutes, { checkResponses: true });
 
-    const { app } = await registerTestApp(test.ctx);
+    const { app } = await registerTestApp(test.ctx, registration);
 
     /** Opens `/oauth/authorize` with a valid request, modified by `changes`. */
     const authorize = (changes: Record<string, string | undefined> = {}) => {
@@ -134,6 +138,21 @@ Deno.test("other errors go back to the app, with its state", async () => {
         "invalid_request",
     );
     assertEquals(await test.flows(), []);
+});
+
+Deno.test("a public app must send a PKCE challenge", async () => {
+    await using test = await open([issuerA], { confidential: false });
+
+    const without = new URL((await test.authorize()).headers.get("location") ?? "");
+    const withChallenge = await test.authorize({
+        code_challenge: "a".repeat(43),
+        code_challenge_method: "S256",
+    });
+
+    assertEquals(without.origin + without.pathname, "https://phanpy.example/back");
+    assertEquals(without.searchParams.get("error"), "invalid_request");
+    assertEquals(new URL(withChallenge.headers.get("location") ?? "").origin, "https://a.example");
+    assertEquals((await test.flows()).length, 1);
 });
 
 Deno.test("an out-of-band app's errors are shown, having no redirect to go to", async () => {

@@ -13,6 +13,11 @@ Deno.test("the OAuth metadata names this server's endpoints", async () => {
     assertEquals(response.status, 200);
     assertEquals(metadata.issuer, "https://social.example");
     assertEquals(metadata.code_challenge_methods_supported, ["S256"]);
+    assertEquals(metadata.token_endpoint_auth_methods_supported, [
+        "client_secret_basic",
+        "client_secret_post",
+        "none",
+    ]);
     assertEquals(metadata.scopes_supported.includes("read:statuses"), true);
 
     const endpoints = [

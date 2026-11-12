@@ -20,12 +20,17 @@ export type AppRegistration = {
     /** The most the app may ask for. Defaults to `read`. */
     readonly scopes?: readonly string[];
     readonly website?: string;
+    /**
+     * `none` registers a public client, such as one running in a browser, which gets no secret and
+     * must use PKCE. Only Verso takes this.
+     */
+    readonly token_endpoint_auth_method?: "client_secret_basic" | "client_secret_post" | "none";
 };
 
-/** An app's credentials, from registering it. */
+/** An app's credentials, from registering it. A public client has no secret. */
 export type AppCredentials = {
     readonly client_id: string;
-    readonly client_secret: string;
+    readonly client_secret?: string;
 };
 
 /** Where to send the user to log in, and what the code will need. */
@@ -69,7 +74,7 @@ export class OAuth {
     constructor(private readonly http: Http) {}
 
     /**
-     * Registers an app. Its secret is given only this once.
+     * Registers an app. Its secret, if it gets one, is given only this once.
      * @see https://docs.joinmastodon.org/methods/apps/#create
      */
     registerApp(app: AppRegistration, options?: CallOptions): Promise<CredentialApplication> {

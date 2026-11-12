@@ -5,18 +5,21 @@ import { createTestContext, type TestContextOptions } from "../testing/context.t
 import { setSuspendedAt } from "../accounts/account_queries.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { suspend, unsuspend } from "../moderation/suspensions.ts";
-import { registerApp } from "./apps.ts";
+import type { AppRegistration } from "./apps.ts";
 import { authRoutes } from "./routes.ts";
 import { routes } from "../kernel/pubsub.ts";
 import { hashToken, randomToken } from "./secrets.ts";
 import { registerTestApp, tokenFor } from "./testing.ts";
 import { authenticateToken, watchToken } from "./tokens.ts";
 
-const open = async (options: TestContextOptions = {}) => {
+const open = async (
+    options: TestContextOptions = {},
+    registration: Partial<AppRegistration> = {},
+) => {
     const test = await createTestContext(options);
     const http = createTestApp(test.ctx, authRoutes, { checkResponses: true });
 
-    const { app, clientSecret } = await registerTestApp(test.ctx);
+    const { app, clientSecret } = await registerTestApp(test.ctx, registration);
 
     const token = async (form: Record<string, string>, authorization?: string) => {
         const response = await http.request("/oauth/token", {
@@ -28,7 +31,10 @@ const open = async (options: TestContextOptions = {}) => {
         return { status: response.status, body: await response.json() };
     };
 
-    const credentials = { client_id: app.client_id, client_secret: clientSecret };
+    // A public client sends only its id.
+    const credentials: Record<string, string> = app.client_secret_hash === null
+        ? { client_id: app.client_id }
+        : { client_id: app.client_id, client_secret: clientSecret };
     const basic = (id: string, secret: string) => `Basic ${btoa(`${id}:${secret}`)}`;
 
     await createLocalAccount(test.ctx, "alice");
@@ -138,6 +144,81 @@ Deno.test("wrong or missing credentials are an invalid client", async () => {
     }
 });
 
+Deno.test("a public app is known by its id alone, and refused if it sends a secret", async () => {
+    await using test = await open({}, { confidential: false });
+    const { client_id } = test.credentials;
+    const grant = { grant_type: "authorization_code", redirect_uri: "https://phanpy.example/back" };
+    const verifier = "v".repeat(43);
+    const code = async () => test.allowedCode(await hashToken(verifier));
+
+    const refused = [
+        await test.token({
+            ...grant,
+            code: await code(),
+            code_verifier: verifier,
+            client_id,
+            client_secret: "",
+        }),
+        await test.token({
+            ...grant,
+            code: await code(),
+            code_verifier: verifier,
+            client_id,
+            client_secret: "x",
+        }),
+        await test.token(
+            { ...grant, code: await code(), code_verifier: verifier },
+            test.basic(client_id, ""),
+        ),
+    ];
+    const accepted = await test.exchange(await code(), { code_verifier: verifier });
+
+    for (const { status, body } of refused) {
+        assertEquals([status, body.error], [401, "invalid_client"]);
+    }
+    assertEquals([accepted.status, accepted.body.scope], [200, "read write"]);
+});
+
+Deno.test("a public app's code needs PKCE", async () => {
+    await using test = await open({}, { confidential: false });
+
+    const { status, body } = await test.exchange(await test.allowedCode());
+
+    assertEquals([status, body.error], [400, "invalid_grant"]);
+    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+});
+
+Deno.test("a public app can't get a token for itself", async () => {
+    await using test = await open({}, { confidential: false });
+
+    const { status, body } = await test.token({
+        ...test.credentials,
+        grant_type: "client_credentials",
+    });
+
+    assertEquals([status, body.error], [400, "unauthorized_client"]);
+    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+});
+
+Deno.test("a public app revokes its token with its id alone", async () => {
+    await using test = await open({}, { confidential: false });
+    const verifier = "v".repeat(43);
+    const issued = await test.exchange(await test.allowedCode(await hashToken(verifier)), {
+        code_verifier: verifier,
+    });
+
+    const withSecret = await test.revoke({
+        ...test.credentials,
+        client_secret: "x",
+        token: issued.body.access_token,
+    });
+    const revoked = await test.revoke({ ...test.credentials, token: issued.body.access_token });
+
+    assertEquals(withSecret.status, 403);
+    assertEquals([revoked.status, revoked.body], [200, {}]);
+    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+});
+
 Deno.test("an unknown grant or scope is refused in OAuth's shape", async () => {
     await using test = await open();
 
@@ -203,11 +284,9 @@ Deno.test("with PKCE, the verifier must match the challenge", async () => {
 
 Deno.test("a code is only for its app, its redirect URI and ten minutes, and one try", async () => {
     await using test = await open();
-    const other = await registerApp(test.ctx, {
+    const other = await registerTestApp(test.ctx, {
         name: "Elk",
-        website: null,
         redirectUris: ["https://phanpy.example/back"],
-        scopes: ["read", "write"],
     });
 
     const stolen = await test.allowedCode();
@@ -261,9 +340,8 @@ Deno.test("only the app a token was issued to may revoke it", async () => {
     await using test = await open();
     const issued = await test.token({ ...test.credentials, grant_type: "client_credentials" });
     const token = issued.body.access_token;
-    const other = await registerApp(test.ctx, {
+    const other = await registerTestApp(test.ctx, {
         name: "Elk",
-        website: null,
         redirectUris: ["https://elk.example/back"],
         scopes: ["read"],
     });

@@ -142,6 +142,11 @@ const checkRequest = async (ctx: Context, request: AuthorizeRequest): Promise<Ch
         return error("invalid_request", "PKCE must use S256.");
     }
 
+    // A public client's id isn't secret, so only PKCE stops someone else using its code.
+    if (challenge === undefined && app.client_secret_hash === null) {
+        return error("invalid_request", "A public app must use PKCE.");
+    }
+
     return { ok: true, app, redirectUri, scopes, challenge };
 };
 

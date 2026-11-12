@@ -33,8 +33,9 @@ export type Application = z.infer<typeof Application>;
  */
 export const CredentialApplication = Application.extend({
     client_id: z.string(),
-    client_secret: z.string(),
-    /** Always 0, since secrets don't expire. */
-    client_secret_expires_at: z.literal(0),
+    /** Missing for a public client, which Verso allows and Mastodon doesn't. */
+    client_secret: z.string().optional(),
+    /** Always 0, since secrets don't expire. Missing when `client_secret` is. */
+    client_secret_expires_at: z.literal(0).optional(),
 });
 export type CredentialApplication = z.infer<typeof CredentialApplication>;

@@ -21,8 +21,10 @@ const RedirectUri = z.string().refine((text) => {
 }, "Must be an absolute URI without a fragment");
 
 /**
- * Mastodon's parameters and limits.
+ * Mastodon's parameters and limits, and RFC 7591's `token_endpoint_auth_method`, which only Verso
+ * takes: `none` registers a public client, which gets no secret and must use PKCE.
  * @see https://docs.joinmastodon.org/methods/apps/#create
+ * @see https://www.rfc-editor.org/rfc/rfc7591#section-2
  */
 const AppForm = z.object({
     client_name: z.string().trim().min(1).max(60),
@@ -33,6 +35,8 @@ const AppForm = z.object({
     scopes: ScopeList.optional()
         .transform((scopes) => scopes && scopes.length > 0 ? scopes : ["read" as const]),
     website: z.union([z.literal(""), z.url({ protocol: /^https?$/ }).max(2000)]).optional(),
+    token_endpoint_auth_method: z.enum(["client_secret_basic", "client_secret_post", "none"])
+        .optional(),
 });
 
 const applicationOf = async (ctx: Context, app: AppsTable): Promise<Application> => ({
@@ -59,6 +63,7 @@ const postApps = defineRoute({
             website: body.website || null,
             redirectUris: body.redirect_uris,
             scopes: body.scopes,
+            confidential: body.token_endpoint_auth_method !== "none",
         });
 
         return {
@@ -66,8 +71,9 @@ const postApps = defineRoute({
             body: {
                 ...await applicationOf(ctx, app),
                 client_id: app.client_id,
-                client_secret: clientSecret,
-                client_secret_expires_at: 0 as const,
+                ...clientSecret === null
+                    ? {}
+                    : { client_secret: clientSecret, client_secret_expires_at: 0 as const },
             },
         };
     },

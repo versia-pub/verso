@@ -62,7 +62,7 @@ const postToken = defineRoute({
 
 /**
  * Revokes a token, for the app it was issued to. As in Mastodon, the app must always send its
- * credentials, and omitting the token isn't an error.
+ * credentials, which for a public client are just its id, and omitting the token isn't an error.
  * @see https://docs.joinmastodon.org/methods/oauth/#revoke
  */
 const postRevoke = defineRoute({
@@ -128,6 +128,7 @@ const getOAuthMetadata = defineRoute({
                 token_endpoint_auth_methods_supported: [
                     "client_secret_basic",
                     "client_secret_post",
+                    "none",
                 ],
                 code_challenge_methods_supported: ["S256"],
             },

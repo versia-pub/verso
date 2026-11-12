@@ -304,3 +304,50 @@ Deno.test("push subscriptions there were keep being pushed to in aes128gcm", asy
         db.updateTable("push_subscriptions").set({ standard: null as never }).execute()
     );
 });
+
+Deno.test("apps there were keep their tokens once apps may have no secret", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0101_public_apps"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    const now = new Date("2026-01-01T00:00:00Z");
+    const app = {
+        id: "app",
+        name: "App",
+        website: null,
+        redirect_uris: ["https://app.example/callback"],
+        scopes: ["read" as const],
+        client_id: "client",
+        client_secret_hash: "hash",
+        created_at: now,
+    };
+    await db.insertInto("apps").values(app).execute();
+    await db.insertInto("access_tokens")
+        .values({
+            id: "token",
+            token_hash: "hash",
+            app_id: "app",
+            account_id: null,
+            scopes: ["read"],
+            created_at: now,
+        })
+        .execute();
+
+    assertEquals((await migrate(db)).ok, true);
+    assertEquals(await db.selectFrom("apps").selectAll().execute(), [app]);
+    assertEquals(
+        (await db.selectFrom("access_tokens").select("app_id").executeTakeFirstOrThrow()).app_id,
+        "app",
+    );
+
+    await db.insertInto("apps")
+        .values({ ...app, id: "public", client_id: "public", client_secret_hash: null })
+        .execute();
+    await assertRejects(() =>
+        db.insertInto("apps").values({ ...app, id: "same", client_secret_hash: null }).execute()
+    );
+    await db.deleteFrom("apps").where("id", "=", "app").execute();
+    assertEquals(await db.selectFrom("access_tokens").selectAll().execute(), []);
+});

@@ -19,26 +19,31 @@ export const tokenFor = async (
         website: null,
         redirectUris: ["urn:ietf:wg:oauth:2.0:oob"],
         scopes,
+        confidential: true,
     });
 
     return (await issueToken(ctx, app, accountId, scopes)).token;
 };
 
 /**
- * Phanpy, registered with a web redirect URI and an out-of-band one, unless `changes` say
- * otherwise.
+ * Phanpy, a confidential client registered with a web redirect URI and an out-of-band one, unless
+ * `changes` say otherwise. A public client's secret is "".
  */
-export const registerTestApp = (
+export const registerTestApp = async (
     ctx: Context,
     changes: Partial<AppRegistration> = {},
-): Promise<{ app: AppsTable; clientSecret: string }> =>
-    registerApp(ctx, {
+): Promise<{ app: AppsTable; clientSecret: string }> => {
+    const { app, clientSecret } = await registerApp(ctx, {
         name: "Phanpy",
         website: null,
         redirectUris: ["https://phanpy.example/back", "urn:ietf:wg:oauth:2.0:oob"],
         scopes: ["read", "write"],
+        confidential: true,
         ...changes,
     });
+
+    return { app, clientSecret: clientSecret ?? "" };
+};
 
 /**
  * An issuer that sends the browser to its own `/authorize`, naming where it should come back, and

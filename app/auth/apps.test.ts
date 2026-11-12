@@ -94,6 +94,32 @@ Deno.test("only the hash of the client secret is stored", async () => {
     assertNotEquals(first.client_secret, second.client_secret);
 });
 
+Deno.test("a public app registers without a secret, and a confidential one with one", async () => {
+    await using test = await open();
+    const app = { client_name: "Verso", redirect_uris: "https://verso.example/back" };
+
+    const publicApp = (await test.register({ ...app, token_endpoint_auth_method: "none" })).body;
+    const basic = await test.register({
+        ...app,
+        token_endpoint_auth_method: "client_secret_basic",
+    });
+    const post = await test.register({ ...app, token_endpoint_auth_method: "client_secret_post" });
+    const stored = await test.ctx.db.selectFrom("apps").selectAll()
+        .where("id", "=", publicApp.id)
+        .executeTakeFirstOrThrow();
+
+    assertEquals("client_secret" in publicApp, false);
+    assertEquals("client_secret_expires_at" in publicApp, false);
+    assertEquals(stored.client_secret_hash, null);
+    for (const { status, body } of [basic, post]) {
+        assertEquals([status, typeof body.client_secret, body.client_secret_expires_at], [
+            200,
+            "string",
+            0,
+        ]);
+    }
+});
+
 Deno.test("invalid registrations are refused with each problem", async () => {
     await using test = await open();
 
@@ -110,6 +136,7 @@ Deno.test("invalid registrations are refused with each problem", async () => {
             redirect_uris: ["https://a.example/#token", "/relative", "javascript:alert(1)"],
             scopes: "read admin",
             website: "ftp://a.example",
+            token_endpoint_auth_method: "private_key_jwt",
         }),
         [
             "body.client_name",
@@ -118,6 +145,7 @@ Deno.test("invalid registrations are refused with each problem", async () => {
             "body.redirect_uris.2",
             "body.scopes.1",
             "body.website",
+            "body.token_endpoint_auth_method",
         ],
     );
     assertEquals(

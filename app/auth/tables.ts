@@ -11,8 +11,12 @@ export type AppsTable = {
     scopes: Scope[];
     /** Public: clients send it in the browser's address bar. */
     client_id: string;
-    /** The secret is shown once, when the app registers, and only its hash is stored. */
-    client_secret_hash: string;
+    /**
+     * The secret is shown once, when the app registers, and only its hash is stored. `null` for a
+     * public client, such as one running in a browser, which can't keep a secret.
+     * @see https://www.rfc-editor.org/rfc/rfc6749#section-2.1
+     */
+    client_secret_hash: string | null;
     created_at: Date;
 };
 

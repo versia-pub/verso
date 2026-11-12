@@ -93,12 +93,16 @@ export const authenticateToken = async (
     };
 };
 
-export type ClientCredentials = { readonly clientId: string; readonly clientSecret: string };
+/** A client's id, and its secret, which a public client doesn't have. */
+export type ClientCredentials = {
+    readonly clientId: string;
+    readonly clientSecret: string | undefined;
+};
 
 /**
  * The client's credentials from HTTP Basic or, without that, from the form, in the order Doorkeeper
  * reads them. In Basic, RFC 6749 form-encodes each part first, but client ids and secrets are
- * base64url, which that leaves as it is.
+ * base64url, which that leaves as it is. A public client sends only its id, in the form.
  * @see https://www.rfc-editor.org/rfc/rfc6749#section-2.3.1
  */
 export const clientCredentialsFrom = (
@@ -108,7 +112,7 @@ export const clientCredentialsFrom = (
     const basic = /^Basic\s+(\S+)$/i.exec(authorization ?? "")?.[1];
 
     if (basic === undefined) {
-        return form.client_id === undefined || form.client_secret === undefined
+        return form.client_id === undefined
             ? undefined
             : { clientId: form.client_id, clientSecret: form.client_secret };
     }
@@ -124,7 +128,10 @@ export const clientCredentialsFrom = (
     }
 };
 
-/** The app these credentials belong to, if they're valid. */
+/**
+ * The app these credentials belong to, if they're valid: a confidential client's secret must
+ * match, and a public client must send none.
+ */
 export const authenticateClient = async (
     ctx: Context,
     credentials: ClientCredentials | undefined,
@@ -132,8 +139,14 @@ export const authenticateClient = async (
     if (!credentials) return undefined;
 
     const app = await findAppByClientId(ctx, credentials.clientId);
+    if (!app) return undefined;
 
-    return app?.client_secret_hash === await hashToken(credentials.clientSecret) ? app : undefined;
+    const { clientSecret } = credentials;
+    const valid = app.client_secret_hash === null
+        ? clientSecret === undefined
+        : clientSecret !== undefined && app.client_secret_hash === await hashToken(clientSecret);
+
+    return valid ? app : undefined;
 };
 
 export type IssuedToken = {
@@ -189,9 +202,9 @@ const pkceMatches = async (challenge: string | null, verifier: string | undefine
 
 /**
  * Exchanges a code for a token to act for the user who allowed it, with the scopes they allowed.
- * The code must be for this app and redirect URI, unexpired, and pass PKCE. It can only be tried
- * once, so a failed attempt uses it up too. Trying it again revokes the token it issued, since
- * someone else may have it.
+ * The code must be for this app and redirect URI, unexpired, and pass PKCE, which a public client
+ * must use. It can only be tried once, so a failed attempt uses it up too. Trying it again revokes
+ * the token it issued, since someone else may have it.
  * @see https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
  */
 export const exchangeCode = (
@@ -212,6 +225,7 @@ export const exchangeCode = (
 
         const valid = flow.account_id && flow.app_id === app.id &&
             flow.redirect_uri === exchange.redirectUri &&
+            (app.client_secret_hash !== null || flow.code_challenge !== null) &&
             await pkceMatches(flow.code_challenge, exchange.codeVerifier);
         if (!valid) return undefined;
 
@@ -235,6 +249,7 @@ export type GrantRefused = {
         | "invalid_request"
         | "invalid_grant"
         | "invalid_scope"
+        | "unauthorized_client"
         | "unsupported_grant_type";
     readonly description: string;
 };
@@ -265,7 +280,16 @@ export const grantToken = async (
             };
         }
 
+        // Only for confidential clients, since anyone can send a public client's id.
+        // https://www.rfc-editor.org/rfc/rfc6749#section-4.4
         case "client_credentials": {
+            if (app.client_secret_hash === null) {
+                return {
+                    error: "unauthorized_client",
+                    description: "A public app can't get a token for itself.",
+                };
+            }
+
             const scopes = requestedScopes(request.scope, app.scopes);
             return scopes ? { issued: await issueToken(ctx, app, null, scopes) } : {
                 error: "invalid_scope",

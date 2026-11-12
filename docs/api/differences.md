@@ -91,6 +91,13 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   `PATCH /api/v1/accounts/update_credentials` sets. The other preferences are always Mastodon's
   defaults: sensitive media hidden, content warnings collapsed, and GIFs not autoplaying.
 
+## Apps
+
+- `POST /api/v1/apps` also takes `token_endpoint_auth_method`. With `none`, the app is a public
+  client, such as one running in a browser. It gets no `client_secret`, sends only its `client_id`
+  to `/oauth/token` and `/oauth/revoke`, and must use PKCE. It can't use the `client_credentials`
+  grant. In Mastodon, every app gets a secret.
+
 ## Media
 
 - Images are processed after upload: rotated upright, stripped of metadata, and scaled down to the

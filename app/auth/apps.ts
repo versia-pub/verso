@@ -9,14 +9,16 @@ export type AppRegistration = {
     readonly website: string | null;
     readonly redirectUris: string[];
     readonly scopes: Scope[];
+    /** Whether the app can keep a secret. A public client gets none and must use PKCE. */
+    readonly confidential: boolean;
 };
 
-/** Registers a client app. The secret is returned here and never again. */
+/** Registers a client app. Its secret, if it gets one, is returned here and never again. */
 export const registerApp = async (
     ctx: Context,
     registration: AppRegistration,
-): Promise<{ app: AppsTable; clientSecret: string }> => {
-    const clientSecret = randomToken();
+): Promise<{ app: AppsTable; clientSecret: string | null }> => {
+    const clientSecret = registration.confidential ? randomToken() : null;
 
     const app: AppsTable = {
         id: ctx.ids(),
@@ -25,7 +27,7 @@ export const registerApp = async (
         redirect_uris: registration.redirectUris,
         scopes: registration.scopes,
         client_id: randomToken(),
-        client_secret_hash: await hashToken(clientSecret),
+        client_secret_hash: clientSecret === null ? null : await hashToken(clientSecret),
         created_at: ctx.clock.now(),
     };
 

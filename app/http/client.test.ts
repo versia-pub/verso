@@ -101,52 +101,57 @@ const png = (width: number, height: number) =>
         channels: 4,
     }));
 
-Deno.test("an app registers, logs a user in with PKCE, acts as them, and revokes", async () => {
-    await using test = await open();
-    test.idp.login = { sub: "u1", preferred_username: "alice" };
+for (const method of ["client_secret_post", "none"] as const) {
+    const kind = method === "none" ? "a public app" : "an app";
 
-    const app = await test.client.oauth.registerApp({
-        client_name: "Phanpy",
-        redirect_uris: ["https://phanpy.example/back"],
-        scopes: ["read", "write"],
+    Deno.test(`${kind} registers, logs a user in with PKCE, acts as them, and revokes`, async () => {
+        await using test = await open();
+        test.idp.login = { sub: "u1", preferred_username: "alice" };
+
+        const app = await test.client.oauth.registerApp({
+            client_name: "Phanpy",
+            redirect_uris: ["https://phanpy.example/back"],
+            scopes: ["read", "write"],
+            token_endpoint_auth_method: method,
+        });
+        const pkce = await createPkce();
+        const authorize = test.client.oauth.authorizationUrl({
+            client_id: app.client_id,
+            redirect_uri: "https://phanpy.example/back",
+            scopes: ["read", "write"],
+            state: "xyz",
+            code_challenge: pkce.challenge,
+        });
+
+        // The browser goes to the issuer, back to Verso, to the consent page, and allows the app.
+        const toIssuer = await test.browse(authorize);
+        const fromIssuer = await test.browse(locationOf(toIssuer));
+        const toConsent = await test.browse(locationOf(fromIssuer));
+        const consent = await (await test.browse(locationOf(toConsent))).text();
+        const allowed = await test.browse("https://social.example/oauth/consent", {
+            method: "POST",
+            body: new URLSearchParams({ decision: "allow", form_token: formTokenIn(consent) }),
+        });
+        const back = new URL(locationOf(allowed));
+        assertEquals(back.searchParams.get("state"), "xyz");
+
+        const credentials = { client_id: app.client_id, client_secret: app.client_secret };
+        const token = await test.client.oauth.exchangeCode(credentials, {
+            code: back.searchParams.get("code") ?? "",
+            redirect_uri: "https://phanpy.example/back",
+            code_verifier: pkce.verifier,
+        });
+        const alice = test.client.withToken(token.access_token);
+
+        assertEquals(token.scope, "read write");
+        assertEquals((await alice.oauth.verifyApp()).name, "Phanpy");
+        assertEquals((await alice.accounts.verifyCredentials()).username, "alice");
+
+        await test.client.oauth.revoke(credentials, token.access_token);
+        const error = await assertRejects(() => alice.accounts.verifyCredentials(), ApiError);
+        assertEquals(error.status, 401);
     });
-    const pkce = await createPkce();
-    const authorize = test.client.oauth.authorizationUrl({
-        client_id: app.client_id,
-        redirect_uri: "https://phanpy.example/back",
-        scopes: ["read", "write"],
-        state: "xyz",
-        code_challenge: pkce.challenge,
-    });
-
-    // The browser goes to the issuer, back to Verso, to the consent page, and allows the app.
-    const toIssuer = await test.browse(authorize);
-    const fromIssuer = await test.browse(locationOf(toIssuer));
-    const toConsent = await test.browse(locationOf(fromIssuer));
-    const consent = await (await test.browse(locationOf(toConsent))).text();
-    const allowed = await test.browse("https://social.example/oauth/consent", {
-        method: "POST",
-        body: new URLSearchParams({ decision: "allow", form_token: formTokenIn(consent) }),
-    });
-    const back = new URL(locationOf(allowed));
-    assertEquals(back.searchParams.get("state"), "xyz");
-
-    const credentials = { client_id: app.client_id, client_secret: app.client_secret };
-    const token = await test.client.oauth.exchangeCode(credentials, {
-        code: back.searchParams.get("code") ?? "",
-        redirect_uri: "https://phanpy.example/back",
-        code_verifier: pkce.verifier,
-    });
-    const alice = test.client.withToken(token.access_token);
-
-    assertEquals(token.scope, "read write");
-    assertEquals((await alice.oauth.verifyApp()).name, "Phanpy");
-    assertEquals((await alice.accounts.verifyCredentials()).username, "alice");
-
-    await test.client.oauth.revoke(credentials, token.access_token);
-    const error = await assertRejects(() => alice.accounts.verifyCredentials(), ApiError);
-    assertEquals(error.status, 401);
-});
+}
 
 Deno.test("an app gets a token for itself, which acts for no user", async () => {
     await using test = await open();
