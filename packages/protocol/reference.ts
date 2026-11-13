@@ -58,6 +58,7 @@ export const canonicalize = (host: string): string | undefined => {
     const onlyHost = url !== null && url.pathname === "/" &&
         url.search === "" &&
         url.hash === "" && url.username === "" && url.password === "";
+
     return onlyHost ? url.host : undefined;
 };
 

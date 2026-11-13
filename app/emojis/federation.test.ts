@@ -70,6 +70,7 @@ const open = async () => {
         );
         await network.drain();
     };
+
     await send({
         type: "FollowAccept",
         author: "bob",
@@ -85,6 +86,7 @@ const open = async () => {
     const account = async () => {
         const row = await findAccount(a, bob);
         assertExists(row);
+
         return await publicAccount(a, row);
     };
 
@@ -92,8 +94,10 @@ const open = async () => {
     const status = async () => {
         const row = await findRemoteNoteAt(a, "b.test", "n1");
         assertExists(row);
+
         const [rendered] = await renderStatuses(a, [row], null);
         assertExists(rendered);
+
         return rendered;
     };
 
@@ -112,6 +116,7 @@ const open = async () => {
 
 Deno.test("a remote user's emojis are shown with their account", async () => {
     await using test = await open();
+
     assertEquals((await test.account()).emojis, [{
         shortcode: "blob",
         url: "https://b.test/blob.png",
@@ -132,6 +137,7 @@ Deno.test("a remote note's emojis are shown with it, and a newer version's repla
     await using test = await open();
 
     await test.send(note("Hi :blob: :cat:", emojis("blob", "cat")));
+
     assertEquals(test.shown(await test.status()), [
         ["blob", "https://b.test/blob.png"],
         ["cat", "https://b.test/cat.png"],
@@ -141,14 +147,18 @@ Deno.test("a remote note's emojis are shown with it, and a newer version's repla
 
     await test.send(note("Hi :cat: :dog:", emojis("cat", "dog"), "2026-01-02T00:00:00Z"));
     const status = await test.status();
+
     assertEquals(test.shown(status), [
         ["cat", "https://b.test/cat.png"],
         ["dog", "https://b.test/dog.png"],
     ]);
+
     // Its history shows the emojis it uses now.
     const row = await findRemoteNoteAt(test.a, "b.test", "n1");
     assertExists(row);
+
     const history = await renderHistory(test.a, row);
+
     assertEquals(
         history.map(test.shown),
         [test.shown(status), test.shown(status)],

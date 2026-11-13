@@ -129,6 +129,7 @@ export const filtered = (
     filter: NotificationFilter,
 ): SelectQueryBuilder<Database, "notifications", NotificationRow> => {
     let query = shownQuery(ctx, accountId, shown).selectAll();
+
     if (filter.types) query = query.where("type", "in", filter.types);
     if (filter.excludeTypes?.length) query = query.where("type", "not in", filter.excludeTypes);
     if (filter.fromId !== undefined) query = query.where("from_account_id", "=", filter.fromId);
@@ -151,6 +152,7 @@ export const notificationPage = async (
     page: PageBounds,
 ): Promise<NotificationRow[]> => {
     if (filter.types?.length === 0) return [];
+
     return await readPage(filtered(ctx, accountId, shown, filter), "notifications.id", page);
 };
 
@@ -174,6 +176,7 @@ export const countNotifications = async (
     const { count } = await ctx.db.selectFrom(query.limit(limit).as("counted"))
         .select((eb) => eb.fn.countAll<number | string | bigint>().as("count"))
         .executeTakeFirstOrThrow();
+
     return Number(count);
 };
 

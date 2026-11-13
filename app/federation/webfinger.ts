@@ -60,5 +60,6 @@ export const webfinger = async (
     const link = jrd.links.find((link) =>
         link.rel === "self" && link.type?.split(";")[0].trim() === "application/vnd.versia+json"
     );
+
     return link && userOf(host, link.href);
 };

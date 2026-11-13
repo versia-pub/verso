@@ -74,6 +74,7 @@ export const blockersAmong = async (
         .where("target_id", "=", accountId)
         .where("account_id", "in", otherIds)
         .execute();
+
     return rows.map((row) => row.account_id);
 };
 
@@ -88,6 +89,7 @@ export const blockingAmong = async (
         .where("account_id", "in", accountIds)
         .where("target_id", "in", targets)
         .execute();
+
     return rows.map((row) => row.account_id);
 };
 
@@ -134,5 +136,6 @@ export const blockerIdsAfter = async (
         .orderBy("account_id")
         .limit(limit)
         .execute();
+
     return rows.map((row) => row.account_id);
 };

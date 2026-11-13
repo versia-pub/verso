@@ -121,6 +121,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         const { host, id } = reference;
         // An instance that can't be reached now is left alone, as deliveries leave it.
         if (await isParked(ctx, host)) throw new ResolveFailed(`${host} can't be reached now`);
+
         const reply = await fetchSigned(withDeadline(ctx, budget), entityUrl(host, type.type, id));
 
         if (reply.status === 404 || reply.status === 410) {
@@ -155,6 +156,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
         if (instanceId === undefined) throw new ResolveFailed(`${host} isn't a known instance`);
 
         const sender = { domain: host, instanceId, fetched: true, backfill: budget.backfill };
+
         budget.saving++;
         try {
             await type.prepare?.(ctx, entity, sender, budget);
@@ -162,6 +164,7 @@ export const createResolver = (registry: Registry, options: ResolverOptions = {}
             budget.saving--;
         }
         await ctx.transaction((tx) => type.receive(tx, entity, sender));
+
         return (await type.known?.(ctx, reference))?.id;
     };
 

@@ -130,6 +130,7 @@ export const send = (
     }
 
     const maxAge = route.immutable ? yearSeconds : route.maxAge;
+
     if (maxAge !== undefined && reply.status < 300) {
         c.header(
             "cache-control",

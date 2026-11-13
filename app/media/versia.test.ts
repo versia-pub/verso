@@ -17,6 +17,7 @@ Deno.test("what is too large to store is left out of remote media, or skips its 
     const kept = remotePicture({
         "image/webp": { content: url, remote: true, size: largest, width: largest, height: 1 },
     });
+
     assertEquals([kept?.size, kept?.width, kept?.height], [largest, largest, 1]);
 
     const tooLarge = remotePicture({
@@ -29,6 +30,7 @@ Deno.test("what is too large to store is left out of remote media, or skips its 
             thumbhash: "a".repeat(101),
         },
     });
+
     assertEquals(
         [tooLarge?.url, tooLarge?.size, tooLarge?.width, tooLarge?.height, tooLarge?.thumbhash],
         [url, undefined, undefined, undefined, undefined],
@@ -50,6 +52,7 @@ Deno.test("what is too large to store is left out of remote media, or skips its 
     );
 
     const type = `application/${"a".repeat(255 - 12)}`;
+
     assertEquals(remoteFile({ [type]: { content: url, remote: true } })?.mediaType, type);
     assertEquals(remoteFile({ [`${type}a`]: { content: url, remote: true } }), null);
 });

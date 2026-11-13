@@ -116,6 +116,7 @@ export const domainBlockersAmong = async (
         .where("accounts.id", "=", accountId)
         .where("account_domain_blocks.account_id", "in", otherIds)
         .execute();
+
     return rows.map((row) => row.account_id);
 };
 
@@ -134,5 +135,6 @@ export const domainBlockingAmong = async (
         .where("accounts.id", "in", targets)
         .where("account_domain_blocks.account_id", "in", accountIds)
         .execute();
+
     return rows.map((row) => row.account_id);
 };

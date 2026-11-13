@@ -76,6 +76,7 @@ export const queueMessage = async (ctx: Context, domain: string, text: string): 
         await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)),
     );
     const payload: MessageJob = { domain, text };
+
     await enqueue(ctx, {
         queue: messageQueue,
         payload,

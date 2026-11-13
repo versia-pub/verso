@@ -54,6 +54,7 @@ export const markerRoutes: readonly Route[] = [
         handler: async (ctx, { body, viewer }) => {
             const set = await ctx.transaction(async (tx) => {
                 const rows: MarkerRow[] = [];
+
                 for (const timeline of timelines) {
                     const position = body[timeline];
                     if (position === undefined) continue;

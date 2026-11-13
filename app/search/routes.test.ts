@@ -33,6 +33,7 @@ const open = async (limits = SearchLimits.parse({})) => {
         }
 
         const response = await app.request(path, { headers });
+
         return { status: response.status, body: await response.json() };
     };
 
@@ -40,6 +41,7 @@ const open = async (limits = SearchLimits.parse({})) => {
     const find = async (path: string) => {
         const { status, body } = await request(path);
         assertEquals(status, 200);
+
         return body.map((account: { username: string }) => account.username);
     };
 
@@ -126,6 +128,7 @@ const openAnnual = async () => {
     const search = async (path: string, token?: string | null) => {
         const { status, body } = await test.request(path, token);
         assertEquals(status, 200);
+
         return searched(body);
     };
 

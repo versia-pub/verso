@@ -30,6 +30,7 @@ const open = async () => {
 
         const body = options.body === undefined ? undefined : JSON.stringify(options.body);
         const response = await app.request(path, { method, headers, body });
+
         return { status: response.status, body: await response.json() };
     };
 

@@ -156,6 +156,7 @@ Deno.test("a quote that is direct names the quoted author, unless it is their ow
         refused.body.error_description,
         "Cannot quote a non-mentioned user in a Private Mention post.",
     );
+
     const mentioned = await test.quote(note.id, "bob", { visibility: "direct", status: "@alice" });
     assertEquals([mentioned.status, mentioned.body.visibility], [200, "direct"]);
     assertEquals((await test.quote(own.id, "bob", { visibility: "direct" })).status, 200);
@@ -324,6 +325,7 @@ Deno.test("the quotes of a status are listed, as those the viewer may see and ha
         bob,
     ]);
     assertEquals((await test.request("GET", "/api/v1/statuses/missing/quotes", null)).status, 404);
+
     const priv = await createNote(test.ctx, "alice", { visibility: "private" });
     assertEquals(
         (await test.request("GET", `/api/v1/statuses/${priv.id}/quotes`, "dave")).status,
@@ -395,6 +397,7 @@ Deno.test("a quote is sent to the instance of the quoted author, and so is its d
 
     const posted = await test.quote(remote.id, "alice");
     assertEquals(await test.delivered("Note"), ["d.example"]);
+
     const [sent] = await queuedDeliveries(test.ctx);
     assertEquals(JSON.parse(sent.body).quotes, "d.example:f");
 

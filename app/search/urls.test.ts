@@ -19,6 +19,7 @@ Deno.test("an entity URL finds the local account or status it names, if the view
     /** What alice finds at `url`: an account's username or a status's id. */
     const find = async (url: string) => {
         const found = await resolveUrl(test.ctx, url, "alice");
+
         return found?.type === "accounts" ? found.account.username : found?.note.id;
     };
 
@@ -86,6 +87,7 @@ Deno.test("an entity URL on a remote instance is fetched, unless it fails", asyn
     /** What alice finds at `url`: an account's remote id or a status's. */
     const find = async (url: string) => {
         const found = await resolveUrl(a, url, alice);
+
         return found?.type === "accounts" ? found.account.remote_id : found?.note.remote_id;
     };
 

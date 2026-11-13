@@ -266,6 +266,7 @@ Deno.test("a user moves only to an available account, fetched just now, saying i
     const alice = await createLocalAccount(ctx, "alice");
     const path = (id: string) => `/.versia/v0.6/entities/User/${id}`;
     const resolve = (id: string) => ctx.federation.resolve(ctx, { host: "b.test", id }, "User");
+
     b.serve(path("carol"), user("carol"));
     b.serve(path("dan"), user("dan", "a.test:dan"));
     b.serve(path("gil"), user("gil", `c.test:${alice}`));
@@ -274,6 +275,7 @@ Deno.test("a user moves only to an available account, fetched just now, saying i
     const erin = await resolve("erin");
     assertExists(erin);
     for (const id of ["carol", "dan", "gil", "bob"]) await resolve(id);
+
     const token = await tokenFor(ctx, alice);
     const move = async (acct: string) => {
         network.clock.advance(1);

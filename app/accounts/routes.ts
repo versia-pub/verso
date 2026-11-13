@@ -27,6 +27,7 @@ const found = (row: AccountRow | undefined) => {
 /** The viewer's own account, with its roles, what it may do, and who has requested to follow it. */
 const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly accountId: string }) => {
     const row = found(await findAccount(ctx, viewer.accountId));
+
     return renderCredentialAccount(
         ctx,
         row,

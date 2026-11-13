@@ -66,9 +66,12 @@ Deno.test("the key is kept for a minute, but a rotation here applies at once", a
     test.clock.advance(1000);
     await createInstanceKey(test.ctx);
     test.clock.advance(60_000 - 1000 - 1);
+
     assertEquals((await kept()).publicKey, first.publicKey);
+
     test.clock.advance(1);
     const second = await kept();
+
     assertNotEquals(second.publicKey, first.publicKey);
 
     test.clock.advance(1000);

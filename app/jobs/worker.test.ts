@@ -146,6 +146,7 @@ Deno.test("stopping waits for running jobs to finish", async () => {
     const stopped = stop();
     setTimeout(finish, 20);
     await stopped;
+
     assertEquals(finished, true);
 
     assertEquals(await test.ctx.db.selectFrom("jobs").select("id").execute(), []);
@@ -164,6 +165,7 @@ Deno.test("with no queues, work runs until stopped", async () => {
 
     await stop();
     await done;
+
     assertEquals(stopped, true);
 });
 
@@ -350,6 +352,7 @@ Deno.test("an idle queue still runs a job when it becomes due", async () => {
 
     const deadline = Date.now() + 500;
     while (!ran && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 5));
+
     controller.abort();
     await done;
 
@@ -385,6 +388,7 @@ Deno.test("an idle queue looks less and less often, until a job is due", async (
         runAt: new Date(test.clock.now().getTime() + hour),
     });
     await new Promise((resolve) => setTimeout(resolve, 1000));
+
     // Polling every 5 ms would look about 200 times; waiting up to 100 ms, about 15.
     const looked = queries;
     assert(looked < 80, `looked ${looked} times`);

@@ -15,11 +15,13 @@ Deno.test("a ThumbHash is in base64, with the picture's colour and shape", () =>
     const bytes = Uint8Array.fromBase64(hash);
 
     assertEquals(bytes.toBase64(), hash);
+
     const average = thumbHashToAverageRGBA(bytes);
     assertAlmostEquals(average.r, 1, 0.02);
     assertAlmostEquals(average.g, 0, 0.02);
     assertAlmostEquals(average.b, 0, 0.02);
     assertAlmostEquals(average.a, 1, 0.02);
+
     // The shape is only roughly preserved, but a wide image stays wider than a tall one.
     const tall = Uint8Array.fromBase64(thumbhashOf(solid(50, 100, [255, 0, 0, 255])));
     assertEquals(thumbHashToApproximateAspectRatio(bytes) > 1.5, true);
@@ -38,6 +40,7 @@ Deno.test("a BlurHash has four components each way, and the picture's colour", (
     assertEquals(isBlurhashValid(hash).result, true);
     // The first character says how many components there are: (4 - 1) + (4 - 1) * 9.
     assertEquals(hash[0], "U");
+
     const [r, g, b] = decode(hash, 1, 1);
     assertEquals([r, g, b], [0, 0, 255]);
 });

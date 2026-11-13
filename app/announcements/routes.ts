@@ -51,6 +51,7 @@ export const announcementRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { params, viewer }) => {
             if (!await dismissAnnouncement(ctx, viewer.accountId, params.id)) throw new NotFound();
+
             return { status: 200, body: {} };
         },
     }),
@@ -93,6 +94,7 @@ export const announcementRoutes: readonly Route[] = [
             if (!await unreactToAnnouncement(ctx, viewer.accountId, params.id, params.name)) {
                 throw new NotFound();
             }
+
             return { status: 200, body: {} };
         },
     }),

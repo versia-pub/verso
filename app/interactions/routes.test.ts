@@ -80,6 +80,7 @@ Deno.test("the accounts that like a status are listed, the latest first, in page
 
     const first = await test.request("GET", `${path}?limit=2`, null);
     assertEquals(first.body.map((account: { id: string }) => account.id), ["alice", "dave"]);
+
     const older = new URL(first.link?.match(/<([^>]+)>; rel="next"/)?.[1] ?? "");
     const second = await test.request("GET", older.pathname + older.search, null);
     assertEquals(second.body.map((account: { id: string }) => account.id), ["bob"]);
@@ -168,6 +169,7 @@ Deno.test("reacting to a status gives it back with the reaction, and undoing it 
 
     const undone = await test.request("POST", path("unreact"));
     assertEquals([undone.status, undone.body.reactions], [200, []]);
+
     // Undoing it again changes nothing.
     const again = await test.request("POST", path("unreact"));
     assertEquals([again.status, again.body.reactions], [200, []]);
@@ -281,12 +283,14 @@ Deno.test("the blocker isn't shown, or counted, the likes, shares and reactions 
         { name: "🎉", count: 1, remote: false, me: false },
     ]);
     assertEquals(await ids(`reactions/${encodeURIComponent("🎉")}`, "alice"), ["bob"]);
+
     // Only dave reacted with this one, so to alice no one did.
     assertEquals(
         (await test.request("GET", `${path}/reactions/${encodeURIComponent("👀")}`, "alice"))
             .status,
         404,
     );
+
     const status =
         (await test.request("POST", `${path}/react/${encodeURIComponent("🎉")}`, "alice")).body;
     assertEquals([status.favourites_count, status.reblogs_count, status.reactions], [1, 1, [
@@ -304,6 +308,7 @@ Deno.test("the blocker isn't shown, or counted, the likes, shares and reactions 
             [3, 1],
         );
     }
+
     const seen = (await test.request("POST", `${path}/favourite`, "dave")).body;
     assertEquals([seen.favourites_count, seen.reblogs_count], [2, 2]);
 });
@@ -324,6 +329,7 @@ Deno.test("the likes, shares and reactions of those the viewer mutes are still s
     assertEquals(await ids("favourited_by"), ["dave"]);
     assertEquals(await ids("reblogged_by"), ["dave"]);
     assertEquals(await ids(`reactions/${encodeURIComponent("🎉")}`), ["dave"]);
+
     const status = (await test.request("POST", `${path}/favourite`, "alice")).body;
     assertEquals([status.favourites_count, status.reblogs_count], [2, 1]);
 });

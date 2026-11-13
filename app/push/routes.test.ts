@@ -144,6 +144,7 @@ Deno.test("a subscription's notifications are changed, and what isn't given is r
     const { token } = await test.token();
     const other = await test.token();
     const update = (data: unknown) => test.request("PUT", token, { body: { data } });
+
     assertEquals((await update({})).status, 404);
 
     for (const subscriber of [token, other.token]) {
@@ -158,6 +159,7 @@ Deno.test("a subscription's notifications are changed, and what isn't given is r
             },
         });
     }
+
     const changed = await update({ alerts: { favourite: true, reblog: true } });
 
     assertEquals(changed.status, 200);
@@ -177,6 +179,7 @@ Deno.test("a subscription goes when it is removed, or its token is revoked", asy
     const removed = await test.token();
     const revoked = await test.token();
     const keys = await browserKeys();
+
     for (const { token } of [removed, revoked]) {
         await test.request("POST", token, {
             body: { subscription: { endpoint: "https://push.example/a", keys } },
@@ -200,6 +203,7 @@ Deno.test("subscriptions are refused without push, or https, or keys of the righ
         const response = await test.request("POST", token, {
             body: { subscription: { endpoint, keys: { p256dh, auth } } },
         });
+
         return response.status;
     };
 
@@ -230,12 +234,14 @@ Deno.test("a push's unsubscribe link removes its subscription, until the push ex
     const subscriptionId = (await findSubscription(test.ctx, id))?.id ?? "";
     const unsubscribe = async (url: string) => {
         const response = await test.app.request(url, { method: "DELETE" });
+
         return [response.status, await response.json()];
     };
 
     const expired = await unsubscribeUrl(test.ctx, subscriptionId, 1);
     const url = await unsubscribeUrl(test.ctx, subscriptionId, 60);
     test.clock.advance(1_000);
+
     assertEquals(await unsubscribe(expired), [200, {}]);
     assertEquals(await unsubscribe(`${url}x`), [200, {}]);
     assertEquals((await findSubscription(test.ctx, id))?.id, subscriptionId);
@@ -260,6 +266,7 @@ Deno.test("only links Verso made for unsubscribing remove subscriptions", async 
             .setProtectedHeader({ typ, alg: "ES256" })
             .setAudience(audience);
         if (expires) jwt.setExpirationTime(Math.floor(now.getTime() / 1000) + 60);
+
         return jwt.sign(key.privateKey);
     };
 
@@ -277,6 +284,7 @@ Deno.test("only links Verso made for unsubscribing remove subscriptions", async 
         });
         assertEquals([response.status, await response.json()], [200, {}]);
     }
+
     assertEquals((await findSubscription(test.ctx, id))?.id, subscriptionId);
 
     await test.app.request(

@@ -61,32 +61,38 @@ Deno.test("accepting a request shows its account's filtered notifications, and l
 
     await acceptRequests(test.ctx, "alice", []);
     await acceptRequests(test.ctx, "alice", [await test.requestFrom("bob")]);
+
     assertEquals(await test.of(), ["mention carol filtered", "favourite bob", "mention bob"]);
     assertEquals(heard, [{ accountId: "alice" }]);
     assertEquals(
         (await requestPage(test.ctx, "alice", { limit: 40 })).map((row) => row.from_account_id),
         ["carol"],
     );
+
     const [conversation] = await conversationPage(test.ctx, "alice", { limit: 40 });
     assertEquals([conversation.last_note_id, conversation.unread], [direct, true]);
 
     // Even a policy that drops them lets them through now.
     await savePolicy(test.ctx, "alice", { ...defaultPolicy, for_not_following: "drop" });
     await test.post("bob", "@alice Again");
+
     assertEquals((await test.of())[0], "mention bob");
 });
 
 Deno.test("dismissing a request deletes its account's filtered notifications, and filters the later ones", async () => {
     await using test = await open();
     await test.post("bob", "@alice In public", { public: true });
+
     // Filtered too, as alice doesn't follow bob.
     assertEquals(await test.of(), ["mention bob filtered"]);
+
     await savePolicy(test.ctx, "alice", defaultPolicy);
     await test.post("bob", "@alice In public again", { public: true });
     await test.post("bob", "@alice Hi");
     await test.post("carol", "@alice Hi");
 
     await dismissRequests(test.ctx, "alice", [await test.requestFrom("bob")]);
+
     assertEquals(await test.of(), ["mention carol filtered", "mention bob"]);
     assertEquals(
         (await requestPage(test.ctx, "alice", { limit: 40 })).map((row) => row.from_account_id),
@@ -94,6 +100,7 @@ Deno.test("dismissing a request deletes its account's filtered notifications, an
     );
 
     await test.post("bob", "@alice Again");
+
     assertEquals((await test.of())[0], "mention bob filtered");
     assertEquals((await test.requestFrom("bob")).notifications_count, 1);
 });

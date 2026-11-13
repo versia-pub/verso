@@ -61,6 +61,7 @@ const open = async () => {
             test.clock.now(),
         );
         const response = await app.request(path, { headers });
+
         return { status: response.status, body: await response.json() };
     };
 

@@ -203,6 +203,7 @@ Deno.test("a client that says what it supports gets a fallback for the types it 
         `/api/v1/notifications/${carolReacted}?${supports(["follow"])}`,
     );
     assertEquals((one.body as Shown).fallback, fallback);
+
     const own1 = await test.request("GET", `/api/v1/notifications/${carolReacted}`);
     assertEquals((own1.body as Shown).fallback, undefined);
 
@@ -223,6 +224,7 @@ Deno.test("a client that says what it supports gets a fallback for the types it 
         `/api/v2/notifications/ungrouped-${carolReacted}?${supports(["favourite"])}`,
     );
     assertEquals((group.body as Grouped).notification_groups[0]?.fallback, fallback);
+
     const plain = await test.request("GET", `/api/v2/notifications/ungrouped-${carolReacted}`);
     assertEquals((plain.body as Grouped).notification_groups[0]?.fallback, undefined);
 });
@@ -244,6 +246,7 @@ Deno.test("notifications are filtered by type, leaving out types Verso doesn't h
 
 Deno.test("notifications are paged, with links to the pages around", async () => {
     await using test = await open();
+
     for (const id of ["bob", "carol", "dave"]) await follow(test.ctx, id, "alice");
 
     const page = await test.request("GET", "/api/v1/notifications?limit=2");
@@ -265,14 +268,17 @@ Deno.test("notifications from accounts the user blocks or mutes are hidden, unti
     await block(test.ctx, "alice", "bob");
     await mute(test.ctx, "alice", "carol", { notifications: true, duration: 0 });
     await blockDomainFor(test.ctx, "alice", "b.example");
+
     assertEquals(await test.list(), []);
 
     await unblock(test.ctx, "alice", "bob");
     await unmute(test.ctx, "alice", "carol");
+
     assertEquals(await test.list(), [all[1], all[2]]);
 
     // A mute that leaves notifications alone hides none.
     await mute(test.ctx, "alice", "carol", { notifications: false, duration: 0 });
+
     assertEquals(await test.list(), [all[1], all[2]]);
 });
 
@@ -283,6 +289,7 @@ Deno.test("notifications about statuses the user may no longer see are hidden", 
     assertEquals(await test.list(), [`status bob ${note.id}`]);
 
     await unfollow(test.ctx, "alice", "bob");
+
     assertEquals(await test.list(), []);
     assertEquals((await test.request("GET", `/api/v1/notifications?types[]=status`)).body, []);
 });
@@ -480,10 +487,12 @@ Deno.test("only the types in grouped_types are grouped, and reactions only when 
 Deno.test("grouped notifications are paged by group, filtered, and leave out hidden accounts", async () => {
     await using test = await open();
     const own = await test.post("alice", "Hi");
+
     for (const id of ["bob", "carol", "dave"]) {
         await like(test.ctx, id, own.id);
         test.clock.advance(1000);
     }
+
     await follow(test.ctx, "bob", "alice");
     const [followed, daveLiked, , bobLiked] = await test.ids();
     const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
@@ -519,6 +528,7 @@ Deno.test("grouped notifications are paged by group, filtered, and leave out hid
     ]);
 
     await block(test.ctx, "alice", "carol");
+
     assertEquals(await test.groups("?types[]=favourite"), [`${liked} 2 dave,bob`]);
 });
 
@@ -547,6 +557,7 @@ Deno.test("a notification group is shown whole, without a page's ids", async () 
 
     const liked = await show(`favourite-${own.id}-${hour}`);
     assertEquals(liked.status, 200);
+
     const grouped = liked.body as Grouped;
     assertEquals(grouped.accounts.map((account) => account.id), ["carol", "bob"]);
     assertEquals(grouped.statuses.map((status) => status.id), [own.id]);
@@ -612,6 +623,7 @@ Deno.test("a notification group is not found if it isn't the user's, or they're 
     );
 
     await block(test.ctx, "alice", "bob");
+
     assertEquals((await test.request("GET", `/api/v2/notifications/${key}`)).status, 404);
 });
 
@@ -639,6 +651,7 @@ Deno.test("a group's accounts are listed newest first, each once, a page at a ti
     assertEquals(await ids(`?max_id=${daveReacted}`), ["carol"]);
 
     await block(test.ctx, "alice", "dave");
+
     assertEquals(await ids(), ["bob", "carol"]);
 
     const one = `/api/v2/notifications/ungrouped-${bobReacted}/accounts`;
@@ -700,12 +713,19 @@ Deno.test("unread notifications, or groups, are those newer than the notificatio
     assertEquals(await counts("?limit=2"), [2, 2]);
 
     await setMarker(test.ctx, "alice", "notifications", bobLiked ?? "");
+
     assertEquals(await counts(), [3, 3]);
+
     await setMarker(test.ctx, "alice", "notifications", followed ?? "");
+
     assertEquals(await counts(), [1, 1]);
+
     await setMarker(test.ctx, "alice", "home", mentioned ?? "");
+
     assertEquals(await counts(), [1, 1]);
+
     await setMarker(test.ctx, "bob", "notifications", mentioned ?? "");
+
     assertEquals(await counts(), [1, 1]);
 });
 
@@ -731,6 +751,7 @@ Deno.test("unread notifications are counted as filtered, leaving out hidden acco
     assertEquals(await counts("?grouped_types[]=follow"), [4, 4]);
 
     await block(test.ctx, "alice", "bob");
+
     assertEquals(await counts("?limit=1000"), [2, 2]);
 });
 

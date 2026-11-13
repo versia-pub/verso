@@ -51,6 +51,7 @@ const open = async () => {
 
         const job = await a.db.selectFrom("jobs").select(["attempts", "max_attempts", "last_error"])
             .where("queue", "=", "inbox").orderBy("created_at", "desc").executeTakeFirstOrThrow();
+
         return job.attempts === job.max_attempts ? job.last_error ?? "" : undefined;
     };
 
@@ -69,6 +70,7 @@ const open = async () => {
 
 Deno.test("an instance can delete its own users, with their pictures", async () => {
     await using test = await open();
+
     assertEquals(await test.usernames(), ["alice", "bob"]);
     assertEquals(await test.pictures(), 2);
 

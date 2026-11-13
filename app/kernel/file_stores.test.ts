@@ -12,6 +12,7 @@ Deno.test("the configured store is the one files are kept in", async () => {
     try {
         const key = await filesFor({ filesystem: root }, fakeTransport(), fakeClock())
             .put(await bytesSource(bytes), "text/plain");
+
         assertEquals(await Deno.readFile(`${root}/${key.slice(0, 2)}/${key}`), bytes);
     } finally {
         await Deno.remove(root, { recursive: true });

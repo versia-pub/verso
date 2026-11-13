@@ -93,6 +93,7 @@ export const reactToAnnouncement = (
             name,
             emojiId: emoji.emoji_id,
         });
+
         return "reacted";
     });
 
@@ -117,5 +118,6 @@ export const unreactToAnnouncement = (
             name,
             emojiId: emoji.emoji_id,
         });
+
         return true;
     });

@@ -51,6 +51,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
     b.serve("/.versia/v0.6/entities/User/bob", user);
+
     for (
         const [name, total] of [
             ["pub.versia:likes/Likes", totals.likes],
@@ -83,6 +84,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
 
         const row = await findRemoteNoteAt(a, "b.test", "n1");
         assertExists(row);
+
         return row;
     };
 
@@ -91,6 +93,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
         const row = await findRemoteNoteAt(a, "b.test", "n1");
         assertExists(row);
         const [status] = await renderStatuses(a, [row], null);
+
         return [status.favourites_count, status.reblogs_count, status.replies_count];
     };
 
@@ -156,6 +159,7 @@ Deno.test("a collection its instance doesn't have has no total, and the rest are
     const row = await test.send();
 
     assertEquals(await test.counts(), [4, 0, 0]);
+
     const [totals] = (await totalsOf(test.a, [row.id])).values();
     assertEquals([totals.likes, totals.shares, totals.replies], [4, null, null]);
 });
@@ -180,6 +184,7 @@ Deno.test("only another instance's note that is still there, and not blocked, ha
     await using test = await open({ likes: 1, shares: 1, replies: 1 });
     const local = await createNote(test.a, test.alice);
     await fetchTotalsLater(test.a, local);
+
     assertEquals(
         await test.a.db.selectFrom("jobs").select("id").where("queue", "=", totalsQueue).execute(),
         [],
@@ -237,6 +242,7 @@ Deno.test("a note opened is fetched again once its totals are an hour old, as is
         const from = test.asked();
         await refreshTotals(test.a, noteId);
         await test.network.drain();
+
         return test.asked() - from;
     };
 
@@ -271,6 +277,7 @@ Deno.test("a user opening a note or its thread has its totals fetched again, but
         assertEquals(response.status, 200, path);
         await response.body?.cancel();
         await test.network.drain();
+
         return test.asked() - from;
     };
 

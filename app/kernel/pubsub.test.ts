@@ -74,6 +74,7 @@ Deno.test("a subscriber hears nothing once it unsubscribes, and each subscriptio
 
     second();
     await publish(test.ctx, said, { text: "never" });
+
     assertEquals(heard, ["twice", "twice", "once"]);
 });
 

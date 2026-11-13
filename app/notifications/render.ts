@@ -74,6 +74,7 @@ export const renderNotifications = async (
         if (account === undefined) return [];
 
         const fallback = fallbackOf(row.type, supported, [account]);
+
         return [{
             id: row.id,
             type: row.type,
@@ -131,6 +132,7 @@ export const renderNotificationGroups = async (
     // A notification on its own is its group's only one.
     const groups = keyed.map(({ row, key }) => {
         const group = stats.get(key);
+
         return {
             row,
             key,
@@ -163,6 +165,7 @@ export const renderNotificationGroups = async (
             if (reaction === undefined) return [];
 
             const emoji = renderReactionEmoji(ctx, reaction);
+
             return [[emoji.emoji, emoji]];
         }));
 
@@ -171,6 +174,7 @@ export const renderNotificationGroups = async (
             supported,
             group.samples.flatMap((sample) => accounts.get(sample.from_account_id) ?? []),
         );
+
         return [{
             group_key: group.key,
             notifications_count: group.count,

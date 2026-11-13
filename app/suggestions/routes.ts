@@ -56,6 +56,7 @@ export const suggestionRoutes = (
                 body: suggested.flatMap(({ accountId, sources }) => {
                     const account = accounts.get(accountId);
                     const [first] = sources;
+
                     return account === undefined ? [] : [{
                         source: first === undefined ? null : legacySource[first] ?? null,
                         sources: [...sources],

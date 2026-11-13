@@ -120,6 +120,7 @@ Deno.test("a local poll that ends is sent again, to its audience and those who v
         hideTotals: false,
         expiresAt: test.clock.now(),
     });
+
     const notes = () => sent(test.ctx, "Note");
     assertEquals((await notes()).map(([domain]) => domain), ["c.example", "c.example"]);
 
@@ -207,6 +208,7 @@ Deno.test("a followers-only poll that ends isn't sent to the voters its author b
     for (const [id, domain] of accounts) {
         await createRemoteAccount(test.ctx, id, await createInstance(test.ctx, domain));
     }
+
     // Gus doesn't follow alice, so votes only in the public poll.
     for (const id of ["erin", "frank", "hank"]) await follow(test.ctx, id, "alice");
     const [followersOnly, open] = [

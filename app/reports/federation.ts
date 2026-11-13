@@ -69,6 +69,7 @@ export const reportDeliveries = async (ctx: Context, event: DomainEvent): Promis
         tags: [report.category],
         ...report.comment !== "" && { comment: report.comment },
     };
+
     const instanceIds = await forwardInstances(ctx, target, notes, event.domains);
     await queueDeliveriesTo(ctx, entity, { instanceIds });
 };
@@ -135,6 +136,7 @@ export const reportType: EntityType<v0_6.Report> = {
             }
 
             const seen = [];
+
             for (const note of named) {
                 if (note.instance_id !== null || await instanceMaySee(ctx, note, sender.domain)) {
                     seen.push(note.id);

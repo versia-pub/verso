@@ -142,6 +142,7 @@ export const trendRoutes = (
             responses: { 200: Paged(Status) },
             handler: async (ctx, { query, viewer }) => {
                 const viewerId = viewer?.accountId ?? null;
+
                 // Mastodon decides it by the `local` and `remote` a client sends, which Verso
                 // doesn't use.
                 const origin = await visibleOrigin(access.topic_feeds, "all", viewer);
@@ -154,6 +155,7 @@ export const trendRoutes = (
                 const notes = origin === undefined
                     ? []
                     : await linkPage(ctx, card.id, viewerHidden(ctx, viewerId), query, origin);
+
                 return {
                     status: 200,
                     body: await renderStatuses(ctx, notes, viewerId),

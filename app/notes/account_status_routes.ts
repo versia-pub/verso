@@ -48,6 +48,7 @@ export const accountStatusesRoute = defineRoute({
         const visibilities = query.exclude_direct
             ? seen.filter((visibility) => visibility !== "direct")
             : seen;
+
         if (query.pinned) {
             const pinned = await pinnedNotes(ctx, account.id, visibilities, query.only_media);
             return {
@@ -69,6 +70,7 @@ export const accountStatusesRoute = defineRoute({
             },
             query,
         );
+
         return {
             status: 200,
             body: await renderStatuses(ctx, notes, viewerId),

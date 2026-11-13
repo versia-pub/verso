@@ -322,6 +322,7 @@ export const familiarFollows = async (
     accountIds: readonly string[],
 ): Promise<{ follower_id: string; followee_id: string }[]> => {
     const rows = [];
+
     for (const batch of batchesOf(accountIds)) {
         rows.push(
             ...await ctx.db.selectFrom("follows as theirs")

@@ -16,6 +16,7 @@ import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
 const domainArgument = (domain: string) => {
     const canonical = canonicalizeDomain(domain);
     if (canonical === undefined) throw new ValidationError(`${domain} isn't a domain name`);
+
     return canonical;
 };
 
@@ -76,6 +77,7 @@ export const domainsCommand = (io: AdminIo): Command<{ config: string }> =>
 
                     const wasFailing = await recordReached(tx, name);
                     await resumeGroup(tx, deliverQueue, name);
+
                     return { domain: name, was_failing: wasFailing };
                 }));
             io.print(JSON.stringify(result));

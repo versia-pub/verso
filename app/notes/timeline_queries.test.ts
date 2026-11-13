@@ -31,6 +31,7 @@ const open = async () => {
         "erin",
     ])
         .execute();
+
     for (const id of ["bob", "carol", "erin"]) await follow(test.ctx, "alice", id);
     await test.ctx.db.updateTable("follows").set({ accepted: true }).where(
         "followee_id",
@@ -38,6 +39,7 @@ const open = async () => {
         "carol",
     )
         .execute();
+
     const names = new Map<string, string>();
 
     /** Adds a status called `name` by `accountId`, mentioning `mentionIds`, using `tags`. */
@@ -212,6 +214,7 @@ Deno.test("home has the public statuses with the hashtags the viewer follows, ea
 Deno.test("home is paged by id", async () => {
     await using test = await open();
     for (const name of ["one", "two", "three"]) await test.add(name, "bob");
+
     const [three] = [...test.names].find(([, name]) => name === "three") ?? [];
 
     assertEquals(await test.home({ limit: 2 }), ["three", "two"]);
@@ -225,6 +228,7 @@ Deno.test("home's own notes, shares and others' notes are paged together", async
     await test.share("bob's share", "bob", "first");
     await test.add("bob's other", "bob");
     await test.add("second", "alice");
+
     const id = (name: string) => [...test.names].find(([, each]) => each === name)?.[0];
 
     assertEquals(await test.home({ limit: 3 }), ["second", "bob's other", "bob's share"]);
@@ -291,6 +295,7 @@ Deno.test("timelines leave out the accounts the viewer mutes, while the mute las
     assertEquals(await test.everyone(), ["carol's", "dave's", "bob's"]);
 
     test.clock.advance(60_000);
+
     assertEquals(await test.home(), ["carol's", "share"]);
     assertEquals(await test.everyone("all", {}, "alice"), ["carol's", "dave's"]);
 });
@@ -336,9 +341,11 @@ Deno.test("a list has its members' shares the owner sees, and nothing of whom th
     await test.share("own", "alice", "dave's");
     await test.ctx.db.updateTable("follows").set({ show_reblogs: false })
         .where("followee_id", "=", "carol").execute();
+
     assertEquals(await test.onList(listId), ["own", "bob's"]);
 
     await mute(test.ctx, "alice", "dave", { notifications: false, duration: 0 });
+
     assertEquals(await test.onList(listId), []);
 });
 

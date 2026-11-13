@@ -23,11 +23,13 @@ const open = async () => {
     const test = await createTestContext({
         subscribers: [...subscribers, (_, event) => Promise.resolve(void events.push(event))],
     });
+
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     for (const [id, domain] of [["carol", "b.example"], ["erin", "c.example"]]) {
         await createInstance(test.ctx, domain);
         await createRemoteAccount(test.ctx, id, domain);
     }
+
     await follow(test.ctx, "erin", "alice");
 
     return Object.assign(test, { events });
@@ -95,6 +97,7 @@ Deno.test("a remote boost is deleted here only, and the status it boosts stays",
     });
 
     test.events.length = 0;
+
     assertEquals(await removeStatus(test.ctx, shared.id), true);
 
     assertEquals(await findNote(test.ctx, shared.id), undefined);

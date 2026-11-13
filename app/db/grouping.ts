@@ -10,6 +10,7 @@ export const setsBy = <T>(
     value: (row: T) => string,
 ): Map<string, Set<string>> => {
     const sets = new Map<string, Set<string>>();
+
     for (const row of rows) {
         const set = sets.get(key(row)) ?? new Set();
         sets.set(key(row), set.add(value(row)));

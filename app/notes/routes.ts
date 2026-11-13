@@ -156,6 +156,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             const viewerId = viewer?.accountId ?? null;
             const note = await visibleOriginal(ctx, params.id, viewerId);
             if (note === undefined) throw new NotFound();
+
             let refresh = await runningRefresh(ctx, contextRefresh(note.id));
             if (viewerId !== null) {
                 await refreshTotals(ctx, note.id);
@@ -163,6 +164,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             }
 
             const thread = await threadOf(ctx, note, viewerId);
+
             return {
                 status: 200,
                 headers: refresh === undefined ? {} : refreshHeader(refresh),
@@ -241,6 +243,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
             if (note?.account_id !== viewer.accountId) throw new NotFound();
 
             const [status] = await renderStatuses(ctx, [note], viewer.accountId, { source: true });
+
             // A boost is undone, as unboosting does, rather than deleted as a status.
             const removed = note.reblog_of_id === null
                 ? await removeNote(ctx, note.id)

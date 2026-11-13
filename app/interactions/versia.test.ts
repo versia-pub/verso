@@ -176,6 +176,7 @@ Deno.test("likes and their collections are served at encoded URLs", async () => 
         new URL(entityUrl("a.test", "pub.versia:likes/Like", row?.id ?? "")).pathname,
         `/.versia/v0.6/entities/pub.versia%3Alikes%2FLike/${row?.id}`,
     );
+
     const [status, entity] = await read(
         entityUrl("a.test", "pub.versia:likes/Like", row?.id ?? ""),
     );

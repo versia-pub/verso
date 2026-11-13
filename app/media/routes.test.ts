@@ -176,6 +176,7 @@ Deno.test("deleting an upload needs the write:media scope", async () => {
     const response = await test.request("DELETE", `/api/v1/media/${body.id}`, {
         scopes: ["read:media" as Scope],
     });
+
     assertEquals(response.status, 403);
 });
 
@@ -188,6 +189,7 @@ Deno.test("a picture is answered with 202, then 206, until it is processed", asy
     assertEquals(uploaded.body.type, "image");
     assertEquals(uploaded.body.url, null);
     assertEquals(uploaded.body.meta, { focus: { x: 0.5, y: -0.25 } });
+
     const path = `/api/v1/media/${uploaded.body.id}`;
     assertEquals(await test.request("GET", path), { ...uploaded, status: 206 });
 
@@ -211,12 +213,14 @@ Deno.test("an upload's description and focus can be changed by whoever uploaded 
     const path = `/api/v1/media/${body.id}`;
 
     const changed = await test.request("PUT", path, { json: { focus: "0,1" } });
+
     assertEquals(changed.status, 200);
     assertEquals([changed.body.description, changed.body.meta], ["My notes", {
         focus: { x: 0, y: 1 },
     }]);
 
     const cleared = await test.request("PUT", path, { json: { description: "" } });
+
     assertEquals([cleared.body.description, cleared.body.meta], [null, { focus: { x: 0, y: 1 } }]);
     assertEquals((await test.request("PUT", path, { json: {} })).body, cleared.body);
 
@@ -250,6 +254,7 @@ Deno.test("a picture that couldn't be processed is answered with 422", async () 
     };
 
     const error = [422, "Error processing thumbnail for uploaded media"];
+
     assertEquals(await refused("GET"), error);
     assertEquals(await refused("PUT", { description: "Hi" }), error);
 });
@@ -262,6 +267,7 @@ Deno.test("what is uploaded is checked", async () => {
     for (const point of ["1", "0.5,2", "a,b", "-1.5,0", "0,0,0"]) {
         assertEquals(await refused({ focus: point }), 422, point);
     }
+
     assertEquals(await refused({ focus: "-1,1.0" }), 200);
     assertEquals(await refused({ description: "x".repeat(4001) }), 422);
     assertEquals(await refused({ description: "x".repeat(4000) }), 200);
@@ -402,6 +408,7 @@ Deno.test("another instance's file is served once cached, as what it was cached 
         const { status, type, disposition } = await test.download(
             `https://social.example/media/${key}`,
         );
+
         return { status, type, disposition };
     };
 
@@ -422,12 +429,14 @@ Deno.test("another instance's file is served once cached, as what it was cached 
     );
 
     await cache("audio/ogg", { sha256: sound, cached_type: "audio/ogg" });
+
     assertEquals(await served(sound), { status: 200, type: "audio/ogg", disposition: null });
 
     // Never as what its instance said it is, without the type it was cached as.
     const html = new TextEncoder().encode("<script>alert(1)</script>");
     const page = await test.ctx.files.put(await bytesSource(html), "text/html");
     await cache("text/html", { sha256: page });
+
     assertEquals(await served(page), {
         status: 200,
         type: "application/octet-stream",

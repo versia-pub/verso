@@ -100,13 +100,14 @@ const bodyOf = async (c: HonoContext, route: Route) => {
         if (text !== "" && type !== "text/plain") {
             throw new UnsupportedMediaType("The body must be plain text");
         }
+
         return text;
     }
 
     if (!route.body || c.req.raw.body === null) return {};
     if (type === undefined && await c.req.text() === "") return {};
-    const forms = ["application/x-www-form-urlencoded", "multipart/form-data"];
 
+    const forms = ["application/x-www-form-urlencoded", "multipart/form-data"];
     if (type !== "application/json" && !forms.includes(type ?? "")) {
         throw new UnsupportedMediaType("The body must be JSON or a form");
     }

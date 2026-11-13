@@ -78,6 +78,7 @@ Deno.test("a share is sent to the sharer's followers and the note's author, and 
         deleted_type: "pub.versia:share/Share",
         deleted: shared.id,
     };
+
     const sentFor = (await sent(test.ctx)).map((
         [domain, each],
     ) => [domain, each.shared ?? each.deleted]);

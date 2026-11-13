@@ -29,5 +29,6 @@ export const displayNamesOf = async (
     const rows = await ctx.db.selectFrom("tags").selectAll()
         .where("name", "in", [...new Set(names)])
         .execute();
+
     return new Map(rows.map((row) => [row.name, row.display_name]));
 };

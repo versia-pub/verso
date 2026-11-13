@@ -48,11 +48,13 @@ export const fakeS3 = (): FakeS3 => {
 
     const server = async (request: Request) => {
         const { pathname } = new URL(request.url);
+
         if (!await signed(request)) {
             return new Response("<Error><Code>SignatureDoesNotMatch</Code></Error>", {
                 status: 403,
             });
         }
+
         if (!pathname.startsWith(prefix)) {
             return new Response("<Error><Code>NoSuchBucket</Code></Error>", { status: 404 });
         }
@@ -66,6 +68,7 @@ export const fakeS3 = (): FakeS3 => {
             case "PUT": {
                 const bytes = new Uint8Array(await request.arrayBuffer());
                 const sha256 = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)).toHex();
+
                 if (request.headers.get("x-amz-content-sha256") !== sha256) {
                     return new Response("<Error><Code>XAmzContentSHA256Mismatch</Code></Error>", {
                         status: 400,

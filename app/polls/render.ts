@@ -29,6 +29,7 @@ export const renderPollsFor = async (
 
         const ended = hasEnded(ctx, poll);
         const titles = poll.options.map((option) => option.title).join(" ");
+
         return [{
             note,
             pollId: poll.id,

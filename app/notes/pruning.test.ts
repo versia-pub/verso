@@ -46,6 +46,7 @@ const remoteNote = async (
     mentionIds: readonly string[] = [],
 ) => {
     const id = ctx.ids();
+
     return (await createNote(
         ctx,
         accountId,
@@ -62,6 +63,7 @@ const remoteShare = async (
     share: Partial<Insertable<NotesTable>> = {},
 ) => {
     const id = ctx.ids();
+
     return (await createShare(ctx, accountId, noteId, {
         id,
         instance_id: "b.example",
@@ -73,6 +75,7 @@ const remoteShare = async (
 /** Prunes what is older than now, as the command does, and returns the remote statuses left. */
 const prune = async (ctx: Context, keepFollowed = true) => {
     await pruneRemoteNotes(ctx, { before: new Date(ctx.clock.now().getTime() + 1), keepFollowed });
+
     return await remoteNoteIds(ctx);
 };
 
@@ -407,6 +410,7 @@ Deno.test("the counts of what is kept lose what is pruned, and so do their autho
 const addRemoteNotes = async (ctx: Context, accountId: string, count: number) => {
     const rows = Array.from({ length: count }, () => {
         const id = ctx.ids();
+
         return {
             id,
             account_id: accountId,
@@ -424,6 +428,7 @@ const addRemoteNotes = async (ctx: Context, accountId: string, count: number) =>
             edited_at: null,
         };
     });
+
     await ctx.db.insertInto("notes").values(rows).execute();
 };
 
@@ -474,6 +479,7 @@ Deno.test("old remote statuses are found by when they were created", async () =>
         createdAt: test.clock.now(),
         id: "0",
     }, 500).compile();
+
     if (testDatabaseKind === "sqlite") {
         const plan = await db.executeQuery<{ detail: string }>(
             CompiledQuery.raw(`explain query plan ${old.sql}`, [...old.parameters]),

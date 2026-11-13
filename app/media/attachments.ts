@@ -109,6 +109,7 @@ export const changesAttachments = (
     if (ids.join(",") !== current.map((row) => row.id).join(",")) return true;
 
     const rows = new Map(current.map((row) => [row.id, row]));
+
     return changes.some((change) => {
         const row = rows.get(change.id);
         return row !== undefined && describesAnew(row, change);

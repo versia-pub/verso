@@ -95,6 +95,7 @@ Deno.test("an announcement's reactions are made with only a few different emojis
     for (const emoji of emojis.slice(0, reactionLimit)) {
         assertEquals(await reactToAnnouncement(test.ctx, "alice", id, emoji), "reacted");
     }
+
     const ninth = emojis[reactionLimit];
     assertEquals(await reactToAnnouncement(test.ctx, "alice", id, ninth), "limit reached");
     assertEquals(await reactToAnnouncement(test.ctx, "bob", id, ninth), "limit reached");

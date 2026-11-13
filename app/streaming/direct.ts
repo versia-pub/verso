@@ -28,6 +28,7 @@ export const directStreams = (ctx: Context): Sessions => {
                 if (!entry.session.subscribedTo(["direct"])) continue;
                 if ((await entry.viewer.permissions()).has("read:note")) reached.push(entry);
             }
+
             if (reached.length === 0) return;
 
             const shown = await shownConversation(ctx, message.accountId, message.conversationId);

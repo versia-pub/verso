@@ -40,6 +40,7 @@ Deno.test("metrics are only for those with the token, and only if config gives o
             headers: authorization === undefined ? {} : { authorization },
         });
         await response.body?.cancel();
+
         return [response.status, response.headers.get("content-type")];
     };
     const app = createTestApp(test.ctx, [], { metricsToken: token });

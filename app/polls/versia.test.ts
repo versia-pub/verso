@@ -32,6 +32,7 @@ Deno.test("a local poll is in its Note, with its counts hidden until it ends if 
 
         const poll = await pollOf(test.ctx, note.id);
         await vote(test.ctx, "bob", poll?.id ?? "", [1]);
+
         return note;
     };
     const shown = await ask(false);

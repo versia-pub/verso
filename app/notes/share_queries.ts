@@ -111,6 +111,7 @@ export const sharedAmong = async (
         .where("account_id", "in", accountIds)
         .where("reblog_of_id", "in", noteIds)
         .execute();
+
     return setsBy(rows, (row) => row.account_id, (row) => row.reblog_of_id ?? "");
 };
 
@@ -179,6 +180,7 @@ export const countSharesBy = async (
         .where("account_id", "in", by.all)
         .groupBy("reblog_of_id")
         .execute();
+
     return new Map(
         rows.flatMap((row) =>
             row.reblog_of_id === null ? [] : [[row.reblog_of_id, readCount(row)]]

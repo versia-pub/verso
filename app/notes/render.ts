@@ -48,6 +48,7 @@ const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
     }
 
     if (note.remote_id === null) throw new Error(`Remote note ${note.id} has no remote id`);
+
     return entityUrl(domain, "Note", note.remote_id);
 };
 
@@ -89,6 +90,7 @@ const sharedStatuses = async (
     for (const viewerId of viewerIds) {
         seen.set(viewerId, await notesSeenBy(ctx, ids, onlookerOf(ctx, viewerId)));
     }
+
     const notes = (await findNotes(ctx, ids)).filter((note) =>
         viewerIds.some((viewerId) => seen.get(viewerId)?.has(note.id))
     );
@@ -124,6 +126,7 @@ const quotedStatuses = async (
 
     const views = new Map<ViewerId, Map<string, QuoteView>>();
     for (const viewerId of viewerIds) views.set(viewerId, await quoteViews(ctx, quoting, viewerId));
+
     if (nested) {
         return new Map([...views].map(([viewerId, each]) => [
             viewerId,
@@ -147,6 +150,7 @@ const quotedStatuses = async (
         const rendered = new Map(
             (statuses.get(viewerId) ?? []).map((status) => [status.id, status]),
         );
+
         return [
             viewerId,
             new Map([...each].map(([id, { state, note }]) => [id, {
@@ -362,6 +366,7 @@ export const renderStatusesFor = async (
                 )),
             }];
         });
+
         if (viewerId === null) return rendered;
 
         // A boost and the status it boosts match the same filters.
@@ -406,6 +411,7 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
         created_at: note.edited_at ?? note.created_at,
     };
     const versions = [...await versionsOf(ctx, note.id), current];
+
     // Media removed by an edit is still shown until unattached uploads are cleaned up.
     const ids = versions.flatMap((version) => version.media.map((media) => media.id));
     const files = new Map((await findMediaRows(ctx, ids)).map((row) => [row.id, row]));
@@ -413,6 +419,7 @@ export const renderHistory = async (ctx: Context, note: NoteRow): Promise<Status
     // Versions aren't stored with the custom emojis they used, so each shows the ones the status
     // uses now.
     const emojis = renderEmojis(ctx, (await emojisOfNotes(ctx, [note.id])).get(note.id) ?? []);
+
     return versions.map((version): StatusEdit => ({
         content: author.domain === null
             ? version.content_html

@@ -71,6 +71,7 @@ export const renderAnnouncements = async (
 
     return rows.map((row) => {
         if (row.published_at === null) throw new Error(`Announcement ${row.id} isn't published`);
+
         const found = scanText(row.text, "text/plain");
         const shortcodes = new Set(found.shortcodes);
 

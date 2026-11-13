@@ -72,6 +72,7 @@ Deno.test("a status the viewer can't see can't be bookmarked, but a bookmark of 
 
     await bookmark(test.ctx, "bob", note.id);
     await unfollow(test.ctx, "bob", "alice");
+
     const undone = await test.request("POST", `${path}/unbookmark`);
     assertEquals([undone.status, undone.body.bookmarked], [200, false]);
 });
@@ -92,6 +93,7 @@ Deno.test("the viewer's bookmarks are listed, the latest bookmarked first, if st
     // Pages go by the bookmarks, so the one bob can no longer see still takes its place.
     const first = await test.request("GET", "/api/v1/bookmarks?limit=2");
     assertEquals(first.body.map((status: { id: string }) => status.id), [older.id]);
+
     const next = new URL(first.link?.match(/<([^>]+)>; rel="next"/)?.[1] ?? "");
     const second = await test.request("GET", next.pathname + next.search);
     assertEquals(second.body.map((status: { id: string }) => status.id), [newer.id]);

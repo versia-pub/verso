@@ -37,6 +37,7 @@ export const accountNotesOn = async (
         .where("account_id", "=", accountId)
         .where("target_id", "in", otherIds)
         .execute();
+
     return new Map(rows.map((row) => [row.target_id, row.comment]));
 };
 

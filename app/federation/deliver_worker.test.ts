@@ -43,6 +43,7 @@ const open = async (settings: Partial<Settings> = {}) => {
             group: "b.example",
         });
         if (id === undefined) throw new Error("Not queued");
+
         return id;
     };
 
@@ -55,6 +56,7 @@ const open = async (settings: Partial<Settings> = {}) => {
         answer = () => new Response(null, { status, headers });
         const id = await queue();
         await drain(test.ctx, queues);
+
         return await job(id);
     };
 

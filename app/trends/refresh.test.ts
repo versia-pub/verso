@@ -404,6 +404,7 @@ Deno.test("suspended and silenced accounts' statuses don't count toward hashtags
     /** The names of the hashtags trending after a refresh. */
     const trending = async () => {
         await refreshTrendingTags(test.ctx);
+
         return (await tagNames(test)).map(([name]) => name);
     };
 

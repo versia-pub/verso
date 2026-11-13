@@ -39,6 +39,7 @@ const indexWords = async (
             INSERT INTO ${table} (${key}, document) VALUES (${id}, to_tsvector('simple', ${text}))
             ON CONFLICT (${key}) DO UPDATE SET document = excluded.document
         `.execute(ctx.db);
+
         return;
     }
 
@@ -48,6 +49,7 @@ const indexWords = async (
         ON CONFLICT (${key}) DO UPDATE SET ${key} = excluded.${key}
         RETURNING id
     `.execute(ctx.db);
+
     const kept = sql.table(index.text);
     await sql`DELETE FROM ${kept} WHERE rowid = ${rowid}`.execute(ctx.db);
     await sql`INSERT INTO ${kept} (rowid, text) VALUES (${rowid}, ${text})`.execute(ctx.db);
@@ -95,6 +97,7 @@ export const matching = (
         const query = phrase
             ? words.join(" <-> ")
             : words.map((word) => isPrefix(word) ? `${word}:*` : word).join(" & ");
+
         return sql<SqlBool>`${sql.ref(column)} IN (
             SELECT ${key} FROM ${table} WHERE document @@ to_tsquery('simple', ${query})
         )`;
@@ -104,6 +107,7 @@ export const matching = (
     const query = phrase
         ? `"${words.join(" ")}"`
         : words.map((word) => isPrefix(word) ? `"${word}"*` : `"${word}"`).join(" ");
+
     return sql<SqlBool>`${sql.ref(column)} IN (
         SELECT ${key} FROM ${table} WHERE id IN (SELECT rowid FROM ${kept} WHERE ${kept} MATCH ${query})
     )`;

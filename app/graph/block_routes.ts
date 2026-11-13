@@ -174,6 +174,7 @@ const domainBlockList = defineRoute({
     responses: { 200: Paged(z.string()) },
     handler: async (ctx, { query, viewer }) => {
         const blocks = await domainBlockPage(ctx, viewer.accountId, query);
+
         return {
             status: 200,
             body: blocks.map((each) => each.domain),
@@ -197,6 +198,7 @@ const muteList = defineRoute({
         const mutes = await mutePage(ctx, viewer.accountId, query);
         const ends = new Map(mutes.map((each) => [each.account_id, each.expires_at]));
         const accounts = await publicAccounts(ctx, [...ends.keys()]);
+
         return {
             status: 200,
             body: accounts.map((account) => ({
@@ -221,6 +223,7 @@ const blockList = defineRoute({
     responses: { 200: Paged(Account) },
     handler: async (ctx, { query, viewer }) => {
         const blocks = await blockPage(ctx, viewer.accountId, query);
+
         return {
             status: 200,
             body: await publicAccounts(ctx, blocks.map((block) => block.account_id)),

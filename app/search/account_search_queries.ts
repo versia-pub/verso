@@ -29,6 +29,7 @@ export const accountIdsMatching = async (
     match: AccountMatch,
 ): Promise<string[]> => {
     const { viewerId } = match;
+
     if (words.length === 0) return [];
 
     let query = ctx.db.selectFrom("accounts")
@@ -36,6 +37,7 @@ export const accountIdsMatching = async (
         .where(matching(ctx, accountIndex, "accounts.id", words))
         .where("accounts.suspended_at", "is", null)
         .where("accounts.moved_to_account_id", "is", null);
+
     if (viewerId !== null) {
         const followed = followedIdsQuery(ctx, viewerId);
         if (match.following) {

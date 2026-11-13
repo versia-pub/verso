@@ -39,6 +39,7 @@ export const pin = (ctx: Context, accountId: string, noteId: string): Promise<Pi
         if (!pinned && await countPins(tx, accountId) >= pinLimit) return "full";
 
         await insertPin(tx, accountId, note.id);
+
         return note;
     });
 

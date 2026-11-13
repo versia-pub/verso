@@ -118,6 +118,7 @@ export const interactionRoutes: readonly Route[] = [
             const groups =
                 (await reactionsOf(ctx, [note.id], viewerId, viewerBlocks(ctx, viewerId)))
                     .get(note.id) ?? [];
+
             return { status: 200, body: renderReactions(ctx, groups, viewer !== undefined) };
         },
     }),

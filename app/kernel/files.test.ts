@@ -92,6 +92,7 @@ const contract = (name: string, open: () => Promise<FileStore & AsyncDisposable>
             await assertRejects(() => store.get(key), TypeError);
             await assertRejects(() => store.delete(key), TypeError);
         }
+
         assertEquals(await read(store, helloKey), bytes);
     });
 };
@@ -121,6 +122,7 @@ Deno.test("a key is a SHA-256 in lowercase hex", async () => {
     ) {
         assertEquals(isFileKey(key), false, key);
     }
+
     assertEquals(isFileKey(helloKey.replace("f", "g")), false);
 });
 
@@ -146,6 +148,7 @@ Deno.test("on the filesystem, a file that can't be moved into place leaves nothi
         async () => test.store.put(await bytesSource(bytes), "text/plain"),
         Deno.errors.PermissionDenied,
     );
+
     assertEquals(await Array.fromAsync(Deno.readDir(`${test.root}/tmp`)), []);
     await Deno.chmod(`${test.root}/18`, 0o755);
 });

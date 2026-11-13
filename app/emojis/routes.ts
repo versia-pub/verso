@@ -60,6 +60,7 @@ export const emojiRoutes = (media: MediaLimits, limits: Limits): readonly Route[
         responses: { 200: z.array(CustomEmoji) },
         handler: async (ctx, { viewer }) => {
             const emojis = await usableEmojis(ctx, viewer?.accountId ?? null);
+
             return { status: 200, body: renderEmojis(ctx, emojis) };
         },
     }),
@@ -82,6 +83,7 @@ export const emojiRoutes = (media: MediaLimits, limits: Limits): readonly Route[
                 category: body.category,
                 global: body.global,
             });
+
             const emoji = await findLocalEmoji(ctx, id);
             if (emoji === undefined) throw new NotFound();
 

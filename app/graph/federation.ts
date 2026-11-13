@@ -58,6 +58,7 @@ const sendToFollowee = async (
         author,
         followee,
     };
+
     await queueDeliveries(ctx, entity, [followeeId]);
 };
 
@@ -77,6 +78,7 @@ const sendToFollower = async (
         author,
         follower,
     };
+
     await queueDeliveries(ctx, entity, [followerId]);
 };
 

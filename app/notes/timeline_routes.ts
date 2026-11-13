@@ -76,6 +76,7 @@ export const timelineRoutes = (
                 homeSourcesOf(ctx, viewer.accountId),
                 query,
             );
+
             return {
                 status: 200,
                 body: await renderStatuses(ctx, notes, viewer.accountId),
@@ -103,6 +104,7 @@ export const timelineRoutes = (
                 query,
                 query.only_media,
             );
+
             return {
                 status: 200,
                 body: await renderStatuses(ctx, notes, viewerId),
@@ -144,6 +146,7 @@ export const timelineRoutes = (
                 query,
                 query.only_media,
             );
+
             return {
                 status: 200,
                 body: await renderStatuses(ctx, notes, viewerId),

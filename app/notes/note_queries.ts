@@ -59,6 +59,7 @@ export const insertNote = async (
         .values({ ...note, thread_id: parent?.thread_id ?? note.id })
         .returningAll()
         .executeTakeFirstOrThrow();
+
     await insertMentionsAndTags(ctx, row.id, mentionIds, tags);
 
     return row;
@@ -270,6 +271,7 @@ export const mentionsOf = async (
         .where("note_id", "in", noteIds)
         .orderBy("account_id")
         .execute();
+
     for (const row of rows) {
         mentions.set(row.note_id, [...mentions.get(row.note_id) ?? [], row.account_id]);
     }
@@ -289,6 +291,7 @@ export const tagsOf = async (
         .where("note_id", "in", noteIds)
         .orderBy("name")
         .execute();
+
     for (const row of rows) tags.set(row.note_id, [...tags.get(row.note_id) ?? [], row.name]);
 
     return tags;

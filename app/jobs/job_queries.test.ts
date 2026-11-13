@@ -37,6 +37,7 @@ Deno.test("an enqueued job is due now with its attempts unused", async () => {
     await using test = await open();
 
     const id = await enqueue(test.ctx, { queue: "deliver", payload: { to: "b.test", n: [1] } });
+
     assertEquals(id, firstId);
 
     const now = test.ctx.clock.now();
@@ -67,9 +68,11 @@ Deno.test("a job exists only if the work that enqueued it commits", async () => 
             throw new Error("oops");
         })
     );
+
     assertEquals(await test.ctx.db.selectFrom("jobs").select("id").execute(), []);
 
     await test.ctx.transaction((tx) => enqueue(tx, { queue: "deliver", payload: {} }));
+
     assertEquals((await test.ctx.db.selectFrom("jobs").select("id").execute()).length, 1);
 });
 
@@ -77,6 +80,7 @@ Deno.test("a dedupe key that is already queued adds nothing", async () => {
     await using test = await open();
 
     const job = { queue: "cleanup", payload: {}, dedupeKey: "cleanup:2026-01-01T00" };
+
     assertEquals(await enqueue(test.ctx, job), firstId);
     assertEquals(await enqueue(test.ctx, { ...job, payload: { again: true } }), undefined);
     assertEquals(await test.ctx.db.selectFrom("jobs").select(["id", "payload"]).execute(), [
@@ -86,6 +90,7 @@ Deno.test("a dedupe key that is already queued adds nothing", async () => {
     // Jobs without a key never collide.
     await enqueue(test.ctx, { queue: "cleanup", payload: {} });
     await enqueue(test.ctx, { queue: "cleanup", payload: {} });
+
     assertEquals((await test.ctx.db.selectFrom("jobs").select("id").execute()).length, 3);
 });
 
@@ -111,6 +116,7 @@ Deno.test("jobs enqueued together are all added, but for dedupe keys already que
     assertEquals(rows.length, 2502);
     assertEquals(rows.at(1), { queue: "deliver", payload: { n: 0 }, group_key: null });
     assertEquals(rows.at(-1), { queue: "fetch", payload: { n: "first" }, group_key: "b.example" });
+
     await enqueueAll(test.ctx, []);
 });
 
@@ -165,6 +171,7 @@ Deno.test("claiming reads only due jobs, by an index of the jobs that can run", 
         );
         const details = plan.rows.map((row) => row.detail).join("\n");
         assertStringIncludes(details, "jobs_claimable (queue=? AND run_at<?)");
+
         return;
     }
 
@@ -173,8 +180,10 @@ Deno.test("claiming reads only due jobs, by an index of the jobs that can run", 
     const plan = await db.executeQuery(
         CompiledQuery.raw(`explain (analyze, format json) ${due.sql}`, [...due.parameters]),
     );
+
     const text = JSON.stringify(plan.rows);
     assertStringIncludes(text, "jobs_claimable");
+
     // The index scan read only the due job, none of the waiting ones.
     const scans = [...text.matchAll(/"Index Name":"jobs_claimable"[^}]*?"Actual Rows":(\d+)/g)];
     assertEquals(scans.map((scan) => scan[1]), ["1"]);
@@ -347,6 +356,7 @@ Deno.test("a paused group's jobs aren't claimed until the pause ends", async () 
     await add(7, { group: "b.example", runAt: at(20) });
     const [running] = await claim(test.ctx, { ...options, limit: 1 });
     assertEquals(running.payload.n, 1);
+
     await postponeGroup(test.ctx, "deliver", "b.example", at(10));
     // A shorter pause doesn't shorten it.
     await postponeGroup(test.ctx, "deliver", "b.example", at(5));
@@ -368,11 +378,13 @@ Deno.test("a paused group's jobs aren't claimed until the pause ends", async () 
 
     const claimed = await claim(test.ctx, options);
     assertEquals(ids(claimed), [2, 3]);
+
     for (const job of [running, ...claimed]) await complete(test.ctx, job);
     assertEquals(ids(await claim(test.ctx, { ...options, queue: "notify" })), [4]);
 
     test.clock.advance(10 * minute - 1);
     assertEquals(await claim(test.ctx, options), []);
+
     test.clock.advance(1);
     // In the order they were made.
     assertEquals(ids(await claim(test.ctx, options)), [6, 5]);
@@ -420,6 +432,7 @@ Deno.test("a group's due jobs still aren't claimed while it is paused", async ()
     await test.ctx.db.updateTable("jobs").set({ run_at: test.clock.now() }).execute();
 
     assertEquals(await claim(test.ctx, options), []);
+
     test.clock.advance(minute);
     assertEquals(ids(await claim(test.ctx, options)), [1]);
 });
@@ -552,6 +565,7 @@ Deno.test("dead letters are found by an index of them only", async () => {
             CompiledQuery.raw(`explain query plan ${dead.sql}`, [...dead.parameters]),
         );
         assertStringIncludes(plan.rows.map((row) => row.detail).join("\n"), "jobs_dead (run_at<?)");
+
         return;
     }
 
@@ -560,6 +574,7 @@ Deno.test("dead letters are found by an index of them only", async () => {
         CompiledQuery.raw(`explain (analyze, format json) ${dead.sql}`, [...dead.parameters]),
     );
     const text = JSON.stringify(plan.rows);
+
     // The index holds none of the waiting jobs, so the scan reads none.
     const scans = [...text.matchAll(/"Index Name":"jobs_dead"[^}]*?"Actual Rows":(\d+)/g)];
     assertEquals(scans.map((scan) => scan[1]), ["0"]);
@@ -586,8 +601,10 @@ Deno.test("queues' waiting jobs and dead letters are counted from their indexes"
             );
             details.push(plan.rows.map((row) => row.detail).join("\n"));
         }
+
         assertStringIncludes(details[0], "USING INDEX jobs_claimable");
         assertStringIncludes(details[1], "jobs_dead");
+
         return;
     }
 
@@ -717,6 +734,7 @@ const deadLetter = async (
     const [job] = await claim(test.ctx, { ...options, queue });
     await giveUp(test.ctx, job, `failure ${n}`);
     test.clock.advance(minute);
+
     return id;
 };
 
@@ -782,6 +800,7 @@ Deno.test("a retried dead letter waits only for its own queue's pause of its gro
     await postponeGroup(test.ctx, "deliver", "b.example", later);
 
     assertEquals(await retryDeadLetters(test.ctx, { ids: [delivery, notification] }), 2);
+
     const rows = await test.ctx.db.selectFrom("jobs").select("run_at").orderBy("created_at")
         .execute();
     assertEquals(rows.map((row) => row.run_at), [later, test.clock.now()]);
@@ -813,6 +832,7 @@ Deno.test("a queue's dead letters are deleted a batch at a time, until none are 
     await deadLetter(test, "notify", 6);
 
     assertEquals(await deleteDeadLetters(test.ctx, { queue: "deliver" }, 2), 5);
+
     const rows = await test.ctx.db.selectFrom("jobs").select("payload").execute();
     assertEquals(ids(rows), [6]);
 });

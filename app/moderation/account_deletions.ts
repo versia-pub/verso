@@ -40,11 +40,14 @@ export const deleteLocalAccount = async (
     const { deleted, keys } = await ctx.transaction(async (tx) => {
         const event: AccountDeleting = { type: "accounts.deleting", accountId };
         await emit(tx, event);
+
         await deleteEmojisOf(tx, accountId);
         await purgeRowsOf(tx, accountId);
+
         const deleted = tombstone ? await emptyAccount(tx, accountId, tx.clock.now()) : true;
         const keys = await deleteMediaOf(tx, accountId);
         if (!tombstone) await deleteAccount(tx, accountId);
+
         // Every instance is told, since any may have the user's statuses.
         if (deleted) {
             const entity = deleteEntity(tx, accountId, "User", accountId);
@@ -53,6 +56,7 @@ export const deleteLocalAccount = async (
 
         return { deleted, keys };
     });
+
     for (const key of keys) await deleteFileIfUnused(ctx, key);
 
     return deleted;

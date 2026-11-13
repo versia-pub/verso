@@ -16,6 +16,7 @@ Deno.test("an instance has one emoji by each name, its picture the latest given"
         const row = await findRemoteEmoji(test.ctx, instanceId, shortcode);
         const media = row && await test.ctx.db.selectFrom("media").select("url")
             .where("id", "=", row.media_id).executeTakeFirst();
+
         return [row?.id, media?.url];
     };
 
@@ -24,6 +25,7 @@ Deno.test("an instance has one emoji by each name, its picture the latest given"
         emoji("cat", "https://b.example/cat.png"),
     ]);
     const [blob, cat] = first;
+
     assertEquals(await picture("b.example", "blob"), [blob, "https://b.example/blob.png"]);
 
     // Named again, it is the same emoji, with the new picture in place of the old one.
@@ -42,6 +44,7 @@ Deno.test("an instance has one emoji by each name, its picture the latest given"
     const [theirs] = await keepRemoteEmojis(test.ctx, "c.example", [
         emoji("blob", "https://c.example/blob.png"),
     ]);
+
     assertNotEquals(theirs, blob);
     assertEquals(await picture("b.example", "blob"), [blob, "https://b.example/new.png"]);
 });

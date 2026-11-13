@@ -84,12 +84,12 @@ export const sqliteDialect = (database: DatabaseSync): Dialect =>
             close: () => database.close(),
             prepare: (sql) => {
                 const statement = database.prepare(sql);
-
                 const columns = statement.columns();
 
                 const converted = columns.flatMap((column) => {
                     const convert = column.type &&
                         readers[column.type.toLowerCase()];
+
                     return convert ? [[column.name, convert] as const] : [];
                 });
 
@@ -103,6 +103,7 @@ export const sqliteDialect = (database: DatabaseSync): Dialect =>
                             record[name] = convert(record[name], name);
                         }
                     }
+
                     return record;
                 };
 

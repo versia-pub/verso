@@ -322,6 +322,7 @@ Deno.test("remote statuses older than --days are pruned, and followed accounts' 
             created_at: test.clock.now(),
         })
         .execute();
+
     const remote = (accountId: string) => {
         const id = test.ctx.ids();
         return createNote(test.ctx, accountId, { id, instance_id: "b.example", remote_id: id });
@@ -334,6 +335,7 @@ Deno.test("remote statuses older than --days are pruned, and followed accounts' 
 
     const pruned = async (...args: string[]) =>
         JSON.parse((await admin(test.ctx, "statuses", "prune", ...args)).printed.join(""));
+
     assertEquals(await pruned(), { deleted: 1 });
     assertEquals(await pruned("--days", "90"), { deleted: 0 });
     assertEquals(await pruned("--clean-followed"), { deleted: 1 });
@@ -357,6 +359,7 @@ Deno.test("remote accounts fetched more than --days ago that nothing refers to a
 
     const pruned = async (...args: string[]) =>
         JSON.parse((await admin(test.ctx, "accounts", "prune", ...args)).printed.join(""));
+
     assertEquals(await pruned(), { deleted: 1 });
     assertEquals(await pruned("--days", "80"), { deleted: 1 });
     assertEquals(
@@ -394,6 +397,7 @@ Deno.test("remote attachments cached more than --days ago lose their files", asy
 
     const pruned = async (...args: string[]) =>
         JSON.parse((await admin(test.ctx, "media", "prune", ...args)).printed.join(""));
+
     assertEquals(await pruned("--days", "8"), { cleared: 1 });
     assertEquals(await pruned(), { cleared: 1 });
     assertEquals(await pruned("--days", "1"), { cleared: 1 });
@@ -420,6 +424,7 @@ Deno.test("preview cards fetched more than --days ago lose their images, and uns
 
     const pruned = async (...args: string[]) =>
         JSON.parse((await admin(test.ctx, "preview-cards", "prune", ...args)).printed.join(""));
+
     assertEquals(await pruned(), { deleted: 1, cleared: 1 });
     assertEquals(await pruned("--days", "170"), { deleted: 1, cleared: 0 });
     assertEquals(
@@ -582,6 +587,7 @@ Deno.test("announcements are made, changed, published, taken down and deleted", 
         created_at: now,
         updated_at: now,
     });
+
     const event = json(
         (await admin(
             test.ctx,
@@ -597,6 +603,7 @@ Deno.test("announcements are made, changed, published, taken down and deleted", 
             "2026-01-15",
         )).printed,
     );
+
     assertEquals([
         event.published,
         event.scheduled_at,
@@ -661,6 +668,7 @@ Deno.test("announcements are made, changed, published, taken down and deleted", 
         );
         assertStringIncludes(error.message, "There is no announcement");
     }
+
     const invalid = await assertRejects(
         () => admin(test.ctx, "announcements", "create", "Hi", "--starts-at", "2026-02-01"),
         AdminError,
@@ -671,6 +679,7 @@ Deno.test("announcements are made, changed, published, taken down and deleted", 
         AdminError,
     );
     assertEquals(halfEvent.message, "An event needs both when it starts and when it ends");
+
     for (const time of ["tomorrow", "2026-13-40", "1700000000", "2026", "2026-11"]) {
         await assertRejects(
             () => admin(test.ctx, "announcements", "create", "Hi", "--scheduled-at", time),
@@ -702,6 +711,7 @@ Deno.test("trending hashtags and accounts are approved and rejected, and listed 
             ]),
         };
     };
+
     assertEquals((await states()).tags, [["cats", "pending"]]);
     assertEquals((await states()).accounts.length, 6);
     assertEquals((await states()).accounts[0][1], "pending");
@@ -780,6 +790,7 @@ Deno.test("trending links and their websites are approved and rejected, and list
     const listed = async () =>
         JSON.parse((await admin(test.ctx, "trends", "list")).printed.join(""));
     const link = async () => (await listed()).links;
+
     assertEquals(await link(), [{
         url: "https://news.example/story",
         title: "A story",
@@ -824,6 +835,7 @@ Deno.test("dead letters are listed, retried and purged, and those that can't run
         test.clock.advance(1000);
         return id;
     };
+
     const one = await dead("notify", 1);
     const two = await dead("notify", 2);
     const delivery = await dead("versia-deliver", 3);

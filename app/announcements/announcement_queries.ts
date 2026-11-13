@@ -95,5 +95,6 @@ export const dismissedAmong = async (
         .where("account_id", "=", accountId)
         .where("announcement_id", "in", announcementIds)
         .execute();
+
     return new Set(rows.map((row) => row.announcement_id));
 };

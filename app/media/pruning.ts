@@ -56,9 +56,11 @@ export const mediaPruneHandler: Handler = async (ctx: Context, job: JobsTable): 
  */
 export const pruneRemoteMedia = async (ctx: Context, before: Date): Promise<number> => {
     let total = 0;
+
     while (true) {
         const cleared = await ctx.transaction((tx) => pruneBatch(tx, before));
         total += cleared;
+
         if (cleared < mediaPerJob) return total;
     }
 };

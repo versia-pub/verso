@@ -45,6 +45,7 @@ const sendNote = async (ctx: Context, noteId: string, pollId?: string) => {
         unblockedFollowers ? blockedByAccount(ctx, note.account_id).all : undefined,
     );
     const instanceIds = [...new Set([...audience.instanceIds, ...voters])].toSorted();
+
     await queueDeliveriesTo(ctx, entity, { ...audience, instanceIds, unblockedFollowers });
 };
 
@@ -87,6 +88,7 @@ const outbox: CollectionProvider = async (ctx, id, page) => {
     if (owner?.domain !== null) return undefined;
 
     const notes = await notesBy(ctx, id, everyone, page.offset, page.limit);
+
     return {
         author: id,
         total: await countNotesBy(ctx, id, everyone),
@@ -103,6 +105,7 @@ const featured: CollectionProvider = async (ctx, id, page) => {
     if (owner?.domain !== null) return undefined;
 
     const notes = await pinnedNotes(ctx, id, everyone);
+
     return {
         author: id,
         total: notes.length,
@@ -138,6 +141,7 @@ const linkCollection = (link: NoteLink): CollectionProvider => async (ctx, id, p
 
     const ids = await linkedNoteIds(ctx, link, id, everyone, page.offset, page.limit);
     const references = await noteReferenceMap(ctx, ids);
+
     return {
         author: note.account_id,
         total: await countLinkedNotes(ctx, link, id, everyone),

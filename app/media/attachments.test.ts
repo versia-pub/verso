@@ -119,6 +119,7 @@ Deno.test("only one's own uploads, processed and not attached yet, can be attach
         new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new TextEncoder().encode("oops")]),
     );
     await drain(test.ctx, queues);
+
     assertEquals(await refused([broken]), [422, `Media failed to process: ${broken}`]);
     assertEquals(await test.notes(), notes);
 });
@@ -169,6 +170,7 @@ Deno.test("an edit attaches files in place of the status's, and its history keep
     // If the same media and descriptions are sent unchanged, nothing changes and the status isn't
     // edited.
     await test.edit(body.id, { status: "Hi", media_ids: [a, b, a] });
+
     assertEquals(await test.history(body.id), [[a, b]]);
 
     const edited = await test.edit(body.id, { status: "Hi", media_ids: [c, b] });
@@ -204,11 +206,13 @@ Deno.test("deleting a status keeps its media to redraft, unless asked to delete 
             },
             body: typeof options === "string" ? undefined : JSON.stringify(options),
         });
+
         return { status: response.status, body: await response.json() };
     };
 
     // The status shows its media as it was.
     const kept = await remove(ids[0], "");
+
     assertEquals(kept.body.media_attachments.map((m: Attachment) => m.id), [media[0]]);
     assertEquals((await findMedia(test.ctx, media[0]))?.id, media[0]);
 
@@ -244,6 +248,7 @@ Deno.test("an edit that leaves files out keeps them, and can describe them", asy
 
     // An empty description clears it.
     await attributes({ id: a, description: "" });
+
     assertEquals(await test.history(body.id), [[a]]);
 
     const edited = await attributes(
@@ -263,11 +268,13 @@ Deno.test("an edit that leaves files out keeps them, and can describe them", asy
         id: other,
         description: "Other",
     });
+
     assertEquals((await test.history(body.id)).length, 2);
 
     // Moving the focus point on either axis counts as an edit.
     await attributes({ id: a, focus: "0,0.5" });
     await attributes({ id: a, focus: "1,0.5" });
+
     assertEquals((await test.history(body.id)).length, 4);
 
     // Forms send changes by index.
@@ -275,6 +282,7 @@ Deno.test("an edit that leaves files out keeps them, and can describe them", asy
         body.id,
         `status=Hi&media_attributes[0][id]=${a}&media_attributes[0][description]=Mine`,
     );
+
     assertEquals(form.body.media_attachments.map(described), [`${a}: Mine`]);
 });
 
@@ -310,6 +318,7 @@ Deno.test("asked only for statuses with media, an account and the public timelin
 
     const ids = async (path: string) => {
         const response = await test.app.request(path);
+
         return (await response.json()).map((status: { id: string }) => status.id);
     };
 

@@ -85,6 +85,7 @@ Deno.test("a direct mention isn't filtered from an account the user follows, or 
     const asked = await test.post("alice", "@bob Hi");
     const answer = await test.post("bob", "@alice Hello", { inReplyToId: asked });
     await test.post("bob", "@alice Still me", { inReplyToId: answer });
+
     assertEquals(await test.of("alice"), ["mention bob", "mention bob", "mention carol"]);
 });
 
@@ -111,10 +112,12 @@ Deno.test("a policy that drops a notification wins over one that filters it", as
 
     await test.policy("alice", { for_not_following: "filter", for_new_accounts: "drop" });
     await like(test.ctx, "bob", note);
+
     assertEquals(await test.of("alice"), []);
 
     await test.policy("alice", { for_not_following: "filter" });
     await like(test.ctx, "carol", note);
+
     assertEquals(await test.of("alice"), ["favourite carol filtered"]);
 });
 
@@ -128,6 +131,7 @@ Deno.test("an account counts as a follower once it has followed for 3 days", asy
     await like(test.ctx, "bob", first);
     test.clock.advance(3 * dayMs);
     await like(test.ctx, "bob", second);
+
     assertEquals(await test.of("alice"), [
         "favourite bob",
         "favourite bob filtered",
@@ -143,11 +147,13 @@ Deno.test("an account is new for 30 days, unless the user follows it", async () 
     await like(test.ctx, "bob", note);
     await follow(test.ctx, "alice", "carol");
     await like(test.ctx, "carol", note);
+
     assertEquals(await test.of("alice"), ["favourite carol", "favourite bob filtered"]);
 
     test.clock.advance(30 * dayMs);
     const later = await test.post("alice", "Later", { public: true });
     await like(test.ctx, "bob", later);
+
     assertEquals((await test.of("alice"))[0], "favourite bob");
 });
 
@@ -159,15 +165,18 @@ Deno.test("a policy for bots applies to bots the user doesn't follow", async () 
     await test.policy("alice", { for_bots: "filter" });
     await like(test.ctx, "bob", note);
     await like(test.ctx, "carol", note);
+
     assertEquals(await test.of("alice"), ["favourite carol", "favourite bob filtered"]);
 
     await test.policy("alice", { for_bots: "drop" });
     await share(test.ctx, "bob", note);
     await share(test.ctx, "carol", note);
+
     assertEquals((await test.of("alice")).slice(0, 2), ["reblog carol", "favourite carol"]);
 
     await follow(test.ctx, "alice", "bob");
     await follow(test.ctx, "bob", "alice");
+
     assertEquals((await test.of("alice")).at(0), "follow bob");
 });
 
@@ -181,6 +190,7 @@ Deno.test("edits of boosted statuses aren't filtered, nor anything from accounts
     await test.policy("alice", { for_not_following: "drop", for_not_followers: "drop" });
     await editNote(test.ctx, "bob", note, { text: "Hello" });
     await drain(test.ctx, queues);
+
     assertEquals(await test.of("alice"), ["update bob", "favourite bob"]);
 });
 
@@ -195,6 +205,7 @@ Deno.test("a policy for limited accounts applies to silenced accounts the user d
     await like(test.ctx, "carol", note);
     await test.policy("alice", { for_bots: "filter" });
     await share(test.ctx, "bob", note);
+
     assertEquals(await test.of("alice"), [
         "reblog bob filtered",
         "favourite carol",
@@ -206,25 +217,30 @@ Deno.test("a policy for limited accounts applies to silenced accounts the user d
     await like(test.ctx, "dave", note);
     await silence(test.ctx, "dave");
     await share(test.ctx, "dave", note);
+
     assertEquals((await test.of("alice")).slice(0, 2), ["favourite dave", "reblog carol"]);
 
     await test.policy("alice", { for_limited_accounts: "accept" });
     await unshare(test.ctx, "dave", note);
     await share(test.ctx, "dave", note);
+
     assertEquals((await test.of("alice")).at(0), "reblog dave");
 
     // Even if the policy does nothing else.
     await test.policy("alice", { for_private_mentions: "accept" });
     await like(test.ctx, "dave", await test.post("alice", "More", { public: true }));
+
     assertEquals((await test.of("alice")).at(0), "favourite dave filtered");
 
     await test.policy("alice", { for_limited_accounts: "drop" });
     await follow(test.ctx, "alice", "bob");
     await test.post("bob", "@alice Hi", { public: true });
+
     assertEquals((await test.of("alice")).at(0), "mention bob");
 
     await unsilence(test.ctx, "dave");
     await test.post("dave", "@alice Hi", { public: true });
+
     assertEquals((await test.of("alice")).at(0), "mention dave");
 });
 
@@ -241,6 +257,7 @@ Deno.test("quotes are filtered and kept in a request, but edits of quoted status
     });
     await editNote(test.ctx, "alice", note, { text: "Hello" });
     await drain(test.ctx, queues);
+
     assertEquals(await test.of("alice"), ["quote bob filtered"]);
     assertEquals(await test.of("bob"), ["quoted_update alice"]);
 
@@ -276,5 +293,6 @@ Deno.test("an account that only asked to follow doesn't count as a follower", as
     await follow(test.ctx, "bob", "alice");
     test.clock.advance(3 * dayMs);
     await like(test.ctx, "bob", note);
+
     assertEquals(await test.of("alice"), ["favourite bob filtered", "follow_request bob filtered"]);
 });

@@ -43,6 +43,7 @@ export const adminReportRoutes = (settings: {
     readonly permissions: Pick<Config["permissions"], "default">;
 }): readonly Route[] => {
     const rules = renderRules(settings.instance);
+
     const render = async (ctx: Context, viewerId: string, row: ReportRow) => {
         const [report] = await renderAdminReports(
             ctx,
@@ -51,6 +52,7 @@ export const adminReportRoutes = (settings: {
             rules,
             settings.permissions.default,
         );
+
         return report;
     };
 

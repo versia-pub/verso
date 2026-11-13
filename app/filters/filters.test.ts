@@ -21,6 +21,7 @@ const open = async () => {
             visibility,
         });
         if (note === undefined) throw new Error("Not posted");
+
         return note.id;
     };
     const alices = await post("alice", "public");
@@ -73,6 +74,7 @@ Deno.test("a user makes filters, changes them, and deletes them", async () => {
     );
     assertEquals(keywordsOf(made.body), [["cat", true], ["dog", false]]);
     assertEquals(made.body.statuses, []);
+
     const other = await test.filter();
 
     const [cat, dog] = made.body.keywords;
@@ -86,6 +88,7 @@ Deno.test("a user makes filters, changes them, and deletes them", async () => {
     });
     assertEquals([changed.body.title, changed.body.filter_action], ["Pets", "hide"]);
     assertEquals(keywordsOf(changed.body), [["dogs", false], ["bird", true]]);
+
     const shown = await test.request("GET", `/api/v2/filters/${made.body.id}`);
     assertEquals(shown.body, changed.body);
     const listed = await test.request("GET", "/api/v2/filters");
@@ -182,6 +185,7 @@ Deno.test("a filter's keywords are its own, and no one else sees or changes them
         const path = `/api/v2/filters/keywords/${dog.id}`;
         assertEquals((await test.request(method, path, body)).status, 404);
     }
+
     const path = `/api/v2/filters/${bobs.id}/keywords`;
     assertEquals((await test.request("GET", path)).status, 404);
     assertEquals((await test.request("POST", path, { keyword: "cats" })).status, 404);

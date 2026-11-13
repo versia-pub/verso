@@ -35,6 +35,7 @@ Deno.test("a route's inputs are its path, query, header and cookie parameters, a
         required: ["name"],
     };
     const { components: _, ...document } = openApiDocument([route], info, origin);
+
     assertEquals(document, {
         openapi: "3.1.1",
         info,
@@ -288,6 +289,7 @@ Deno.test("the client API's entities are described once, in components, and refe
     const ref = (id: string) => ({ $ref: `#/components/schemas/${id}` });
     const json = (status: number) =>
         document.paths["/accounts"].get.responses[status].content?.["application/json"].schema;
+
     assertEquals(json(200), { type: "array", items: ref("Account") });
     assertEquals(json(201), ref("CredentialAccount"));
 
@@ -353,6 +355,7 @@ Deno.test("who may call a route is its security, and what OpenAPI can't say is d
         return { security, description };
     };
     const user = "Needs a token for a user, not one an app got for itself.";
+
     assertEquals(access("/open"), { security: undefined, description: undefined });
     assertEquals(access("/user"), {
         security: [{ OAuth2: ["read:accounts"] }],

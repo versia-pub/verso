@@ -19,6 +19,7 @@ const open = async () => {
     const network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"];
     const b = network.instances["b.test"];
+
     await createLocalAccount(a.ctx, "alice");
     for (const id of ["bob", "carol"]) await createLocalAccount(b.ctx, id);
 
@@ -53,6 +54,7 @@ const remoteStatuses = async (instance: Instance) =>
 Deno.test("a suspended local user isn't served, nor followed, and only their deletions are sent", async () => {
     await using network = await open();
     const { a, b, aliceOnB } = network;
+
     await follow(b.ctx, "bob", aliceOnB);
     await network.drain();
     const note = await postNote(a.ctx, "alice", {
@@ -61,6 +63,7 @@ Deno.test("a suspended local user isn't served, nor followed, and only their del
         spoilerText: "",
     });
     await network.drain();
+
     assertEquals(await remoteStatuses(b), ["Hi"]);
 
     await suspend(a.ctx, "alice");
@@ -75,6 +78,7 @@ Deno.test("a suspended local user isn't served, nor followed, and only their del
     ) {
         assertEquals(await fetched(b, a, `/.versia/v0.6${path}`), 404, path);
     }
+
     const finger = await a.app.request("/.well-known/webfinger?resource=acct:alice@a.test");
     assertEquals(finger.status, 404);
 
@@ -82,6 +86,7 @@ Deno.test("a suspended local user isn't served, nor followed, and only their del
     await updateProfile(a.ctx, "alice", { displayName: "Alice" });
     await follow(b.ctx, "carol", aliceOnB);
     await network.drain();
+
     assertEquals(
         (await b.ctx.db.selectFrom("accounts").select("display_name").where("id", "=", aliceOnB)
             .executeTakeFirstOrThrow()).display_name,
@@ -91,15 +96,18 @@ Deno.test("a suspended local user isn't served, nor followed, and only their del
 
     await removeStatus(a.ctx, note?.id ?? "");
     await network.drain();
+
     assertEquals(await remoteStatuses(b), []);
 
     await unsuspend(a.ctx, "alice");
+
     assertEquals(await fetched(b, a, "/.versia/v0.6/entities/User/alice"), 200);
 });
 
 Deno.test("a suspended remote user's instance can only delete, change their profile, and end follows", async () => {
     await using network = await open();
     const { a, b, aliceOnB } = network;
+
     await follow(b.ctx, "bob", aliceOnB);
     await network.drain();
     const bobOnA = await remoteIdOn(a, "bob");
@@ -111,6 +119,7 @@ Deno.test("a suspended remote user's instance can only delete, change their prof
     await suspend(a.ctx, bobOnA);
     await postNote(b.ctx, "bob", { text: "During", format: "text/plain", spoilerText: "" });
     await network.drain();
+
     // Kept, though not taken further.
     assertEquals(await remoteStatuses(a), ["Before"]);
     assertEquals(await followersOf(a, "alice"), [bobOnA]);
@@ -118,6 +127,7 @@ Deno.test("a suspended remote user's instance can only delete, change their prof
     await updateProfile(b.ctx, "bob", { displayName: "Bob" });
     await unfollow(b.ctx, "bob", aliceOnB);
     await network.drain();
+
     assertEquals(
         (await a.ctx.db.selectFrom("accounts").select("display_name").where("id", "=", bobOnA)
             .executeTakeFirstOrThrow()).display_name,
@@ -133,6 +143,7 @@ Deno.test("a suspended remote user's instance can only delete, change their prof
         .where("instance_id", "is not", null).execute();
     await removeStatus(b.ctx, kept.remote_id ?? "");
     await network.drain();
+
     assertEquals(await followersOf(a, "alice"), []);
     assertEquals(await remoteStatuses(a), []);
 

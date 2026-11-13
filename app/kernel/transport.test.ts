@@ -69,6 +69,7 @@ Deno.test("a name that resolves to an internal address, or not at all, isn't rea
             "isn't a public address",
         );
     }
+
     assertEquals(sent, []);
 });
 
@@ -77,9 +78,11 @@ Deno.test("an address given directly is checked without resolving it", async () 
 
     await transport(new Request("https://93.184.216.34/"));
     await transport(new Request("https://[2606:2800:220:1::1]/"));
+
     for (const url of ["https://127.0.0.1:6379/", "https://[::1]/", "https://[fd00::1]:8443/"]) {
         await assertRejects(() => transport(new Request(url)), TypeError, "isn't a public address");
     }
+
     assertEquals(sent.map((request) => request.url), [
         "https://93.184.216.34/",
         "https://[2606:2800:220:1::1]/",
@@ -190,6 +193,7 @@ Deno.test("a timed transport gives up on a server that takes too long, but not o
         new Request("https://slow.example/", { signal: stopping.signal }),
     ).then(() => "answered", () => "stopped");
     stopping.abort();
+
     const soon = new Promise((resolve) => setTimeout(() => resolve("waiting"), 1000));
     assertEquals(await Promise.race([asked, soon]), "stopped");
 });

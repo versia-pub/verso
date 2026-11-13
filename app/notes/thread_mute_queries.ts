@@ -42,6 +42,7 @@ export const mutedThreadsAmong = async (
         .where("account_id", "in", accountIds)
         .where("thread_id", "in", [...new Set(threadIds)])
         .execute();
+
     return setsBy(rows, (row) => row.account_id, (row) => row.thread_id);
 };
 
@@ -57,5 +58,6 @@ export const threadMutersAmong = async (
         .where("thread_id", "=", threadId)
         .where("account_id", "in", accountIds)
         .execute();
+
     return new Set(rows.map((row) => row.account_id));
 };

@@ -57,6 +57,7 @@ const open = async () => {
         assertEquals(response.status, 200);
 
         const body: { id: string; favourited?: boolean }[] = await response.json();
+
         return { ids: body.map((status) => status.id), body, link: response.headers.get("link") };
     };
 
@@ -66,6 +67,7 @@ const open = async () => {
 Deno.test("home gives the viewer's statuses and those they follow, a page at a time", async () => {
     await using test = await open();
     const ids = [];
+
     for (const accountId of ["alice", "bob", "bob"]) {
         test.clock.advance(1);
         ids.push((await createNote(test.ctx, accountId)).id);
@@ -182,6 +184,7 @@ Deno.test("the public timeline is only for tokens and roles that may read status
 
     assertEquals((await test.everyone("", null, limited)).status, 403);
     assertEquals((await test.everyone("", "alice", limited)).status, 403);
+
     const response = await createTestApp(test.ctx, timelineRoutes()).request(
         "/api/v1/timelines/public",
         { headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice", ["write"])}` } },
@@ -265,6 +268,7 @@ Deno.test("a hashtag's timeline is from here, elsewhere or both, and without wha
     assertEquals((await test.tagged("verso", "?only_media=true")).ids, []);
 
     await block(test.ctx, "alice", "bob");
+
     assertEquals((await test.tagged("verso", "", "alice")).ids, [remote.id]);
     assertEquals((await test.tagged("verso")).ids, [remote.id, local.id]);
 });
@@ -285,6 +289,7 @@ Deno.test("a list's timeline is only its owner's, with a token that may read lis
         const response = await app.request(`/api/v1/timelines/list/${list.id}`, {
             headers: { authorization: `Bearer ${await tokenFor(test.ctx, as, scopes)}` },
         });
+
         return { status: response.status, body: await response.json() };
     };
 

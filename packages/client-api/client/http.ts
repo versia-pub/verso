@@ -98,6 +98,7 @@ const rateLimitOf = (headers: Headers): RateLimit | undefined => {
     const limit = Number(headers.get("x-ratelimit-limit"));
     const remaining = Number(headers.get("x-ratelimit-remaining"));
     const reset = new Date(headers.get("x-ratelimit-reset") ?? "");
+
     if (!headers.has("x-ratelimit-limit") || isNaN(reset.getTime())) return undefined;
 
     return { limit, remaining, reset };
@@ -143,6 +144,7 @@ const formData = (form: Form): FormData => {
         else if (typeof value !== "object") data.append(name, String(value));
         else for (const [key, item] of Object.entries(value)) add(`${name}[${key}]`, item);
     };
+
     for (const [name, value] of Object.entries(form)) add(name, value);
 
     return data;

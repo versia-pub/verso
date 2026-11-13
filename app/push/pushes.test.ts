@@ -30,6 +30,7 @@ const base64url = (bytes: Uint8Array) =>
 const unsubscribes = async (ctx: Context, request: Request) => {
     const [, token] = /^https:\/\/social\.example\/api\/web\/push_subscriptions\/(.+)$/
         .exec(request.headers.get("unsubscribe-url") ?? "") ?? [];
+
     return token === undefined ? undefined : await unsubscribedId(ctx, token);
 };
 
@@ -41,6 +42,7 @@ const hkdf = async (
 ) => {
     const key = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
     const info_ = new TextEncoder().encode(info);
+
     return new Uint8Array(
         await crypto.subtle.deriveBits(
             { name: "HKDF", hash: "SHA-256", salt, info: info_ },
@@ -83,6 +85,7 @@ const browser = async () => {
                 key,
                 length * 8,
             );
+
             return new Uint8Array(bits);
         };
         const cek = await derive("Content-Encoding: aesgcm\0", 16);
@@ -94,6 +97,7 @@ const browser = async () => {
         );
         // No padding.
         assertEquals(record.slice(0, 2), new Uint8Array(2));
+
         return JSON.parse(new TextDecoder().decode(record.slice(2)));
     };
 
@@ -150,6 +154,7 @@ const open = async () => {
         const body = new Uint8Array(await request.arrayBuffer());
         pushed.push([path, await browsers.get(path)?.decrypt(body, request.headers)]);
         if (answer instanceof Error) throw answer;
+
         return new Response(null, { status: answer });
     });
     /** Has the push service answer with `status`, or fail with `error`, as `fetch` would. */
@@ -197,6 +202,7 @@ const open = async () => {
             quotedStatusId,
         });
         if (note === undefined) throw new Error("Not posted");
+
         return note.id;
     };
 
@@ -415,6 +421,7 @@ Deno.test("a subscription its push service says is gone is deleted, and others a
         await test.post("carol", status === 410 ? "Hi @alice" : "Hi @bob");
         await test.drain();
     }
+
     assertEquals(await findSubscriptionById(test.ctx, gone.id), undefined);
     assertEquals(await findSubscriptionById(test.ctx, missing.id), undefined);
 
@@ -433,7 +440,9 @@ Deno.test("a subscription its push service says is gone is deleted, and others a
         test.clock.advance(24 * 60 * 60 * 1000);
         await test.drain();
     }
+
     assertEquals(test.pushed.length, 6);
+
     // Pushed at last, so not again.
     test.clock.advance(24 * 60 * 60 * 1000);
     await test.drain();
@@ -468,6 +477,7 @@ Deno.test("pushes are grouped by their push service, and one that takes too long
         test.clock.advance(24 * 60 * 60 * 1000);
         await test.drain();
     }
+
     assertEquals(test.pushed.length, 5);
 });
 

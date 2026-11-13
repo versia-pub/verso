@@ -126,6 +126,7 @@ export const notificationRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { viewer }) => {
             await deleteNotificationsOf(ctx, viewer.accountId);
+
             return { status: 200, body: {} };
         },
     }),
@@ -193,6 +194,7 @@ export const notificationRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { params, viewer }) => {
             if (!await deleteNotification(ctx, viewer.accountId, params.id)) throw new NotFound();
+
             return { status: 200, body: {} };
         },
     }),

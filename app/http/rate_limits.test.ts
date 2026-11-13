@@ -158,6 +158,7 @@ Deno.test("replies say how much of the quota is left, and when it is gone", asyn
     const resetsAt = new Date(test.clock.now().getTime() + 30_000).toISOString();
     const first = await request();
     await first.body?.cancel();
+
     assertEquals(first.headers.get("ratelimit-limit"), "2, 2;w=30");
     assertEquals(first.headers.get("ratelimit-remaining"), "1");
     assertEquals(first.headers.get("ratelimit-reset"), "30");

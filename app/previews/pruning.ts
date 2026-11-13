@@ -50,6 +50,7 @@ export const cardPruneHandler: Handler = async (ctx: Context, job: JobsTable): P
     if (!payload.success) throw new PermanentFailure("The job isn't a card prune job");
 
     const { before, after } = payload.data;
+
     await ctx.transaction(async (tx) => {
         const cursor = after && { fetchedAt: new Date(after.fetchedAt), id: after.id };
         const { last } = await pruneBatch(tx, before, cursor ?? undefined);
@@ -64,10 +65,12 @@ export const cardPruneHandler: Handler = async (ctx: Context, job: JobsTable): P
 export const pruneCards = async (ctx: Context, before: Date): Promise<CardsPruned> => {
     let after: CardPruneCursor | undefined;
     const total: CardsPruned = { deleted: 0, cleared: 0 };
+
     while (true) {
         const { last, deleted, cleared } = await ctx.transaction((tx) =>
             pruneBatch(tx, before, after)
         );
+
         total.deleted += deleted;
         total.cleared += cleared;
         if (last === undefined) return total;

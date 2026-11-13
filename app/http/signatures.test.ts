@@ -263,6 +263,7 @@ Deno.test("with silent blocks, a blocked instance finds nothing, and what it sen
 
 Deno.test("a rotated key is fetched again, at most once in a while", async () => {
     await using test = await open();
+
     await test.send({});
     const rotated = await keyPair();
     test.transport.servers.set("b.example", metadataServer("b.example", rotated));

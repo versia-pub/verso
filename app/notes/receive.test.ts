@@ -138,6 +138,7 @@ Deno.test("a note sent unasked is kept only if it mentions or replies to somethi
     await test.send(note("n4", { replies_to: `a.test:${local.id}` }));
 
     assertEquals([await test.kept("n1"), await test.kept("n2")], [undefined, undefined]);
+
     const mention = await test.kept("n3");
     const carol = await test.a.federation.resolve(test.a, { host: "b.test", id: "carol" }, "User");
     assertEquals(
@@ -163,6 +164,7 @@ Deno.test("a note sent unasked that isn't wanted makes Verso fetch nothing it na
     );
 
     assertEquals([await test.kept("n1"), await test.kept("p1")], [undefined, undefined]);
+
     const fetched = test.network.transport.sent.filter((request) =>
         new URL(request.url).pathname.startsWith("/.versia/v0.6/entities/")
     );
@@ -198,6 +200,7 @@ Deno.test("only a note's first hundred mentions and hashtags are kept", async ()
 
     const kept = await test.kept("n1");
     assertEquals((await mentionsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? ""), [test.alice]);
+
     const names = (await tagsOf(test.a, [kept?.id ?? ""])).get(kept?.id ?? "") ?? [];
     assertEquals([names.length, names.includes("t99"), names.includes("t100")], [100, true, false]);
 });
@@ -256,6 +259,7 @@ Deno.test("a note's files are kept, each as the version clients can best show", 
         ["https://b.test/2.mp4", "video/mp4"],
         ["https://b.test/3.zip", "application/zip"],
     ]);
+
     const [picture] = files;
     assertEquals(
         [picture.size, picture.remote_sha256, picture.thumbhash, picture.width, picture.height],
@@ -456,6 +460,7 @@ Deno.test("a note sent again is marked edited when it says something else", asyn
         { is_sensitive: true },
     ];
     let fields = { mentions };
+
     for (const change of changes) {
         fields = { ...fields, ...change };
         await test.send(note("n1", fields));
@@ -577,6 +582,7 @@ Deno.test("what a followed author's note, or a kept note sent again, names is fe
     await test.send(note("n2", { author: "dave", mentions: ["b.test:carol"] }));
 
     assertEquals((await test.kept("n1"))?.in_reply_to_id, (await test.kept("n0"))?.id);
+
     const carol = await test.a.federation.resolve(test.a, { host: "b.test", id: "carol" }, "User");
     const edited = await test.kept("n2");
     assertEquals((await mentionsOf(test.a, [edited?.id ?? ""])).get(edited?.id ?? ""), [carol]);
@@ -629,6 +635,7 @@ Deno.test("a note's id has the time it was made, however late it arrived, but no
     assertEquals(await idTime("old"), "2026-01-01T00:00:00.000Z");
     assertEquals(await idTime("ancient"), "1970-01-01T00:00:00.000Z");
     assertEquals(await idTime("future"), test.network.clock.now().toISOString());
+
     // Before what was posted before it arrived, but after it was made.
     const old = (await test.kept("old"))?.id ?? "";
     assertEquals(old < (posted?.id ?? ""), true);
@@ -695,6 +702,7 @@ Deno.test("a Delete removes a remote note, and uncounts it", async () => {
 
     assertEquals(await test.kept("n1"), undefined);
     assertEquals((await test.counts(test.bob))[0], 0);
+
     const parent = await test.a.db.selectFrom("notes").select("replies_count")
         .where("id", "=", local.id).executeTakeFirstOrThrow();
     assertEquals(parent.replies_count, 0);

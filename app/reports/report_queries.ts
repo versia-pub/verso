@@ -45,6 +45,7 @@ export const resolveReport = async (ctx: Context, id: string, at: Date): Promise
     if (report.resolved_at === null) {
         await ctx.db.updateTable("reports").set({ resolved_at: at }).where("id", "=", id).execute();
     }
+
     return true;
 };
 

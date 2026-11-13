@@ -109,6 +109,7 @@ Deno.test("a silenced user's public notes are unlisted, by default or not", asyn
     assertEquals(await visibility({ visibility: "public" }), "unlisted");
     assertEquals(await visibility({ visibility: "private" }), "private");
     assertEquals(await visibility({ visibility: "direct" }), "direct");
+
     await setSilencedAt(test.ctx, "bob", null);
     assertEquals(await visibility(), "public");
 });
@@ -199,6 +200,7 @@ Deno.test("an edit keeps what the note said before, and when, until the note is 
             version.sensitive,
             version.created_at,
         ]);
+
     assertEquals(await versions(), [
         ["<p>One</p>", "Numbers", true, note.created_at],
         ["<p>Two</p>", "", false, first?.edited_at],
@@ -224,6 +226,7 @@ Deno.test("a note edited to say what it did isn't marked edited", async () => {
         sensitive: true,
         language: "en",
     });
+
     assertEquals(same, note);
     assertEquals(await editNote(test.ctx, "alice", note.id, { text: "Hi" }), note);
     assertEquals(events, []);
@@ -309,9 +312,11 @@ Deno.test("who may see a note goes by its visibility, its followers and its ment
     const seenBy = async (visibility: "public" | "unlisted" | "private" | "direct") => {
         const note = await createNote(test.ctx, "alice", { visibility }, ["carol"]);
         const seen = [];
+
         for (const viewer of viewers) {
             if (await canSee(test.ctx, note, viewer)) seen.push(viewer ?? "anyone");
         }
+
         return seen;
     };
 
@@ -334,7 +339,9 @@ Deno.test("a follower the author blocks isn't shown its followers-only notes, un
 
     const viewers = ["alice", "bob", "carol", "erin"];
     const seen = [];
+
     for (const viewer of viewers) if (await canSee(test.ctx, note, viewer)) seen.push(viewer);
+
     assertEquals(seen, ["alice", "carol", "erin"]);
     assertEquals(await visibleNote(test.ctx, note.id, "bob"), undefined);
 
@@ -368,6 +375,7 @@ Deno.test("direct notes aren't counted, and only public and unlisted replies are
     if (parent === undefined) throw new Error("Not posted");
 
     const replies = [];
+
     for (const visibility of ["public", "unlisted", "private", "direct"] as const) {
         replies.push(
             await post(test.ctx, "alice", "@bob Hi", { visibility, inReplyToId: parent.id }),
@@ -455,6 +463,7 @@ Deno.test("a remote account deleted is uncounted from the notes it replied to", 
             in_reply_to_account_id: parent.account_id,
         });
     let n = 1;
+
     for (
         const [parent, by] of [[first, "carol"], [first, "carol"], [first, "bob"], [
             second,

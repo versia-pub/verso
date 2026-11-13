@@ -84,6 +84,7 @@ const derived = async (ctx: Context, text: string) => {
         const entity = await resolveEntityAt(ctx, url, budget);
         if (entity?.type === "Note") noteIds.add(entity.id);
     }
+
     const notes = await findNotes(ctx, [...noteIds]);
     const shown = new Set(
         notes.filter((note) => note.visibility === "public" || note.visibility === "unlisted")
@@ -133,6 +134,7 @@ export const createAnnouncement = async (
         created_at: now,
         updated_at: now,
     };
+
     await ctx.transaction(async (tx) => {
         await insertAnnouncement(tx, row);
         if (due) await changed(tx, row.id, true);
@@ -167,6 +169,7 @@ export const changeAnnouncement = async (
     if (problem !== undefined) return { invalid: problem };
 
     const text = changes.text === undefined ? {} : await derived(ctx, input.text);
+
     return await ctx.transaction(async (tx) => {
         const updated = await updateAnnouncement(tx, id, {
             ...text,

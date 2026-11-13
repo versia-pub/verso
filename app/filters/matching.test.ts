@@ -15,6 +15,7 @@ const open = async () => {
     const post = async (text: string, spoilerText = "") => {
         const note = await postNote(test.ctx, "bob", { text, format: "text/plain", spoilerText });
         if (note === undefined) throw new Error("Not posted");
+
         return note.id;
     };
 
@@ -75,6 +76,7 @@ Deno.test("a status matches by its content warning too, and isn't matched for an
     const posted = await test.post("Look", "Spider");
 
     assertEquals(await test.matched(posted), [[filter.id, ["Spider"], null]]);
+
     const [status] = await renderStatuses(test.ctx, await findNotes(test.ctx, [posted]), "bob");
     assertEquals(status.filtered, []);
     const [anyone] = await renderStatuses(test.ctx, await findNotes(test.ctx, [posted]), null);
@@ -91,6 +93,7 @@ Deno.test("a status and its boosts match a filter of either, with the same resul
 
     const result = [filter.id, ["H"], [posted]];
     assertEquals(await test.matched(posted), [result]);
+
     const [status] = await renderStatuses(test.ctx, [boost], "alice");
     assertEquals(status.filtered?.map((each) => each.status_matches), [[posted]]);
     assertEquals(status.reblog?.filtered, status.filtered);

@@ -66,6 +66,7 @@ const open = async () => {
         };
 
         await run({ ...test.ctx, db: test.ctx.db.withPlugin(counter) });
+
         return queries;
     };
 
@@ -76,6 +77,7 @@ Deno.test("a page of groups has the newest notification of each, and its limit c
     await using test = await open();
     await like(test.ctx, "u0", test.note.id);
     await follow(test.ctx, "bob", "alice");
+
     for (const id of many.slice(1)) await like(test.ctx, id, test.note.id);
 
     assertEquals(await test.groups({ limit: 2 }), ["favourite u9", "follow bob"]);
@@ -85,6 +87,7 @@ Deno.test("a page of groups has the newest notification of each, and its limit c
 Deno.test("each query for a page of groups finds a group, until the page is full or read", async () => {
     await using test = await open();
     await follow(test.ctx, "bob", "alice");
+
     for (const id of many) await like(test.ctx, id, test.note.id);
 
     const pageOf = (limit: number) => (ctx: typeof test.ctx) =>
@@ -139,8 +142,11 @@ Deno.test("each part of a page of groups reads twice as many notifications as th
 
 Deno.test("only the types asked for are grouped, and others are a group each", async () => {
     await using test = await open();
+
     for (const id of ["u0", "u1"]) await like(test.ctx, id, test.note.id);
+
     for (const id of ["bob", "carol"]) await react(test.ctx, id, test.note.id, "🎉");
+
     const each = ["reaction carol", "reaction bob", "favourite u1", "favourite u0"];
 
     assertEquals(await test.groups(), each.slice(0, 3));
@@ -154,7 +160,9 @@ Deno.test("only the types asked for are grouped, and others are a group each", a
 
 Deno.test("a notification of a grouped type without a key is a group of its own", async () => {
     await using test = await open();
+
     for (const id of ["u0", "u1", "u2"]) await like(test.ctx, id, test.note.id);
+
     await test.ctx.db.updateTable("notifications").set({ group_key: null })
         .where("from_account_id", "=", "u0")
         .execute();
@@ -165,7 +173,9 @@ Deno.test("a notification of a grouped type without a key is a group of its own"
 
 Deno.test("after min_id, groups are found oldest first, as their oldest notification", async () => {
     await using test = await open();
+
     for (const id of ["u0", "u1", "u2"]) await like(test.ctx, id, test.note.id);
+
     await follow(test.ctx, "bob", "alice");
     await follow(test.ctx, "carol", "alice");
 
@@ -178,7 +188,9 @@ Deno.test("after min_id, groups are found oldest first, as their oldest notifica
 
 Deno.test("a page of groups leaves out what the user is not shown, and what the filter omits", async () => {
     await using test = await open();
+
     for (const id of ["u0", "u1"]) await like(test.ctx, id, test.note.id);
+
     await follow(test.ctx, "bob", "alice");
     await block(test.ctx, "alice", "u1");
 
@@ -191,9 +203,13 @@ Deno.test("a group's stats count up to the page's newest, and sample 8 accounts"
     await using test = await open();
     await follow(test.ctx, "bob", "carol");
     await follow(test.ctx, "u9", "carol");
+
     for (const id of many.slice(0, 6)) await like(test.ctx, id, test.note.id);
+
     await follow(test.ctx, "bob", "alice");
+
     for (const id of many.slice(6)) await like(test.ctx, id, test.note.id);
+
     await follow(test.ctx, "carol", "alice");
     const ids = await test.ids();
     const id = (key: string) => ids.get(key)?.id ?? "";
@@ -230,10 +246,13 @@ Deno.test("a group's samples are 8 different accounts, and its count each notifi
         format: "text/plain",
         spoilerText: "",
     });
+
     if (other === undefined) throw new Error("Not posted");
 
     await react(test.ctx, "bob", other.id, "🎉");
+
     for (const id of many) await react(test.ctx, id, test.note.id, "🎉");
+
     await react(test.ctx, "u0", test.note.id, "👍");
     await react(test.ctx, "u0", test.note.id, "👀");
     await like(test.ctx, "u1", test.note.id);
@@ -244,6 +263,7 @@ Deno.test("a group's samples are 8 different accounts, and its count each notifi
         .orderBy("id", "desc")
         .execute();
     const [newest, oldest] = [rows.at(0), rows.at(-1)];
+
     if (newest === undefined || oldest === undefined) throw new Error("Not notified");
 
     const reacted = rows.filter((row) => row.note_id === test.note.id && row.type === "reaction");

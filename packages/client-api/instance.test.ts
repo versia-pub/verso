@@ -112,6 +112,7 @@ Deno.test("policies have a date and HTML", () => {
         const description = { updated_at, content: "<p>Hi</p>" };
         assertEquals(ExtendedDescription.parse(description), description);
     }
+
     assertFalse(ExtendedDescription.safeParse({ updated_at: "2022-10-07", content: "" }).success);
 
     const terms = {

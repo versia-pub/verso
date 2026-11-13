@@ -15,6 +15,7 @@ const open = async () => {
     const test = await createTestContext();
     for (const id of ["alice", "bob", "dave"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "bob", "alice");
+
     const notes = new Map<string, NoteRow>();
 
     /**
@@ -125,6 +126,7 @@ Deno.test("a thread holds the 40 notes nearest above, and the 60 nearest below",
 Deno.test("replies the viewer may not see don't count against the 60, up to 240 looked at", async () => {
     await using test = await open();
     const note = await test.add("note", "alice");
+
     for (let i = 0; i < 100; i++) {
         await test.add(`hidden ${i}`, "alice", "note", { visibility: "direct" });
     }
@@ -154,6 +156,7 @@ Deno.test("replies under a blocked one don't count against the 60, but blocked o
     const note = await test.add("note", "alice");
     await test.add("blocked", "dave", "note");
     await test.add("other", "bob", "note");
+
     for (let i = 0; i < 60; i++) await test.add(`under ${i}`, "bob", "blocked");
     await test.add("deep", "bob", "other");
 

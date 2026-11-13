@@ -42,6 +42,7 @@ const authorOf = async (ctx: Context, term: QueryTerm, viewerId: string): Promis
 
     const address = parseAddress(ctx, term.account);
     const account = address && await findAccountByAddress(ctx, address, { fetch: false });
+
     return { kind: "author", accountId: account?.id ?? null, negated: term.negated };
 };
 
@@ -64,5 +65,6 @@ export const searchStatuses = async (ctx: Context, search: StatusSearch): Promis
     });
 
     const found = new Map((await findNotes(ctx, ids)).map((note) => [note.id, note]));
+
     return ids.flatMap((id) => found.get(id) ?? []);
 };

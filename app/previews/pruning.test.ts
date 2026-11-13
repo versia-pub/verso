@@ -119,6 +119,7 @@ Deno.test("the files of pruned cards' images are removed with other unused media
 
     assertEquals(await cards(test.ctx), { [shown]: false, [later]: true });
     assertEquals((await test.ctx.db.selectFrom("media").select("id").execute()).length, 1);
+
     const stream = await test.ctx.files.get(key);
     await stream?.cancel();
     assert(stream !== undefined);
@@ -136,6 +137,7 @@ const addCards = async (ctx: Context, count: number) => {
             .values(
                 Array.from({ length: Math.min(200, count - start) }, (_, index) => {
                     const id = `x${String(start + index).padStart(5, "0")}`;
+
                     return {
                         id,
                         url: `https://news.example/${id}`,
@@ -186,6 +188,7 @@ Deno.test("old cards are read by index", async () => {
         fetchedAt: test.clock.now(),
         id: "0",
     }, 500).compile();
+
     if (testDatabaseKind === "sqlite") {
         const plan = await db.executeQuery<{ detail: string }>(
             CompiledQuery.raw(`explain query plan ${old.sql}`, [...old.parameters]),
@@ -194,13 +197,16 @@ Deno.test("old cards are read by index", async () => {
             plan.rows.map((row) => row.detail).join("\n"),
             "preview_cards_by_fetch",
         );
+
         return;
     }
 
     await sql`set enable_seqscan = off`.execute(db);
+
     const plan = await db.executeQuery(
         CompiledQuery.raw(`explain (format json) ${old.sql}`, [...old.parameters]),
     );
+
     assertStringIncludes(JSON.stringify(plan.rows), '"Index Name":"preview_cards_by_fetch"');
 });
 

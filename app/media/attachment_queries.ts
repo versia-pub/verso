@@ -93,6 +93,7 @@ export const reservationsOf = async (
         .where("scheduled_note_media.scheduled_note_id", "in", scheduledIds)
         .orderBy("scheduled_note_media.position")
         .execute();
+
     for (const { scheduled_note_id, ...row } of rows) {
         reserved.set(scheduled_note_id, [...reserved.get(scheduled_note_id) ?? [], row]);
     }
@@ -125,6 +126,7 @@ export const attachmentsOf = async (
         .where("note_media.note_id", "in", noteIds)
         .orderBy("note_media.position")
         .execute();
+
     for (const { note_id, ...row } of rows) {
         attachments.set(note_id, [...attachments.get(note_id) ?? [], row]);
     }

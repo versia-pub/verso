@@ -40,6 +40,7 @@ Deno.test("an account's own view adds its settings, role and permissions", () =>
     const { source: _, ...withoutSource } = own;
     const { role: __, ...withoutRole } = own;
     const { permissions: ___, ...withoutPermissions } = own;
+
     assertFalse(CredentialAccount.safeParse(withoutSource).success);
     assertFalse(CredentialAccount.safeParse(withoutRole).success);
     assertFalse(CredentialAccount.safeParse(withoutPermissions).success);

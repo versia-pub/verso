@@ -67,6 +67,7 @@ Deno.test("a user's requests are listed newest first, a page at a time", async (
 
     const page = await test.request("GET", "/api/v1/notifications/requests?limit=1");
     assertEquals(page.body.map((each: { account: { id: string } }) => each.account.id), ["carol"]);
+
     const next = new URL(page.link?.match(/<([^>]+)>; rel="next"/)?.[1] ?? "");
     const rest = await test.request("GET", next.pathname + next.search);
     assertEquals(rest.body.length, 1);
@@ -83,6 +84,7 @@ Deno.test("a request is shown, accepted and dismissed only by its user", async (
     const path = `/api/v1/notifications/requests/${id}`;
 
     assertEquals((await test.request("GET", path)).body.id, id);
+
     for (const [method, suffix] of [["GET", ""], ["POST", "/accept"], ["POST", "/dismiss"]]) {
         assertEquals((await test.request(method, path + suffix, { as: "carol" })).status, 404);
     }
@@ -94,7 +96,9 @@ Deno.test("a request is shown, accepted and dismissed only by its user", async (
 
 Deno.test("requests are accepted or dismissed several at once, leaving out others' ids", async () => {
     await using test = await open();
+
     for (const id of ["bob", "carol", "dave"]) await test.post(id, "@alice Hi");
+
     await test.post("alice", "@bob Hi");
     const ids = async (as: string) =>
         ((await test.request("GET", "/api/v1/notifications/requests", { as })).body as {
@@ -112,6 +116,7 @@ Deno.test("requests are accepted or dismissed several at once, leaving out other
     assertEquals((await ids("bob")).length, 1);
 
     await test.request("POST", "/api/v1/notifications/requests/dismiss", { body: { id: [dave] } });
+
     assertEquals(await test.from(), []);
     assertEquals(
         (await test.request("POST", "/api/v1/notifications/requests/dismiss", { body: {} })).status,
@@ -121,6 +126,7 @@ Deno.test("requests are accepted or dismissed several at once, leaving out other
 
 Deno.test("accepted requests are merged at once", async () => {
     await using test = await open();
+
     assertEquals((await test.request("GET", "/api/v1/notifications/requests/merged")).body, {
         merged: true,
     });
@@ -136,6 +142,7 @@ Deno.test("reading requests takes read:notifications, and accepting or dismissin
         assertEquals((await test.request("GET", at, { scopes: ["read:statuses"] })).status, 403);
         assertEquals((await test.request("GET", at, reading)).status, 200);
     }
+
     for (const path of ["/accept", "/dismiss"]) {
         const at = `/api/v1/notifications/requests${path}`;
         assertEquals(

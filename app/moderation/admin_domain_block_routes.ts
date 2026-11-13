@@ -103,6 +103,7 @@ const listOrder = (a: string, b: string): number => {
     if (aFromConfig !== bFromConfig) return aFromConfig ? 1 : -1;
 
     const ascending = a < b ? -1 : a > b ? 1 : 0;
+
     return aFromConfig ? ascending : -ascending;
 };
 

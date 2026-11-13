@@ -106,6 +106,7 @@ const open = async () => {
         });
         if (note === undefined) throw new Error("Not posted");
         await dispatch.idle();
+
         return note.id;
     };
 
@@ -121,6 +122,7 @@ const open = async () => {
         });
         const sessions = userStreams({ ...test.ctx, db });
         dispatch.listen(sessions);
+
         return { sessions, queries: () => queries };
     };
 

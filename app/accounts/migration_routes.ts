@@ -18,6 +18,7 @@ const ownMigration = async (ctx: Context, accountId: string): Promise<AccountMig
     const moved = account.moved_to_account_id === null
         ? undefined
         : await findAccount(ctx, account.moved_to_account_id);
+
     return {
         previous: previous === undefined ? null : await publicAccount(ctx, previous),
         moved: moved === undefined ? null : await publicAccount(ctx, moved),

@@ -23,6 +23,7 @@ const open = async (blocks: Shown, reasons: Shown = "none") => {
         const response = await app.request("/api/v1/instance/domain_blocks", {
             headers: token === undefined ? {} : { authorization: `Bearer ${token}` },
         });
+
         return { status: response.status, body: await response.json().catch(() => null) };
     };
 

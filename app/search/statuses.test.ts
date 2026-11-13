@@ -50,6 +50,7 @@ const open = async () => {
             tags,
         );
         await indexUnindexed(test.ctx);
+
         return row.id;
     };
 
@@ -65,6 +66,7 @@ const open = async () => {
             offset: 0,
             ...search,
         });
+
         return found.map((note) => note.id);
     };
 

@@ -30,6 +30,7 @@ export const createList = (
 ): Promise<ListRow | "full"> =>
     ctx.transaction(async (tx) => {
         if (await countLists(tx, accountId) >= listLimit) return "full";
+
         return await insertList(tx, accountId, list);
     });
 
@@ -63,6 +64,7 @@ export const addListAccounts = (
         const others = accountIds.filter((id) => id !== accountId);
         const rows = await followsFrom(tx, accountId, others);
         const follows = new Map(rows.map((follow) => [follow.followee_id, follow.id]));
+
         if (others.some((id) => !follows.has(id))) return "unfollowed";
         if ((await listAccountsAmong(tx, listId, accountIds)).size > 0) return "taken";
 
@@ -90,5 +92,6 @@ export const removeListAccounts = (
         if (await findList(tx, accountId, listId) === undefined) return false;
 
         await deleteListAccounts(tx, listId, accountIds);
+
         return true;
     });

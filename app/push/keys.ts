@@ -11,6 +11,7 @@ const algorithm = { name: "ECDSA", namedCurve: "P-256" };
 
 const row = async (ctx: Pick<Context, "db">) => {
     const found = await findVapidKeyRow(ctx);
+
     if (!found) {
         throw new Error("This instance has no VAPID key yet. Run `verso migrate` to make one.");
     }

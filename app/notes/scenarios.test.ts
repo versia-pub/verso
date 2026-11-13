@@ -23,6 +23,7 @@ const open = async () => {
     );
 
     const users: Record<string, Client> = { alice };
+
     for (
         const [id, domain] of [["bob", "b"], ["bea", "b"], ["carol", "c"], ["dave", "d"], [
             "erin",
@@ -32,6 +33,7 @@ const open = async () => {
         const instance = instances[`${domain}.test`];
         users[id] = await clientOf(instance, await createLocalAccount(instance.ctx, id));
     }
+
     for (const id of ["bob", "bea", "carol"]) await followAddress(users[id], "alice@a.test");
     await network.drain();
 
@@ -48,6 +50,7 @@ const open = async () => {
     /** The status `user` sees on their own instance for alice's status `id`, found by its URI. */
     const seen = async (user: string, id: string) => {
         const statuses = await users[user]("GET", "/api/v1/timelines/home");
+
         return statuses.body.find((status: { uri: string }) =>
             status.uri === `https://a.test/.versia/v0.6/entities/Note/${id}`
         );
@@ -78,6 +81,7 @@ Deno.test("a locked user is asked to be followed, and accepts or rejects each re
         instances["c.test"],
         await createLocalAccount(instances["c.test"].ctx, "carol"),
     );
+
     assertEquals(
         (await bob("PATCH", "/api/v1/accounts/update_credentials", { locked: true })).status,
         200,
@@ -123,6 +127,7 @@ Deno.test("a note reaches each instance it is shown on once, and no other", asyn
     const direct = await test.post("Psst @erin@e.test", "direct");
     assertEquals(direct.sent, { "e.test": 1 });
     assertEquals(await test.seen("bob", direct.id), undefined);
+
     // Erin's instance stores it, though she doesn't follow alice, so it isn't on her home timeline.
     const kept = await findRemoteNoteAt(test.network.instances["e.test"].ctx, "a.test", direct.id);
     assertEquals(kept?.visibility, "direct");
@@ -155,6 +160,7 @@ Deno.test("an edit reaches every instance that has the note, with its history", 
     await test.network.drain();
 
     assertEquals(await deliveries(test.network, "Note", from), { "b.test": 1, "c.test": 1 });
+
     const status = await test.seen("carol", note.id);
     assertStringIncludes(status?.content, "Hi *all*");
     assertEquals(status?.edited_at, test.network.clock.now().toISOString());

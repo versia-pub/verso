@@ -42,6 +42,7 @@ const hiddenOf = async (ctx: Context, notes: readonly NoteRow[], onlooker: Onloo
     if (onlooker === null) return new Set<string>();
 
     const hidden = await hiddenAmong(ctx, onlooker.id, notes.map((each) => each.account_id));
+
     return new Set(notes.filter((each) => hidden.has(each.account_id)).map((each) => each.id));
 };
 

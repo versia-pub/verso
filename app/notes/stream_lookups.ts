@@ -73,6 +73,7 @@ export const homeReachOf = async (
     if (note === undefined) return;
 
     const tags = note.visibility === "public" ? (await tagsOf(ctx, [noteId])).get(noteId) : [];
+
     return { authorId: note.account_id, tags: tags ?? [] };
 };
 

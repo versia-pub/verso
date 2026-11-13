@@ -113,6 +113,7 @@ if (found.length > 0) {
     const report = found.map((group) =>
         group.map((file) => {
             const imports = [...graph.get(file) ?? []].filter((path) => group.includes(path));
+
             return `  ${file} imports ${imports.join(", ")}`;
         }).join("\n")
     );

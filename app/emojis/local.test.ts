@@ -33,6 +33,7 @@ const open = async () => {
     const shown = async (noteId: string) => {
         const note = await findNote(test.ctx, noteId);
         const [status] = note ? await renderStatuses(test.ctx, [note], null) : [];
+
         return status?.emojis.map((emoji) => emoji.shortcode);
     };
 
@@ -59,6 +60,7 @@ Deno.test("this instance's emojis are listed for the picker, by shortcode", asyn
     );
 
     const response = await app.request("/api/v1/custom_emojis");
+
     assertEquals(
         await response.json(),
         ["blob", "cat"].map((shortcode) => ({
@@ -79,6 +81,7 @@ Deno.test("a local note uses this instance's emojis its text and warning name", 
         format: "text/plain",
         spoilerText: "Look :blob:",
     });
+
     assertEquals(await test.shown(note?.id ?? ""), ["blob", "cat"]);
 
     await editNote(test.ctx, "alice", note?.id ?? "", { text: "Hi :cat:", spoilerText: "" });
@@ -96,6 +99,7 @@ Deno.test("a local account uses this instance's emojis its name, bio and fields 
     };
 
     await updateProfile(test.ctx, "alice", { displayName: "Alice :blob:", note: "Hi :cat: :dog:" });
+
     assertEquals(await shortcodes(), ["blob", "cat"]);
 
     await updateProfile(test.ctx, "alice", {
@@ -103,6 +107,7 @@ Deno.test("a local account uses this instance's emojis its name, bio and fields 
         note: "Hi",
         fields: [{ name: ":cat:", value: "x" }, { name: "Site", value: ":blob:" }],
     });
+
     assertEquals(await shortcodes(), ["blob", "cat"]);
 
     // The owner sees them too, and remote instances are sent them.
@@ -110,11 +115,14 @@ Deno.test("a local account uses this instance's emojis its name, bio and fields 
         headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` },
     });
     const own = await response.json();
+
     assertEquals(own.emojis.map((emoji: { shortcode: string }) => emoji.shortcode), [
         "blob",
         "cat",
     ]);
+
     const user = await localVersiaUser(test.ctx, "alice");
+
     assertEquals(user?.extensions, {
         "pub.versia:custom_emojis": {
             emojis: ["blob", "cat"].map((shortcode) => ({
@@ -130,6 +138,7 @@ Deno.test("a local account uses this instance's emojis its name, bio and fields 
     });
 
     await updateProfile(test.ctx, "alice", { fields: [] });
+
     assertEquals(await shortcodes(), []);
     assertEquals((await localVersiaUser(test.ctx, "alice"))?.extensions, undefined);
 });
@@ -160,17 +169,20 @@ Deno.test("text uses only emojis its author may use whose pictures are ready", a
         format: "text/plain",
         spoilerText: "",
     });
+
     assertEquals(await test.shown(note?.id ?? ""), ["blob"]);
 
     // Nor once their pictures are ready, because the status doesn't use them.
     await test.ctx.db.updateTable("media").set({ sha256: "ab", processed_at: test.clock.now() })
         .execute();
+
     assertEquals(await test.shown(note?.id ?? ""), ["blob"]);
 });
 
 Deno.test("global emojis have one per name, and so do each user's own", async () => {
     await using test = await open();
     await createLocalAccount(test.ctx, "bob");
+
     /** Gives alice's or bob's emoji `shortcode`, or a global one if `accountId` is `null`. */
     const add = async (shortcode: string, accountId: string | null) => {
         const id = await createLocalEmoji(test.ctx, `${shortcode}-${test.ctx.ids()}`);
@@ -219,8 +231,10 @@ Deno.test("a user's own emojis are theirs to use, over global ones of the same n
         });
         const note = await findNote(test.ctx, posted?.id ?? "");
         const [status] = note ? await renderStatuses(test.ctx, [note], null) : [];
+
         return urls(status?.emojis);
     };
+
     assertEquals(await used("alice", ":blob: :cat: :mine:"), [
         ["blob", own("blob")],
         ["cat", global("cat")],
@@ -233,6 +247,7 @@ Deno.test("a user's own emojis are theirs to use, over global ones of the same n
 
     await updateProfile(test.ctx, "alice", { displayName: "Alice :blob:" });
     const row = await findAccount(test.ctx, "alice");
+
     assertEquals(row && urls((await publicAccount(test.ctx, row)).emojis), [
         ["blob", own("blob")],
     ]);
@@ -242,8 +257,10 @@ Deno.test("a user's own emojis are theirs to use, over global ones of the same n
         const headers: Record<string, string> = accountId
             ? { authorization: `Bearer ${await tokenFor(test.ctx, accountId)}` }
             : {};
+
         return urls(await (await app.request("/api/v1/custom_emojis", { headers })).json());
     };
+
     assertEquals(await listed("alice"), [
         ["blob", own("blob")],
         ["cat", global("cat")],
@@ -264,7 +281,9 @@ Deno.test("a user's own emojis are theirs to use, over global ones of the same n
     });
     await react(test.ctx, "alice", note?.id ?? "", "blob");
     await react(test.ctx, "alice", note?.id ?? "", "mine");
+
     const reacted = await findNote(test.ctx, note?.id ?? "");
     const [status] = reacted ? await renderStatuses(test.ctx, [reacted], null) : [];
+
     assertEquals(urls(status?.emojis), [["blob", global("blob")], ["mine", global("mine")]]);
 });

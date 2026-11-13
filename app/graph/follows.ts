@@ -206,6 +206,7 @@ export const followersAmong = async (
     otherIds: readonly string[],
 ): Promise<Set<string>> => {
     const followers = new Set<string>();
+
     for (const asked of batchesOf(otherIds)) {
         for (const follow of await followsOf(ctx, accountId, asked)) {
             if (follow.accepted) followers.add(follow.follower_id);

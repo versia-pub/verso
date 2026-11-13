@@ -26,6 +26,7 @@ const typeOf = (row: MediaRow): MediaAttachment["type"] => {
     if (local && !isPlayable(row.media_type)) return "unknown";
 
     const [kind] = row.media_type.split("/");
+
     return kind === "image" || kind === "video" || kind === "audio" ? kind : "unknown";
 };
 

@@ -33,6 +33,7 @@ const profileOf = async (ctx: Context, id: string) => {
         .select(["note_html", "fields", "html_version"])
         .where("id", "=", id)
         .executeTakeFirstOrThrow();
+
     return [row.note_html, row.fields[0].name_html, row.fields[0].value_html, row.html_version];
 };
 
@@ -111,6 +112,7 @@ Deno.test("remote HTML stored before this sanitiser is sanitised in place, once"
     assertEquals(await contentOf(test.ctx, "notes", "id", local.id), [unsafe, 0]);
     assertEquals(await contentOf(test.ctx, "note_versions", "note_id", local.id), [unsafe, 0]);
     assertEquals(await contentOf(test.ctx, "notes", "id", current.id), [unsafe, sanitizerVersion]);
+
     const stale = await test.ctx.db.selectFrom("notes")
         .select("id")
         .where("instance_id", "is not", null)

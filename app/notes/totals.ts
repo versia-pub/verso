@@ -118,6 +118,7 @@ export const totalsHandler: Handler = async (ctx: Context, job: JobsTable): Prom
     const note = await findNote(ctx, payload.data.noteId);
     if (note === undefined || note.instance_id === null || note.remote_id === null) return;
     if (note.reblog_of_id !== null) return;
+
     const [domain] = await domainsOf(ctx, [note.instance_id], "versia");
     if (domain === undefined || await ctx.federation.isBlocked(ctx, domain)) return;
 

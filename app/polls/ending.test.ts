@@ -105,6 +105,7 @@ Deno.test("many polls end in one run, and remote voters aren't notified", async 
             poll: test.poll,
         });
     }
+
     test.clock.advance(3600_000);
     await endPolls(test.ctx);
 

@@ -18,10 +18,12 @@ import type { Visibility } from "../kernel/visibility.ts";
 const startsWith = (ctx: Pick<Context, "db">, start: string): Expression<SqlBool> => {
     if (usesSqlite(ctx.db)) {
         const pattern = `${start.replaceAll(/[*?[]/g, (character) => `[${character}]`)}*`;
+
         return sql<SqlBool>`tags.name GLOB ${pattern}`;
     }
 
     const pattern = `${start.replaceAll(/[\\%_]/g, (character) => `\\${character}`)}%`;
+
     return sql<SqlBool>`tags.name LIKE ${pattern} ESCAPE '\\'`;
 };
 

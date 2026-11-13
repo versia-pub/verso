@@ -219,6 +219,7 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
                 );
                 continue;
             }
+
             if (group !== null) groups.set(group, (groups.get(group) ?? 0) + 1);
 
             const run = runJob(ctx, name, queue, job).finally(() => {

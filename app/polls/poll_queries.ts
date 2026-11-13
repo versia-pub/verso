@@ -42,6 +42,7 @@ export const insertPoll = async (ctx: Context, noteId: string, poll: NewPoll): P
         })
         .execute();
     await insertOptions(ctx, id, poll.options);
+
     return id;
 };
 
@@ -135,6 +136,7 @@ export const findPoll = async (
 ): Promise<PollWithOptions | undefined> => {
     const poll = await ctx.db.selectFrom("polls").selectAll().where("id", "=", id)
         .executeTakeFirst();
+
     return poll && await pollOf(ctx, poll.note_id);
 };
 
@@ -164,6 +166,7 @@ export const votesAmong = async (
             byPoll.set(row.poll_id, [...byPoll.get(row.poll_id) ?? [], row.choice]),
         );
     }
+
     return votes;
 };
 
@@ -179,6 +182,7 @@ export const insertVotes = async (
     voted: boolean,
 ): Promise<string[]> => {
     const ids = choices.map(() => ctx.ids());
+
     await ctx.db.insertInto("poll_votes")
         .values(choices.map((choice, index) => ({
             id: ids[index],
@@ -201,6 +205,7 @@ export const insertVotes = async (
         .where("id", "=", poll.id)
         .where("voters_count", "is not", null)
         .execute();
+
     return ids;
 };
 
@@ -248,6 +253,7 @@ export const markEndedPolls = async (ctx: Context, limit: number): Promise<PollR
         .set({ ended_at: now })
         .where("id", "in", polls.map((poll) => poll.id))
         .execute();
+
     return polls;
 };
 

@@ -169,6 +169,7 @@ export const findEmojiFor = async (
 
     const visible = emoji.account_id === null || emoji.account_id === editor.accountId ||
         editor.managesEmojis;
+
     return visible ? emoji : undefined;
 };
 
@@ -215,6 +216,7 @@ export const changeEmoji = async (
     const description = changes.description ?? emoji.description ?? undefined;
     const picture = changes.picture &&
         await uploadEmojiPicture(ctx, editor.accountId, changes.picture, description);
+
     if (changes.description !== undefined) {
         await updateDescription(ctx, emoji.media_id, changes.description || null);
     }
@@ -248,6 +250,7 @@ export const deleteEmoji = async (
         await emit(tx, event);
         await deleteEmojiById(tx, id);
     });
+
     return true;
 };
 

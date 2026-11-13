@@ -174,6 +174,7 @@ export const receiveNote = async (
         const user = await knownUser(ctx, reference);
         if (user) mentions.push({ id: user.id, local: reference.host === ctx.urls.domain });
     }
+
     const parent = await knownNoteRow(ctx, references.parent);
     const quote = await knownNoteRow(ctx, references.quote);
 
@@ -244,6 +245,7 @@ export const receiveNote = async (
         await setNoteEmojis(ctx, existing.id, emojiIds);
         await attachRemote(ctx, sender.instanceId, existing.id, files);
         await keepRemotePoll(ctx, existing.id, previousPoll, poll);
+
         if (!edited) return;
 
         const event: NoteReceived = {

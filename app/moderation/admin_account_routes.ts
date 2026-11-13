@@ -60,6 +60,7 @@ export const adminAccountRoutes = (settings: {
         if (row === undefined) throw new NotFound();
 
         const [account] = await renderAdminAccountRows(ctx, [row], everyUser);
+
         return account;
     };
 

@@ -49,6 +49,7 @@ const open = async () => {
 Deno.test("markers are saved, a version on each time, and read for the timelines asked for", async () => {
     await using test = await open();
     const both = "?timeline[]=home&timeline[]=notifications";
+
     assertEquals(await test.markers(both), {});
 
     const saved = await test.request("POST", "/api/v1/markers", {
@@ -76,6 +77,7 @@ Deno.test("markers are saved, a version on each time, and read for the timelines
 
 Deno.test("markers are set by forms, with Rails-style names", async () => {
     await using test = await open();
+
     const saved = await test.request("POST", "/api/v1/markers", {
         form: "notifications[last_read_id]=d",
     });
@@ -86,6 +88,7 @@ Deno.test("markers are set by forms, with Rails-style names", async () => {
 
 Deno.test("markers are each user's own", async () => {
     await using test = await open();
+
     await test.request("POST", "/api/v1/markers", { body: { home: { last_read_id: "a" } } });
     await test.request("POST", "/api/v1/markers", {
         as: "bob",

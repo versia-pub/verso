@@ -49,6 +49,7 @@ export const endSessionsOf = async (ctx: Context, accountId: string): Promise<vo
  */
 export const watchToken = (ctx: Context, tokenId: string, onRevoked: () => void): () => void => {
     let watching = true;
+
     // Not once stopped, even if a check was still running.
     const check = async () => {
         if (!await tokenUsable(ctx, tokenId) && watching) onRevoked();

@@ -60,6 +60,7 @@ Deno.test("another instance's file that won't be cached is at its own URL", asyn
     const row = await findMedia(test.ctx, id);
     assert(row);
     const uncached = renderAttachment(test.ctx, row);
+
     assertEquals([uncached.url, uncached.preview_url], ["https://b.example/bob.png", null]);
 });
 
@@ -100,6 +101,7 @@ Deno.test("another instance's file is served by Verso once cached, and at its ow
         if (row === undefined) throw new Error("The file wasn't kept");
 
         const { url, preview_url, remote_url } = renderAttachment(test.ctx, row);
+
         return { url, preview_url, remote_url };
     };
 
@@ -113,6 +115,7 @@ Deno.test("another instance's file is served by Verso once cached, and at its ow
     await test.ctx.db.updateTable("media")
         .set({ sha256: "ab", preview_sha256: "cd", processed_at: test.clock.now() })
         .execute();
+
     assertEquals(await shown(), {
         url: "https://social.example/media/ab",
         preview_url: "https://social.example/media/cd",
@@ -121,5 +124,6 @@ Deno.test("another instance's file is served by Verso once cached, and at its ow
 
     // Caching failed.
     await test.ctx.db.updateTable("media").set({ sha256: null, preview_sha256: null }).execute();
+
     assertEquals(await shown(), { url, preview_url: null, remote_url: url });
 });

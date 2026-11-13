@@ -19,6 +19,7 @@ export const emojiPicture = (
 ): { url: string; still: string } | undefined => {
     if (picture.processed_at !== null && picture.sha256 !== null) {
         const url = fileUrl(ctx, picture.sha256);
+
         return {
             url,
             still: picture.preview_sha256 === null ? url : fileUrl(ctx, picture.preview_sha256),

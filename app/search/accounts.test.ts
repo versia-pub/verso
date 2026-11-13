@@ -30,6 +30,7 @@ const open = async () => {
             offset: 0,
             ...search,
         });
+
         return found.map((account) => account.username);
     };
 

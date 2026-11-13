@@ -64,6 +64,7 @@ export const setScheduledAt = async (ctx: Context, id: string, at: Date): Promis
 export const deleteScheduled = async (ctx: Context, id: string): Promise<boolean> => {
     const { numDeletedRows } = await ctx.db.deleteFrom("scheduled_notes").where("id", "=", id)
         .executeTakeFirst();
+
     return numDeletedRows > 0n;
 };
 

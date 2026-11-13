@@ -99,6 +99,7 @@ Deno.test("a like, share and reaction reach the note's instance, and the share t
         shared: ["bob@b.test"],
         reactions: [["🎉", 1]],
     });
+
     // Erin follows bob, not alice, so she sees the status through his boost.
     const shared = await test.seen("erin", id);
     assertEquals(shared?.account.acct, "bob@b.test");
@@ -149,6 +150,7 @@ Deno.test("blocks, mutes and domain blocks tell no one, and only change what the
     await test.post("dave", "Hello");
     await users.bob("POST", `/api/v1/statuses/${onB.id}/reblog`);
     await test.network.drain();
+
     const home = (await users.alice("GET", "/api/v1/timelines/home")).body;
     assertEquals(home.map((status: { account: { acct: string } }) => status.account.acct), [
         "alice",
@@ -171,6 +173,7 @@ Deno.test("a pinned note is in its author's featured notes for other instances",
     for (const id of [first, second]) {
         assertEquals((await test.users.alice("POST", `/api/v1/statuses/${id}/pin`)).status, 200);
     }
+
     const b = test.network.instances["b.test"].ctx;
     const fetched = async (url: string) => {
         const response = await fetchSigned(b, new URL(url));

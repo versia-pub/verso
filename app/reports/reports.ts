@@ -45,6 +45,7 @@ export type NewReport = {
  */
 const categoryOf = (report: NewReport, rules: number) => {
     const category = report.ruleIds.length > 0 ? "violation" : report.category ?? "other";
+
     if (category !== "violation") return { category, ruleIds: null };
 
     const valid = new Set(
@@ -65,6 +66,7 @@ const forwardDomains = (report: NewReport, target: AccountRow) => {
     if (target.domain === null || !report.forward) return [];
 
     const domains = report.forwardToDomains ?? [target.domain];
+
     return [...new Set(domains.flatMap((domain) => canonicalizeDomain(domain.trim()) ?? []))];
 };
 
@@ -81,6 +83,7 @@ export const fileReport = async (
     rules: number,
 ): Promise<ReportRow | undefined> => {
     const { category, ruleIds } = categoryOf(report, rules);
+
     const target = await findAccount(ctx, report.targetId);
     if (target === undefined) return undefined;
 
@@ -111,6 +114,7 @@ export const fileReport = async (
         resolved_by_account_id: null,
         updated_at: null,
     };
+
     await ctx.transaction(async (tx) => {
         await insertReport(tx, row);
         if (domains.length === 0) return;
@@ -118,6 +122,7 @@ export const fileReport = async (
         const event: ReportForwarded = { type: "reports.forwarded", reportId: row.id, domains };
         await emit(tx, event);
     });
+
     return row;
 };
 

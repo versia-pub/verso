@@ -60,11 +60,13 @@ export const publicAccount = async (ctx: Context, row: AccountRow): Promise<Acco
     const moved = row.moved_to_account_id === null
         ? undefined
         : await findAccount(ctx, row.moved_to_account_id);
+
     return await shownAccount(ctx, row, moved && await shownAccount(ctx, moved));
 };
 
 /** The accounts of `ids` that exist, as anyone sees them, in the order of `ids`. */
 export const publicAccounts = async (ctx: Context, ids: readonly string[]): Promise<Account[]> => {
     const accounts = await publicAccountsOf(ctx, await findAccounts(ctx, ids));
+
     return ids.flatMap((id) => accounts.get(id) ?? []);
 };

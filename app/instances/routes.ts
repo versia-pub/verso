@@ -83,6 +83,7 @@ export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
             responses: { 200: V1Instance },
             handler: async (ctx) => {
                 const kept = await stats.get(ctx);
+
                 return {
                     status: 200,
                     body: renderV1Instance(await renderInstance(ctx, settings, kept), kept),

@@ -38,6 +38,7 @@ export const serveFile = async (ctx: Context, key: string): Promise<ServedFile |
     }
 
     const mediaType = servedTypeOf(row);
+
     return { stream, mediaType, download: mediaType === "application/octet-stream" };
 };
 

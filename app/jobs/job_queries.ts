@@ -84,6 +84,7 @@ export const enqueue = async (
         .executeTakeFirst();
 
     if (inserted && job.wake !== false) await wake(ctx, job.queue);
+
     return inserted?.id;
 };
 
@@ -230,7 +231,6 @@ export const release = async (ctx: Context, job: JobsTable): Promise<void> => {
  */
 export const complete = async (ctx: Context, job: JobsTable): Promise<void> => {
     const now = ctx.clock.now();
-
     const stillClaimed = { id: job.id, lease_owner: job.lease_owner, attempts: job.attempts };
 
     if (job.keep_until !== null && job.keep_until > now) {
@@ -309,10 +309,12 @@ export const retryDeadLetters = async (
     batchSize = 1000,
 ): Promise<number> => {
     let total = 0;
+
     for (;;) {
         const retried = await ctx.transaction(async (tx) => {
             const jobs = await selectedDead(tx, selection).select(["queue", "group_key"])
                 .limit(batchSize).execute();
+
             if (jobs.length === 0) return 0;
 
             const ids = jobs.map((job) => job.id);
@@ -346,9 +348,11 @@ export const retryDeadLetters = async (
             }
 
             for (const queue of new Set(jobs.map((job) => job.queue))) await wake(tx, queue);
+
             return jobs.length;
         });
         total += retried;
+
         if (retried < batchSize) return total;
     }
 };
@@ -360,11 +364,13 @@ export const deleteDeadLetters = async (
     batchSize = 1000,
 ): Promise<number> => {
     let total = 0;
+
     for (;;) {
         const { numDeletedRows } = await ctx.db.deleteFrom("jobs")
             .where("id", "in", selectedDead(ctx, selection).limit(batchSize))
             .executeTakeFirst();
         total += Number(numDeletedRows);
+
         if (numDeletedRows < BigInt(batchSize)) return total;
     }
 };
@@ -411,6 +417,7 @@ export const queueStats = async (ctx: Context, now: Date): Promise<QueueStats[]>
     );
 
     const stats = [];
+
     for (const queue of new Set([...waiting.keys(), ...dead.keys()].toSorted())) {
         const oldest = await dueJobs(ctx, queue, now).select("run_at")
             .orderBy("run_at")
@@ -449,6 +456,7 @@ export const deleteExpiredJobs = async (ctx: Context, batchSize = 1000): Promise
             const deleted = await ctx.db.deleteFrom("jobs")
                 .where("id", "in", jobs.limit(batchSize))
                 .executeTakeFirst();
+
             if (deleted.numDeletedRows < BigInt(batchSize)) break;
         }
     }

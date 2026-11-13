@@ -79,6 +79,7 @@ const open = async () => {
         });
         if (note === undefined) throw new Error("Not posted");
         await dispatch.idle();
+
         return note.id;
     };
 

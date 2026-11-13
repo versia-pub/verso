@@ -92,6 +92,7 @@ export const notesShownTo = async (
         .where("id", "in", ids)
         .where(shownTo(onlooker))
         .execute();
+
     return new Set(rows.map((row) => row.id));
 };
 
@@ -118,6 +119,7 @@ export const notesSeenBy = async (
         .where("id", "in", ids)
         .where(seenBy(onlooker))
         .execute();
+
     return new Set(rows.map((row) => row.id));
 };
 
@@ -139,6 +141,7 @@ export const repliesTo = async (
         .orderBy("id")
         .limit(limit)
         .execute();
+
     // SQLite returns 1 or 0.
     return rows.map(({ seen, ...note }) => ({ note, seen: Boolean(seen) }));
 };

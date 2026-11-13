@@ -81,6 +81,7 @@ Deno.test("a push to a subscription that isn't standard is encrypted in aesgcm",
 Deno.test("each push is encrypted with a key and salt of its own, which its header says", async () => {
     const senders = [await randomSender(), await randomSender()];
     const bodies = [];
+
     for (const sender of senders) {
         bodies.push(await encryptPush(example.plaintext, example.keys, sender));
     }
@@ -91,6 +92,7 @@ Deno.test("each push is encrypted with a key and salt of its own, which its head
         assertEquals(bodies[index].slice(16, 21), new Uint8Array([0, 0, 16, 0, 65]));
         assertEquals(bodies[index].slice(21, 86), own);
     }
+
     assertNotEquals(senders[0].salt, senders[1].salt);
     assertNotEquals(bodies[0].slice(21, 86), bodies[1].slice(21, 86));
 });

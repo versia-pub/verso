@@ -41,6 +41,7 @@ const webAddress = (value: string | undefined, base: URL): string | undefined =>
 
     try {
         const url = new URL(value.trim(), base);
+
         return /^https?:$/.test(url.protocol) && url.href.length <= limits.url
             ? url.href
             : undefined;
@@ -150,6 +151,7 @@ const languageOf = (code: string | undefined): string | null => {
     try {
         const [language] = Intl.getCanonicalLocales(code?.trim().replace(/_/g, "-") ?? "")[0]
             ?.split("-") ?? [];
+
         return language?.length === 2 ? language : null;
     } catch {
         return null;

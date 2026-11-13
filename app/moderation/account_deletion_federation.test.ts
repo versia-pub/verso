@@ -25,8 +25,10 @@ const open = async () => {
         const lookup = await instance.app.request("/api/v1/accounts/lookup?acct=alice@a.test", {
             headers: { authorization: `Bearer ${await tokenFor(instance.ctx, viewer)}` },
         });
+
         return (await lookup.json()).id as string;
     };
+
     await follow(b.ctx, "bob", await lookUp(b, "bob"));
     await lookUp(c, "carol");
     await network.drain();
@@ -49,8 +51,10 @@ for (const tombstone of [true, false]) {
     Deno.test(`a deleted user is deleted by every instance that knows them (tombstone: ${tombstone})`, async () => {
         await using network = await open();
         const { a, b, c } = network;
+
         await postNote(a.ctx, "alice", { text: "Hi", format: "text/plain", spoilerText: "" });
         await network.drain();
+
         assertEquals(await remoteStatuses(b), ["Hi"]);
         assertEquals([await remoteUsers(b), await remoteUsers(c)], [["alice"], ["alice"]]);
 

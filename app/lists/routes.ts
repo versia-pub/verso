@@ -135,6 +135,7 @@ export const listRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { params, viewer }) => {
             if (!await deleteList(ctx, viewer.accountId, params.id)) throw new NotFound();
+
             return { status: 200, body: {} };
         },
     }),
@@ -194,6 +195,7 @@ export const listRoutes: readonly Route[] = [
                 params.id,
                 body.account_ids,
             );
+
             if (result === "no_list" || result === "missing") throw new NotFound();
             if (result === "unfollowed") {
                 throw new Unprocessable("Account follow relationship missing");
@@ -222,6 +224,7 @@ export const listRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { body, params, query, viewer }) => {
             const accountIds = [...new Set([...query.account_ids, ...body.account_ids])];
+
             if (!await removeListAccounts(ctx, viewer.accountId, params.id, accountIds)) {
                 throw new NotFound();
             }

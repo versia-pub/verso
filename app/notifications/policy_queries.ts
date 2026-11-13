@@ -27,6 +27,7 @@ export const policiesOf = async (
         .selectAll()
         .where("account_id", "in", accountIds)
         .execute();
+
     const found = new Map(rows.map(({ account_id, updated_at: _, ...policy }) => [
         account_id,
         policy,

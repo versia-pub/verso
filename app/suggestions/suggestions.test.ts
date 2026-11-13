@@ -92,6 +92,7 @@ Deno.test("accounts that the user follows, requested, blocks, mutes, or that blo
     await test.follow("ann", "alice");
     await test.follow("ann", "eve");
     await test.follow("alice", "cat", false);
+
     assertEquals(await test.suggested(), ["dan: friends_of_friends", "eve: friends_of_friends"]);
 
     await mute(test.ctx, "alice", "dan", { notifications: false, duration: 0 });
@@ -108,6 +109,7 @@ Deno.test("accounts on a domain the user blocks aren't suggested, and remote one
     await test.follow("ann", "remote");
     await test.ctx.db.updateTable("accounts").set({ discoverable: false })
         .where("id", "in", ["cat", "dan"]).execute();
+
     assertEquals(await test.suggested(), ["remote: friends_of_friends"]);
 
     await blockDomainFor(test.ctx, "alice", "b.example");

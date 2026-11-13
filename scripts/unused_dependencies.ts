@@ -56,6 +56,7 @@ const addImportsOf = async (file: string) => {
 const files = (await typeScriptFiles(".")).sort((a, b) =>
     Number(b.endsWith(".test.ts")) - Number(a.endsWith(".test.ts"))
 );
+
 for (const file of files) {
     if (!reached.has(new URL(file.slice("./".length), root).href)) await addImportsOf(file);
 }

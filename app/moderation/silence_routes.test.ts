@@ -19,11 +19,14 @@ import { silence, unsilence } from "./silences.ts";
 Deno.test("a silenced account is said to be limited, and its statuses kept off the public timelines", async () => {
     await using test = await createTestContext();
     const app = createTestApp(test.ctx, routes(defaultSettings()), { checkResponses: true });
+
     for (const id of ["alice", "carol"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "alice", "carol");
+
     for (const [id, text] of [["alice", "#cats"], ["carol", "#cats"]]) {
         await postNote(test.ctx, id, { format: "text/plain", spoilerText: "", text });
     }
+
     await indexUnindexedAccounts(test.ctx);
     const token = await tokenFor(test.ctx, "alice");
 
@@ -63,6 +66,7 @@ Deno.test("a silenced account is said to be limited, and its statuses kept off t
 
     // Even to those who follow it.
     await silence(test.ctx, "carol");
+
     assertEquals(await shown(), {
         ...before,
         limited: true,
@@ -71,19 +75,23 @@ Deno.test("a silenced account is said to be limited, and its statuses kept off t
     });
 
     await unsilence(test.ctx, "carol");
+
     assertEquals(await shown(), before);
 });
 
 Deno.test("a silenced account's statuses are left out of threads and quotes for those who don't follow it", async () => {
     await using test = await createTestContext();
     const app = createTestApp(test.ctx, routes(defaultSettings()), { checkResponses: true });
+
     for (const id of ["alice", "bob", "carol", "dan"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "bob", "carol");
+
     const root = await createNote(test.ctx, "dan");
     const middle = await createNote(test.ctx, "carol", { in_reply_to_id: root.id });
     const leaf = await createNote(test.ctx, "dan", { in_reply_to_id: middle.id });
     const quoting = await createNote(test.ctx, "carol", { quote_id: root.id });
     const quoted = await createNote(test.ctx, "dan", { quote_id: middle.id });
+
     const tokens = new Map<string, string>();
     for (const id of ["alice", "bob", "carol", "dan"]) {
         tokens.set(id, await tokenFor(test.ctx, id));
@@ -96,6 +104,7 @@ Deno.test("a silenced account's statuses are left out of threads and quotes for 
             const response = await app.request(path, {
                 headers: token === undefined ? {} : { authorization: `Bearer ${token}` },
             });
+
             return { status: response.status, body: await response.json() };
         };
         const ids = (statuses: { id: string }[]) => statuses.map((status) => status.id);
@@ -121,6 +130,7 @@ Deno.test("a silenced account's statuses are left out of threads and quotes for 
         quotes: [quoting.id],
         quote: { state: "accepted", id: middle.id },
     };
+
     for (const viewerId of [null, "alice", "bob", "carol", "dan"]) {
         assertEquals(await shown(viewerId), all, `${viewerId}`);
     }
@@ -128,13 +138,16 @@ Deno.test("a silenced account's statuses are left out of threads and quotes for 
     // Replies under carol's are kept, and a quote of carol's still shows what it quotes. Dan wrote
     // what carol quoted, so he is still shown the quote.
     await silence(test.ctx, "carol");
+
     const hidden = { ...all, ancestors: [root.id], descendants: [leaf.id], quotes: [] };
     for (const viewerId of [null, "alice"]) {
         assertEquals(await shown(viewerId), hidden, `${viewerId}`);
     }
+
     for (const viewerId of ["bob", "carol"]) {
         assertEquals(await shown(viewerId), all, `${viewerId}`);
     }
+
     assertEquals(await shown("dan"), { ...hidden, quotes: [quoting.id] });
 
     await unsilence(test.ctx, "carol");

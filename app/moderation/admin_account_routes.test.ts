@@ -28,17 +28,20 @@ const open = async () => {
         checkResponses: true,
         permissions,
     });
+
     for (const id of ["admin", "alice", "bob", "mod", "peer"]) {
         test.clock.advance(1000);
         await createLocalAccount(test.ctx, id);
     }
     await createRemoteAccount(test.ctx, "dave", await createInstance(test.ctx, "remote.example"));
+
     await createRole(test.ctx, "Moderator", ["accounts"]);
     await createRole(test.ctx, "Admin", ["accounts", "reports"]);
     await test.ctx.db.updateTable("roles").set({ priority: 10 }).where("id", "=", "Moderator")
         .execute();
     await test.ctx.db.updateTable("roles").set({ priority: 20 }).where("id", "=", "Admin")
         .execute();
+
     await giveRole(test.ctx, "mod", "Moderator");
     await giveRole(test.ctx, "peer", "Moderator");
     await giveRole(test.ctx, "admin", "Admin");
@@ -78,6 +81,7 @@ const open = async () => {
             forward: false,
         }, 0);
         assert(row);
+
         return row.id;
     };
 
@@ -97,6 +101,7 @@ type Test = Awaited<ReturnType<typeof open>>;
 const listed = async (test: Test, path: string) => {
     const { status, body } = await test.call("GET", path);
     assertEquals(status, 200);
+
     return (body as AdminAccount[]).map((account) => account.id);
 };
 
@@ -295,6 +300,7 @@ Deno.test("an action needs a type Verso has, and a report that exists", async ()
         });
         assertEquals(response.status, 422);
     }
+
     assertEquals(
         (await test.call("POST", "/api/v1/admin/accounts/alice/action", {
             json: { type: "silence", report_id: "missing" },
@@ -328,11 +334,13 @@ Deno.test("an action resolves every report about the account, with the reports p
     });
 
     assertEquals(done.status, 200);
+
     const reports = await test.ctx.db.selectFrom("reports")
         .select(["id", "resolved_at", "resolved_by_account_id"])
         .orderBy("id")
         .execute();
     const byId = new Map(reports.map((report) => [report.id, report]));
+
     assertEquals(byId.get(first)?.resolved_by_account_id, "admin");
     assertEquals(byId.get(second)?.resolved_by_account_id, "admin");
     assert(byId.get(second)?.resolved_at);
@@ -342,6 +350,7 @@ Deno.test("an action resolves every report about the account, with the reports p
 Deno.test("a moderator without the reports permission acts on accounts with no open reports", async () => {
     await using test = await open();
     const id = await test.report("bob", "alice");
+
     await test.call("POST", `/api/v1/admin/accounts/alice/action`, {
         as: "admin",
         json: { type: "silence" },
@@ -411,6 +420,7 @@ Deno.test("only suspended local users below the moderator can be deleted", async
     for (const target of ["bob", "dave", "peer", "admin"]) {
         assertEquals((await test.call("DELETE", `/api/v1/admin/accounts/${target}`)).status, 403);
     }
+
     assertEquals((await test.call("DELETE", "/api/v1/admin/accounts/nobody")).status, 404);
     assertEquals(
         await test.ctx.db.selectFrom("jobs").selectAll()
@@ -439,6 +449,7 @@ Deno.test("each account's deletion is queued once", async () => {
 
     const jobs = await test.ctx.db.selectFrom("jobs").select("payload")
         .where("queue", "=", accountDeletionQueue).execute();
+
     assertEquals(
         jobs.map((job) => (job.payload as { accountId: string }).accountId).toSorted(),
         ["alice", "bob"],

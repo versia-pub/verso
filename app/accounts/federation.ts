@@ -143,6 +143,7 @@ export const localVersiaUser = async (
     const movedTo = row.moved_to_account_id === null
         ? undefined
         : (await userReferenceMap(ctx, [row.moved_to_account_id])).get(row.moved_to_account_id);
+
     return renderVersiaUser(ctx, row, emojis, {
         avatar: await ownPicture(ctx, row.avatar_id, ctx.urls.url`/accounts/${row.id}/avatar.png`),
         header: await ownPicture(ctx, row.header_id, ctx.urls.url`/accounts/${row.id}/header.png`),

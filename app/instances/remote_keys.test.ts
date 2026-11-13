@@ -121,6 +121,7 @@ Deno.test("a key is fetched again to refresh it only once it is old enough", asy
     test.transport.servers.set("b.example", metadataServer("b.example", before));
     const keys = remoteKeys({ refetchAfterMs: 1000 });
     await keys.get(test.ctx, "b.example");
+
     assertEquals(await test.takesMessages("b.example"), false);
 
     // What else the metadata says is stored with the key.
@@ -149,12 +150,16 @@ Deno.test("an instance whose key couldn't be had isn't asked again for a while",
         assertEquals(await keys.get(test.ctx, "b.example"), undefined);
         assertEquals(await keys.refresh(test.ctx, "b.example"), undefined);
     }
+
     assertEquals(test.transport.sent.length, 1);
 
     test.transport.servers.set("b.example", metadataServer("b.example", pair));
     test.clock.advance(999);
+
     assertEquals(await keys.get(test.ctx, "b.example"), undefined);
+
     test.clock.advance(1);
+
     assert(await isKeyOf(await keys.get(test.ctx, "b.example"), pair));
     assertEquals(test.transport.sent.length, 2);
 });

@@ -61,6 +61,7 @@ Deno.test("only one's own notes can be pinned, not shares nor direct ones", asyn
 Deno.test("an author pins at most 5 notes", async () => {
     await using test = await open();
     const notes = [];
+
     for (let i = 0; i <= pinLimit; i++) notes.push(await createNote(test.ctx, "alice"));
     const [first, ...rest] = notes;
     const last = rest.pop();

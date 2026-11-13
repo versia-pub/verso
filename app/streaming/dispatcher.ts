@@ -105,6 +105,7 @@ export const dispatcher = (ctx: Context): Dispatcher => {
             await atMost(listeners.size, [...listeners], run);
             waiting--;
         });
+
         return Promise.resolve();
     };
 

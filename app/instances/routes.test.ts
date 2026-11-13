@@ -276,6 +276,7 @@ Deno.test("active users are local accounts that logged in within four weeks", as
     assertEquals((await instanceStats(test.ctx)).activeMonth, 3);
 
     test.clock.advance(1);
+
     assertEquals((await instanceStats(test.ctx)).activeMonth, 1);
 });
 
@@ -287,8 +288,11 @@ Deno.test("the instance's stats are kept for five minutes", async () => {
     await tokenFor(test.ctx, "alice");
 
     test.clock.advance(5 * 60_000 - 1);
+
     assertEquals((await test.get()).usage.users.active_month, 0);
+
     test.clock.advance(1);
+
     assertEquals((await test.get()).usage.users.active_month, 1);
 });
 
@@ -332,6 +336,7 @@ rules = [{ text = "Be kind", hint = "Always" }]
     for (const text of ["Hi", "Bye"]) {
         await postNote(test.ctx, "alice", { text, format: "text/plain", spoilerText: "" });
     }
+
     const v2 = await test.get();
     const { description_limit: _, ...media } = v2.configuration.media_attachments;
 
@@ -365,6 +370,7 @@ rules = [{ text = "Be kind", hint = "Always" }]
         contact_account: "alice",
         rules: [{ id: "1", text: "Be kind", hint: "Always", translations: {} }],
     });
+
     assertEquals(await test.fetch("/api/v1/instance/rules"), { status: 200, body: v2.rules });
 });
 
@@ -401,8 +407,11 @@ terms_of_service = { text = "Be kind.", updated = 2026-01-04 }
     });
     // The clock starts at 2026-01-01, so this is the moment before the terms come into force.
     test.clock.advance(3 * 24 * 60 * 60 * 1000 - 1);
+
     assertEquals(await test.fetch("/api/v1/instance/terms_of_service"), terms(false));
+
     test.clock.advance(1);
+
     assertEquals(await test.fetch("/api/v1/instance/terms_of_service"), terms(true));
     assertEquals(await test.fetch("/api/v1/instance/terms_of_service/2026-01-04"), terms(true));
     assertEquals((await test.fetch("/api/v1/instance/terms_of_service/2026-01-03")).status, 404);

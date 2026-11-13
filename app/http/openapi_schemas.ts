@@ -15,12 +15,14 @@ export type JsonSchema = z.core.JSONSchema.JSONSchema;
  */
 export const naming = (): Naming => {
     const entities = new Map<z.ZodType, string>();
+
     for (const [id, schema] of Object.entries(clientApi)) {
         // A schema exported under two names keeps the first.
         if (schema instanceof z.ZodType && !entities.has(schema)) entities.set(schema, id);
     }
 
     const registry = z.registry<{ id: string }>();
+
     for (const [schema, id] of entities) registry.add(schema, { id });
 
     return { entities, registry, ids: new Set(entities.values()) };

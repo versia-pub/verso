@@ -124,6 +124,7 @@ const report = {
 
 Deno.test("a Report may be anonymous, and needs only what it reports and its tags", () => {
     assertEquals(Report.safeParse(report).success, true);
+
     for (const key of ["author", "comment"]) {
         assertEquals(Report.safeParse({ ...report, [key]: undefined }).success, true, key);
         assertEquals(Report.safeParse({ ...report, [key]: null }).success, true, key);

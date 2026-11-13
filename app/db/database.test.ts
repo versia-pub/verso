@@ -52,6 +52,7 @@ Deno.test({
     fn: async () => {
         const url = await testPostgresUrl();
         if (!url) return;
+
         const config = {
             postgres: url,
             pool_size: 2,
@@ -78,6 +79,7 @@ Deno.test({
     fn: async () => {
         const url = await testPostgresUrl();
         if (!url) return;
+
         await using db = openDatabase({
             postgres: url,
             pool_size: 1,

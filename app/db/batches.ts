@@ -7,6 +7,7 @@ export const batchSize = 1000;
 /** `items` in order, in batches of at most `size`. */
 export const batchesOf = <T>(items: readonly T[], size: number = batchSize): T[][] => {
     const batches = [];
+
     for (let start = 0; start < items.length; start += size) {
         batches.push(items.slice(start, start + size));
     }

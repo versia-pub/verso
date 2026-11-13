@@ -29,6 +29,7 @@ export const remoteEmojisOf = (
     if (!parsed.success) return [];
 
     const emojis = new Map<string, RemoteEmoji>();
+
     for (const emoji of parsed.data.emojis) {
         // At most as long as local ones.
         const shortcode = /^:([A-Za-z0-9_-]{1,100}):$/u.exec(emoji.name)?.[1];
@@ -60,8 +61,10 @@ export const emojiExtensions = (
             content: { [emoji.media_type]: { content: picture.url, remote: true } },
         }];
     });
+
     if (shown.length === 0) return undefined;
 
     const extension: v0_6.CustomEmojis = { emojis: shown };
+
     return { [v0_6.customEmojisKey]: extension };
 };

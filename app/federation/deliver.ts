@@ -218,6 +218,7 @@ export const deliveryBody = async (
 
     const row = await ctx.db.selectFrom("delivery_bodies").select(["body", "created_at"])
         .where("id", "=", job.bodyId).executeTakeFirst();
+
     return row && { body: row.body, queuedAt: row.created_at };
 };
 

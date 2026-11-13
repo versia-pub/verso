@@ -461,6 +461,7 @@ Deno.test("a scheduled status can quote one, and quotes it when it is posted", a
     assertEquals([scheduled.status, scheduled.body.params.quoted_status_id], [200, note.id]);
 
     await test.publish(10 * minute);
+
     const [posted] = await test.posted();
     assertEquals(posted?.quote_id, note.id);
 });

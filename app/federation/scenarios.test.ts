@@ -22,6 +22,7 @@ const minute = 60_000;
 const userOf = async (ctx: Context, id: string) => {
     const user = await registry.types.get("User")?.find?.(ctx, id, "");
     assertExists(user);
+
     return user;
 };
 

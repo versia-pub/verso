@@ -349,6 +349,7 @@ const hashtagQuery = (ctx: Context, hidden: Excluded | null) => {
         .where("visibility", "=", "public")
         .where("reblog_of_id", "is", null)
         .where(notSuspendedOrSilenced(ctx, "notes.account_id"));
+
     return hidden === null ? query : query.where(without(hidden));
 };
 

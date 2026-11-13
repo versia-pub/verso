@@ -13,6 +13,7 @@ export const deliveryOf = async (
     await ctx.db.insertInto("delivery_bodies")
         .values({ id: bodyId, body, created_at: ctx.clock.now() })
         .execute();
+
     return { domain, bodyId };
 };
 
@@ -28,6 +29,7 @@ export const queuedDeliveries = async (
     ctx: Context,
 ): Promise<{ domain: string; body: string }[]> => {
     await fanOut(ctx);
+
     const jobs = await ctx.db.selectFrom("jobs").select(["payload", "created_at"])
         .where("queue", "=", deliverQueue).orderBy("run_at").orderBy("id").execute();
 
@@ -35,6 +37,7 @@ export const queuedDeliveries = async (
         const payload = DeliverJob.parse(job.payload);
         const entity = await deliveryBody(ctx, payload, job.created_at);
         if (!entity) throw new Error("A queued delivery's entity is missing");
+
         return { domain: payload.domain, body: entity.body };
     }));
 };

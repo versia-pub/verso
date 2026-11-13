@@ -122,6 +122,7 @@ export const reactionsOf = async (
             ).as("me"),
         ])
         .where("announcement_reactions.announcement_id", "in", announcementIds);
+
     if (emoji !== undefined) {
         query = emoji.text === null
             ? query.where("announcement_reactions.emoji_id", "=", emoji.emoji_id)

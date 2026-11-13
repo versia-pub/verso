@@ -30,6 +30,7 @@ export const usersCommand = (io: AdminIo): Command<{ config: string }> =>
             const result = await io.withContext(config, async (ctx) => {
                 const { account, role } = await accountAndRole(ctx, username, roleName);
                 const changed = await grantRoleTo(ctx, account.id, role.id);
+
                 return { username: account.username, role: role.name, changed };
             });
             io.print(JSON.stringify(result));
@@ -42,6 +43,7 @@ export const usersCommand = (io: AdminIo): Command<{ config: string }> =>
             const result = await io.withContext(config, async (ctx) => {
                 const { account, role } = await accountAndRole(ctx, username, roleName);
                 const changed = await revokeRoleFrom(ctx, account.id, role.id);
+
                 return { username: account.username, role: role.name, changed };
             });
             io.print(JSON.stringify(result));

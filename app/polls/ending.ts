@@ -16,6 +16,7 @@ export const endPolls = async (ctx: Context): Promise<void> => {
     do {
         marked = await ctx.transaction(async (tx) => {
             const polls = await markEndedPolls(tx, perTransaction);
+
             for (const poll of polls) {
                 const event: PollEnded = {
                     type: "polls.ended",
@@ -24,6 +25,7 @@ export const endPolls = async (ctx: Context): Promise<void> => {
                 };
                 await emit(tx, event);
             }
+
             return polls.length;
         });
     } while (marked === perTransaction);

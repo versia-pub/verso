@@ -69,6 +69,7 @@ export const usableEmojiIds = async (
         .where("media.sha256", "is not", null)
         .orderBy("emojis.shortcode")
         .execute();
+
     return ownFirst(rows).map((row) => row.id);
 };
 
@@ -107,6 +108,7 @@ export const insertLocalEmoji = async (
         .onConflict((conflict) => conflict.doNothing())
         .returning("id")
         .executeTakeFirst();
+
     return added !== undefined;
 };
 
@@ -138,6 +140,7 @@ export const setNoteEmojis = async (
     emojiIds: readonly string[],
 ): Promise<void> => {
     await ctx.db.deleteFrom("note_emojis").where("note_id", "=", noteId).execute();
+
     if (emojiIds.length === 0) return;
 
     await ctx.db.insertInto("note_emojis")
@@ -152,6 +155,7 @@ export const setAccountEmojis = async (
     emojiIds: readonly string[],
 ): Promise<void> => {
     await ctx.db.deleteFrom("account_emojis").where("account_id", "=", accountId).execute();
+
     if (emojiIds.length === 0) return;
 
     await ctx.db.insertInto("account_emojis")

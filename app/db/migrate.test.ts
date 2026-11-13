@@ -148,6 +148,7 @@ Deno.test({
 
 Deno.test("the database was set up when its first migration ran", async () => {
     await using db = await testDatabase();
+
     await assertRejects(
         () => firstMigratedAt(db, { "1_notes": createNotes }),
         Error,
@@ -182,6 +183,7 @@ Deno.test("existing statuses are put in the thread of the status they reply to",
             created_at: now,
         })
         .execute();
+
     // A status, a reply to it and a reply to that, and another status.
     for (const [id, parent] of [["a", null], ["b", "a"], ["c", "b"], ["d", null]]) {
         await sql`
@@ -193,6 +195,7 @@ Deno.test("existing statuses are put in the thread of the status they reply to",
     }
 
     assertEquals((await migrate(db)).ok, true);
+
     const rows = await db.selectFrom("notes").select(["id", "thread_id"]).orderBy("id").execute();
     assertEquals(rows, [
         { id: "a", thread_id: "a" },
@@ -219,6 +222,7 @@ Deno.test("the hashtags statuses used become known, and statuses' hashtags refer
             created_at: now,
         })
         .execute();
+
     for (const [id, tags] of [["a", ["verso", "deno"]], ["b", ["verso"]]] as const) {
         await sql`
             insert into notes
@@ -232,6 +236,7 @@ Deno.test("the hashtags statuses used become known, and statuses' hashtags refer
     }
 
     assertEquals((await migrate(db)).ok, true);
+
     assertEquals(await db.selectFrom("tags").selectAll().orderBy("name").execute(), [
         { name: "deno", display_name: "deno", trendable: null },
         { name: "verso", display_name: "verso", trendable: null },
@@ -298,9 +303,11 @@ Deno.test("push subscriptions there were keep being pushed to in aes128gcm", asy
         .execute();
 
     assertEquals((await migrate(db)).ok, true);
+
     const { standard } = await db.selectFrom("push_subscriptions").select("standard")
         .executeTakeFirstOrThrow();
     assertEquals(standard, true);
+
     await assertRejects(() =>
         db.updateTable("push_subscriptions").set({ standard: null as never }).execute()
     );
@@ -337,6 +344,7 @@ Deno.test("apps there were keep their tokens once apps may have no secret", asyn
         .execute();
 
     assertEquals((await migrate(db)).ok, true);
+
     assertEquals(await db.selectFrom("apps").selectAll().execute(), [app]);
     assertEquals(
         (await db.selectFrom("access_tokens").select("app_id").executeTakeFirstOrThrow()).app_id,
@@ -372,6 +380,7 @@ Deno.test("domain blocks there were get ids in the order they were made", async 
         .execute();
 
     assertEquals((await migrate(db)).ok, true);
+
     const blocks = await db.selectFrom("domain_blocks").selectAll().orderBy("id").execute();
     assertEquals(
         blocks.map(({ id: _, ...block }) => block),
@@ -393,10 +402,12 @@ Deno.test("domain blocks there were get ids in the order they were made", async 
         ],
     );
     assertEquals(new Set(blocks.map((block) => block.id)).size, 2);
+
     for (const block of blocks) {
         const at = block.created_at.getTime();
         assert(block.id >= firstIdAt(new Date(at)) && block.id < firstIdAt(new Date(at + 1)));
     }
+
     await assertRejects(() =>
         db.insertInto("domain_blocks")
             .values({ id: "other", domain: "a.example", reason: "", created_at: newer })

@@ -125,6 +125,7 @@ export const openSession = (
         const key = keyOf(name, stream, params);
         if (key === undefined) return refuse(missing[stream.param ?? "tag"], 400);
         if (subscribed.has(key)) return;
+
         // In code points, not bytes or UTF-16 code units.
         if (stream.param === "tag" && [...(params.tag ?? "")].length > limits.tag_length) {
             return refuse("Tag name is too long", 400);

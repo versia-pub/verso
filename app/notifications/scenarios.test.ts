@@ -90,6 +90,7 @@ Deno.test("a remote reply with media and its author's own emoji, and a like, not
         (await test.bob("POST", `/api/v1/statuses/${test.statusId}/favourite`)).status,
         200,
     );
+
     await test.network.drain();
 
     assertEquals(await test.notified(), [
@@ -105,6 +106,7 @@ Deno.test("a remote reply with media and its author's own emoji, and a like, not
     assertEquals([attachment.type, attachment.description], ["image", "A square"]);
     assertEquals(new URL(attachment.remote_url).host, "b.test");
     assertEquals(blobfox.shortcode, "blobfox");
+
     for (const url of [attachment.url, blobfox.url, blobfox.static_url]) {
         assertEquals(new URL(url).host, "a.test", url);
         const served = await test.a.app.request(url);
@@ -117,6 +119,7 @@ Deno.test("a blocked account's mention and like don't show as notifications unti
     await using test = await open();
     const bob = await test.alice("GET", "/api/v1/accounts/lookup?acct=bob@b.test");
     assertEquals((await test.alice("POST", `/api/v1/accounts/${bob.body.id}/block`)).status, 200);
+
     await test.network.drain();
 
     await test.bob("POST", "/api/v1/statuses", {
@@ -125,6 +128,7 @@ Deno.test("a blocked account's mention and like don't show as notifications unti
     });
     await test.bob("POST", `/api/v1/statuses/${test.statusId}/favourite`);
     await test.network.drain();
+
     assertEquals(await test.notified(), []);
 
     assertEquals((await test.alice("POST", `/api/v1/accounts/${bob.body.id}/unblock`)).status, 200);

@@ -85,6 +85,7 @@ const open = async (access?: Parameters<typeof hashtagStreams>[1]) => {
     ) => {
         const { id } = await createNote(test.ctx, accountId, note, [], tags);
         await published({ event: "update", noteId: id });
+
         return id;
     };
 

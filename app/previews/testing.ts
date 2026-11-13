@@ -44,6 +44,7 @@ export const createCard = async (
         fetched_at: ctx.clock.now(),
         ...card,
     });
+
     for (const noteId of noteIds) await setLink(ctx, noteId, id, url);
 
     return id;

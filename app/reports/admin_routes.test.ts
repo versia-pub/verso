@@ -33,6 +33,7 @@ const open = async () => {
         checkResponses: true,
         permissions,
     });
+
     for (const id of ["alice", "bob", "mod"]) await createLocalAccount(test.ctx, id);
     await createRemoteAccount(test.ctx, "dave", await createInstance(test.ctx, "remote.example"));
     await createRole(test.ctx, "Moderator", ["reports"]);
@@ -71,6 +72,7 @@ const open = async () => {
             forward: false,
         }, rules.length);
         assert(row);
+
         return row.id;
     };
 
@@ -124,6 +126,7 @@ Deno.test("a report shows who filed it, of whom, its statuses and rules", async 
         forward: false,
     }, rules.length);
     assert(row);
+
     await removeNote(test.ctx, gone.id);
     await silence(test.ctx, "bob");
 
@@ -210,6 +213,7 @@ Deno.test("reports list the unresolved by default, the latest first, and filter 
     const a = await test.report("alice", "bob", [ofBob.id]);
     const b = await test.report("bob", "alice", [ofAlice.id]);
     const c = await test.report("alice", "dave");
+
     await test.call("POST", `/api/v1/admin/reports/${b}/resolve`);
 
     const all = await test.call("GET", "/api/v1/admin/reports?resolved=true&unresolved=true");

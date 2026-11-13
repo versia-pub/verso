@@ -50,6 +50,7 @@ Deno.test({
         subscribe(test.ctx, said, hear("sender"));
         subscribe({ ...test.ctx, pubsub: elsewhere }, said, hear("elsewhere"));
         subscribe({ ...test.ctx, pubsub: elsewhere }, other, hear("elsewhere, other"));
+
         assertEquals([await sending.listen(), await elsewhere.listen()], [true, true]);
 
         await assertRejects(() =>
@@ -68,6 +69,7 @@ Deno.test({
             await publish(tx, said, "hi");
             await publish(tx, other, "bye");
             await delay(100);
+
             assertEquals(heard, []);
         });
 
@@ -98,6 +100,7 @@ Deno.test({
             await using pubsub = postgresPubSub(db, url);
             await publish({ ...test.ctx, pubsub }, said, "sent");
             await delay(100);
+
             assertEquals(await listeners(), 0);
 
             subscribe({ ...test.ctx, pubsub }, said, () => Promise.resolve());
@@ -112,6 +115,7 @@ Deno.test({
         const quitting = postgresPubSub(db, url);
         const listened = quitting.listen();
         await quitting[Symbol.asyncDispose]();
+
         assertEquals(await listened, true);
 
         await until(async () => await listeners() === 0);
@@ -136,6 +140,7 @@ Deno.test({
         let missed = 0;
         subscribe(test.ctx, said, (text) => Promise.resolve(void heard.push(text)));
         pubsub.onMissed(() => Promise.resolve(void (missed += 1)));
+
         assertEquals(await pubsub.listen(), true);
         assertEquals(pubsub.listening(), true);
 
@@ -145,11 +150,13 @@ Deno.test({
                 where datname = current_database() and query = ${`listen ${messagesChannel}`}
             `.execute(db);
             await until(() => missed === round);
+
             assertEquals([missed, pubsub.listening()], [round, true]);
         }
 
         await publish(test.ctx, said, "again");
         await until(() => heard.length > 0);
+
         assertEquals(heard, ["again"]);
     },
 });
@@ -189,9 +196,11 @@ Deno.test({
         const quitting = postgresPubSub(test.ctx.db, later(quitFrom), options);
 
         assertEquals([await waiting.listen(), await gone.listen()], [false, false]);
+
         await gone[Symbol.asyncDispose]();
         const listened = quitting.listen();
         await quitting[Symbol.asyncDispose]();
+
         assertEquals(await listened, false);
         // So that the first waits to try again, after failing again.
         await delay(50);

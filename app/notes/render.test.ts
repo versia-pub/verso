@@ -207,6 +207,7 @@ Deno.test("statuses rendered for many viewers at once are as each sees them alon
     const notes = [note, boost, quoting];
     const viewers = ["alice", "bob", "dave", "erin", "frank", null];
     const together = await renderStatusesFor(test.ctx, notes, viewers);
+
     for (const viewer of viewers) {
         assertEquals(together.get(viewer), await renderStatuses(test.ctx, notes, viewer));
     }
@@ -258,6 +259,7 @@ Deno.test("statuses rendered for many viewers at once are as each sees them alon
                 : [note.id, quoting.id]
         ),
     );
+
     const quote = (viewer: string) => together.get(viewer)?.at(-1)?.quote;
     assertEquals(quote("frank"), {
         state: "accepted",

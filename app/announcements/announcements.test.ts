@@ -106,6 +106,7 @@ Deno.test("an announcement must say something, and have both an event's start an
     assertEquals(await createAnnouncement(test.ctx, { ...input, text: " \n" }), {
         invalid: "The text can't be empty",
     });
+
     const halfEvent = { invalid: "An event needs both when it starts and when it ends" };
     assertEquals(
         await createAnnouncement(test.ctx, { ...input, text: "Hi", startsAt: test.later(0) }),
@@ -258,6 +259,7 @@ Deno.test("reactions are rendered with whether the viewer made them, but not for
 
     const reactions = async (viewerId: string | null) =>
         (await renderAnnouncements(test.ctx, [made], viewerId))[0].reactions;
+
     assertEquals(await reactions("alice"), [{ name: "👍", count: 1, me: true }]);
     assertEquals(await reactions(null), [{ name: "👍", count: 1 }]);
 });

@@ -46,6 +46,7 @@ const open = async () => {
             poll: { options: ["Red", "Blue", "Green"], expires_in: 3600, ...poll },
         });
         if (posted.status !== 200) throw new Error(JSON.stringify(posted.body));
+
         return { statusId: posted.body.id as string, pollId: posted.body.poll.id as string };
     };
 

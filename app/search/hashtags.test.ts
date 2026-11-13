@@ -115,6 +115,7 @@ Deno.test("a hashtag's history leaves out suspended and silenced accounts' statu
     const today = async () => {
         const [rendered] = await renderHashtags(test.ctx, ["verso"], null);
         const { uses, accounts } = rendered.history[0];
+
         return [uses, accounts];
     };
     assertEquals(await today(), ["3", "3"]);

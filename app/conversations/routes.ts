@@ -48,6 +48,7 @@ export const conversationRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { params, viewer }) => {
             if (!await deleteConversation(ctx, viewer.accountId, params.id)) throw new NotFound();
+
             return { status: 200, body: {} };
         },
     }),

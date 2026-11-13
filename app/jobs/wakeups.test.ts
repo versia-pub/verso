@@ -71,6 +71,7 @@ Deno.test({
         await ctx.transaction(async (tx) => {
             await enqueue(tx, { queue: "deliver", payload: {} });
             await delay(100);
+
             assertEquals(heard, []);
         });
 
@@ -158,6 +159,7 @@ Deno.test({
                 { queue: "quiet", payload: {}, wake: false },
             ]);
             await enqueue(tx, { queue: "quiet", payload: {}, wake: false });
+
             assertEquals(heard, []);
         });
 
@@ -165,6 +167,7 @@ Deno.test({
 
         await wakeups[Symbol.asyncDispose]();
         await enqueue(ctx, { queue: "deliver", payload: {} });
+
         assertEquals(heard, ["deliver", "fetch"]);
     },
 });

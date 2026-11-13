@@ -39,6 +39,7 @@ const finishProcessing = async (tx: Context, id: string, processed: Processed) =
         stored: processed.sha256 !== null,
     };
     await emit(tx, event);
+
     return true;
 };
 
@@ -83,6 +84,7 @@ const reuseProcessed = async (
         }
 
         await finishProcessing(tx, id, processedFrom(before));
+
         return true;
     });
 };
@@ -99,6 +101,7 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
 
     const row = await findMedia(ctx, payload.data.mediaId);
     if (row === undefined || row.upload_sha256 === null) return;
+
     const uploaded = row.upload_sha256;
     const fit = fitOf(row);
 

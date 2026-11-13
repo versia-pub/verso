@@ -79,6 +79,7 @@ export const removeUnusedMedia = async (
         const keys = new Set(
             removed.flatMap((row) => [row.sha256, row.preview_sha256, row.upload_sha256]),
         );
+
         for (const key of keys) if (key !== null) await deleteFileIfUnused(ctx, key);
 
         if (removed.length < removalBatch) return;

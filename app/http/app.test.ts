@@ -289,6 +289,7 @@ const open = async () => {
             body,
             headers: { "content-type": type },
         });
+
         return { status: response.status, body: await response.json() };
     };
 
@@ -397,6 +398,7 @@ Deno.test("a form's files must have plain names", async () => {
     const post = (name: string, times = 1) => {
         const form = new FormData();
         for (let i = 0; i < times; i++) form.append(name, new File(["x"], "x.png"));
+
         return test.app.request("/echo", { method: "POST", body: form });
     };
 

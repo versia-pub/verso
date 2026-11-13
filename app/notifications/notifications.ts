@@ -107,6 +107,7 @@ const mutingThread = async (
     accountIds: readonly string[],
 ): Promise<Set<string>> => {
     const note = noteId === undefined ? undefined : await findNote(ctx, noteId);
+
     return note === undefined
         ? new Set()
         : await threadMutersAmong(ctx, note.thread_id, accountIds);
@@ -154,6 +155,7 @@ const notifyAll = async (
     }
 
     await insertNotifications(ctx, rows);
+
     for (const row of rows) {
         if (row.filtered) {
             if ((type === "mention" || type === "quote") && links.noteId !== undefined) {
@@ -212,6 +214,7 @@ export const notifyHandler: Handler = async (ctx: Context, job: JobsTable): Prom
     if (!payload.success) throw new PermanentFailure("The job isn't a notify job");
 
     const { type, noteId, accountIds } = payload.data;
+
     await ctx.transaction(async (tx) => {
         const note = await findNote(tx, noteId);
         if (note === undefined) return;
@@ -247,6 +250,7 @@ const notifyAuthor = async (
 /** The local users that `note` mentions. */
 const mentionedLocals = async (ctx: Context, note: NoteRow) => {
     const mentioned = (await mentionsOf(ctx, [note.id])).get(note.id) ?? [];
+
     return (await findAccounts(ctx, mentioned))
         .filter((account) => account.domain === null)
         .map((account) => account.id);
@@ -274,6 +278,7 @@ const notifyPosted = async (ctx: Context, note: NoteRow) => {
 
     const replyToOther = note.in_reply_to_account_id !== null &&
         note.in_reply_to_account_id !== note.account_id;
+
     if (note.visibility === "direct" || replyToOther) return;
 
     const followers = await notifiedFollowerIds(ctx, note.account_id);
@@ -305,6 +310,7 @@ const notifyEdited = async (ctx: Context, note: NoteRow) => {
 const notifyFollow = async (ctx: Context, event: FollowEvent) => {
     const followee = await findAccount(ctx, event.followeeId);
     const [follow] = await followsFrom(ctx, event.followerId, [event.followeeId]);
+
     if (followee?.domain !== null || follow === undefined) return;
 
     if (event.type === "graph.follow_requested") {

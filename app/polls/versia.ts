@@ -46,6 +46,7 @@ export const pollExtensions = (
         multiple_choice: poll.multiple,
         expires_at: poll.expires_at?.toISOString(),
     };
+
     return { [v0_6.pollsKey]: extension };
 };
 
@@ -70,6 +71,7 @@ export const remotePollOf = (extensions: v0_6.Entity["extensions"]): RemotePoll 
     if (!parsed.success || parsed.data.options.length === 0) return undefined;
 
     const options = parsed.data.options.slice(0, remoteOptions);
+
     return {
         options: options.map(titleOf),
         votes: options.map((_, index) => parsed.data.votes[index] ?? 0),

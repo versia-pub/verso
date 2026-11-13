@@ -59,6 +59,7 @@ export const hidingAmong = async (
     otherIds: readonly string[],
 ): Promise<Set<string>> => {
     const hiding = new Set<string>();
+
     for (const asked of batchesOf(otherIds)) {
         const found = [
             ...await blockersAmong(ctx, accountId, asked),

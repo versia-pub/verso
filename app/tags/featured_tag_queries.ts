@@ -63,6 +63,7 @@ export const featuredTagsAmong = async (
         .where("account_id", "=", accountId)
         .where("tag", "in", tags)
         .execute();
+
     return new Set(rows.map((row) => row.tag));
 };
 

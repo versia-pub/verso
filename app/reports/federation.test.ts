@@ -97,12 +97,14 @@ Deno.test("a report is forwarded to the domains asked for, of the account and th
     });
 
     assertEquals(report?.forwarded, true);
+
     const entity = {
         type: "pub.versia:reports/Report",
         created_at: test.clock.now().toISOString(),
         reported: ["b.example:carol", "b.example:n1", "b.example:n2"],
         tags: ["other"],
     };
+
     assertEquals(await sent(test.ctx), [["b.example", entity], ["c.example", entity]]);
 });
 
@@ -178,6 +180,7 @@ Deno.test("a received report of a local account is kept, with the statuses its i
         forwarded: false,
         resolved_at: null,
     };
+
     assertEquals(
         reports.map(({ id: _, ...report }) => report).sort((a, b) =>
             (a.target ?? "").localeCompare(b.target ?? "")
@@ -205,6 +208,7 @@ Deno.test("a received report of a remote account is kept only for replies to loc
 
     await reportType.receive(test.ctx, received(["carol", "n1", "n3"], { tags: [] }), sender);
     const [report] = await reportsForAdmin(test.ctx, false);
+
     assertEquals(
         [report?.target, report?.category, report?.status_ids],
         ["carol@b.example", "other", [test.notes[0].id, reply.id]],
@@ -227,6 +231,7 @@ Deno.test("a received report names the accounts it is of, and is stored once", a
     const report = received([`${domain}:bob`, `${domain}:${note.id}`], { comment: null });
     await reportType.receive(test.ctx, report, sender);
     await reportType.receive(test.ctx, report, sender);
+
     const reports = await reportsForAdmin(test.ctx, false);
     assertEquals(reports.map((each) => [each.target, each.comment]), [["bob", ""]]);
 

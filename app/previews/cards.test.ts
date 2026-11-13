@@ -71,6 +71,7 @@ const open = async (servers: Parameters<typeof fakeTransport>[0] = {}) => {
     const cardOf = async (noteId: string) => {
         const note = await findNote(test.ctx, noteId);
         if (!note) throw new Error("no note");
+
         return (await renderStatuses(test.ctx, [note], null))[0].card;
     };
 
@@ -161,6 +162,7 @@ Deno.test("editing the first link changes the card, and removing it removes the 
         .execute();
     await test.ctx.transaction((tx) => emit(tx, edit(id)));
     await drain(test.ctx, queues);
+
     assertEquals((await test.cardOf(id))?.title, "Other");
     assertEquals((await test.cardOf(id))?.url, "https://other.example/");
 
@@ -168,6 +170,7 @@ Deno.test("editing the first link changes the card, and removing it removes the 
         .where("id", "=", id).execute();
     await test.ctx.transaction((tx) => emit(tx, edit(id)));
     await drain(test.ctx, queues);
+
     assertEquals(await test.cardOf(id), null);
 });
 
@@ -193,6 +196,7 @@ Deno.test("no card is made when the page is missing, isn't HTML or has no title"
 
     for (const host of ["gone", "pdf", "blank", "unreachable"]) {
         const id = await test.post(`<a href="https://${host}.example/">x</a>`);
+
         assertEquals(await test.cardOf(id), null, host);
     }
 
@@ -208,6 +212,7 @@ Deno.test("a card without a usable image has none", async () => {
                     headers: { "content-type": "image/png" },
                 });
             }
+
             return story();
         },
     });
@@ -235,6 +240,7 @@ Deno.test("images that are too big, or not in a format Mastodon accepts, are not
         const card = await test.cardOf(
             await test.post(`<a href="https://news.example/story">x</a>`),
         );
+
         assertEquals(card?.image, null);
     }
 });
@@ -265,7 +271,9 @@ Deno.test("a boost has no card of its own, and shows the card of the status it b
     await test.ctx.transaction((tx) => emit(tx, posted(boost.id)));
 
     assertEquals(await drain(test.ctx, queues), 0);
+
     const [rendered] = await renderStatuses(test.ctx, [boost], null);
+
     assertEquals(rendered.card, null);
     assertEquals(rendered.reblog?.card?.title, "Story");
 });
@@ -281,10 +289,12 @@ Deno.test("a remote status waits up to a minute, then gets its card", async () =
     });
 
     await test.ctx.transaction((tx) => emit(tx, received(note.id)));
+
     assertEquals(await drain(test.ctx, queues), 0);
     assertEquals(await test.cardOf(note.id), null);
 
     test.clock.advance(60_000);
+
     assertEquals(await drain(test.ctx, queues), 1);
     assertEquals((await test.cardOf(note.id))?.title, "Story");
 });
@@ -295,12 +305,14 @@ Deno.test("the card's image is kept while the card uses it, and the link goes wi
 
     test.clock.advance(3 * 24 * 60 * 60_000);
     await removeUnusedMedia(test.ctx);
+
     assertEquals(
         await test.ctx.db.selectFrom("media").select("id").execute().then((r) => r.length),
         1,
     );
 
     await test.ctx.db.deleteFrom("notes").where("id", "=", id).execute();
+
     assertEquals(
         await test.ctx.db.selectFrom("note_preview_cards").select("note_id").execute(),
         [],

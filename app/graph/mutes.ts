@@ -36,6 +36,7 @@ export const mute = async (
         notifications: request.notifications,
         expiresAt,
     });
+
     return true;
 };
 

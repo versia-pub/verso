@@ -170,6 +170,7 @@ export const listAccountsAmong = async (
         .where("list_id", "=", listId)
         .where("account_id", "in", accountIds)
         .execute();
+
     return new Set(rows.map((row) => row.account_id));
 };
 

@@ -65,6 +65,7 @@ Deno.test("an account deleted takes its shares and the shares of its notes, unco
         await createNote(test.ctx, "carol", { instance_id: "b.example", remote_id: "n2" }),
     ];
     const local = await createNote(test.ctx, "alice");
+
     for (const note of theirs) await createShare(test.ctx, "alice", note.id);
     await createShare(test.ctx, "bob", theirs[0].id);
     // Not counted, so not decremented.
@@ -95,6 +96,7 @@ Deno.test("an account's shares are among its statuses, unless left out", async (
         ids(await notePageBy(test.ctx, "alice", ["public"], { excludeShares: true }, page)),
         [own.id],
     );
+
     // A boost has no hashtags.
     assertEquals(ids(await notePageBy(test.ctx, "alice", ["public"], { tag: "verso" }, page)), []);
 });
@@ -144,6 +146,7 @@ Deno.test("the shares the accounts someone blocks make are counted by note", asy
         await createNote(test.ctx, "alice"),
         await createNote(test.ctx, "alice"),
     ];
+
     for (const note of [first, other]) await createShare(test.ctx, "bob", note.id);
     await createShare(test.ctx, "carol", first.id);
     await block(test.ctx, "alice", "bob");

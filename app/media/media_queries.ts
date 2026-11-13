@@ -68,12 +68,14 @@ export const storeRemoteMedia = async (
     media: RemoteMedia,
 ): Promise<SavedRemoteMedia> => {
     const claims = claimsOf(media);
+
     if (current !== null) {
         const before = await ctx.db.selectFrom("media")
             .select(["url", "remote_sha256", "sha256", "preview_sha256", "processed_at"])
             .where("id", "=", current)
             .where("instance_id", "=", instanceId)
             .executeTakeFirst();
+
         if (before === undefined) return { id: current, uncached: false, unused: [] };
 
         const same = before.url === claims.url && before.remote_sha256 === claims.remote_sha256;

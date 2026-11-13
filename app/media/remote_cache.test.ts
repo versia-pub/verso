@@ -49,6 +49,7 @@ const withFiles = async (
         ...settings,
     });
     await createInstance(test.ctx, "b.example");
+
     return test;
 };
 
@@ -65,7 +66,9 @@ Deno.test("a remote image is cached when it is saved, processed as an upload is"
     const id = await test.ctx.transaction((tx) =>
         saveRemoteMedia(tx, "b.example", null, picture("/bob.png", { width: 4000 }))
     );
+
     assertEquals((await findMedia(test.ctx, id))?.processed_at, null);
+
     await drain(test.ctx, queues);
 
     const row = await findMedia(test.ctx, id);
@@ -118,6 +121,7 @@ Deno.test("a remote file is cached only if it matches the hash its instance gave
     await drain(test.ctx, queues);
 
     assert((await findMedia(test.ctx, right))?.sha256);
+
     const failed = await findMedia(test.ctx, wrong);
     assertEquals([failed?.sha256, failed?.preview_sha256], [null, null]);
     assertEquals(failed?.processed_at, test.clock.now());
@@ -146,10 +150,12 @@ Deno.test("remote files of other types, or with caching off, aren't fetched", as
         url: "https://b.example/paper.pdf",
         mediaType: "application/pdf",
     });
+
     assertEquals(await cacheJobs(test), []);
 
     await using off = await withFiles({}, { settings: { cacheRemoteMedia: false } });
     await saveRemoteMedia(off.ctx, "b.example", null, picture("/bob.png"));
+
     assertEquals(await cacheJobs(off), []);
 });
 
@@ -238,6 +244,7 @@ Deno.test("a file that failed to cache isn't tried again when it is saved again"
         null,
         picture("/bob.png", { sha256: "ab".repeat(32) }),
     );
+
     for (let attempt = 1; attempt <= 3; attempt++) {
         await drain(test.ctx, queues);
         test.clock.advance(hourMs);
@@ -267,6 +274,7 @@ Deno.test("another file in place of a cached one is cached, and the old files re
         saveRemoteMedia(tx, "b.example", id, picture("/new.png", { width: 9 }))
     );
     const pending = await findMedia(test.ctx, id);
+
     assertEquals(
         [pending?.sha256, pending?.preview_sha256, pending?.processed_at, pending?.cached_type],
         [null, null, null, null],
@@ -295,7 +303,9 @@ Deno.test("the same URL with another hash is another file", async () => {
     );
 
     assertEquals((await findMedia(test.ctx, id))?.processed_at, null);
+
     await drain(test.ctx, queues);
+
     assert((await findMedia(test.ctx, id))?.sha256);
 });
 
@@ -365,12 +375,14 @@ Deno.test("deleted remote media's cached files are removed, unless other media u
 
     await test.ctx.transaction((tx) => deleteRemoteMedia(tx, [one]));
     await drain(test.ctx, queues);
+
     assert(await test.ctx.files.has(row.sha256));
     assert(await isFileUsed(test.ctx, row.sha256));
     assert(await isFileUsed(test.ctx, row.preview_sha256));
 
     await test.ctx.transaction((tx) => deleteRemoteMedia(tx, [two]));
     await drain(test.ctx, queues);
+
     assertEquals(await test.ctx.files.has(row.sha256), false);
     assertEquals(await test.ctx.files.has(row.preview_sha256), false);
 });
@@ -472,6 +484,7 @@ Deno.test("a cached file removed before caching finishes is stored again", async
                     removed.add(key);
                     await files.delete(key);
                 }
+
                 return key;
             },
         },

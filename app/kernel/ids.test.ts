@@ -36,6 +36,7 @@ Deno.test("the first id at a time sorts before every id made then or later, and 
         fakeClock(new Date(time.getTime() - 1)),
         (bytes) => bytes.fill(0xff),
     );
+
     assertEquals([earlier(), first, nextId()].toSorted(), [earlier(), first, nextId()]);
 });
 

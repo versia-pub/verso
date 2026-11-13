@@ -81,6 +81,7 @@ const open = async (settings = defaultSettings()) => {
             { hostname: "127.0.0.1", port: 0, onListen: () => {} },
             (request) => verso.request(request),
         );
+
         return Object.assign(server, {
             url: `http://127.0.0.1:${server.addr.port}`,
             [Symbol.asyncDispose]: () => server.shutdown(),
@@ -981,6 +982,7 @@ const next = async (stream: Stream, count: number) => {
         events.push(describe(event));
         if (events.length === count) break;
     }
+
     return events;
 };
 

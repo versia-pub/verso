@@ -117,6 +117,7 @@ Deno.test("remote likes, boosts and reactions notify, until they are deleted", a
     await test.send(interaction(shared, "s1", { shared: object }));
     await test.send(interaction(reaction, "r1", { object, content: "🎉" }));
     await test.send(interaction(reaction, "r1", { object, content: "🎉" }));
+
     assertEquals(await test.of(test.alice), [
         `reaction ${test.bob} ${test.local.id}`,
         `reblog ${test.bob} ${test.local.id}`,
@@ -126,6 +127,7 @@ Deno.test("remote likes, boosts and reactions notify, until they are deleted", a
     await test.send(undo(like, "l1"));
     await test.send(undo(shared, "s1"));
     await test.send(undo(reaction, "r1"));
+
     assertEquals(await test.of(test.alice), []);
 });
 
@@ -138,6 +140,7 @@ Deno.test("remote statuses notify those they mention, and followers who asked", 
     assertEquals(await test.of(test.carol), [`status ${test.bob} ${n1}`]);
 
     await test.send(undo("Note", "n1"));
+
     assertEquals(await test.of(test.alice), []);
     assertEquals(await test.of(test.carol), []);
 });
@@ -150,6 +153,7 @@ Deno.test("remote statuses Verso fetched notify no one", async () => {
     );
 
     await test.send(note("n1", "And more", { replies_to: "n0" }));
+
     assertEquals(await test.of(test.alice), []);
     assertEquals(await test.of(test.carol), [`status ${test.bob} ${await test.kept("n1")}`]);
 });
@@ -161,9 +165,11 @@ Deno.test("remote edits notify local users who boosted it, and those it newly me
     await share(test.a, test.carol, n1);
 
     await test.send(note("n1", "Hi"));
+
     assertEquals(await test.of(test.carol), [`status ${test.bob} ${n1}`]);
 
     await test.send(note("n1", "Hi @alice", { mentions: [`a.test:${test.alice}`] }));
+
     assertEquals(await test.of(test.carol), [
         `update ${test.bob} ${n1}`,
         `status ${test.bob} ${n1}`,

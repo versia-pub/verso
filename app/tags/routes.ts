@@ -32,6 +32,7 @@ const shownHashtag = async (ctx: Context, name: string, viewerId: string | null)
 
     const [tag] = await renderHashtags(ctx, [name.toLowerCase()], viewerId);
     const known = (await displayNamesOf(ctx, [tag.id])).has(tag.id);
+
     // One no status has used, nor anyone followed or featured, is shown as it was asked for.
     return known ? tag : { ...tag, name };
 };
@@ -95,6 +96,7 @@ export const tagRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { params, viewer }) => {
             if (!await deleteFeaturedTag(ctx, viewer.accountId, params.id)) throw new NotFound();
+
             return { status: 200, body: {} };
         },
     }),

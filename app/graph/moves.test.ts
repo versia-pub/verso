@@ -147,6 +147,7 @@ Deno.test("local followers of a user that moved follow the account it moved to i
     assertEquals(await follow(test.a, test.cid, test.bob), "requested");
 
     await test.migrate();
+
     for (const id of [test.alice, test.bea]) {
         assertEquals(await test.following(id), { bob2: false });
     }
@@ -183,13 +184,16 @@ Deno.test("a follower that blocks the account moved to, or can't follow it, keep
     await moveHandler(test.a, {
         payload: { step: "follows", accountId: test.bob, movedToId: test.bob2 },
     } as never);
+
     assertEquals(await test.following(test.cid), { bob: true });
+
     await test.a.db.updateTable("accounts").set({ suspended_at: null })
         .where("id", "=", test.bob2).execute();
     await test.a.db.updateTable("accounts").set({ moved_to_account_id: null })
         .where("id", "=", test.bob).execute();
 
     await test.migrate();
+
     assertEquals(await test.following(test.alice), { bob: true });
     assertEquals(await test.following(test.bea), { bob: true });
     assertEquals(await test.following(test.cid), { bob2: false });
@@ -207,6 +211,7 @@ Deno.test("blocks and mutes of a user that moved carry over, with a note", async
     await upsertMute(a, alice, bob, { notifications: true, expiresAt: ended });
 
     await test.migrate();
+
     const blocks = await a.db.selectFrom("blocks").select("account_id")
         .where("target_id", "=", bob2).execute();
     assertEquals(blocks.map((row) => row.account_id), [alice]);
@@ -237,6 +242,7 @@ Deno.test("a block or mute isn't carried over by one following either account, o
     await upsertMute(a, cid, bob2, { notifications: false, expiresAt: null });
 
     await test.migrate();
+
     const blocks = await a.db.selectFrom("blocks").select("account_id")
         .where("target_id", "=", bob2).execute();
     assertEquals(blocks, []);
@@ -262,12 +268,14 @@ Deno.test("notes on a user that moved are copied to the account it moved to, onc
     await setAccountNote(a, dan, bob, longest);
 
     await test.migrate();
+
     const notes = async () =>
         await Promise.all(
             [alice, bea, cid, dan].map(async (id) =>
                 (await accountNotesOn(a, id, [bob2])).get(bob2)
             ),
         );
+
     assertEquals(await notes(), [
         `${text}\nOld`,
         `${text}\nOld\n\n\nNew`,
@@ -279,6 +287,7 @@ Deno.test("notes on a user that moved are copied to the account it moved to, onc
     await moveHandler(a, {
         payload: { step: "relationships", accountId: bob, movedToId: bob2 },
     } as never);
+
     assertEquals(await notes(), [
         `${text}\nOld`,
         `${text}\nOld\n\n\nNew`,

@@ -26,6 +26,7 @@ Deno.test("blocks apply at once in every process told of them, and within a minu
         await blocked(test.told),
         await blocked(test.deaf),
     ];
+
     assertEquals(await everywhere(), [false, false, false]);
 
     await test.ctx.transaction((tx) => blockDomain(tx, "evil.example"));
@@ -76,6 +77,7 @@ Deno.test("a process told of changes forgets what it cached when it may have mis
     });
     const blocked = () => test.ctx.federation.isBlocked(test.ctx, "evil.example");
     const stop = forgetWhenTold(test.ctx);
+
     assertEquals(await blocked(), false);
 
     // As a process that can't tell this one does.

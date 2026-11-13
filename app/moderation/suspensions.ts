@@ -16,6 +16,7 @@ export const suspend = (ctx: Context, accountId: string): Promise<boolean> =>
         if (!await setSuspendedAt(tx, accountId, tx.clock.now())) return false;
 
         await endSessionsOf(tx, accountId);
+
         return true;
     });
 

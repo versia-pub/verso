@@ -124,6 +124,7 @@ export const inboxRoute = (registry: Registry): Route =>
         responses: { 202: NoBody },
         handler: async (ctx, { signedBy, signedBody, signature }) => {
             await queueEntity(ctx, registry, signedBy, signedBody, signature);
+
             return { status: 202 };
         },
     });

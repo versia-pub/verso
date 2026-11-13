@@ -71,6 +71,7 @@ export const allDomainBlocks = async (
     const blocks = new Map<string, PublicDomainBlock>(
         configured.map((domain) => [domain, { domain, reason: "", obfuscate: false }]),
     );
+
     for (const { domain, reason, obfuscate } of await listBlockedDomains(ctx)) {
         blocks.set(domain, { domain, reason, obfuscate });
     }
@@ -105,5 +106,6 @@ async (ctx, domain) => {
     if (blockedByConfig(configured, domain)) return true;
 
     const names = await blocked(ctx);
+
     return domainAndParents(domain.toLowerCase()).some((candidate) => names.has(candidate));
 };

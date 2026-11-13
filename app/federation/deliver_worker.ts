@@ -84,6 +84,7 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
     const tried = `${ctx.settings.deliveryMs / 3_600_000} hours`;
     const entity = await deliveryBody(ctx, payload.data, job.created_at);
     if (!entity) throw new PermanentFailure(`${domain} couldn't be reached in ${tried}`);
+
     const { body } = entity;
 
     // Given up on by the entity's age, which is when its deliveries were all queued.

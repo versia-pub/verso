@@ -93,6 +93,7 @@ const open = async (access?: Parameters<typeof publicStreams>[1]) => {
         });
         const sessions = publicStreams({ ...test.ctx, db });
         dispatch.listen(sessions);
+
         return { sessions, queries: () => queries };
     };
 
@@ -106,6 +107,7 @@ const open = async (access?: Parameters<typeof publicStreams>[1]) => {
     const post = async (accountId: string, note: Partial<Insertable<NotesTable>> = {}) => {
         const { id } = await createNote(test.ctx, accountId, note);
         await published({ event: "update", noteId: id });
+
         return id;
     };
 

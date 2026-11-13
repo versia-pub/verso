@@ -178,6 +178,7 @@ const managedRole = async (
     if (!role) return notFound;
 
     const refused = refusal(manager, { priority: role.priority });
+
     return refused === undefined ? { ok: true, value: role } : notPermitted(refused);
 };
 
@@ -231,6 +232,7 @@ export const updateManagedRole = async (
     if (!updated) return notFound;
 
     if (changes.permissions !== undefined) await publish(ctx, rolesChanged, { accountId: null });
+
     return { ok: true, value: updated };
 };
 
@@ -245,6 +247,7 @@ export const deleteManagedRole = async (
 
     await deleteRole(ctx, id);
     await publish(ctx, rolesChanged, { accountId: null });
+
     return { ok: true, value: undefined };
 };
 

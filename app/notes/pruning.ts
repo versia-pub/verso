@@ -61,6 +61,7 @@ export const pruneHandler: Handler = async (ctx: Context, job: JobsTable): Promi
     if (!payload.success) throw new PermanentFailure("The job isn't a prune job");
 
     const { after, ...pruning } = payload.data;
+
     await ctx.transaction(async (tx) => {
         const cursor = after && { createdAt: new Date(after.createdAt), id: after.id };
         const { last } = await pruneBatch(tx, pruning, cursor ?? undefined);
@@ -75,6 +76,7 @@ export const pruneHandler: Handler = async (ctx: Context, job: JobsTable): Promi
 export const pruneRemoteNotes = async (ctx: Context, pruning: Pruning): Promise<number> => {
     let after: PruneCursor | undefined;
     let total = 0;
+
     while (true) {
         const { last, removed } = await ctx.transaction((tx) => pruneBatch(tx, pruning, after));
         total += removed;

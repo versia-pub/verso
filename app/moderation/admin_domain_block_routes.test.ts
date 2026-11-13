@@ -19,6 +19,7 @@ const open = async () => {
         adminDomainBlockRoutes(["config.example", "b.config.example"]),
         { checkResponses: true },
     );
+
     await createLocalAccount(test.ctx, "alice");
     await createLocalAccount(test.ctx, "mod");
     await createRole(test.ctx, "Federation", ["federation"]);
@@ -55,6 +56,7 @@ const open = async () => {
             json: { domain, severity: "suspend", ...notes },
         });
         assertEquals(status, 200, JSON.stringify(body));
+
         return body as AdminDomainBlock;
     };
 
@@ -69,6 +71,7 @@ type Test = Awaited<ReturnType<typeof open>>;
 const listed = async (test: Test, path: string) => {
     const { status, body, link } = await test.call("GET", path);
     assertEquals(status, 200);
+
     return { domains: (body as AdminDomainBlock[]).map((block) => block.domain), link };
 };
 
@@ -200,6 +203,7 @@ Deno.test("deleting a block unblocks the domain at once", async () => {
     await using test = await open();
     const block = await test.create("evil.example");
     await test.create("bad.example");
+
     assertEquals(await test.isBlocked("evil.example"), true);
 
     const deleted = await test.call("DELETE", `/api/v1/admin/domain_blocks/${block.id}`);
@@ -247,6 +251,7 @@ Deno.test("blocks are listed the latest first, then the config file's by domain,
         test.clock.advance(1000);
         await test.create(domain);
     }
+
     const path = "/api/v1/admin/domain_blocks";
 
     const all = await listed(test, path);
@@ -277,6 +282,7 @@ Deno.test("blocks are listed the latest first, then the config file's by domain,
         (await listed(test, `${path}?since_id=config:config.example&limit=2`)).domains,
         ["c.example", "b.example"],
     );
+
     const [, , a] = (await test.call("GET", path)).body as AdminDomainBlock[];
     assertEquals((await listed(test, `${path}?since_id=${a.id}`)).domains, [
         "c.example",

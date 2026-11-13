@@ -147,6 +147,7 @@ export const notificationRequestRoutes: readonly Route[] = [
         handler: async (ctx, { params, viewer }) => {
             const requests = await findRequests(ctx, viewer.accountId, [params.id]);
             if (requests.length === 0) throw new NotFound();
+
             await acceptRequests(ctx, viewer.accountId, requests);
 
             return { status: 200, body: {} };
@@ -166,6 +167,7 @@ export const notificationRequestRoutes: readonly Route[] = [
         handler: async (ctx, { params, viewer }) => {
             const requests = await findRequests(ctx, viewer.accountId, [params.id]);
             if (requests.length === 0) throw new NotFound();
+
             await dismissRequests(ctx, viewer.accountId, requests);
 
             return { status: 200, body: {} };

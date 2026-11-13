@@ -74,6 +74,7 @@ const answeredAmong = async (
     const theirs: NoteRow[] = [];
     const seen = new Set<string>();
     let parentId = note.in_reply_to_id;
+
     while (parentId !== null && seen.size < ancestorsAtMost && !seen.has(parentId)) {
         seen.add(parentId);
         const parent = await findNote(ctx, parentId);
@@ -82,10 +83,12 @@ const answeredAmong = async (
         if (parent.visibility === "direct" && accountIds.includes(parent.account_id)) {
             theirs.push(parent);
         }
+
         parentId = parent.in_reply_to_id;
     }
 
     const mentions = await mentionsOf(ctx, theirs.map((parent) => parent.id));
+
     return new Set(
         theirs.filter((parent) => mentions.get(parent.id)?.includes(fromId))
             .map((parent) => parent.account_id),
@@ -106,6 +109,7 @@ export const verdictsOf = async (
     noteId: string | undefined,
 ): Promise<Map<string, Exclude<PolicyAction, "accept">>> => {
     const verdicts = new Map<string, Exclude<PolicyAction, "accept">>();
+
     if (!filterable.has(type)) return verdicts;
 
     const policies = await policiesOf(ctx, accountIds);
@@ -116,6 +120,7 @@ export const verdictsOf = async (
     const permitting = await permittingAmong(ctx, fromId, applying);
     const strict = applying.filter((id) => !permitting.has(id));
     const from = strict.length === 0 ? undefined : await findAccount(ctx, fromId);
+
     if (from === undefined) return verdicts;
 
     const now = ctx.clock.now().getTime();

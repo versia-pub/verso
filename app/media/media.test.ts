@@ -60,6 +60,7 @@ Deno.test("a remote file saved over another keeps its id, and loses what it leav
     });
 
     assertEquals(again, id);
+
     const row = await findMedia(test.ctx, id);
     assertEquals(
         [row?.url, row?.media_type, row?.size, row?.width, row?.thumbhash, row?.description],

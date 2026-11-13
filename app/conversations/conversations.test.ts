@@ -29,6 +29,7 @@ const open = async () => {
             inReplyToId,
         });
         if (note === undefined) throw new Error("Not posted");
+
         return note.id;
     };
 
@@ -38,6 +39,7 @@ const open = async () => {
             method,
             headers: { authorization: `Bearer ${await tokenFor(test.ctx, as)}` },
         });
+
         return {
             status: response.status,
             link: response.headers.get("link"),
@@ -101,6 +103,7 @@ Deno.test("a user who hides the author or mutes the thread isn't added to the co
     await setThreadMuted(test.ctx, "bob", first, true);
 
     await test.post("alice", "@bob @carol Again", first);
+
     assertEquals(await test.conversations("carol"), []);
     assertEquals(await test.conversations("bob"), [[true, ["alice", "carol"], first]]);
 });

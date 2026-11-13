@@ -23,6 +23,7 @@ const timeArgument = ({ label, name, value }: ArgumentValue): Date | null => {
     if (time === undefined || Number.isNaN(time.getTime())) {
         throw new ValidationError(`${label} "${name}" must be a time, such as 2026-11-01T18:00Z`);
     }
+
     return time;
 };
 

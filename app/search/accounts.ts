@@ -90,6 +90,7 @@ export const searchAccounts = async (
 ): Promise<AccountRow[]> => {
     const query = search.query.trim().replace(/^@/, "");
     const exact = await exactMatch(ctx, { ...search, query });
+
     if (search.viewerId === null && query.length < minAnonymousLength) return exact ? [exact] : [];
 
     const address = parseAddress(ctx, query);

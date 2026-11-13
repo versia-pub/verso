@@ -191,6 +191,7 @@ Deno.test("following needs a token that may write follows, and a role that may f
         headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
     });
     await response.body?.cancel();
+
     assertEquals(response.status, 403);
 });
 
@@ -456,12 +457,14 @@ Deno.test("answering follows needs a token that may, and a role that may follow"
     const app = createTestApp(test.ctx, graphRoutes, {
         permissions: { anonymous: [], default: ["read:account"] },
     });
+
     for (const path of paths) {
         const response = await app.request(path, {
             method: "POST",
             headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice")}` },
         });
         await response.body?.cancel();
+
         assertEquals(response.status, 403, path);
     }
 });
@@ -558,6 +561,7 @@ Deno.test("blocking needs a token that may write blocks, and a role that may blo
     const app = createTestApp(limited.ctx, graphRoutes, {
         permissions: { anonymous: [], default: ["read:account"] },
     });
+
     for (
         const [method, path] of [["POST", "/api/v1/accounts/bob/block"], ["GET", "/api/v1/blocks"]]
     ) {
@@ -566,6 +570,7 @@ Deno.test("blocking needs a token that may write blocks, and a role that may blo
             headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
         });
         await response.body?.cancel();
+
         assertEquals(response.status, 403, path);
     }
 });
@@ -664,6 +669,7 @@ Deno.test("muting needs a token that may write mutes, and a role that may mute",
     const app = createTestApp(limited.ctx, graphRoutes, {
         permissions: { anonymous: [], default: ["read:account"] },
     });
+
     for (
         const [method, path] of [
             ["POST", "/api/v1/accounts/bob/mute"],
@@ -676,6 +682,7 @@ Deno.test("muting needs a token that may write mutes, and a role that may mute",
             headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
         });
         await response.body?.cancel();
+
         assertEquals(response.status, 403, path);
     }
 });
@@ -749,6 +756,7 @@ Deno.test("noting an account needs a token that may write accounts, and a role t
         headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
     });
     await response.body?.cancel();
+
     assertEquals(response.status, 403);
 });
 
@@ -810,6 +818,7 @@ Deno.test("a domain block's preview says no follows would be lost, since they're
     for (const query of ["", "?domain=example", "?domain=not%20a%20domain"]) {
         assertEquals((await test.request("GET", `${path}${query}`)).status, 422, query);
     }
+
     assertEquals(
         (await test.request("GET", `${path}?domain=b.example`, { scopes: ["read:blocks"] }))
             .status,
@@ -859,6 +868,7 @@ Deno.test("blocking domains needs a token that may write blocks, and a role that
             200,
         );
     }
+
     assertEquals(
         (await test.request("GET", "/api/v1/domain_blocks", { scopes: ["read:follows"] })).status,
         403,
@@ -873,6 +883,7 @@ Deno.test("blocking domains needs a token that may write blocks, and a role that
     const app = createTestApp(limited.ctx, graphRoutes, {
         permissions: { anonymous: [], default: ["read:account"] },
     });
+
     for (
         const [method, path] of [
             ["POST", "/api/v1/domain_blocks"],
@@ -890,6 +901,7 @@ Deno.test("blocking domains needs a token that may write blocks, and a role that
             },
         });
         await response.body?.cancel();
+
         assertEquals(response.status, 403, path);
     }
 });

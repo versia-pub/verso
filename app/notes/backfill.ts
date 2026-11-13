@@ -94,6 +94,7 @@ export const backfillLater = async (
         maxAttempts: 3,
         dedupeKey: `replies:${note.id}`,
     });
+
     return refresh;
 };
 
@@ -166,6 +167,7 @@ export const fetchReplies = async (
         if (domain === undefined || await ctx.federation.isBlocked(ctx, domain)) continue;
 
         await markFetched(ctx, note.id);
+
         try {
             await walk(domain, note.remote_id);
         } catch (error) {

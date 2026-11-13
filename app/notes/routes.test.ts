@@ -308,10 +308,12 @@ Deno.test("a status's thread is given to whoever may see it, without what they m
 Deno.test("an account's statuses are those the viewer may see, newest first", async () => {
     await using test = await open();
     const ids = [];
+
     for (const visibility of ["public", "unlisted", "private", "direct"] as const) {
         test.clock.advance(1);
         ids.push((await createNote(test.ctx, "alice", { visibility })).id);
     }
+
     const statuses = async (as: string | null, query = "") => {
         const reply = await test.request("GET", `/api/v1/accounts/alice/statuses${query}`, as);
         return reply.status === 200
@@ -520,6 +522,7 @@ Deno.test("a share is undone by deleting it, can't be edited, and stands for its
     ]);
     assertEquals(await findNote(test.ctx, shared.id), undefined);
     assertEquals((await findNote(test.ctx, note.id))?.shares_count, 0);
+
     const queued = await queuedDeliveries(test.ctx);
     const deletes = queued.map((job) => JSON.parse(job.body))
         .filter((entity) => entity.type === "Delete")
@@ -553,6 +556,7 @@ Deno.test("only the author's own statuses that can be pinned are, up to 5", asyn
     ) => (await test.request("POST", `/api/v1/statuses/${id}/pin`));
 
     assertEquals((await pinning(bobs.id)).status, 422);
+
     const refused = await pinning(direct.id);
     assertEquals([
         refused.status,
@@ -564,6 +568,7 @@ Deno.test("only the author's own statuses that can be pinned are, up to 5", asyn
     for (let i = 0; i < 5; i++) {
         await pin(test.ctx, "alice", (await createNote(test.ctx, "alice")).id);
     }
+
     const full = await pinning((await createNote(test.ctx, "alice")).id);
     assertEquals([full.status, full.body.error_description], [
         422,
@@ -576,10 +581,12 @@ Deno.test("an account's pinned statuses are those the viewer may see, the latest
     const note = await createNote(test.ctx, "alice");
     const hidden = await createNote(test.ctx, "alice", { visibility: "private" });
     await createNote(test.ctx, "alice");
+
     for (const each of [note, hidden]) {
         test.clock.advance(1);
         await pin(test.ctx, "alice", each.id);
     }
+
     const pinned = async (as: string | null) =>
         (await test.request("GET", "/api/v1/accounts/alice/statuses?pinned=true", as)).body
             .map((status: { id: string }) => status.id);

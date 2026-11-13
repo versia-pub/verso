@@ -76,6 +76,7 @@ Deno.test("nothing about the statuses in a thread notifies a user who mutes it",
 
     await setThreadMuted(test.ctx, "alice", note.id, false);
     await like(test.ctx, "carol", note.id);
+
     assertEquals((await test.of("alice"))[0], `favourite carol ${note.id}`);
 });
 
@@ -86,6 +87,7 @@ Deno.test("likes, boosts and reactions notify the author, until they are undone"
     await like(test.ctx, "bob", note.id);
     await share(test.ctx, "carol", note.id);
     await react(test.ctx, "bob", note.id, "👍");
+
     assertEquals(await test.of("alice"), [
         `reaction bob ${note.id}`,
         `reblog carol ${note.id}`,
@@ -95,6 +97,7 @@ Deno.test("likes, boosts and reactions notify the author, until they are undone"
     await unlike(test.ctx, "bob", note.id);
     await unshare(test.ctx, "carol", note.id);
     await unreact(test.ctx, "bob", note.id, "👍");
+
     assertEquals(await test.of("alice"), []);
 });
 
@@ -104,10 +107,12 @@ Deno.test("quoting a status notifies its author, until the quote is deleted", as
 
     const quote = await test.post("bob", "Look", undefined, note.id);
     await test.post("alice", "Me", undefined, note.id);
+
     assertEquals(await test.of("alice"), [`quote bob ${quote.id}`]);
     assertEquals(await groupKeysOf(test.ctx, "alice"), ["-"]);
 
     await removeNote(test.ctx, quote.id);
+
     assertEquals(await test.of("alice"), []);
 });
 
@@ -126,6 +131,7 @@ Deno.test("a remote quote of a local status notifies its author", async () => {
         fetched: false,
     };
     await test.ctx.transaction((tx) => notifyOf(tx, received));
+
     assertEquals(await test.of("alice"), [`quote dave ${quote.id}`]);
 
     // A quote of a remote status notifies no one, not even its remote author.
@@ -173,6 +179,7 @@ Deno.test("editing a status notifies the authors of its quotes, once each", asyn
     assertEquals(await test.of("dave"), []);
 
     await editNote(test.ctx, "alice", note.id, { text: "Hi once more" });
+
     assertEquals(await test.of("carol"), [`quoted_update alice ${third.id}`]);
     assertEquals((await test.of("bob")).length, 3);
     assertEquals(await groupKeysOf(test.ctx, "carol"), ["-"]);
@@ -184,6 +191,7 @@ Deno.test("editing a status notifies the authors of its quotes, once each", asyn
 
     // Editing a quote tells the author of the status it quotes nothing more.
     await editNote(test.ctx, "bob", first.id, { text: "Look again" });
+
     assertEquals((await test.of("alice")).length, 3);
 });
 
@@ -201,6 +209,7 @@ Deno.test("a quoted_update job notifies only the users it names", async () => {
         };
         await enqueue(test.ctx, { queue: notifyQueue, payload });
     }
+
     assertEquals(await test.of("bob"), []);
     assertEquals((await test.of("carol")).length, 1);
 });
@@ -213,6 +222,7 @@ Deno.test("no one is notified of what they do to their own statuses", async () =
     await share(test.ctx, "alice", note.id);
     await react(test.ctx, "alice", note.id, "👍");
     await editNote(test.ctx, "alice", note.id, { text: "Hi again @alice" });
+
     assertEquals(await test.of("alice"), []);
 });
 
@@ -226,6 +236,7 @@ Deno.test("only local authors are notified", async () => {
     await like(test.ctx, "bob", note.id);
     await share(test.ctx, "bob", note.id);
     await react(test.ctx, "bob", note.id, "👍");
+
     assertEquals(await test.of("dave"), []);
 });
 
@@ -235,6 +246,7 @@ Deno.test("mentioned local users are notified, once, even after edits", async ()
     assertEquals(await test.of("bob"), [`mention alice ${note.id}`]);
 
     await editNote(test.ctx, "alice", note.id, { text: "Hi @bob and @carol" });
+
     assertEquals(await test.of("bob"), [`mention alice ${note.id}`]);
     assertEquals(await test.of("carol"), [`mention alice ${note.id}`]);
 });
@@ -245,6 +257,7 @@ Deno.test("followers notified of a status are notified when an edit mentions the
     const note = await test.post("alice", "Hi");
 
     await editNote(test.ctx, "alice", note.id, { text: "Hi @bob" });
+
     assertEquals(await test.of("bob"), [`mention alice ${note.id}`, `status alice ${note.id}`]);
 });
 
@@ -306,6 +319,7 @@ Deno.test("local users who boosted a status are notified of its edits", async ()
 
     await editNote(test.ctx, "alice", note.id, { text: "Hi again" });
     await editNote(test.ctx, "alice", note.id, { text: "Hi once more" });
+
     assertEquals(await test.of("bob"), [`update alice ${note.id}`, `update alice ${note.id}`]);
     assertEquals(await test.of("carol"), []);
     assertEquals(await test.of("dave"), []);
@@ -314,16 +328,20 @@ Deno.test("local users who boosted a status are notified of its edits", async ()
 Deno.test("followers and boosters are notified by jobs, 100 to a job, after the status is posted", async () => {
     await using test = await open();
     const followers = Array.from({ length: 101 }, (_, n) => `u${n}`);
+
     for (const id of followers) {
         await createLocalAccount(test.ctx, id);
         await follow(test.ctx, id, "alice", { notify: true });
     }
+
     const note = await postNote(test.ctx, "alice", {
         text: "Hi @bob",
         format: "text/plain",
         spoilerText: "",
     });
+
     if (note === undefined) throw new Error("Not posted");
+
     await share(test.ctx, "u0", note.id);
     await share(test.ctx, "bob", note.id);
     await editNote(test.ctx, "alice", note.id, { text: "Hi @bob again" });
@@ -350,13 +368,16 @@ Deno.test("a job notifies no one of a status deleted before it ran", async () =>
         format: "text/plain",
         spoilerText: "",
     });
+
     if (note === undefined) throw new Error("Not posted");
+
     const queued = () =>
         test.ctx.db.selectFrom("jobs").select("last_error").where("queue", "=", notifyQueue)
             .execute();
     assertEquals((await queued()).length, 1);
 
     await removeNote(test.ctx, note.id);
+
     assertEquals(await test.of("bob"), []);
     // Done, rather than kept to be tried again.
     assertEquals(await queued(), []);
@@ -383,6 +404,7 @@ Deno.test("deleting a status deletes its notifications", async () => {
     await like(test.ctx, "bob", note.id);
 
     await removeNote(test.ctx, note.id);
+
     assertEquals(await test.of("alice"), ["follow carol"]);
     assertEquals(await test.of("bob"), []);
     assertEquals(await test.of("carol"), []);
@@ -392,10 +414,12 @@ Deno.test("follows notify the followee, until they are undone", async () => {
     await using test = await open();
     await follow(test.ctx, "bob", "alice");
     await follow(test.ctx, "dave", "alice");
+
     assertEquals(await test.of("alice"), ["follow dave", "follow bob"]);
 
     await unfollow(test.ctx, "bob", "alice");
     await rejectFollow(test.ctx, "dave", "alice");
+
     assertEquals(await test.of("alice"), []);
 });
 
@@ -404,17 +428,20 @@ Deno.test("follow requests notify until they are accepted or rejected", async ()
     await test.lock("alice");
     await follow(test.ctx, "bob", "alice");
     await follow(test.ctx, "carol", "alice");
+
     assertEquals(await test.of("alice"), ["follow_request carol", "follow_request bob"]);
 
     // Accepting doesn't notify of a follow they approved.
     await acceptFollow(test.ctx, "bob", "alice");
     await rejectFollow(test.ctx, "carol", "alice");
+
     assertEquals(await test.of("alice"), []);
 });
 
 Deno.test("remote followees aren't notified", async () => {
     await using test = await open();
     await follow(test.ctx, "alice", "dave");
+
     assertEquals(await test.of("dave"), []);
 
     await acceptFollow(test.ctx, "alice", "dave");
@@ -455,7 +482,9 @@ Deno.test("likes, boosts, reactions and follows are grouped by status for 12 hou
 
 Deno.test("a group takes notifications until 12 hours after it started", async () => {
     await using test = await open();
+
     for (const id of ["erin", "frank"]) await createLocalAccount(test.ctx, id);
+
     const note = await test.post("alice", "Hi");
     const hour = Math.floor(test.clock.now().getTime() / 3_600_000);
 

@@ -19,6 +19,7 @@ const rules = [
 const open = async () => {
     const test = await createTestContext();
     const app = createTestApp(test.ctx, reportRoutes({ rules }), { checkResponses: true });
+
     for (const id of ["alice", "bob", "carol"]) await createLocalAccount(test.ctx, id);
     await createRemoteAccount(test.ctx, "dave", await createInstance(test.ctx, "remote.example"));
 
@@ -97,6 +98,7 @@ Deno.test("a report is of an account that exists, and statuses of its that the r
     ) {
         assertEquals((await test.report(body)).status, 404, JSON.stringify(body));
     }
+
     assertEquals(await reportsForAdmin(test.ctx, true), []);
 });
 
@@ -117,6 +119,7 @@ Deno.test("a report naming rules is a violation, which must name rules that exis
 
     const named = await test.report({ account_id: "bob", category: "spam", rule_ids: ["2", "1"] });
     assertEquals([named.body.category, named.body.rule_ids], ["violation", ["2", "1"]]);
+
     const other = await test.report({ account_id: "bob" });
     assertEquals([other.body.category, other.body.rule_ids], ["other", null]);
 

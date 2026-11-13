@@ -60,6 +60,7 @@ const open = async (settings: Partial<Settings> = {}) => {
             mediaIds,
         });
         if (note === undefined) throw new Error("Not posted");
+
         return note.id;
     };
 

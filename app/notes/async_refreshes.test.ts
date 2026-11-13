@@ -42,6 +42,7 @@ const open = async () => {
         });
         assertEquals(response.status, 200);
         await response.body?.cancel();
+
         return response.headers.get("mastodon-async-refresh");
     };
 
@@ -80,9 +81,11 @@ Deno.test("a thread whose replies are being fetched says so until they are, with
     assertEquals(await test.opened(), null);
 
     test.network.clock.advance(15 * 60_000);
+
     await test.reply(test.root);
     assertEquals(await test.opened(), `id="${id}", retry=3, result_count=0`);
     assertEquals(await test.refresh(), { id, status: "running", result_count: 0 });
+
     await test.network.drain();
     assertEquals(await test.refresh(), { id, status: "finished", result_count: 1 });
 });
@@ -90,6 +93,7 @@ Deno.test("a thread whose replies are being fetched says so until they are, with
 Deno.test("a refresh is started before its job, which finishes it", async () => {
     await using test = await open();
     const id = contextRefresh(test.copy.id);
+
     assertEquals(await backfillLater(test.a, test.copy), {
         id,
         started_at: test.network.clock.now(),
@@ -142,6 +146,7 @@ Deno.test("a refresh is kept for a day while it runs, and for an hour once it fi
     assertEquals((await test.refresh("finished")).status, "finished");
     test.network.clock.advance(1);
     assertEquals(await test.refresh("finished"), 404);
+
     await startRefresh(test.a, "later");
     assertEquals(await kept(), ["later", "running"]);
 
@@ -149,6 +154,7 @@ Deno.test("a refresh is kept for a day while it runs, and for an hour once it fi
     assertEquals((await test.refresh("running")).status, "running");
     test.network.clock.advance(1);
     assertEquals(await test.refresh("running"), 404);
+
     await startRefresh(test.a, "new");
     assertEquals(await kept(), ["later", "new"]);
 });

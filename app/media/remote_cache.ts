@@ -98,6 +98,7 @@ const cachedImage = async (
         logger.warn("Couldn't process {id}, so it isn't cached: {error}", { id: row.id, error });
         return "failed";
     }
+
     if (!result.ok) return "failed";
 
     const { image } = result;
@@ -158,6 +159,7 @@ const cache = async (
         approves: () => true,
         limit: picture ? ctx.settings.maxUploadBytes : playableBytes,
     });
+
     if (fetched === undefined) return lastAttempt ? "failed" : "retry";
     if (fetched.truncated) return "failed";
 
@@ -196,6 +198,7 @@ export const cacheNow = async (
         if (cached === "failed") return await finishCaching(tx, row.id, row.url, {});
 
         for (const { file, mediaType } of cached.files) await keepUsed(tx, file, mediaType);
+
         return await finishCaching(tx, row.id, row.url, cached.columns);
     });
 
@@ -225,5 +228,6 @@ export const remoteMediaHandler: Handler = async (ctx: Context, job: JobsTable):
         { ...row, instance_id: row.instance_id, url },
         job.attempts >= job.max_attempts,
     );
+
     if (outcome === "retry") throw new Error(`Couldn't cache ${mediaId} yet`);
 };

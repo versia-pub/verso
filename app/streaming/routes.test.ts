@@ -42,6 +42,7 @@ const countedPubSub = () => {
         subscribe: counted(pubsub.subscribe),
         onMissed: counted(pubsub.onMissed),
     };
+
     return Object.assign(counting, { live: () => live.size });
 };
 
@@ -189,6 +190,7 @@ const connect = async (url: string, token: string) => {
     );
 
     await soon(new Promise((resolve) => socket.onmessage = resolve));
+
     return { socket, closed: () => soon(closing) };
 };
 
@@ -246,6 +248,7 @@ Deno.test("a WebSocket streams what its user may read once their roles change, w
     await soon(new Promise((resolve) => socket.onopen = resolve));
     socket.send(JSON.stringify({ type: "subscribe", stream: "nope" }));
     await until(() => heard.length === 1);
+
     const post = async () =>
         (await postNote(test.ctx, "alice", { text: "Hi", format: "text/plain", spoilerText: "" }))
             ?.id;

@@ -155,6 +155,7 @@ export const cardHandler: Handler = async (ctx: Context, job: JobsTable): Promis
     if (link === before?.url) return;
 
     const card = link === undefined ? undefined : await cardFor(ctx, link);
+
     await ctx.transaction(async (tx) => {
         // The status may have been deleted while the page was fetched.
         if (link === undefined || card === undefined || await findNote(tx, note.id) === undefined) {
@@ -178,6 +179,7 @@ const queueCard = async (ctx: Context, noteId: string, remote: boolean): Promise
     if (link === (await linkOf(ctx, note.id))?.url) return;
 
     const payload: z.infer<typeof CardJob> = { noteId };
+
     await enqueue(ctx, {
         queue: cardsQueue,
         payload,

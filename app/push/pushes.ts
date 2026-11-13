@@ -64,6 +64,7 @@ export const queuePushes = async (ctx: Context, event: DomainEvent): Promise<voi
     if (!isNotificationCreated(event)) return;
 
     const jobs = [];
+
     for (const subscription of await subscriptionsOf(ctx, event.accountId)) {
         if (!await wants(ctx, subscription, event)) continue;
 
@@ -75,6 +76,7 @@ export const queuePushes = async (ctx: Context, event: DomainEvent): Promise<voi
         const group = new URL(subscription.endpoint).host;
         jobs.push({ queue: pushQueue, payload, group, maxAttempts });
     }
+
     await enqueueAll(ctx, jobs);
 };
 
@@ -99,6 +101,7 @@ const bodyLength = 140;
 /** `text` cut to at most `bodyLength` characters, as Rails' `truncate` does. */
 const truncate = (text: string) => {
     const characters = Array.from(text);
+
     return characters.length <= bodyLength
         ? text
         : `${characters.slice(0, bodyLength - 3).join("")}...`;
@@ -184,6 +187,7 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
 
     const subscription = await findSubscriptionById(ctx, payload.data.subscriptionId);
     if (!subscription) return;
+
     const notification = await shownNotification(
         ctx,
         subscription.account_id,
@@ -221,6 +225,7 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
                 `The push service took over ${ctx.settings.pushTimeoutMs} ms`,
             );
         }
+
         throw error;
     }
     await response.body?.cancel();
@@ -235,5 +240,6 @@ export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promis
     ) {
         throw new PermanentFailure(`The push service refused the push (${response.status})`);
     }
+
     throw new Error(`The push service answered ${response.status}`);
 };

@@ -31,6 +31,7 @@ Deno.test({
         const tables = await sql<{ name: string }>`
             select name from sqlite_master where type = 'table'`.execute(test.ctx.db);
         const referring: string[] = [];
+
         for (const { name } of tables.rows) {
             const keys = await sql<{ table: string; from: string }>`
                 select * from pragma_foreign_key_list(${name})`.execute(test.ctx.db);
@@ -44,6 +45,7 @@ Deno.test({
             "emojis",
             "account_id",
         ]].map(([table, column]) => `${table}.${column}`);
+
         assertEquals(referring.toSorted(), handled.toSorted());
     },
 });
@@ -87,6 +89,7 @@ const fill = async (ctx: Context) => {
     await follow(ctx, "alice", "bob");
     await follow(ctx, "bob", "alice");
     await like(ctx, "alice", bobs.id);
+
     const file = await upload(ctx, "alice", {
         file: new Blob([zip]),
         mediaType: "application/zip",
@@ -94,6 +97,7 @@ const fill = async (ctx: Context) => {
     const preview = await ctx.files.put(await bytesSource(png), "image/png");
     await ctx.db.updateTable("media").set({ preview_sha256: preview }).where("id", "=", file.id)
         .execute();
+
     await ctx.db.updateTable("accounts")
         .set({
             display_name: "Alice",
@@ -116,6 +120,7 @@ const fill = async (ctx: Context) => {
         })
         .where("id", "=", "alice")
         .execute();
+
     await ctx.db.insertInto("emojis")
         .values({
             id: ctx.ids(),
@@ -128,6 +133,7 @@ const fill = async (ctx: Context) => {
         .execute();
     const emoji = await ctx.db.selectFrom("emojis").select("id").where("account_id", "=", "alice")
         .executeTakeFirstOrThrow();
+
     await ctx.db.insertInto("reactions")
         .values({
             id: ctx.ids(),
@@ -140,6 +146,7 @@ const fill = async (ctx: Context) => {
             created_at: ctx.clock.now(),
         })
         .execute();
+
     await linkIdentity(ctx, { issuer: "https://id.example", subject: "1", accountId: "alice" });
     await fileReport(ctx, "bob", {
         targetId: "alice",
@@ -189,6 +196,7 @@ Deno.test("a deleted account is kept empty and suspended, with its login and the
         [alice?.statuses_count, alice?.followers_count, alice?.following_count],
         [0, 0, 0],
     );
+
     const bob = await findAccount(test.ctx, "bob");
     assertEquals([bob?.followers_count, bob?.following_count], [0, 0]);
     assertEquals((await findNote(test.ctx, bobs.id))?.likes_count, 0);
@@ -200,6 +208,7 @@ Deno.test("a deleted account is kept empty and suspended, with its login and the
     assertEquals(await rowsOf(test.ctx, "follows", "followee_id"), 0);
     assertEquals(await test.ctx.files.get(file.sha256 ?? ""), undefined);
     assertEquals(await test.ctx.files.get(preview), undefined);
+
     // Bob's reaction with alice's emoji is undone, so other instances are told.
     const queues = await test.ctx.db.selectFrom("jobs").select("queue").execute();
     assertEquals(
@@ -227,12 +236,14 @@ Deno.test("a deleted account is kept empty and suspended, with its login and the
         registration: "open",
         roles: [{ claim: "groups", contains: "admins", role: "Admin" }],
     };
+
     const login = await provision(test.ctx, issuer, {
         sub: "1",
         preferred_username: "alice",
         name: "Alice",
         groups: ["admins"],
     });
+
     assertEquals(login, { ok: true, accountId: "alice", created: false });
     assertEquals((await findAccount(test.ctx, "alice"))?.display_name, "");
     assertEquals(await rowsOf(test.ctx, "account_roles"), 0);
@@ -245,6 +256,7 @@ Deno.test("an account deleted without a tombstone is removed, with its login and
     assert(await deleteLocalAccount(test.ctx, "alice", { tombstone: false }));
 
     assertEquals(await findAccount(test.ctx, "alice"), undefined);
+
     const bob = await findAccount(test.ctx, "bob");
     assertEquals([bob?.followers_count, bob?.following_count], [0, 0]);
     assertEquals((await findNote(test.ctx, bobs.id))?.likes_count, 0);

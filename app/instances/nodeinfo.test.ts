@@ -104,6 +104,7 @@ Deno.test("NodeInfo's active users leave a window one millisecond after it ends"
     await tokenFor(test.ctx, "alice");
 
     test.clock.advance(4 * week + 1);
+
     assertEquals((await test.usage()).users, { total: 1, activeMonth: 0, activeHalfyear: 1 });
 });
 
@@ -113,6 +114,7 @@ Deno.test("NodeInfo's half year ends after 24 weeks", async () => {
     await tokenFor(test.ctx, "alice");
 
     test.clock.advance(24 * week + 1);
+
     assertEquals((await test.usage()).users, { total: 1, activeMonth: 0, activeHalfyear: 0 });
 });
 
@@ -123,7 +125,10 @@ Deno.test("NodeInfo's counts are kept for 30 minutes", async () => {
     await postNote(test.ctx, "alice", { text: "Hi", format: "text/plain", spoilerText: "" });
 
     test.clock.advance(30 * 60_000 - 1);
+
     assertEquals((await test.usage()).localPosts, 0);
+
     test.clock.advance(1);
+
     assertEquals((await test.usage()).localPosts, 1);
 });

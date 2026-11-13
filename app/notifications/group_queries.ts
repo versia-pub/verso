@@ -56,6 +56,7 @@ export const notificationGroupPage = async (
 
     while (found.size < page.limit) {
         let query = filtered(ctx, accountId, shown, filter);
+
         if (found.size > 0) {
             // A key has its type in it, so this leaves in those of types that aren't grouped.
             const seen = [...found.keys()];
@@ -67,6 +68,7 @@ export const notificationGroupPage = async (
         const part = await readPage(query, "notifications.id", { ...bounds, limit: size });
         // Read in the order the page goes, which is oldest first after `min_id`.
         const read = oldestFirst ? part.toReversed() : part;
+
         for (const row of read) {
             const key = groupKeyOf(row, grouped);
             if (!found.has(key) && found.size < page.limit) found.set(key, row);
@@ -74,11 +76,13 @@ export const notificationGroupPage = async (
 
         const last = read.at(-1);
         if (last === undefined || part.length < size) break;
+
         size *= 2;
         bounds = oldestFirst ? { ...bounds, min_id: last.id } : { ...bounds, max_id: last.id };
     }
 
     const rows = [...found.values()];
+
     return oldestFirst ? rows.toReversed() : rows;
 };
 
@@ -144,6 +148,7 @@ export const groupStatsOf = async (
                 .as("rank"),
         ])
         .as("by_account");
+
     const samples = await ctx.db.selectFrom(
         ctx.db.selectFrom(byAccount)
             .select((eb) => [

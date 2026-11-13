@@ -176,6 +176,7 @@ export class StatusMethods {
             path`/api/v1_alpha/async_refreshes/${id}`,
             options,
         );
+
         return body.async_refresh;
     }
 

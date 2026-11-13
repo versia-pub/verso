@@ -72,6 +72,7 @@ export const mutesOf = async (
         .where("target_id", "in", otherIds)
         .where(ongoing(ctx.clock.now()))
         .execute();
+
     return new Map(rows.map((row) => [row.target_id, row]));
 };
 
@@ -87,6 +88,7 @@ export const mutersAmong = async (
         .where("account_id", "in", otherIds)
         .where(ongoing(ctx.clock.now()))
         .execute();
+
     return rows.map((row) => row.account_id);
 };
 

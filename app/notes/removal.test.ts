@@ -28,9 +28,11 @@ const open = async () => {
     });
     await countPosted(test.ctx, reply, 1);
     await createShare(test.ctx, "bob", hers.id, { instance_id: instanceId, remote_id: "share" });
+
     for (let n = 0; n < 600; n++) {
         await createNote(test.ctx, "bob", { instance_id: instanceId, remote_id: `n${n}` });
     }
+
     // carol boosts one of his statuses.
     await createShare(test.ctx, "carol", reply.id);
 
@@ -55,6 +57,7 @@ const open = async () => {
 Deno.test("a deleted user's notes go first, in batches, with what they counted", async () => {
     await using test = await open();
     assertEquals(await test.counts(), { replies: 1, shares: 1, carol: 1, bob: 602 });
+
     const deleted = registry.types.get("Delete");
 
     await deleted?.prepare?.(
@@ -70,6 +73,7 @@ Deno.test("a deleted user's notes go first, in batches, with what they counted",
     );
 
     assertEquals(await test.counts(), { replies: 0, shares: 0, carol: 0, bob: 0 });
+
     // The user itself is removed when the Delete is received.
     const bob = await test.ctx.db.selectFrom("accounts").select("id").where("id", "=", "bob")
         .executeTakeFirst();

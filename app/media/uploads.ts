@@ -168,6 +168,7 @@ const store = async (
     await ctx.transaction(async (tx) => {
         await keepUsed(tx, file, type);
         await insertUpload(tx, row);
+
         if (format === undefined) return;
 
         const payload: z.infer<typeof MediaJob> = { mediaId: row.id };
@@ -200,6 +201,7 @@ export const uploadPicture = async (
     fit: Fit,
 ): Promise<MediaRow | undefined> => {
     const format = await formatOf(given.file);
+
     return format && await store(ctx, accountId, given, format, fit);
 };
 
@@ -221,6 +223,7 @@ export const describeUpload = async (
         ...changes.description !== undefined && { description: changes.description || null },
         ...changes.focus && { focus_x: changes.focus.x, focus_y: changes.focus.y },
     };
+
     if (Object.keys(columns).length > 0) await updateUpload(ctx, id, accountId, columns);
 
     return await findUpload(ctx, id, accountId);

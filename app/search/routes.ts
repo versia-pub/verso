@@ -133,6 +133,7 @@ export const searchRoutes = (limits: SearchLimits): readonly Route[] => [
                 limit: query.limit,
                 offset: query.offset,
             });
+
             // In the order of `rows`.
             return { status: 200, body: [...(await publicAccountsOf(ctx, rows)).values()] };
         },
@@ -150,6 +151,7 @@ export const searchRoutes = (limits: SearchLimits): readonly Route[] => [
         responses: { 200: Search },
         handler: async (ctx, { query, viewer }) => {
             const viewerId = viewer?.accountId ?? null;
+
             // Mastodon's errors.
             if (viewerId === null && query.offset !== undefined) {
                 throw new HttpError(
@@ -177,6 +179,7 @@ export const searchRoutes = (limits: SearchLimits): readonly Route[] => [
                 limit: query.limit,
                 offset: query.offset,
             });
+
             return { status: 200, body: await rendered(ctx, viewerId, found) };
         },
     }),

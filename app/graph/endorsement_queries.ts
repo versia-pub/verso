@@ -42,6 +42,7 @@ export const endorsedAmong = async (
         .where("account_id", "=", accountId)
         .where("target_id", "in", otherIds)
         .execute();
+
     return new Set(rows.map((row) => row.target_id));
 };
 

@@ -35,6 +35,7 @@ const open = async () => {
             ...fields,
         });
         if (note === undefined) throw new Error("Not posted");
+
         return note.id;
     };
 
@@ -49,6 +50,7 @@ const open = async () => {
             limit,
             offset: 0,
         });
+
         return found.map((note) => note.id);
     };
 
@@ -57,6 +59,7 @@ const open = async () => {
         const table = usesSqlite(test.ctx.db) ? sql`note_search_text` : sql`note_search`;
         const { rows: [row] } = await sql<{ count: number }>`SELECT count(*) AS count FROM ${table}`
             .execute(test.ctx.db);
+
         return Number(row.count);
     };
 

@@ -173,6 +173,7 @@ Deno.test("a list's accounts are listed, the latest added first, in pages or all
     for (const account of ["dave", "bob", "carol"]) {
         await addListAccounts(test.ctx, "alice", id, [account]);
     }
+
     const path = `/api/v1/lists/${id}/accounts`;
 
     const first = await test.request("GET", `${path}?limit=2`);

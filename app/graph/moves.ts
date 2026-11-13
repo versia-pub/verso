@@ -86,6 +86,7 @@ const addNote = async (
 
     const note = existing === undefined ? [text, comment] : [text, comment, "\n", existing];
     const joined = note.join("\n");
+
     if ([...joined].length <= accountNoteLimit) {
         await setAccountNote(ctx, accountId, to.id, joined);
     } else if (existing === undefined) {
@@ -116,6 +117,7 @@ const followingEither = async (
     to: AccountRow,
 ) => {
     const following = new Set<string>();
+
     for (const id of accountIds) {
         if ((await followsFrom(ctx, id, [from.id, to.id])).length > 0) following.add(id);
     }
@@ -137,6 +139,7 @@ const moveBlocks: Step = async (ctx, from, to) => {
 
         await ctx.transaction(async (tx) => {
             const following = await followingEither(tx, ids, from, to);
+
             for (const id of ids.filter((id) => !following.has(id))) {
                 await insertBlock(tx, id, to.id);
                 if ((await accountNotesOn(tx, id, [to.id])).size === 0) {
@@ -162,6 +165,7 @@ const moveMutes: Step = async (ctx, from, to) => {
         await ctx.transaction(async (tx) => {
             const ids = mutes.map((mute) => mute.account_id);
             const following = await followingEither(tx, ids, from, to);
+
             for (const mute of mutes) {
                 const id = mute.account_id;
                 if (following.has(id) || (await mutesOf(tx, id, [to.id])).size > 0) continue;
@@ -202,6 +206,7 @@ export const queueMoves = async (ctx: Context, event: DomainEvent): Promise<void
             accountId: event.accountId,
             movedToId: event.movedToId,
         };
+
         await enqueue(ctx, {
             queue: moveQueue,
             payload,

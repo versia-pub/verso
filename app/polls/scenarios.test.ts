@@ -38,6 +38,7 @@ const open = async () => {
         const statuses = (await users[user]("GET", "/api/v1/timelines/home")).body;
         const status = statuses.find((each: { uri: string }) => each.uri === uri);
         assertExists(status?.poll, `${user} has no poll`);
+
         return status.poll;
     };
 

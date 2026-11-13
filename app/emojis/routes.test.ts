@@ -24,6 +24,7 @@ const noise = (width: number, height: number) => {
         state ^= state << 13;
         state ^= state >>> 17;
         state ^= state << 5;
+
         return state & 255;
     });
 
@@ -66,6 +67,7 @@ const open = async () => {
     /** The shortcodes of the emojis listed for the picker. */
     const listed = async () => {
         const response = await app.request("/api/v1/custom_emojis");
+
         return (await response.json()).map((emoji: { shortcode: string }) => emoji.shortcode);
     };
 
@@ -78,6 +80,7 @@ const open = async () => {
         });
         const note = await findNote(test.ctx, posted?.id ?? "");
         const [status] = note ? await renderStatuses(test.ctx, [note], null) : [];
+
         return status?.emojis.map((emoji) => emoji.shortcode);
     };
 
@@ -104,6 +107,7 @@ const open = async () => {
             shortcode,
             ...global && { global: "true" },
         });
+
         return body.id as string;
     };
 
@@ -120,6 +124,7 @@ Deno.test("a global emoji is used once its picture is processed, scaled to fit",
         category: "Foxes",
         global: "true",
     });
+
     assertEquals(status, 202);
     assertEquals(body, {
         id: body.id,
@@ -135,6 +140,7 @@ Deno.test("a global emoji is used once its picture is processed, scaled to fit",
     assertEquals(await test.listed(), []);
 
     await drain(test.ctx, queues);
+
     assertEquals(await test.used(":blob_fox:"), ["blob_fox"]);
     assertEquals(await test.listed(), ["blob_fox"]);
 
@@ -145,6 +151,7 @@ Deno.test("a global emoji is used once its picture is processed, scaled to fit",
             (eb) => eb.selectFrom("emojis").select("media_id").where("id", "=", body.id),
         )
         .executeTakeFirst();
+
     assertEquals(picture, { width: 128, height: 85 });
 });
 
@@ -221,6 +228,7 @@ Deno.test("users see global emojis and their own, and those who manage emojis se
     /** The status of `accountId` getting the emoji `id`. */
     const seen = async (accountId: string, id: string) =>
         (await test.request(accountId, "GET", `/api/v1/emojis/${id}`)).status;
+
     assertEquals(await seen("alice", mine), 200);
     assertEquals(await seen("bob", mine), 404);
     assertEquals(await seen("admin", mine), 200);
@@ -242,6 +250,7 @@ Deno.test("a user changes their own emoji's name, group and alt text", async () 
         category: "Cats",
         alt: "A cat",
     });
+
     assertEquals(changed.status, 200);
     assertEquals(changed.body, {
         ...before.body,
@@ -274,8 +283,10 @@ Deno.test("a renamed emoji is still used by statuses that used it, and named ane
     });
 
     await test.request("admin", "PATCH", `/api/v1/emojis/${blob}`, { shortcode: "blob_cat" });
+
     const note = await findNote(test.ctx, posted?.id ?? "");
     const [status] = note ? await renderStatuses(test.ctx, [note], null) : [];
+
     assertEquals(status?.emojis.map((emoji) => emoji.shortcode), ["blob_cat"]);
     assertEquals(await test.used(":blob: :blob_cat:"), ["blob_cat"]);
 });
@@ -287,6 +298,7 @@ Deno.test("only those who manage emojis change global ones, and make emojis glob
 
     const patch = async (accountId: string, id: string, fields: Record<string, string>) =>
         (await test.request(accountId, "PATCH", `/api/v1/emojis/${id}`, fields)).status;
+
     assertEquals(await patch("alice", blob, { alt: "Mine" }), 403);
     assertEquals(await patch("alice", mine, { global: "true" }), 403);
 
@@ -313,6 +325,7 @@ Deno.test("an emoji is renamed only as one it may be added as", async () => {
 
     const patch = async (accountId: string, id: string, fields: Record<string, string>) =>
         (await test.request(accountId, "PATCH", `/api/v1/emojis/${id}`, fields)).status;
+
     assertEquals(await patch("alice", mine, { shortcode: "fox" }), 422);
     assertEquals(await patch("alice", mine, { shortcode: "blob" }), 422);
     assertEquals(await patch("alice", mine, { shortcode: "fox-1" }), 422);
@@ -333,17 +346,20 @@ Deno.test("an emoji's new picture is processed before the emoji is shown again",
     const changed = await test.request("admin", "PATCH", `/api/v1/emojis/${blob}`, {
         element: noise(32, 32),
     });
+
     assertEquals([changed.body.url, changed.body.description], [null, "A blob"]);
     assertEquals(await test.used(":blob:"), []);
 
     await drain(test.ctx, queues);
     const after = (await test.request("bob", "GET", `/api/v1/emojis/${blob}`)).body;
+
     assertEquals(after.url === null || after.url === before.url, false);
     assertEquals(await test.used(":blob:"), ["blob"]);
 
     const text = await test.request("admin", "PATCH", `/api/v1/emojis/${blob}`, {
         element: new TextEncoder().encode("Not a picture"),
     });
+
     assertEquals(text.status, 422);
 });
 
@@ -356,6 +372,7 @@ Deno.test("users delete their own emojis, and those who manage emojis any", asyn
     /** The status of `accountId` deleting the emoji `id`. */
     const deleted = async (accountId: string, id: string) =>
         (await test.request(accountId, "DELETE", `/api/v1/emojis/${id}`)).status;
+
     assertEquals(await deleted("bob", mine), 404);
     assertEquals(await deleted("alice", blob), 403);
     assertEquals(await deleted("alice", mine), 200);
@@ -380,9 +397,13 @@ Deno.test("statuses and profiles that used a deleted emoji no longer do", async 
     await updateProfile(test.ctx, "alice", { displayName: "Alice :blob:" });
 
     await test.request("admin", "DELETE", `/api/v1/emojis/${blob}`);
+
     const note = await findNote(test.ctx, posted?.id ?? "");
     const [status] = note ? await renderStatuses(test.ctx, [note], null) : [];
+
     assertEquals(status?.emojis, []);
+
     const account = await findAccount(test.ctx, "alice");
+
     assertEquals(account && (await publicAccount(test.ctx, account)).emojis, []);
 });

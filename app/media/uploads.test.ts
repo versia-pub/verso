@@ -174,6 +174,7 @@ Deno.test("a picture is processed by a job, which keeps it without its metadata"
     assertEquals(processed.size, kept.length);
     assertEquals(processed.sha256, await sha256Of(kept));
     assert(await test.file(processed.preview_sha256));
+
     // The original upload, including the location where it was taken, is gone.
     assertEquals(await test.file(row.upload_sha256), undefined);
 });
@@ -200,6 +201,7 @@ Deno.test("the same picture uploaded twice is processed once, and kept once", as
     await drain(test.ctx, queues);
 
     assertEquals(processed, 1);
+
     const [one, two] = [await findMedia(test.ctx, first.id), await findMedia(test.ctx, second.id)];
     assert(one && two);
     assertEquals(two.processed_at, test.clock.now());
@@ -249,12 +251,15 @@ Deno.test("a picture uploaded to fit a box is scaled down to fit in it as it is 
         mediaType: "image/png",
         description: "A red box",
     }, { width: 4, height: 4 });
+
     assert(row);
     assertEquals([row.processed_at, row.description], [null, "A red box"]);
     assertEquals([row.fit_width, row.fit_height], [4, 4]);
+
     await drain(test.ctx, queues);
 
     const processed = await findMedia(test.ctx, row.id);
+
     assertEquals([processed?.width, processed?.height], [4, 2]);
 });
 
@@ -275,9 +280,11 @@ Deno.test("a picture is processed once for each box it is uploaded to fit, and o
         const row = fit
             ? await uploadPicture(test.ctx, "alice", given, fit)
             : await upload(test.ctx, "alice", given);
+
         await drain(test.ctx, queues);
 
         const done = await findMedia(test.ctx, row?.id ?? "");
+
         return [done?.width, done?.height];
     };
 
@@ -333,6 +340,7 @@ Deno.test("uploading a picture as Verso keeps it doesn't remove the one kept", a
     assert(small);
     await upload(test.ctx, "alice", { file: new Blob([small]), mediaType: "image/webp" });
     await drain(test.ctx, queues);
+
     assertEquals(await test.file(preview), small);
 });
 
@@ -347,6 +355,7 @@ Deno.test("a picture vips refuses is removed, as it may hold metadata", async ()
     await drain(test.ctx, queues);
 
     const kept = await findMedia(test.ctx, row.id);
+
     assertEquals(kept, {
         ...row,
         sha256: null,
@@ -373,6 +382,7 @@ Deno.test("a picture that can't be processed is tried again, then removed", asyn
         mediaType: "image/png",
     });
     await drain(test.ctx, queues);
+
     assertEquals([tries, (await findMedia(test.ctx, row.id))?.processed_at], [1, null]);
 
     for (let i = 0; i < 2; i++) {
@@ -398,6 +408,7 @@ Deno.test("a picture that couldn't be processed is processed anew if uploaded ag
         check: () => Promise.resolve(),
     };
     await using test = await open({ images });
+
     await upload(test.ctx, "alice", { file: new Blob([png(4, 4)]), mediaType: "image/png" });
     await drain(test.ctx, queues);
 
@@ -409,6 +420,7 @@ Deno.test("a picture that couldn't be processed is processed anew if uploaded ag
     await drain(test.ctx, queues);
 
     const kept = await findMedia(test.ctx, again.id);
+
     assertEquals([kept?.width, kept && processingFailed(kept)], [4, false]);
 });
 
@@ -418,6 +430,7 @@ Deno.test("what was uploaded is removed when a run stopped after processing it",
         file: new Blob([sidewaysJpeg]),
         mediaType: "image/jpeg",
     });
+
     // Simulates a run that stored the image and stopped before removing the original upload.
     const kept = await test.ctx.files.put(await bytesSource(png(4, 4)), "image/png");
     await finishUpload(test.ctx, row.id, { sha256: kept });
@@ -470,6 +483,7 @@ Deno.test("what a run keeps is removed if another run processed the upload first
             const result = await vips.process(bytes);
             if (result.ok) made = [result.image.bytes, result.image.preview.bytes];
             await finishFirst();
+
             return result;
         },
         check: () => Promise.resolve(),
@@ -497,6 +511,7 @@ Deno.test("a file is removed only once nothing uses it", async () => {
     });
 
     await deleteFileIfUnused(test.ctx, row.sha256 ?? "");
+
     assertEquals(await test.file(row.sha256), zip);
 
     // Neither another upload being processed nor a remote media row with the same SHA-256 uses it.
@@ -509,6 +524,7 @@ Deno.test("a file is removed only once nothing uses it", async () => {
     });
     await test.ctx.db.deleteFrom("media").where("id", "=", row.id).execute();
     await deleteFileIfUnused(test.ctx, row.sha256 ?? "");
+
     assertEquals(await test.file(row.sha256), undefined);
 });
 
@@ -561,6 +577,7 @@ Deno.test("a file removed after it was uploaded, but before its row was added, i
                 removed = true;
                 await inner.delete(key);
             }
+
             return key;
         },
     };
@@ -578,7 +595,9 @@ Deno.test("a picture uploaded again is processed anew if what was kept of it is 
         mediaType: "image/jpeg",
     });
     await drain(test.ctx, queues);
+
     const kept = await findMedia(test.ctx, first.id);
+
     // Simulates it being removed, along with its files.
     await test.ctx.files.delete(kept?.sha256 ?? "");
 
@@ -589,6 +608,7 @@ Deno.test("a picture uploaded again is processed anew if what was kept of it is 
     await drain(test.ctx, queues);
 
     const processed = await findMedia(test.ctx, again.id);
+
     assertEquals(processed?.sha256, kept?.sha256);
     assertEquals((await test.file(processed?.sha256 ?? null))?.length, kept?.size);
 });
@@ -604,9 +624,11 @@ Deno.test("what processing keeps is kept again, if it was removed before it was 
             const key = await inner.put(file, type);
             const n = (puts.get(type) ?? 0) + 1;
             puts.set(type, n);
+
             if ((type === "image/png" && n === 2) || (type === "image/webp" && n === 1)) {
                 await inner.delete(key);
             }
+
             return key;
         },
     };
@@ -619,6 +641,7 @@ Deno.test("what processing keeps is kept again, if it was removed before it was 
     await drain(test.ctx, queues);
 
     const processed = await findMedia(test.ctx, row.id);
+
     assertNotEquals(await test.file(processed?.sha256 ?? null), undefined);
     assertNotEquals(await test.file(processed?.preview_sha256 ?? null), undefined);
 });

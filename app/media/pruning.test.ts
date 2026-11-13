@@ -116,9 +116,11 @@ Deno.test("an old cached attachment loses its files, and is fetched again when a
         renderAttachment(test.ctx, row).url,
         `https://social.example/media/proxy/${id}`,
     );
+
     const app = createTestApp(test.ctx, mediaProxyRoutes);
     const response = await app.request(`/media/proxy/${id}`);
     await response.body?.cancel();
+
     assertEquals(response.status, 302);
     assertEquals(test.fetched(), 2);
     assertEquals((await findMedia(test.ctx, id))?.processed_at, test.clock.now());
@@ -209,6 +211,7 @@ Deno.test("only the media given that were cached before the cutoff are marked no
         .where("id", "=", failed).execute();
 
     const cutoff = new Date(test.clock.now().getTime() - 7 * dayMs);
+
     assertEquals(await uncacheMedia(test.ctx, [old, edge, recent, failed], cutoff), 1);
     assertEquals(
         [
@@ -228,10 +231,13 @@ Deno.test("a file another media uses is kept when an attachment is pruned", asyn
     // The same picture, cached since.
     const recent = await cachedAttachment(test, "/recent.png", 1);
     const key = (await findMedia(test.ctx, recent))?.sha256;
+
     assert(key);
 
     assertEquals(await prune(test.ctx, 7), 1);
+
     await drain(test.ctx, queues);
+
     assertEquals(await isCached(test.ctx, old), false);
     assert(await test.ctx.files.has(key));
 });
@@ -287,6 +293,7 @@ Deno.test("each day, attachments cached more than remote_media_days ago are prun
         .where("instance_id", "is not", null)
         .where("sha256", "is not", null)
         .execute();
+
     assertEquals(left.map((row) => row.id), [recent]);
 });
 
@@ -298,6 +305,7 @@ Deno.test("each day's pass is queued apart from the day before's", async () => {
 
     const jobs = await test.ctx.db.selectFrom("jobs").select("payload")
         .where("queue", "=", mediaPruneQueue).execute();
+
     assertEquals(jobs.map((job) => (job.payload as { batch: number }).batch), [0, 0]);
 });
 
@@ -306,6 +314,7 @@ Deno.test("a media prune job that can't be read fails for good", async () => {
     await enqueue(test.ctx, { queue: mediaPruneQueue, payload: { before: "yesterday" } });
     const job = await test.ctx.db.selectFrom("jobs").selectAll()
         .where("queue", "=", mediaPruneQueue).executeTakeFirstOrThrow();
+
     await assertRejects(() => mediaPruneHandler(test.ctx, job), PermanentFailure);
 });
 
@@ -313,14 +322,17 @@ Deno.test("old cached media is read by index", async () => {
     await using test = await open();
     const { db } = test.ctx;
     const old = oldCachedQuery(test.ctx, test.clock.now(), 500).compile();
+
     if (testDatabaseKind === "sqlite") {
         const plan = await db.executeQuery<{ detail: string }>(
             CompiledQuery.raw(`explain query plan ${old.sql}`, [...old.parameters]),
         );
+
         assertStringIncludes(
             plan.rows.map((row) => row.detail).join("\n"),
             "media_remote_by_cache",
         );
+
         return;
     }
 
@@ -328,5 +340,6 @@ Deno.test("old cached media is read by index", async () => {
     const plan = await db.executeQuery(
         CompiledQuery.raw(`explain (format json) ${old.sql}`, [...old.parameters]),
     );
+
     assertStringIncludes(JSON.stringify(plan.rows), '"Index Name":"media_remote_by_cache"');
 });

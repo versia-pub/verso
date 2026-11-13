@@ -37,6 +37,7 @@ export const createNote = async (
         mentionIds,
         tags,
     );
+
     await countNote(ctx, accountId, 1, row.created_at);
 
     return row;
@@ -71,6 +72,7 @@ export const createShare = async (
         [],
         [],
     );
+
     await countPosted(ctx, row, 1);
 
     return row;

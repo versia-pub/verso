@@ -71,6 +71,7 @@ export const endorsementRoutes: readonly Route[] = [
             if (await findAccount(ctx, params.id) === undefined) throw new NotFound();
 
             const endorsements = await endorsementPage(ctx, params.id, query);
+
             return {
                 status: 200,
                 body: await publicAccounts(ctx, endorsements.map((row) => row.account_id)),
@@ -90,6 +91,7 @@ export const endorsementRoutes: readonly Route[] = [
         responses: { 200: Paged(Account) },
         handler: async (ctx, { query, viewer }) => {
             const endorsements = await endorsementPage(ctx, viewer.accountId, query);
+
             return {
                 status: 200,
                 body: await publicAccounts(ctx, endorsements.map((row) => row.account_id)),

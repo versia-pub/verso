@@ -59,6 +59,7 @@ const open = async () => {
             inReplyToId,
         });
         if (note === undefined) throw new Error("Not posted");
+
         return note.id;
     };
 

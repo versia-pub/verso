@@ -115,11 +115,13 @@ export const userStreams = (ctx: Context): Sessions => {
             if (message.event === "delete") {
                 const told = await allowed(await couldSee(ctx, subscribed, message), "read:note");
                 for (const { session } of told) session.deliver(["user"], "delete", message.noteId);
+
                 return;
             }
 
             const reach = await homeReachOf(ctx, message.noteId);
             if (reach === undefined) return;
+
             const { authorId, tags } = reach;
             const viewerIds = new Set(subscribed.map((entry) => entry.viewer.accountId));
             const followers = await followersAmong(ctx, authorId, [...viewerIds]);
@@ -138,6 +140,7 @@ export const userStreams = (ctx: Context): Sessions => {
                 const note = await homeNote(ctx, viewerId, message.noteId);
                 if (note) home.push([viewerId, note]);
             });
+
             const note = home[0]?.[1];
             if (note === undefined) return;
 
@@ -210,6 +213,7 @@ export const userStreams = (ctx: Context): Sessions => {
                 entry.session.subscribedTo(["user"])
             );
             if (subscribed.length === 0) return;
+
             if (await findPublishedAnnouncement(ctx, message.announcementId) === undefined) return;
 
             // The count is 0 if the last reaction was undone, and no viewer is given. Mastodon's

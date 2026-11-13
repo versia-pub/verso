@@ -26,6 +26,7 @@ Deno.test("a file is an object named by its key, with its type, put signed", asy
     assertEquals([put.method, put.url], ["PUT", `https://s3.test/media/${key}`]);
     assertEquals(put.headers.get("x-amz-content-sha256"), key);
     assertEquals(put.headers.get("x-amz-date"), "20260101T000000Z");
+
     const authorization = put.headers.get("authorization") ?? "";
     assertEquals(
         authorization.split(", ")[0],
@@ -35,6 +36,7 @@ Deno.test("a file is an object named by its key, with its type, put signed", asy
         authorization.split(", ")[1],
         "SignedHeaders=cache-control;host;x-amz-content-sha256;x-amz-date",
     );
+
     assertEquals(put.headers.get("cache-control"), "public, max-age=31536000, immutable");
     assertEquals(put.headers.get("content-disposition"), null);
 });
@@ -77,6 +79,7 @@ Deno.test("with a prefix, every object's name starts with it, the check's too", 
 
     assertEquals([...s3.objects.keys()], [`verso/media/${key}`]);
     assertEquals(await new Response(await store.get(key)).text(), "Hello");
+
     assertEquals(transport.sent.map((request) => new URL(request.url).pathname), [
         `/media/verso/media/${key}`,
         "/media/verso/media/verso-check",
@@ -97,9 +100,11 @@ Deno.test("what the server refuses is an error saying what it answered", async (
         error.message,
         `S3 answered 403 to PUT ${key}: <Error><Code>SignatureDoesNotMatch</Code></Error>`,
     );
+
     await assertRejects(() => store.get(key), Error, "S3 answered 403 to GET");
     await assertRejects(() => store.has(key), Error, "S3 answered 403 to HEAD");
     await assertRejects(() => store.delete(key), Error, "S3 answered 403 to DELETE");
+
     assertEquals(s3.objects.size, 0);
 
     // A server that responds to the removal of a missing object with 404 has still removed it.

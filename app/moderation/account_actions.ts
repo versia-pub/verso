@@ -105,5 +105,6 @@ export const queueModeratedDeletion = async (
     }
 
     await queueAccountDeletion(ctx, target.id);
+
     return { ok: true };
 };

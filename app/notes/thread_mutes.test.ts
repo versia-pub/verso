@@ -51,6 +51,7 @@ Deno.test("muting a status's thread mutes every status in it, for the viewer alo
         renderStatuses(test.ctx, [note, reply, other], viewerId).then((statuses) =>
             statuses.map((status) => status.muted)
         );
+
     assertEquals(await seen("bob"), [true, true, false]);
     assertEquals(await seen("dave"), [false, false, false]);
 

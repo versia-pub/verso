@@ -77,6 +77,7 @@ export const scheduleNote = (
         if (replyTo !== null && await visibleOriginal(tx, replyTo, accountId) === undefined) {
             return undefined;
         }
+
         const quoted = params.quoted_status_id;
         if (quoted && await quotableNote(tx, accountId, quoted) === undefined) {
             throw new NotFound("The post you are trying to quote does not appear to exist.");
@@ -92,6 +93,7 @@ export const scheduleNote = (
         };
         await insertScheduled(tx, row);
         await reserve(tx, accountId, row.id, mediaIds);
+
         return row;
     });
 
@@ -113,6 +115,7 @@ export const reschedule = (
 
         await checkSchedule(tx, accountId, scheduledAt, row.id);
         await setScheduledAt(tx, row.id, scheduledAt);
+
         return { ...row, scheduled_at: scheduledAt };
     });
 

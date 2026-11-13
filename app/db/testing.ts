@@ -88,5 +88,6 @@ export const migratedTestDatabase = async <DB>(): Promise<Kysely<DB>> => {
     const pglite = collectingOnClose(
         await PGlite.create({ loadDataDir: await migratedPgliteData() }),
     );
+
     return connect(new PGliteDialect({ pglite }));
 };

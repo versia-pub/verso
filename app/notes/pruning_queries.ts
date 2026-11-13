@@ -62,6 +62,7 @@ export const prunableNotesQuery = (
         .where(following);
     const followedTags = ctx.db.selectFrom("tag_follows").select("tag_follows.tag")
         .where(following);
+
     return ctx.db.selectFrom("notes").select("notes.id")
         .where("notes.id", "in", ids)
         .where((eb) => {

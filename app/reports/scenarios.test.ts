@@ -16,6 +16,7 @@ Deno.test("a forwarded report reaches the account's instance, and that of whom i
         const instance = network.instances[domain];
         users[id] = await clientOf(instance, await createLocalAccount(instance.ctx, id));
     }
+
     const bob = await followAddress(users.alice, "bob@b.test");
     await followAddress(users.bob, "carol@c.test");
     await network.drain();
@@ -28,8 +29,10 @@ Deno.test("a forwarded report reaches the account's instance, and that of whom i
         status: "@carol@c.test Go away",
         in_reply_to_id: hello.id,
     });
+
     assertEquals([posted.status, reply.status], [200, 200]);
     await network.drain();
+
     const [seen] = (await users.alice("GET", `/api/v1/accounts/${bob}/statuses`)).body;
     assertEquals(seen.uri, reply.body.uri);
 

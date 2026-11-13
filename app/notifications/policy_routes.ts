@@ -9,6 +9,7 @@ import { policyActions } from "./tables.ts";
 const renderPolicy = async (ctx: Context, accountId: string): Promise<NotificationPolicy> => {
     const policy = (await policiesOf(ctx, [accountId])).get(accountId);
     if (policy === undefined) throw new Error("Every user has a policy");
+
     const summary = await requestSummaryOf(ctx, accountId);
 
     return {

@@ -116,6 +116,7 @@ const open = async (permissions?: Permissions) => {
         const response = await http.request(path, {
             headers: authorization === undefined ? {} : { authorization },
         });
+
         return { status: response.status, body: await response.json() };
     };
 
@@ -178,6 +179,7 @@ Deno.test("a suspended user's token is refused as a disabled login, an app's own
     assertEquals(await test.call("/me", token), disabled);
     assertEquals(await test.call("/maybe", token), disabled);
     assertEquals((await test.call("/app", appToken)).status, 200);
+
     // Said before the token is found to lack the route's scope.
     const writer = `Bearer ${await tokenFor(test.ctx, "alice", ["write"])}`;
     assertEquals(await test.call("/me", writer), disabled);

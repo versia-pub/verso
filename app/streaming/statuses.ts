@@ -58,6 +58,7 @@ const messageOf = (event: DomainEvent): StatusMessage | undefined => {
             mentionIds: [],
         };
     }
+
     if (isInteractionReceived(event) && event.kind === "share") {
         return { event: "update", noteId: event.id };
     }

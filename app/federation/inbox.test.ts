@@ -129,6 +129,7 @@ Deno.test("a body that isn't Versia JSON is a 400", async () => {
 
 Deno.test("an entity of no known type, or not matching its type, is a 422", async () => {
     await using test = await open();
+
     assertEquals(await test.send({ ...user, type: "Bogus" }), {
         status: 422,
         body: { error: "Validation failed", details: { "body.type": ["Unknown type Bogus"] } },

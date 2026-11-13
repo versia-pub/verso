@@ -74,6 +74,7 @@ export const startRefresh = async (ctx: Context, id: string): Promise<AsyncRefre
             })
         )
         .execute();
+
     return row;
 };
 

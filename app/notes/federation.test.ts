@@ -41,6 +41,7 @@ const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]);
 /** Alice and bob are local; carol, who follows alice, is on b.example; erin is on c.example. */
 const open = async (options: TestContextOptions = {}) => {
     const test = await createTestContext(options);
+
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
     await createInstance(test.ctx, "b.example");
     await createRemoteAccount(test.ctx, "carol", "b.example");
@@ -274,9 +275,11 @@ Deno.test("a note is given only to instances with someone it is shown to", async
         const note = await createNote(test.ctx, "alice", { visibility }, mentionIds);
         const requesters = ["", "b.example", "c.example", "d.example"];
         const by = [];
+
         for (const requester of requesters) {
             if (await test.find(note.id, requester)) by.push(requester || "anyone");
         }
+
         return by;
     };
 
@@ -351,6 +354,7 @@ Deno.test("a user's outbox is their public and unlisted notes, oldest first", as
         test.clock.advance(1);
         ids.push((await createNote(test.ctx, "alice", { visibility })).id);
     }
+
     await createNote(test.ctx, "bob");
     const page = async (offset: number, limit: number) => {
         const collection = await outbox(test.ctx, "alice", { offset, limit }, "b.example");
@@ -382,6 +386,7 @@ Deno.test("a user's featured notes are the public and unlisted ones they pin, th
         await pin(test.ctx, "alice", note.id);
         ids.push(note.id);
     }
+
     await createNote(test.ctx, "alice");
     const page = async (offset: number, limit: number) => {
         const collection = await featured(test.ctx, "alice", { offset, limit }, "b.example");
@@ -437,6 +442,7 @@ Deno.test("a posted note is sent to the instances of those it is shown to", asyn
         ["c.example", "Note", note?.id],
         ["d.example", "Note", reply?.id],
     ]);
+
     const [[, entity]] = await queued(test.ctx);
     // As sent, without the omitted fields.
     assertEquals(entity, JSON.parse(JSON.stringify(await test.find(note?.id ?? "", ""))));
@@ -451,6 +457,7 @@ Deno.test("an edited note is sent again, whole, to those it is shown to now", as
     await editNote(test.ctx, "alice", note.id, { text: "Hi @erin@c.example" });
 
     assertEquals(await sent(test.ctx), [["c.example", "Note", note.id]]);
+
     const [[, entity]] = await queued(test.ctx);
     assertEquals(entity, JSON.parse(JSON.stringify(await test.find(note.id, "c.example"))));
 });
@@ -484,6 +491,7 @@ Deno.test("a deleted local note is deleted where it was sent, and a remote one n
         ["c.example", "Delete", note.id],
         ["d.example", "Delete", note.id],
     ]);
+
     const [[, entity]] = await queued(test.ctx);
     assertEquals(entity, {
         type: "Delete",
@@ -520,6 +528,7 @@ Deno.test("a followers-only note doesn't reach an instance where its author bloc
     await createRemoteAccount(test.ctx, "dave", "b.example");
     await follow(test.ctx, "dave", "alice");
     const again = await createNote(test.ctx, "alice", { visibility: "private" });
+
     assertEquals((await test.find(again.id, "b.example"))?.id, again.id);
 });
 

@@ -74,6 +74,7 @@ export const createFakeIdentityProvider = async (
 
     app.get("/authorize", (c) => {
         const query = c.req.query();
+
         if (
             query.client_id !== options.client.id || query.response_type !== "code" ||
             !query.redirect_uri || query.code_challenge_method !== "S256" || !query.code_challenge
@@ -92,6 +93,7 @@ export const createFakeIdentityProvider = async (
         const redirect = new URL(query.redirect_uri);
         redirect.searchParams.set("code", code);
         if (query.state) redirect.searchParams.set("state", query.state);
+
         return c.redirect(redirect.href);
     });
 

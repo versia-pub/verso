@@ -80,6 +80,7 @@ export const accountsCommand = (io: AdminIo): Command<{ config: string }> =>
                 }
 
                 const changed = await deleteLocalAccount(ctx, account.id, { tombstone });
+
                 return { account: account.username, deleted: true, tombstone, changed };
             });
             io.print(JSON.stringify(result));

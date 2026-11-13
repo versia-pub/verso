@@ -36,6 +36,7 @@ const encoder = new TextEncoder();
 const concat = (...parts: readonly Uint8Array[]) => {
     const joined = new Uint8Array(parts.reduce((length, part) => length + part.length, 0));
     let offset = 0;
+
     for (const part of parts) {
         joined.set(part, offset);
         offset += part.length;
@@ -91,6 +92,7 @@ const seal = async (
     record: Uint8Array<ArrayBuffer>,
 ) => {
     const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+
     return new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, record));
 };
 

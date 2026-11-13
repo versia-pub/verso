@@ -270,6 +270,7 @@ export class StreamingMethods {
     async health(options?: CallOptions): Promise<boolean> {
         try {
             await this.http.send("GET", "/api/v1/streaming/health", options);
+
             return true;
         } catch (error) {
             if (error instanceof ApiError) return false;

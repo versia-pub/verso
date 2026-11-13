@@ -39,6 +39,7 @@ const linkTo = ({ acct, url }: Pick<Account, "acct" | "url">) =>
 /** Who did it: the newest of `accounts`, and how many others. */
 const whoOf = (accounts: readonly Pick<Account, "acct" | "url">[]) => {
     const [newest, ...others] = accounts;
+
     if (newest === undefined) return "Someone";
     if (others.length === 0) return linkTo(newest);
 

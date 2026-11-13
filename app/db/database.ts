@@ -170,6 +170,7 @@ const openSqlite = (path: string) => {
     database.exec("PRAGMA journal_mode = WAL");
     database.exec("PRAGMA busy_timeout = 5000");
     database.exec("PRAGMA synchronous = NORMAL");
+
     return database;
 };
 

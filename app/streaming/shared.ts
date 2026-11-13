@@ -47,6 +47,7 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
                 found.push({ ...each, seen: await seenOf(streams.feeds, each.viewer) });
             }
         }
+
         return found;
     };
 
@@ -56,14 +57,17 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
             // ignore deletes of statuses they don't have.
             if (message.event === "delete") {
                 if (message.visibility !== "public") return;
+
                 for (const each of await reading()) {
                     each.session.deliver(each.streams, "delete", message.noteId);
                 }
+
                 return;
             }
 
             const readers = await reading();
             if (readers.length === 0) return;
+
             const shown = await streams.find(ctx, message.noteId);
             if (!shown) return;
 
@@ -73,6 +77,7 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
             const on = streams.streamsOf(shown, status);
             const filters = await activeFiltersAmong(ctx, [...viewerIds]);
             const unfiltered = JSON.stringify({ ...status, filtered: [] });
+
             for (const { viewer, session, seen } of readers) {
                 if (hiding.has(viewer.accountId)) continue;
                 // Mastodon also drops statuses from an origin that is disabled to the viewer.

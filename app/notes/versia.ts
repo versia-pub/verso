@@ -40,6 +40,7 @@ export const noteReferenceMap = async (
         }
 
         if (note.remote_id === null) throw new Error(`Remote note ${note.id} has no remote id`);
+
         references.set(
             note.id,
             formatReference({ host: note.domain, id: note.remote_id }, ctx.urls.domain),

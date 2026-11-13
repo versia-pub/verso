@@ -21,11 +21,13 @@ export const filesystemFiles = (root: string): FileStore => ({
     put: async (file) => {
         const key = file.sha256;
         checkFileKey(key);
+
         const path = pathOf(root, key);
         if (await exists(path)) return key;
 
         await Deno.mkdir(tempOf(root), { recursive: true });
         await Deno.mkdir(`${root}/${key.slice(0, 2)}`, { recursive: true });
+
         const temp = await Deno.makeTempFile({ dir: tempOf(root) });
         try {
             await Deno.writeFile(temp, await file.open());

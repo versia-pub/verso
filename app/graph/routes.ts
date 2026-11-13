@@ -176,6 +176,7 @@ export const graphRoutes: readonly Route[] = [
         responses: { 200: Paged(Account) },
         handler: async (ctx, { query, viewer }) => {
             const requests = await followPage(ctx, "requests", viewer.accountId, query);
+
             return {
                 status: 200,
                 body: await publicAccounts(ctx, requests.map((request) => request.account_id)),

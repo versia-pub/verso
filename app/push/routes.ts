@@ -91,6 +91,7 @@ export const pushRoutes: readonly Route[] = [
         responses: { 200: WebPushSubscription },
         handler: async (ctx, { body, headers, viewer }) => {
             const token = bearerToken(headers.authorization);
+
             // Push routes take tokens only in the header, so a viewer always has one there.
             if (token === undefined) throw new Error("A viewer without a bearer token");
 
@@ -157,6 +158,7 @@ export const pushRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { viewer }) => {
             await deleteSubscription(ctx, viewer.tokenId);
+
             return { status: 200, body: {} };
         },
     }),

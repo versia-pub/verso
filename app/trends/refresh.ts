@@ -129,6 +129,7 @@ export const refreshTrendingLinks = async (ctx: Context): Promise<void> => {
     const trending: TrendingLink[] = [];
     for (const id of ids) {
         const score = linkScore(uses.get(`${id} 0`) ?? 0, uses.get(`${id} 1`) ?? 0);
+
         const trend = trendOf(
             score,
             existing.get(id),

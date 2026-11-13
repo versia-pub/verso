@@ -47,6 +47,7 @@ export type KeyPair = { readonly privateKey: CryptoKey; readonly spki: string };
 export const keyPair = async (): Promise<KeyPair> => {
     const pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
     if (!("privateKey" in pair)) throw new Error("Ed25519 didn't make a key pair");
+
     const spki = new Uint8Array(await crypto.subtle.exportKey("spki", pair.publicKey)).toBase64();
 
     return { privateKey: pair.privateKey, spki };

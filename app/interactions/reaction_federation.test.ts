@@ -160,6 +160,7 @@ Deno.test("a local reaction is fetched by instances that may see its note, or wh
 
     assertEquals((await test.find(hidden, "b.example"))?.object, "b.example:n1");
     assertEquals(await test.find(hidden, "c.example"), undefined);
+
     const madeAt = test.ctx.clock.now().toISOString();
     test.clock.advance(1000);
     assertEquals((await test.find(followed, "c.example"))?.content, ":blob:");
@@ -211,6 +212,7 @@ Deno.test("a local note lists its reactions, for instances that may see it", asy
     assertEquals((await test.reactions(hidden.id, "c.example"))?.total, 1);
     assertEquals(await test.reactions(hidden.id, "d.example"), undefined);
     assertEquals(await test.reactions(first, "d.example"), undefined);
+
     // Remote instances list the reactions of their own statuses, and boosts have none.
     assertEquals(await test.reactions(theirs.id, "b.example"), undefined);
     assertEquals(await test.reactions(share.id, "d.example"), undefined);

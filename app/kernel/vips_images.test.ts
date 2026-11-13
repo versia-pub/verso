@@ -170,9 +170,11 @@ Deno.test("a picture with more pixels than allowed is scaled down to them", asyn
     const odd = await processed(await picture("png", 101, 37, red), { maxPixels: 1000 });
     assert(odd.width * odd.height <= 1000, `${odd.width}×${odd.height}`);
     assert(odd.width * odd.height > 900, `${odd.width}×${odd.height}`);
+
     // vips would produce 21×11, rounding the shorter side up.
     const rounded = await processed(await picture("png", 40, 20, red), { maxPixels: 221 });
     assertEquals([rounded.width, rounded.height], [20, 10]);
+
     // And it is as large as fits, at exactly the limit.
     const largest = await processed(await picture("png", 29, 20, red), { maxPixels: 294 });
     assertEquals([largest.width, largest.height], [21, 14]);

@@ -147,6 +147,7 @@ export const groupedNotificationRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { viewer }) => {
             await deleteNotificationsOf(ctx, viewer.accountId);
+
             return { status: 200, body: {} };
         },
     }),
@@ -170,6 +171,7 @@ export const groupedNotificationRoutes: readonly Route[] = [
 
             // Grouped whatever its type, unless the key names it on its own.
             const grouped = row.group_key === key ? [row.type] : [];
+
             return {
                 status: 200,
                 body: await renderNotificationGroups(ctx, [row], grouped, viewer.accountId, {
@@ -219,6 +221,7 @@ export const groupedNotificationRoutes: readonly Route[] = [
         responses: { 200: z.object({}) },
         handler: async (ctx, { params, viewer }) => {
             await deleteGroup(ctx, viewer.accountId, params.group_key);
+
             return { status: 200, body: {} };
         },
     }),

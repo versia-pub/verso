@@ -36,6 +36,7 @@ const open = async (origin?: string) => {
 
 const headersOf = async (response: Response) => {
     await response.body?.cancel();
+
     return response.headers;
 };
 
@@ -82,6 +83,7 @@ Deno.test("only the token and userinfo endpoints of /oauth allow other sites", a
 
     assertEquals((await preflight("/oauth/token")).get("access-control-allow-methods"), "POST");
     assertEquals((await preflight("/oauth/revoke")).get("access-control-allow-origin"), "*");
+
     const userinfo = await headersOf(
         await test.app.request("/oauth/userinfo", {
             method: "OPTIONS",
@@ -92,6 +94,7 @@ Deno.test("only the token and userinfo endpoints of /oauth allow other sites", a
             },
         }),
     );
+
     assertEquals(userinfo.get("access-control-allow-methods"), "GET,POST");
     assertEquals(userinfo.get("access-control-allow-headers"), "authorization");
     assertEquals((await preflight("/oauth/authorize")).get("access-control-allow-origin"), null);

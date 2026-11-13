@@ -41,6 +41,7 @@ const deliverTested: Subscriber = async (ctx, event) => {
 
     const user = await registry.types.get("User")?.find?.(ctx, event.accountId, "");
     assertExists(user);
+
     await queueDeliveries(ctx, user, event.recipients);
 };
 
@@ -206,6 +207,7 @@ Deno.test("entities are deleted once their deliveries are given up on, a batch a
     const counting: KyselyPlugin = {
         transformQuery: ({ node }) => {
             if (node.kind === "DeleteQueryNode") deletes++;
+
             return node;
         },
         transformResult: ({ result }) => Promise.resolve(result),
@@ -338,6 +340,7 @@ Deno.test("followers on more instances than a query can name are all sent it", a
             if (node.kind === "SelectQueryNode" && JSON.stringify(node).includes('"instances"')) {
                 lookups++;
             }
+
             return node;
         },
         transformResult: ({ result }) => Promise.resolve(result),

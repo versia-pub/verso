@@ -32,6 +32,7 @@ const selectionOf = (ids: readonly string[], queue: string | undefined): DeadSel
  */
 const whyNotRetried = (queue: string): string | undefined => {
     const runs = Object.hasOwn(queues, queue) ? queues[queue] : undefined;
+
     if (!runs) return `${queue} isn't a queue Verso runs`;
     if (runs.deadPayload) {
         return `${queue}'s dead letters keep only a summary of their payload, so they can't be ` +

@@ -44,6 +44,7 @@ const errorReply = (error: unknown, c: HonoContext<AppEnv>): Response => {
         path: c.req.path,
         error,
     });
+
     return c.json({ error: "Internal server error" }, 500);
 };
 

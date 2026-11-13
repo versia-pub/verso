@@ -47,6 +47,7 @@ export const bookmarkedAmong = async (
         .where("account_id", "in", accountIds)
         .where("note_id", "in", noteIds)
         .execute();
+
     return setsBy(rows, (row) => row.account_id, (row) => row.note_id);
 };
 

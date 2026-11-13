@@ -71,6 +71,7 @@ const open = async (
         });
         const note = await createNote(test.ctx, bob, { visibility });
         await insertAttachments(test.ctx, note.id, [id]);
+
         return id;
     };
 
@@ -81,6 +82,7 @@ const open = async (
             : {};
         const response = await app.request(path, { headers });
         await response.body?.cancel();
+
         return {
             status: response.status,
             location: response.headers.get("location"),
@@ -122,6 +124,7 @@ Deno.test("the media proxy caches remote media and redirects to it", async () =>
         `https://social.example/media/${row.preview_sha256}`,
     );
     assertEquals(test.fetched(), 1);
+
     const served = await test.app.request(`/media/${row.sha256}`);
     assertEquals([served.status, served.headers.get("content-type")], [200, "image/png"]);
     await served.body?.cancel();
@@ -164,6 +167,7 @@ Deno.test("the media proxy only serves remote media attached to statuses one may
     const followers = await test.attached("/bob.png", "image/png", "private");
     assertEquals((await test.proxy(`/media/proxy/${followers}`, true)).status, 404);
     assertEquals(test.fetched(), 0);
+
     await test.ctx.db.insertInto("follows").values({
         id: "f",
         follower_id: test.alice,
@@ -171,12 +175,14 @@ Deno.test("the media proxy only serves remote media attached to statuses one may
         accepted: true,
         created_at: test.clock.now(),
     }).execute();
+
     assertEquals((await test.proxy(`/media/proxy/${followers}`)).status, 404);
     assertEquals((await test.proxy(`/media/proxy/${followers}`, true)).status, 302);
 
     // Nobody sees a suspended account's statuses.
     const shown = await test.attached();
     await suspend(test.ctx, test.bob);
+
     assertEquals((await test.proxy(`/media/proxy/${shown}`)).status, 404);
 });
 
@@ -201,6 +207,7 @@ Deno.test("media the proxy couldn't fetch is left to be cached later", async () 
     // The job queued when it was saved still caches it.
     test.bringUp();
     await drain(test.ctx, queues);
+
     assertEquals(typeof (await findMedia(test.ctx, id))?.sha256, "string");
 });
 
@@ -213,10 +220,12 @@ Deno.test("the media proxy doesn't fetch what won't be cached", async () => {
     for (const id of [failed, zip]) {
         assertEquals((await test.proxy(`/media/proxy/${id}`)).status, 404, id);
     }
+
     assertEquals(test.fetched(), 0);
 
     await using off = await open({ settings: { cacheRemoteMedia: false } });
     const uncached = await off.attached();
+
     assertEquals((await off.proxy(`/media/proxy/${uncached}`)).status, 404);
     assertEquals(off.fetched(), 0);
 });
@@ -231,6 +240,7 @@ Deno.test("the media proxy's requests are counted apart from those for files", a
     const status = async (path: string) => {
         const response = await test.app.request(path);
         await response.body?.cancel();
+
         return response.status;
     };
 

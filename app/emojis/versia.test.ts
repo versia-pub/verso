@@ -17,6 +17,7 @@ const kept = (value: Parameters<typeof remoteEmojisOf>[0]) =>
 
 Deno.test("an entity's emojis are kept by their names, without the colons", () => {
     const [blob] = remoteEmojisOf(extensions(emoji(":blob:")));
+
     assertEquals([blob?.shortcode, blob?.picture.mediaType, blob?.picture.width], [
         "blob",
         "image/png",
@@ -48,6 +49,7 @@ Deno.test("emojis clients can't show, named again, named without colons or too l
 
 Deno.test("an entity has at most 100 emojis, and a malformed extension has none", () => {
     const many = Array.from({ length: 101 }, (_, index) => emoji(`:e${index}:`));
+
     assertEquals(remoteEmojisOf(extensions(...many)).length, 100);
 
     assertEquals(remoteEmojisOf(undefined), []);

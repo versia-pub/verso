@@ -34,6 +34,7 @@ const open = async () => {
 
         const response = await transport(new Request(url));
         const callback = new URL(response.headers.get("location") ?? "");
+
         return { verifier, nonce, state, callback };
     };
 

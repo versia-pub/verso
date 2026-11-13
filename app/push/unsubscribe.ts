@@ -47,6 +47,7 @@ export const unsubscribedId = async (
             currentDate: ctx.clock.now(),
             requiredClaims: ["sub", "exp"],
         });
+
         return payload.sub;
     } catch {
         return undefined;

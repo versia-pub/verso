@@ -38,6 +38,7 @@ Deno.test("a note is reacted to with each emoji once, the first used first", asy
     for (const [by, name] of [["bob", "👍🏽"], ["dave", "blob"], ["bob", "blob"]]) {
         assertEquals((await react(test.ctx, by, note.id, name)) !== "missing", true);
     }
+
     // Again, it is the same reaction.
     await react(test.ctx, "bob", note.id, "blob");
 

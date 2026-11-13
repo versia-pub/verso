@@ -10,6 +10,7 @@ export const saveTotals = async (
     totals: RemoteNoteTotals,
 ): Promise<void> => {
     const { note_id: _, ...changes } = totals;
+
     await ctx.db.insertInto("remote_note_totals")
         .values(totals)
         .onConflict((conflict) => conflict.column("note_id").doUpdateSet(changes))

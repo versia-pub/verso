@@ -46,6 +46,7 @@ Deno.test("a remote emoji is shown at its URL until cached, which is its still t
     // Not cached yet, or caching failed.
     for (const picture of [{ sha256: "ab" }, { processed_at: test.clock.now() }]) {
         const [shown] = renderEmojis(test.ctx, [{ ...remote, ...picture }]);
+
         assertEquals([shown?.url, shown?.static_url, shown?.visible_in_picker], [url, url, false]);
     }
 });
@@ -61,6 +62,7 @@ Deno.test("a cached remote emoji is shown from Verso, with its preview as its st
     };
 
     const [shown] = renderEmojis(test.ctx, [{ ...remote, preview_sha256: "cd" }]);
+
     assertEquals([shown?.url, shown?.static_url, shown?.visible_in_picker], [
         "https://social.example/media/ab",
         "https://social.example/media/cd",
@@ -99,7 +101,9 @@ Deno.test("a local emoji is shown with whose it is and its alt text, and no URLs
         preview_sha256: "cd",
         processed_at: test.clock.now(),
     };
+
     const shown = renderVersiaEmoji(test.ctx, { ...processed, account_id: null });
+
     assertEquals([shown.url, shown.static_url, shown.global], [
         "https://social.example/media/ab",
         "https://social.example/media/cd",

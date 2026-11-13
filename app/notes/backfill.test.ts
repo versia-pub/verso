@@ -84,6 +84,7 @@ Deno.test("a user opening a remote thread has the replies under it fetched, but 
         assertEquals(response.status, 200);
         await response.body?.cancel();
         await test.network.drain();
+
         return await test.under();
     };
     test.network.clock.advance(5 * 60_000);
@@ -104,6 +105,7 @@ Deno.test("only remote public and unlisted statuses 5 minutes old have their rep
     assertEquals(await backfillLater(test.a, await createNote(test.a, test.alice)), undefined);
     assertExists(await backfillLater(test.a, visible("unlisted")));
     assertExists(await backfillLater(test.a, test.copy));
+
     await test.network.drain();
     assertEquals(await test.under(), [test.carols.id, test.daves.id]);
 
@@ -156,6 +158,7 @@ Deno.test("replies stored are fetched again only once they are a week old", asyn
             return path.startsWith("/.versia/v0.6/entities/Note/") &&
                 !path.includes("/collections/");
         }).length;
+
     await fetchReplies(test.a, test.copy);
 
     const from = fetches();
@@ -211,6 +214,7 @@ Deno.test("replies are fetched page by page", async () => {
 Deno.test("replies are fetched for 4 minutes at most", async () => {
     await using test = await open();
     for (let count = 0; count < 40; count++) await test.reply(test.root, "dave");
+
     const serve = test.network.transport.servers.get("b.test");
     assertExists(serve);
     test.network.transport.servers.set("b.test", (request) => {
@@ -258,17 +262,20 @@ Deno.test("failing to fetch the replies of a thread's start fails, unless it has
         attachments: [],
         previews: [],
     });
+
     const evils = await test.a.federation.resolve(test.a, { host: "e.test", id: "n1" }, "Note");
     assertExists(evils);
     const evilsRow = await findNote(test.a, evils);
     assertExists(evilsRow);
     await fetchReplies(test.a, evilsRow);
+
     const serve = test.network.transport.servers.get("e.test");
     assertExists(serve);
     test.network.transport.servers.set("e.test", (request) =>
         request.url.includes("/collections/replies")
             ? Promise.resolve(new Response(null, { status: 410 }))
             : serve(request));
+
     await fetchReplies(test.a, evilsRow);
     test.network.transport.servers.set("e.test", serve);
     evil.serve("/.versia/v0.6/entities/Note/n1/collections/replies", { total: 1 });

@@ -152,6 +152,7 @@ export const noteIdsMatching = async (
     match: NoteMatch,
 ): Promise<string[]> => {
     const viewerId = match.onlooker.id;
+
     const narrowed = match.scope === "library" || match.accountId !== null ||
         terms.some((term) =>
             !term.negated && (term.kind === "words" || term.kind === "phrase" ||
@@ -175,6 +176,7 @@ export const noteIdsMatching = async (
         })
         .where(shownTo(match.onlooker))
         .where(notExcluded(match.hidden, "notes.account_id"));
+
     if (match.accountId !== null) query = query.where("notes.account_id", "=", match.accountId);
     if (match.minId !== null) query = query.where("notes.id", ">", match.minId);
     if (match.maxId !== null) query = query.where("notes.id", "<", match.maxId);

@@ -104,6 +104,7 @@ export const mediaRoutes = (media: MediaLimits, limits: Limits): readonly Route[
             });
 
             const reply = renderAttachment(ctx, row);
+
             return row.processed_at === null
                 ? { status: 202, body: reply }
                 : { status: 200, body: reply };
