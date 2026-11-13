@@ -54,7 +54,7 @@ export type {
     ProfileChanges,
     ProfileUpdate,
 } from "./client/accounts.ts";
-export type { AdminReportsQuery } from "./client/admin.ts";
+export type { AdminAccountAction, AdminAccountsQuery, AdminReportsQuery } from "./client/admin.ts";
 export type { EmojiChanges, EmojiDraft } from "./client/emojis.ts";
 export type { FilterInput, KeywordAttributes, KeywordInput } from "./client/filters.ts";
 export { ApiError, type CallOptions, type RateLimit, UnexpectedResponse } from "./client/http.ts";

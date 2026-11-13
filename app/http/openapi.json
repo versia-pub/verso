@@ -10196,6 +10196,729 @@
                 }
             }
         },
+        "/api/v1/admin/accounts": {
+            "get": {
+                "summary": "View accounts (v1)",
+                "description": "View all accounts, optionally matching certain criteria for filtering, up to 100 at a time. Pagination may be done with the HTTP Link header in the response.\n\nNeeds a token for a user, not one an app got for itself. Needs the `accounts` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/accounts/#v1"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:read:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "local",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "remote",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "by_domain",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "active",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "pending",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "disabled",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sensitized",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "silenced",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "suspended",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "username",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "display_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "ip",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "staff",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AdminAccount"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/admin/accounts": {
+            "get": {
+                "summary": "View accounts (v2)",
+                "description": "View all accounts, optionally matching certain criteria for filtering, up to 100 at a time. Pagination may be done with the HTTP Link header in the response.\n\nNeeds a token for a user, not one an app got for itself. Needs the `accounts` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/accounts/#v2"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:read:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "origin",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "local",
+                                "remote"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "pending",
+                                "disabled",
+                                "silenced",
+                                "suspended",
+                                "sensitized"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "permissions",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "role_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "invited_by",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "username",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "display_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "by_domain",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "email",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "ip",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AdminAccount"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/accounts/{id}": {
+            "get": {
+                "summary": "View a specific account",
+                "description": "View admin-level information about the given account.\n\nNeeds a token for a user, not one an app got for itself. Needs the `accounts` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/accounts/#get-one"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:read:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminAccount"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete an account",
+                "description": "Permanently delete data for a suspended account.\n\nNeeds a token for a user, not one an app got for itself. Needs the `accounts` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/accounts/#delete"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/accounts/{id}/action": {
+            "post": {
+                "summary": "Perform an action against an account",
+                "description": "Perform an action against an account and log this action in the moderation history. Also resolves any open reports against this account.\n\nNeeds a token for a user, not one an app got for itself. Needs the `accounts` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/accounts/#action"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "silence",
+                                            "suspend"
+                                        ]
+                                    },
+                                    "report_id": {
+                                        "type": "string"
+                                    },
+                                    "warning_preset_id": {
+                                        "type": "string"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "send_email_notification": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "type"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "silence",
+                                            "suspend"
+                                        ]
+                                    },
+                                    "report_id": {
+                                        "type": "string"
+                                    },
+                                    "warning_preset_id": {
+                                        "type": "string"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "send_email_notification": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "type"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "silence",
+                                            "suspend"
+                                        ]
+                                    },
+                                    "report_id": {
+                                        "type": "string"
+                                    },
+                                    "warning_preset_id": {
+                                        "type": "string"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "send_email_notification": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "type"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/accounts/{id}/unsilence": {
+            "post": {
+                "summary": "Unsilence an account",
+                "description": "Unsilence an account if it is currently silenced.\n\nNeeds a token for a user, not one an app got for itself. Needs the `accounts` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/accounts/#unsilence"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminAccount"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/accounts/{id}/unsuspend": {
+            "post": {
+                "summary": "Unsuspend an account",
+                "description": "Unsuspend a currently suspended account.\n\nNeeds a token for a user, not one an app got for itself. Needs the `accounts` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/accounts/#unsuspend"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:write:accounts"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminAccount"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/announcements": {
             "get": {
                 "summary": "View all announcements",
@@ -16191,7 +16914,8 @@
                                                 "feeds",
                                                 "emojis",
                                                 "roles",
-                                                "reports"
+                                                "reports",
+                                                "accounts"
                                             ]
                                         }
                                     },
@@ -16285,7 +17009,8 @@
                                                 "feeds",
                                                 "emojis",
                                                 "roles",
-                                                "reports"
+                                                "reports",
+                                                "accounts"
                                             ]
                                         }
                                     },
@@ -16379,7 +17104,8 @@
                                                 "feeds",
                                                 "emojis",
                                                 "roles",
-                                                "reports"
+                                                "reports",
+                                                "accounts"
                                             ]
                                         }
                                     },
@@ -16552,7 +17278,8 @@
                                                 "feeds",
                                                 "emojis",
                                                 "roles",
-                                                "reports"
+                                                "reports",
+                                                "accounts"
                                             ]
                                         }
                                     },
@@ -16643,7 +17370,8 @@
                                                 "feeds",
                                                 "emojis",
                                                 "roles",
-                                                "reports"
+                                                "reports",
+                                                "accounts"
                                             ]
                                         }
                                     },
@@ -16734,7 +17462,8 @@
                                                 "feeds",
                                                 "emojis",
                                                 "roles",
-                                                "reports"
+                                                "reports",
+                                                "accounts"
                                             ]
                                         }
                                     },

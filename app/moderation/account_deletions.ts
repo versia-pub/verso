@@ -4,6 +4,7 @@
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/delete_account_service.rb
  * @module
  */
+import { z } from "zod";
 import { deleteAccount, emptyAccount } from "../accounts/account_queries.ts";
 import type { AccountDeleting } from "../accounts/events.ts";
 import { deleteEmojisOf } from "../emojis/emojis.ts";
@@ -11,6 +12,9 @@ import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { deleteEntity } from "../federation/delete.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
+import { enqueue } from "../jobs/job_queries.ts";
+import type { JobsTable } from "../jobs/tables.ts";
+import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import { deleteFileIfUnused } from "../media/cleanup.ts";
 import { deleteMediaOf } from "../media/upload_queries.ts";
 import { removeNotesOf } from "../notes/removal.ts";
@@ -52,4 +56,30 @@ export const deleteLocalAccount = async (
     for (const key of keys) await deleteFileIfUnused(ctx, key);
 
     return deleted;
+};
+
+/** The queue of the jobs that delete local accounts for moderators. */
+export const accountDeletionQueue = "account-deletions";
+
+const AccountDeletionJob = z.object({ accountId: z.string() });
+
+/** Queues the deletion of the local account `accountId`, with a tombstone, unless it is queued. */
+export const queueAccountDeletion = async (ctx: Context, accountId: string): Promise<void> => {
+    const payload: z.infer<typeof AccountDeletionJob> = { accountId };
+    await enqueue(ctx, {
+        queue: accountDeletionQueue,
+        payload,
+        dedupeKey: `account-deletion:${accountId}`,
+    });
+};
+
+/** Deletes a local account, keeping a tombstone, as {@link queueAccountDeletion} asked. */
+export const accountDeletionHandler: Handler = async (
+    ctx: Context,
+    job: JobsTable,
+): Promise<void> => {
+    const payload = AccountDeletionJob.safeParse(job.payload);
+    if (!payload.success) throw new PermanentFailure("The job isn't an account deletion job");
+
+    await deleteLocalAccount(ctx, payload.data.accountId, { tombstone: true });
 };

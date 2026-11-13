@@ -41,6 +41,7 @@ import {
     startMediaPruning,
 } from "../media/pruning.ts";
 import { remoteMediaHandler, remoteMediaQueue } from "../media/remote_cache.ts";
+import { accountDeletionHandler, accountDeletionQueue } from "../moderation/account_deletions.ts";
 import { mediaQueue } from "../media/uploads.ts";
 import { pruneHandler, pruneQueue, pruneStartQueue, startPruning } from "../notes/pruning.ts";
 import {
@@ -130,6 +131,12 @@ export const queues: Record<string, Queue> = {
         leaseMs: 15 * 60_000,
     },
     [fileCleanupQueue]: { handler: fileCleanupHandler, concurrency: 2 },
+    // Each job deletes all a user has, which takes a while for a busy one.
+    [accountDeletionQueue]: {
+        handler: accountDeletionHandler,
+        concurrency: 1,
+        leaseMs: 15 * 60_000,
+    },
     // One at a time, so each version's work goes through the rows in order, once.
     [resanitiseQueue]: { handler: resanitiseHandler, concurrency: 1 },
     // One at a time, so each pass goes through its rows in order, once.

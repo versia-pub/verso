@@ -3,15 +3,18 @@
  * @module
  */
 import {
+    type Expression,
     type ExpressionBuilder,
     type Insertable,
     type Selectable,
     sql,
+    type SqlBool,
     type Updateable,
 } from "kysely";
 import { batchesOf } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import type { Database } from "../db/database.ts";
+import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
 import type { AccountsTable } from "./tables.ts";
 
@@ -483,4 +486,71 @@ export const updateLocalAccount = async (
         .where("id", "=", id)
         .where("instance_id", "is", null)
         .execute();
+};
+
+/**
+ * Which accounts a moderator lists. `status` is `active` for those not suspended, or `silenced` or
+ * `suspended`. Mastodon's `pending`, `disabled` and `sensitized` match nothing, as Verso doesn't
+ * have them, and nor does `untracked`, which is set when a filter Verso can't apply was given, such
+ * as an email address.
+ */
+export type AdminAccountFilter = {
+    readonly origin?: "local" | "remote";
+    readonly status?: "active" | "pending" | "disabled" | "silenced" | "suspended" | "sensitized";
+    /** Usernames that start with this, ignoring case. */
+    readonly username?: string;
+    /** Display names that start with this, ignoring case. */
+    readonly displayName?: string;
+    /** Accounts on the instance with this domain. */
+    readonly domain?: string;
+    /** Accounts with any of these roles. */
+    readonly roleIds?: readonly string[];
+    readonly untracked?: boolean;
+};
+
+/** Whether `column` starts with `start`, ignoring case. Wildcards in `start` are themselves. */
+const startsWithIgnoringCase = (column: string, start: string): Expression<SqlBool> => {
+    const escaped = start.toLowerCase().replaceAll(/[\\%_]/g, (character) => `\\${character}`);
+    return sql<SqlBool>`lower(${sql.ref(column)}) LIKE ${`${escaped}%`} ESCAPE '\\'`;
+};
+
+/** A page of the accounts that `filter` matches, the latest created first. */
+export const adminAccountPage = async (
+    ctx: Context,
+    filter: AdminAccountFilter,
+    page: PageBounds,
+): Promise<AccountRow[]> => {
+    const untracked = ["pending", "disabled", "sensitized"];
+    if (filter.untracked || untracked.includes(filter.status ?? "")) return [];
+    if (filter.roleIds?.length === 0) return [];
+
+    let query = accountRows(ctx);
+    if (filter.origin === "local") query = query.where("accounts.instance_id", "is", null);
+    if (filter.origin === "remote") query = query.where("accounts.instance_id", "is not", null);
+    if (filter.status === "active") query = query.where("accounts.suspended_at", "is", null);
+    if (filter.status === "silenced") query = query.where("accounts.silenced_at", "is not", null);
+    if (filter.status === "suspended") {
+        query = query.where("accounts.suspended_at", "is not", null);
+    }
+    if (filter.username !== undefined) {
+        query = query.where(startsWithIgnoringCase("accounts.username", filter.username));
+    }
+    if (filter.displayName !== undefined) {
+        query = query.where(startsWithIgnoringCase("accounts.display_name", filter.displayName));
+    }
+    if (filter.domain !== undefined) query = query.where("instances.domain", "=", filter.domain);
+
+    const roleIds = filter.roleIds;
+    if (roleIds !== undefined) {
+        query = query.where((eb) =>
+            eb.exists(
+                eb.selectFrom("account_roles")
+                    .select("account_roles.account_id")
+                    .whereRef("account_roles.account_id", "=", "accounts.id")
+                    .where("account_roles.role_id", "in", roleIds),
+            )
+        );
+    }
+
+    return await readPage(query, "accounts.id", page);
 };

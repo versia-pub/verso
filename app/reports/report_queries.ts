@@ -105,3 +105,31 @@ export const reopenReport = async (
 
     return await findReport(ctx, id);
 };
+
+/** The ids of the reports about `targetId` that are unresolved. */
+export const unresolvedReportIdsAbout = async (
+    ctx: Context,
+    targetId: string,
+): Promise<string[]> => {
+    const rows = await ctx.db.selectFrom("reports").select("id")
+        .where("target_account_id", "=", targetId)
+        .where("resolved_at", "is", null)
+        .execute();
+
+    return rows.map((row) => row.id);
+};
+
+/** Marks the reports `ids` as resolved at `at` by the moderator `by`, as {@link resolveReportBy}. */
+export const resolveReportsBy = async (
+    ctx: Context,
+    ids: readonly string[],
+    by: string,
+    at: Date,
+): Promise<void> => {
+    if (ids.length === 0) return;
+
+    await ctx.db.updateTable("reports")
+        .set({ resolved_at: at, resolved_by_account_id: by, updated_at: at })
+        .where("id", "in", ids)
+        .execute();
+};

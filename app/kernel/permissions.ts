@@ -65,6 +65,11 @@ export const permissions = [
     "roles",
     /** View every report, and resolve and reopen them. */
     "reports",
+    /**
+     * View every account as moderators see it, silence and suspend those below one's own highest
+     * role, lift silences and suspensions, and delete suspended local users below it.
+     */
+    "accounts",
 ] as const;
 
 export const Permission = z.enum(permissions, { error: "Unknown permission" });

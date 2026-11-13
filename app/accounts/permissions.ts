@@ -33,6 +33,8 @@ const mastodonFlags: Readonly<Record<Permission, number>> = {
     "emojis": 0x4000,
     "roles": 0x20000,
     "reports": 0x10,
+    // Mastodon's manage_users, and delete_user_data, which deleting an account needs.
+    "accounts": 0x400 | 0x80000,
 };
 
 /** Mastodon's role bitmask for a set of permissions, as the decimal string clients expect. */

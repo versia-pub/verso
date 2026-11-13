@@ -202,6 +202,12 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - An admin account's `email`, `ip`, `locale` and `invite_request` are always `null`, and `ips` is
   empty: Verso doesn't keep them. A local one is always `confirmed` and `approved`, never
   `disabled`, and no account is `sensitized`.
+- Listing admin accounts by `email`, `ip` or `invited_by`, or with the status `pending`, `disabled`
+  or `sensitized`, finds none. Names match literally: `%` and `_` aren't wildcards.
+- An account action's `type` is `silence` or `suspend`. It creates no warning, sends no email, and
+  ignores `warning_preset_id`, `text` and `send_email_notification`. Unlike on Mastodon, a moderator
+  can't act on their own account.
+- Only a local account can be deleted. A deleted account can't be unsuspended (`403`).
 
 ## Custom emoji
 

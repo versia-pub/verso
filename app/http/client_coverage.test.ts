@@ -130,6 +130,13 @@ const calls: Record<string, (client: Client) => unknown> = {
     "GET /api/v1/admin/reports/{id}": (c) => c.admin.reports.get("1"),
     "POST /api/v1/admin/reports/{id}/resolve": (c) => c.admin.reports.resolve("1"),
     "POST /api/v1/admin/reports/{id}/reopen": (c) => c.admin.reports.reopen("1"),
+    "GET /api/v2/admin/accounts": (c) => c.admin.accounts.list(),
+    "GET /api/v1/admin/accounts/{id}": (c) => c.admin.accounts.get("1"),
+    "POST /api/v1/admin/accounts/{id}/action": (c) =>
+        c.admin.accounts.act("1", { type: "silence" }),
+    "POST /api/v1/admin/accounts/{id}/unsilence": (c) => c.admin.accounts.unsilence("1"),
+    "POST /api/v1/admin/accounts/{id}/unsuspend": (c) => c.admin.accounts.unsuspend("1"),
+    "DELETE /api/v1/admin/accounts/{id}": (c) => c.admin.accounts.delete("1"),
     "GET /api/v1/announcements": (c) => c.announcements.list(),
     "POST /api/v1/announcements/{id}/dismiss": (c) => c.announcements.dismiss("1"),
     "PUT /api/v1/announcements/{id}/reactions/{name}": (c) => c.announcements.react("1", "👍"),
@@ -226,6 +233,8 @@ const calls: Record<string, (client: Client) => unknown> = {
 /** Operations no client method makes, and why. */
 const uncalled: Record<string, string> = {
     "GET /api/v1/trends": "Mastodon's old name for /api/v1/trends/tags, which `trends.tags` calls",
+    "GET /api/v1/admin/accounts":
+        "Mastodon's old version of /api/v2/admin/accounts, which `admin.accounts.list` calls",
     "GET /api/v1/streaming":
         "A WebSocket, which `streaming.connect` opens, tested in client.test.ts",
     "POST /oauth/authorize/issuer": "A page the user's browser submits, while logging in",

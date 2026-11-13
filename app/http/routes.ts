@@ -18,6 +18,7 @@ import { entityRoutes } from "../federation/registry.ts";
 import { graphRoutes } from "../graph/routes.ts";
 import { noteRoutes } from "../notes/routes.ts";
 import { pollRoutes } from "../polls/routes.ts";
+import { adminAccountRoutes } from "../moderation/admin_account_routes.ts";
 import { adminReportRoutes } from "../reports/admin_routes.ts";
 import { reportRoutes } from "../reports/routes.ts";
 import { announcementRoutes } from "../announcements/routes.ts";
@@ -64,6 +65,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...scheduledRoutes,
         ...reportRoutes(settings.instance),
         ...adminReportRoutes(settings),
+        ...adminAccountRoutes(settings),
         ...announcementRoutes,
         ...interactionRoutes,
         ...timelineRoutes(settings.timelines_access),

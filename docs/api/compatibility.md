@@ -29,7 +29,7 @@ behave differently.
 | Trends                     | hashtags, statuses and links                                            |
 | Suggestions                | v2 and dismissing                                                       |
 
-Of the admin API, only reports so far; admins use `verso admin` for the rest.
+Of the admin API, only reports and accounts so far; admins use `verso admin` for the rest.
 
 ## Apps and logging in
 
@@ -263,6 +263,16 @@ as the `admin:` scope.
 | `POST /api/v1/admin/reports/:id/reopen`                     | ✅    | Needs `reports`              |
 | `PUT /api/v1/admin/reports/:id`                             | ❌    |                              |
 | `POST /api/v1/admin/reports/:id/assign_to_self`, `unassign` | ❌    | Verso doesn't assign reports |
+| `GET /api/v1/admin/accounts`                                | ✅    | Needs `accounts`             |
+| `GET /api/v2/admin/accounts`                                | ✅    | Needs `accounts`             |
+| `GET /api/v1/admin/accounts/:id`                            | ✅    | Needs `accounts`             |
+| `POST /api/v1/admin/accounts/:id/action`                    | ✅    | `silence` and `suspend` only |
+| `POST /api/v1/admin/accounts/:id/unsilence`                 | ✅    | Needs `accounts`             |
+| `POST /api/v1/admin/accounts/:id/unsuspend`                 | ✅    | Needs `accounts`             |
+| `DELETE /api/v1/admin/accounts/:id`                         | ✅    | Local accounts only          |
+| `POST /api/v1/admin/accounts/:id/enable`                    | ❌    | Verso doesn't disable users  |
+| `POST /api/v1/admin/accounts/:id/approve`, `reject`         | ❌    | Verso doesn't approve users  |
+| `POST /api/v1/admin/accounts/:id/unsensitive`               | ❌    |                              |
 
 The rest of Mastodon's admin API (`/api/v1/admin/…` and `/api/v2/admin/…`) isn't implemented. Admins
 use the [`verso admin` commands](../admin/commands.md) instead.

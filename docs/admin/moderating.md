@@ -31,6 +31,13 @@ ones no one has dealt with, and mark them as dealt with, using
 [`verso admin reports`](commands.md#verso-admin-reports), or from a Mastodon app as a moderator with
 the `reports` permission.
 
+## Moderating from an app
+
+Moderators with the `accounts` permission can list accounts, and silence, suspend and delete them,
+from a Mastodon app. They can act only on remote accounts and on local users whose highest role is
+below their own. Acting on an account resolves the open reports about it, which needs the `reports`
+permission too. Only suspended accounts can be deleted, in the background, keeping a tombstone.
+
 ## Suspending accounts
 
 Suspend an account, local or remote, with
@@ -88,9 +95,9 @@ status is only deleted here, and comes back if its instance sends it again.
 ## Moderators
 
 Give moderators a [role](commands.md#verso-admin-roles) with the staff
-[permissions](configuring.md#permissions) they need: `blocks`, `emojis`, `reports` or `roles`.
-Mastodon apps show `emojis`, `reports` and `roles` as "Manage custom emojis", "Manage reports" and
-"Manage roles".
+[permissions](configuring.md#permissions) they need: `accounts`, `blocks`, `emojis`, `reports` or
+`roles`. Mastodon apps show `accounts`, `emojis`, `reports` and `roles` as "Manage users", "Manage
+custom emojis", "Manage reports" and "Manage roles".
 
 ## Trends
 

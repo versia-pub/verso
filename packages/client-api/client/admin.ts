@@ -1,4 +1,4 @@
-import { AdminReport } from "../admin.ts";
+import { AdminAccount, AdminReport } from "../admin.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
 import { Page, type PageQuery } from "./pages.ts";
 
@@ -59,12 +59,104 @@ export class AdminReportMethods {
     }
 }
 
+/**
+ * Which accounts to list, all of them by default. Verso doesn't keep users' emails, IP addresses or
+ * invites, or have pending, disabled or sensitive accounts, so filtering by those lists none.
+ */
+export type AdminAccountsQuery = PageQuery & {
+    readonly origin?: "local" | "remote";
+    /** `active` for those not suspended. */
+    readonly status?: "active" | "pending" | "disabled" | "silenced" | "suspended" | "sensitized";
+    /** `staff` for those with a role that may deal with reports. */
+    readonly permissions?: "staff";
+    /** Only those with any of these roles. */
+    readonly role_ids?: readonly string[];
+    readonly invited_by?: string;
+    /** Usernames that start with this, ignoring case. */
+    readonly username?: string;
+    /** Display names that start with this, ignoring case. */
+    readonly display_name?: string;
+    /** Only those on the instance with this domain. */
+    readonly by_domain?: string;
+    readonly email?: string;
+    readonly ip?: string;
+};
+
+/** What a moderator does to an account, as `accounts.act` takes it. */
+export type AdminAccountAction = {
+    readonly type: "silence" | "suspend";
+    /** A report to act on. Every unresolved report about the account is resolved. */
+    readonly report_id?: string;
+};
+
+/** Moderating accounts, for moderators with the `accounts` permission. */
+export class AdminAccountMethods {
+    constructor(private readonly http: Http) {}
+
+    /**
+     * Accounts, the latest created first.
+     * @see https://docs.joinmastodon.org/methods/admin/accounts/#v2
+     */
+    list(query: AdminAccountsQuery = {}, options?: CallOptions): Promise<Page<AdminAccount>> {
+        return Page.get(this.http, AdminAccount, "/api/v2/admin/accounts", query, options);
+    }
+
+    /** @see https://docs.joinmastodon.org/methods/admin/accounts/#get-one */
+    get(id: string, options?: CallOptions): Promise<AdminAccount> {
+        return this.http.json(AdminAccount, "GET", path`/api/v1/admin/accounts/${id}`, options);
+    }
+
+    /**
+     * Silences or suspends an account below the viewer's highest role, and resolves the reports
+     * about it, which needs the `reports` permission too when there are any.
+     * @see https://docs.joinmastodon.org/methods/admin/accounts/#action
+     */
+    async act(id: string, action: AdminAccountAction, options?: CallOptions): Promise<void> {
+        await this.http.send("POST", path`/api/v1/admin/accounts/${id}/action`, {
+            ...options,
+            json: action,
+        });
+    }
+
+    /** @see https://docs.joinmastodon.org/methods/admin/accounts/#unsilence */
+    unsilence(id: string, options?: CallOptions): Promise<AdminAccount> {
+        return this.http.json(
+            AdminAccount,
+            "POST",
+            path`/api/v1/admin/accounts/${id}/unsilence`,
+            options,
+        );
+    }
+
+    /** @see https://docs.joinmastodon.org/methods/admin/accounts/#unsuspend */
+    unsuspend(id: string, options?: CallOptions): Promise<AdminAccount> {
+        return this.http.json(
+            AdminAccount,
+            "POST",
+            path`/api/v1/admin/accounts/${id}/unsuspend`,
+            options,
+        );
+    }
+
+    /**
+     * Deletes a suspended local user below the viewer's highest role, in the background, keeping
+     * their username taken.
+     * @see https://docs.joinmastodon.org/methods/admin/accounts/#delete
+     */
+    async delete(id: string, options?: CallOptions): Promise<void> {
+        await this.http.send("DELETE", path`/api/v1/admin/accounts/${id}`, options);
+    }
+}
+
 /** Moderating the instance, as the viewer's permissions allow. */
 export class AdminMethods {
     /** Dealing with reports. */
     readonly reports: AdminReportMethods;
+    /** Moderating accounts. */
+    readonly accounts: AdminAccountMethods;
 
     constructor(http: Http) {
         this.reports = new AdminReportMethods(http);
+        this.accounts = new AdminAccountMethods(http);
     }
 }
