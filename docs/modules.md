@@ -25,7 +25,7 @@ Each folder in `app/` is a module. [Architecture](architecture.md) has the rules
 | `search`        | searching accounts, statuses and hashtags    | `search.ts`                   |
 | `markers`       | where a user read up to in a timeline        | `routes.ts`                   |
 | `instances`     | this instance, its keys, remote instances    | `keys.ts`, `reachability.ts`  |
-| `moderation`    | instances Verso doesn't federate with        | `domain_blocks.ts`            |
+| `moderation`    | blocking instances, and moderating accounts  | `domain_blocks.ts`            |
 | `reports`       | reports of accounts to moderators            | `reports.ts`                  |
 | `announcements` | announcements from admins to every user      | `announcements.ts`            |
 | `trends`        | trending hashtags, statuses and links        | `refresh.ts`, `scoring.ts`    |

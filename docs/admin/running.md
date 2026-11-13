@@ -4,15 +4,14 @@ How to look after a Verso instance once it's installed.
 
 ## Upgrading
 
+Verso is in early development and migrations can't be undone, so back up the database first.
+
 1. Install the new version.
 2. Run [`verso migrate`](commands.md#migrating).
 3. Restart every `verso serve`, `verso work` and `verso all` process.
 
 On NixOS, the service runs `verso migrate` before it starts, so switching to the new configuration
 is enough.
-
-Verso is in early development and migrations can't be undone, so back up the database before
-upgrading.
 
 ## Scaling
 
@@ -73,7 +72,7 @@ verso admin jobs retry --queue notify
 ```
 
 Lots of failed deliveries to one instance usually mean it's down, or blocks yours. Deliveries stop
-being retried after `[federation] delivery_hours`, 48 by default. Once an instance is back,
+being retried after [`delivery_hours`](configuring.md#federation). Once an instance is back,
 [`verso admin domains unpark`](commands.md#verso-admin-domains) sends what is waiting for it.
 
 ## Logs

@@ -76,12 +76,19 @@ export const markerRoutes: readonly Route[] = [
 ```
 
 Copy `summary`, `description` and the parameter descriptions from Mastodon's docs, and link them
-with `docs`. Add anything Verso does differently to the description.
+with `docs`, adding nothing. Say what Verso does differently in
+[Differences from Mastodon](../api/differences.md) and
+[the compatibility table](../api/compatibility.md).
 
 The scope in `auth` is the one Mastodon's docs give, and the permission says what kind of user may
 call the route. Only add a new permission to
-[`app/kernel/permissions.ts`](../../app/kernel/permissions.ts) if no existing one fits, and then add
-it to the `[permissions]` defaults and `docs/config.example.toml`.
+[`app/kernel/permissions.ts`](../../app/kernel/permissions.ts) if no existing one fits. Then:
+
+- map it to Mastodon's role flag in
+  [`app/accounts/permissions.ts`](../../app/accounts/permissions.ts);
+- add it to the table in [Configuring](../admin/configuring.md#permissions);
+- if every user should have it, add it to the `[permissions]` defaults and
+  `docs/config.example.toml`. Staff permissions, such as `reports`, aren't defaults.
 
 Query values are strings, so use `z.coerce` for numbers. Writes go in `ctx.transaction`, with an
 event for anything other modules should do, as in [Adding a side effect](adding-a-side-effect.md).

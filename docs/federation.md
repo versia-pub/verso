@@ -173,12 +173,10 @@ in [`app/federation/request.ts`](../app/federation/request.ts).
 
 ## Blocking instances
 
-Admins block instances in config, with `[federation] blocked_domains`, or with
-`verso admin domains block`. Blocking a domain blocks its subdomains too. Verso then refuses
-everything the instance sends, sends it nothing, and fetches nothing from it. With `silent_blocks`,
-Verso answers as if nothing were wrong, so the instance can't tell it's blocked. Every process
-caches the blocked domains and the instance key, and reloads both when either changes, on
-`federation.changed`. See [`app/moderation/domain_blocks.ts`](../app/moderation/domain_blocks.ts).
+[Moderating](admin/moderating.md#blocking-instances) says what a block does and how admins add one.
+Every process caches the blocked domains and the instance key, and reloads both when either changes,
+on `federation.changed`. See
+[`app/moderation/domain_blocks.ts`](../app/moderation/domain_blocks.ts).
 
 Users' own domain blocks are a different thing. They hide an instance from one user, and live in
 `graph`.

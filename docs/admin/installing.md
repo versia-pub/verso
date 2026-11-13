@@ -150,7 +150,7 @@ proxy isn't on the same machine, add its address to
 2. Create an admin role and give it to yourself:
 
    ```sh
-   verso admin roles create Admin --permissions roles,emojis,blocks --priority 100
+   verso admin roles create Admin --permissions roles,accounts,reports,federation,emojis,blocks --priority 100
    verso admin users grant-role yourname Admin
    ```
 

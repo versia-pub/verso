@@ -1,7 +1,8 @@
 # Moderating
 
 For now, Verso's moderation tools are blocking instances, suspending and silencing accounts,
-removing statuses, giving moderators roles, reading reports and managing custom emoji.
+removing statuses, giving moderators roles, reading reports, approving trends and managing custom
+emoji.
 
 ## Blocking instances
 
@@ -32,13 +33,6 @@ Users report accounts and statuses from their apps, and other instances send rep
 ones no one has dealt with, and mark them as dealt with, using
 [`verso admin reports`](commands.md#verso-admin-reports), or from a Mastodon app as a moderator with
 the `reports` permission.
-
-## Moderating from an app
-
-Moderators with the `accounts` permission can list accounts, and silence, suspend and delete them,
-from a Mastodon app. They can act only on remote accounts and on local users whose highest role is
-below their own. Acting on an account resolves the open reports about it, which needs the `reports`
-permission too. Only suspended accounts can be deleted, in the background, keeping a tombstone.
 
 ## Suspending accounts
 
@@ -93,6 +87,13 @@ Delete any status or boost by its id with
 [`verso admin statuses delete`](commands.md#verso-admin-statuses), as its author would. Boosts of it
 go too. A local status's media is deleted at once, and other instances are told it's gone. A remote
 status is only deleted here, and comes back if its instance sends it again.
+
+## Moderating from an app
+
+Moderators with the `accounts` permission can list accounts, and silence, suspend and delete them,
+from a Mastodon app. They can act only on remote accounts and on local users whose highest role is
+below their own. Acting on an account resolves the open reports about it, which needs the `reports`
+permission too. Only suspended accounts can be deleted, in the background, keeping a tombstone.
 
 ## Moderators
 

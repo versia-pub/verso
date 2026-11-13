@@ -13,7 +13,7 @@ writing apps, or wondering what an app can do with Verso:
 - [Moving accounts](migration.md) documents moving to Verso from another account, and away from it.
 
 Every instance also serves its own API reference at `/docs`, built from the OpenAPI document at
-`/openapi.json`. It shows what each method needs, and where Verso differs from Mastodon.
+`/openapi.json`. It shows what each method takes and returns.
 
 ## Logging in
 
