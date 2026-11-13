@@ -35,6 +35,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [Media](media.md): uploads, image processing with vips, file stores, cleanup
 - [Preview cards](previews.md): finding a status's link, fetching the page, storing the image
 - [Notifications and push](notifications.md): who is notified, grouping, markers, Web Push
+- [The web frontend](web.md): the web app, and the pages Verso renders for visitors
 - [Streaming](streaming.md): the WebSocket, streams, the dispatcher, limits
 - [Search](search.md): indexing words, status queries, accounts, hashtags, limits
 - [Configuration](configuration.md): reading the config, secrets, how settings reach the code

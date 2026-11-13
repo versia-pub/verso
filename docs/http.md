@@ -174,27 +174,5 @@ rate limited nor in the OpenAPI document.
 
 ## Web app
 
-The web app in [`packages/web`](../packages/web) is built into the binary. A web node reads it into
-memory at startup, from [`app/http/web.ts`](../app/http/web.ts). If it isn't built, the node logs a
-warning and serves only the API.
-
-Its files are served under `/_web/`, rate limited in a bucket of their own. Those under
-`/_web/immutable/` are cached for a year. A GET or HEAD that accepts HTML, for an address no route
-serves, gets the app's page, unless the address is under one of `reservedPaths`. Of those, only
-`/oauth/web-callback` gets the page. A test fails if a route is outside `reservedPaths`, so a new
-top-level path must be added there. The page's Content-Security-Policy allows its own files and the
-hash of its inline script.
-
-Some addresses get a page Verso renders itself, from [`app/web/`](../app/web/): an account's, at
-`/@alice` or `/@bob@b.example`, with its pinned and latest posts, a status's, at `/@alice/:id`, with
-its thread, a hashtag's, at `/tags/cats`, with its latest posts, and the front page, `/`, with the
-instance's description, rules and latest local posts. It is the web app's page with the view put
-into it, with OpenGraph tags for link previews, so the app still starts on top. It is rendered as an
-anonymous visitor sees it, whatever the request accepts. If anonymous visitors may not see it, the
-address gets the web app's page; if there is nothing there, the web app's page as a 404. A remote
-account Verso doesn't know isn't fetched. A status not by the account in its address, a boost, and
-one anonymous visitors may not see get a 404, including a suspended account's (Mastodon answers 403
-or 410 for those). A hashtag no status has used, nor anyone followed or featured, gets a 404. Posts
-on the hashtag and front pages come only from the feeds `[timelines_access]` lets anyone see.
-Mastodon renders no posts on these two pages, only their meta tags. Pages may show pictures from any
-`https:` address, as remote accounts' are stored by URL.
+The web app's files and page, and the pages Verso renders itself, are described in
+[The web frontend](web.md).
