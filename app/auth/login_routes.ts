@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Page, Redirect } from "../http/responses.ts";
-import { authorize, chooseIssuer, outOfBand, withParams } from "./authorize.ts";
+import { authorize, AuthorizeRequest, chooseIssuer, outOfBand, withParams } from "./authorize.ts";
 import { consentRequest, decide, finishLogin, type SendBack } from "./consent.ts";
 import { chooserPage, codePage, consentPage, errorPage } from "./pages.ts";
 
@@ -49,15 +49,7 @@ const getAuthorize = defineRoute({
         "authorization code if `urn:ietf:wg:oauth:2.0:oob` was requested. The authorization code " +
         "can be used while requesting a token to obtain access to user-level methods.",
     docs: "https://docs.joinmastodon.org/methods/oauth/#authorize",
-    query: z.object({
-        client_id: z.string().optional(),
-        redirect_uri: z.string().optional(),
-        response_type: z.string().optional(),
-        scope: z.string().optional(),
-        state: z.string().optional(),
-        code_challenge: z.string().optional(),
-        code_challenge_method: z.string().optional(),
-    }),
+    query: AuthorizeRequest,
     responses: { 200: Page, 302: Redirect, 400: Page, 502: Page },
     handler: async (ctx, { query }) => {
         const authorization = await authorize(ctx, query);

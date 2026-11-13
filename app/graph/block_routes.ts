@@ -10,7 +10,7 @@ import { domainBlockPage } from "./domain_block_queries.ts";
 import { blockDomainFor, unblockDomainFor } from "./domain_blocks.ts";
 import { mutePage } from "./mute_queries.ts";
 import { mute, unmute } from "./mutes.ts";
-import { relationship } from "./relationships.ts";
+import { relationshipReply } from "./relationships.ts";
 import { Account, MutedAccount, Relationship } from "@versia/client-api";
 import { canonicalizeDomain } from "@versia/protocol";
 import { z } from "zod";
@@ -34,7 +34,7 @@ const blockRoute = (action: "block" | "unblock") =>
             }
             if (action === "unblock") await unblock(ctx, viewer.accountId, params.id);
 
-            return { status: 200, body: await relationship(ctx, viewer, params.id) };
+            return await relationshipReply(ctx, viewer, params.id);
         },
     });
 
@@ -70,7 +70,7 @@ const muteRoute = defineRoute({
     handler: async (ctx, { params, body, viewer }) => {
         if (!await mute(ctx, viewer.accountId, params.id, body)) throw new NotFound();
 
-        return { status: 200, body: await relationship(ctx, viewer, params.id) };
+        return await relationshipReply(ctx, viewer, params.id);
     },
 });
 
@@ -157,7 +157,7 @@ const unmuteRoute = defineRoute({
     handler: async (ctx, { params, viewer }) => {
         await unmute(ctx, viewer.accountId, params.id);
 
-        return { status: 200, body: await relationship(ctx, viewer, params.id) };
+        return await relationshipReply(ctx, viewer, params.id);
     },
 });
 

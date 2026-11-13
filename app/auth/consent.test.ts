@@ -5,7 +5,7 @@ import type { AppRegistration } from "./apps.ts";
 import { createTestContext } from "../testing/context.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken } from "./secrets.ts";
-import { flowCookie, formTokenIn, registerTestApp, stubProvider } from "./testing.ts";
+import { flowCookie, formTokenIn, registerTestApp, startFlow, stubProvider } from "./testing.ts";
 
 const open = async (provider = stubProvider(), registration: Partial<AppRegistration> = {}) => {
     const test = await createTestContext({
@@ -30,14 +30,12 @@ const open = async (provider = stubProvider(), registration: Partial<AppRegistra
 
     /** Starts a flow and returns its cookie. */
     const start = async (redirectUri = "https://phanpy.example/back") => {
-        const params = new URLSearchParams({
+        const response = await startFlow(http, {
             client_id: app.client_id,
             redirect_uri: redirectUri,
-            response_type: "code",
             scope: "read write",
             state: "xyz",
         });
-        const response = await http.request(`/oauth/authorize?${params}`);
 
         return flowCookie(response);
     };

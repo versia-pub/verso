@@ -3,6 +3,7 @@ import { getUsername } from "../accounts/account_queries.ts";
 import { provision } from "../accounts/provision.ts";
 import type { Context } from "../kernel/context.ts";
 import { getApp } from "./app_queries.ts";
+import type { Expired } from "./authorize.ts";
 import {
     deleteFlow,
     deleteUnfinishedFlow,
@@ -58,7 +59,7 @@ const loginDenied = async (ctx: Context, flow: OAuthFlowsTable, description: str
 const issueCode = async (
     ctx: Context,
     flow: OAuthFlowsTable,
-): Promise<{ readonly result: "expired" } | SendBack> => {
+): Promise<Expired | SendBack> => {
     const code = randomToken();
     const expiresAt = new Date(ctx.clock.now().getTime() + codeLifetimeMs);
 
@@ -76,7 +77,7 @@ export const finishLogin = async (
     ctx: Context,
     browserSecret: string | undefined,
     callback: URL,
-): Promise<{ readonly result: "expired" } | { readonly result: "consent" } | SendBack> => {
+): Promise<Expired | { readonly result: "consent" } | SendBack> => {
     const flow = await findFlow(ctx, browserSecret);
     const provider = flow?.issuer ? ctx.identityProviders[flow.issuer] : undefined;
     if (!flow?.login || !provider || flow.account_id !== null) return { result: "expired" };
@@ -129,7 +130,7 @@ export const decide = async (
     browserSecret: string | undefined,
     formToken: string,
     allow: boolean,
-): Promise<{ readonly result: "expired" } | SendBack> => {
+): Promise<Expired | SendBack> => {
     const flow = await findFormFlow(ctx, browserSecret, formToken);
     if (!flow?.account_id || flow.code_hash !== null) return { result: "expired" };
 

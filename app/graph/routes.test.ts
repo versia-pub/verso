@@ -39,6 +39,36 @@ const open = async () => {
     return { ...test, request };
 };
 
+/**
+ * Asserts that each request is refused with 403 for alice, when the config lets users only
+ * `read:account`. Requests that aren't GET send `body` as JSON.
+ */
+const assertForbiddenByConfig = async (
+    requests: readonly (readonly [method: string, path: string])[],
+    body?: string,
+) => {
+    await using limited = await createTestContext();
+    await createLocalAccount(limited.ctx, "alice");
+    await createLocalAccount(limited.ctx, "bob");
+    const app = createTestApp(limited.ctx, graphRoutes, {
+        permissions: { anonymous: [], default: ["read:account"] },
+    });
+
+    for (const [method, path] of requests) {
+        const response = await app.request(path, {
+            method,
+            body: method === "GET" ? undefined : body,
+            headers: {
+                authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}`,
+                ...body === undefined ? {} : { "content-type": "application/json" },
+            },
+        });
+        await response.body?.cancel();
+
+        assertEquals(response.status, 403, path);
+    }
+};
+
 /** The relationship of an account no one follows. */
 const none = {
     following: false,
@@ -180,19 +210,7 @@ Deno.test("following needs a token that may write follows, and a role that may f
     );
     assertEquals((await test.request("POST", path, { scopes: ["write:follows"] })).status, 200);
 
-    await using limited = await createTestContext();
-    await createLocalAccount(limited.ctx, "alice");
-    await createLocalAccount(limited.ctx, "bob");
-    const app = createTestApp(limited.ctx, graphRoutes, {
-        permissions: { anonymous: [], default: ["read:account"] },
-    });
-    const response = await app.request(path, {
-        method: "POST",
-        headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
-    });
-    await response.body?.cancel();
-
-    assertEquals(response.status, 403);
+    await assertForbiddenByConfig([["POST", path]]);
 });
 
 Deno.test("relationships and follows aren't taken for accounts among every route", async () => {
@@ -555,24 +573,10 @@ Deno.test("blocking needs a token that may write blocks, and a role that may blo
         200,
     );
 
-    await using limited = await createTestContext();
-    await createLocalAccount(limited.ctx, "alice");
-    await createLocalAccount(limited.ctx, "bob");
-    const app = createTestApp(limited.ctx, graphRoutes, {
-        permissions: { anonymous: [], default: ["read:account"] },
-    });
-
-    for (
-        const [method, path] of [["POST", "/api/v1/accounts/bob/block"], ["GET", "/api/v1/blocks"]]
-    ) {
-        const response = await app.request(path, {
-            method,
-            headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
-        });
-        await response.body?.cancel();
-
-        assertEquals(response.status, 403, path);
-    }
+    await assertForbiddenByConfig([["POST", "/api/v1/accounts/bob/block"], [
+        "GET",
+        "/api/v1/blocks",
+    ]]);
 });
 
 Deno.test("the accounts the viewer blocks are listed, the latest blocked first, a page at a time", async () => {
@@ -663,28 +667,11 @@ Deno.test("muting needs a token that may write mutes, and a role that may mute",
         200,
     );
 
-    await using limited = await createTestContext();
-    await createLocalAccount(limited.ctx, "alice");
-    await createLocalAccount(limited.ctx, "bob");
-    const app = createTestApp(limited.ctx, graphRoutes, {
-        permissions: { anonymous: [], default: ["read:account"] },
-    });
-
-    for (
-        const [method, path] of [
-            ["POST", "/api/v1/accounts/bob/mute"],
-            ["POST", "/api/v1/accounts/bob/unmute"],
-            ["GET", "/api/v1/mutes"],
-        ]
-    ) {
-        const response = await app.request(path, {
-            method,
-            headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
-        });
-        await response.body?.cancel();
-
-        assertEquals(response.status, 403, path);
-    }
+    await assertForbiddenByConfig([
+        ["POST", "/api/v1/accounts/bob/mute"],
+        ["POST", "/api/v1/accounts/bob/unmute"],
+        ["GET", "/api/v1/mutes"],
+    ]);
 });
 
 Deno.test("the accounts the viewer mutes are listed, the latest muted first, with when each ends", async () => {
@@ -745,19 +732,7 @@ Deno.test("noting an account needs a token that may write accounts, and a role t
     assertEquals((await test.request("POST", path, { scopes: ["write:follows"] })).status, 403);
     assertEquals((await test.request("POST", path, { scopes: ["write:accounts"] })).status, 200);
 
-    await using limited = await createTestContext();
-    await createLocalAccount(limited.ctx, "alice");
-    await createLocalAccount(limited.ctx, "bob");
-    const app = createTestApp(limited.ctx, graphRoutes, {
-        permissions: { anonymous: [], default: ["read:account"] },
-    });
-    const response = await app.request(path, {
-        method: "POST",
-        headers: { authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}` },
-    });
-    await response.body?.cancel();
-
-    assertEquals(response.status, 403);
+    await assertForbiddenByConfig([["POST", path]]);
 });
 
 Deno.test("blocking a domain shows in the relationships with its accounts, and unblocking undoes it", async () => {
@@ -878,30 +853,10 @@ Deno.test("blocking domains needs a token that may write blocks, and a role that
         200,
     );
 
-    await using limited = await createTestContext();
-    await createLocalAccount(limited.ctx, "alice");
-    const app = createTestApp(limited.ctx, graphRoutes, {
-        permissions: { anonymous: [], default: ["read:account"] },
-    });
-
-    for (
-        const [method, path] of [
-            ["POST", "/api/v1/domain_blocks"],
-            ["DELETE", "/api/v1/domain_blocks"],
-            ["GET", "/api/v1/domain_blocks"],
-            ["GET", "/api/v1/domain_blocks/preview?domain=b.example"],
-        ]
-    ) {
-        const response = await app.request(path, {
-            method,
-            body: method === "GET" ? undefined : body,
-            headers: {
-                authorization: `Bearer ${await tokenFor(limited.ctx, "alice")}`,
-                "content-type": "application/json",
-            },
-        });
-        await response.body?.cancel();
-
-        assertEquals(response.status, 403, path);
-    }
+    await assertForbiddenByConfig([
+        ["POST", "/api/v1/domain_blocks"],
+        ["DELETE", "/api/v1/domain_blocks"],
+        ["GET", "/api/v1/domain_blocks"],
+        ["GET", "/api/v1/domain_blocks/preview?domain=b.example"],
+    ], body);
 });

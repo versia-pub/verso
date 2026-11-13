@@ -5,7 +5,7 @@ import { defaultSettings } from "../instances/testing.ts";
 import { createTestContext } from "../testing/context.ts";
 import { urlBuilder } from "../kernel/urls.ts";
 import { devLogin } from "./dev_login.ts";
-import { flowCookie, registerTestApp } from "./testing.ts";
+import { flowCookie, registerTestApp, startFlow } from "./testing.ts";
 
 /** A server set up as `main.ts` sets it up, with the dev login on unless `enabled` is false. */
 const open = async (enabled = true) => {
@@ -19,12 +19,10 @@ const open = async (enabled = true) => {
 
     /** Starts a login, and returns its cookie and the dev login page's URL. */
     const start = async () => {
-        const params = new URLSearchParams({
+        const response = await startFlow(verso, {
             client_id: app.client_id,
             redirect_uri: "https://phanpy.example/back",
-            response_type: "code",
         });
-        const response = await verso.request(`/oauth/authorize?${params}`);
         return {
             cookie: `__Host-oauth_flow=${flowCookie(response)}`,
             page: new URL(response.headers.get("location") ?? "https://none.invalid"),

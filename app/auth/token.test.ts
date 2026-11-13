@@ -87,7 +87,9 @@ const open = async (
         return { status: response.status, body: await response.json() };
     };
 
-    return { ...test, app, credentials, basic, token, allowedCode, exchange, revoke, post };
+    const tokens = () => test.ctx.db.selectFrom("access_tokens").selectAll().execute();
+
+    return { ...test, app, credentials, basic, token, allowedCode, exchange, revoke, post, tokens };
 };
 
 Deno.test("an app gets a token for itself, stored only as a hash", async () => {
@@ -98,7 +100,7 @@ Deno.test("an app gets a token for itself, stored only as a hash", async () => {
         grant_type: "client_credentials",
         scope: "write read",
     });
-    const [stored] = await test.ctx.db.selectFrom("access_tokens").selectAll().execute();
+    const [stored] = await test.tokens();
 
     assertEquals(status, 200);
     assertEquals(body.token_type, "Bearer");
@@ -185,7 +187,7 @@ Deno.test("a public app's code needs PKCE", async () => {
     const { status, body } = await test.exchange(await test.allowedCode());
 
     assertEquals([status, body.error], [400, "invalid_grant"]);
-    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+    assertEquals(await test.tokens(), []);
 });
 
 Deno.test("a public app can't get a token for itself", async () => {
@@ -197,7 +199,7 @@ Deno.test("a public app can't get a token for itself", async () => {
     });
 
     assertEquals([status, body.error], [400, "unauthorized_client"]);
-    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+    assertEquals(await test.tokens(), []);
 });
 
 Deno.test("a public app revokes its token with its id alone", async () => {
@@ -216,7 +218,7 @@ Deno.test("a public app revokes its token with its id alone", async () => {
 
     assertEquals(withSecret.status, 403);
     assertEquals([revoked.status, revoked.body], [200, {}]);
-    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+    assertEquals(await test.tokens(), []);
 });
 
 Deno.test("an unknown grant or scope is refused in OAuth's shape", async () => {
@@ -233,7 +235,7 @@ Deno.test("an unknown grant or scope is refused in OAuth's shape", async () => {
     assertEquals([password.status, password.body.error], [400, "unsupported_grant_type"]);
     assertEquals([missing.status, missing.body.error], [400, "invalid_request"]);
     assertEquals([push.status, push.body.error], [400, "invalid_scope"]);
-    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+    assertEquals(await test.tokens(), []);
 });
 
 Deno.test("a code becomes a token for the user who allowed it, once", async () => {
@@ -241,8 +243,7 @@ Deno.test("a code becomes a token for the user who allowed it, once", async () =
     const code = await test.allowedCode();
 
     const first = await test.exchange(code, { scope: "read" });
-    const tokens = () => test.ctx.db.selectFrom("access_tokens").selectAll().execute();
-    const [stored] = await tokens();
+    const [stored] = await test.tokens();
 
     assertEquals(first.status, 200);
     assertEquals(first.body.scope, "read write");
@@ -254,7 +255,7 @@ Deno.test("a code becomes a token for the user who allowed it, once", async () =
     // Someone else may have the code, so trying it again revokes the token it issued.
     const again = await test.exchange(code);
     assertEquals([again.status, again.body.error], [400, "invalid_grant"]);
-    assertEquals(await tokens(), []);
+    assertEquals(await test.tokens(), []);
     assertEquals(await test.ctx.db.selectFrom("oauth_flows").selectAll().execute(), []);
 });
 
@@ -309,7 +310,7 @@ Deno.test("a code is only for its app, its redirect URI and ten minutes, and one
     for (const { status, body } of refused) {
         assertEquals([status, body.error], [400, "invalid_grant"]);
     }
-    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+    assertEquals(await test.tokens(), []);
 });
 
 Deno.test("a code grant without a code is an invalid request", async () => {
@@ -333,7 +334,7 @@ Deno.test("an app revokes its token, which then stops working, and again is fine
 
     assertEquals([first.status, first.body], [200, {}]);
     assertEquals([again.status, again.body], [200, {}]);
-    assertEquals(await test.ctx.db.selectFrom("access_tokens").selectAll().execute(), []);
+    assertEquals(await test.tokens(), []);
 });
 
 Deno.test("only the app a token was issued to may revoke it", async () => {
@@ -360,7 +361,7 @@ Deno.test("only the app a token was issued to may revoke it", async () => {
     for (const { status, body } of refused) {
         assertEquals([status, body.error], [403, "unauthorized_client"]);
     }
-    assertEquals((await test.ctx.db.selectFrom("access_tokens").selectAll().execute()).length, 1);
+    assertEquals((await test.tokens()).length, 1);
 });
 
 Deno.test("an app that leaves out the token revokes nothing, as in Mastodon", async () => {
@@ -370,7 +371,7 @@ Deno.test("an app that leaves out the token revokes nothing, as in Mastodon", as
     const { status, body } = await test.revoke(test.credentials);
 
     assertEquals([status, body], [200, {}]);
-    assertEquals((await test.ctx.db.selectFrom("access_tokens").selectAll().execute()).length, 1);
+    assertEquals((await test.tokens()).length, 1);
 });
 
 Deno.test("input OAuth endpoints can't read is an invalid request, in OAuth's shape", async () => {
@@ -514,6 +515,6 @@ Deno.test("watchers that stopped don't hear their token is revoked", async () =>
     await test.ctx.db.deleteFrom("access_tokens").execute();
     const checking = watching(test, { gone: "gone" });
     checking.unwatch();
-    await test.ctx.db.selectFrom("access_tokens").selectAll().execute();
+    await test.tokens();
     assertEquals(checking.told(), []);
 });

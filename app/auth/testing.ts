@@ -1,4 +1,5 @@
 import type { Context } from "../kernel/context.ts";
+import type { App } from "../http/app.ts";
 import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import { type AppRegistration, registerApp } from "./apps.ts";
 import type { Scope } from "../kernel/scopes.ts";
@@ -80,3 +81,14 @@ export const flowCookie = (response: Response): string =>
 /** The form token on a chooser or consent page, or "" if there is none. */
 export const formTokenIn = (page: string): string =>
     /name="form_token" value="([^"]+)"/.exec(page)?.[1] ?? "";
+
+/** Asks `/oauth/authorize` to start a code flow, with `query` on top of `response_type=code`. */
+export const startFlow = (
+    http: App,
+    query: Record<string, string>,
+): Promise<Response> =>
+    Promise.resolve(
+        http.request(
+            `/oauth/authorize?${new URLSearchParams({ response_type: "code", ...query })}`,
+        ),
+    );

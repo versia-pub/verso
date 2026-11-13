@@ -1,13 +1,21 @@
 import { AccountMigration } from "@versia/client-api";
 import { z } from "zod";
 import { NotFound, ValidationFailed } from "../http/errors.ts";
-import { defineRoute, type Route } from "../http/route.ts";
+import { type Auth, defineRoute, type Route } from "../http/route.ts";
 import type { Context } from "../kernel/context.ts";
 import { type AccountRow, findAccount } from "./account_queries.ts";
 import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { cancelMove, type MoveRefusal, moveTo, previousOf, setPrevious } from "./migration.ts";
 import { referenceOf } from "./moves.ts";
 import { publicAccount } from "./public.ts";
+
+/** A user changing their own account's migration, which they may do after they moved. */
+const ownerWrite = {
+    require: "user",
+    scope: "write:accounts",
+    permission: "owner:account",
+    whileMoved: true,
+} as const satisfies Auth;
 
 /** The local user `accountId`'s migration, as its owner sees it. */
 const ownMigration = async (ctx: Context, accountId: string): Promise<AccountMigration> => {
@@ -105,12 +113,7 @@ export const migrationRoutes: readonly Route[] = [
         description:
             "Says the user moved from the account at `acct`, so that it can move to theirs.",
         tags: ["migration"],
-        auth: {
-            require: "user",
-            scope: "write:accounts",
-            permission: "owner:account",
-            whileMoved: true,
-        },
+        auth: ownerWrite,
         body: z.object({ acct: z.string() }),
         responses: { 200: AccountMigration },
         handler: async (ctx, { viewer, body }) => {
@@ -126,12 +129,7 @@ export const migrationRoutes: readonly Route[] = [
         summary: "Remove previous account",
         description: "Says the user moved from no account.",
         tags: ["migration"],
-        auth: {
-            require: "user",
-            scope: "write:accounts",
-            permission: "owner:account",
-            whileMoved: true,
-        },
+        auth: ownerWrite,
         responses: { 200: AccountMigration },
         handler: async (ctx, { viewer }) => {
             await setPrevious(ctx, viewer.accountId, undefined);
@@ -146,12 +144,7 @@ export const migrationRoutes: readonly Route[] = [
         description:
             "Moves the user to the account at `acct`, which must say it moved from theirs. Their followers follow it instead.",
         tags: ["migration"],
-        auth: {
-            require: "user",
-            scope: "write:accounts",
-            permission: "owner:account",
-            whileMoved: true,
-        },
+        auth: ownerWrite,
         body: z.object({ acct: z.string() }),
         responses: { 200: AccountMigration },
         handler: async (ctx, { viewer, body }) => {
@@ -169,12 +162,7 @@ export const migrationRoutes: readonly Route[] = [
         description:
             "Says the user no longer moved. Their followers that moved stay where they are, and they can't move again until a month after they last did.",
         tags: ["migration"],
-        auth: {
-            require: "user",
-            scope: "write:accounts",
-            permission: "owner:account",
-            whileMoved: true,
-        },
+        auth: ownerWrite,
         responses: { 200: AccountMigration },
         handler: async (ctx, { viewer }) => {
             await cancelMove(ctx, viewer.accountId);

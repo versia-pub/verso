@@ -72,5 +72,15 @@ export const relationship = async (
     return found;
 };
 
+/** The 200 response of a route that changes the viewer's relationship with one account. */
+export const relationshipReply = async (
+    ctx: Context,
+    viewer: UserViewer,
+    id: string,
+): Promise<{ readonly status: 200; readonly body: Relationship }> => ({
+    status: 200,
+    body: await relationship(ctx, viewer, id),
+});
+
 /** A viewer acting for a user. */
 export type UserViewer = RouteViewer & { readonly accountId: string };

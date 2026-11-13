@@ -8,7 +8,7 @@ import { Paged } from "../http/responses.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { endorsementPage } from "./endorsement_queries.ts";
 import { endorse, unendorse } from "./endorsements.ts";
-import { relationship } from "./relationships.ts";
+import { relationshipReply } from "./relationships.ts";
 
 /**
  * Features an account on the viewer's profile, or stops featuring it, at the path Mastodon names
@@ -46,7 +46,7 @@ const endorseRoute = (action: "pin" | "unpin", name: string) =>
                 throw new NotFound();
             }
 
-            return { status: 200, body: await relationship(ctx, viewer, params.id) };
+            return await relationshipReply(ctx, viewer, params.id);
         },
     });
 

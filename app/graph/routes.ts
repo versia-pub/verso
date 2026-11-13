@@ -13,7 +13,7 @@ import { familiarFollows, followPage, type FollowSide } from "./follow_queries.t
 import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
 import { blockRoutes } from "./block_routes.ts";
 import { endorsementRoutes } from "./endorsement_routes.ts";
-import { relationship, relationships } from "./relationships.ts";
+import { relationshipReply, relationships } from "./relationships.ts";
 
 /**
  * How a follower wants to see an account. Omitted options stay as they were, and an empty list of
@@ -95,7 +95,7 @@ const answerRequest = (answer: "authorize" | "reject") =>
                 : await rejectFollow(ctx, params.id, viewer.accountId, false);
             if (!answered) throw new NotFound();
 
-            return { status: 200, body: await relationship(ctx, viewer, params.id) };
+            return await relationshipReply(ctx, viewer, params.id);
         },
     });
 
@@ -127,7 +127,7 @@ const noteRoute = defineRoute({
             throw new NotFound();
         }
 
-        return { status: 200, body: await relationship(ctx, viewer, params.id) };
+        return await relationshipReply(ctx, viewer, params.id);
     },
 });
 
@@ -256,7 +256,7 @@ export const graphRoutes: readonly Route[] = [
             if (result === "blocked") throw new NotPermitted("Its instance is blocked");
             if (result === "moved") throw new NotPermitted("It moved to another account");
 
-            return { status: 200, body: await relationship(ctx, viewer, params.id) };
+            return await relationshipReply(ctx, viewer, params.id);
         },
     }),
     defineRoute({
@@ -271,7 +271,7 @@ export const graphRoutes: readonly Route[] = [
         responses: { 200: Relationship },
         handler: async (ctx, { params, viewer }) => {
             await unfollow(ctx, viewer.accountId, params.id);
-            return { status: 200, body: await relationship(ctx, viewer, params.id) };
+            return await relationshipReply(ctx, viewer, params.id);
         },
     }),
     defineRoute({
@@ -286,7 +286,7 @@ export const graphRoutes: readonly Route[] = [
         responses: { 200: Relationship },
         handler: async (ctx, { params, viewer }) => {
             await rejectFollow(ctx, params.id, viewer.accountId, true);
-            return { status: 200, body: await relationship(ctx, viewer, params.id) };
+            return await relationshipReply(ctx, viewer, params.id);
         },
     }),
 ];

@@ -6,7 +6,7 @@ import { createTestContext } from "../testing/context.ts";
 import { findAppByClientId, updateApp } from "./app_queries.ts";
 import { authRoutes } from "./routes.ts";
 import { hashToken, randomToken } from "./secrets.ts";
-import { flowCookie, registerTestApp, stubProvider } from "./testing.ts";
+import { flowCookie, registerTestApp, startFlow, stubProvider } from "./testing.ts";
 import { ensureWebApp, webClientId } from "./web_app.ts";
 
 const open = async () => {
@@ -21,16 +21,14 @@ const open = async () => {
     /** Logs alice in to an app with PKCE, returning where the callback sends the browser. */
     const logIn = async (clientId: string, redirectUri: string) => {
         const verifier = randomToken();
-        const params = new URLSearchParams({
+        const start = await startFlow(http, {
             client_id: clientId,
             redirect_uri: redirectUri,
-            response_type: "code",
             scope: "read write",
             state: "xyz",
             code_challenge: await hashToken(verifier),
             code_challenge_method: "S256",
         });
-        const start = await http.request(`/oauth/authorize?${params}`);
         const cookie = flowCookie(start);
         const back = await http.request("/oauth/callback?code=good&state=s", {
             headers: { cookie: `__Host-oauth_flow=${cookie}` },

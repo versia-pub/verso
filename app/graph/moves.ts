@@ -37,6 +37,25 @@ const MoveJob = z.object({
 });
 
 /**
+ * Fetches rows a batch at a time, after the cursor of the last one of the batch before, and runs
+ * `each` on every batch in a transaction of its own, until there are no more rows.
+ */
+const inBatches = async <Row>(
+    ctx: Context,
+    fetch: (after: string) => Promise<readonly Row[]>,
+    cursorOf: (row: Row) => string,
+    each: (tx: Context, rows: readonly Row[]) => Promise<void>,
+): Promise<void> => {
+    for (let after = "";;) {
+        const rows = await fetch(after);
+        if (rows.length === 0) return;
+        after = cursorOf(rows[rows.length - 1]);
+
+        await ctx.transaction((tx) => each(tx, rows));
+    }
+};
+
+/**
  * Moves the local followers of `from` to `to`, with the same options, and puts `to` in the lists
  * that have `from` because of the follow, then has them unfollow `from`. A follower that can't
  * follow `to`, or blocks it, keeps following `from`.
@@ -45,12 +64,11 @@ const moveFollows: Step = async (ctx, from, to) => {
     const target = ctx.db.selectFrom("accounts").select("id as account_id")
         .where("id", "=", to.id);
 
-    for (let after = "";;) {
-        const follows = await localFollowsOf(ctx, from.id, after, batchSize);
-        if (follows.length === 0) return;
-        after = follows[follows.length - 1].follower_id;
-
-        await ctx.transaction(async (tx) => {
+    await inBatches(
+        ctx,
+        (after) => localFollowsOf(ctx, from.id, after, batchSize),
+        (row) => row.follower_id,
+        async (tx, follows) => {
             const ids = follows.map((row) => row.follower_id);
             const blocking = await blockingAny(tx, ids, target);
 
@@ -66,8 +84,8 @@ const moveFollows: Step = async (ctx, from, to) => {
                 await copyListAccounts(tx, old.id, { accountId: to.id, followId: moved.id });
                 await unfollow(tx, old.follower_id, from.id);
             }
-        });
-    }
+        },
+    );
 };
 
 /**
@@ -98,15 +116,14 @@ const addNote = async (
 const copyNotes: Step = async (ctx, from, to) => {
     const text = `This user moved from ${acctOf(from)}, here were your previous notes about them:`;
 
-    for (let after = "";;) {
-        const notes = await accountNotesAbout(ctx, from.id, after, batchSize);
-        if (notes.length === 0) return;
-        after = notes[notes.length - 1].account_id;
-
-        await ctx.transaction(async (tx) => {
+    await inBatches(
+        ctx,
+        (after) => accountNotesAbout(ctx, from.id, after, batchSize),
+        (note) => note.account_id,
+        async (tx, notes) => {
             for (const note of notes) await addNote(tx, note.account_id, to, text, note.comment);
-        });
-    }
+        },
+    );
 };
 
 /** Which of `accountIds` follow, or asked to follow, `from` or `to`. */
@@ -132,12 +149,11 @@ const followingEither = async (
 const moveBlocks: Step = async (ctx, from, to) => {
     const text = `This user moved from ${acctOf(from)}, which you had blocked.`;
 
-    for (let after = "";;) {
-        const ids = await blockerIdsAfter(ctx, from.id, after, batchSize);
-        if (ids.length === 0) return;
-        after = ids[ids.length - 1];
-
-        await ctx.transaction(async (tx) => {
+    await inBatches(
+        ctx,
+        (after) => blockerIdsAfter(ctx, from.id, after, batchSize),
+        (id) => id,
+        async (tx, ids) => {
             const following = await followingEither(tx, ids, from, to);
 
             for (const id of ids.filter((id) => !following.has(id))) {
@@ -146,8 +162,8 @@ const moveBlocks: Step = async (ctx, from, to) => {
                     await setAccountNote(tx, id, to.id, text);
                 }
             }
-        });
-    }
+        },
+    );
 };
 
 /**
@@ -157,12 +173,11 @@ const moveBlocks: Step = async (ctx, from, to) => {
 const moveMutes: Step = async (ctx, from, to) => {
     const text = `This user moved from ${acctOf(from)}, which you had muted.`;
 
-    for (let after = "";;) {
-        const mutes = await mutesAfter(ctx, from.id, after, batchSize);
-        if (mutes.length === 0) return;
-        after = mutes[mutes.length - 1].account_id;
-
-        await ctx.transaction(async (tx) => {
+    await inBatches(
+        ctx,
+        (after) => mutesAfter(ctx, from.id, after, batchSize),
+        (mute) => mute.account_id,
+        async (tx, mutes) => {
             const ids = mutes.map((mute) => mute.account_id);
             const following = await followingEither(tx, ids, from, to);
 
@@ -178,8 +193,8 @@ const moveMutes: Step = async (ctx, from, to) => {
                     await setAccountNote(tx, id, to.id, text);
                 }
             }
-        });
-    }
+        },
+    );
 };
 
 /** The `acct` of `account`: its `username@domain`, or only its username if it is local. */

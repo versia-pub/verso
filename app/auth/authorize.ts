@@ -1,4 +1,5 @@
 import { getLogger } from "@logtape/logtape";
+import { z } from "zod";
 import type { Context } from "../kernel/context.ts";
 import type { IdentityProvider, Issuer } from "../kernel/identity.ts";
 import { findAppByClientId } from "./app_queries.ts";
@@ -22,18 +23,23 @@ const s256Challenge = /^[A-Za-z0-9_-]{43}$/;
  * The query of `/oauth/authorize`.
  * @see https://docs.joinmastodon.org/methods/oauth/#authorize
  */
-export type AuthorizeRequest = {
-    readonly client_id?: string;
-    readonly redirect_uri?: string;
-    readonly response_type?: string;
-    readonly scope?: string;
-    readonly state?: string;
-    readonly code_challenge?: string;
-    readonly code_challenge_method?: string;
-};
+export const AuthorizeRequest = z.object({
+    client_id: z.string().optional(),
+    redirect_uri: z.string().optional(),
+    response_type: z.string().optional(),
+    scope: z.string().optional(),
+    state: z.string().optional(),
+    code_challenge: z.string().optional(),
+    code_challenge_method: z.string().optional(),
+});
+
+export type AuthorizeRequest = Readonly<z.infer<typeof AuthorizeRequest>>;
 
 /** The issuer, by name, couldn't be reached to start the login. */
 export type IssuerUnreachable = { readonly result: "unreachable"; readonly issuer: string };
+
+/** The browser's flow is gone, finished or not for this step, so the user must start over. */
+export type Expired = { readonly result: "expired" };
 
 export type Authorization =
     | IssuerUnreachable
@@ -211,12 +217,7 @@ export const chooseIssuer = async (
     browserSecret: string | undefined,
     formToken: string,
     issuerUrl: string,
-): Promise<
-    { readonly result: "expired" } | IssuerUnreachable | {
-        readonly result: "login";
-        readonly url: URL;
-    }
-> => {
+): Promise<Expired | IssuerUnreachable | { readonly result: "login"; readonly url: URL }> => {
     const provider = Object.hasOwn(ctx.identityProviders, issuerUrl)
         ? ctx.identityProviders[issuerUrl]
         : undefined;

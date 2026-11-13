@@ -441,33 +441,33 @@ export const isSuspended = async (
         undefined;
 };
 
-/** Whether Verso has the local user `id`, which it doesn't once they are removed. */
-export const hasLocalUser = async (ctx: Context, id: string): Promise<boolean> =>
+/** Whether the account `id` has `column` null (`"is"`) or set (`"is not"`). */
+const accountHas = async (
+    ctx: Context,
+    id: string,
+    column: "instance_id" | "suspended_at" | "silenced_at" | "deleted_at",
+    nullness: "is" | "is not",
+): Promise<boolean> =>
     await ctx.db.selectFrom("accounts").select("id")
-        .where("instance_id", "is", null)
         .where("id", "=", id)
+        .where(column, nullness, null)
         .executeTakeFirst() !== undefined;
+
+/** Whether Verso has the local user `id`, which it doesn't once they are removed. */
+export const hasLocalUser = (ctx: Context, id: string): Promise<boolean> =>
+    accountHas(ctx, id, "instance_id", "is");
 
 /** Whether the account `accountId`, local or remote, is suspended. */
-export const isAccountSuspended = async (ctx: Context, accountId: string): Promise<boolean> =>
-    await ctx.db.selectFrom("accounts").select("id")
-        .where("id", "=", accountId)
-        .where("suspended_at", "is not", null)
-        .executeTakeFirst() !== undefined;
+export const isAccountSuspended = (ctx: Context, accountId: string): Promise<boolean> =>
+    accountHas(ctx, accountId, "suspended_at", "is not");
 
 /** Whether the account `accountId`, local or remote, is silenced. */
-export const isAccountSilenced = async (ctx: Context, accountId: string): Promise<boolean> =>
-    await ctx.db.selectFrom("accounts").select("id")
-        .where("id", "=", accountId)
-        .where("silenced_at", "is not", null)
-        .executeTakeFirst() !== undefined;
+export const isAccountSilenced = (ctx: Context, accountId: string): Promise<boolean> =>
+    accountHas(ctx, accountId, "silenced_at", "is not");
 
 /** Whether the local account `accountId` was deleted and kept empty. */
-export const isAccountDeleted = async (ctx: Context, accountId: string): Promise<boolean> =>
-    await ctx.db.selectFrom("accounts").select("id")
-        .where("id", "=", accountId)
-        .where("deleted_at", "is not", null)
-        .executeTakeFirst() !== undefined;
+export const isAccountDeleted = (ctx: Context, accountId: string): Promise<boolean> =>
+    accountHas(ctx, accountId, "deleted_at", "is not");
 
 /** Columns of an account to update. */
 export type AccountChanges = Updateable<AccountsTable>;

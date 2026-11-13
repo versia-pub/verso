@@ -18,6 +18,7 @@ const maxUsernameLength = 30;
 /** Mastodon's limit for display names, in characters. */
 const maxDisplayNameLength = 30;
 
+/** The account a login belongs to, and whether it was just created, or why none could be made. */
 export type Provisioned =
     | { readonly ok: true; readonly accountId: string; readonly created: boolean }
     | { readonly ok: false; readonly reason: "registration-closed" };
@@ -43,6 +44,7 @@ export const displayNameFrom = (claim: unknown): string =>
         ? Array.from(claim.trim()).slice(0, maxDisplayNameLength).join("").trim()
         : "";
 
+/** Whether an issuer's registration policy lets a login without an account get one. */
 const mayRegister = (registration: Issuer["registration"], claims: Claims): boolean => {
     if (registration === "open") return true;
     if (registration === "closed") return false;
