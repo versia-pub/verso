@@ -65,9 +65,11 @@ Deno.test("a user that moved may only call the migration, settings and streaming
         "GET /api/v1/preferences",
         "GET /api/v1/profile",
         "GET /api/v1/streaming",
+        "GET /api/v1/web_preferences",
         "PATCH /api/v1/accounts/update_credentials",
         "PATCH /api/v1/profile",
         "POST /api/v1/migration/move",
         "PUT /api/v1/migration/previous",
+        "PUT /api/v1/web_preferences",
     ]);
 });

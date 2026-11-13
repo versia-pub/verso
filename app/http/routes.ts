@@ -3,6 +3,7 @@ import { roleRoutes } from "../accounts/role_routes.ts";
 import { directoryRoutes } from "../accounts/directory.ts";
 import { accountRoutes } from "../accounts/routes.ts";
 import { webfingerRoutes } from "../accounts/webfinger.ts";
+import { webPreferenceRoutes } from "../accounts/web_preference_routes.ts";
 import { authRoutes } from "../auth/routes.ts";
 import { conversationRoutes } from "../conversations/routes.ts";
 import { emojiRoutes } from "../emojis/routes.ts";
@@ -88,6 +89,7 @@ export const routes = (settings: AboutSettings): readonly Route[] => {
         ...emojiRoutes(settings.media, settings.limits),
         ...roleRoutes,
         ...migrationRoutes,
+        ...webPreferenceRoutes,
         ...webfingerRoutes,
         ...entityRoutes(registry),
         inboxRoute(registry),

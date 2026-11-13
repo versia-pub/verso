@@ -8,6 +8,7 @@ import { cors } from "@hono/hono/cors";
 
 /** Headers scripts on other sites may read, besides the few browsers always allow. */
 const exposed = [
+    "ETag",
     "Link",
     "Mastodon-Async-Refresh",
     "RateLimit-Limit",

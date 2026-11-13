@@ -11,8 +11,17 @@ import { Relationship } from "../relationship.ts";
 import { List } from "../list.ts";
 import { Status } from "../status.ts";
 import { FeaturedTag } from "../tag.ts";
-import { type CallOptions, type Http, path } from "./http.ts";
+import { type CallOptions, type Http, parse, path } from "./http.ts";
 import { Page, type PageQuery } from "./pages.ts";
+
+/** Settings for Verso's web app, which only it reads. */
+const Settings = z.record(z.string(), z.unknown());
+
+/** The viewer's settings for Verso's web app, and the ETag of this version of them. */
+export type WebPreferences = {
+    readonly data: Record<string, unknown>;
+    readonly etag: string;
+};
 
 /** Which of an account's statuses to list. */
 export type AccountStatusesQuery = PageQuery & {
@@ -132,6 +141,36 @@ export class AccountMethods {
      */
     preferences(options?: CallOptions): Promise<Preferences> {
         return this.http.json(Preferences, "GET", "/api/v1/preferences", options);
+    }
+
+    /**
+     * The viewer's settings for Verso's web app, or an empty object if it saved none, with the
+     * ETag of this version of them.
+     */
+    async webPreferences(options?: CallOptions): Promise<WebPreferences> {
+        const response = await this.http.send("GET", "/api/v1/web_preferences", options);
+
+        return { data: await parse(Settings, response), etag: response.headers.get("etag") ?? "" };
+    }
+
+    /**
+     * Replaces the viewer's settings for Verso's web app. With `ifMatch`, an ETag from
+     * {@link webPreferences}, they are only replaced if no one changed them since, and an
+     * `ApiError` with status 412 is thrown if someone did. Returns the new ETag.
+     */
+    async saveWebPreferences(
+        data: Readonly<Record<string, unknown>>,
+        options: CallOptions & { readonly ifMatch?: string } = {},
+    ): Promise<string> {
+        const { ifMatch, ...rest } = options;
+        const response = await this.http.send("PUT", "/api/v1/web_preferences", {
+            ...rest,
+            json: data,
+            headers: ifMatch === undefined ? undefined : { "if-match": ifMatch },
+        });
+        await response.body?.cancel();
+
+        return response.headers.get("etag") ?? "";
     }
 
     /**

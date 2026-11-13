@@ -404,6 +404,7 @@ const ownColumns = [
     "tag_follows.account_id",
     "thread_mutes.account_id",
     "trending_statuses.account_id",
+    "web_preferences.account_id",
 ];
 
 Deno.test({

@@ -41,6 +41,8 @@ export type RateLimit = {
 /** What a request sends, beside its method and path. */
 export type RequestOptions = CallOptions & {
     readonly query?: Query;
+    /** Headers to send besides the ones every request has, by name. */
+    readonly headers?: Readonly<Record<string, string>>;
     /** Sent as JSON. */
     readonly json?: unknown;
     /** Sent as `multipart/form-data`. */
@@ -174,6 +176,7 @@ export class Http {
 
         const headers = new Headers({ accept: "application/json" });
         if (this.token !== undefined) headers.set("authorization", `Bearer ${this.token}`);
+        for (const [name, value] of Object.entries(options.headers ?? {})) headers.set(name, value);
 
         let body: BodyInit | undefined;
         if (options.json !== undefined) {

@@ -22,6 +22,7 @@ start with [CONTRIBUTING.md](../CONTRIBUTING.md).
 - [Custom emoji](api/emojis.md): adding, changing and deleting custom emoji
 - [Reactions](api/reactions.md): reacting to statuses, and reaction notifications
 - [Moving accounts](api/migration.md): moving to Verso from another account, and away from it
+- [Web app settings](api/web_preferences.md): saving the web app's settings for each user
 
 ## How Verso works
 

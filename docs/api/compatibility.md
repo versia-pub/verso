@@ -293,3 +293,4 @@ Verso also has:
 - reactions to statuses, with `reactions` on each status and `/api/v1/statuses/:id/react/:name`,
   from glitch-soc, and `/api/v1/statuses/:id/reactions`, from Versia Server
 - moving accounts, with `/api/v1/migration`
+- the web app's settings for each user, with [`/api/v1/web_preferences`](web_preferences.md)

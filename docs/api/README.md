@@ -11,6 +11,7 @@ writing apps, or wondering what an app can do with Verso:
 - [Custom emoji](emojis.md) documents managing custom emoji.
 - [Reactions](reactions.md) documents emoji reactions to statuses.
 - [Moving accounts](migration.md) documents moving to Verso from another account, and away from it.
+- [Web app settings](web_preferences.md) documents saving the web app's settings for each user.
 
 Every instance also serves its own API reference at `/docs`, built from the OpenAPI document at
 `/openapi.json`. It shows what each method takes and returns.

@@ -68,8 +68,8 @@ moved itself, or if the user already moved to it, or moved less than 30 days ago
 
 Once moved, the user gets a `403` with `Your login is currently disabled` from every method that
 needs a user, except these, streaming, and the account and profile settings: `verify_credentials`,
-`update_credentials`, `/api/v1/profile` and `/api/v1/preferences`. Mastodon refuses the settings
-methods too.
+`update_credentials`, `/api/v1/profile`, `/api/v1/preferences` and `/api/v1/web_preferences`.
+Mastodon refuses the settings methods too.
 
 ### `DELETE /api/v1/migration/move`
 

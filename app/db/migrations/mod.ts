@@ -102,6 +102,7 @@ import { accountMoves } from "./0100_account_moves.ts";
 import { publicApps } from "./0101_public_apps.ts";
 import { reportResolvers } from "./0102_report_resolvers.ts";
 import { domainBlockIds } from "./0103_domain_block_ids.ts";
+import { webPreferences } from "./0104_web_preferences.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -211,4 +212,5 @@ export const migrations: Record<string, Migration> = {
     "0101_public_apps": publicApps,
     "0102_report_resolvers": reportResolvers,
     "0103_domain_block_ids": domainBlockIds,
+    "0104_web_preferences": webPreferences,
 };

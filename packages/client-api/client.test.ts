@@ -220,6 +220,33 @@ Deno.test("a profile change without pictures is sent as JSON", async () => {
     assertEquals(await sent[0].json(), { display_name: "Alice" });
 });
 
+Deno.test("web app settings come with their ETag, which a save may send as If-Match", async () => {
+    const { client, sent } = fake((request) =>
+        json(request.method === "GET" ? { theme: "dark" } : {}, {
+            headers: { etag: request.method === "GET" ? '"3"' : '"4"' },
+        })
+    );
+
+    assertEquals(await client.accounts.webPreferences(), { data: { theme: "dark" }, etag: '"3"' });
+    assertEquals(
+        await client.accounts.saveWebPreferences({ theme: "light" }, { ifMatch: '"3"' }),
+        '"4"',
+    );
+    await client.accounts.saveWebPreferences({});
+
+    assertEquals(sent[1].headers.get("if-match"), '"3"');
+    assertEquals(await sent[1].json(), { theme: "light" });
+    assertEquals(sent[2].headers.get("if-match"), null);
+});
+
+Deno.test("saving web app settings passes the signal on", async () => {
+    const { client, sent } = fake(() => json({}));
+
+    await client.accounts.saveWebPreferences({}, { signal: AbortSignal.abort() });
+
+    assertEquals(sent[0].signal.aborted, true);
+});
+
 Deno.test("relationships ask for each id Rails-style", async () => {
     const { client, sent } = fake(() => json([]));
 

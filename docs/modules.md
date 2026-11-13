@@ -52,7 +52,7 @@ their own.
 
 | Table                                                                                   | Module          |
 | --------------------------------------------------------------------------------------- | --------------- |
-| `accounts`, `identities`, `roles`, `account_roles`                                      | `accounts`      |
+| `accounts`, `identities`, `roles`, `account_roles`, `web_preferences`                   | `accounts`      |
 | `apps`, `oauth_flows`, `access_tokens`                                                  | `auth`          |
 | `notes`, `note_mentions`, `note_tags`, `note_versions`, `note_pins`                     | `notes`         |
 | `remote_note_totals`, `reply_backfills`, `async_refreshes`, `bookmarks`, `thread_mutes` | `notes`         |

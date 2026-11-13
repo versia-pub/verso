@@ -53,6 +53,7 @@ export type {
     MuteOptions,
     ProfileChanges,
     ProfileUpdate,
+    WebPreferences,
 } from "./client/accounts.ts";
 export type {
     AdminAccountAction,

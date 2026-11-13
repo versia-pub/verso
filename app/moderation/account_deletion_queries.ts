@@ -11,6 +11,7 @@ export const purgedColumns = [
     ["oauth_flows", "account_id"],
     ["push_subscriptions", "account_id"],
     ["markers", "account_id"],
+    ["web_preferences", "account_id"],
     ["account_roles", "account_id"],
     ["account_domain_blocks", "account_id"],
     ["account_emojis", "account_id"],

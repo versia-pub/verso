@@ -79,6 +79,13 @@ export class ContentTooLarge extends HttpError {
     }
 }
 
+/** A write whose `If-Match` names a version that is no longer the current one. */
+export class PreconditionFailed extends HttpError {
+    constructor() {
+        super(412, "Precondition failed", "Something else changed this since it was read");
+    }
+}
+
 /** Over the rate limit. The response's headers say when to come back. */
 export class TooManyRequests extends HttpError {
     constructor() {

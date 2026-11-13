@@ -144,3 +144,13 @@ export type AccountRolesTable = {
     issuer: string | null;
     created_at: Date;
 };
+
+/** A local user's settings for the web app, which only the app reads. */
+export type WebPreferencesTable = {
+    account_id: string;
+    /** A JSON object, as the app last wrote it. */
+    data: string;
+    /** How many times it was written, which its ETag is. */
+    version: number;
+    updated_at: Date;
+};

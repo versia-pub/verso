@@ -7,6 +7,7 @@ import type {
     AccountsTable,
     IdentitiesTable,
     RolesTable,
+    WebPreferencesTable,
 } from "../accounts/tables.ts";
 import type {
     AnnouncementDismissalsTable,
@@ -147,6 +148,7 @@ export type Database = {
     trending_statuses: TrendingStatusesTable;
     trending_tags: TrendingTagsTable;
     vapid_keys: VapidKeysTable;
+    web_preferences: WebPreferencesTable;
 };
 
 /** Kysely on any of the dialects, set up the same way. Tests use it to open PGlite. */
