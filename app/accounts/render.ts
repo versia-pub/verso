@@ -29,7 +29,7 @@ const everyone = { id: "-99", name: "", color: "", highlighted: false };
  * The account's highest role, as Mastodon gives each user one, with everything the account may do,
  * from all its roles and what every user may do.
  */
-const renderRole = (roles: readonly RoleRow[], permissions: Iterable<Permission>): Role => {
+export const renderRole = (roles: readonly RoleRow[], permissions: Iterable<Permission>): Role => {
     const [highest] = roles;
     const role = highest
         ? { id: highest.id, name: highest.name, color: highest.color, highlighted: highest.visible }

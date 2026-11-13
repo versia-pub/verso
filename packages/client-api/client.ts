@@ -41,6 +41,7 @@ import { TimelineMethods } from "./client/timelines.ts";
 import { ConversationMethods } from "./client/conversations.ts";
 import { PollMethods } from "./client/polls.ts";
 import { ReportMethods } from "./client/reports.ts";
+import { AdminMethods } from "./client/admin.ts";
 import { AnnouncementMethods } from "./client/announcements.ts";
 import { ScheduledStatusMethods } from "./client/scheduled_statuses.ts";
 
@@ -53,6 +54,7 @@ export type {
     ProfileChanges,
     ProfileUpdate,
 } from "./client/accounts.ts";
+export type { AdminReportsQuery } from "./client/admin.ts";
 export type { EmojiChanges, EmojiDraft } from "./client/emojis.ts";
 export type { FilterInput, KeywordAttributes, KeywordInput } from "./client/filters.ts";
 export { ApiError, type CallOptions, type RateLimit, UnexpectedResponse } from "./client/http.ts";
@@ -177,6 +179,8 @@ export class Client {
     readonly reports: ReportMethods;
     /** The announcements the instance's admins make. */
     readonly announcements: AnnouncementMethods;
+    /** Moderating the instance, as the viewer's permissions allow. */
+    readonly admin: AdminMethods;
 
     /** A client for the instance at `url`, such as `https://verso.example`. */
     constructor(url: string | URL, options: ClientOptions = {}) {
@@ -216,6 +220,7 @@ export class Client {
         this.media = new MediaMethods(this.#http);
         this.reports = new ReportMethods(this.#http);
         this.announcements = new AnnouncementMethods(this.#http);
+        this.admin = new AdminMethods(this.#http);
     }
 
     /** The instance's URL. */

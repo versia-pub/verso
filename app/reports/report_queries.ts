@@ -1,4 +1,5 @@
 import type { Selectable } from "kysely";
+import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
 import type { ReportsTable } from "./tables.ts";
 
@@ -45,4 +46,62 @@ export const resolveReport = async (ctx: Context, id: string, at: Date): Promise
         await ctx.db.updateTable("reports").set({ resolved_at: at }).where("id", "=", id).execute();
     }
     return true;
+};
+
+/** Which reports a moderator lists: by whether they are resolved, who filed them, and of whom. */
+export type ReportFilter = {
+    readonly state: "unresolved" | "resolved" | "all";
+    readonly accountId?: string;
+    readonly targetAccountId?: string;
+};
+
+/** A page of the reports that `filter` matches, the latest filed first. */
+export const reportPage = (
+    ctx: Context,
+    filter: ReportFilter,
+    page: PageBounds,
+): Promise<ReportRow[]> => {
+    let query = ctx.db.selectFrom("reports").selectAll();
+    if (filter.state === "unresolved") query = query.where("resolved_at", "is", null);
+    if (filter.state === "resolved") query = query.where("resolved_at", "is not", null);
+    if (filter.accountId !== undefined) query = query.where("account_id", "=", filter.accountId);
+    if (filter.targetAccountId !== undefined) {
+        query = query.where("target_account_id", "=", filter.targetAccountId);
+    }
+
+    return readPage(query, "reports.id", page);
+};
+
+/**
+ * Marks the report `id` as resolved at `at` by the moderator `by`, even if it already was, as
+ * Mastodon's admin API does. Returns the report, or `undefined` if it doesn't exist.
+ */
+export const resolveReportBy = (
+    ctx: Context,
+    id: string,
+    by: string,
+    at: Date,
+): Promise<ReportRow | undefined> =>
+    ctx.db.updateTable("reports")
+        .set({ resolved_at: at, resolved_by_account_id: by, updated_at: at })
+        .where("id", "=", id)
+        .returningAll()
+        .executeTakeFirst();
+
+/**
+ * Marks the report `id` as unresolved, changing nothing if it already is. Returns the report, or
+ * `undefined` if it doesn't exist.
+ */
+export const reopenReport = async (
+    ctx: Context,
+    id: string,
+    at: Date,
+): Promise<ReportRow | undefined> => {
+    await ctx.db.updateTable("reports")
+        .set({ resolved_at: null, resolved_by_account_id: null, updated_at: at })
+        .where("id", "=", id)
+        .where("resolved_at", "is not", null)
+        .execute();
+
+    return await findReport(ctx, id);
 };

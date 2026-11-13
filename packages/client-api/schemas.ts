@@ -1,4 +1,5 @@
 export * from "./account.ts";
+export * from "./admin.ts";
 export * from "./announcement.ts";
 export * from "./application.ts";
 export * from "./async_refresh.ts";

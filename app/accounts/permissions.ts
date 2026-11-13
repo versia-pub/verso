@@ -32,6 +32,7 @@ const mastodonFlags: Readonly<Record<Permission, number>> = {
     "feeds": 0x100000,
     "emojis": 0x4000,
     "roles": 0x20000,
+    "reports": 0x10,
 };
 
 /** Mastodon's role bitmask for a set of permissions, as the decimal string clients expect. */

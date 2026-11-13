@@ -108,6 +108,8 @@ export const fileReport = async (
         forwarded: domains.some((domain) => domain === target.domain),
         created_at: ctx.clock.now(),
         resolved_at: null,
+        resolved_by_account_id: null,
+        updated_at: null,
     };
     await ctx.transaction(async (tx) => {
         await insertReport(tx, row);

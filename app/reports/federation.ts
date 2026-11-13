@@ -154,6 +154,8 @@ export const reportType: EntityType<v0_6.Report> = {
                 forwarded: false,
                 created_at: ctx.clock.now(),
                 resolved_at: null,
+                resolved_by_account_id: null,
+                updated_at: null,
             });
         }
     },

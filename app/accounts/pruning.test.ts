@@ -398,6 +398,7 @@ const ownColumns = [
     "notifications.account_id",
     "oauth_flows.account_id",
     "push_subscriptions.account_id",
+    "reports.resolved_by_account_id",
     "scheduled_notes.account_id",
     "suggestion_dismissals.account_id",
     "tag_follows.account_id",

@@ -167,6 +167,7 @@ to the client API: other instances can still fetch public statuses over Versia.
 | `feeds`                | see the timelines `[timelines_access]` disables                  |
 | `emojis`               | add, change and delete any custom emoji, and make them global    |
 | `roles`                | create, change and grant lower roles, with permissions they have |
+| `reports`              | view, resolve and reopen every report                            |
 
 ## Media
 

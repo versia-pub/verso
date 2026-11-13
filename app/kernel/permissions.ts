@@ -63,6 +63,8 @@ export const permissions = [
     "emojis",
     /** Create, change and assign roles below one's own. */
     "roles",
+    /** View every report, and resolve and reopen them. */
+    "reports",
 ] as const;
 
 export const Permission = z.enum(permissions, { error: "Unknown permission" });

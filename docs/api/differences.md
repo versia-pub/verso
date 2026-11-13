@@ -194,6 +194,15 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - A local account has to be discoverable to be suggested. Remote accounts always count as
   discoverable, since Versia has no such setting.
 
+## Admin
+
+- An admin report's `account` is `null` for a report from another instance, and once the reporter's
+  account is deleted. `assigned_account` is always `null`. `action_taken_by_account` is `null` for a
+  report resolved with `verso admin reports resolve`.
+- An admin account's `email`, `ip`, `locale` and `invite_request` are always `null`, and `ips` is
+  empty: Verso doesn't keep them. A local one is always `confirmed` and `approved`, never
+  `disabled`, and no account is `sensitized`.
+
 ## Custom emoji
 
 - `GET /api/v1/custom_emojis` also lists the viewer's own emoji. See

@@ -28,7 +28,8 @@ for themselves from their app, which only hides it from them.
 
 Users report accounts and statuses from their apps, and other instances send reports too. List the
 ones no one has dealt with, and mark them as dealt with, using
-[`verso admin reports`](commands.md#verso-admin-reports).
+[`verso admin reports`](commands.md#verso-admin-reports), or from a Mastodon app as a moderator with
+the `reports` permission.
 
 ## Suspending accounts
 
@@ -87,8 +88,9 @@ status is only deleted here, and comes back if its instance sends it again.
 ## Moderators
 
 Give moderators a [role](commands.md#verso-admin-roles) with the staff
-[permissions](configuring.md#permissions) they need: `blocks`, `emojis` or `roles`. Mastodon apps
-show `emojis` and `roles` as "Manage custom emojis" and "Manage roles".
+[permissions](configuring.md#permissions) they need: `blocks`, `emojis`, `reports` or `roles`.
+Mastodon apps show `emojis`, `reports` and `roles` as "Manage custom emojis", "Manage reports" and
+"Manage roles".
 
 ## Trends
 

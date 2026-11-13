@@ -29,7 +29,7 @@ behave differently.
 | Trends                     | hashtags, statuses and links                                            |
 | Suggestions                | v2 and dismissing                                                       |
 
-There's no admin API: admins use `verso admin` instead.
+Of the admin API, only reports so far; admins use `verso admin` for the rest.
 
 ## Apps and logging in
 
@@ -252,8 +252,20 @@ Verso keeps remote handles as they are, so `invalid_handle` is never set on an a
 
 ## Admin
 
-Verso doesn't implement Mastodon's admin API (`/api/v1/admin/…` and `/api/v2/admin/…`). Admins use
-the [`verso admin` commands](../admin/commands.md) instead.
+Moderators need a role with the matching [permission](../admin/configuring.md#permissions), as well
+as the `admin:` scope.
+
+| Method                                                      | Works | Notes                        |
+| ----------------------------------------------------------- | ----- | ---------------------------- |
+| `GET /api/v1/admin/reports`                                 | ✅    | Needs `reports`              |
+| `GET /api/v1/admin/reports/:id`                             | ✅    | Needs `reports`              |
+| `POST /api/v1/admin/reports/:id/resolve`                    | ✅    | Needs `reports`              |
+| `POST /api/v1/admin/reports/:id/reopen`                     | ✅    | Needs `reports`              |
+| `PUT /api/v1/admin/reports/:id`                             | ❌    |                              |
+| `POST /api/v1/admin/reports/:id/assign_to_self`, `unassign` | ❌    | Verso doesn't assign reports |
+
+The rest of Mastodon's admin API (`/api/v1/admin/…` and `/api/v2/admin/…`) isn't implemented. Admins
+use the [`verso admin` commands](../admin/commands.md) instead.
 
 ## Beyond Mastodon
 

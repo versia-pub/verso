@@ -9948,6 +9948,254 @@
                 }
             }
         },
+        "/api/v1/admin/reports": {
+            "get": {
+                "summary": "View all reports",
+                "description": "View all reports. Pagination may be done with HTTP Link header in the response.\n\nNeeds a token for a user, not one an app got for itself. Needs the `reports` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/reports/#get"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:read:reports"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "resolved",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "unresolved",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": [
+                                "boolean",
+                                "string"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "account_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "target_account_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AdminReport"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/reports/{id}": {
+            "get": {
+                "summary": "View a single report",
+                "description": "View information about the report with the given ID.\n\nNeeds a token for a user, not one an app got for itself. Needs the `reports` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/reports/#get-one"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:read:reports"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminReport"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/reports/{id}/resolve": {
+            "post": {
+                "summary": "Mark report as resolved",
+                "description": "Mark a report as resolved with no further action taken.\n\nNeeds a token for a user, not one an app got for itself. Needs the `reports` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/reports/#resolve"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:write:reports"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminReport"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/reports/{id}/reopen": {
+            "post": {
+                "summary": "Re-open a closed report",
+                "description": "Reopen a currently closed report, if it is closed.\n\nNeeds a token for a user, not one an app got for itself. Needs the `reports` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/reports/#reopen"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:write:reports"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminReport"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/announcements": {
             "get": {
                 "summary": "View all announcements",
@@ -15942,7 +16190,8 @@
                                                 "blocks",
                                                 "feeds",
                                                 "emojis",
-                                                "roles"
+                                                "roles",
+                                                "reports"
                                             ]
                                         }
                                     },
@@ -16035,7 +16284,8 @@
                                                 "blocks",
                                                 "feeds",
                                                 "emojis",
-                                                "roles"
+                                                "roles",
+                                                "reports"
                                             ]
                                         }
                                     },
@@ -16128,7 +16378,8 @@
                                                 "blocks",
                                                 "feeds",
                                                 "emojis",
-                                                "roles"
+                                                "roles",
+                                                "reports"
                                             ]
                                         }
                                     },
@@ -16300,7 +16551,8 @@
                                                 "blocks",
                                                 "feeds",
                                                 "emojis",
-                                                "roles"
+                                                "roles",
+                                                "reports"
                                             ]
                                         }
                                     },
@@ -16390,7 +16642,8 @@
                                                 "blocks",
                                                 "feeds",
                                                 "emojis",
-                                                "roles"
+                                                "roles",
+                                                "reports"
                                             ]
                                         }
                                     },
@@ -16480,7 +16733,8 @@
                                                 "blocks",
                                                 "feeds",
                                                 "emojis",
-                                                "roles"
+                                                "roles",
+                                                "reports"
                                             ]
                                         }
                                     },
@@ -20002,6 +20256,237 @@
                     "indexable",
                     "attribution_domains",
                     "quote_policy"
+                ]
+            },
+            "AdminAccount": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "domain": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "email": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "ip": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "ips": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminIp"
+                        }
+                    },
+                    "locale": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "invite_request": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "role": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/Role"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "confirmed": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "approved": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "disabled": {
+                        "type": [
+                            "boolean",
+                            "null"
+                        ]
+                    },
+                    "silenced": {
+                        "type": "boolean"
+                    },
+                    "suspended": {
+                        "type": "boolean"
+                    },
+                    "sensitized": {
+                        "type": "boolean"
+                    },
+                    "account": {
+                        "$ref": "#/components/schemas/Account"
+                    }
+                },
+                "required": [
+                    "id",
+                    "username",
+                    "domain",
+                    "created_at",
+                    "email",
+                    "ip",
+                    "ips",
+                    "locale",
+                    "invite_request",
+                    "role",
+                    "confirmed",
+                    "approved",
+                    "disabled",
+                    "silenced",
+                    "suspended",
+                    "sensitized",
+                    "account"
+                ]
+            },
+            "AdminIp": {
+                "type": "object",
+                "properties": {
+                    "ip": {
+                        "type": "string"
+                    },
+                    "used_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                },
+                "required": [
+                    "ip",
+                    "used_at"
+                ]
+            },
+            "AdminReport": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "action_taken": {
+                        "type": "boolean"
+                    },
+                    "action_taken_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/ReportCategory"
+                    },
+                    "comment": {
+                        "type": "string"
+                    },
+                    "forwarded": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "account": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminAccount"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "target_account": {
+                        "$ref": "#/components/schemas/AdminAccount"
+                    },
+                    "assigned_account": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminAccount"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "action_taken_by_account": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminAccount"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "statuses": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Status"
+                        }
+                    },
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Rule"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "action_taken",
+                    "action_taken_at",
+                    "category",
+                    "comment",
+                    "forwarded",
+                    "created_at",
+                    "updated_at",
+                    "account",
+                    "target_account",
+                    "assigned_account",
+                    "action_taken_by_account",
+                    "statuses",
+                    "rules"
                 ]
             },
             "Announcement": {

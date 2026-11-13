@@ -79,7 +79,7 @@ const contactAccount = async (ctx: Context, username: string | undefined) => {
 };
 
 /** The rules, numbered from 1 in the order config lists them. */
-export const renderRules = (instance: AboutSettings["instance"]): Rule[] =>
+export const renderRules = (instance: Pick<AboutSettings["instance"], "rules">): Rule[] =>
     instance.rules.map((rule, index) => ({
         id: String(index + 1),
         text: rule.text,

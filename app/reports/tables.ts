@@ -24,4 +24,11 @@ export type ReportsTable = {
     created_at: Date;
     /** When a moderator dealt with it, or `null` until then. */
     resolved_at: Date | null;
+    /**
+     * The moderator who resolved it through the admin API, or `null` while it is unresolved, when it
+     * was resolved from the command line, and once their account is deleted.
+     */
+    resolved_by_account_id: string | null;
+    /** When a moderator last resolved or reopened it, or `null` if none has. */
+    updated_at: Date | null;
 };

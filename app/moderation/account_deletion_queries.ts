@@ -54,14 +54,15 @@ export const purgedColumns = [
 
 /**
  * The columns referring to an account whose rows are kept with it when it is kept as a deleted
- * account: its login, so it can't sign up again, the reports by and about it, its poll votes, so
- * polls keep their counts, others' statuses mentioning or replying to it, and the accounts that
- * moved to it.
+ * account: its login, so it can't sign up again, the reports by and about it and those it
+ * resolved, its poll votes, so polls keep their counts, others' statuses mentioning or replying to
+ * it, and the accounts that moved to it.
  */
 export const keptColumns = [
     ["identities", "account_id"],
     ["reports", "account_id"],
     ["reports", "target_account_id"],
+    ["reports", "resolved_by_account_id"],
     ["poll_votes", "account_id"],
     ["note_mentions", "account_id"],
     ["notes", "in_reply_to_account_id"],
