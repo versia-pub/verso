@@ -77,3 +77,29 @@ export const AdminReport = z.object({
     rules: z.array(Rule),
 });
 export type AdminReport = z.infer<typeof AdminReport>;
+
+/**
+ * An instance this one blocks, as moderators see it.
+ * @see https://docs.joinmastodon.org/entities/Admin_DomainBlock/
+ */
+export const AdminDomainBlock = z.object({
+    /** On Verso, `config:` and the domain for an instance that the config file blocks. */
+    id: z.string(),
+    domain: z.string(),
+    /** The domain's SHA-256 hash. */
+    digest: z.string(),
+    created_at: z.iso.datetime(),
+    /** How it is blocked. Always `suspend` on Verso. */
+    severity: z.enum(["silence", "suspend", "noop"]),
+    /** Whether media from it is rejected. */
+    reject_media: z.boolean(),
+    /** Whether reports from it are rejected. */
+    reject_reports: z.boolean(),
+    /** Why it is blocked, for moderators only. */
+    private_comment: z.string().nullable(),
+    /** Why it is blocked, as the instance's public list of blocks may show. */
+    public_comment: z.string().nullable(),
+    /** Whether the public list of blocks masks part of the domain. */
+    obfuscate: z.boolean(),
+});
+export type AdminDomainBlock = z.infer<typeof AdminDomainBlock>;

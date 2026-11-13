@@ -34,7 +34,7 @@ export const domainsCommand = (io: AdminIo): Command<{ config: string }> =>
             const name = domainArgument(domain);
             const result = await io.withContext(config, async (ctx, settings) => ({
                 domain: name,
-                changed: await blockDomain(ctx, name, reason),
+                changed: await blockDomain(ctx, name, { reason }) !== undefined,
                 by_config: blockedByConfig(settings.federation.blocked_domains, name),
             }));
             io.print(JSON.stringify(result));

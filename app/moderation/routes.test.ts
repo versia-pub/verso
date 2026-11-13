@@ -17,7 +17,7 @@ const open = async (blocks: Shown, reasons: Shown = "none") => {
         ["config.example"],
     );
     const app = createTestApp(test.ctx, routes, { checkResponses: true });
-    await blockDomain(test.ctx, "spam.example", "Spam");
+    await blockDomain(test.ctx, "spam.example", { reason: "Spam" });
 
     const fetch = async (token?: string) => {
         const response = await app.request("/api/v1/instance/domain_blocks", {
@@ -85,4 +85,21 @@ Deno.test("reasons can be shown to everyone who sees the blocks", async () => {
     const { body } = await test.fetch();
 
     assertEquals(body[1].comment, "Spam");
+});
+
+Deno.test("obfuscated blocks mask the middle of the domain, but not its digest or comment", async () => {
+    await using test = await open("all", "all");
+    await blockDomain(test.ctx, "aa.example", { reason: "Abuse", obfuscate: true });
+    await blockDomain(test.ctx, "private.example", { privateComment: "Not for users" });
+
+    const { body } = await test.fetch();
+
+    assertEquals(body[0], {
+        domain: "aa.*****le",
+        digest: await digest("aa.example"),
+        severity: "suspend",
+        comment: "Abuse",
+    });
+    assertEquals(body[2].domain, "private.example");
+    assertEquals(body[2].comment, null);
 });

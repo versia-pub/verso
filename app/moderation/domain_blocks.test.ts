@@ -1,6 +1,6 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
-import { blockDomain, domainBlocks, unblockDomain } from "./domain_blocks.ts";
+import { blockDomain, domainBlocks, obfuscateDomain, unblockDomain } from "./domain_blocks.ts";
 import { blockedDomainNames, listBlockedDomains } from "./domain_block_queries.ts";
 
 Deno.test("a blocked domain is blocked with its subdomains, but not its parents", async () => {
@@ -26,8 +26,8 @@ Deno.test("a domain is blocked once, with its first reason, and unblocked once",
     const domains = async () =>
         (await listBlockedDomains(test.ctx)).map((block) => [block.domain, block.reason]);
 
-    assertEquals(await blockDomain(test.ctx, "evil.example", "Spam"), true);
-    assertEquals(await blockDomain(test.ctx, "evil.example", "Harassment"), false);
+    assert(await blockDomain(test.ctx, "evil.example", { reason: "Spam" }));
+    assertEquals(await blockDomain(test.ctx, "evil.example", { reason: "Harassment" }), undefined);
     await blockDomain(test.ctx, "bad.example");
     assertEquals(await domains(), [["bad.example", ""], ["evil.example", "Spam"]]);
 
@@ -47,7 +47,7 @@ Deno.test("blocks made here apply at once, and ones made elsewhere unannounced w
 
     // As a process that can't tell this one does.
     await test.ctx.db.insertInto("domain_blocks")
-        .values({ domain: "bad.example", reason: "", created_at: test.clock.now() })
+        .values({ id: "bad", domain: "bad.example", reason: "", created_at: test.clock.now() })
         .execute();
     test.clock.advance(60_000 - 1);
     assertEquals(await isBlocked("bad.example"), false);
@@ -56,4 +56,11 @@ Deno.test("blocks made here apply at once, and ones made elsewhere unannounced w
 
     await unblockDomain(test.ctx, "evil.example");
     assertEquals(await isBlocked("evil.example"), false);
+});
+
+Deno.test("an obfuscated domain keeps dots and a quarter of its length at each end", () => {
+    assertEquals(obfuscateDomain("spam.example"), "spam.****ple");
+    assertEquals(obfuscateDomain("a.b.c"), "a.*.c");
+    assertEquals(obfuscateDomain("abcdefgh.io"), "abc*****.io");
+    assertEquals(obfuscateDomain("abc"), "a**");
 });

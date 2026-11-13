@@ -3,7 +3,7 @@ import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import type { Config } from "../kernel/config.ts";
-import { allDomainBlocks } from "./domain_blocks.ts";
+import { allDomainBlocks, domainDigest, obfuscateDomain } from "./domain_blocks.ts";
 
 /** Who config shows something to, `"none"`, `"users"` or `"all"`. */
 type Audience = Config["instance"]["show_blocks"];
@@ -35,11 +35,9 @@ export const moderationRoutes = (
 
             return {
                 status: 200,
-                body: await Promise.all(blocks.map(async ({ domain, reason }) => ({
-                    domain,
-                    digest: new Uint8Array(
-                        await crypto.subtle.digest("SHA-256", new TextEncoder().encode(domain)),
-                    ).toHex(),
+                body: await Promise.all(blocks.map(async ({ domain, reason, obfuscate }) => ({
+                    domain: obfuscate ? obfuscateDomain(domain) : domain,
+                    digest: await domainDigest(domain),
                     severity: "suspend" as const,
                     comment: withReasons && reason !== "" ? reason : null,
                 }))),

@@ -26,6 +26,7 @@ import type { Context } from "../kernel/context.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createNote } from "../notes/testing.ts";
 import { createCard } from "../previews/testing.ts";
+import { listBlockedDomains } from "../moderation/domain_block_queries.ts";
 import { fileReport } from "../reports/reports.ts";
 import { refreshTrends } from "../trends/refresh.ts";
 import { adminCommand, AdminError } from "./cli.ts";
@@ -247,8 +248,11 @@ Deno.test("an admin blocks and unblocks a domain once, with a reason", async () 
     assertEquals(await run("list"), [
         { domain: "config.example", source: "config" },
         {
+            id: (await listBlockedDomains(test.ctx))[0].id,
             domain: "evil.example",
             reason: "Spam",
+            private_comment: null,
+            obfuscate: false,
             created_at: test.clock.now().toISOString(),
             source: "admin",
         },

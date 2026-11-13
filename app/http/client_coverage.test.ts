@@ -137,6 +137,12 @@ const calls: Record<string, (client: Client) => unknown> = {
     "POST /api/v1/admin/accounts/{id}/unsilence": (c) => c.admin.accounts.unsilence("1"),
     "POST /api/v1/admin/accounts/{id}/unsuspend": (c) => c.admin.accounts.unsuspend("1"),
     "DELETE /api/v1/admin/accounts/{id}": (c) => c.admin.accounts.delete("1"),
+    "GET /api/v1/admin/domain_blocks": (c) => c.admin.domainBlocks.list(),
+    "GET /api/v1/admin/domain_blocks/{id}": (c) => c.admin.domainBlocks.get("1"),
+    "POST /api/v1/admin/domain_blocks": (c) => c.admin.domainBlocks.create("b.example"),
+    "PUT /api/v1/admin/domain_blocks/{id}": (c) =>
+        c.admin.domainBlocks.update("1", { obfuscate: true }),
+    "DELETE /api/v1/admin/domain_blocks/{id}": (c) => c.admin.domainBlocks.delete("1"),
     "GET /api/v1/announcements": (c) => c.announcements.list(),
     "POST /api/v1/announcements/{id}/dismiss": (c) => c.announcements.dismiss("1"),
     "PUT /api/v1/announcements/{id}/reactions/{name}": (c) => c.announcements.react("1", "👍"),

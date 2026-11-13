@@ -1,4 +1,4 @@
-import { AdminAccount, AdminReport } from "../admin.ts";
+import { AdminAccount, AdminDomainBlock, AdminReport } from "../admin.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
 import { Page, type PageQuery } from "./pages.ts";
 
@@ -148,15 +148,90 @@ export class AdminAccountMethods {
     }
 }
 
+/** What a domain block notes, as `domainBlocks.create` and `update` take it. */
+export type AdminDomainBlockNotes = {
+    /** Verso only blocks with `suspend`, and needs it when creating a block. */
+    readonly severity?: "suspend";
+    readonly private_comment?: string;
+    readonly public_comment?: string;
+    readonly obfuscate?: boolean;
+};
+
+/** Blocking instances, for moderators with the `federation` permission. */
+export class AdminDomainBlockMethods {
+    constructor(private readonly http: Http) {}
+
+    /**
+     * Blocked instances, the latest blocked first, then those the config file blocks.
+     * @see https://docs.joinmastodon.org/methods/admin/domain_blocks/#get
+     */
+    list(query: PageQuery = {}, options?: CallOptions): Promise<Page<AdminDomainBlock>> {
+        return Page.get(this.http, AdminDomainBlock, "/api/v1/admin/domain_blocks", query, options);
+    }
+
+    /** @see https://docs.joinmastodon.org/methods/admin/domain_blocks/#get-one */
+    get(id: string, options?: CallOptions): Promise<AdminDomainBlock> {
+        return this.http.json(
+            AdminDomainBlock,
+            "GET",
+            path`/api/v1/admin/domain_blocks/${id}`,
+            options,
+        );
+    }
+
+    /**
+     * Blocks an instance and its subdomains. Fails if it is already blocked.
+     * @see https://docs.joinmastodon.org/methods/admin/domain_blocks/#create
+     */
+    create(
+        domain: string,
+        notes: AdminDomainBlockNotes = {},
+        options?: CallOptions,
+    ): Promise<AdminDomainBlock> {
+        return this.http.json(AdminDomainBlock, "POST", "/api/v1/admin/domain_blocks", {
+            ...options,
+            json: { severity: "suspend", ...notes, domain },
+        });
+    }
+
+    /**
+     * Changes what a block notes. Blocks from the config file can't be changed.
+     * @see https://docs.joinmastodon.org/methods/admin/domain_blocks/#update
+     */
+    update(
+        id: string,
+        notes: AdminDomainBlockNotes,
+        options?: CallOptions,
+    ): Promise<AdminDomainBlock> {
+        return this.http.json(
+            AdminDomainBlock,
+            "PUT",
+            path`/api/v1/admin/domain_blocks/${id}`,
+            { ...options, json: notes },
+        );
+    }
+
+    /**
+     * Unblocks an instance. Blocks from the config file can't be removed.
+     * @see https://docs.joinmastodon.org/methods/admin/domain_blocks/#delete
+     */
+    async delete(id: string, options?: CallOptions): Promise<void> {
+        await this.http.send("DELETE", path`/api/v1/admin/domain_blocks/${id}`, options);
+    }
+}
+
 /** Moderating the instance, as the viewer's permissions allow. */
 export class AdminMethods {
     /** Dealing with reports. */
     readonly reports: AdminReportMethods;
     /** Moderating accounts. */
     readonly accounts: AdminAccountMethods;
+    /** Blocking instances. */
+    readonly domainBlocks: AdminDomainBlockMethods;
 
     constructor(http: Http) {
         this.reports = new AdminReportMethods(http);
         this.accounts = new AdminAccountMethods(http);
+        this.domainBlocks = new AdminDomainBlockMethods(http);
     }
 }

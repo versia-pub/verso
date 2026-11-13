@@ -80,7 +80,7 @@ Deno.test("a process told of changes forgets what it cached when it may have mis
 
     // As a process that can't tell this one does.
     await test.ctx.db.insertInto("domain_blocks")
-        .values({ domain: "evil.example", reason: "", created_at: test.clock.now() })
+        .values({ id: "evil", domain: "evil.example", reason: "", created_at: test.clock.now() })
         .execute();
     assertEquals(await blocked(), false);
 

@@ -29,7 +29,8 @@ behave differently.
 | Trends                     | hashtags, statuses and links                                            |
 | Suggestions                | v2 and dismissing                                                       |
 
-Of the admin API, only reports and accounts so far; admins use `verso admin` for the rest.
+Of the admin API, only reports, accounts and domain blocks so far; admins use `verso admin` for the
+rest.
 
 ## Apps and logging in
 
@@ -273,6 +274,11 @@ as the `admin:` scope.
 | `POST /api/v1/admin/accounts/:id/enable`                    | ❌    | Verso doesn't disable users  |
 | `POST /api/v1/admin/accounts/:id/approve`, `reject`         | ❌    | Verso doesn't approve users  |
 | `POST /api/v1/admin/accounts/:id/unsensitive`               | ❌    |                              |
+| `GET /api/v1/admin/domain_blocks`                           | ✅    | Needs `federation`           |
+| `GET /api/v1/admin/domain_blocks/:id`                       | ✅    | Needs `federation`           |
+| `POST /api/v1/admin/domain_blocks`                          | 🟡    | `suspend` only               |
+| `PUT /api/v1/admin/domain_blocks/:id`                       | 🟡    | `suspend` only               |
+| `DELETE /api/v1/admin/domain_blocks/:id`                    | ✅    | Not the config's blocks      |
 
 The rest of Mastodon's admin API (`/api/v1/admin/…` and `/api/v2/admin/…`) isn't implemented. Admins
 use the [`verso admin` commands](../admin/commands.md) instead.

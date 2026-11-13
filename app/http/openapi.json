@@ -10919,6 +10919,541 @@
                 }
             }
         },
+        "/api/v1/admin/domain_blocks": {
+            "get": {
+                "summary": "List all blocked domains",
+                "description": "Show information about all blocked domains.\n\nNeeds a token for a user, not one an app got for itself. Needs the `federation` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/domain_blocks/#get"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:read:domain_blocks"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "max_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "since_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "min_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^-?\\d+$"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of a list, newest first",
+                        "headers": {
+                            "link": {
+                                "required": false,
+                                "description": "The older page, as `next`, and the newer one, as `prev`",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AdminDomainBlock"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Block a domain from federating",
+                "description": "Add a domain to the list of domains blocked from federating.\n\nNeeds a token for a user, not one an app got for itself. Needs the `federation` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/domain_blocks/#create"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:write:domain_blocks"
+                        ]
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "severity": {
+                                        "type": "string",
+                                        "enum": [
+                                            "silence",
+                                            "suspend",
+                                            "noop"
+                                        ]
+                                    },
+                                    "reject_media": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "reject_reports": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "private_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "public_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "obfuscate": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "domain": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "domain"
+                                ]
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "severity": {
+                                        "type": "string",
+                                        "enum": [
+                                            "silence",
+                                            "suspend",
+                                            "noop"
+                                        ]
+                                    },
+                                    "reject_media": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "reject_reports": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "private_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "public_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "obfuscate": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "domain": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "domain"
+                                ]
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "severity": {
+                                        "type": "string",
+                                        "enum": [
+                                            "silence",
+                                            "suspend",
+                                            "noop"
+                                        ]
+                                    },
+                                    "reject_media": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "reject_reports": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "private_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "public_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "obfuscate": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "domain": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "domain"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminDomainBlock"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/domain_blocks/{id}": {
+            "get": {
+                "summary": "Get a single blocked domain",
+                "description": "Show information about a single blocked domain.\n\nNeeds a token for a user, not one an app got for itself. Needs the `federation` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/domain_blocks/#get-one"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:read:domain_blocks"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminDomainBlock"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update a domain block",
+                "description": "Change parameters for an existing domain block.\n\nNeeds a token for a user, not one an app got for itself. Needs the `federation` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/domain_blocks/#update"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:write:domain_blocks"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "severity": {
+                                        "type": "string",
+                                        "enum": [
+                                            "silence",
+                                            "suspend",
+                                            "noop"
+                                        ]
+                                    },
+                                    "reject_media": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "reject_reports": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "private_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "public_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "obfuscate": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "severity": {
+                                        "type": "string",
+                                        "enum": [
+                                            "silence",
+                                            "suspend",
+                                            "noop"
+                                        ]
+                                    },
+                                    "reject_media": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "reject_reports": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "private_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "public_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "obfuscate": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "severity": {
+                                        "type": "string",
+                                        "enum": [
+                                            "silence",
+                                            "suspend",
+                                            "noop"
+                                        ]
+                                    },
+                                    "reject_media": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "reject_reports": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    },
+                                    "private_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "public_comment": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "obfuscate": {
+                                        "type": [
+                                            "boolean",
+                                            "string"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminDomainBlock"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove a domain block",
+                "description": "Lift a block against a domain.\n\nNeeds a token for a user, not one an app got for itself. Needs the `federation` permission.",
+                "externalDocs": {
+                    "url": "https://docs.joinmastodon.org/methods/admin/domain_blocks/#delete"
+                },
+                "tags": [
+                    "admin"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "admin:write:domain_blocks"
+                        ]
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/announcements": {
             "get": {
                 "summary": "View all announcements",
@@ -16915,7 +17450,8 @@
                                                 "emojis",
                                                 "roles",
                                                 "reports",
-                                                "accounts"
+                                                "accounts",
+                                                "federation"
                                             ]
                                         }
                                     },
@@ -17010,7 +17546,8 @@
                                                 "emojis",
                                                 "roles",
                                                 "reports",
-                                                "accounts"
+                                                "accounts",
+                                                "federation"
                                             ]
                                         }
                                     },
@@ -17105,7 +17642,8 @@
                                                 "emojis",
                                                 "roles",
                                                 "reports",
-                                                "accounts"
+                                                "accounts",
+                                                "federation"
                                             ]
                                         }
                                     },
@@ -17279,7 +17817,8 @@
                                                 "emojis",
                                                 "roles",
                                                 "reports",
-                                                "accounts"
+                                                "accounts",
+                                                "federation"
                                             ]
                                         }
                                     },
@@ -17371,7 +17910,8 @@
                                                 "emojis",
                                                 "roles",
                                                 "reports",
-                                                "accounts"
+                                                "accounts",
+                                                "federation"
                                             ]
                                         }
                                     },
@@ -17463,7 +18003,8 @@
                                                 "emojis",
                                                 "roles",
                                                 "reports",
-                                                "accounts"
+                                                "accounts",
+                                                "federation"
                                             ]
                                         }
                                     },
@@ -21096,6 +21637,66 @@
                     "suspended",
                     "sensitized",
                     "account"
+                ]
+            },
+            "AdminDomainBlock": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "domain": {
+                        "type": "string"
+                    },
+                    "digest": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": [
+                            "silence",
+                            "suspend",
+                            "noop"
+                        ]
+                    },
+                    "reject_media": {
+                        "type": "boolean"
+                    },
+                    "reject_reports": {
+                        "type": "boolean"
+                    },
+                    "private_comment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "public_comment": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "obfuscate": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "domain",
+                    "digest",
+                    "created_at",
+                    "severity",
+                    "reject_media",
+                    "reject_reports",
+                    "private_comment",
+                    "public_comment",
+                    "obfuscate"
                 ]
             },
             "AdminIp": {

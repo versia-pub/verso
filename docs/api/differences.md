@@ -208,6 +208,10 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   ignores `warning_preset_id`, `text` and `send_email_notification`. Unlike on Mastodon, a moderator
   can't act on their own account.
 - Only a local account can be deleted. A deleted account can't be unsuspended (`403`).
+- Admin domain blocks are always `suspend`, with `reject_media` and `reject_reports` `true`.
+  Creating one needs `severity` set to `suspend`, and any other severity gets a `422`.
+- Blocks from the config file are listed after the others, with ids like `config:spam.example` and a
+  `created_at` of 1970. Changing or removing them gets a `403`.
 
 ## Custom emoji
 

@@ -70,6 +70,8 @@ export const permissions = [
      * role, lift silences and suspensions, and delete suspended local users below it.
      */
     "accounts",
+    /** View the instances Verso blocks, and block and unblock them. */
+    "federation",
 ] as const;
 
 export const Permission = z.enum(permissions, { error: "Unknown permission" });

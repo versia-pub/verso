@@ -1,5 +1,6 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import { type Kysely, sql } from "kysely";
+import { firstIdAt } from "../kernel/ids.ts";
 import { checkForeignKeys } from "./columns.ts";
 import type { Database } from "./database.ts";
 import { firstMigratedAt, migrate } from "./migrate.ts";
@@ -350,4 +351,55 @@ Deno.test("apps there were keep their tokens once apps may have no secret", asyn
     );
     await db.deleteFrom("apps").where("id", "=", "app").execute();
     assertEquals(await db.selectFrom("access_tokens").selectAll().execute(), []);
+});
+
+Deno.test("domain blocks there were get ids in the order they were made", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0103_domain_block_ids"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    const older = new Date("2026-01-01T00:00:00Z");
+    const newer = new Date("2026-02-01T00:00:00Z");
+    await (db as unknown as Kysely<{
+        domain_blocks: { domain: string; reason: string; created_at: Date };
+    }>).insertInto("domain_blocks")
+        .values([
+            { domain: "a.example", reason: "Spam", created_at: newer },
+            { domain: "b.example", reason: "", created_at: older },
+        ])
+        .execute();
+
+    assertEquals((await migrate(db)).ok, true);
+    const blocks = await db.selectFrom("domain_blocks").selectAll().orderBy("id").execute();
+    assertEquals(
+        blocks.map(({ id: _, ...block }) => block),
+        [
+            {
+                domain: "b.example",
+                reason: "",
+                private_comment: null,
+                obfuscate: false,
+                created_at: older,
+            },
+            {
+                domain: "a.example",
+                reason: "Spam",
+                private_comment: null,
+                obfuscate: false,
+                created_at: newer,
+            },
+        ],
+    );
+    assertEquals(new Set(blocks.map((block) => block.id)).size, 2);
+    for (const block of blocks) {
+        const at = block.created_at.getTime();
+        assert(block.id >= firstIdAt(new Date(at)) && block.id < firstIdAt(new Date(at + 1)));
+    }
+    await assertRejects(() =>
+        db.insertInto("domain_blocks")
+            .values({ id: "other", domain: "a.example", reason: "", created_at: newer })
+            .execute()
+    );
 });

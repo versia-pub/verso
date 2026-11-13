@@ -111,7 +111,7 @@ $ verso admin domains block spam.example --reason "Spam"
 {"domain":"spam.example","changed":true,"by_config":false}
 
 $ verso admin domains list
-[{"domain":"spam.example","reason":"Spam","created_at":"2026-10-29T21:41:14.387Z",…}]
+[{"id":"019a31d4-…","domain":"spam.example","reason":"Spam",…}]
 ```
 
 `changed` is `false` when there was nothing to do, such as blocking a domain twice. `by_config` is

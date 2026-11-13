@@ -169,6 +169,7 @@ to the client API: other instances can still fetch public statuses over Versia.
 | `roles`                | create, change and grant lower roles, with permissions they have |
 | `reports`              | view, resolve and reopen every report                            |
 | `accounts`             | view every account, and moderate those below their highest role  |
+| `federation`           | view, block and unblock instances                                |
 
 ## Media
 

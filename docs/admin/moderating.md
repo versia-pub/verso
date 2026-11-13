@@ -10,7 +10,9 @@ nothing, and fetches nothing from it.
 
 You can block instances in the config, with `[federation] blocked_domains`, which takes effect when
 Verso restarts and keeps the blocks with the rest of your setup. Or use
-[`verso admin domains`](commands.md#verso-admin-domains), which takes effect without a restart.
+[`verso admin domains`](commands.md#verso-admin-domains), or a Mastodon app as a moderator with the
+`federation` permission, which take effect without a restart. Blocks in the config can only be
+removed there.
 
 ```toml
 [federation]
@@ -95,9 +97,9 @@ status is only deleted here, and comes back if its instance sends it again.
 ## Moderators
 
 Give moderators a [role](commands.md#verso-admin-roles) with the staff
-[permissions](configuring.md#permissions) they need: `accounts`, `blocks`, `emojis`, `reports` or
-`roles`. Mastodon apps show `accounts`, `emojis`, `reports` and `roles` as "Manage users", "Manage
-custom emojis", "Manage reports" and "Manage roles".
+[permissions](configuring.md#permissions) they need: `accounts`, `blocks`, `emojis`, `federation`,
+`reports` or `roles`. Mastodon apps show `accounts`, `emojis`, `federation`, `reports` and `roles`
+as "Manage users", "Manage custom emojis", "Manage federation", "Manage reports" and "Manage roles".
 
 ## Trends
 
