@@ -23,7 +23,7 @@ import { isNotificationType } from "./tables.ts";
 export const NotificationTypes = Strings.transform((types) => types.filter(isNotificationType))
     .optional();
 
-/** The types of notifications a client supports, which are not filtered, as Mastodon's. */
+/** The types of notifications a client supports. Others get a `fallback`. */
 export const SupportedTypes = Strings.optional().meta({
     description: "Types of notifications that the client supports. Notifications of other types " +
         "have a `fallback`.",

@@ -10,6 +10,7 @@ import { createTestContext } from "../testing/context.ts";
 import { directStreams } from "./direct.ts";
 import { dispatcher } from "./dispatcher.ts";
 import { openSession } from "./session.ts";
+import { viewerOf } from "./testing.ts";
 
 /** alice, bob and carol, local users, whose policies accept direct statuses from anyone. */
 const open = async () => {
@@ -28,14 +29,7 @@ const open = async () => {
      */
     const streaming = (accountId: string, permissions: readonly Permission[] = ["read:note"]) => {
         const sent: unknown[] = [];
-        const viewer = {
-            tokenId: "token",
-            appId: "app",
-            accountId,
-            scopes: ["read" as const],
-            forgetPermissions: () => {},
-            permissions: () => Promise.resolve(new Set(permissions)),
-        };
+        const viewer = viewerOf(accountId, permissions);
         const session = openSession(viewer, {
             send: (data) => {
                 const { stream, event, payload } = JSON.parse(data);

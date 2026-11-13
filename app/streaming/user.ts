@@ -18,12 +18,15 @@ import { homeNote, homeReachOf, statusesFor } from "../notes/stream_lookups.ts";
 import type { NoteRow } from "../notes/note_queries.ts";
 import { shownNotification } from "../notifications/render.ts";
 import { followingAnyTagAmong, tagFollowersAmong } from "../tags/tag_follow_queries.ts";
-import { atMost, type Sessions, type StreamViewer } from "./dispatcher.ts";
-import type { Session } from "./session.ts";
+import {
+    atMost,
+    type Entry,
+    type Sessions,
+    sessionSet,
+    type StreamViewer,
+    subscribedTo,
+} from "./dispatcher.ts";
 import type { StatusMessage } from "./statuses.ts";
-
-/** A session, with its viewer. */
-type Entry = { readonly viewer: StreamViewer; readonly session: Session };
 
 /**
  * How many viewers are handled at once when looking up a status on their home timelines or
@@ -87,7 +90,7 @@ const couldSee = async (
  * the routes for them. An announcement is rendered once, as anyone sees it, for every session.
  */
 export const userStreams = (ctx: Context): Sessions => {
-    const sessions = new Set<Entry>();
+    const { sessions, add } = sessionSet();
 
     /** Sends each of `entries` what `render` renders for its viewer, once for each viewer. */
     const deliverEach = async (
@@ -107,9 +110,7 @@ export const userStreams = (ctx: Context): Sessions => {
 
     return {
         statuses: async (message) => {
-            const subscribed = [...sessions].filter((entry) =>
-                entry.session.subscribedTo(["user"])
-            );
+            const subscribed = subscribedTo(sessions, ["user"]);
             if (subscribed.length === 0) return;
 
             if (message.event === "delete") {
@@ -155,10 +156,8 @@ export const userStreams = (ctx: Context): Sessions => {
             });
         },
         notifications: async (message) => {
-            const subscribed = [...sessions].filter(({ viewer, session }) =>
-                viewer.accountId === message.accountId &&
-                session.subscribedTo(notificationStreams(viewer))
-            );
+            const subscribed = subscribedTo(sessions, notificationStreams)
+                .filter(({ viewer }) => viewer.accountId === message.accountId);
             const reached = await allowed(subscribed, "owner:notification");
 
             await deliverEach(
@@ -169,10 +168,8 @@ export const userStreams = (ctx: Context): Sessions => {
             );
         },
         notificationsMerged: async (message) => {
-            const subscribed = [...sessions].filter(({ viewer, session }) =>
-                viewer.accountId === message.accountId &&
-                session.subscribedTo(notificationStreams(viewer))
-            );
+            const subscribed = subscribedTo(sessions, notificationStreams)
+                .filter(({ viewer }) => viewer.accountId === message.accountId);
 
             for (const { viewer, session } of await allowed(subscribed, "owner:notification")) {
                 session.deliver(notificationStreams(viewer), "notifications_merged", "1");
@@ -187,9 +184,7 @@ export const userStreams = (ctx: Context): Sessions => {
             return Promise.resolve();
         },
         announcements: async (message) => {
-            const subscribed = [...sessions].filter((entry) =>
-                entry.session.subscribedTo(["user"])
-            );
+            const subscribed = subscribedTo(sessions, ["user"]);
             if (subscribed.length === 0) return;
 
             if (!message.published) {
@@ -209,9 +204,7 @@ export const userStreams = (ctx: Context): Sessions => {
             }
         },
         announcementReactions: async (message) => {
-            const subscribed = [...sessions].filter((entry) =>
-                entry.session.subscribedTo(["user"])
-            );
+            const subscribed = subscribedTo(sessions, ["user"]);
             if (subscribed.length === 0) return;
 
             if (await findPublishedAnnouncement(ctx, message.announcementId) === undefined) return;
@@ -234,12 +227,6 @@ export const userStreams = (ctx: Context): Sessions => {
                 session.deliver(["user"], "announcement.reaction", payload);
             }
         },
-        add: (viewer, session) => {
-            const entry = { viewer, session };
-            sessions.add(entry);
-            return () => {
-                sessions.delete(entry);
-            };
-        },
+        add,
     };
 };

@@ -1,7 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { follow } from "../graph/follows.ts";
-import type { Permission } from "../kernel/permissions.ts";
 import { addListAccounts, createList } from "../lists/lists.ts";
 import { editNote, postNote } from "../notes/notes.ts";
 import { removeNote } from "../notes/removal.ts";
@@ -9,6 +8,7 @@ import { createTestContext } from "../testing/context.ts";
 import { dispatcher } from "./dispatcher.ts";
 import { listStreams } from "./lists.ts";
 import { openSession } from "./session.ts";
+import { viewerOf } from "./testing.ts";
 import { userStreams } from "./user.ts";
 
 /** alice, who follows bob and carol, and has a list of bob's, which is exclusive. */
@@ -36,14 +36,7 @@ const open = async () => {
      */
     const streaming = async (accountId: string, stream: string, listId?: string) => {
         const sent: unknown[] = [];
-        const viewer = {
-            tokenId: "token",
-            appId: "app",
-            accountId,
-            scopes: ["read" as const],
-            forgetPermissions: () => {},
-            permissions: () => Promise.resolve(new Set<Permission>(["read:note"])),
-        };
+        const viewer = viewerOf(accountId, ["read:note"]);
         const session = openSession(
             viewer,
             {

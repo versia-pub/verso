@@ -43,11 +43,42 @@ export type Listener = {
 /** A session's viewer, who is logged in. */
 export type StreamViewer = RouteViewer & { readonly accountId: string };
 
+/** A session, with its viewer. */
+export type Entry = { readonly viewer: StreamViewer; readonly session: Session };
+
 /** A listener that sends a kind of stream to the sessions added to it. */
 export type Sessions = Listener & {
     /** Adds `session` of `viewer`. Calling the function returned removes it. */
     readonly add: (viewer: StreamViewer, session: Session) => () => void;
 };
+
+/** The sessions of a kind of stream, and the `add` for its listener to have. */
+export const sessionSet = (): { readonly sessions: Set<Entry>; readonly add: Sessions["add"] } => {
+    const sessions = new Set<Entry>();
+
+    return {
+        sessions,
+        add: (viewer, session) => {
+            const entry = { viewer, session };
+            sessions.add(entry);
+            return () => {
+                sessions.delete(entry);
+            };
+        },
+    };
+};
+
+/**
+ * Of `entries`, those whose sessions are subscribed to any of `streams`, which may depend on the
+ * viewer.
+ */
+export const subscribedTo = (
+    entries: Iterable<Entry>,
+    streams: readonly string[] | ((viewer: StreamViewer) => readonly string[]),
+): Entry[] =>
+    [...entries].filter(({ viewer, session }) =>
+        session.subscribedTo(typeof streams === "function" ? streams(viewer) : streams)
+    );
 
 export type Dispatcher = {
     /** Gives `listener` each message from now on. Calling the function returned stops that. */

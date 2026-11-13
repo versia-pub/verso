@@ -303,13 +303,8 @@ export const publicPage = async (
     hidden: Excluded | null,
     page: PageBounds,
     onlyMedia = false,
-): Promise<NoteRow[]> => {
-    return await readPage(
-        fromOrigin(publicQuery(ctx, hidden), origin, onlyMedia),
-        "notes.id",
-        page,
-    );
-};
+): Promise<NoteRow[]> =>
+    await readPage(fromOrigin(publicQuery(ctx, hidden), origin, onlyMedia), "notes.id", page);
 
 /** The status `noteId`, if it is on the public timeline, as {@link publicQuery} finds. */
 export const findPublicNote = async (ctx: Context, noteId: string): Promise<NoteRow | undefined> =>

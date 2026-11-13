@@ -18,6 +18,7 @@ import { countSharesOf, shareIdsOf } from "../notes/share_queries.ts";
 import { canSee } from "../notes/visibility.ts";
 import { knownNoteRow } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
+import { authorityOf, resolveAuthor } from "./authors.ts";
 import { isShareEvent } from "./events.ts";
 import { keepRemoteShare, undoRemoteShare } from "./shares.ts";
 import { deleteEntity } from "../federation/delete.ts";
@@ -134,13 +135,12 @@ export const shareType: EntityType<v0_6.Share> = {
     extension,
     schema: v0_6.Share,
     // Only its author's instance may send it.
-    authority: (share, origin) => parseReference(share.author, origin)?.host,
+    authority: authorityOf,
     prepare: async (ctx, share, sender, budget) => {
         if (!await wanted(ctx, share, sender)) return;
 
         // Without them, the boost can't be stored, so it is retried later.
-        const author = parseReference(share.author, sender.domain);
-        if (author) await ctx.federation.resolve(ctx, author, "User", budget);
+        await resolveAuthor(ctx, share, sender, budget);
         const shared = parseReference(share.shared, sender.domain);
         if (shared) await ctx.federation.resolve(ctx, shared, "Note", budget);
     },

@@ -125,7 +125,6 @@ Deno.test("messages that aren't JSON, or aren't requests, are ignored, and bytes
 });
 
 Deno.test("a client subscribes to hashtags' streams, whatever their case, if it names them", () => {
-    // Public streams.
     const { session, sent, send } = open(["read:statuses"], { stream: "hashtag", tag: "Nix" });
     const missing = { error: "Missing tag name parameter", status: 400 };
 

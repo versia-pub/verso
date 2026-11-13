@@ -43,5 +43,8 @@ export const visibleOrigin = async (
     if (origin === "local") return local ? "local" : undefined;
     if (origin === "remote") return remote ? "remote" : undefined;
 
-    return local && remote ? "all" : local ? "local" : remote ? "remote" : undefined;
+    if (local && remote) return "all";
+    if (local) return "local";
+
+    return remote ? "remote" : undefined;
 };

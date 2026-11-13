@@ -23,6 +23,7 @@ import { createTestContext } from "../testing/context.ts";
 import { openSession } from "./session.ts";
 import { dispatcher, type Sessions } from "./dispatcher.ts";
 import { statusMessages } from "./statuses.ts";
+import { countingContext, viewerOf } from "./testing.ts";
 import { userStreams } from "./user.ts";
 
 const open = async () => {
@@ -58,19 +59,11 @@ const open = async () => {
         } = {},
     ) => {
         const sent: unknown[] = [];
-        const viewer = {
-            tokenId: "token",
-            appId: "app",
+        const viewer = viewerOf(
             accountId,
-            scopes: options.scopes ?? ["read"],
-            forgetPermissions: () => {},
-            permissions: () =>
-                Promise.resolve(
-                    new Set<Permission>(
-                        options.permissions ?? ["read:note", "owner:notification"],
-                    ),
-                ),
-        };
+            options.permissions ?? ["read:note", "owner:notification"],
+            options.scopes,
+        );
         const session = openSession(viewer, {
             send: (data) => {
                 const { stream, event, payload } = JSON.parse(data);
@@ -112,18 +105,11 @@ const open = async () => {
 
     /** User streams of their own, with a count of the queries they have made. */
     const counted = () => {
-        let queries = 0;
-        const db = test.ctx.db.withPlugin({
-            transformQuery: ({ node }) => node,
-            transformResult: ({ result }) => {
-                queries += 1;
-                return Promise.resolve(result);
-            },
-        });
-        const sessions = userStreams({ ...test.ctx, db });
+        const { ctx, queries } = countingContext(test.ctx);
+        const sessions = userStreams(ctx);
         dispatch.listen(sessions);
 
-        return { sessions, queries: () => queries };
+        return { sessions, queries };
     };
 
     return {

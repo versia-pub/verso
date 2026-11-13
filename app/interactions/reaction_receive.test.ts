@@ -1,22 +1,10 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { createLocalAccount } from "../accounts/testing.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { renderStatuses } from "../notes/render.ts";
 import { createNote, createShare } from "../notes/testing.ts";
 import { registry } from "../registry.ts";
 import { addEvilInstance } from "../testing/evil.ts";
-import { createNetwork } from "../testing/network.ts";
-
-/** A user served by b.test. */
-const user = (id: string) => ({
-    type: "User",
-    id,
-    created_at: "2026-01-01T00:00:00Z",
-    username: id,
-    fields: [],
-    manually_approves_followers: false,
-    indexable: true,
-});
+import { openFederation, undo, user } from "./testing.ts";
 
 /** bob's Reaction to the status `object` with `content`, and the emojis of `extensions`. */
 const reaction = (id: string, object: string, content: string, extensions?: object) => ({
@@ -39,34 +27,10 @@ const emoji = (shortcode: string) => ({
     },
 });
 
-/** bob's Delete of his reaction `id`. */
-const undo = (id: string) => ({
-    type: "Delete",
-    created_at: "2026-01-01T00:00:00Z",
-    author: "bob",
-    deleted_type: "pub.versia:reactions/Reaction",
-    deleted: id,
-});
-
-/** a.test, with alice and her status, and b.test, which sends whatever it is told to, with bob. */
+/** a.test, with alice and her status, and b.test, which serves bob. */
 const open = async () => {
-    const network = await createNetwork(["a.test"]);
-    const a = network.instances["a.test"].ctx;
-    const b = await addEvilInstance(network, "b.test");
-    b.serve("/.versia/v0.6/entities/User/bob", user("bob"));
-
-    const alice = await createLocalAccount(a, "alice");
-    const local = await createNote(a, alice);
-
-    /** Has b.test send `entity` to a.test, a second after the last, and a.test receive it. */
-    const send = async (entity: object) => {
-        network.clock.advance(1000);
-        assertEquals(
-            (await b.send("https://a.test/.versia/v0.6/inbox", { body: entity })).status,
-            202,
-        );
-        await network.drain();
-    };
+    const test = await openFederation(["bob"]);
+    const { a, alice } = test;
 
     /** The reactions to the status `noteId`, as alice is shown them, with the emojis they use. */
     const shown = async (noteId: string) => {
@@ -82,23 +46,7 @@ const open = async () => {
     /** How many reactions a.test stores, to any status. */
     const kept = async () => (await a.db.selectFrom("reactions").select("id").execute()).length;
 
-    /** Why a.test gave up on what it was sent, oldest first. */
-    const errors = async () =>
-        (await a.db.selectFrom("jobs").select("last_error").where("queue", "=", "inbox")
-            .where("last_error", "is not", null).orderBy("created_at").execute())
-            .map((job) => job.last_error ?? "");
-
-    return {
-        network,
-        a,
-        alice,
-        local,
-        send,
-        shown,
-        kept,
-        errors,
-        [Symbol.asyncDispose]: network[Symbol.asyncDispose],
-    };
+    return { ...test, shown, kept };
 };
 
 Deno.test("a reaction to a local note is kept, once, and a Delete undoes it", async () => {
@@ -122,20 +70,22 @@ Deno.test("a reaction to a local note is kept, once, and a Delete undoes it", as
     await test.send(reaction("r2", `a.test:${test.local.id}`, "🎉"));
     assertEquals(await test.kept(), 1);
 
-    await test.send(undo("r2"));
+    await test.send(undo("pub.versia:reactions/Reaction", "r2"));
     assertEquals(await test.kept(), 1);
 
     // A different remote instance can't undo it, though its own reaction has that id.
     const c = await addEvilInstance(test.network, "c.test");
     c.serve("/.versia/v0.6/entities/User/bob", user("bob"));
     assertEquals(
-        (await c.send("https://a.test/.versia/v0.6/inbox", { body: undo("r1") })).status,
+        (await c.send("https://a.test/.versia/v0.6/inbox", {
+            body: undo("pub.versia:reactions/Reaction", "r1"),
+        })).status,
         202,
     );
     await test.network.drain();
     assertEquals(await test.kept(), 1);
 
-    await test.send(undo("r1"));
+    await test.send(undo("pub.versia:reactions/Reaction", "r1"));
     assertEquals(await test.kept(), 0);
     assertEquals(await test.errors(), []);
 });
@@ -157,7 +107,7 @@ Deno.test("a reaction with the sender's custom emoji is kept with it", async () 
     });
 
     // Once undone, its emoji is still stored, as others may use it.
-    await test.send(undo("r1"));
+    await test.send(undo("pub.versia:reactions/Reaction", "r1"));
     assertEquals(await test.kept(), 0);
     assertEquals(
         (await test.a.db.selectFrom("emojis").select("shortcode").where(

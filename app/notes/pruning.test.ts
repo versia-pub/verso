@@ -108,7 +108,7 @@ const vote = async (ctx: Context, noteId: string, accountId: string) => {
         .execute();
 };
 
-/** Who interacts with `noteId`, and how: on b.example with `instanceId`, or here with `null`. */
+/** A like of `noteId` by `accountId`, from b.example with `instanceId`, or from here with `null`. */
 const like = (ctx: Context, noteId: string, accountId: string, instanceId: string | null) =>
     ctx.db.insertInto("likes")
         .values({
@@ -121,6 +121,7 @@ const like = (ctx: Context, noteId: string, accountId: string, instanceId: strin
         })
         .execute();
 
+/** A reaction to `noteId` by `accountId`, from b.example with `instanceId`, or from here with `null`. */
 const react = (ctx: Context, noteId: string, accountId: string, instanceId: string | null) =>
     ctx.db.insertInto("reactions")
         .values({

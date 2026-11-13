@@ -2,59 +2,26 @@ import { assertEquals, assertExists, assertStringIncludes } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { createNote } from "../notes/testing.ts";
-import { addEvilInstance } from "../testing/evil.ts";
-import { createNetwork } from "../testing/network.ts";
 import { findLike, likePage } from "./like_queries.ts";
 import { like } from "./likes.ts";
+import { openFederation, undo } from "./testing.ts";
 
-/** A user served by b.test. */
-const user = (id: string) => ({
-    type: "User",
-    id,
-    created_at: "2026-01-01T00:00:00Z",
-    username: id,
-    fields: [],
-    manually_approves_followers: false,
-    indexable: true,
-});
+/** The type of a Like or Dislike. */
+const likeType = (kind: "Like" | "Dislike") => `pub.versia:likes/${kind}`;
 
 /** bob's Like, or Dislike, of the status `note`. */
 const liking = (kind: "Like" | "Dislike", id: string, note: string, author = "bob") => ({
-    type: `pub.versia:likes/${kind}`,
+    type: likeType(kind),
     id,
     created_at: "2026-01-01T00:00:00Z",
     author,
     [kind === "Like" ? "liked" : "disliked"]: note,
 });
 
-/** bob's Delete of his like or dislike `id`. */
-const undo = (kind: "Like" | "Dislike", id: string) => ({
-    type: "Delete",
-    created_at: "2026-01-01T00:00:00Z",
-    author: "bob",
-    deleted_type: `pub.versia:likes/${kind}`,
-    deleted: id,
-});
-
-/** a.test, with alice and her status, and b.test, which sends whatever it is told to, with bob. */
+/** a.test, with alice and her status, and b.test, which serves bob. */
 const open = async () => {
-    const network = await createNetwork(["a.test"]);
-    const a = network.instances["a.test"].ctx;
-    const b = await addEvilInstance(network, "b.test");
-    b.serve("/.versia/v0.6/entities/User/bob", user("bob"));
-
-    const alice = await createLocalAccount(a, "alice");
-    const note = await createNote(a, alice);
-
-    /** Has b.test send `entity` to a.test, and a.test receive it. */
-    const send = async (entity: object) => {
-        network.clock.advance(1000);
-        assertEquals(
-            (await b.send("https://a.test/.versia/v0.6/inbox", { body: entity })).status,
-            202,
-        );
-        await network.drain();
-    };
+    const test = await openFederation(["bob"]);
+    const { a, local } = test;
 
     /** bob, as a.test has him, if it does. */
     const bob = async () =>
@@ -64,73 +31,57 @@ const open = async () => {
     /** bob's like or dislike of alice's status, and how many likes it has. */
     const state = async () => {
         const id = await bob();
-        const row = id === undefined ? undefined : await findLike(a, id, note.id);
-        return [row?.kind, row?.remote_id, (await findNote(a, note.id))?.likes_count];
+        const row = id === undefined ? undefined : await findLike(a, id, local.id);
+        return [row?.kind, row?.remote_id, (await findNote(a, local.id))?.likes_count];
     };
 
-    /** Why a.test gave up on what it was sent, oldest first. */
-    const errors = async () =>
-        (await a.db.selectFrom("jobs").select("last_error").where("queue", "=", "inbox")
-            .where("last_error", "is not", null).orderBy("created_at").execute())
-            .map((job) => job.last_error ?? "");
-
-    return {
-        network,
-        a,
-        alice,
-        note,
-        send,
-        bob,
-        state,
-        errors,
-        [Symbol.asyncDispose]: network[Symbol.asyncDispose],
-    };
+    return { ...test, bob, state };
 };
 
 Deno.test("a like of a local note is kept and counted, and a Delete undoes it", async () => {
     await using test = await open();
 
-    await test.send(liking("Like", "l1", `a.test:${test.note.id}`));
+    await test.send(liking("Like", "l1", `a.test:${test.local.id}`));
     assertEquals(await test.state(), ["like", "l1", 1]);
-    const [first] = await likePage(test.a, { noteId: test.note.id, blocked: null }, { limit: 40 });
+    const [first] = await likePage(test.a, { noteId: test.local.id, blocked: null }, { limit: 40 });
 
     // Sent again, it is the same like, in the same position among the status's likes. It is sent
     // with a different date, so it isn't mistaken for the same delivery.
     await test.send({
-        ...liking("Like", "l1", `a.test:${test.note.id}`),
+        ...liking("Like", "l1", `a.test:${test.local.id}`),
         created_at: "2026-01-02T00:00:00Z",
     });
     assertEquals(await test.state(), ["like", "l1", 1]);
-    assertEquals(await likePage(test.a, { noteId: test.note.id, blocked: null }, { limit: 40 }), [
+    assertEquals(await likePage(test.a, { noteId: test.local.id, blocked: null }, { limit: 40 }), [
         first,
     ]);
 
-    await test.send(undo("Like", "l1"));
+    await test.send(undo(likeType("Like"), "l1"));
     assertEquals(await test.state(), [undefined, undefined, 0]);
     assertEquals(await test.errors(), []);
 });
 
 Deno.test("a dislike replaces a like, and a like a dislike, and only likes count", async () => {
     await using test = await open();
-    const liked = `a.test:${test.note.id}`;
+    const liked = `a.test:${test.local.id}`;
 
     await test.send(liking("Like", "l1", liked));
     await test.send(liking("Dislike", "d1", liked));
     assertEquals(await test.state(), ["dislike", "d1", 0]);
     assertEquals(
-        await likePage(test.a, { noteId: test.note.id, blocked: null }, { limit: 40 }),
+        await likePage(test.a, { noteId: test.local.id, blocked: null }, { limit: 40 }),
         [],
     );
 
     // The like it replaced is already gone.
-    await test.send(undo("Like", "l1"));
+    await test.send(undo(likeType("Like"), "l1"));
     assertEquals(await test.state(), ["dislike", "d1", 0]);
 
     await test.send(liking("Like", "l2", liked));
     assertEquals(await test.state(), ["like", "l2", 1]);
 
     await test.send(liking("Dislike", "d2", liked));
-    await test.send(undo("Dislike", "d2"));
+    await test.send(undo(likeType("Dislike"), "d2"));
     assertEquals(await test.state(), [undefined, undefined, 0]);
 });
 
@@ -157,14 +108,14 @@ Deno.test("a like of a local note its author may not see is refused", async () =
 
 Deno.test("only the instance a like came from may undo it", async () => {
     await using test = await open();
-    await test.send(liking("Like", "l1", `a.test:${test.note.id}`));
+    await test.send(liking("Like", "l1", `a.test:${test.local.id}`));
     const carol = await createLocalAccount(test.a, "carol");
-    await like(test.a, carol, test.note.id);
-    const local = await findLike(test.a, carol, test.note.id);
+    await like(test.a, carol, test.local.id);
+    const local = await findLike(test.a, carol, test.local.id);
     assertExists(local);
 
     // b.test can't name a like from another instance, and a.test's own like has no id there.
-    await test.send(undo("Like", local.id));
+    await test.send(undo(likeType("Like"), local.id));
 
-    assertEquals((await findNote(test.a, test.note.id))?.likes_count, 2);
+    assertEquals((await findNote(test.a, test.local.id))?.likes_count, 2);
 });

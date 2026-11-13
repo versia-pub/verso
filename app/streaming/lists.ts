@@ -7,11 +7,8 @@
 import type { Context } from "../kernel/context.ts";
 import { listsWithAmong } from "../lists/list_queries.ts";
 import { listReachOf, listStatus } from "../notes/stream_lookups.ts";
-import type { Sessions, StreamViewer } from "./dispatcher.ts";
+import { type Sessions, sessionSet } from "./dispatcher.ts";
 import { listStream, type Session } from "./session.ts";
-
-/** A session, with its viewer. */
-type Entry = { readonly viewer: StreamViewer; readonly session: Session };
 
 /** The lists whose streams `session` is subscribed to, by their ids. */
 const listIdsOf = (session: Session) =>
@@ -27,7 +24,7 @@ const listIdsOf = (session: Session) =>
  * statuses they don't have.
  */
 export const listStreams = (ctx: Context): Sessions => {
-    const sessions = new Set<Entry>();
+    const { sessions, add } = sessionSet();
 
     /** The sessions subscribed to any list's stream whose viewers may read statuses. */
     const reading = async () => {
@@ -73,12 +70,6 @@ export const listStreams = (ctx: Context): Sessions => {
                 for (const { session } of owners) session.deliver(streams, message.event, payload);
             }
         },
-        add: (viewer, session) => {
-            const entry = { viewer, session };
-            sessions.add(entry);
-            return () => {
-                sessions.delete(entry);
-            };
-        },
+        add,
     };
 };

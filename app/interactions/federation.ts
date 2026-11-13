@@ -16,6 +16,7 @@ import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { canSee } from "../notes/visibility.ts";
 import { knownNoteRow } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
+import { authorityOf, resolveAuthor } from "./authors.ts";
 import { isLikeEvent } from "./events.ts";
 import {
     countLikesOfNote,
@@ -156,13 +157,12 @@ const likingType = <T extends v0_6.Like | v0_6.Dislike>(
     extension,
     schema,
     // Only its author's instance may send it.
-    authority: (entity, origin) => parseReference(entity.author, origin)?.host,
-    // The author is often new to Verso, but is only fetched for a like Verso will store.
+    authority: authorityOf,
+    // The author is only fetched for a like Verso will store.
     prepare: async (ctx, entity, sender, budget) => {
         if (await likedNote(ctx, liking(entity).note, sender) === undefined) return;
 
-        const author = parseReference(entity.author, sender.domain);
-        if (author) await ctx.federation.resolve(ctx, author, "User", budget);
+        await resolveAuthor(ctx, entity, sender, budget);
     },
     receive: async (ctx, entity, sender) => {
         const { author, note: liked } = liking(entity);

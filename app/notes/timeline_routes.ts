@@ -3,13 +3,13 @@ import { z } from "zod";
 import { viewerHidden } from "../graph/hidden.ts";
 import { NotFound } from "../http/errors.ts";
 import { findList } from "../lists/list_queries.ts";
-import { cursorsOf, PageQuery } from "../http/paging.ts";
+import { PageQuery } from "../http/paging.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Paged } from "../http/responses.ts";
 import { Flag, Strings } from "../http/schemas.ts";
 import { TimelinesAccess } from "../kernel/config_sections.ts";
 import { visibleOrigin } from "./feed_access.ts";
-import { renderStatuses } from "./render.ts";
+import { statusPage } from "./status_pages.ts";
 import { hashtagPage, homePage, listPage, type Origin, publicPage } from "./timeline_queries.ts";
 import { homeSourcesOf, listSourcesOf } from "./timeline_sources.ts";
 
@@ -77,11 +77,7 @@ export const timelineRoutes = (
                 query,
             );
 
-            return {
-                status: 200,
-                body: await renderStatuses(ctx, notes, viewer.accountId),
-                cursors: cursorsOf(notes, query, (note) => note.id),
-            };
+            return await statusPage(ctx, notes, query, viewer.accountId);
         },
     }),
     defineRoute({
@@ -105,11 +101,7 @@ export const timelineRoutes = (
                 query.only_media,
             );
 
-            return {
-                status: 200,
-                body: await renderStatuses(ctx, notes, viewerId),
-                cursors: cursorsOf(notes, query, (note) => note.id),
-            };
+            return await statusPage(ctx, notes, query, viewerId);
         },
     }),
     defineRoute({
@@ -147,11 +139,7 @@ export const timelineRoutes = (
                 query.only_media,
             );
 
-            return {
-                status: 200,
-                body: await renderStatuses(ctx, notes, viewerId),
-                cursors: cursorsOf(notes, query, (note) => note.id),
-            };
+            return await statusPage(ctx, notes, query, viewerId);
         },
     }),
     defineRoute({
@@ -172,11 +160,8 @@ export const timelineRoutes = (
             if (list === undefined) throw new NotFound();
 
             const notes = await listPage(ctx, viewer.accountId, listSourcesOf(ctx, list), query);
-            return {
-                status: 200,
-                body: await renderStatuses(ctx, notes, viewer.accountId),
-                cursors: cursorsOf(notes, query, (note) => note.id),
-            };
+
+            return await statusPage(ctx, notes, query, viewer.accountId);
         },
     }),
 ];

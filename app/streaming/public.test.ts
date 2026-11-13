@@ -22,6 +22,7 @@ import { dispatcher, type Sessions } from "./dispatcher.ts";
 import { publicStreams } from "./public.ts";
 import { openSession } from "./session.ts";
 import { type StatusMessage, statusMessages } from "./statuses.ts";
+import { countingContext, viewerOf } from "./testing.ts";
 
 const everyStream = [
     "public",
@@ -53,15 +54,7 @@ const open = async (access?: Parameters<typeof publicStreams>[1]) => {
     ) => {
         const sent: unknown[] = [];
         const statuses: Record<string, unknown>[] = [];
-        const viewer = {
-            tokenId: "token",
-            appId: "app",
-            accountId,
-            scopes: ["read"] as const,
-            forgetPermissions: () => {},
-            permissions: () =>
-                Promise.resolve(new Set<Permission>(options.permissions ?? ["read:note"])),
-        };
+        const viewer = viewerOf(accountId, options.permissions ?? ["read:note"]);
         const session = openSession(viewer, {
             send: (data) => {
                 const { stream, event, payload } = JSON.parse(data);
@@ -83,18 +76,11 @@ const open = async (access?: Parameters<typeof publicStreams>[1]) => {
 
     /** Public streams of their own, with a count of the queries they have made. */
     const counted = () => {
-        let queries = 0;
-        const db = test.ctx.db.withPlugin({
-            transformQuery: ({ node }) => node,
-            transformResult: ({ result }) => {
-                queries += 1;
-                return Promise.resolve(result);
-            },
-        });
-        const sessions = publicStreams({ ...test.ctx, db });
+        const { ctx, queries } = countingContext(test.ctx);
+        const sessions = publicStreams(ctx);
         dispatch.listen(sessions);
 
-        return { sessions, queries: () => queries };
+        return { sessions, queries };
     };
 
     /** Publishes `message`, and waits until it is streamed. */

@@ -12,7 +12,7 @@ import { hidingAmong } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
 import { type Feeds, type Seen, seenOf } from "../notes/feed_access.ts";
 import type { PublicStatus } from "../notes/stream_lookups.ts";
-import type { Sessions, StreamViewer } from "./dispatcher.ts";
+import { type Sessions, sessionSet } from "./dispatcher.ts";
 import type { Session } from "./session.ts";
 
 /** Which statuses a kind of stream has, and on which of its streams each goes. */
@@ -29,7 +29,7 @@ export type SharedStreams = {
 
 /** The sessions of the process `ctx` belongs to that are sent `streams`. */
 export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions => {
-    const sessions = new Set<{ readonly viewer: StreamViewer; readonly session: Session }>();
+    const { sessions, add } = sessionSet();
 
     /**
      * The sessions subscribed to any of the streams whose viewers may read statuses, with their
@@ -90,12 +90,6 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
                 session.deliver(on, message.event, payload);
             }
         },
-        add: (viewer, session) => {
-            const entry = { viewer, session };
-            sessions.add(entry);
-            return () => {
-                sessions.delete(entry);
-            };
-        },
+        add,
     };
 };

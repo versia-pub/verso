@@ -18,6 +18,7 @@ import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { canSee } from "../notes/visibility.ts";
 import { knownNoteRow } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
+import { authorityOf, resolveAuthor } from "./authors.ts";
 import { isReactionEvent } from "./events.ts";
 import {
     countReactionsOf,
@@ -156,14 +157,13 @@ export const reactionType: EntityType<v0_6.Reaction> = {
     extension,
     schema: v0_6.Reaction,
     // Only its author's instance may send it.
-    authority: (reaction, origin) => parseReference(reaction.author, origin)?.host,
-    // The author is often new to Verso, but is only fetched for a reaction Verso will store.
+    authority: authorityOf,
+    // The author is only fetched for a reaction Verso will store.
     prepare: async (ctx, reaction, sender, budget) => {
         if (remoteReactionEmoji(reaction) === undefined) return;
         if (await reactedNote(ctx, reaction, sender) === undefined) return;
 
-        const author = parseReference(reaction.author, sender.domain);
-        if (author) await ctx.federation.resolve(ctx, author, "User", budget);
+        await resolveAuthor(ctx, reaction, sender, budget);
     },
     receive: async (ctx, reaction, sender) => {
         const emoji = remoteReactionEmoji(reaction);

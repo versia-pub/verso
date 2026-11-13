@@ -1,12 +1,13 @@
 import { findAccount } from "../accounts/account_queries.ts";
 import { NotFound } from "../http/errors.ts";
-import { cursorsOf, PageQuery } from "../http/paging.ts";
+import { PageQuery } from "../http/paging.ts";
 import { defineRoute } from "../http/route.ts";
 import { Paged } from "../http/responses.ts";
 import { Flag } from "../http/schemas.ts";
 import { notePageBy } from "./note_queries.ts";
 import { pinnedNotes } from "./pin_queries.ts";
 import { renderStatuses } from "./render.ts";
+import { statusPage } from "./status_pages.ts";
 import { visibilitiesFor } from "./visibility.ts";
 import { Status } from "@versia/client-api";
 import { z } from "zod";
@@ -71,10 +72,6 @@ export const accountStatusesRoute = defineRoute({
             query,
         );
 
-        return {
-            status: 200,
-            body: await renderStatuses(ctx, notes, viewerId),
-            cursors: cursorsOf(notes, query, (note) => note.id),
-        };
+        return await statusPage(ctx, notes, query, viewerId);
     },
 });

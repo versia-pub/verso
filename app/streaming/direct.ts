@@ -6,11 +6,7 @@
  */
 import { shownConversation } from "../conversations/render.ts";
 import type { Context } from "../kernel/context.ts";
-import type { Sessions, StreamViewer } from "./dispatcher.ts";
-import type { Session } from "./session.ts";
-
-/** A session, with its viewer. */
-type Entry = { readonly viewer: StreamViewer; readonly session: Session };
+import { type Sessions, sessionSet } from "./dispatcher.ts";
 
 /**
  * The `direct` streams for the sessions of the process `ctx` belongs to. A conversation is rendered
@@ -18,7 +14,7 @@ type Entry = { readonly viewer: StreamViewer; readonly session: Session };
  * statuses. One that is gone by then is sent to none.
  */
 export const directStreams = (ctx: Context): Sessions => {
-    const sessions = new Set<Entry>();
+    const { sessions, add } = sessionSet();
 
     return {
         conversations: async (message) => {
@@ -37,12 +33,6 @@ export const directStreams = (ctx: Context): Sessions => {
             const payload = JSON.stringify(shown);
             for (const { session } of reached) session.deliver(["direct"], "conversation", payload);
         },
-        add: (viewer, session) => {
-            const entry = { viewer, session };
-            sessions.add(entry);
-            return () => {
-                sessions.delete(entry);
-            };
-        },
+        add,
     };
 };

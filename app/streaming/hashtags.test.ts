@@ -15,6 +15,7 @@ import { dispatcher, type Sessions } from "./dispatcher.ts";
 import { hashtagStreams } from "./hashtags.ts";
 import { openSession } from "./session.ts";
 import { type StatusMessage, statusMessages } from "./statuses.ts";
+import { countingContext, viewerOf } from "./testing.ts";
 
 /** The `hashtag` and `hashtag:local` streams of #nix and #rust. */
 const everyStream = [
@@ -44,15 +45,7 @@ const open = async (access?: Parameters<typeof hashtagStreams>[1]) => {
         options: { sessions?: Sessions; permissions?: readonly Permission[] } = {},
     ) => {
         const sent: unknown[] = [];
-        const viewer = {
-            tokenId: "token",
-            appId: "app",
-            accountId,
-            scopes: ["read"] as const,
-            forgetPermissions: () => {},
-            permissions: () =>
-                Promise.resolve(new Set<Permission>(options.permissions ?? ["read:note"])),
-        };
+        const viewer = viewerOf(accountId, options.permissions ?? ["read:note"]);
         const session = openSession(viewer, {
             send: (data) => {
                 const { stream, event, payload } = JSON.parse(data);
@@ -204,15 +197,8 @@ Deno.test("hashtag streams send nothing to those who may not read statuses, or w
 
 Deno.test("a session reads nothing for hashtag streams it isn't subscribed to", async () => {
     await using test = await open();
-    let queries = 0;
-    const db = test.ctx.db.withPlugin({
-        transformQuery: ({ node }) => node,
-        transformResult: ({ result }) => {
-            queries += 1;
-            return Promise.resolve(result);
-        },
-    });
-    const sessions = hashtagStreams({ ...test.ctx, db });
+    const { ctx, queries } = countingContext(test.ctx);
+    const sessions = hashtagStreams(ctx);
     test.dispatch.listen(sessions);
     test.streaming("alice", [["public"]], { sessions });
     test.streaming("bob", [["hashtag", "nix"]], { sessions, permissions: ["read:account"] });
@@ -220,5 +206,5 @@ Deno.test("a session reads nothing for hashtag streams it isn't subscribed to", 
     await test.post("bob", ["nix"]);
     await test.deleted("gone");
 
-    assertEquals(queries, 0);
+    assertEquals(queries(), 0);
 });
