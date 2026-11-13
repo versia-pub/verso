@@ -30,7 +30,7 @@ const margin = 35;
 const avatarSize = cells * cellSize + 2 * margin;
 
 /** Twitter's header size, which most clients crop from. */
-const banner = { width: 1500, height: 500 };
+export const banner = { width: 1500, height: 500 };
 
 const background: Rgb = [240, 240, 240];
 

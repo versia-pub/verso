@@ -83,6 +83,8 @@ const serve = (
             listening,
             metricsToken: config.metrics.token,
             web,
+            instance: config.instance,
+            timelinesAccess: config.timelines_access,
         }).fetch,
     );
     return server.finished;

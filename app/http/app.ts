@@ -3,11 +3,12 @@ import { bodyLimit } from "@hono/hono/body-limit";
 import { getLogger } from "@logtape/logtape";
 import { hashToken } from "../auth/secrets.ts";
 import { isUniqueViolation } from "../db/errors.ts";
-import { Permissions } from "../kernel/config_sections.ts";
+import type { Config } from "../kernel/config.ts";
+import { Instance, Permissions, TimelinesAccess } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Cidr } from "../kernel/ip.ts";
 import { viewPage, viewPolicy } from "../web/page.tsx";
-import { views } from "../web/views.ts";
+import { viewsFor } from "../web/views.ts";
 import type { AppEnv, AppServices } from "./env.ts";
 import { ContentTooLarge, Defederated, HttpError, NotFound } from "./errors.ts";
 import { useHeaders } from "./headers.ts";
@@ -74,6 +75,10 @@ export type AppOptions = {
     readonly metricsToken?: string;
     /** The web app, served at addresses no route serves. Without it, those are 404s. */
     readonly web?: WebApp;
+    /** What the instance says about itself, on its front page. Without it, config's defaults. */
+    readonly instance?: Config["instance"];
+    /** Who may see the public timelines, which pages show. Without it, config's defaults. */
+    readonly timelinesAccess?: TimelinesAccess;
 };
 
 /** Every route the server serves. Tests call its `fetch` directly, with no network in between. */
@@ -243,9 +248,15 @@ export const createApp = (
     // Pages Verso renders itself, as an anonymous visitor sees them, whatever the request accepts,
     // as link previews often accept anything. One that anonymous visitors may not see is left to
     // the web app, where the visitor may be logged in.
+    const views = viewsFor({
+        instance: options.instance ?? Instance.parse({}),
+        timelines_access: options.timelinesAccess ?? TimelinesAccess.parse({}),
+        permissions,
+    });
     for (const view of views) {
         app.get(view.path, async (c) => {
-            const allowed = permissions.anonymous.includes(view.permission);
+            const allowed = view.permission === undefined ||
+                permissions.anonymous.includes(view.permission);
             const shown = allowed ? await view.render(ctx, c.req.param()) : undefined;
             if (shown) {
                 return c.html(await viewPage(web, shown), 200, {

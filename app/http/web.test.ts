@@ -103,7 +103,7 @@ Deno.test("a web app that isn't built is nothing", async () => {
 Deno.test("a browser gets the web app's page at an address no route serves", async () => {
     await using test = await open();
 
-    for (const path of ["/", "/home", "/tags/cats", "/apiary", "/oauth/web-callback"]) {
+    for (const path of ["/home", "/settings/profile", "/apiary", "/oauth/web-callback"]) {
         const response = await test.request(path, { headers: browser });
 
         assertEquals(response.status, 200, path);
@@ -117,7 +117,7 @@ Deno.test("a browser gets the web app's page at an address no route serves", asy
 Deno.test("the web app's page may run its own scripts and nothing else, and can't be framed", async () => {
     await using test = await open();
 
-    const response = await test.request("/", { headers: browser });
+    const response = await test.request("/home", { headers: browser });
 
     const policy = response.headers.get("content-security-policy") ?? "";
     assert(policy.startsWith("default-src 'none'; script-src 'self' "), policy);
@@ -159,7 +159,7 @@ Deno.test("an address no route serves is still a 404 for anything but a browser 
 Deno.test("without a built web app, every address no route serves is a 404", async () => {
     await using test = await open({ built: false });
 
-    const response = await test.request("/", { headers: browser });
+    const response = await test.request("/home", { headers: browser });
 
     assertEquals(response.status, 404);
 });
@@ -188,8 +188,8 @@ Deno.test("the web app's files are limited apart from other requests, which page
     for (let i = 0; i < 10; i++) assertEquals((await script()).status, 200);
     assertEquals((await script()).status, 429);
 
-    assertEquals((await test.request("/", { headers: browser })).status, 200);
-    assertEquals((await test.request("/", { headers: browser })).status, 429);
+    assertEquals((await test.request("/home", { headers: browser })).status, 200);
+    assertEquals((await test.request("/home", { headers: browser })).status, 429);
 });
 
 Deno.test("reserved paths match whole segments", () => {

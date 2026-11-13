@@ -5,8 +5,7 @@
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import type { WebApp } from "../http/web.ts";
 import { createInstance } from "../instances/testing.ts";
-import type { Permissions } from "../kernel/config_sections.ts";
-import { createTestApp } from "../testing/app.ts";
+import { createTestApp, type TestAppOptions } from "../testing/app.ts";
 import { createTestContext, type TestContext } from "../testing/context.ts";
 
 /** A built web app's page, with an inline script the app starts with. */
@@ -29,7 +28,7 @@ export type ViewTest = TestContext & {
 
 /** An app with the accounts alice, and bob on b.example, to request pages of. */
 export const open = async (
-    options: { readonly web?: WebApp; readonly permissions?: Permissions } = {},
+    options: Pick<TestAppOptions, "web" | "permissions" | "instance" | "timelinesAccess"> = {},
 ): Promise<ViewTest> => {
     const test = await createTestContext();
     await createLocalAccount(test.ctx, "alice");
