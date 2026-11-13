@@ -166,8 +166,8 @@ Mastodon's `tootctl statuses remove` does. It keeps one that:
   given
 
 So home timelines keep what they show. `--clean-followed` also stops boosts and quotes by followed
-accounts from keeping a status. Reported statuses aren't kept. Their authors' status counts go down,
-so they count what is stored here. Their media is deleted by the hourly cleanup.
+accounts from keeping a status. Reported statuses aren't kept, as on Mastodon. Their authors' status
+counts go down, so they count what is stored here. Their media is deleted by the hourly cleanup.
 `[federation] remote_status_days` runs the same pruning daily, without `--clean-followed`.
 
 ### `verso admin preview-cards`

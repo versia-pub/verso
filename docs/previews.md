@@ -29,8 +29,7 @@ transport. It gives up after 30 seconds. A page must be a `200` of type `text/ht
 to 1 MiB. An image can be up to 8 MiB, and has to be a JPEG, PNG, GIF or WebP.
 
 The image is processed as an upload is, scaled down to fit 640×360, and stored as media that belongs
-to no account. The card uses it, so removing unused media keeps it. This is the one case where Verso
-downloads media from elsewhere.
+to no account. The card uses it, so removing unused media keeps it.
 
 A job isn't retried. A status whose page couldn't be fetched has no card, but another status that
 links the same page tries again. A page already fetched is fetched again only when its card is more
