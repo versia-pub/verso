@@ -6,6 +6,7 @@ import type { ScheduledNotesTable } from "./tables.ts";
 
 export type ScheduledNoteRow = Selectable<ScheduledNotesTable>;
 
+/** Adds a scheduled status. */
 export const insertScheduled = async (ctx: Context, row: ScheduledNoteRow): Promise<void> => {
     await ctx.db.insertInto("scheduled_notes").values(row).execute();
 };
@@ -55,6 +56,7 @@ export const countScheduled = async (
     return readCount(await query.executeTakeFirstOrThrow());
 };
 
+/** Moves the scheduled status `id` to `at`. */
 export const setScheduledAt = async (ctx: Context, id: string, at: Date): Promise<void> => {
     await ctx.db.updateTable("scheduled_notes").set({ scheduled_at: at }).where("id", "=", id)
         .execute();

@@ -13,5 +13,6 @@ export type EmojiDeleted = {
     readonly emojiId: string;
 };
 
+/** Whether `event` is an {@link EmojiDeleted}. */
 export const isEmojiDeleted = (event: DomainEvent): event is EmojiDeleted =>
     event.type === "emojis.deleted";

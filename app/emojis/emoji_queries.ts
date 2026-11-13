@@ -38,11 +38,17 @@ const ownFirst = <E extends { readonly shortcode: string; readonly account_id: s
     return [...named.values()];
 };
 
-/** Only global emojis, or those and the local user `accountId`'s own. */
+/**
+ * The local instance's emojis that are global, or global and the local user `accountId`'s own, as a
+ * `where` condition.
+ */
 const usableBy = (accountId: string | null) => (eb: ExpressionBuilder<Database, "emojis">) =>
-    accountId === null
-        ? eb("emojis.account_id", "is", null)
-        : eb.or([eb("emojis.account_id", "is", null), eb("emojis.account_id", "=", accountId)]);
+    eb.and([
+        eb("emojis.instance_id", "is", null),
+        accountId === null
+            ? eb("emojis.account_id", "is", null)
+            : eb.or([eb("emojis.account_id", "is", null), eb("emojis.account_id", "=", accountId)]),
+    ]);
 
 /**
  * The ids of the local instance's custom emojis named any of `shortcodes` that the local user
@@ -60,7 +66,6 @@ export const usableEmojiIds = async (
     const rows = await ctx.db.selectFrom("emojis")
         .innerJoin("media", "media.id", "emojis.media_id")
         .select(["emojis.id", "emojis.shortcode", "emojis.account_id"])
-        .where("emojis.instance_id", "is", null)
         .where(usableBy(accountId))
         .where("emojis.shortcode", "in", shortcodes)
         // A ready picture is processed and stored, since the local instance stores its emojis'
@@ -73,6 +78,7 @@ export const usableEmojiIds = async (
     return ownFirst(rows).map((row) => row.id);
 };
 
+/** Adds an emoji, remote or local, without checking its shortcode is free. */
 export const insertEmoji = async (ctx: Context, emoji: Insertable<EmojisTable>): Promise<void> => {
     await ctx.db.insertInto("emojis").values(emoji).execute();
 };
@@ -88,9 +94,8 @@ export const hasUsableEmoji = async (
     except?: string,
 ): Promise<boolean> => {
     let query = ctx.db.selectFrom("emojis").select("id")
-        .where("instance_id", "is", null)
-        .where("shortcode", "=", shortcode)
-        .where((eb) => eb.or([eb("account_id", "=", accountId), eb("account_id", "is", null)]));
+        .where(usableBy(accountId))
+        .where("shortcode", "=", shortcode);
     if (except !== undefined) query = query.where("id", "!=", except);
 
     return await query.executeTakeFirst() !== undefined;
@@ -215,7 +220,6 @@ export const usableEmojis = async (
         await ctx.db.selectFrom("emojis")
             .innerJoin("media", "media.id", "emojis.media_id")
             .select(["emojis.account_id", ...shownColumns])
-            .where("emojis.instance_id", "is", null)
             .where(usableBy(accountId))
             .orderBy("emojis.shortcode")
             .execute(),

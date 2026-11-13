@@ -4,18 +4,11 @@ import { postponeGroup } from "../jobs/job_pause_queries.ts";
 import { deliverQueue } from "./deliver.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
+import { deleteEntity, userEntity } from "./testing.ts";
 
 const inbox = "https://a.test/.versia/v0.6/inbox";
 
-const user = {
-    type: "User",
-    id: "alice",
-    created_at: "2026-10-18T12:00:00Z",
-    username: "alice",
-    fields: [],
-    manually_approves_followers: false,
-    indexable: true,
-};
+const user = userEntity("alice");
 
 const open = async () => {
     const network = await createNetwork(["a.test"]);
@@ -104,12 +97,7 @@ Deno.test("the same user sent again later is queued again, as a profile can chan
 
 Deno.test("anything else sent again later, as a delivery tried again is, is queued once", async () => {
     await using test = await open();
-    const deleted = {
-        type: "Delete",
-        created_at: "2026-10-18T12:00:00Z",
-        deleted_type: "Note",
-        deleted: "1",
-    };
+    const deleted = deleteEntity("1", { deleted_type: "Note" });
 
     await test.send(deleted);
     test.network.clock.advance(1000);

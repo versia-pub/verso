@@ -97,6 +97,7 @@ export const setRemoteVotes = async (
         .execute();
 };
 
+/** Deletes `poll`, and its options and votes with it. */
 export const deletePoll = async (ctx: Context, poll: PollRow): Promise<void> => {
     await ctx.db.deleteFrom("polls").where("id", "=", poll.id).execute();
 };
@@ -130,6 +131,7 @@ export const pollOf = async (
     noteId: string,
 ): Promise<PollWithOptions | undefined> => (await pollsOf(ctx, [noteId])).get(noteId);
 
+/** The poll `id`, with its options, if there is one. */
 export const findPoll = async (
     ctx: Context,
     id: string,

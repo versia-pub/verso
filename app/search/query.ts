@@ -7,6 +7,7 @@
  * @module
  */
 import { HttpError } from "../http/errors.ts";
+import { dayMs } from "../kernel/clock.ts";
 import type { NoteScope, NoteTerm } from "./note_search_queries.ts";
 import { searchWords } from "./words.ts";
 
@@ -31,8 +32,6 @@ export type StatusQuery = {
  */
 const clausePattern = /([+-]?)(?:([^\s":]+):)?(?:"([^"]*)"?|(\S+))/gu;
 
-const dayLength = 24 * 60 * 60 * 1000;
-
 /**
  * The time `value` names, from its start until just before its end: a day, `yyyy-MM-dd`, in UTC,
  * since Verso knows no user's time zone, or a millisecond since 1970.
@@ -42,7 +41,7 @@ const timeOf = (value: string) => {
         const start = new Date(`${value}T00:00:00Z`);
         // Days that don't exist, like 2024-02-30, aren't read as others.
         if (!Number.isNaN(start.getTime()) && start.toISOString().startsWith(value)) {
-            return { start, end: new Date(start.getTime() + dayLength) };
+            return { start, end: new Date(start.getTime() + dayMs) };
         }
     }
 

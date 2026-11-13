@@ -11,6 +11,7 @@ export type PollEnded = {
     readonly noteId: string;
 };
 
+/** Whether `event` is a {@link PollEnded}. */
 export const isPollEnded = (event: DomainEvent): event is PollEnded => event.type === "polls.ended";
 
 /** `accountId` voted in the poll `pollId` on the status `noteId`, with the votes `voteIds`. */
@@ -22,6 +23,7 @@ export type PollVoted = {
     readonly voteIds: readonly string[];
 };
 
+/** Whether `event` is a {@link PollVoted}. */
 export const isPollVoted = (event: DomainEvent): event is PollVoted => event.type === "polls.voted";
 
 /** Votes were counted in the poll `pollId` on the local status `noteId` since it was last sent. */
@@ -31,5 +33,6 @@ export type PollUpdated = {
     readonly noteId: string;
 };
 
+/** Whether `event` is a {@link PollUpdated}. */
 export const isPollUpdated = (event: DomainEvent): event is PollUpdated =>
     event.type === "polls.updated";

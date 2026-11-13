@@ -4,15 +4,16 @@
  * @module
  */
 import { type Selectable, sql, type SqlBool } from "kysely";
-import { batchesOf } from "../db/batches.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import { type Excluded, notExcluded, notSuspendedOrSilenced } from "../graph/excluded_queries.ts";
+import { dayMs } from "../kernel/clock.ts";
 import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
 import type { NoteRow } from "../notes/note_queries.ts";
 import type { Origin } from "../notes/timeline_queries.ts";
 import type { PreviewCardRow } from "../previews/card_queries.ts";
 import { dayOf } from "../search/hashtag_queries.ts";
+import { replaceRows } from "./replace.ts";
 import type { TrendingLinksTable } from "./tables.ts";
 
 export type TrendingLink = Selectable<TrendingLinksTable>;
@@ -98,7 +99,7 @@ export const linkUses = async (
             eb.fn.count<number | string | bigint>("notes.account_id").distinct().as("accounts"),
         ])
         .where("preview_cards.id", "in", cardIds)
-        .where("notes.created_at", "<", new Date(newest.getTime() + 24 * 60 * 60 * 1000))
+        .where("notes.created_at", "<", new Date(newest.getTime() + dayMs))
         .groupBy(["preview_cards.id", sql`day`])
         .execute();
 
@@ -119,27 +120,24 @@ export const replaceTrendingLinks = async (
     ctx: Context,
     rows: readonly TrendingLink[],
 ): Promise<void> => {
-    const kept = new Set(rows.map((row) => row.card_id));
-    const stale = (await ctx.db.selectFrom("trending_links").select("card_id").execute())
-        .map((row) => row.card_id)
-        .filter((id) => !kept.has(id));
-
-    for (const batch of batchesOf(stale)) {
-        await ctx.db.deleteFrom("trending_links").where("card_id", "in", batch).execute();
-    }
-
-    for (const batch of batchesOf(rows)) {
-        await ctx.db.insertInto("trending_links")
-            .values(batch)
-            .onConflict((conflict) =>
-                conflict.column("card_id").doUpdateSet((eb) => ({
-                    score: eb.ref("excluded.score"),
-                    max_score: eb.ref("excluded.max_score"),
-                    max_score_at: eb.ref("excluded.max_score_at"),
-                }))
-            )
-            .execute();
-    }
+    await replaceRows({
+        rows,
+        keyOf: (row) => row.card_id,
+        stored: (await ctx.db.selectFrom("trending_links").select("card_id").execute())
+            .map((row) => row.card_id),
+        remove: (ids) => ctx.db.deleteFrom("trending_links").where("card_id", "in", ids).execute(),
+        upsert: (batch) =>
+            ctx.db.insertInto("trending_links")
+                .values(batch)
+                .onConflict((conflict) =>
+                    conflict.column("card_id").doUpdateSet((eb) => ({
+                        score: eb.ref("excluded.score"),
+                        max_score: eb.ref("excluded.max_score"),
+                        max_score_at: eb.ref("excluded.max_score_at"),
+                    }))
+                )
+                .execute(),
+    });
 };
 
 /** The cards that are trending, the highest scoring first, approved or not. */

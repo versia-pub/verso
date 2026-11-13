@@ -16,6 +16,7 @@ import type { Context } from "../kernel/context.ts";
 import { deliverQueue } from "./deliver.ts";
 import type { EntityType, Registry } from "./registry.ts";
 
+/** The queue of inbox jobs. */
 export const inboxQueue = "inbox";
 
 /**

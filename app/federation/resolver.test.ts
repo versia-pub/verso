@@ -17,6 +17,7 @@ import {
     type ResolverOptions,
     withDeadline,
 } from "./resolver.ts";
+import { userEntity } from "./testing.ts";
 
 const day = 24 * 60 * 60_000;
 
@@ -39,16 +40,6 @@ const open = async (options: ResolverOptions = {}) => {
 
     return { network, a, bob, resolve, fetched, user };
 };
-
-const evilUser = (id: string) => ({
-    type: "User",
-    id,
-    created_at: "2026-10-18T12:00:00Z",
-    username: id,
-    fields: [],
-    manually_approves_followers: false,
-    indexable: true,
-});
 
 Deno.test("a remote user is fetched once, and again when it is a day old", async () => {
     const { network, a, bob, fetched, user } = await open();
@@ -167,10 +158,10 @@ Deno.test("an instance can't answer with another entity, or unsigned", async () 
     const evil = await addEvilInstance(network, "evil.test");
     const path = (id: string) => `/.versia/v0.6/entities/User/${id}`;
 
-    evil.serve(path("alice"), evilUser("mallory"));
-    evil.serve(path("note"), { ...evilUser("note"), type: "Note" });
-    evil.serve(path("bad"), { ...evilUser("bad"), username: "not a name" });
-    evil.serve(path("unsigned"), evilUser("unsigned"), { signed: false });
+    evil.serve(path("alice"), userEntity("mallory"));
+    evil.serve(path("note"), { ...userEntity("note"), type: "Note" });
+    evil.serve(path("bad"), { ...userEntity("bad"), username: "not a name" });
+    evil.serve(path("unsigned"), userEntity("unsigned"), { signed: false });
 
     for (const id of ["alice", "note", "bad"]) {
         await assertRejects(() => user("evil.test", id), ResolveFailed, undefined, id);

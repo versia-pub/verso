@@ -6,6 +6,7 @@
 import { type Expression, type RawBuilder, sql, type SqlBool } from "kysely";
 import { usesSqlite } from "../db/columns.ts";
 import { notSuspendedOrSilenced } from "../graph/excluded_queries.ts";
+import { dayMs } from "../kernel/clock.ts";
 import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
 import type { Visibility } from "../kernel/visibility.ts";
@@ -114,7 +115,7 @@ export const hashtagUses = async (
         .where("notes.visibility", "in", visibilities)
         .where(notSuspendedOrSilenced(ctx, "notes.account_id"))
         .where("notes.created_at", ">=", oldest)
-        .where("notes.created_at", "<", new Date(newest.getTime() + 24 * 60 * 60 * 1000))
+        .where("notes.created_at", "<", new Date(newest.getTime() + dayMs))
         .groupBy(["note_tags.name", sql`day`])
         .execute();
 

@@ -29,7 +29,7 @@ const TrendQuery = (limit: { readonly default: number; readonly max: number }) =
             }),
     });
 
-const tagsQuery = TrendQuery({ default: 10, max: 20 });
+const trendQuery = TrendQuery({ default: 10, max: 20 });
 
 /** Which link's statuses to return, and which of them. */
 const LinkTimelineQuery = PageQuery({ default: 20, max: 40 }).extend({
@@ -51,7 +51,7 @@ export const trendRoutes = (
             docs: "https://docs.joinmastodon.org/methods/trends/#tags",
             tags: ["trends"],
             auth: { require: "optional", permission: "read:note" },
-            query: tagsQuery,
+            query: trendQuery,
             responses: { 200: Offset(Tag) },
             handler: async (ctx, { query, viewer }) => {
                 const names = instance.show_trends
@@ -112,7 +112,7 @@ export const trendRoutes = (
             docs: "https://docs.joinmastodon.org/methods/trends/#links",
             tags: ["trends"],
             auth: { require: "optional", permission: "read:note" },
-            query: tagsQuery,
+            query: trendQuery,
             responses: { 200: Offset(TrendsLink) },
             handler: async (ctx, { query, viewer }) => {
                 const cards = instance.show_trends

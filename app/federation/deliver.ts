@@ -37,17 +37,17 @@ export const DeliverJob = z.union([
 ]);
 export type DeliverJob = z.infer<typeof DeliverJob>;
 
-/** The payload of a fan-out job. */
+/** The payload of a fan-out job: where an entity is sent. */
 export const FanOutJob = z.object({
     /** The entity's row in `delivery_bodies`. */
     bodyId: z.string(),
-    /** The instances to send it to, by id. */
+    /** Instances, by id. */
     instanceIds: z.array(z.string()),
-    /** An account whose followers' instances are sent it too, found when the job runs. */
+    /** An account, whose followers' instances are sent it too, as they are when the job runs. */
     followersOf: z.string().optional(),
     /**
-     * Whether the followers that account blocks are left out, as they are for its
-     * followers-only statuses.
+     * Whether the followers that account blocks, individually or by their domain, are left out, so
+     * that its followers-only statuses don't reach an instance only they follow it from.
      */
     unblockedFollowers: z.boolean().optional(),
     /** Whether every instance Verso knows is sent it, as they are when the job runs. */
@@ -67,19 +67,9 @@ export const fanOutDeadPayload: DeadPayload = (payload: JobPayload): JobPayload 
  */
 const maxAttempts = 1000;
 
-/** Where an entity is sent. */
-export type Audience = {
-    /** Instances, by id. */
+/** Where an entity is sent: a fan-out job's payload without its entity. */
+export type Audience = Readonly<Omit<FanOutJob, "bodyId" | "instanceIds">> & {
     readonly instanceIds: readonly string[];
-    /** An account, whose followers' instances are sent it too, as they are when it is sent. */
-    readonly followersOf?: string;
-    /**
-     * Whether the followers that account blocks, individually or by their domain, are left out, so
-     * that its followers-only statuses don't reach an instance only they follow it from.
-     */
-    readonly unblockedFollowers?: boolean;
-    /** Whether every instance Verso knows is sent it, as they are when it is sent. */
-    readonly everyInstance?: boolean;
 };
 
 /**

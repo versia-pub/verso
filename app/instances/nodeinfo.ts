@@ -10,10 +10,11 @@ import { countLocalAccounts, countLocalStatuses } from "../accounts/account_quer
 import { countAccountsWithTokensSince } from "../auth/token_queries.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { cached } from "../kernel/cache.ts";
+import { dayMs } from "../kernel/clock.ts";
 import type { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
 
-const weekMs = 7 * 24 * 60 * 60 * 1000;
+const weekMs = 7 * dayMs;
 
 /** Mastodon's cache time for the discovery document, which never changes. */
 const discoverySeconds = 3 * 24 * 60 * 60;

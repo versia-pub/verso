@@ -5,6 +5,7 @@
  * @module
  */
 import type { TrendsLink } from "@versia/client-api";
+import { dayMs } from "../kernel/clock.ts";
 import type { Context } from "../kernel/context.ts";
 import { withImages } from "../previews/card_queries.ts";
 import { renderCard } from "../previews/render.ts";
@@ -22,8 +23,6 @@ export const approvedTrendingCards = async (
         .filter((card) => cardState(card, decisions, byDefault) === "approved");
 };
 
-const dayLength = 24 * 60 * 60 * 1000;
-
 /**
  * The trending links of `cards`, with how they were shared on each of the past week's days, today
  * first, in UTC. A link's `url` is its card's, which the link timeline looks cards up by.
@@ -34,8 +33,8 @@ export const renderTrendingLinks = async (
     cards: readonly TrendingCard[],
     viewerId: string | null,
 ): Promise<TrendsLink[]> => {
-    const today = Math.floor(ctx.clock.now().getTime() / dayLength) * dayLength;
-    const days = Array.from({ length: 7 }, (_, i) => new Date(today - i * dayLength));
+    const today = Math.floor(ctx.clock.now().getTime() / dayMs) * dayMs;
+    const days = Array.from({ length: 7 }, (_, i) => new Date(today - i * dayMs));
     const uses = new Map(
         (await linkUses(ctx, cards.map((card) => card.id), days))
             .map((used) => [`${used.card_id} ${used.day}`, used]),

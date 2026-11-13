@@ -5,13 +5,13 @@
  */
 import type { Selectable, SqlBool } from "kysely";
 import { sql } from "kysely";
-import { batchesOf } from "../db/batches.ts";
 import { notExcluded, notSuspendedOrSilenced } from "../graph/excluded_queries.ts";
 import { blockerIdsQuery } from "../graph/block_queries.ts";
 import { hiddenFrom } from "../graph/hidden.ts";
 import type { Context } from "../kernel/context.ts";
 import { firstIdAt } from "../kernel/ids.ts";
 import type { NoteRow } from "../notes/note_queries.ts";
+import { replaceRows } from "./replace.ts";
 import type { TrendingStatusesTable, TrendingTagsTable } from "./tables.ts";
 
 export type TrendingTag = Selectable<TrendingTagsTable>;
@@ -62,27 +62,24 @@ export const replaceTrendingTags = async (
     ctx: Context,
     rows: readonly TrendingTag[],
 ): Promise<void> => {
-    const kept = new Set(rows.map((row) => row.name));
-    const stale = (await ctx.db.selectFrom("trending_tags").select("name").execute())
-        .map((row) => row.name)
-        .filter((name) => !kept.has(name));
-
-    for (const batch of batchesOf(stale)) {
-        await ctx.db.deleteFrom("trending_tags").where("name", "in", batch).execute();
-    }
-
-    for (const batch of batchesOf(rows)) {
-        await ctx.db.insertInto("trending_tags")
-            .values(batch)
-            .onConflict((conflict) =>
-                conflict.column("name").doUpdateSet((eb) => ({
-                    score: eb.ref("excluded.score"),
-                    max_score: eb.ref("excluded.max_score"),
-                    max_score_at: eb.ref("excluded.max_score_at"),
-                }))
-            )
-            .execute();
-    }
+    await replaceRows({
+        rows,
+        keyOf: (row) => row.name,
+        stored: (await ctx.db.selectFrom("trending_tags").select("name").execute())
+            .map((row) => row.name),
+        remove: (names) => ctx.db.deleteFrom("trending_tags").where("name", "in", names).execute(),
+        upsert: (batch) =>
+            ctx.db.insertInto("trending_tags")
+                .values(batch)
+                .onConflict((conflict) =>
+                    conflict.column("name").doUpdateSet((eb) => ({
+                        score: eb.ref("excluded.score"),
+                        max_score: eb.ref("excluded.max_score"),
+                        max_score_at: eb.ref("excluded.max_score_at"),
+                    }))
+                )
+                .execute(),
+    });
 };
 
 /**
@@ -157,26 +154,24 @@ export const replaceTrendingStatuses = async (
     ctx: Context,
     rows: readonly TrendingStatus[],
 ): Promise<void> => {
-    const kept = new Set(rows.map((row) => row.note_id));
-    const stale = (await ctx.db.selectFrom("trending_statuses").select("note_id").execute())
-        .map((row) => row.note_id)
-        .filter((id) => !kept.has(id));
-
-    for (const batch of batchesOf(stale)) {
-        await ctx.db.deleteFrom("trending_statuses").where("note_id", "in", batch).execute();
-    }
-
-    for (const batch of batchesOf(rows)) {
-        await ctx.db.insertInto("trending_statuses")
-            .values(batch)
-            .onConflict((conflict) =>
-                conflict.column("note_id").doUpdateSet((eb) => ({
-                    account_id: eb.ref("excluded.account_id"),
-                    score: eb.ref("excluded.score"),
-                }))
-            )
-            .execute();
-    }
+    await replaceRows({
+        rows,
+        keyOf: (row) => row.note_id,
+        stored: (await ctx.db.selectFrom("trending_statuses").select("note_id").execute())
+            .map((row) => row.note_id),
+        remove: (ids) =>
+            ctx.db.deleteFrom("trending_statuses").where("note_id", "in", ids).execute(),
+        upsert: (batch) =>
+            ctx.db.insertInto("trending_statuses")
+                .values(batch)
+                .onConflict((conflict) =>
+                    conflict.column("note_id").doUpdateSet((eb) => ({
+                        account_id: eb.ref("excluded.account_id"),
+                        score: eb.ref("excluded.score"),
+                    }))
+                )
+                .execute(),
+    });
 };
 
 /**

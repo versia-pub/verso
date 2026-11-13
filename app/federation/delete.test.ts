@@ -1,27 +1,14 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
+import { deleteEntity, userEntity } from "./testing.ts";
 
 const inbox = "https://a.test/.versia/v0.6/inbox";
 
-const user = (id: string) => ({
-    type: "User",
-    id,
-    created_at: "2026-10-18T12:00:00Z",
-    username: id,
-    fields: [],
-    avatar: { "image/png": { content: `https://pictures.example/${id}.png`, remote: true } },
-    manually_approves_followers: false,
-    indexable: true,
-});
-
-const deletion = (deleted: string, more: Record<string, string> = {}) => ({
-    type: "Delete",
-    created_at: "2026-10-18T12:00:00Z",
-    deleted_type: "User",
-    deleted,
-    ...more,
-});
+const user = (id: string) =>
+    userEntity(id, {
+        avatar: { "image/png": { content: `https://pictures.example/${id}.png`, remote: true } },
+    });
 
 /** a.test, with alice on evil.test and bob on other.test already stored. */
 const open = async () => {
@@ -74,23 +61,23 @@ Deno.test("an instance can delete its own users, with their pictures", async () 
     assertEquals(await test.usernames(), ["alice", "bob"]);
     assertEquals(await test.pictures(), 2);
 
-    assertEquals(await test.send(deletion("alice")), undefined);
+    assertEquals(await test.send(deleteEntity("alice")), undefined);
     assertEquals(await test.usernames(), ["bob"]);
     assertEquals(await test.pictures(), 1);
 
     // A Delete by its author is the same as one deleting a user that Verso doesn't have.
-    assertEquals(await test.send(deletion("evil.test:alice", { author: "alice" })), undefined);
+    assertEquals(await test.send(deleteEntity("evil.test:alice", { author: "alice" })), undefined);
 });
 
 Deno.test("an instance can't delete another instance's users", async () => {
     await using test = await open();
 
     assertStringIncludes(
-        await test.send(deletion("other.test:bob")) ?? "",
+        await test.send(deleteEntity("other.test:bob")) ?? "",
         "evil.test may not delete other.test:bob",
     );
     assertStringIncludes(
-        await test.send(deletion("other.test:bob", { author: "other.test:bob" })) ?? "",
+        await test.send(deleteEntity("other.test:bob", { author: "other.test:bob" })) ?? "",
         "evil.test may not send this Delete, which only other.test may",
     );
     assertEquals(await test.usernames(), ["alice", "bob"]);
@@ -100,7 +87,7 @@ Deno.test("a Delete of a type that can't be deleted is given up on", async () =>
     await using test = await open();
 
     assertStringIncludes(
-        await test.send({ ...deletion("alice"), deleted_type: "Follow" }) ?? "",
+        await test.send({ ...deleteEntity("alice"), deleted_type: "Follow" }) ?? "",
         "A Follow can't be deleted",
     );
     assertEquals(await test.usernames(), ["alice", "bob"]);

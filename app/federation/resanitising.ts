@@ -1,3 +1,8 @@
+/**
+ * Re-sanitises the HTML of stored remote accounts, statuses and status versions after the sanitiser
+ * is upgraded, in batches run as jobs.
+ * @module
+ */
 import { z } from "zod";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml, sanitizerVersion } from "../kernel/html.ts";

@@ -133,8 +133,6 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
         return pending;
     };
 
-    const stored = findStoredKey;
-
     return {
         get: async (ctx, domain, beforeFetch) => {
             const known = remembered.get(domain);
@@ -143,7 +141,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
                 return known;
             }
 
-            const row = await stored(ctx, domain);
+            const row = await findStoredKey(ctx, domain);
             const key = row?.public_key ? await importPublicKey(row.public_key) : undefined;
             if (!key) {
                 await beforeFetch?.();
@@ -155,7 +153,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
             return key;
         },
         refresh: async (ctx, domain) => {
-            const row = await stored(ctx, domain);
+            const row = await findStoredKey(ctx, domain);
             const fetchedAt = row?.key_fetched_at?.getTime() ?? -Infinity;
             const recent = ctx.clock.now().getTime() - fetchedAt < refetchAfterMs;
 

@@ -4,6 +4,7 @@
  * @module
  */
 import type { Tag } from "@versia/client-api";
+import { dayMs } from "../kernel/clock.ts";
 import type { Context } from "../kernel/context.ts";
 import { featuredTagsAmong } from "../tags/featured_tag_queries.ts";
 import { followedTagsAmong } from "../tags/tag_follow_queries.ts";
@@ -26,8 +27,6 @@ export const searchHashtags = async (ctx: Context, search: HashtagSearch): Promi
     return await hashtagsStartingWith(ctx, start, search.limit, search.offset);
 };
 
-const dayLength = 24 * 60 * 60 * 1000;
-
 /**
  * The hashtags `names`, each by the name it was first written with, with how it was used on each of
  * the past week's days, today first, in UTC. Its id is its name in lower case. A signed-in viewer,
@@ -38,8 +37,8 @@ export const renderHashtags = async (
     names: readonly string[],
     viewerId: string | null,
 ): Promise<Tag[]> => {
-    const today = Math.floor(ctx.clock.now().getTime() / dayLength) * dayLength;
-    const days = Array.from({ length: 7 }, (_, i) => new Date(today - i * dayLength));
+    const today = Math.floor(ctx.clock.now().getTime() / dayMs) * dayMs;
+    const days = Array.from({ length: 7 }, (_, i) => new Date(today - i * dayMs));
     const displayNames = await displayNamesOf(ctx, names);
     const uses = new Map(
         (await hashtagUses(ctx, names, days)).map((used) => [`${used.name} ${used.day}`, used]),

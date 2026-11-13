@@ -41,3 +41,27 @@ export const queuedDeliveries = async (
         return { domain: payload.domain, body: entity.body };
     }));
 };
+
+/** An entity as a plain object, before it is sent. */
+type Entity = Record<string, unknown>;
+
+/** A Versia `User` entity named `id`, as a remote instance sends it. */
+export const userEntity = (id: string, more: Entity = {}): Entity => ({
+    type: "User",
+    id,
+    created_at: "2026-10-18T12:00:00Z",
+    username: id,
+    fields: [],
+    manually_approves_followers: false,
+    indexable: true,
+    ...more,
+});
+
+/** A Versia `Delete` entity for `deleted`, which is a `User` unless `more` says otherwise. */
+export const deleteEntity = (deleted: string, more: Entity = {}): Entity => ({
+    type: "Delete",
+    created_at: "2026-10-18T12:00:00Z",
+    deleted_type: "User",
+    deleted,
+    ...more,
+});

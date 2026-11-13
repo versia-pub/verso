@@ -14,6 +14,7 @@ import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Binary } from "../http/responses.ts";
 import { cached } from "../kernel/cache.ts";
+import { dayMs } from "../kernel/clock.ts";
 import { weeklyActivity } from "./activity.ts";
 import { instanceDomains } from "./instance_queries.ts";
 import { languages } from "./languages.ts";
@@ -49,12 +50,12 @@ const thumbnailRoute = () => {
 const statsMs = 5 * 60_000;
 
 /** How long lists that change slowly may be cached. Mastodon uses the same time. */
-const daySeconds = 24 * 60 * 60;
+const daySeconds = dayMs / 1000;
 
 /** What the instance tells clients about itself, with its stats cached for a while. */
 export const instanceRoutes = (settings: AboutSettings): readonly Route[] => {
     const stats = cached(statsMs, instanceStats);
-    const activity = cached(daySeconds * 1000, weeklyActivity);
+    const activity = cached(dayMs, weeklyActivity);
 
     return [
         defineRoute({
