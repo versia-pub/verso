@@ -13,7 +13,7 @@ import {
 } from "../jobs/job_queries.ts";
 import { queues } from "../jobs/queues.ts";
 import type { Context } from "../kernel/context.ts";
-import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
+import { AdminError, type AdminIo, missingCommand, runAndPrint } from "./admin_io.ts";
 
 /** The dead letters given as ids or `--queue`, one or the other. */
 const selectionOf = (ids: readonly string[], queue: string | undefined): DeadSelection => {
@@ -74,13 +74,16 @@ export const jobsCommand = (io: AdminIo): Command<{ config: string }> =>
                 "how many are dead letters.",
         )
         .action(async ({ config }) => {
-            const stats = await io.withContext(config, (ctx) => queueStats(ctx, ctx.clock.now()));
-            io.print(JSON.stringify(stats.map((stat) => ({
-                queue: stat.queue,
-                waiting: stat.waiting,
-                oldest_due: stat.oldestDue ?? null,
-                dead: stat.dead,
-            }))));
+            await runAndPrint(io, config, async (ctx) => {
+                const stats = await queueStats(ctx, ctx.clock.now());
+
+                return stats.map((stat) => ({
+                    queue: stat.queue,
+                    waiting: stat.waiting,
+                    oldest_due: stat.oldestDue ?? null,
+                    dead: stat.dead,
+                }));
+            });
         })
         .command("dead", "Print the dead letters that died last, with why.")
         .option("--queue <queue:string>", "Only this queue's.")
@@ -88,11 +91,7 @@ export const jobsCommand = (io: AdminIo): Command<{ config: string }> =>
         .action(async ({ config, queue, limit }) => {
             if (limit < 1) throw new AdminError("--limit must be at least 1");
 
-            const dead = await io.withContext(
-                config,
-                (ctx) => listDeadLetters(ctx, { queue, limit }),
-            );
-            io.print(JSON.stringify(dead));
+            await runAndPrint(io, config, (ctx) => listDeadLetters(ctx, { queue, limit }));
         })
         .command(
             "retry [...ids:string]",
@@ -102,20 +101,20 @@ export const jobsCommand = (io: AdminIo): Command<{ config: string }> =>
         .option("--queue <queue:string>", "Every dead letter of this queue.")
         .action(async ({ config, queue }, ...ids) => {
             const selection = selectionOf(ids, queue);
-            const retried = await io.withContext(config, async (ctx) => {
+            await runAndPrint(io, config, async (ctx) => {
                 await checkRetryable(ctx, selection);
-                return await retryDeadLetters(ctx, selection);
+
+                return { retried: await retryDeadLetters(ctx, selection) };
             });
-            io.print(JSON.stringify({ retried }));
         })
         .command("purge [...ids:string]", "Delete dead letters: those given, or a queue's.")
         .option("--queue <queue:string>", "Every dead letter of this queue.")
         .action(async ({ config, queue }, ...ids) => {
             const selection = selectionOf(ids, queue);
-            const deleted = await io.withContext(
+            await runAndPrint(
+                io,
                 config,
-                (ctx) => deleteDeadLetters(ctx, selection),
+                async (ctx) => ({ deleted: await deleteDeadLetters(ctx, selection) }),
             );
-            io.print(JSON.stringify({ deleted }));
         })
         .reset();

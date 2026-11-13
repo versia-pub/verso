@@ -21,8 +21,8 @@ export const StatusMention = z.object({
 export type StatusMention = z.infer<typeof StatusMention>;
 
 /**
- * The reactions to a status with one emoji. glitch-soc's, which Pleroma has as
- * `pleroma.emoji_reactions`, with `remote`.
+ * The reactions to a status with one emoji, in glitch-soc's shape, which Pleroma has as
+ * `pleroma.emoji_reactions`, plus `remote`.
  * @see https://github.com/glitch-soc/mastodon/pull/2462
  */
 export const StatusReaction = z.object({

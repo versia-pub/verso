@@ -15,11 +15,16 @@ import { listRoles } from "../accounts/role_queries.ts";
 import { NotFound, NotPermitted } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
 import { Paged } from "../http/responses.ts";
-import { defineRoute, type Route } from "../http/route.ts";
+import { defineRoute, type Route, type RouteViewer } from "../http/route.ts";
 import { Flag, Strings } from "../http/schemas.ts";
 import type { Config } from "../kernel/config.ts";
 import type { Context } from "../kernel/context.ts";
-import { actOnAccount, type Moderated, queueModeratedDeletion } from "./account_actions.ts";
+import {
+    actOnAccount,
+    type Moderated,
+    type Moderator,
+    queueModeratedDeletion,
+} from "./account_actions.ts";
 import { unsilence } from "./silences.ts";
 import { unsuspend } from "./suspensions.ts";
 
@@ -34,6 +39,14 @@ const write = { require: "user", scope: "admin:write:accounts", permission: "acc
 const staffRoleIds = async (ctx: Context): Promise<string[]> =>
     (await listRoles(ctx)).filter((role) => role.permissions.includes("reports"))
         .map((role) => role.id);
+
+/** The user calling, as the moderator acting. */
+const moderatorOf = async (
+    viewer: RouteViewer & { readonly accountId: string },
+): Promise<Moderator> => ({
+    accountId: viewer.accountId,
+    permissions: await viewer.permissions(),
+});
 
 /** Throws for an action that was refused. */
 const orRefusal = (result: Moderated): void => {
@@ -189,10 +202,7 @@ export const adminAccountRoutes = (settings: {
             }),
             responses: { 200: z.strictObject({}) },
             handler: async (ctx, { params, body, viewer }) => {
-                const moderator = {
-                    accountId: viewer.accountId,
-                    permissions: await viewer.permissions(),
-                };
+                const moderator = await moderatorOf(viewer);
                 orRefusal(
                     await actOnAccount(ctx, moderator, params.id, {
                         type: body.type,
@@ -252,10 +262,7 @@ export const adminAccountRoutes = (settings: {
             params: Id,
             responses: { 200: z.strictObject({}) },
             handler: async (ctx, { params, viewer }) => {
-                const moderator = {
-                    accountId: viewer.accountId,
-                    permissions: await viewer.permissions(),
-                };
+                const moderator = await moderatorOf(viewer);
                 orRefusal(await queueModeratedDeletion(ctx, moderator, params.id));
 
                 return { status: 200, body: {} };

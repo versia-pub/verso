@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * A role as Versia's role endpoints render it, with the permissions it grants. Versia Server's
- * extension to the Mastodon API, which `color` extends in turn.
+ * extension to the Mastodon API. Verso adds `color`.
  * @see https://github.com/versia-pub/server/blob/main/packages/client/schemas/versia.ts
  */
 export const VersiaRole = z.object({

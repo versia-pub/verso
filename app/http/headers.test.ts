@@ -49,8 +49,8 @@ Deno.test("API errors carry CORS headers, so web clients can read them", async (
     assertEquals(headers.get("access-control-allow-origin"), "*");
     assertEquals(
         headers.get("access-control-expose-headers"),
-        "ETag,Link,Mastodon-Async-Refresh,RateLimit-Limit,RateLimit-Remaining,RateLimit-Reset,Retry-After,X-RateLimit-Limit," +
-            "X-RateLimit-Remaining,X-RateLimit-Reset,X-Request-Id",
+        "ETag,Link,Mastodon-Async-Refresh,RateLimit-Limit,RateLimit-Remaining,RateLimit-Reset," +
+            "Retry-After,X-RateLimit-Limit,X-RateLimit-Remaining,X-RateLimit-Reset,X-Request-Id",
     );
 });
 

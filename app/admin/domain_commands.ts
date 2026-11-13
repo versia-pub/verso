@@ -10,7 +10,7 @@ import { recordReached } from "../instances/reachability.ts";
 import { resumeGroup } from "../jobs/job_pause_queries.ts";
 import { listBlockedDomains } from "../moderation/domain_block_queries.ts";
 import { blockDomain, blockedByConfig, unblockDomain } from "../moderation/domain_blocks.ts";
-import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
+import { AdminError, type AdminIo, missingCommand, runAndPrint } from "./admin_io.ts";
 
 /** A domain as signatures name it, or a usage error. */
 const domainArgument = (domain: string) => {
@@ -33,34 +33,31 @@ export const domainsCommand = (io: AdminIo): Command<{ config: string }> =>
         .option("-r, --reason <reason:string>", "Why the instance is blocked.", { default: "" })
         .action(async ({ config, reason }, domain) => {
             const name = domainArgument(domain);
-            const result = await io.withContext(config, async (ctx, settings) => ({
+            await runAndPrint(io, config, async (ctx, settings) => ({
                 domain: name,
                 changed: await blockDomain(ctx, name, { reason }) !== undefined,
                 by_config: blockedByConfig(settings.federation.blocked_domains, name),
             }));
-            io.print(JSON.stringify(result));
         })
         .command("unblock <domain:string>", "Unblock an instance.")
         .action(async ({ config }, domain) => {
             const name = domainArgument(domain);
-            const result = await io.withContext(config, async (ctx, settings) => ({
+            await runAndPrint(io, config, async (ctx, settings) => ({
                 domain: name,
                 changed: await unblockDomain(ctx, name),
                 // Still blocked, until it is removed from the config file.
                 by_config: blockedByConfig(settings.federation.blocked_domains, name),
             }));
-            io.print(JSON.stringify(result));
         })
         .command("list", "Print every blocked domain: the config file's, then the rest.")
         .action(async ({ config }) => {
-            const blocks = await io.withContext(config, async (ctx, settings) => [
+            await runAndPrint(io, config, async (ctx, settings) => [
                 ...settings.federation.blocked_domains.map((domain) => ({
                     domain,
                     source: "config",
                 })),
                 ...(await listBlockedDomains(ctx)).map((block) => ({ ...block, source: "admin" })),
             ]);
-            io.print(JSON.stringify(blocks));
         })
         .command(
             "unpark <domain:string>",
@@ -69,7 +66,7 @@ export const domainsCommand = (io: AdminIo): Command<{ config: string }> =>
         )
         .action(async ({ config }, domain) => {
             const name = domainArgument(domain);
-            const result = await io.withContext(config, (ctx) =>
+            await runAndPrint(io, config, (ctx) =>
                 ctx.transaction(async (tx) => {
                     if (!await findInstanceId(tx, name)) {
                         throw new AdminError(`${name} isn't an instance Verso knows`);
@@ -80,6 +77,5 @@ export const domainsCommand = (io: AdminIo): Command<{ config: string }> =>
 
                     return { domain: name, was_failing: wasFailing };
                 }));
-            io.print(JSON.stringify(result));
         })
         .reset();

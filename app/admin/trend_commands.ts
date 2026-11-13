@@ -10,7 +10,7 @@ import {
     decideTag,
     trendsForAdmin,
 } from "../trends/review.ts";
-import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
+import { AdminError, type AdminIo, missingCommand, runAndPrint } from "./admin_io.ts";
 
 /** Lets a hashtag trend or not, and prints the decision, or fails if there is no such hashtag. */
 const decideTrendingTag = async (io: AdminIo, config: string, name: string, trendable: boolean) => {
@@ -70,12 +70,11 @@ export const trendsCommand = (io: AdminIo): Command<{ config: string }> =>
             "Print what is trending, with whether it is shown: approved, rejected or pending.",
         )
         .action(async ({ config }) => {
-            io.print(JSON.stringify(
-                await io.withContext(
-                    config,
-                    (ctx, settings) => trendsForAdmin(ctx, settings.instance.trendable_by_default),
-                ),
-            ));
+            await runAndPrint(
+                io,
+                config,
+                (ctx, settings) => trendsForAdmin(ctx, settings.instance.trendable_by_default),
+            );
         })
         .command("approve-tag <name:string>", "Let a hashtag trend.")
         .action(async ({ config }, name) => {

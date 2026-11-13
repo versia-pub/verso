@@ -13,7 +13,7 @@ import {
     removeAnnouncement,
     unpublishAnnouncement,
 } from "../announcements/announcements.ts";
-import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
+import { AdminError, type AdminIo, missingCommand, runAndPrint } from "./admin_io.ts";
 
 /** A time in ISO 8601, like `2026-11-01T18:00:00Z`, or `none` for none. */
 const timeArgument = ({ label, name, value }: ArgumentValue): Date | null => {
@@ -46,7 +46,7 @@ export const announcementsCommand = (io: AdminIo): Command<{ config: string }> =
         .action(missingCommand)
         .command("list", "Print every announcement, published or not, the first first.")
         .action(async ({ config }) => {
-            io.print(JSON.stringify(await io.withContext(config, announcementsForAdmin)));
+            await runAndPrint(io, config, announcementsForAdmin);
         })
         .command(
             "create <text:string>",

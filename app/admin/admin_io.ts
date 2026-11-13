@@ -21,6 +21,20 @@ export type AdminIo = {
 /** Why a command, used correctly, failed. The caller prints it and exits with 1. */
 export class AdminError extends Error {}
 
+/** Runs `work` like `io.withContext` does, and prints what it returns as one line of JSON. */
+export const runAndPrint = async <T>(
+    io: AdminIo,
+    path: string,
+    work: (ctx: Context, config: Config) => Promise<T>,
+): Promise<void> => {
+    io.print(JSON.stringify(await io.withContext(path, work)));
+};
+
+/** Rejects a `--days` below `minimum`, as an error the caller prints. */
+export const checkDays = (days: number, minimum = 1): void => {
+    if (days < minimum) throw new AdminError(`--days must be at least ${minimum}`);
+};
+
 /** Rejects a command run without one of its subcommands, as a usage error. */
 export const missingCommand = (): never => {
     throw new ValidationError("Missing command");

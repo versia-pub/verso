@@ -5,7 +5,7 @@
 import { Command } from "@cliffy/command";
 import { dayMs } from "../kernel/clock.ts";
 import { pruneCards } from "../previews/pruning.ts";
-import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
+import { type AdminIo, checkDays, missingCommand, runAndPrint } from "./admin_io.ts";
 
 /** The `preview-cards` group of commands. */
 export const previewCardsCommand = (io: AdminIo): Command<{ config: string }> =>
@@ -22,12 +22,12 @@ export const previewCardsCommand = (io: AdminIo): Command<{ config: string }> =>
             default: 180,
         })
         .action(async ({ config, days }) => {
-            if (days < 14) throw new AdminError("--days must be at least 14");
+            checkDays(days, 14);
 
-            const pruned = await io.withContext(
+            await runAndPrint(
+                io,
                 config,
                 (ctx) => pruneCards(ctx, new Date(ctx.clock.now().getTime() - days * dayMs)),
             );
-            io.print(JSON.stringify(pruned));
         })
         .reset();

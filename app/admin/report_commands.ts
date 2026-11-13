@@ -4,7 +4,7 @@
  */
 import { Command } from "@cliffy/command";
 import { reportsForAdmin, resolve } from "../reports/reports.ts";
-import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
+import { AdminError, type AdminIo, missingCommand, runAndPrint } from "./admin_io.ts";
 
 /** The `reports` group of commands. */
 export const reportsCommand = (io: AdminIo): Command<{ config: string }> =>
@@ -14,11 +14,7 @@ export const reportsCommand = (io: AdminIo): Command<{ config: string }> =>
         .command("list", "Print the reports no one has dealt with, the first first.")
         .option("-a, --all", "Print every report, including those dealt with.")
         .action(async ({ config, all }) => {
-            const reports = await io.withContext(
-                config,
-                (ctx) => reportsForAdmin(ctx, all === true),
-            );
-            io.print(JSON.stringify(reports));
+            await runAndPrint(io, config, (ctx) => reportsForAdmin(ctx, all === true));
         })
         .command("resolve <id:string>", "Mark a report as dealt with.")
         .action(async ({ config }, id) => {

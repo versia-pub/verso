@@ -5,7 +5,7 @@
 import { Command } from "@cliffy/command";
 import { dayMs } from "../kernel/clock.ts";
 import { pruneRemoteMedia } from "../media/pruning.ts";
-import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
+import { type AdminIo, checkDays, missingCommand, runAndPrint } from "./admin_io.ts";
 
 /** The `media` group of commands. */
 export const mediaCommand = (io: AdminIo): Command<{ config: string }> =>
@@ -22,12 +22,13 @@ export const mediaCommand = (io: AdminIo): Command<{ config: string }> =>
             default: 7,
         })
         .action(async ({ config, days }) => {
-            if (days < 1) throw new AdminError("--days must be at least 1");
+            checkDays(days);
 
-            const cleared = await io.withContext(
-                config,
-                (ctx) => pruneRemoteMedia(ctx, new Date(ctx.clock.now().getTime() - days * dayMs)),
-            );
-            io.print(JSON.stringify({ cleared }));
+            await runAndPrint(io, config, async (ctx) => ({
+                cleared: await pruneRemoteMedia(
+                    ctx,
+                    new Date(ctx.clock.now().getTime() - days * dayMs),
+                ),
+            }));
         })
         .reset();

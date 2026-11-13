@@ -4,7 +4,7 @@ import { tokenFor } from "../auth/testing.ts";
 import type { Config } from "../kernel/config.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
-import { blockDomain } from "./domain_blocks.ts";
+import { blockDomain, domainDigest } from "./domain_blocks.ts";
 import { moderationRoutes } from "./routes.ts";
 
 type Shown = Config["instance"]["show_blocks"];
@@ -30,11 +30,6 @@ const open = async (blocks: Shown, reasons: Shown = "none") => {
     return { ...test, fetch };
 };
 
-/** The SHA-256 of `domain`, in hex. */
-const digest = async (domain: string) =>
-    new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(domain)))
-        .toHex();
-
 Deno.test("blocked instances are hidden by default", async () => {
     await using test = await open("none");
     await createLocalAccount(test.ctx, "alice");
@@ -52,13 +47,13 @@ Deno.test("blocked instances are listed, by config and by admins, without reason
     assertEquals(body, [
         {
             domain: "config.example",
-            digest: await digest("config.example"),
+            digest: await domainDigest("config.example"),
             severity: "suspend",
             comment: null,
         },
         {
             domain: "spam.example",
-            digest: await digest("spam.example"),
+            digest: await domainDigest("spam.example"),
             severity: "suspend",
             comment: null,
         },
@@ -97,7 +92,7 @@ Deno.test("obfuscated blocks mask the middle of the domain, but not its digest o
 
     assertEquals(body[0], {
         domain: "aa.*****le",
-        digest: await digest("aa.example"),
+        digest: await domainDigest("aa.example"),
         severity: "suspend",
         comment: "Abuse",
     });

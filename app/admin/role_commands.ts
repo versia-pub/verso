@@ -6,7 +6,7 @@ import { Command, EnumType, ValidationError } from "@cliffy/command";
 import { createRole, listRoles } from "../accounts/role_queries.ts";
 import { RoleName } from "../accounts/roles.ts";
 import { permissions } from "../kernel/permissions.ts";
-import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
+import { AdminError, type AdminIo, missingCommand, runAndPrint } from "./admin_io.ts";
 
 /** The `roles` group of commands. */
 export const rolesCommand = (io: AdminIo): Command<{ config: string }> =>
@@ -34,6 +34,6 @@ export const rolesCommand = (io: AdminIo): Command<{ config: string }> =>
         })
         .command("list", "Print every role, highest priority first.")
         .action(async ({ config }) => {
-            io.print(JSON.stringify(await io.withContext(config, listRoles)));
+            await runAndPrint(io, config, listRoles);
         })
         .reset();

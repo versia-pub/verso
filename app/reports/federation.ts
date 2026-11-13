@@ -75,7 +75,7 @@ export const reportDeliveries = async (ctx: Context, event: DomainEvent): Promis
 };
 
 /** The category of a received report: the first of its tags that is one, other than `violation`. */
-const categoryOf = (tags: readonly string[]): ReportCategory =>
+const categoryFromTags = (tags: readonly string[]): ReportCategory =>
     tags.find((tag): tag is "spam" | "legal" => tag === "spam" || tag === "legal") ?? "other";
 
 /** What a received report names that Verso has: users by their account ids, and statuses. */
@@ -149,7 +149,7 @@ export const reportType: EntityType<v0_6.Report> = {
                 instance_id: sender.instanceId,
                 digest,
                 target_account_id: account.id,
-                category: categoryOf(report.tags),
+                category: categoryFromTags(report.tags),
                 comment,
                 note_ids: seen,
                 rule_ids: null,

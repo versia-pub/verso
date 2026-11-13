@@ -10,7 +10,7 @@ import type { Context } from "../kernel/context.ts";
 import { deleteLocalAccount } from "../moderation/account_deletions.ts";
 import { silence, unsilence } from "../moderation/silences.ts";
 import { suspend, unsuspend } from "../moderation/suspensions.ts";
-import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
+import { AdminError, type AdminIo, checkDays, missingCommand, runAndPrint } from "./admin_io.ts";
 
 /** The account at `acct`, `username` or `username@domain`, or an error saying there is none. */
 const accountAt = async (ctx: Context, acct: string) => {
@@ -32,7 +32,7 @@ const moderation = (
     action: (ctx: Context, accountId: string) => Promise<boolean>,
 ) =>
 async ({ config }: { config: string }, acct: string) => {
-    const result = await io.withContext(config, async (ctx) => {
+    await runAndPrint(io, config, async (ctx) => {
         const account = await accountAt(ctx, acct);
         const changed = await action(ctx, account.id);
         const name = account.domain === null
@@ -41,7 +41,6 @@ async ({ config }: { config: string }, acct: string) => {
 
         return { account: name, [key]: value, changed };
     });
-    io.print(JSON.stringify(result));
 };
 
 /** The `accounts` group of commands. */
@@ -71,7 +70,7 @@ export const accountsCommand = (io: AdminIo): Command<{ config: string }> =>
                 "used again.",
         )
         .action(async ({ config, tombstone }, acct) => {
-            const result = await io.withContext(config, async (ctx) => {
+            await runAndPrint(io, config, async (ctx) => {
                 const account = await accountAt(ctx, acct);
                 if (account.domain !== null) {
                     throw new AdminError(
@@ -83,7 +82,6 @@ export const accountsCommand = (io: AdminIo): Command<{ config: string }> =>
 
                 return { account: account.username, deleted: true, tombstone, changed };
             });
-            io.print(JSON.stringify(result));
         })
         .reset()
         .command(
@@ -95,13 +93,13 @@ export const accountsCommand = (io: AdminIo): Command<{ config: string }> =>
             default: 90,
         })
         .action(async ({ config, days }) => {
-            if (days < 1) throw new AdminError("--days must be at least 1");
+            checkDays(days);
 
-            const deleted = await io.withContext(
-                config,
-                (ctx) =>
-                    pruneRemoteAccounts(ctx, new Date(ctx.clock.now().getTime() - days * dayMs)),
-            );
-            io.print(JSON.stringify({ deleted }));
+            await runAndPrint(io, config, async (ctx) => ({
+                deleted: await pruneRemoteAccounts(
+                    ctx,
+                    new Date(ctx.clock.now().getTime() - days * dayMs),
+                ),
+            }));
         })
         .reset();
