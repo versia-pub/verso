@@ -97,6 +97,15 @@ Deno.test("a dedupe key that is already queued adds nothing", async () => {
 const minute = 60_000;
 const options = { queue: "deliver", worker: "w1", limit: 10, leaseMs: minute };
 
+/** `at` is a time `minutes` from the test's clock now, and `add` enqueues a numbered job. */
+const timeAndJobs = (test: Awaited<ReturnType<typeof open>>) => ({
+    at: (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute),
+    add: (
+        n: number,
+        job: { queue?: string; group?: string; runAt?: Date; keepUntil?: Date },
+    ) => enqueue(test.ctx, { queue: "deliver", payload: { n }, ...job }),
+});
+
 const ids = (jobs: { payload: Record<string, unknown> }[]) => jobs.map((job) => job.payload.n);
 
 Deno.test("jobs enqueued together are all added, but for dedupe keys already queued", async () => {
@@ -122,7 +131,7 @@ Deno.test("jobs enqueued together are all added, but for dedupe keys already que
 
 Deno.test("claiming takes due jobs of one queue, the longest due first, then the oldest", async () => {
     await using test = await open();
-    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
+    const { at } = timeAndJobs(test);
 
     await enqueue(test.ctx, { queue: "deliver", payload: { n: 1 } });
     await enqueue(test.ctx, { queue: "deliver", payload: { n: 2 }, runAt: at(-1) });
@@ -281,7 +290,8 @@ Deno.test("claiming can skip groups, but never jobs without one", async () => {
 
     const skipGroups = ["b.example", "d.example"];
     assertEquals(ids(await claim(test.ctx, { ...options, skipGroups })).toSorted(), [2, 3]);
-    assertEquals(ids(await claim(test.ctx, { ...options, skipGroups: [] })).toSorted(), [1, 4]);
+    assertEquals(ids(await claim(test.ctx, { ...options, skipGroups: ["b.example"] })), [4]);
+    assertEquals(ids(await claim(test.ctx, { ...options, skipGroups: [] })), [1]);
 });
 
 Deno.test({
@@ -316,9 +326,7 @@ Deno.test({
 
 Deno.test("an idle worker learns when the next job of its queue is due", async () => {
     await using test = await open();
-    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
-    const add = (n: number, job: { queue?: string; runAt?: Date; keepUntil?: Date }) =>
-        enqueue(test.ctx, { queue: "deliver", payload: { n }, ...job });
+    const { at, add } = timeAndJobs(test);
 
     assertEquals(await nextRunAt(test.ctx, "deliver"), undefined);
 
@@ -340,9 +348,7 @@ Deno.test("an idle worker learns when the next job of its queue is due", async (
 
 Deno.test("a paused group's jobs aren't claimed until the pause ends", async () => {
     await using test = await open();
-    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
-    const add = (n: number, job: { queue?: string; group?: string; runAt?: Date }) =>
-        enqueue(test.ctx, { queue: "deliver", payload: { n }, ...job });
+    const { at, add } = timeAndJobs(test);
     const runAts = async () => {
         const rows = await test.ctx.db.selectFrom("jobs").select(["payload", "run_at"]).execute();
         return Object.fromEntries(rows.map((row) => [row.payload.n, row.run_at]));
@@ -439,9 +445,7 @@ Deno.test("a group's due jobs still aren't claimed while it is paused", async ()
 
 Deno.test("a group's waiting jobs are made due together when it is resumed", async () => {
     await using test = await open();
-    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
-    const add = (n: number, job: { queue?: string; group?: string; runAt?: Date }) =>
-        enqueue(test.ctx, { queue: "deliver", payload: { n }, ...job });
+    const { at, add } = timeAndJobs(test);
 
     await add(1, { group: "b.example", runAt: at(-1) });
     await add(2, { group: "b.example", runAt: at(10) });
@@ -764,7 +768,7 @@ Deno.test("dead letters are listed last died first, a queue's if asked, up to a 
 
 Deno.test("retried dead letters run again from their first attempt, after their group's pause", async () => {
     await using test = await open();
-    const at = (minutes: number) => new Date(test.clock.now().getTime() + minutes * minute);
+    const { at } = timeAndJobs(test);
     await deadLetter(test, "deliver", 1);
     await deadLetter(test, "deliver", 2, "b.example");
     await deadLetter(test, "deliver", 3, "c.example");

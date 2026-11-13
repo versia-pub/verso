@@ -1,4 +1,5 @@
-import { type Kysely, type SelectQueryBuilder, sql, SqliteAdapter } from "kysely";
+import { type Kysely, type SelectQueryBuilder, sql } from "kysely";
+import { usesSqlite } from "./columns.ts";
 
 /**
  * Locks the rows a query selects until the transaction ends, skipping rows that another transaction
@@ -8,8 +9,7 @@ import { type Kysely, type SelectQueryBuilder, sql, SqliteAdapter } from "kysely
 export const skippingLocked = <DB, TB extends keyof DB, O>(
     db: Kysely<DB>,
     query: SelectQueryBuilder<DB, TB, O>,
-): SelectQueryBuilder<DB, TB, O> =>
-    db.getExecutor().adapter instanceof SqliteAdapter ? query : query.forUpdate().skipLocked();
+): SelectQueryBuilder<DB, TB, O> => usesSqlite(db) ? query : query.forUpdate().skipLocked();
 
 /**
  * Holds a lock on `key` until the transaction ends, so transactions that lock the same key run one
@@ -17,7 +17,7 @@ export const skippingLocked = <DB, TB extends keyof DB, O>(
  * one writer in at a time, and its transactions begin as writers, so it needs none.
  */
 export const lockKey = async <DB>(db: Kysely<DB>, key: string): Promise<void> => {
-    if (db.getExecutor().adapter instanceof SqliteAdapter) return;
+    if (usesSqlite(db)) return;
 
     await sql`select pg_advisory_xact_lock(hashtextextended(${key}, 0))`.execute(db);
 };

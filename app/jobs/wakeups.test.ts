@@ -4,11 +4,10 @@ import pg from "pg";
 import { connect, type Database } from "../db/database.ts";
 import { testDatabaseKind, testPostgresUrl } from "../db/testing.ts";
 import { createTestContext } from "../testing/context.ts";
+import { delay, until } from "../testing/waiting.ts";
 import { enqueue, enqueueAll } from "./job_queries.ts";
 import { hearJobWakeups, listenForJobs } from "./wakeups.ts";
 import { work } from "./worker.ts";
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 Deno.test("a wakeup starts an idle queue's new job before the next poll", async () => {
     await using test = await createTestContext();
@@ -33,8 +32,7 @@ Deno.test("a wakeup starts an idle queue's new job before the next poll", async 
     await enqueue(ctx, { queue: "deliver", payload: {} });
     wakeups.dispatchEvent(new Event("deliver"));
 
-    const started = Date.now();
-    while (!ran && Date.now() - started < 5_000) await delay(5);
+    await until(() => ran);
 
     stopping.abort();
     await done;
@@ -75,8 +73,7 @@ Deno.test({
             assertEquals(heard, []);
         });
 
-        const started = Date.now();
-        while (heard.length === 0 && Date.now() - started < 5_000) await delay(5);
+        await until(() => heard.length > 0);
         await delay(100);
 
         assertEquals(heard, ["deliver"]);
@@ -117,8 +114,7 @@ Deno.test({
         );
         await enqueue(ctx, { queue: "quiet", payload: {}, wake: false });
 
-        const started = Date.now();
-        while (heard.length < 2 && Date.now() - started < 5_000) await delay(5);
+        await until(() => heard.length >= 2);
         await delay(100);
 
         assertEquals(heard.toSorted(), ["deliver", "fetch"]);

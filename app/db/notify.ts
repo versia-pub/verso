@@ -1,4 +1,5 @@
-import { type Kysely, sql, SqliteAdapter } from "kysely";
+import { type Kysely, sql } from "kysely";
+import { usesSqlite } from "./columns.ts";
 
 /**
  * Sends a Postgres notification to everyone listening on `channel`. Inside a transaction it is
@@ -10,7 +11,7 @@ export const notify = async <DB>(
     channel: string,
     payload: string,
 ): Promise<void> => {
-    if (db.getExecutor().adapter instanceof SqliteAdapter) return;
+    if (usesSqlite(db)) return;
 
     await sql`select pg_notify(${channel}, ${payload})`.execute(db);
 };

@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import { checkFileKey, type FileStore } from "./files.ts";
+import { checkFileKey, type FileStore, withFileKey } from "./files.ts";
 
 /**
  * Where in `root` the file stored under `key` is: in a directory named for its first two digits.
@@ -44,11 +44,7 @@ export const filesystemFiles = (root: string): FileStore => ({
 
         return key;
     },
-    has: (key) =>
-        Promise.try(() => {
-            checkFileKey(key);
-            return exists(pathOf(root, key));
-        }),
+    has: (key) => withFileKey(key, () => exists(pathOf(root, key))),
     get: async (key) => {
         checkFileKey(key);
         try {

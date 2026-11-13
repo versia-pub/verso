@@ -4,20 +4,13 @@ import pg from "pg";
 import { z } from "zod";
 import { type Channel, publish, subscribe } from "../kernel/pubsub.ts";
 import { createTestContext } from "../testing/context.ts";
+import { delay, until } from "../testing/waiting.ts";
 import { connect, type Database } from "./database.ts";
 import { messagesChannel, postgresPubSub } from "./postgres_pubsub.ts";
 import { testDatabaseKind, testPostgresUrl } from "./testing.ts";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const said: Channel<string> = { name: "said", schema: z.string() };
 const other: Channel<string> = { ...said, name: "other" };
-
-/** Waits until `done` resolves true, or long enough that it won't. */
-const until = async (done: () => boolean | Promise<boolean>) => {
-    const started = Date.now();
-    while (!await done() && Date.now() - started < 5_000) await delay(5);
-};
 
 /** A new Postgres database, and a pool connected to it. */
 const postgres = async () => {

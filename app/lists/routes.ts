@@ -25,6 +25,9 @@ const titleLimit = 256;
 /** The most accounts one request may add to a list or remove from it. */
 const membersLimit = 100;
 
+/** How many accounts a page of a list's accounts holds, and the most a request may ask for. */
+const accountLimit = { default: 40, max: 80 };
+
 const ListId = z.object({ id: z.string().meta({ description: "The ID of the list." }) });
 
 const Title = Text(titleLimit).refine(...notBlank("Title"));
@@ -147,7 +150,7 @@ export const listRoutes: readonly Route[] = [
         tags: ["lists"],
         auth: auth.read,
         params: ListId,
-        query: PageQuery({ default: 40, max: 80 }).extend({
+        query: PageQuery(accountLimit).extend({
             limit: Integer.pipe(z.int().min(0)).optional().meta({
                 description: "Maximum number of results. Defaults to 40 accounts. Max 80 " +
                     "accounts. Set to 0 in order to get all accounts without pagination.",
@@ -160,9 +163,10 @@ export const listRoutes: readonly Route[] = [
             }
 
             // A limit of 0 asks for every account, on one page with no links.
-            const page = query.limit === 0
-                ? null
-                : { ...query, limit: Math.min(query.limit ?? 40, 80) };
+            const page = query.limit === 0 ? null : {
+                ...query,
+                limit: Math.min(query.limit ?? accountLimit.default, accountLimit.max),
+            };
             const members = await listAccountPage(ctx, params.id, page);
 
             return {

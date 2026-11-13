@@ -51,6 +51,13 @@ export const checkFileKey = (key: string): void => {
     if (!isFileKey(key)) throw new TypeError(`${JSON.stringify(key)} isn't a file key`);
 };
 
+/** Runs `use` once `key` is checked, or rejects if it isn't a file key. */
+export const withFileKey = <T>(key: string, use: () => T | Promise<T>): Promise<T> =>
+    Promise.try(() => {
+        checkFileKey(key);
+        return use();
+    });
+
 /** The key `bytes` are stored under. */
 export const fileKeyOf = async (bytes: Uint8Array<ArrayBuffer>): Promise<string> =>
     new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)).toHex();
@@ -66,22 +73,13 @@ export const memoryFiles = (): FileStore => {
             }
             return file.sha256;
         },
-        has: (key) =>
-            Promise.try(() => {
-                checkFileKey(key);
-                return files.has(key);
-            }),
+        has: (key) => withFileKey(key, () => files.has(key)),
         get: (key) =>
-            Promise.try(() => {
-                checkFileKey(key);
+            withFileKey(key, () => {
                 const bytes = files.get(key);
                 return bytes && ReadableStream.from([bytes.slice()]);
             }),
-        delete: (key) =>
-            Promise.try(() => {
-                checkFileKey(key);
-                files.delete(key);
-            }),
+        delete: (key) => withFileKey(key, () => void files.delete(key)),
         check: () => Promise.resolve(),
     };
 };

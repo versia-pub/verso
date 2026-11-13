@@ -3,6 +3,7 @@ import { assert, assertEquals } from "@std/assert";
 import type { KyselyPlugin } from "kysely";
 import { createTestContext } from "../testing/context.ts";
 import { captureLogs } from "../testing/logs.ts";
+import { delay, until } from "../testing/waiting.ts";
 import { enqueue } from "./job_queries.ts";
 import { drain, idleWaitMs, pause, PermanentFailure, type Queue, RetryAt, work } from "./worker.ts";
 
@@ -19,10 +20,6 @@ const start = (ctx: Parameters<typeof work>[0], queues: Record<string, Queue>) =
     }, { done });
 };
 
-const until = async (condition: () => boolean | Promise<boolean>) => {
-    while (!(await condition())) await new Promise((resolve) => setTimeout(resolve, 5));
-};
-
 /**
  * Waits until `running()` jobs run at once, or a second passes, so jobs that may run together do,
  * however busy the machine is.
@@ -30,7 +27,7 @@ const until = async (condition: () => boolean | Promise<boolean>) => {
 const together = async (running: () => number, want: number) => {
     const deadline = Date.now() + 1000;
     while (running() < want && Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 5));
+        await delay(5);
     }
 };
 

@@ -163,26 +163,23 @@ export const Instance = z.strictObject({
     suggested_accounts: z.array(z.string().min(1)).default([]),
 }).prefault({});
 
+/** What anyone may read, with or without a user. */
+const publicReads: Permission[] = [
+    "read:account",
+    "read:account_follows",
+    "read:note",
+    "read:note_likes",
+    "read:note_boosts",
+    "read:reaction",
+];
+
 /** What everyone may do, before any role adds more. */
 export const Permissions = z.strictObject({
     /** For requests without a user, such as a logged-out visitor's. */
-    anonymous: z.array(Permission).default([
-        "read:account",
-        "read:account_follows",
-        "read:note",
-        "read:note_likes",
-        "read:note_boosts",
-        "read:reaction",
-        "search",
-    ]),
+    anonymous: z.array(Permission).default([...publicReads, "search"]),
     /** For every user. */
     default: z.array(Permission).default([
-        "read:account",
-        "read:account_follows",
-        "read:note",
-        "read:note_likes",
-        "read:note_boosts",
-        "read:reaction",
+        ...publicReads,
         "read:emoji",
         "search",
         "owner:account",

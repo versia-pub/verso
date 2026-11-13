@@ -106,11 +106,11 @@ const rebuildParents = (copy: string) => ({
     },
 });
 
-const sqliteOnly = testDatabaseKind !== "sqlite";
+const notSqlite = testDatabaseKind !== "sqlite";
 
 Deno.test({
     name: "rebuilding a table on SQLite keeps the rows that refer to it",
-    ignore: sqliteOnly,
+    ignore: notSqlite,
     fn: async () => {
         await using db = await testDatabase();
         await migrate(db, { "0001_family": createFamily });
@@ -130,7 +130,7 @@ Deno.test({
 
 Deno.test({
     name: "a rebuild on SQLite that loses a referenced row fails, and changes nothing",
-    ignore: sqliteOnly,
+    ignore: notSqlite,
     fn: async () => {
         await using db = await testDatabase();
         await migrate(db, { "0001_family": createFamily });

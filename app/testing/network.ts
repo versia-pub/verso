@@ -10,8 +10,10 @@ import { type FakeTransport, fakeTransport } from "../kernel/fake_transport.ts";
 import type { Settings } from "../kernel/settings.ts";
 import { createTestContext, type TestContext } from "../testing/context.ts";
 
+/** One instance of the network: a test context, with its app. */
 export type Instance = TestContext & { readonly app: App };
 
+/** Instances that reach each other through a fake network, as separate servers would. */
 export type Network = AsyncDisposable & {
     /** Instances by domain. */
     readonly instances: Readonly<Record<string, Instance>>;

@@ -1,5 +1,5 @@
 import type { SelectQueryBuilder } from "kysely";
-import { batchesOf } from "../db/batches.ts";
+import { batchesOf, batchSize as defaultBatchSize } from "../db/batches.ts";
 import { countAll, readCount } from "../db/count.ts";
 import { usesSqlite } from "../db/columns.ts";
 import type { Database } from "../db/database.ts";
@@ -7,7 +7,7 @@ import { skippingLocked } from "../db/locking.ts";
 import { notify } from "../db/notify.ts";
 import type { Context } from "../kernel/context.ts";
 import { publish } from "../kernel/pubsub.ts";
-import { type PauseEnds, pausesOf } from "./job_pause_queries.ts";
+import { type PauseEnds, pausesOf, waiting } from "./job_pause_queries.ts";
 import type { JobPayload, JobsTable } from "./tables.ts";
 import { jobsChannel, jobWakeups } from "./wakeups.ts";
 
@@ -124,11 +124,7 @@ const dueJobs = (ctx: Context, queue: string, now: Date) =>
     ctx.db.selectFrom("jobs")
         .where("queue", "=", queue)
         .where("run_at", "<=", now)
-        .where("finished_at", "is", null)
-        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
-        .where((eb) =>
-            eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
-        )
+        .where((eb) => waiting(eb, now))
         .where((eb) =>
             eb.not(eb.exists(
                 eb.selectFrom("job_pauses").select("job_pauses.queue")
@@ -146,18 +142,21 @@ export const claimable = (
     ctx: Context,
     options: ClaimOptions,
     now: Date,
-): SelectQueryBuilder<Database, "jobs", { id: string }> =>
-    dueJobs(ctx, options.queue, now).select("id")
-        .$if((options.skipGroups ?? []).length > 0, (query) =>
-            query.where((eb) =>
-                eb.or([
-                    eb("group_key", "is", null),
-                    eb("group_key", "not in", options.skipGroups ?? []),
-                ])
-            ))
+): SelectQueryBuilder<Database, "jobs", { id: string }> => {
+    const skipGroups = options.skipGroups ?? [];
+
+    return dueJobs(ctx, options.queue, now).select("id")
+        .$if(
+            skipGroups.length > 0,
+            (query) =>
+                query.where((eb) =>
+                    eb.or([eb("group_key", "is", null), eb("group_key", "not in", skipGroups)])
+                ),
+        )
         .orderBy("run_at").orderBy("id")
         .limit(options.limit)
         .$call((query) => skippingLocked(ctx.db, query));
+};
 
 /**
  * Leases up to `limit` due jobs from one queue, the longest due first, then the oldest, so a
@@ -306,7 +305,7 @@ export const deadLetterQueues = async (
 export const retryDeadLetters = async (
     ctx: Context,
     selection: DeadSelection,
-    batchSize = 1000,
+    batchSize = defaultBatchSize,
 ): Promise<number> => {
     let total = 0;
 
@@ -361,7 +360,7 @@ export const retryDeadLetters = async (
 export const deleteDeadLetters = async (
     ctx: Context,
     selection: DeadSelection,
-    batchSize = 1000,
+    batchSize = defaultBatchSize,
 ): Promise<number> => {
     let total = 0;
 
@@ -440,7 +439,10 @@ export const queueStats = async (ctx: Context, now: Date): Promise<QueueStats[]>
  * settings say, and pauses that ended. Jobs go `batchSize` at a time, so no one delete holds the
  * table, or SQLite's write lock, for long.
  */
-export const deleteExpiredJobs = async (ctx: Context, batchSize = 1000): Promise<void> => {
+export const deleteExpiredJobs = async (
+    ctx: Context,
+    batchSize = defaultBatchSize,
+): Promise<void> => {
     const now = ctx.clock.now();
     const deadBefore = new Date(now.getTime() - ctx.settings.deadLetterMs);
 

@@ -1,5 +1,18 @@
+import type { ExpressionBuilder, ExpressionWrapper, SqlBool } from "kysely";
 import { batchesOf } from "../db/batches.ts";
+import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
+
+/** Matches the jobs at `now` that are neither finished, dead nor running, whether due or not. */
+export const waiting = (
+    eb: ExpressionBuilder<Database, "jobs">,
+    now: Date,
+): ExpressionWrapper<Database, "jobs", SqlBool> =>
+    eb.and([
+        eb("finished_at", "is", null),
+        eb("attempts", "<", eb.ref("max_attempts")),
+        eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)]),
+    ]);
 
 /** When the pauses of groups end, by queue and group. */
 export type PauseEnds = {
@@ -58,11 +71,7 @@ export const postponeGroup = async (
         .where("queue", "=", queue)
         .where("group_key", "=", group)
         .where("run_at", "<", runAt)
-        .where("finished_at", "is", null)
-        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
-        .where((eb) =>
-            eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
-        )
+        .where((eb) => waiting(eb, now))
         .execute();
 };
 
@@ -83,10 +92,6 @@ export const resumeGroup = async (ctx: Context, queue: string, group: string): P
         .where("queue", "=", queue)
         .where("group_key", "=", group)
         .where("run_at", ">", now)
-        .where("finished_at", "is", null)
-        .where((eb) => eb("attempts", "<", eb.ref("max_attempts")))
-        .where((eb) =>
-            eb.or([eb("lease_expires_at", "is", null), eb("lease_expires_at", "<=", now)])
-        )
+        .where((eb) => waiting(eb, now))
         .execute();
 };
