@@ -5,7 +5,7 @@ This guide adds support for a new Versia entity type, using the reactions from t
 [`app/interactions/reaction_federation.ts`](../../app/interactions/reaction_federation.ts). Read
 [Federation](../federation.md) first.
 
-```
+```text
 packages/protocol/v0_6/reactions.ts      the schema, as the spec gives it
 app/interactions/reaction_federation.ts  reactionType: receiving, deleting, serving
                                          reactionDeliveries: sending

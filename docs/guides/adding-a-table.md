@@ -3,7 +3,7 @@
 This guide adds a table, using `markers` from [`app/markers/`](../../app/markers/) as the example.
 Read [Database](../database.md) first for the rules every query follows.
 
-```
+```text
 app/db/migrations/0052_markers.ts   creates the table, on Postgres and SQLite
 app/db/migrations/mod.ts            lists the migration
 app/markers/tables.ts               MarkersTable: the row type

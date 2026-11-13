@@ -110,9 +110,9 @@ Verso serves plain HTTP, on port 8080 by default, so put a reverse proxy in fron
 The proxy has to pass WebSocket upgrades for streaming, and allow uploads as large as
 `[media] max_upload_bytes`, 16 MiB by default.
 
-[Caddy](https://caddyserver.com) gets certificates and handles the rest on its own:
+[Caddy](https://caddyserver.com) gets certificates by itself:
 
-```
+```caddyfile
 social.example {
     reverse_proxy localhost:8080
 }

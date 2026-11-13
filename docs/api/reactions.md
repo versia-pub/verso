@@ -80,9 +80,8 @@ The status's reactions, the same as its `reactions` field.
 
 ### `GET /api/v1/statuses/:id/reactions/:name`
 
-The accounts that reacted with an emoji, newest first, a page at a time, as Mastodon pages lists.
-`limit` is 40 by default, at most 80. Accounts the viewer blocks are left out. An emoji nobody
-reacted with is a `404`.
+The accounts that reacted with an emoji, newest first, a page at a time. `limit` is 40 by default,
+at most 80. Accounts the viewer blocks are left out. An emoji nobody reacted with is a `404`.
 
 ## Notifications
 

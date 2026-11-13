@@ -1,20 +1,19 @@
 # Contributing to Verso
 
-Thanks for helping out! This file covers setting up, running things, and what we look for in a pull
-request. To learn how Verso works and how to change it, read [the docs](docs/README.md).
+This file covers setting up, running things, and what we look for in a pull request. To learn how
+Verso works and how to change it, read [the docs](docs/README.md).
 
 ## Setup
 
 You need Nix with flakes enabled, on x86_64 or aarch64 Linux. Nix is the only supported way to work
-on Verso. It pins Deno and every other tool, so your machine, CI and production all run the same
-versions.
+on Verso. It pins Deno and every other tool, so your machine and CI use the same versions.
 
 ```sh
 nix develop    # or run `direnv allow` once, if you use direnv
 deno install   # downloads dependencies into vendor/ and node_modules/
 ```
 
-The dev shell gives you Deno, nixfmt and PostgreSQL. You don't need to install anything else.
+The dev shell has Deno, nixfmt and PostgreSQL. You don't need anything else.
 
 Nix only sees files that git knows about, so `git add` new files before running `nix build` or
 `nix flake check`.
@@ -41,7 +40,7 @@ Nix only sees files that git knows about, so `git add` new files before running 
 | `nix run .#banner -- --help`    | Make a Versia-branded README banner                        |
 
 CI only runs `nix flake check`, which runs the same Deno tasks inside the Nix sandbox without
-network access. If it passes on your machine, it should pass in CI.
+network access. If it passes on your machine, it passes in CI.
 
 Tests run on PGlite, an in-process PostgreSQL, by default. `VERSO_TEST_DATABASE` runs them on SQLite
 or a real PostgreSQL server instead, and `nix flake check` runs all three. See
@@ -113,7 +112,7 @@ and upgrade them.
 Keep each change small enough to review in a few minutes. Commit messages use
 [Conventional Commits](https://www.conventionalcommits.org/), with a capital letter after the type:
 
-```
+```text
 build(nix): Add dev shell
 fix(federation): Reject deletes from non-owners
 ```

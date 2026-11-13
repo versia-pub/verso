@@ -3,7 +3,7 @@
 This is how Verso implements [Versia 0.6](https://versia.pub). This document assumes you know the
 spec, and covers only Verso's side of it. Entities move in four ways:
 
-```
+```text
 Receiving   remote ── POST inbox ──► inbox route ── job ──► inbox worker ──► type.receive
 Sending     subscriber ── job ──► fan-out ── jobs ──► delivery worker ── POST inbox ──► remote
 Fetching    resolver ── GET entity ──► remote ──► type.receive
@@ -42,7 +42,7 @@ extensions Verso supports, for `/.versia/v0.6/instance`. To add a type, see
 
 ## Receiving
 
-```
+```text
 POST /.versia/v0.6/inbox
   │  signed route: signature checked, sender not blocked, rate limited by instance
   ▼
@@ -133,9 +133,9 @@ Each process shares one resolver, so two resolves of the same reference make one
 
 ### Replies
 
-When a local user opens the thread of a remote status, Verso fetches the replies it hasn't heard of,
-as Mastodon does. A job reads the status's `replies` collection, resolves each reply, and does the
-same for each reply's replies, depth first. See [`app/notes/backfill.ts`](../app/notes/backfill.ts).
+When a local user opens the thread of a remote status, Verso fetches the replies it hasn't heard of.
+A job reads the status's `replies` collection, resolves each reply, and does the same for each
+reply's replies, depth first. See [`app/notes/backfill.ts`](../app/notes/backfill.ts).
 
 - Only public and unlisted statuses at least 5 minutes old are backfilled.
 - A status's replies are fetched again only after 15 minutes. The opened status's own replies are
@@ -212,7 +212,7 @@ the messages it receives for admins to read. See
 
 ## Where the spec is unclear
 
-Here is what Verso does where the Versia 0.6 spec is unclear or wrong. Each of these will be raised
+Where the Versia 0.6 spec is unclear or wrong, Verso does the following. Each will be raised
 upstream.
 
 - [Signing](https://versia.pub/signatures): the example code uses milliseconds, but the text says

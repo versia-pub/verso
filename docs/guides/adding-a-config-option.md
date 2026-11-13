@@ -4,7 +4,7 @@ This guide adds `[push] timeout_seconds`, how long a push service has to answer,
 constant in [`app/push/pushes.ts`](../../app/push/pushes.ts). Read
 [Configuration](../configuration.md) first.
 
-```
+```text
 config_sections.ts   PushSettings: timeout_seconds, with its default
 config.ts            Config: push: PushSettings
 settings.ts          Settings: pushTimeoutMs, from settingsOf and in defaultSettings

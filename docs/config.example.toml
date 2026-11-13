@@ -14,10 +14,10 @@ domain = "social.example"
 # Exactly one of these: a PostgreSQL connection string, or the path of a SQLite file.
 database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 # database = { sqlite = "verso.db" }
-# SQLite suits one process, running `verso all`: processes on it can't tell each other what
-# changed, so a domain block made with `verso admin`, say, applies elsewhere within a minute, and
+# SQLite suits one process, running `verso all`. Processes on it can't tell each other what
+# changed. A domain block made with `verso admin`, say, applies elsewhere within a minute, and
 # streaming reaches only clients connected to the process where something happened. A power cut
-# can lose its last few commits, though never corrupt it.
+# can lose its last few commits, but never corrupts the database.
 # A PostgreSQL database must be UTF-8, as `createdb` makes it on most systems; in another
 # encoding, search misses words with letters outside ASCII.
 # With PostgreSQL, also how many connections each process may have, how long to wait for one, and
@@ -26,21 +26,22 @@ database = { postgres = "postgresql://verso:${env:PGPASSWORD}@localhost/verso" }
 #     statement_timeout_seconds = 60 }
 
 [media]
-# How many pixels an uploaded image may have, in each frame, before it is scaled down: 3840×2160 by
-# default, as on Mastodon.
+# How many pixels an uploaded image may have, in each frame, before it is scaled down. The default,
+# 3840×2160, is Mastodon's.
 # max_pixels = 8294400
-# How many bytes an uploaded file may have: 16 MiB by default, as Mastodon allows for images.
+# How many bytes an uploaded file may have: 16 MiB by default, Mastodon's limit for
+# images.
 # max_upload_bytes = 16777216
 # How many bytes a custom emoji's picture may have: 256 KiB by default.
 # max_emoji_bytes = 262144
 # How many hours an upload that hasn't been attached to a status is retained before it is deleted:
-# 24 by default, as Mastodon does. Also applies to unused remote media.
+# 24 by default, like Mastodon. Also applies to unused remote media.
 # unattached_hours = 24
 # After how many days the preview cards of pages fetched that long ago lose their images, and are
 # deleted if no status shows them. At least 14. Unset, they are kept for good.
 # preview_card_days = 180
 # Whether the files of remote media, such as attachments, avatars and custom emojis, are fetched and
-# stored, so that Verso serves them. On by default, as on Mastodon.
+# stored, so that Verso serves them. On by default, like Mastodon.
 # cache_remote_media = true
 # After how many days the files cached for remote statuses' attachments are removed. They are
 # fetched again if anyone asks for them. 30 by default.

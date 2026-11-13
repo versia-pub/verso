@@ -119,8 +119,8 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - Verso never sends `admin.sign_up`, `admin.report`, `severed_relationships` or `moderation_warning`
   notifications.
 - `quote` notifications tell users someone quoted their status, and `quoted_update` ones that a
-  status they quoted was edited. Neither is grouped, as on Mastodon, and only `quote` is filtered by
-  notification policies. Push subscriptions can ask for both in `alerts`.
+  status they quoted was edited. Neither is grouped, and only `quote` is filtered by notification
+  policies. Push subscriptions can ask for both in `alerts`.
 - Notifications from blocked and muted accounts, and about statuses the user can no longer see, are
   left out of lists and counts.
 - Notification policies also apply to `reaction` notifications, as they do to likes.
@@ -136,10 +136,10 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
 - Who may see the public, hashtag and trending link timelines is set in `[timelines_access]` in the
   config, not by an admin in the web interface. Where it says `authenticated` or `disabled`, a
   request without a user is answered 422, and one from a user without the `feeds` permission is
-  answered with an empty list if the feed is `disabled`, as on Mastodon. The `feeds` permission is
-  Mastodon's `view_feeds`.
-- Hashtag and trending link timelines share one setting, as on Mastodon. A link timeline asks for
-  both local and remote statuses whatever it is sent.
+  answered with an empty list if the feed is `disabled`. The `feeds` permission is Mastodon's
+  `view_feeds`.
+- Hashtag and trending link timelines share one setting. A link timeline asks for both local and
+  remote statuses whatever it is sent.
 
 ## Search
 
@@ -174,15 +174,14 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   discoverable, since Versia has no such setting. Statuses with no language can trend.
 - Trending statuses aren't ordered by the viewer's languages, and admins don't get a mail when
   something asks for approval.
-- `show_trends = false` answers `200` with an empty list, as Mastodon does. The link timeline
-  answers `404` then.
+- `show_trends = false` answers `200` with an empty list. The link timeline answers `404` then.
 - Links follow `trendable_by_default` too, which Mastodon only uses to skip review mails. A link
   trends if an admin approved it, or else its website, or else the default does. Links with no
   language can trend, and aren't ordered by the viewer's languages.
 - A link counts accounts that shared it in public statuses and boosts, and its history counts the
   same. The link timeline lists the public statuses whose first link it is, by discoverable
   accounts, without those of accounts the viewer blocks or mutes. It has no `local`, `remote` or
-  `only_media`, as in Mastodon.
+  `only_media`.
 
 ## Suggestions
 

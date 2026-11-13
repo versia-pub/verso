@@ -17,7 +17,7 @@ is enough.
 
 One `verso all` process suits a small instance. To spread the load:
 
-```
+```text
       clients and other instances
                   │
             load balancer

@@ -18,7 +18,7 @@ Every instance also serves its own API reference at `/docs`, built from the Open
 
 ## Logging in
 
-Apps log users in with OAuth, the same way as on Mastodon:
+Apps log users in with OAuth:
 
 1. Register the app with `POST /api/v1/apps`, giving its name, redirect URIs and scopes. The
    response has a client id and secret, and the secret is only shown this once.

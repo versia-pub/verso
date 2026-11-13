@@ -3,7 +3,7 @@
 A status that links to a web page shows a card for it: the page's title, description and image. The
 code is in [`app/previews/`](../app/previews/).
 
-```
+```text
 status posted, edited or received
   │  subscriber (queueCards): is the status's first link not the one its card is for?
   ▼
@@ -15,9 +15,9 @@ note_preview_cards: the status's card, with the link as it wrote it
 ```
 
 Only the first link counts. Mentions, hashtags, profile cards and links to this instance are
-skipped, and a boost has no card, though the status it boosts does. Any visibility gets a card, as
-on Mastodon. A remote status waits up to a minute before its job runs, so a status that many servers
-receive doesn't make each of them fetch the page at once.
+skipped, and a boost has no card, though the status it boosts does. Any visibility gets a card. A
+remote status waits up to a minute before its job runs, so a status that many servers receive
+doesn't make each of them fetch the page at once.
 
 ## Fetching
 

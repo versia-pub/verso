@@ -9,7 +9,7 @@ The code is in [`app/kernel/config.ts`](../app/kernel/config.ts), with the large
 
 ## Reading it
 
-```
+```text
 config.toml
   │  parse the TOML
   ▼

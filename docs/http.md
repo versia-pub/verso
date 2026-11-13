@@ -53,7 +53,7 @@ The comments in `route.ts` describe the rest. To add a route, see
 
 ## What happens to a request
 
-```
+```text
                           request
                              │
                              ▼
@@ -125,8 +125,8 @@ validates every reply against its declared schema.
 
 To fail, throw one of the errors in [`app/http/errors.ts`](../app/http/errors.ts), such as
 `NotFound`, `NotPermitted` or `Unprocessable`. Services throw them too, so routes don't need to
-translate errors. The app sends them as `{ "error": "…", "error_description": "…" }`, like Mastodon.
-Any other error is logged and sent as a 500 with no details.
+translate errors. The app sends them as `{ "error": "…", "error_description": "…" }`. Any other
+error is logged and sent as a 500 with no details.
 
 ## Auth, scopes and permissions
 
@@ -144,9 +144,9 @@ provides, so `http/` imports no feature module.
 Every route is rate limited per client unless it sets `rateLimit: false`. A client is the signed-in
 account, or otherwise its IP address, with IPv6 addresses counted by their /64. Signed routes are
 limited per remote instance instead. Counts are kept in memory, or in the `rate_limits` table so
-several web nodes can share them, depending on `[http.rate_limit]`. Responses carry both the
-`RateLimit-*` headers Versia requires and Mastodon's `X-RateLimit-*` ones, which its apps read. The
-code is in [`app/http/rate_limits.ts`](../app/http/rate_limits.ts).
+several web nodes can share them, depending on `[http.rate_limit]`. The headers are listed in
+[The client API](api/README.md#ids-pages-and-errors). The code is in
+[`app/http/rate_limits.ts`](../app/http/rate_limits.ts).
 
 Behind a reverse proxy, list it in `http.trusted_proxies` so the client's address is read from
 `X-Forwarded-For`, and its `X-Request-Id` is kept. Request IDs and access logs are in

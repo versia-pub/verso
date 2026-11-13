@@ -19,7 +19,7 @@ there, so your machine, CI and production use the same versions of everything.
 
 ## Dependencies
 
-```
+```text
 deno.json, deno.lock
   │
   ▼
@@ -82,8 +82,8 @@ entrypoint is `verso` and the default command is `all`, so run `serve` and `work
 containers to scale them. It runs as `nobody` (65534), who can only write to `/tmp` and mounted
 volumes, and exposes port 8080.
 
-`nix build .#image` builds a script that streams the image. Load it with
-`$(nix build --print-out-paths .#image) | docker load`.
+`nix build .#image` builds a script that streams the image.
+[Installing](admin/installing.md#in-a-container) shows how to load it.
 
 ## Checks
 
@@ -114,7 +114,7 @@ CI, in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml), only runs the 
 an x86_64 and an aarch64 GitHub runner. On each, they're split into parallel jobs: the tests on
 PGlite, on SQLite and on PostgreSQL, the NixOS VM tests, and everything else.
 
-```
+```text
             ┌───────┬─────────────┬─────────────┬───────────────┬─────┐
 x86_64      │ other │ test-pglite │ test-sqlite │ test-postgres │ vms │
             ├───────┼─────────────┼─────────────┼───────────────┼─────┘

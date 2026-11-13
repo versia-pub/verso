@@ -19,7 +19,7 @@ The command line picks one of three roles:
 admin commands. [`app/main.ts`](../app/main.ts) reads the command line, and
 [`app/run.ts`](../app/run.ts) starts each role.
 
-```
+```text
    clients                remote instances
          │                       │
          ▼                       ▼
@@ -46,7 +46,7 @@ process only hears its own messages and workers poll for jobs. That's why SQLite
 
 ## Repository layout
 
-```
+```text
 app/                 the server
   main.ts            command line
   run.ts             builds the context and starts each role
@@ -73,7 +73,7 @@ reading it.
 
 ## Layers
 
-```
+```text
 HTTP routes (routes.ts)        federation.ts / versia.ts       job handlers
 Mastodon API in and out        Versia entities in and out      run what was queued
            │                              │                          │
@@ -160,7 +160,7 @@ in order, and the services the HTTP app and federation need from modules.
 
 A change and everything it causes commit together, or not at all:
 
-```
+```text
 POST /api/v1/statuses
   │
   ▼
@@ -186,9 +186,8 @@ commit ────────────────────────�
 one. Anything slow happens later, in a job. A new side effect is a new subscriber, not an edit to
 the service.
 
-`ctx.afterCommit` runs code once the transaction commits, which is how `publish` makes sure other
-processes only hear about changes that stuck. [Events, jobs and messages](events-and-jobs.md) covers
-each part in detail.
+`ctx.afterCommit` runs code once the transaction commits, so `publish` only reaches other processes
+for changes that stuck. [Events, jobs and messages](events-and-jobs.md) covers each part.
 
 ## Ids, references and URLs
 

@@ -80,8 +80,8 @@ Apps suggest accounts to follow: the ones you list in `suggested_accounts`, such
 the remote ones.
 
 `extended_description`, `privacy_policy` and `terms_of_service` are plain text, with a blank line
-between paragraphs, and the date they last changed, unquoted. It's easiest to keep them in files and
-read them with `${file:…}`.
+between paragraphs, and the date they last changed, unquoted. Keep them in files and read them with
+`${file:…}`.
 
 ## Logging in
 
@@ -197,8 +197,8 @@ to 256 KiB. Uploads that aren't attached to a status within 24 hours are deleted
 section in the example config has the settings for each.
 
 Verso fetches and stores the files of remote attachments, avatars, headers and custom emojis, and
-serves them, as Mastodon does. `cache_remote_media = false` turns that off. The files of attachments
-cached more than `remote_media_days` ago, 30 by default, are removed each day, as
+serves them. `cache_remote_media = false` turns that off. The files of attachments cached more than
+`remote_media_days` ago, 30 by default, are removed each day, as
 [`verso admin media prune`](commands.md#verso-admin-media) does, and fetched again if anyone asks
 for them.
 

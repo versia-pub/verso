@@ -5,7 +5,7 @@ reaction to remote instances, notifying a status's author, or indexing a status 
 don't call each other for these. Instead, the module making the change emits an event, and the
 others subscribe to it. Read [Events, jobs and messages](../events-and-jobs.md) first.
 
-```
+```text
 react(…), in reactions.ts
   ctx.transaction(tx ⇒
     insert the reaction

@@ -6,7 +6,7 @@ later in a worker, and are retried if they fail. This guide uses the `notify` jo
 status author's followers 100 at a time. Read
 [Events, jobs and messages](../events-and-jobs.md#jobs) first.
 
-```
+```text
 subscriber, in the transaction        worker, later
   enqueueAll(notify jobs) ──────────►   notifyHandler(ctx, job)
                                           parse the payload

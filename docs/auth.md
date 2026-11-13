@@ -1,8 +1,8 @@
 # Logging in and permissions
 
 Verso has no passwords. Users log in through an OpenID Connect provider, such as Keycloak or
-Authentik, and apps get OAuth access tokens like on Mastodon. What a user can then do depends on the
-token's scopes and the user's roles.
+Authentik, and apps get OAuth access tokens. What a user can then do depends on the token's scopes
+and the user's roles.
 
 The code is in [`app/auth/`](../app/auth/), with accounts and roles in
 [`app/accounts/`](../app/accounts/).
@@ -15,7 +15,7 @@ only its SHA-256 is stored. Every secret and token Verso makes is 256 random bit
 
 ## Logging in
 
-```
+```text
 app            browser                              Verso                    issuer
  │                │                                   │                         │
  │── opens ──────►│                                   │                         │
@@ -46,9 +46,8 @@ has 30 minutes to log in, and the app 10 minutes to use its code.
 Issuers are listed in `[[auth.issuers]]` in config. Each one is an `IdentityProvider` from
 [`app/kernel/identity.ts`](../app/kernel/identity.ts), using the authorization code flow with PKCE.
 
-Apps can send an S256 `code_challenge`, and must then send its verifier with the code. Out-of-band
-apps, which use `urn:ietf:wg:oauth:2.0:oob`, are shown the code to copy instead of being redirected.
-The `client_credentials` grant gives an app a token for itself, with no user.
+[The client API](api/README.md#logging-in) covers PKCE, out-of-band apps and the
+`client_credentials` grant.
 
 The browser pages are plain HTML, in [`app/auth/pages.ts`](../app/auth/pages.ts). Forms carry a CSRF
 token and their origin is checked, so other sites can't submit them.
@@ -62,10 +61,9 @@ Logins are linked by issuer URL and subject only, never by email, so another iss
 an account by claiming the same address. This also means changing an issuer's `url` unlinks its
 accounts.
 
-A new account's username comes from `username_claim`, `preferred_username` by default, trimmed to
-what Versia allows. If it's taken, Verso tries `name2`, `name3` and so on. Whether a new account is
-created at all depends on `registration`, as [Configuring](admin/configuring.md#logging-in)
-explains.
+A new account's username comes from `username_claim`, trimmed to what Versia allows. If it's taken,
+Verso tries `name2`, `name3` and so on. Whether a new account is created at all depends on
+`registration`. Both are in [Configuring](admin/configuring.md#logging-in).
 
 `roles = [{ claim, contains, role }]` grants roles at every login, and takes back roles the issuer
 granted that no longer match. Roles an admin granted aren't touched.
@@ -97,15 +95,15 @@ The HTTP app reads the token from `Authorization: Bearer`, through `authenticate
 
 Scopes are Mastodon's, listed in [`app/kernel/scopes.ts`](../app/kernel/scopes.ts). An app registers
 the most it may ask for, a login asks for some of those, and the token holds what the user allowed.
-A broad scope covers its narrower ones, as `read` covers `read:statuses`. Each route names the scope
-it needs in its `auth`.
+Each route names the scope it needs in its `auth`. See
+[Scopes and permissions](api/README.md#scopes-and-permissions) for how they combine.
 
 ## Permissions and roles
 
 Scopes limit what an app can do for a user, and permissions limit what the user can do at all.
 Routes check both:
 
-```
+```text
 token has the route's scope, or one covering it?   no ──► 403
           │ yes
           ▼
@@ -122,10 +120,10 @@ Permission names come from Versia Server, and are in
 own things, such as `owner:note`, `read:` ones cover viewing, and bare ones such as `roles` cover
 everyone's. A permission is only added once a route checks it.
 
-`[permissions]` in config sets what everyone can do: `anonymous` for logged-out visitors, and
-`default` for every user. Roles add more. Each role has permissions and a priority. Users with the
-`roles` permission can create, change and grant roles below their own highest, with permissions they
-have themselves. Admins can also use `verso admin roles` and `verso admin users grant-role`.
+`[permissions]` in config sets what everyone can do (see
+[Configuring](admin/configuring.md#permissions)). Roles add more. Each role has permissions and a
+priority. Who may manage roles is in [Roles](api/roles.md#who-may-manage-roles). Admins can also use
+`verso admin roles` and `verso admin users grant-role`.
 
 When an account's roles change, every process hears about it on `roles.changed` and looks the
 permissions up again, so open streams pick up the change.

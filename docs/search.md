@@ -7,7 +7,7 @@ The code is in [`app/search/`](../app/search/).
 
 ## Indexing
 
-```
+```text
 a status is posted, edited or received        an account is created, changed or received
   │                                             │
   ▼                                             ▼

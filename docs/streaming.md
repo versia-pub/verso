@@ -9,7 +9,7 @@ The code is in [`app/streaming/`](../app/streaming/), with each kind of stream i
 
 ## How a status reaches a client
 
-```
+```text
 a status is posted, edited, deleted or boosted
   │
   ▼
@@ -40,7 +40,7 @@ accepted notification requests, on `notifications.merged`, sent as `notification
 A user's conversations arrive on `conversations.changed` and go to their `direct` streams as
 `conversation`. That happens when a conversation gets a status, is marked read or unread, or loses
 its latest status but still has others. A conversation that loses all its statuses is gone, so
-nothing is sent, as on Mastodon.
+nothing is sent.
 
 Announcements arrive on `announcements.changed` and go to every `user` stream. One published or
 changed is sent as `announcement`, rendered once, and one taken down or deleted as

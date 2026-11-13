@@ -106,7 +106,7 @@ yourself to write.
 
 ### A job's life
 
-```
+```text
 enqueue ──► queued ──► running ─┬─ resolves ─────────► finished: deleted, or kept until keepUntil
                                 ├─ throws ───────────► queued again after a backoff, or a dead
                                 │                      letter once out of attempts
@@ -151,8 +151,8 @@ scheduler, and a dedupe key per period makes sure each task is queued once per p
 
 ## Messages between processes
 
-Some things need to reach every process, not just one worker, such as a stale cache or a status that
-streaming clients should see. These go through `ctx.pubsub`, with `publish` and `subscribe` from
+Some things need to reach every process, such as a stale cache or a status that streaming clients
+should see. These go through `ctx.pubsub`, with `publish` and `subscribe` from
 [`app/kernel/pubsub.ts`](../app/kernel/pubsub.ts). Each kind of message is a `Channel`, with a name
 and a Zod schema, declared by the module that publishes it, such as `filtersChanged` in
 [`app/filters/filters.ts`](../app/filters/filters.ts).

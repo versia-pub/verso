@@ -9,7 +9,7 @@ in [`app/kernel/`](../app/kernel/).
 
 ## Uploading
 
-```
+```text
 POST /api/v2/media
   │  stream to a temporary file, hashing it on the way (kernel/spool.ts)
   │  sniff the first bytes: an image Verso accepts?
@@ -37,8 +37,8 @@ page or script never runs.
 
 The original image is never served, because it may contain metadata such as where a photo was taken.
 It's only kept until processing finishes, and an image that can't be processed is deleted. Avatars
-and headers are processed the same way, scaled to their own sizes. Upload limits are in `[media]`:
-16 MiB and 3840×2160 by default.
+and headers are processed the same way, scaled to their own sizes. Upload limits are in
+[`[media]`](admin/configuring.md#media).
 
 ## Attaching
 
@@ -93,9 +93,9 @@ cached for a year.
 
 When Verso receives remote media, a job in the `remote-media` queue fetches its file, in
 [`app/media/remote_cache.ts`](../app/media/remote_cache.ts), unless `[media] cache_remote_media` is
-off. Images are processed as uploads are. Video and audio are stored as fetched, up to 99 MiB, as on
-Mastodon. Other files aren't fetched. A file that doesn't match the hash its instance gave isn't
-stored.
+off. Images are processed as uploads are. Video and audio are stored as fetched, up to 99 MiB,
+Mastodon's limit. Other files aren't fetched. A file that doesn't match the hash its instance gave
+isn't stored.
 
 The job is grouped by the host the file is on, so one host is fetched from once at a time. It is
 tried three times. Media that can't be fetched by then is marked processed with no file, and isn't
@@ -107,12 +107,12 @@ and rendered at Verso's URL. Custom emojis are still sent to other instances at 
 URL.
 
 Until then, an attachment that will be cached is rendered at the media proxy, `/media/proxy/:id` and
-`/media/proxy/:id/small` for the preview, in [`app/media/proxy.ts`](../app/media/proxy.ts), as on
-Mastodon. The proxy fetches and stores the file on the spot, then redirects to it. It answers 404,
-fetching nothing, for media that isn't attached to a status the viewer may see, that failed to
-cache, or whose instance or host is blocked. If fetching fails, it answers 404 and leaves the media
-for the job. Its requests are counted in their own rate limit bucket. Other remote media, and media
-that failed to cache, is rendered at the remote instance's URL.
+`/media/proxy/:id/small` for the preview, in [`app/media/proxy.ts`](../app/media/proxy.ts). The
+proxy fetches and stores the file on the spot, then redirects to it. It answers 404, fetching
+nothing, for media that isn't attached to a status the viewer may see, that failed to cache, or
+whose instance or host is blocked. If fetching fails, it answers 404 and leaves the media for the
+job. Its requests are counted in their own rate limit bucket. Other remote media, and media that
+failed to cache, is rendered at the remote instance's URL.
 
 ## Cleaning up
 
@@ -125,8 +125,8 @@ deleted by a job in the `media-files` queue, after the transaction that stopped 
 A job in the `remote-media-prune` queue runs every day, in
 [`app/media/pruning.ts`](../app/media/pruning.ts). It removes the files of remote attachments cached
 more than `[media] remote_media_days` ago, 30 by default, and marks them not cached, keeping what is
-known of them. The media proxy fetches them again if anyone asks for them, as on Mastodon. Avatars,
-headers and custom emojis stay cached until nothing uses them.
+known of them. The media proxy fetches them again if anyone asks for them. Avatars, headers and
+custom emojis stay cached until nothing uses them.
 
 Deleting a file could race with something starting to use it, so both sides lock the file's key:
 `deleteFileIfUnused` while it checks and deletes, and `keepUsed` in the transaction that starts

@@ -47,9 +47,9 @@ pushed, streamed or added to a conversation. Filtered mentions are counted per a
 ## Reading them
 
 `/api/v1/notifications` lists them one by one, newest first, with Mastodon's `types`,
-`exclude_types` and `account_id` filters. `/api/v2/notifications` lists them in groups, like
-Mastodon. A group is one type of notification about one status, or all follows, within 12 hours. The
-group key is stored on each notification when it's created. Reactions are grouped too.
+`exclude_types` and `account_id` filters. `/api/v2/notifications` lists them in groups. A group is
+one type of notification about one status, or all follows, within 12 hours. The group key is stored
+on each notification when it's created. Reactions are grouped too.
 
 Notifications from accounts the user blocks, directly or by domain, or mutes including
 notifications, are hidden by `shownQuery` in
@@ -72,7 +72,7 @@ was set.
 Apps subscribe with `POST /api/v1/push/subscription`, giving the push service's endpoint and the
 browser's keys, and which notifications they want, from whom.
 
-```
+```text
 notifications.created
   │
   ▼
@@ -94,13 +94,13 @@ POST to the push service
 Each subscription gets its own job in the `push` queue, grouped by the push service's host, so a
 service that hangs only holds up its own pushes. A push service has 10 seconds to answer, or
 `[push] timeout_seconds`, and one that takes longer isn't retried. Pushes ask the service to keep
-them for two days if the device is offline, like Mastodon's.
+them for two days if the device is offline.
 
 Encryption is in [`app/push/encryption.ts`](../app/push/encryption.ts) (RFC 8291), and signing in
-[`app/push/vapid.ts`](../app/push/vapid.ts) (RFC 8292). As on Mastodon, subscriptions get the older
-`aesgcm` encoding and `WebPush` signatures from these RFCs' drafts unless they ask to be `standard`.
-Each push's `Unsubscribe-URL` removes its subscription without a token, until the push expires: it
-is a JWT of the subscription's id, signed with the VAPID key
+[`app/push/vapid.ts`](../app/push/vapid.ts) (RFC 8292). Like on Mastodon, subscriptions get the
+older `aesgcm` encoding and `WebPush` signatures from these RFCs' drafts unless they ask to be
+`standard`. Each push's `Unsubscribe-URL` removes its subscription without a token, until the push
+expires: it is a JWT of the subscription's id, signed with the VAPID key
 ([`app/push/unsubscribe.ts`](../app/push/unsubscribe.ts)). `verso migrate` creates the VAPID key
 pair once, in `vapid_keys`, and it never changes, since that would break every subscription. Clients
 get the public key from the instance and the subscription.
