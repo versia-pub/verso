@@ -128,8 +128,8 @@ export const deleteConversation = async (
 };
 
 /**
- * A page of `accountId`'s conversations, the latest first, paged by their latest statuses, as on
- * Mastodon. Those whose latest status was deleted, until it is found again, aren't in it.
+ * A page of `accountId`'s conversations, the latest first, paged by their latest statuses. Those
+ * whose latest status was deleted, until it is found again, aren't in it.
  */
 export const conversationPage = async (
     ctx: Context,

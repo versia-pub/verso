@@ -159,7 +159,7 @@ Deno.test("ending a follow or a request removes the account from the owner's lis
     assertEquals(await addListAccounts(test.ctx, "alice", other, ["carol", "frank"]), "added");
 
     await unfollow(test.ctx, "alice", "bob");
-    // As when frank removes alice from his followers, and dave's instance accepts her request.
+    // As when frank removes alice as a follower, and dave's instance accepts alice's request.
     await rejectFollow(test.ctx, "alice", "frank");
     await acceptFollow(test.ctx, "alice", "dave");
 

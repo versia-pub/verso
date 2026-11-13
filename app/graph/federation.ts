@@ -139,9 +139,9 @@ const partiesOf = async (ctx: Context, local: string, author: string, sender: Se
 };
 
 /**
- * A user requesting to follow a local one, who is accepted at once unless they are locked or the
- * follower is silenced. A follower requesting again is accepted again, in case their instance
- * missed it. A suspended user can't be followed, and their instance isn't told.
+ * A user requesting to follow a local one. It is accepted at once, unless the local user is locked
+ * or the follower is silenced. A follower requesting again is accepted again, in case their
+ * instance missed it. A suspended user can't be followed, and their instance isn't told.
  */
 const followType: EntityType<v0_6.Follow> = {
     type: "Follow",

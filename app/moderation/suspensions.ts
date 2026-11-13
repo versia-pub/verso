@@ -1,6 +1,6 @@
 /**
- * Suspending accounts, local or remote, as whoever runs the instance does. A suspension keeps
- * everything, so it can be undone.
+ * Suspending accounts, local or remote, for admins and moderators. A suspension keeps everything,
+ * so it can be undone.
  * @module
  */
 import { setSuspendedAt } from "../accounts/account_queries.ts";

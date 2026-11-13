@@ -46,6 +46,7 @@ const auth = {
 
 const docs = "https://docs.joinmastodon.org/methods/lists";
 
+/** The client API's list endpoints, and the endpoint for the lists an account is in. */
 export const listRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",

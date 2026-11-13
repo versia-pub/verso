@@ -1,6 +1,6 @@
 /**
- * A client for Verso's client API, and the Mastodon entities it gives as Zod schemas, which
- * Verso itself uses.
+ * A client for Verso's client API, and Zod schemas for the Mastodon entities it returns. Verso
+ * itself uses the schemas.
  * @module
  */
 export * from "./client.ts";

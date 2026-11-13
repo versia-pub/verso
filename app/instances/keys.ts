@@ -51,7 +51,7 @@ export const createInstanceKey = async (
 };
 
 /**
- * Replaces the key pair with a new one, such as when the old one may have leaked, and returns the
+ * Replaces the key pair with a new one, like when the old one may have leaked, and returns the
  * new public key. The old pair is deleted, so it can't sign anything more. Remote instances fetch
  * the new public key when a signature from this one stops verifying.
  */

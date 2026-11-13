@@ -4,7 +4,7 @@ import { List } from "../list.ts";
 import { type CallOptions, type Http, path } from "./http.ts";
 import { Page, type PageQuery } from "./pages.ts";
 
-/** A list's properties, as a new list is made with. */
+/** The properties a new list is made with. */
 export type ListInput = {
     readonly title: string;
     /** `list` if left out. */

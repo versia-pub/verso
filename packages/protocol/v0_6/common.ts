@@ -19,7 +19,7 @@ export const Rfc3339 = z.iso.datetime({ offset: true });
 export const Unsigned = z.number().int().nonnegative();
 
 /**
- * Keys are `namespace:name`, such as `pub.versia:custom_emojis`.
+ * Keys are `namespace:name`, like `pub.versia:custom_emojis`.
  * @see https://versia.pub/extensions#naming
  */
 export const Extensions = z.record(
@@ -49,7 +49,7 @@ export const ContentFormat = z.record(
 export type ContentFormat = z.infer<typeof ContentFormat>;
 
 /**
- * A ContentFormat whose MIME types all start with `prefix`, such as "image/" for an avatar, and
+ * A ContentFormat whose MIME types all start with `prefix`, like "image/" for an avatar, and
  * whose entries all have the given `remote` value, if one is given.
  */
 export const contentFormatOf = (
@@ -77,10 +77,10 @@ export const ReferenceText = z.string().refine(
     "Invalid reference",
 );
 
-/** A link to a web page or image. Other schemes, such as javascript:, are rejected. */
+/** A link to a web page or image. Other schemes, like javascript:, are rejected. */
 export const WebUrl = z.url({ protocol: /^https?$/ });
 
-/** The fields every entity has. Transient entities, such as Follow, have no `id`. */
+/** The fields every entity has. Transient entities, like Follow, have no `id`. */
 export const Entity = z.object({
     id: Id,
     type: z.string(),
@@ -90,6 +90,6 @@ export const Entity = z.object({
 });
 export type Entity = z.infer<typeof Entity>;
 
-/** An entity that can't be fetched later, such as Follow or Delete, so it has no `id`. */
+/** An entity that can't be fetched later, like Follow or Delete, so it has no `id`. */
 export const TransientEntity = Entity.omit({ id: true });
 export type TransientEntity = z.infer<typeof TransientEntity>;

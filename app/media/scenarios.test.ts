@@ -151,8 +151,8 @@ Deno.test("an avatar reaches followers on another instance once processed, until
     assertEquals([served.status, served.headers.get("content-type")], [200, "image/png"]);
     await served.body?.cancel();
 
-    // Without her avatar, alice is sent as she was while it was processed, which b.test takes, as
-    // users can be sent again.
+    // Without her avatar, alice is sent as she was while it was processed. b.test takes it,
+    // because users can be sent again.
     network.clock.advance(1000);
     const removed = await a.app.request("/api/v1/profile/avatar", {
         method: "DELETE",

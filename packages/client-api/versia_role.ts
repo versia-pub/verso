@@ -8,7 +8,7 @@ import { z } from "zod";
 export const VersiaRole = z.object({
     id: z.string(),
     name: z.string(),
-    /** Permission names, such as `roles` or `owner:account`. */
+    /** Permission names, like `roles` or `owner:account`. */
     permissions: z.array(z.string()),
     /** Accounts may only manage roles with lower priority than their own highest. */
     priority: z.int(),
@@ -17,7 +17,7 @@ export const VersiaRole = z.object({
     visible: z.boolean(),
     /** The URL of an image for the role. Omitted when it has none. */
     icon: z.url().optional(),
-    /** A hex colour, such as `#ff3838`, or empty for none. */
+    /** A hex colour, like `#ff3838`, or empty for none. */
     color: z.string(),
 });
 export type VersiaRole = z.infer<typeof VersiaRole>;

@@ -1,8 +1,8 @@
 /**
- * The `user` and `user:notification` streams, as on Mastodon: the statuses of a user's home
- * timeline as they appear, change or go, their notifications, and when notification requests they
- * accepted are merged. `user` also says when their filters change, and when announcements are
- * published, changed or taken down.
+ * The `user` and `user:notification` streams: the statuses of a user's home timeline as they
+ * appear, change or go, their notifications, and when notification requests they accepted are
+ * merged. `user` also says when their filters change, and when announcements are published,
+ * changed or taken down.
  * @see https://docs.joinmastodon.org/methods/streaming/#user
  * @module
  */
@@ -26,8 +26,8 @@ import type { StatusMessage } from "./statuses.ts";
 type Entry = { readonly viewer: StreamViewer; readonly session: Session };
 
 /**
- * How many viewers' home timelines a status is looked up on at once, or notifications rendered for,
- * each with queries of its own.
+ * How many viewers are handled at once when looking up a status on their home timelines or
+ * rendering a notification for them. Each needs queries of its own.
  */
 const viewersAtOnce = 8;
 
@@ -35,8 +35,8 @@ const viewersAtOnce = 8;
 const renderedTogether = 500;
 
 /**
- * The streams a session is sent its viewer's notifications on. As on Mastodon, the `user` stream
- * has them only if the token may read them.
+ * The streams a session is sent its viewer's notifications on. The `user` stream has them only if
+ * the token may read them.
  */
 const notificationStreams = (viewer: StreamViewer) =>
     grants(viewer.scopes, "read:notifications")
@@ -54,9 +54,10 @@ const allowed = async (entries: readonly Entry[], permission: Permission) => {
 
 /**
  * Of `entries`, those whose viewers could have the status `deleted` on their home timelines, so
- * are told it went: its author, those it mentions, and unless it was direct, its author's
- * followers. A public status could also be there through the hashtags they follow, which are gone
- * with it, so all who follow any hashtag are told too, as clients ignore statuses they don't have.
+ * are told it went. They are its author, those it mentions and, unless it was direct, its author's
+ * followers. A public status could also be there through the hashtags they follow. Those are gone
+ * with it, so everyone who follows any hashtag is told too, because clients ignore statuses they
+ * don't have.
  */
 const couldSee = async (
     ctx: Context,
@@ -78,17 +79,17 @@ const couldSee = async (
 };
 
 /**
- * What the sessions of the process `ctx` belongs to are sent of their viewers' `user` streams. A
- * status is looked up for the viewers it could reach, its author, their followers and those who
- * follow its hashtags, and sent if it is on their home timeline when it is heard of, rendered for
- * all of them together, as each sees it. A notification is rendered once for its viewer. Each is
- * sent as long as they may read statuses and their notifications, as on the routes for them. An
- * announcement is rendered once, as anyone sees it, for every session.
+ * The `user` streams for the sessions of the process `ctx` belongs to. A status is looked up for
+ * the viewers it could reach: its author, their followers and those who follow its hashtags. It is
+ * sent if it is on their home timeline when it is heard of, rendered for all of them together, as
+ * each sees it. A notification is rendered once for its viewer. Statuses are sent as long as the
+ * viewer may read statuses, and notifications as long as they may read their notifications, as on
+ * the routes for them. An announcement is rendered once, as anyone sees it, for every session.
  */
 export const userStreams = (ctx: Context): Sessions => {
     const sessions = new Set<Entry>();
 
-    /** Sends each of `entries` what `render` renders for its viewer, rendering it once for each. */
+    /** Sends each of `entries` what `render` renders for its viewer, once for each viewer. */
     const deliverEach = async (
         entries: readonly Entry[],
         render: (viewerId: string) => Promise<unknown>,
@@ -195,7 +196,7 @@ export const userStreams = (ctx: Context): Sessions => {
                 return;
             }
 
-            // Rendered once, as anyone sees it, as on Mastodon.
+            // Rendered once, as anyone sees it.
             const row = await findPublishedAnnouncement(ctx, message.id);
             if (row === undefined) return;
             const [shown] = await renderAnnouncements(ctx, [row], null);
@@ -211,7 +212,8 @@ export const userStreams = (ctx: Context): Sessions => {
             if (subscribed.length === 0) return;
             if (await findPublishedAnnouncement(ctx, message.announcementId) === undefined) return;
 
-            // As on Mastodon: with none of them left if the last was undone, and not for a viewer.
+            // The count is 0 if the last reaction was undone, and no viewer is given. Mastodon's
+            // announcement reaction events do the same.
             const emoji = message.emojiId === null
                 ? { text: message.name, emoji_id: null }
                 : { text: null, emoji_id: message.emojiId };

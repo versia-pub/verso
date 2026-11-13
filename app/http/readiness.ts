@@ -6,10 +6,10 @@ import type { Context } from "../kernel/context.ts";
 const answerMs = 3000;
 
 /**
- * What keeps this process from serving, if anything: `database` if the database doesn't answer in
- * time, or `pubsub` if the process doesn't hear other processes' messages, as `listening` says, so
- * that what it caches, such as blocked domains, may be stale. The reason is logged, not returned,
- * since a database error can name its host.
+ * What keeps this process from serving, if anything. It is `database` if the database doesn't
+ * answer in time, and `pubsub` if `listening` says the process doesn't hear other processes'
+ * messages, so what it caches, like blocked domains, may be stale. The reason is logged, not
+ * returned, since a database error can name its host.
  */
 export const unready = async (
     ctx: Context,

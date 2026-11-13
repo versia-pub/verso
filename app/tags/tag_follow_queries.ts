@@ -4,7 +4,7 @@ import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
 
-/** A query of hashtags' names, in lower case, for use as a subquery. */
+/** A subquery of hashtags' names, in lower case. */
 export type TagNameQuery = SelectQueryBuilder<Database, keyof Database, { tag: string }>;
 
 /** Has `accountId` follow the hashtag `tag`, which is in `tags`, unless it already does. */
@@ -46,13 +46,13 @@ export const followedTagsAmong = async (
     return new Set(rows.map((row) => row.tag));
 };
 
-/** The hashtags `accountId` follows, as a subquery, for its home timeline. */
+/** The hashtags `accountId` follows, for its home timeline. */
 export const followedTagsSubquery = (ctx: Context, accountId: string): TagNameQuery =>
     ctx.db.selectFrom("tag_follows").select("tag_follows.tag")
         .where("tag_follows.account_id", "=", accountId);
 
 /**
- * Which of `accountIds` follow any of the hashtags `tags`, in lower case, which are as few as a
+ * Which of `accountIds` follow any of the hashtags `tags`, in lower case, which are no more than a
  * status may have. The accounts are asked about in batches.
  */
 export const tagFollowersAmong = async (

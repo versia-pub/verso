@@ -422,7 +422,7 @@ Deno.test("a suspended user's scheduled statuses wait until the suspension is li
 
 Deno.test("a scheduled status that can't be posted any more is dropped", async () => {
     await using test = await open();
-    // As media that was deleted since.
+    // For example, media that was deleted since.
     await test.insert([new Date(test.inMs(minute))], { media_ids: ["gone"] });
 
     await test.publish(minute);

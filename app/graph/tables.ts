@@ -31,7 +31,7 @@ export type BlocksTable = {
     created_at: Date;
 };
 
-/** An account muting another, as on Mastodon, which only the muter knows about. */
+/** An account muting another, which only the muter knows about. */
 export type MutesTable = {
     /** Orders mutes by creation time, for paging through them. */
     id: string;
@@ -60,7 +60,7 @@ export type EndorsementsTable = {
     created_at: Date;
 };
 
-/** What an account privately notes about another, which only it sees, as on Mastodon. */
+/** What an account privately notes about another, which only it sees. */
 export type AccountNotesTable = {
     /** Who wrote it. */
     account_id: string;

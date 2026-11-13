@@ -40,7 +40,7 @@ export const pollRoutes: readonly Route[] = [
         handler: async (ctx, { params, viewer }) => {
             const viewerId = viewer?.accountId ?? null;
             const { shown, noteId } = await shownPoll(ctx, params.id, viewerId);
-            // As Mastodon does, only for a signed-in user.
+            // Mastodon refreshes only for a signed-in user.
             if (viewerId !== null) await refreshPoll(ctx, noteId);
 
             return { status: 200, body: shown };

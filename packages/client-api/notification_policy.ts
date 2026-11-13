@@ -6,7 +6,7 @@ export type PolicyAction = z.infer<typeof PolicyAction>;
 
 /**
  * What the viewer's policy does with notifications from accounts of each kind: `accept` them,
- * `filter` them, which keeps them aside, or `drop` them, which makes none.
+ * `filter` them to keep them aside, or `drop` them so none are made.
  * @see https://docs.joinmastodon.org/entities/NotificationPolicy/
  */
 export const NotificationPolicy = z.object({

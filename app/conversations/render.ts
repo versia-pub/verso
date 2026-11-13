@@ -6,8 +6,8 @@ import { renderStatuses } from "../notes/render.ts";
 import { type ConversationRow, findConversation } from "./conversation_queries.ts";
 
 /**
- * Conversations as Mastodon renders them for their owner, `viewerId`: with the other accounts in
- * each, or the viewer for none, and its latest status as they see it.
+ * Renders conversations for their owner, `viewerId`: with the other accounts in each, or the viewer
+ * for none, and its latest status as they see it.
  */
 export const renderConversations = async (
     ctx: Context,
@@ -37,15 +37,15 @@ export const renderConversations = async (
     }));
 };
 
-/** A conversation as Mastodon renders it for its owner. */
+/** Renders a conversation for its owner. */
 export const renderConversation = async (
     ctx: Context,
     row: ConversationRow,
 ): Promise<Conversation> => (await renderConversations(ctx, [row], row.account_id))[0];
 
 /**
- * `accountId`'s conversation `id` as Mastodon renders it for them, if they still have it and it has
- * a latest status.
+ * Renders `accountId`'s conversation `id` for them, if they still have it and it has a latest
+ * status.
  */
 export const shownConversation = async (
     ctx: Context,

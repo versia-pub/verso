@@ -100,7 +100,7 @@ const answerRequest = (answer: "authorize" | "reject") =>
     });
 
 /**
- * What the viewer notes about an account, as Mastodon accepts it.
+ * What the viewer notes about an account.
  * @see https://docs.joinmastodon.org/methods/accounts/#note
  */
 const AccountNoteBody = z.object({

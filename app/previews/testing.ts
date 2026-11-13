@@ -4,8 +4,9 @@ import { saveCard, setLink } from "./card_queries.ts";
 import type { PreviewCardsTable } from "./tables.ts";
 
 /**
- * A card for an article, with a stored image, that the statuses `noteIds` show, for the link they
- * wrote, the card's `url` unless `card` says otherwise. Returns its id.
+ * Saves a card for an article, with a stored image, and shows it on the statuses `noteIds`, for
+ * the link `card.url`, or else a made-up address. `card` overrides any of the card's fields.
+ * Returns the card's id.
  */
 export const createCard = async (
     ctx: Context,

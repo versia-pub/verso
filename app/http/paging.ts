@@ -1,5 +1,5 @@
 /**
- * Paging through lists as Mastodon does: newest first, by the cursors in each page's `Link` header.
+ * Paging through lists, newest first, by the cursors in each page's `Link` header, like Mastodon.
  * @see https://docs.joinmastodon.org/api/guidelines/#pagination
  * @module
  */
@@ -82,7 +82,7 @@ export const offsetsOf = (size: number, offset: number, limit: number): Offsets 
     prev: offset > limit ? offset - limit : undefined,
 });
 
-/** The `Link` header for a page at `url`, with the offsets in place of its own, as `linkHeader`. */
+/** Like `linkHeader`, but for a page at `url` with the offsets in place of its own. */
 export const offsetLinkHeader = (url: URL, offsets: Offsets): string | undefined => {
     const at = (offset: number) => {
         const linked = new URL(url);

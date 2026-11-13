@@ -31,8 +31,8 @@ const open = async () => {
     await addListAccounts(test.ctx, "alice", list.id, ["bob"]);
 
     /**
-     * What `accountId` is sent on the stream `stream`, of the list `listId` if it is `list`, as
-     * each event's stream, type, and status or id.
+     * Opens a session of `accountId` on the stream `stream`, of the list `listId` if it is `list`,
+     * and records what it is sent: each event's stream, type, and status or id.
      */
     const streaming = async (accountId: string, stream: string, listId?: string) => {
         const sent: unknown[] = [];
@@ -62,7 +62,7 @@ const open = async () => {
             // Anyone may stream the list here, to show it is only sent to its owner.
             () => Promise.resolve(true),
         );
-        // Whose list it is takes a query to know.
+        // Checking whose list it is takes a query.
         await Promise.resolve();
         lists.add(viewer, session);
         users.add(viewer, session);
@@ -112,7 +112,8 @@ Deno.test("a list's stream has the replies its policy allows, and home none of i
     const home = await test.streaming("alice", "user");
 
     const carols = await test.post("carol", "Hi");
-    // To carol, who isn't in it, so not on a list whose policy is to show no replies.
+    // A reply to carol, who isn't on the list, isn't sent on a list whose policy is to show no
+    // replies.
     await test.post("bob", "Hi carol", carols);
     const own = await test.post("bob", "Hi");
 

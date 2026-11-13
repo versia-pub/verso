@@ -28,9 +28,9 @@ export const quoteRoutes: readonly Route[] = [
             const note = await visibleOriginal(ctx, params.id, viewerId);
             if (note === undefined) throw new NotFound();
 
-            // Those a viewer may see among all the quotes are found after the page is read, but
-            // those by silenced accounts are left out of it, except for the quoted author, as on
-            // Mastodon.
+            // Which quotes the viewer may see is checked after the page is read, but quotes by
+            // silenced accounts are left out of the page itself, unless the viewer is the quoted
+            // author.
             const visibilities = viewerId === null
                 ? everyone
                 : ["public", "unlisted", "private", "direct"] as const;

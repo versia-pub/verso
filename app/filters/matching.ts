@@ -1,8 +1,8 @@
 /**
- * Matching statuses with users' filters, as Mastodon does: by keyword, in a status's content
- * warning, text and media descriptions, and by id. Statuses are only marked with the filters they
- * match, in their `filtered`, and apps decide where to warn of them or hide them, as their
- * `context` and `filter_action` say.
+ * Matching statuses with users' filters: by keyword, in a status's content warning, text and media
+ * descriptions, and by id. Statuses are only marked with the filters they match, in their
+ * `filtered`, and apps decide where to warn of them or hide them, as their `context` and
+ * `filter_action` say.
  * @see https://docs.joinmastodon.org/api/guidelines/#filters
  * @module
  */
@@ -30,8 +30,8 @@ export type ActiveFilter = {
 const wordCharacter = /[\p{L}\p{M}\p{N}_]/u;
 
 /**
- * The pattern of a keyword. A whole word may not have letters right before or after it, where it
- * starts or ends with one, as on Mastodon.
+ * The pattern of a keyword. Mastodon's rule for a whole word is that it may not have a word
+ * character right before or after it, where the keyword itself starts or ends with one.
  */
 const patternOf = (keyword: KeywordRow) => {
     const escaped = keyword.keyword.replaceAll(/[.*+?^${}()|[\]\\/]/g, "\\$&");
@@ -75,7 +75,7 @@ export const activeFiltersAmong = async (
     return Map.groupBy(filters, (filter) => filter.accountId);
 };
 
-/** The text keywords are matched in, as Mastodon has it: the content warning, text and media. */
+/** The text keywords are matched in: the content warning, text and media descriptions. */
 const searchableText = (status: Status) =>
     [
         status.spoiler_text,
@@ -84,9 +84,9 @@ const searchableText = (status: Status) =>
     ].join("\n\n");
 
 /**
- * The filters of `filters` that `status` matches, as Mastodon gives them: the first keyword found,
- * and of the filter's statuses, the status or the one it boosts. Boosts are matched by the text of
- * the status they boost.
+ * The filters of `filters` that `status` matches, each with the first keyword found and, of the
+ * filter's statuses, the status or the one it boosts. Boosts are matched by the text of the status
+ * they boost.
  */
 export const filterResults = (
     filters: readonly ActiveFilter[],

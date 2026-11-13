@@ -48,9 +48,9 @@ export const shownNotification = async (
 
 /**
  * The notifications `rows` of `viewerId`, in order, with the accounts that caused them and the
- * statuses they are about, as the viewer sees those, which they must be able to see, as
- * {@link shownOf} ensures. Those of types that aren't grouped each have a group of their own. If
- * the client said which types it `supported`, those of other types have a fallback.
+ * statuses they are about, as the viewer sees them. The viewer must be able to see those statuses,
+ * which {@link shownOf} ensures. Those of types that aren't grouped each have a group of their own.
+ * If the client said which types it `supported`, those of other types have a fallback.
  */
 export const renderNotifications = async (
     ctx: Context,
@@ -95,10 +95,10 @@ const partialAccount = (
 /**
  * The notification groups `rows`, a page of them as `notificationGroupPage` finds them, of
  * `viewerId`, in order, with the accounts that caused their notifications and the statuses they
- * are about. With `partial`, only each group's newest account is in full, and the others in part,
- * as Mastodon's `partial_avatars`. Without `paged`, they are whole groups rather than a page, so
- * have no page's ids. If the client said which types it `supported`, the groups of other types
- * have a fallback.
+ * are about. With `partial` (Mastodon's `partial_avatars`), only each group's newest account is in
+ * full, and the others in part. Without `paged`, they are whole groups rather than a page, so have
+ * no page's ids. If the client said which types it `supported`, the groups of other types have a
+ * fallback.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/notification_group.rb
  */
 export const renderNotificationGroups = async (
@@ -204,8 +204,8 @@ export const renderNotificationGroups = async (
 };
 
 /**
- * Notification requests as Mastodon renders them for their owner, `viewerId`, with the account
- * each is from and its latest status, if it is still there.
+ * Notification requests for their owner, `viewerId`, with the account each is from and its latest
+ * status, if it is still there.
  */
 export const renderRequests = async (
     ctx: Context,

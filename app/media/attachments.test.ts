@@ -242,7 +242,7 @@ Deno.test("an edit that leaves files out keeps them, and can describe them", asy
     const attributes = (...changes: Record<string, string>[]) =>
         test.edit(body.id, { status: "Hi", media_attributes: changes });
 
-    // An empty description clears it, as on the media itself.
+    // An empty description clears it.
     await attributes({ id: a, description: "" });
     assertEquals(await test.history(body.id), [[a]]);
 

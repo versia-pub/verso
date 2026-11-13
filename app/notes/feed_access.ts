@@ -24,10 +24,10 @@ export const seenOf = async (feeds: Feeds, viewer: RouteViewer | undefined): Pro
 });
 
 /**
- * Which statuses of `feeds` to return to `viewer` who asks for those from `origin`, as Mastodon
- * decides it: nobody who isn't logged in may ask for a feed that isn't public, which is refused,
- * and a viewer who may see only some of what they ask for is given only that. `undefined` if they
- * may see none of it, for which the answer is an empty list.
+ * Which statuses of `feeds` to return to `viewer` who asks for those from `origin`. Nobody who
+ * isn't logged in may ask for a feed that isn't public, which is refused, and a viewer who may see
+ * only some of what they ask for is given only that. `undefined` if they may see none of it, for
+ * which the answer is an empty list.
  */
 export const visibleOrigin = async (
     feeds: Feeds,

@@ -4,8 +4,8 @@ import type { Scope } from "../kernel/scopes.ts";
 import type { AccessTokensTable } from "./tables.ts";
 
 /**
- * How many accounts were issued an access token from `since`, and before `until` if given, as a
- * measure of who logged in. Only local accounts get them.
+ * How many accounts were issued an access token from `since` and, if given, before `until`. It
+ * measures who logged in. Only local accounts get tokens.
  */
 export const countAccountsWithTokensSince = async (
     ctx: Context,
@@ -21,8 +21,8 @@ export const countAccountsWithTokensSince = async (
 };
 
 /**
- * The token with this hash, which is all that is stored of it, and when its user was suspended, if
- * it has one who is.
+ * The token with this hash, which is all that is stored of it, with the `suspended_at` and
+ * `moved_to_account_id` of its user, if it has one.
  */
 export const findTokenByHash = async (
     ctx: Context,

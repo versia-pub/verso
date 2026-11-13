@@ -78,7 +78,7 @@ export const findLike = async (
         .where("note_id", "=", noteId)
         .executeTakeFirst();
 
-/** The accounts that like or dislike any of `noteIds`, as a subquery. */
+/** The accounts that like or dislike any of `noteIds`. */
 export const likerIdsQuery = (ctx: Context, noteIds: readonly string[]): AccountIdQuery =>
     ctx.db.selectFrom("likes").select("account_id").where("note_id", "in", noteIds);
 

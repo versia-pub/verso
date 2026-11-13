@@ -38,8 +38,8 @@ export const listAnnouncements = (ctx: Context): Promise<AnnouncementRow[]> =>
     ctx.db.selectFrom("announcements").selectAll().orderBy("id").execute();
 
 /**
- * The published announcements, the one whose event starts first first, and of the others, the one
- * published first, as on Mastodon.
+ * The published announcements, in the order their events start, or for those without an event, in
+ * the order they were published.
  */
 export const publishedAnnouncements = (ctx: Context): Promise<AnnouncementRow[]> =>
     ctx.db.selectFrom("announcements").selectAll()

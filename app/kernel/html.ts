@@ -104,8 +104,8 @@ const options: sanitize.IOptions = {
 };
 
 /**
- * HTML with only the tags, attributes and classes clients can be trusted with, as Mastodon's allow.
- * The text of anything else is retained, except of scripts, styles and the like.
+ * HTML with only the tags, attributes and classes clients can be trusted with. The text of any
+ * other tag is kept, except in scripts, styles and the like.
  */
 export const sanitizeHtml = (html: string): string => sanitize(html, options);
 

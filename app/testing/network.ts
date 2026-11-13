@@ -29,7 +29,7 @@ export type NetworkOptions = {
     readonly queues?: Record<string, Queue>;
     /** Each instance's settings. Defaults to those of a config that leaves them out. */
     readonly settings?: Partial<Settings>;
-    /** What each instance tells what it does. Defaults to the server's own subscribers. */
+    /** What each instance does in reaction to events. Defaults to the server's own subscribers. */
     readonly subscribers?: readonly Subscriber[];
 };
 

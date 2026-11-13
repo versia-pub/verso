@@ -2,7 +2,7 @@ import { z } from "zod";
 import { Entity, optional, ReferenceText, Unsigned } from "./common.ts";
 
 /**
- * One page of entities, such as a user's outbox.
+ * One page of entities, like a user's outbox.
  *
  * Items keep all their fields, so the caller can parse them with the schema it expects.
  * @see https://versia.pub/structures/collection
@@ -15,7 +15,7 @@ export const Collection = z.object({
 export type Collection = z.infer<typeof Collection>;
 
 /**
- * One page of references, such as a user's followers.
+ * One page of references, like a user's followers.
  * @see https://versia.pub/structures/collection#uri-collection
  */
 export const URICollection = z.object({

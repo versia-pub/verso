@@ -39,9 +39,9 @@ export type NewReport = {
 };
 
 /**
- * The category of a report and the rules it says were broken, as Mastodon decides: a report that
- * names rules is a `violation`, and a `violation` must name rules that exist, each once. There are
- * `rules` rules, with the ids 1 up to that.
+ * The category of a report and the rules it says were broken. A report that names rules is a
+ * `violation`, and a `violation` must name rules that exist, each once. There are `rules` rules,
+ * with the ids 1 up to that.
  */
 const categoryOf = (report: NewReport, rules: number) => {
     const category = report.ruleIds.length > 0 ? "violation" : report.category ?? "other";
@@ -58,8 +58,8 @@ const categoryOf = (report: NewReport, rules: number) => {
 };
 
 /**
- * The domains to send a report of `target` on to, as Mastodon decides: none for a local account or
- * unless asked, and otherwise those asked for, or `target`'s if none were, each once.
+ * The domains to send a report of `target` on to: none for a local account or unless asked, and
+ * otherwise those asked for, or `target`'s if none were, each once.
  */
 const forwardDomains = (report: NewReport, target: AccountRow) => {
     if (target.domain === null || !report.forward) return [];
@@ -104,7 +104,7 @@ export const fileReport = async (
         comment: report.comment,
         note_ids: noteIds,
         rule_ids: ruleIds,
-        // Only once it is sent to the account's own instance, as on Mastodon.
+        // Mastodon counts it as forwarded only once it is sent to the account's own instance.
         forwarded: domains.some((domain) => domain === target.domain),
         created_at: ctx.clock.now(),
         resolved_at: null,

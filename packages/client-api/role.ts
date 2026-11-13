@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 /**
- * A role as others see it, as a badge on the profiles of accounts that have it.
+ * A role as others see it: a badge on the profiles of accounts that have it.
  * @see https://docs.joinmastodon.org/entities/Account/#AccountRole
  */
 export const AccountRole = z.object({
     id: z.string(),
     name: z.string(),
-    /** A hex colour, such as `#ff3838`, or empty for none. */
+    /** A hex colour, like `#ff3838`, or empty for none. */
     color: z.string(),
 });
 export type AccountRole = z.infer<typeof AccountRole>;

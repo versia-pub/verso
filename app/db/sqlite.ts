@@ -44,7 +44,7 @@ class TransactionalSqliteAdapter extends SqliteAdapter {
 /**
  * Transactions take the write lock when they begin. Begun as Kysely does, a transaction that reads
  * and then writes fails immediately with `SQLITE_BUSY` if another process wrote in between, without
- * waiting out `busy_timeout`; begun this way, it waits for the other writer from the start instead.
+ * waiting out `busy_timeout`. Begun this way, it waits for the other writer from the start.
  */
 class ImmediateSqliteDriver extends SqliteDriver {
     override async beginTransaction(connection: DatabaseConnection): Promise<void> {

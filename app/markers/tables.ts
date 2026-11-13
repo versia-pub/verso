@@ -1,4 +1,4 @@
-/** The timelines a user can mark their place in, as on Mastodon. */
+/** The timelines a user can mark their place in. */
 export const timelines = ["home", "notifications"] as const;
 export type Timeline = typeof timelines[number];
 
@@ -7,8 +7,7 @@ export const isTimeline = (name: string): name is Timeline =>
     (timelines as readonly string[]).includes(name);
 
 /**
- * Where a local user last read up to in a timeline, so that their apps can carry on from there, as
- * Mastodon's markers.
+ * Where a local user last read up to in a timeline, so that their apps can carry on from there.
  * @see https://docs.joinmastodon.org/entities/Marker/
  */
 export type MarkersTable = {

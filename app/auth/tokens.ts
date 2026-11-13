@@ -19,7 +19,7 @@ import type { AppsTable } from "./tables.ts";
 
 const logger = getLogger(["verso", "auth"]);
 
-/** Says a token was revoked, so every process stops serving what it opened, such as streams. */
+/** Says a token was revoked, so every process stops serving what it opened, like streams. */
 const revoked: Channel<{ readonly tokenId: string }> = {
     name: "tokens.revoked",
     schema: z.object({ tokenId: z.string() }),
@@ -32,9 +32,9 @@ const revoke = async (ctx: Context, tokenId: string) => {
 };
 
 /**
- * Tells every process, once the current transaction commits, to stop serving what the tokens of
- * `accountId` opened, as if they were revoked, though they are kept. Run it once the user is
- * suspended, so the tokens can't be used again.
+ * Tells every process to stop serving what the tokens of `accountId` opened, as if they were
+ * revoked, though they are kept. The message goes out once the current transaction commits. Run it
+ * once the user is suspended, so the tokens can't be used again.
  */
 export const endSessionsOf = async (ctx: Context, accountId: string): Promise<void> => {
     for (const tokenId of await tokenIdsOf(ctx, accountId)) {
@@ -43,13 +43,13 @@ export const endSessionsOf = async (ctx: Context, accountId: string): Promise<vo
 };
 
 /**
- * Calls `onRevoked` once the token is revoked, or its user suspended, until the function returned
+ * Calls `onRevoked` when the token is revoked or its user is suspended, until the returned function
  * is called. It is called at once if that already happened, and may be called more than once. A
- * process that may have missed being told checks the token can still be used.
+ * process that may have missed the message checks that the token can still be used.
  */
 export const watchToken = (ctx: Context, tokenId: string, onRevoked: () => void): () => void => {
     let watching = true;
-    // Not once stopped, though a check was running.
+    // Not once stopped, even if a check was still running.
     const check = async () => {
         if (!await tokenUsable(ctx, tokenId) && watching) onRevoked();
     };
@@ -60,7 +60,7 @@ export const watchToken = (ctx: Context, tokenId: string, onRevoked: () => void)
     });
     const unwatch = ctx.pubsub.onMissed(check);
 
-    // Since it may have been revoked before this subscribed.
+    // It may have been revoked before this subscribed.
     check().catch((error) => {
         logger.error("Couldn't check token {tokenId} is still issued: {error}", { tokenId, error });
     });
@@ -100,9 +100,9 @@ export type ClientCredentials = {
 };
 
 /**
- * The client's credentials from HTTP Basic or, without that, from the form, in the order Doorkeeper
- * reads them. In Basic, RFC 6749 form-encodes each part first, but client ids and secrets are
- * base64url, which that leaves as it is. A public client sends only its id, in the form.
+ * The client's credentials from HTTP Basic or, without it, from the form, in the order Doorkeeper
+ * reads them. RFC 6749 form-encodes each part in Basic, but client ids and secrets are base64url,
+ * which that encoding leaves unchanged. A public client sends only its id, in the form.
  * @see https://www.rfc-editor.org/rfc/rfc6749#section-2.3.1
  */
 export const clientCredentialsFrom = (
@@ -189,9 +189,9 @@ export type CodeExchange = {
 };
 
 /**
- * Whether the verifier matches the flow's S256 challenge, which is its SHA-256 in base64url, the
- * same as `hashToken`. Without a challenge, a verifier is rejected rather than ignored, so an
- * attacker can't strip the challenge from the user's request.
+ * Whether the verifier matches the flow's S256 challenge: its SHA-256 in base64url, like
+ * `hashToken`. Without a challenge, a verifier is rejected rather than ignored, so an attacker
+ * can't strip the challenge from the user's request.
  * @see https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1
  */
 const pkceMatches = async (challenge: string | null, verifier: string | undefined) =>
@@ -306,8 +306,8 @@ export const grantToken = async (
 };
 
 /**
- * Revokes a token, if `app` may: only the app it was issued to can. A token that doesn't exist, or
- * no longer does, is already revoked, so that is fine too.
+ * Revokes a token, if `app` may: only the app it was issued to can. Returns whether it may. A token
+ * that doesn't exist, or no longer does, counts as revoked, so that succeeds.
  * @see https://www.rfc-editor.org/rfc/rfc7009#section-2.2
  */
 export const revokeToken = async (

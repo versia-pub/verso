@@ -129,7 +129,7 @@ const linkAccount = async (tx: Context, issuer: Issuer, claims: Claims): Promise
 };
 
 /**
- * Links a login to its account, as `linkAccount` does, and gives it the roles its claims match. A
+ * Links a login to its account with `linkAccount`, and gives it the roles its claims match. A
  * deleted account gets none back.
  */
 export const provision = (ctx: Context, issuer: Issuer, claims: Claims): Promise<Provisioned> =>

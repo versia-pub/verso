@@ -24,8 +24,8 @@ export type NewJob = {
     /** Retains the job after it finishes, and with it its dedupe key, until then. */
     readonly keepUntil?: Date;
     /**
-     * Whether to wake idle workers on Postgres immediately, rather than on their next poll, which
-     * is the default. Each wakeup is a notification, and Postgres commits those one at a time, so
+     * Whether to wake idle workers on Postgres at once, instead of leaving them to their next poll.
+     * Defaults to true. Each wakeup is a notification, and Postgres commits those one at a time, so
      * busy queues, whose workers poll soon anyway, are better off without.
      */
     readonly wake?: boolean;
@@ -59,9 +59,9 @@ const rowOf = (ctx: Context, job: NewJob, pauses: PauseEnds) => {
 };
 
 /**
- * Wakes `queue`'s idle workers once the current transaction commits: on Postgres with a
- * notification, which workers in every process hear, and on SQLite, whose workers run in this
- * process, with a message.
+ * Wakes `queue`'s idle workers once the current transaction commits. On Postgres it sends a
+ * notification, which workers in every process hear. On SQLite, whose workers run in this process,
+ * it sends a message.
  */
 const wake = async (ctx: Context, queue: string) => {
     await notify(ctx.db, jobsChannel, queue);
@@ -87,7 +87,7 @@ export const enqueue = async (
     return inserted?.id;
 };
 
-/** Adds several jobs as {@link enqueue} adds one, in as few queries as it can. */
+/** Adds several jobs like {@link enqueue}, in as few queries as it can. */
 export const enqueueAll = async (ctx: Context, jobs: readonly NewJob[]): Promise<void> => {
     const woken = new Set<string>();
 
@@ -324,7 +324,7 @@ export const retryDeadLetters = async (
                 .where("id", "in", ids)
                 .execute();
 
-            // Those of a paused group wait for it, as new jobs would.
+            // Those of a paused group wait for it, like new jobs.
             const groups = new Map(
                 jobs.flatMap((job) =>
                     job.group_key === null ? [] : [[JSON.stringify([job.queue, job.group_key]), {

@@ -54,13 +54,13 @@ export type Sender = {
  * type for one kind of entity fits where any kind is expected.
  */
 export type EntityType<T = unknown> = {
-    /** Such as `User`, or `pub.versia:likes/Like` for an extension's type. */
+    /** Like `User`, or `pub.versia:likes/Like` for an extension's type. */
     readonly type: string;
-    /** The extension that defines it, such as `pub.versia:likes`, or none for core types. */
+    /** The extension that defines it, like `pub.versia:likes`, or none for core types. */
     readonly extension?: string;
     readonly schema: z.ZodType<T>;
     /**
-     * Whether the same entity may be sent again on purpose, such as a user whose profile changed
+     * Whether the same entity may be sent again on purpose, like a user whose profile changed
      * back to what it was. It then counts as already received only when the same signed request is
      * sent again, which is a replay; otherwise whenever the same body is, as a delivery that is
      * tried again is signed again.
@@ -72,7 +72,7 @@ export type EntityType<T = unknown> = {
      */
     authority(entity: T, origin: string): string | undefined;
     /**
-     * Fetches what the entity refers to that Verso may not have yet, such as its author, before
+     * Fetches what the entity refers to that Verso may not have yet, like its author, before
      * `receive` runs and outside its transaction, so the transaction isn't held open while remote
      * instances respond. Fetches count against `budget`. `receive` then only looks them up.
      */
@@ -89,7 +89,7 @@ export type EntityType<T = unknown> = {
     deleteRemote?(ctx: Context, id: string, sender: Sender): Promise<void>;
     /**
      * Runs before `deleteRemote`, outside its transaction, for work too large for one transaction,
-     * such as removing all of a user's statuses. It may run more than once.
+     * like removing all of a user's statuses. It may run more than once.
      */
     prepareDelete?(ctx: Context, id: string, sender: Sender): Promise<void>;
     /**
@@ -118,7 +118,7 @@ export type Registry = {
 
 /**
  * A registry of `types`. `otherExtensions` are the extensions Verso supports that add no types,
- * such as `pub.versia:custom_emojis`, which adds fields to entities.
+ * like `pub.versia:custom_emojis`, which adds fields to entities.
  */
 export const createRegistry = (
     types: readonly EntityType[],

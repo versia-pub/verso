@@ -27,9 +27,7 @@ export const reactionName = (group: Pick<ReactionGroup, "text" | "shortcode">): 
     return name;
 };
 
-/**
- * The reactions to an announcement with one emoji, with whether the viewer made one, for a viewer.
- */
+/** The reactions to an announcement with one emoji. `me` is included only if there is a viewer. */
 export const renderReaction = (
     ctx: Context,
     group: ReactionGroup,

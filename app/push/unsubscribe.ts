@@ -1,6 +1,6 @@
 /**
- * Links in pushes that remove their subscription without a token, as Mastodon's `Unsubscribe-URL`
- * header has them. They hold the subscription's id, signed with the VAPID key, and expire when the
+ * Links in pushes that remove their subscription without a token, in an `Unsubscribe-URL` header
+ * like Mastodon's. They hold the subscription's id, signed with the VAPID key, and expire when the
  * push would.
  * @see https://docs.joinmastodon.org/methods/push/
  * @module

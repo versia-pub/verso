@@ -20,7 +20,7 @@ export const authorOf = (entity: unknown): string | undefined => {
 };
 
 /**
- * Whether `entity`, made here, is by a local user Verso no longer has, such as one removed since.
+ * Whether `entity`, made here, is by a local user Verso no longer has, like one removed since.
  */
 export const byRemovedUser = async (ctx: Context, entity: unknown): Promise<boolean> => {
     const reference = authorOf(entity);

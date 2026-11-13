@@ -5,7 +5,7 @@ import type { NotificationPoliciesTable } from "./tables.ts";
 /** What a policy does with each kind of notification. */
 export type Policy = Omit<Selectable<NotificationPoliciesTable>, "account_id" | "updated_at">;
 
-/** The policy of users who haven't changed theirs, as on Mastodon. */
+/** The policy of users who haven't changed theirs, which is Mastodon's default. */
 export const defaultPolicy: Policy = {
     for_not_following: "accept",
     for_not_followers: "accept",
@@ -15,7 +15,7 @@ export const defaultPolicy: Policy = {
     for_bots: "accept",
 };
 
-/** The most requests, and filtered mentions in each, that are counted, as on Mastodon. */
+/** Mastodon's limit on how many requests, and filtered mentions in each, are counted. */
 export const countedAtMost = 100;
 
 /** The policies of `accountIds`, local users, with the defaults for those who have none. */
@@ -90,7 +90,7 @@ export const saveRequest = async (
 
 /**
  * How many requests `accountId` has, and how many filtered mentions in them, counting up to 100
- * requests, as on Mastodon.
+ * requests.
  */
 export const requestSummaryOf = async (
     ctx: Context,

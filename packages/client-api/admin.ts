@@ -17,8 +17,8 @@ export type AdminIp = z.infer<typeof AdminIp>;
 
 /**
  * An account as moderators see it. Verso doesn't keep users' emails, IP addresses, locales or
- * sign-up reasons, so those are always `null` or empty, and every local user is confirmed and
- * approved, and never disabled or marked sensitive.
+ * sign-up reasons, so those are always `null` or empty. Every local user is confirmed and approved,
+ * and never disabled or marked sensitive.
  * @see https://docs.joinmastodon.org/entities/Admin_Account/
  */
 export const AdminAccount = z.object({
@@ -63,8 +63,8 @@ export const AdminReport = z.object({
     created_at: z.iso.datetime(),
     updated_at: z.iso.datetime(),
     /**
-     * Who filed it, or, unlike on Mastodon, `null` for a report from another instance and once the
-     * reporter's account is deleted.
+     * Who filed it. Unlike on Mastodon, it is `null` for a report from another instance and once
+     * the reporter's account is deleted.
      */
     account: AdminAccount.nullable(),
     target_account: AdminAccount,
@@ -83,7 +83,7 @@ export type AdminReport = z.infer<typeof AdminReport>;
  * @see https://docs.joinmastodon.org/entities/Admin_DomainBlock/
  */
 export const AdminDomainBlock = z.object({
-    /** On Verso, `config:` and the domain for an instance that the config file blocks. */
+    /** For an instance the config file blocks, `config:` and the domain. */
     id: z.string(),
     domain: z.string(),
     /** The domain's SHA-256 hash. */

@@ -74,10 +74,10 @@ export const indexAccount = (
 const minPrefixLength = 2;
 
 /**
- * Whether the id in `column` is of something in `index` with words that start with each of
- * `words`, or are those that are too short to be prefixes, which there must be some of, or with
- * `phrase`, that are `words` one after another. Words are only letters and digits, so they never
- * carry query syntax.
+ * Whether the id in `column` is of something in `index` that has a word matching each of `words`: a
+ * word that starts with it, or, if it's too short to be a prefix, the word itself. With `phrase`,
+ * it has `words` one after another instead. Words are only letters and digits, so they never carry
+ * query syntax.
  */
 export const matching = (
     ctx: Pick<Context, "db">,

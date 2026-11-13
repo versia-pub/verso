@@ -114,7 +114,7 @@ const linkAttributes = { rel: "nofollow noopener noreferrer", target: "_blank" }
 const configure = (md: MarkdownIt) => {
     const escape = md.utils.escapeHtml;
 
-    // Only web addresses are links, so not email addresses, as on Mastodon.
+    // Only web addresses are links, not email addresses.
     md.validateLink = (url) => /^https?:\/\//i.test(url);
     md.core.ruler.push("social", social);
 
@@ -223,8 +223,7 @@ export const charactersPerLink = 23;
 
 /**
  * How long `text` is, as Mastodon counts statuses: by what readers see as one character, with each
- * web address counting as {@link charactersPerLink}, and mentions of remote users as just
- * `@username`.
+ * web address counting as {@link charactersPerLink}, and mentions of remote users as `@username`.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/validators/status_length_validator.rb
  */
 export const countText = (text: string): number => {

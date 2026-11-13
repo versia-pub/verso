@@ -11,7 +11,7 @@ import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
 import type { Context } from "../kernel/context.ts";
 import { friendsOfFriends, insertDismissal, suggestibleAmong } from "./suggestion_queries.ts";
 
-/** How many accounts each source gives, as on Mastodon, however many are asked for. */
+/** Mastodon's limit on how many accounts each source gives, however many are asked for. */
 const sourceLimit = 40;
 
 /** An account that is suggested, and why. */

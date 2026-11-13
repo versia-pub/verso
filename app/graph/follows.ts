@@ -243,9 +243,7 @@ export const followerInstances = (
         unblocked ? blockedByAccount(ctx, accountId).all : undefined,
     );
 
-/**
- * The accounts `accountId` follows, and was accepted by, as a subquery, for timelines and threads.
- */
+/** The accounts `accountId` follows, and was accepted by, for timelines and threads. */
 export const followedSubquery = (
     ctx: Context,
     accountId: string,
@@ -253,7 +251,7 @@ export const followedSubquery = (
 
 /**
  * The accounts `accountId` follows, and was accepted by, whose boosts it sees, which is all of them
- * unless it chose not to, as a subquery, for its home timeline.
+ * unless it chose not to, for its home timeline.
  */
 export const sharingSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
     sharingIdsQuery(ctx, accountId);

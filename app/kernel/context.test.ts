@@ -124,7 +124,7 @@ Deno.test("work after a commit runs in order once it commits, before the transac
         assertEquals(seen, []);
     });
 
-    // Both notes committed, which outside the transaction it can see.
+    // Both notes are committed, so a query outside the transaction sees them.
     assertEquals(seen, ["outer: 2", "inner: 2"]);
 });
 

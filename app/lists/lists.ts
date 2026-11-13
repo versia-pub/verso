@@ -1,7 +1,7 @@
 /**
- * Lists: the lists of accounts that local users make, as on Mastodon. Their members are the
- * accounts the owner follows or has requested to follow, and the owner, and unfollowing an account
- * removes it from the owner's lists. They aren't federated.
+ * Lists of accounts that local users make. A list holds the owner and the accounts the owner
+ * follows or has requested to follow. Unfollowing an account removes it from the owner's lists.
+ * Lists aren't federated.
  * @see https://docs.joinmastodon.org/methods/lists/
  * @module
  */
@@ -19,7 +19,7 @@ import {
     type ListRow,
 } from "./list_queries.ts";
 
-/** How many lists a user may have, as on Mastodon. */
+/** Mastodon's limit on how many lists a user may have. */
 export const listLimit = 50;
 
 /** Makes a list for `accountId`, or returns `"full"` if they have as many as they may. */
@@ -47,8 +47,8 @@ export type AddResult =
     | "taken";
 
 /**
- * Adds `accountIds` to `accountId`'s list `listId`: all of them, or none if any can't be added, as
- * on Mastodon.
+ * Adds `accountIds` to `accountId`'s list `listId`. If any can't be added, none are, as on
+ * Mastodon.
  */
 export const addListAccounts = (
     ctx: Context,
@@ -77,8 +77,8 @@ export const addListAccounts = (
     });
 
 /**
- * Removes `accountIds` from `accountId`'s list `listId`, those in it. Returns whether the user has
- * such a list.
+ * Removes those of `accountIds` that are in `accountId`'s list `listId`. Returns whether the user
+ * has that list.
  */
 export const removeListAccounts = (
     ctx: Context,

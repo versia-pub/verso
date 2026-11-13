@@ -12,7 +12,7 @@ import type { AppEnv } from "./env.ts";
 
 /**
  * What is kept of an `X-Request-Id` from a trusted proxy: up to 255 letters, digits, `_`, `-` and
- * `@`, as Rails keeps.
+ * `@`, the same as Rails.
  * @see https://github.com/rails/rails/blob/v8.1.3.1/actionpack/lib/action_dispatch/middleware/request_id.rb
  */
 const cleanRequestId = (given: string): string => given.replace(/[^\w\-@]/g, "").slice(0, 255);
@@ -72,7 +72,7 @@ export const useRequestLog = (app: Hono<AppEnv>, trustedProxies: readonly Cidr[]
             status: c.res.status,
             responseTime,
         }),
-        // Logged with the ID, as the line for a streamed response is only written when it ends.
+        // The line for a streamed response is only written when it ends, so the ID is added here.
         context: { requestId: false, enrich: (c) => ({ requestId: c.get("requestId") }) },
     }));
 };

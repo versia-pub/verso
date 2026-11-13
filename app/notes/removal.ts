@@ -54,7 +54,7 @@ export const uncountNotesOf = async (ctx: Context, event: DomainEvent): Promise<
     if (isAccountDeleting(event)) await uncountAmong(ctx, notesOfQuery(ctx, event.accountId));
 };
 
-/** Decrements the counts that depend on `notes`, as {@link uncountNotesOf} does. */
+/** Decrements the counts that depend on `notes`, like {@link uncountNotesOf}. */
 const uncountAmong = async (ctx: Context, notes: NoteIdQuery) => {
     await uncountRepliesAmong(ctx, notes);
     await uncountSharesAmong(ctx, notes);

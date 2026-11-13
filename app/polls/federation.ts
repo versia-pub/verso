@@ -1,6 +1,6 @@
 /**
- * Votes in polls as Versia has them: local users' votes in remote polls, as Verso sends them, and
- * remote users' votes in local polls, as Verso receives them. Votes are private, so they can't be
+ * Votes in polls, as Versia has them: local users' votes in remote polls, which Verso sends, and
+ * remote users' votes in local polls, which Verso receives. Votes are private, so they can't be
  * fetched.
  * @see https://versia.pub/extensions/polls
  * @module
@@ -23,9 +23,9 @@ import { castVotes } from "./polls.ts";
 const typeName = "pub.versia:polls/Vote";
 
 /**
- * Sends a local user's votes in a remote poll to the instance of the poll's author, a Vote for each
- * option, as only it counts them. Votes in local polls, the only ones remote users' are counted in,
- * have no instance to go to, so nothing is sent.
+ * Sends a local user's votes in a remote poll to the instance of the poll's author, as a Vote for
+ * each option, because only that instance counts them. Votes in local polls have no instance to go
+ * to, so nothing is sent.
  */
 export const voteDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isPollVoted(event)) return;
@@ -60,11 +60,11 @@ const votedPoll = async (ctx: Context, vote: v0_6.Vote, sender: Sender) => {
 };
 
 /**
- * Votes by remote users in local polls, as their instances send them, a Vote for each option. They
- * are counted as Mastodon counts local users' votes, so that a Vote for a poll that ended, or that
- * its author may not cast, is given up on, rather than refused with a `422`, as Versia says, since
- * the inbox answers before it receives an entity. A Vote sent again counts once. Votes in remote
- * polls are their instances' to count, so they are dropped.
+ * A remote user's votes in a local poll, which their instance sends as a Vote for each option. They
+ * are counted by Mastodon's rules for a local user's votes. A Vote for a poll that ended, or that
+ * its author may not cast, is given up on, rather than refused with the `422` Versia specifies,
+ * because the inbox answers before it receives an entity. A Vote sent again counts once. Votes in
+ * remote polls are counted by their instances, so they are dropped.
  */
 export const voteType: EntityType<v0_6.Vote> = {
     type: typeName,

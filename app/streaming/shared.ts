@@ -1,9 +1,9 @@
 /**
- * Streams whose statuses are the same for every viewer who may see them, as the public and hashtag
- * streams are. As Mastodon streams them, each status is looked up and rendered once for all of a
- * process's sessions, as anyone sees it, rather than once for each session; only each viewer's
- * filters that it matches are added. It is sent to the sessions whose viewers may read statuses,
- * may see statuses from where it is from and don't hide its author.
+ * Streams whose statuses are the same for every viewer who may see them, like the public and
+ * hashtag streams. Each status is looked up and rendered once for all of a process's sessions, as
+ * anyone sees it, not once for each session. Only the viewer's filters that it matches are added.
+ * It is sent to the sessions whose viewers may read statuses, may see statuses from where it is
+ * from and don't hide its author.
  * @module
  */
 import type { Status } from "@versia/client-api";
@@ -32,9 +32,9 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
     const sessions = new Set<{ readonly viewer: StreamViewer; readonly session: Session }>();
 
     /**
-     * The sessions subscribed to any of the streams whose viewers may read statuses, with the
-     * streams and which statuses of the feeds they may see. Their permissions are checked one at a
-     * time, as each may need a query.
+     * The sessions subscribed to any of the streams whose viewers may read statuses, with their
+     * streams and which of the feeds' statuses they may see. Permissions are checked one at a time,
+     * because each may need a query.
      */
     const reading = async () => {
         const subscribed = [...sessions]
@@ -52,8 +52,8 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
 
     return {
         statuses: async (message) => {
-            // The status is gone, so whether it was on the streams isn't known, but clients ignore
-            // statuses they don't have.
+            // The status is gone, so there's no telling whether it was on the streams, but clients
+            // ignore deletes of statuses they don't have.
             if (message.event === "delete") {
                 if (message.visibility !== "public") return;
                 for (const each of await reading()) {
@@ -75,7 +75,7 @@ export const sharedStreams = (ctx: Context, streams: SharedStreams): Sessions =>
             const unfiltered = JSON.stringify({ ...status, filtered: [] });
             for (const { viewer, session, seen } of readers) {
                 if (hiding.has(viewer.accountId)) continue;
-                // As Mastodon drops statuses of an origin that is disabled to the viewer.
+                // Mastodon also drops statuses from an origin that is disabled to the viewer.
                 if (!(shown.local ? seen.local : seen.remote)) continue;
 
                 const filtered = filterResults(filters.get(viewer.accountId) ?? [], status);

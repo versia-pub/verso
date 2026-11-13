@@ -43,7 +43,7 @@ export const isReactionEvent = (event: DomainEvent): event is ReactionEvent =>
 
 /**
  * A remote user liked, boosted or reacted to a status, as their instance sent it. It has its own
- * type, so that what reacts to local users' interactions, such as sending them, never sees it.
+ * type so that what handles local users' interactions, like sending them, never sees it.
  */
 export type InteractionReceived = {
     readonly type: "interactions.received";

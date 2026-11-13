@@ -110,7 +110,10 @@ export const listsWithAmong = async (
         .where("list_accounts.account_id", "=", memberId)
         .execute();
 
-/** Adds an account to a list, through the owner's follow of it, `followId`, if it isn't theirs. */
+/**
+ * Adds an account to a list. `followId` is the owner's follow of the account, or `null` when the
+ * account is the owner.
+ */
 export const insertListAccount = async (
     ctx: Context,
     listId: string,
@@ -128,8 +131,8 @@ export const insertListAccount = async (
 };
 
 /**
- * Puts `member` in each list that has an account because of the follow `followId`, unless the list
- * has it already.
+ * Puts `member` in each list that holds an account through the follow `followId`. Lists that
+ * already hold `member` are left as they are.
  */
 export const copyListAccounts = async (
     ctx: Context,
@@ -185,8 +188,8 @@ export const deleteListAccounts = async (
 };
 
 /**
- * A page of the accounts in the list `listId`, latest added first, each as the membership's id,
- * which pages are counted by, and the account's id. Without `page`, all of them.
+ * A page of the accounts in the list `listId`, latest added first. Each row has its `list_accounts`
+ * id, which the pages go by, and the account's id. With `page` `null`, all of them.
  */
 export const listAccountPage = async (
     ctx: Context,
@@ -203,9 +206,9 @@ export const listAccountPage = async (
 };
 
 /**
- * The accounts in the list `listId` of `ownerId` whose statuses the owner sees there, as a
- * subquery: those they follow, and were accepted by, and the owner, as on Mastodon. The others are
- * in it while the owner's request to follow them waits.
+ * The accounts in `ownerId`'s list `listId` whose statuses show in it: the owner and the accounts
+ * that accepted the owner's follow. Accounts with a pending follow request stay in the list but
+ * their statuses don't show.
  */
 export const listMembersSubquery = (
     ctx: Context,
@@ -220,7 +223,7 @@ export const listMembersSubquery = (
             eb.or([eb("follows.accepted", "=", true), eb("list_accounts.account_id", "=", ownerId)])
         );
 
-/** The accounts in `accountId`'s exclusive lists, as a subquery, to leave out of its home. */
+/** The accounts in `accountId`'s exclusive lists, to leave out of its home timeline. */
 export const exclusiveMembersSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
     ctx.db.selectFrom("list_accounts")
         .innerJoin("lists", "lists.id", "list_accounts.list_id")

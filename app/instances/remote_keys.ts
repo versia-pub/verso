@@ -18,7 +18,7 @@ const logger = getLogger(["verso", "instances"]);
 export type RemoteKeys = {
     /**
      * The key of the instance at `domain`: from memory, from storage, or else fetched from it, once
-     * `beforeFetch` has run, as a rate limit that may reject the fetch.
+     * `beforeFetch`, a rate limit that may reject the fetch, has run.
      */
     readonly get: (
         ctx: Context,
@@ -26,7 +26,7 @@ export type RemoteKeys = {
         beforeFetch?: () => Promise<void>,
     ) => Promise<CryptoKey | undefined>;
     /**
-     * Fetches the key again, as after a signature fails to verify, in case the instance rotated it.
+     * Fetches the key again after a signature fails to verify, in case the instance rotated it.
      * At most once per `refetchAfterMs` for each instance, so bad signatures can't make Verso fetch
      * over and over; within that, the key it has is returned.
      *
@@ -39,6 +39,7 @@ export type RemoteKeys = {
 export type RemoteKeysOptions = {
     /** How many keys to keep in memory. The least recently used are dropped first. */
     readonly capacity?: number;
+    /** How long before a key may be fetched again, and before a failed fetch is retried. */
     readonly refetchAfterMs?: number;
     /** How many keys may be fetched at once, so unknown signers can't tie up Verso's requests. */
     readonly concurrency?: number;
@@ -52,8 +53,8 @@ type Metadata = {
 };
 
 /**
- * Fetches the metadata of the instance at `domain`, and returns its public key, and whether it
- * accepts instance messages, if the metadata says it is that instance.
+ * Fetches the metadata of the instance at `domain`. Returns its public key and whether it accepts
+ * instance messages, or `undefined` if the fetch fails or the metadata is for another domain.
  * @see https://versia.pub/api/endpoints
  */
 const fetchMetadata = async (ctx: Context, domain: string): Promise<Metadata | undefined> => {

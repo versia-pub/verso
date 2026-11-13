@@ -21,7 +21,7 @@ const tokenOf = (issued: IssuedToken): Token => ({
 });
 
 /**
- * Issues a token to an app. Errors are in OAuth's shape, as RFC 6749 requires.
+ * Issues a token to an app. RFC 6749 requires errors in OAuth's format.
  * @see https://docs.joinmastodon.org/methods/oauth/#token
  */
 const postToken = defineRoute({
@@ -61,8 +61,8 @@ const postToken = defineRoute({
 });
 
 /**
- * Revokes a token, for the app it was issued to. As in Mastodon, the app must always send its
- * credentials, which for a public client are just its id, and omitting the token isn't an error.
+ * Revokes a token, for the app it was issued to. Mastodon requires the app's credentials here,
+ * which for a public client are only its id, and doesn't treat a missing token as an error.
  * @see https://docs.joinmastodon.org/methods/oauth/#revoke
  */
 const postRevoke = defineRoute({

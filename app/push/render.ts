@@ -3,10 +3,10 @@ import type { Context } from "../kernel/context.ts";
 import { vapidPublicKey } from "./keys.ts";
 import type { PushSubscriptionRow } from "./subscription_queries.ts";
 
-/** The types of notifications a subscription may push, as Mastodon names them in `alerts`. */
+/** The types of notifications a subscription may push, by their names in `alerts`. */
 export const alertNames = PushAlerts.keyof().options;
 
-/** A subscription as Mastodon's API shows it. */
+/** A subscription, as the API shows it. */
 export const renderSubscription = async (
     ctx: Context,
     row: PushSubscriptionRow,

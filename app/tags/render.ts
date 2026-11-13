@@ -4,8 +4,8 @@ import { type FeaturedTagRow, taggedStats } from "./featured_tag_queries.ts";
 
 /**
  * Featured hashtags, with how many of their account's statuses that anyone may see have them, and
- * when the latest was posted, as Mastodon counts them. Verso has no pages of an account's statuses,
- * so each links to the hashtag's.
+ * when the latest was posted. Verso has no pages of an account's statuses, so each links to the
+ * hashtag's.
  */
 export const renderFeaturedTags = async (
     ctx: Context,

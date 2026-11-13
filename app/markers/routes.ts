@@ -6,7 +6,10 @@ import { type MarkerRow, markersOf, setMarker } from "./marker_queries.ts";
 import { renderMarkers } from "./render.ts";
 import { isTimeline, timelines } from "./tables.ts";
 
-/** Where the user read up to in a timeline, by an id at most as long as any Verso gives. */
+/**
+ * Where the user read up to in a timeline. The 100-character cap on the id is longer than any id
+ * Verso makes.
+ */
 const Position = z.object({
     last_read_id: z.string().min(1).max(100).meta({
         description: "ID of the last status or notification read.",
@@ -15,6 +18,7 @@ const Position = z.object({
 
 const docs = "https://docs.joinmastodon.org/methods/markers";
 
+/** The client API's endpoints for reading and saving markers. */
 export const markerRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",

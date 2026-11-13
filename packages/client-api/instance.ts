@@ -28,7 +28,7 @@ const FeedAccess = z.enum(["public", "authenticated", "disabled"]);
 export const Instance = z.object({
     domain: z.string(),
     title: z.string(),
-    /** The Mastodon version the server is compatible with, which clients detect features by. */
+    /** The Mastodon version the server is compatible with. Clients detect features by it. */
     version: z.string(),
     /** Where the server's source code is. */
     source_url: z.url(),
@@ -49,7 +49,7 @@ export const Instance = z.object({
         blurhash: z.string().optional(),
         versions: z.object({ "@1x": z.url().optional(), "@2x": z.url().optional() }).optional(),
     }),
-    /** The instance's icon, in sizes such as `36x36`. */
+    /** The instance's icon, in sizes like `36x36`. */
     icon: z.array(z.object({ src: z.url(), size: z.string() })),
     /** ISO 639-1 codes. */
     languages: z.array(z.string()),
@@ -59,7 +59,7 @@ export const Instance = z.object({
             streaming: z.url(),
             /** A status page, or `null`. */
             status: z.url().nullable().optional(),
-            /** Mastodon 4.4 and later, as are the policies'. */
+            /** Mastodon 4.4 and later, like `privacy_policy` and `terms_of_service`. */
             about: z.url().optional(),
             privacy_policy: z.url().nullable().optional(),
             terms_of_service: z.url().nullable().optional(),
@@ -112,9 +112,9 @@ export const Instance = z.object({
         }).optional(),
         /** Whether it federates only with instances it allows. Mastodon 4.4 and later. */
         limited_federation: z.boolean().optional(),
-        /** Verso-specific field */
+        /** Verso's own field. */
         permissions: z.object({
-            /** Permission names, such as `read:note`, for requests without a user. */
+            /** Permission names, like `read:note`, for requests without a user. */
             anonymous: z.array(z.string()),
         }),
     }),
@@ -142,7 +142,7 @@ export const Instance = z.object({
 export type Instance = z.infer<typeof Instance>;
 
 /**
- * An instance as Mastodon described itself before 4.0, which older clients still read.
+ * An instance as Mastodon described itself before 4.0. Older clients still read it.
  * @deprecated Use {@link Instance}.
  * @see https://docs.joinmastodon.org/entities/V1_Instance/
  */
@@ -203,7 +203,7 @@ export type PrivacyPolicy = z.infer<typeof PrivacyPolicy>;
  * @see https://docs.joinmastodon.org/entities/TermsOfService/
  */
 export const TermsOfService = z.object({
-    /** The day they come, or came, into force, such as `2026-10-01`. */
+    /** The day they come, or came, into force, like `2026-10-01`. */
     effective_date: z.iso.date(),
     /** Whether they are in force now. */
     effective: z.boolean(),
@@ -215,7 +215,7 @@ export const TermsOfService = z.object({
 export type TermsOfService = z.infer<typeof TermsOfService>;
 
 /**
- * How active the instance was in a week, as Mastodon gives it: every number as a string.
+ * How active the instance was in a week. Every number is a string.
  * @see https://docs.joinmastodon.org/methods/instance/#activity
  */
 export const WeeklyActivity = z.object({
@@ -232,7 +232,7 @@ export type WeeklyActivity = z.infer<typeof WeeklyActivity>;
 
 /** A language statuses may be written in. */
 export const Language = z.object({
-    /** Its ISO 639 code, such as `en`. */
+    /** Its ISO 639 code, like `en`. */
     code: z.string(),
     /** Its name in English. */
     name: z.string(),

@@ -32,7 +32,7 @@ export type StatusDraft = {
     readonly spoiler_text?: string;
     /** Whether the media is hidden until the reader opens it. */
     readonly sensitive?: boolean;
-    /** An ISO 639-1 code, such as `en`, or the author's default if omitted. */
+    /** An ISO 639-1 code, like `en`, or the author's default if omitted. */
     readonly language?: string;
     /** Defaults to the author's. */
     readonly visibility?: Visibility;
@@ -165,8 +165,8 @@ export class StatusMethods {
     }
 
     /**
-     * How a fetch named in a `Mastodon-Async-Refresh` header is going, such as of the replies under
-     * a status whose context was asked for.
+     * How a fetch named in a `Mastodon-Async-Refresh` header is going, like the fetch of the
+     * replies under a status whose context was asked for.
      * @see https://docs.joinmastodon.org/methods/async_refreshes/#show
      */
     async asyncRefresh(id: string, options?: CallOptions): Promise<AsyncRefresh> {
@@ -337,7 +337,7 @@ export class StatusMethods {
 
     /**
      * Reacts to a status with an emoji: a Unicode one, or one of the instance's custom ones, by its
-     * shortcode, such as `blobcat`. Another instance's custom emojis can't be used.
+     * shortcode, like `blobcat`. Another instance's custom emojis can't be used.
      * @see https://github.com/glitch-soc/mastodon/pull/2462
      */
     react(id: string, emoji: string, options?: CallOptions): Promise<Status> {
@@ -364,7 +364,7 @@ export class StatusMethods {
 
     /**
      * The accounts that reacted to a status with an emoji, newest first. The emoji is named as the
-     * status's reactions name it, which for another instance's custom one adds its domain, such as
+     * status's reactions name it, which for another instance's custom one adds its domain, like
      * `blob@b.example`.
      */
     reactedBy(

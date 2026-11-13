@@ -4,14 +4,14 @@ import { z } from "zod";
 const Dimensions = z.object({
     width: z.int().min(0),
     height: z.int().min(0),
-    /** Such as `640x480`. */
+    /** Like `640x480`. */
     size: z.string(),
     /** Width over height. */
     aspect: z.number(),
 });
 
 /**
- * A media file attached to a status, such as an image.
+ * A media file attached to a status, like an image.
  * @see https://docs.joinmastodon.org/entities/MediaAttachment/
  */
 export const MediaAttachment = z.object({
@@ -23,7 +23,7 @@ export const MediaAttachment = z.object({
     preview_url: z.url().nullable(),
     /** Where the file is on its own instance, or `null` if it is local. */
     remote_url: z.url().nullable(),
-    /** What is known of the file, such as its size, or `null` if nothing is. */
+    /** What is known of the file, like its size, or `null` if nothing is. */
     meta: z.object({
         original: Dimensions.partial().optional(),
         small: Dimensions.partial().optional(),

@@ -8,10 +8,10 @@ import { fileUrl } from "../media/render.ts";
 import type { EmojiPicture, LocalEmoji, ShownEmoji } from "./emoji_queries.ts";
 
 /**
- * The URLs of an emoji's picture and of a still version of it: the one Verso stores, with its still
- * preview, once processed or cached, else a remote emoji's own at its URL, which has no still
- * version. A local emoji's is `undefined` until processed, or if processing failed, and the emoji
- * isn't shown.
+ * The URLs of an emoji's picture and of a still version of it. Once the picture is processed or
+ * cached, they're the file Verso stores and its still preview. Otherwise a remote emoji's picture
+ * is used for both, since it has no still version. The result is `undefined` for a local emoji
+ * until it is processed, or if processing failed, and the emoji isn't shown then.
  */
 export const emojiPicture = (
     ctx: Context,
@@ -48,8 +48,8 @@ export const renderEmojis = (ctx: Context, emojis: readonly ShownEmoji[]): Custo
     });
 
 /**
- * One of the local instance's emojis as Versia's emoji endpoints render it, with its picture's URLs
- * `null` until it is processed.
+ * One of the local instance's emojis, rendered for Versia's emoji endpoints, with its picture's
+ * URLs `null` until it is processed.
  */
 export const renderVersiaEmoji = (ctx: Context, emoji: LocalEmoji): VersiaEmoji => {
     const picture = emojiPicture(ctx, emoji);

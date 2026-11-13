@@ -44,7 +44,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
         body: draft(limits),
         responses: { 200: z.union([Status, ScheduledStatus]) },
         handler: async (ctx, { body, viewer }) => {
-            // A time already past means now, as on Mastodon.
+            // A time already past means now.
             const scheduledAt = body.scheduled_at;
             if (scheduledAt !== undefined && scheduledAt > ctx.clock.now()) {
                 const row = await scheduleNote(ctx, viewer.accountId, scheduledAt, paramsOf(body));
@@ -65,7 +65,7 @@ export const noteRoutes = (limits: Limits): readonly Route[] => [
                 mediaIds: body.media_ids,
                 poll: body.poll ?? undefined,
             });
-            // As Mastodon responds when the status replied to can't be seen.
+            // Mastodon gives the same answer when the status replied to exists but can't be seen.
             if (note === undefined) throw new NotFound("The status replied to doesn't exist");
 
             const [status] = await renderStatuses(ctx, [note], viewer.accountId);

@@ -88,8 +88,8 @@ export const renderRules = (instance: Pick<AboutSettings["instance"], "rules">):
     }));
 
 /**
- * What clients may send, limited by the configured limits, where they connect and subscribe to Web
- * Push with, and what logged-out visitors may do.
+ * What clients need to know: the limits on what they may send, the streaming URL and Web Push key,
+ * and what logged-out visitors may do.
  */
 const configuration = (
     ctx: Context,
@@ -249,7 +249,7 @@ export const renderV1Instance = (instance: Instance, stats: InstanceStats): V1In
 
 type Document = NonNullable<AboutSettings["instance"]["privacy_policy"]>;
 
-/** A configured text, such as the privacy policy, as HTML with the time it changed. */
+/** A configured text, like the privacy policy, as HTML with the time it changed. */
 export const renderDocument = (document: Document | undefined): ExtendedDescription => {
     if (!document) throw new NotFound();
 

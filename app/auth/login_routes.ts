@@ -33,9 +33,9 @@ const replyToApp = ({ redirectUri, params }: Omit<SendBack, "result">) => {
 const FlowCookie = z.object({ oauth_flow: z.string().optional() });
 
 /**
- * Rejects forms posted from other origins, which the form token already stops. Sibling subdomains
- * count as the same site, so SameSite cookies don't. Browsers too old to send the header are let
- * through.
+ * Rejects forms posted from other origins. The form token already stops them, but SameSite cookies
+ * don't stop a sibling subdomain, which counts as the same site. Browsers too old to send the
+ * header are let through.
  */
 const SameOrigin = z.object({ "sec-fetch-site": z.literal("same-origin").optional() });
 

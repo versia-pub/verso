@@ -23,7 +23,7 @@ export const FilterStatus = z.object({
 export type FilterStatus = z.infer<typeof FilterStatus>;
 
 /**
- * A group of keywords and statuses that a user filters, with where it applies and what is done with
+ * A group of keywords and statuses that a user filters, with where it applies and what happens to
  * what it matches.
  * @see https://docs.joinmastodon.org/entities/Filter/
  */

@@ -329,8 +329,8 @@ export const countLike = async (ctx: Context, noteId: string, by: 1 | -1): Promi
 };
 
 /**
- * Decrements the like count of each of `notes`, such as the statuses liked by an account that is
- * being deleted.
+ * Decrements the like count of each of `notes`. Deleting an account uses it on the statuses the
+ * account liked.
  */
 export const uncountLikesOn = async (ctx: Context, notes: NoteIdQuery): Promise<void> => {
     await ctx.db.updateTable("notes")

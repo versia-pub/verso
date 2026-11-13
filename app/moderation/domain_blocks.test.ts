@@ -45,7 +45,7 @@ Deno.test("blocks made here apply at once, and ones made elsewhere unannounced w
     await blockDomain(test.ctx, "evil.example");
     assertEquals(await isBlocked("evil.example"), true);
 
-    // As a process that can't tell this one does.
+    // Like a block made by another process, which can't tell this one.
     await test.ctx.db.insertInto("domain_blocks")
         .values({ id: "bad", domain: "bad.example", reason: "", created_at: test.clock.now() })
         .execute();

@@ -23,7 +23,7 @@ export const emojiOf = (row: Pick<ReactionRow, "text" | "emoji_id">): ReactionEm
     throw new Error("A reaction has neither text nor a custom emoji");
 };
 
-/** The accounts that reacted to any of `noteIds`, as a subquery. */
+/** The accounts that reacted to any of `noteIds`. */
 export const reactorIdsQuery = (ctx: Context, noteIds: readonly string[]): AccountIdQuery =>
     ctx.db.selectFrom("reactions").select("account_id").where("note_id", "in", noteIds);
 
@@ -46,7 +46,7 @@ export const insertReaction = async (
             emoji_id: emoji.emoji_id,
             created_at: ctx.clock.now(),
         })
-        // Either index of one reaction with each emoji.
+        // Either unique index: by text or by custom emoji, so one reaction per account and emoji.
         .onConflict((conflict) => conflict.doNothing())
         .returningAll()
         .executeTakeFirst();
@@ -61,7 +61,7 @@ export const insertRemoteReaction = async (
 ): Promise<boolean> =>
     await ctx.db.insertInto("reactions")
         .values(reaction)
-        // Any index: by its remote id, or of one reaction with each emoji.
+        // Any unique index: by remote id, or by text or custom emoji.
         .onConflict((conflict) => conflict.doNothing())
         .returning("id")
         .executeTakeFirst() !== undefined;

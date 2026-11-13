@@ -49,8 +49,8 @@ const hiddenOf = async (ctx: Context, notes: readonly NoteRow[], onlooker: Onloo
  * The replies to `note`, and their replies, that `onlooker` may see, in thread order: each reply
  * followed by the replies under it, oldest first. Those nearest `note` are found first, so a long
  * thread loses its deepest replies. Replies under a reply the viewer may not see, or by a silenced
- * account they don't follow, are shown too, as on Mastodon, but not those under a reply by an
- * account they block or mute, which are omitted along with it.
+ * account they don't follow, are shown too, but not those under a reply by an account they block or
+ * mute, which are omitted along with it.
  */
 const descendantsOf = async (ctx: Context, note: NoteRow, onlooker: Onlooker) => {
     const children = new Map<string, NoteRow[]>();

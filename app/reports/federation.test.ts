@@ -220,7 +220,7 @@ Deno.test("a received report names the accounts it is of, and is stored once", a
     const note = await createNote(test.ctx, "bob");
     const domain = test.ctx.urls.domain;
 
-    // Statuses alone don't say an account is reported, as on Mastodon.
+    // Statuses alone don't say an account is reported.
     await reportType.receive(test.ctx, received([`${domain}:${note.id}`]), sender);
     assertEquals(await reportsForAdmin(test.ctx, false), []);
 

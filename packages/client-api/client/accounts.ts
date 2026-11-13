@@ -85,7 +85,7 @@ export type ProfileChanges = {
     readonly source?: {
         readonly privacy?: Exclude<Visibility, "direct">;
         readonly sensitive?: boolean;
-        /** An ISO 639-1 code, such as `en`, or empty for none. */
+        /** An ISO 639-1 code, like `en`, or empty for none. */
         readonly language?: string;
     };
 };

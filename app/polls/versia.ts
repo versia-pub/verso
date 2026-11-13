@@ -1,6 +1,6 @@
 /**
- * Polls as Versia has them, in the `extensions` of the Notes they are on: local ones, as Verso
- * sends them, and remote ones, as Verso receives them.
+ * Polls as Versia has them, in the `extensions` of the Notes they are on: local ones, which Verso
+ * sends, and remote ones, which Verso receives.
  * @see https://versia.pub/extensions/polls
  * @module
  */
@@ -27,9 +27,9 @@ const remoteOptions = 100;
 export type RemotePoll = NewPoll & { readonly votes: readonly number[] };
 
 /**
- * The `extensions` that a local status with the poll `poll` has, or `undefined` if it has none. A
- * poll that hides its totals sends none until it ends, as on Mastodon, but Versia requires them, so
- * each option has 0.
+ * The `extensions` that a local status with the poll `poll` has, or `undefined` if it has none.
+ * Like Mastodon, a poll that hides its totals sends none until it ends, but Versia requires them,
+ * so each option has 0.
  */
 export const pollExtensions = (
     ctx: Context,
@@ -62,8 +62,8 @@ const titleOf = (option: v0_6.ContentFormat) => {
 
 /**
  * The poll a remote Note's `extensions` give, with its first options, as many as Verso stores, or
- * `undefined` if it has none. An option without a count has no votes. An extension that isn't as
- * Versia defines it, or a poll with no options, is treated as no poll.
+ * `undefined` if it has none. An option without a count has no votes. An extension that doesn't
+ * match Versia's definition, or a poll with no options, is treated as no poll.
  */
 export const remotePollOf = (extensions: v0_6.Entity["extensions"]): RemotePoll | undefined => {
     const parsed = v0_6.Polls.safeParse(extensions?.[v0_6.pollsKey]);

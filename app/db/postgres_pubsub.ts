@@ -27,10 +27,10 @@ export type PostgresPubSub = PubSub & AsyncDisposable & {
 const retryMs = { first: 1000, most: 30_000 };
 
 /**
- * Sends messages with `pg_notify` on `db`, which must not be a transaction, since messages are sent
- * after one commits, and hears them on a connection of its own to `url`. If it can't listen, or
- * the connection drops, that is logged, and it tries again, waiting twice as long each time up to
- * half a minute, then tells `onMissed` handlers, since it heard nothing meanwhile.
+ * Sends messages with `pg_notify` on `db`, and hears them on a connection of its own to `url`. `db`
+ * must not be a transaction, since messages are sent after one commits. If it can't listen, or the
+ * connection drops, it logs that and tries again, waiting twice as long each time up to half a
+ * minute. Once it listens again, it tells `onMissed` handlers, since it heard nothing meanwhile.
  */
 export const postgresPubSub = <DB>(
     db: Kysely<DB>,

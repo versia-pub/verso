@@ -54,7 +54,7 @@ export class PushMethods {
     }
 
     /**
-     * Changes which notifications are pushed. What is omitted is reset, as when subscribing.
+     * Changes which notifications are pushed. What is omitted is reset, like when subscribing.
      * @see https://docs.joinmastodon.org/methods/push/#update
      */
     update(data: PushData, options?: CallOptions): Promise<WebPushSubscription> {

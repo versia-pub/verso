@@ -1,5 +1,5 @@
 /**
- * Deleting local accounts, as whoever runs the instance does. A deleted account is kept, empty and
+ * Deleting local accounts, for admins and moderators. A deleted account is kept, empty and
  * suspended, so its username and login can't be used again, unless it is removed altogether.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/delete_account_service.rb
  * @module
@@ -22,12 +22,12 @@ import { purgeRowsOf } from "./account_deletion_queries.ts";
 import { suspend } from "./suspensions.ts";
 
 /**
- * Deletes the local account `accountId`: suspends it, so its sessions end, then deletes its
- * statuses, media, emojis, follows and everything else it has, keeping its login and the reports by
- * and about it. With `tombstone` false, the account is removed too, with its login and reports, so
- * the username and login can be used again. Every instance Verso knows is sent a Delete of the
- * user. Deleting an account again finishes a deletion that stopped part way. Returns whether it
- * wasn't deleted already.
+ * Deletes the local account `accountId`. It is suspended first, so its sessions end, then its
+ * statuses, media, emojis, follows and everything else it has are deleted. Its login and the
+ * reports by and about it are kept. With `tombstone` false, the account is removed too, with its
+ * login and reports, so the username and login can be used again. Every instance Verso knows is
+ * sent a Delete of the user. Deleting an account again finishes a deletion that stopped part way.
+ * Returns whether it wasn't deleted already.
  */
 export const deleteLocalAccount = async (
     ctx: Context,
@@ -45,7 +45,7 @@ export const deleteLocalAccount = async (
         const deleted = tombstone ? await emptyAccount(tx, accountId, tx.clock.now()) : true;
         const keys = await deleteMediaOf(tx, accountId);
         if (!tombstone) await deleteAccount(tx, accountId);
-        // As on Mastodon, every instance is told, since any may have the user's statuses.
+        // Every instance is told, since any may have the user's statuses.
         if (deleted) {
             const entity = deleteEntity(tx, accountId, "User", accountId);
             await queueDeliveriesTo(tx, entity, { instanceIds: [], everyInstance: true });

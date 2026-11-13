@@ -462,8 +462,8 @@ Deno.test("a cached file removed before caching finishes is stored again", async
     const files = memoryFiles();
     const removed = new Set<string>();
     await using test = await withFiles({ "/bob.png": served(png(4, 4)) }, {
-        // Cleanup removes each file the first time it is stored, as it could between the job
-        // storing it and the transaction that starts using it.
+        // Cleanup removes each file the first time it is stored. It could do that between the job
+        // storing the file and the transaction that starts using it.
         files: {
             ...files,
             put: async (file, type) => {

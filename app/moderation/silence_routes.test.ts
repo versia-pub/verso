@@ -1,6 +1,6 @@
 /**
  * What local users see of a silenced account through the client API: all of it, said to be
- * limited, but none of its statuses on the public timelines, as on Mastodon.
+ * limited, but none of its statuses on the public timelines.
  * @module
  */
 import { assertEquals } from "@std/assert";
@@ -61,7 +61,7 @@ Deno.test("a silenced account is said to be limited, and its statuses kept off t
         search: ["carol"],
     });
 
-    // Even to those who follow it, as on Mastodon.
+    // Even to those who follow it.
     await silence(test.ctx, "carol");
     assertEquals(await shown(), {
         ...before,
@@ -125,8 +125,8 @@ Deno.test("a silenced account's statuses are left out of threads and quotes for 
         assertEquals(await shown(viewerId), all, `${viewerId}`);
     }
 
-    // Replies under carol's are kept, and a quote of carol's still shows what it quotes, as on
-    // Mastodon. Dan wrote what carol quoted, so he is still shown the quote.
+    // Replies under carol's are kept, and a quote of carol's still shows what it quotes. Dan wrote
+    // what carol quoted, so he is still shown the quote.
     await silence(test.ctx, "carol");
     const hidden = { ...all, ancestors: [root.id], descendants: [leaf.id], quotes: [] };
     for (const viewerId of [null, "alice"]) {

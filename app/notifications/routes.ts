@@ -17,8 +17,8 @@ import { renderNotifications, shownNotification, shownOf } from "./render.ts";
 import { isNotificationType } from "./tables.ts";
 
 /**
- * Types of notifications, as clients name them. Those Verso doesn't have, such as `admin.report`,
- * are left out, so they match no notification.
+ * Types of notifications, as clients name them. Those Verso doesn't have, like `admin.report`, are
+ * left out, so they match no notification.
  */
 export const NotificationTypes = Strings.transform((types) => types.filter(isNotificationType))
     .optional();
@@ -29,7 +29,7 @@ export const SupportedTypes = Strings.optional().meta({
         "have a `fallback`.",
 });
 
-/** How many unread notifications to count up to, as on Mastodon. */
+/** How many unread notifications to count up to. The default and maximum are Mastodon's. */
 export const CountQuery = PageQuery({ default: 100, max: 1000 }).pick({ limit: true });
 
 /** Whether to list or count the notifications the user's policy filtered. */

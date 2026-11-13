@@ -49,7 +49,7 @@ export const addPoll = async (ctx: Context, noteId: string, draft: PollDraft): P
 
 /**
  * Whether editing a status with the poll `poll` changes it. A `draft` of `undefined` leaves it as
- * it is, and `null` removes it. Its end is set anew from now, as on Mastodon.
+ * it is, and `null` removes it. Its end is set anew from now, like Mastodon does.
  */
 export const changesPoll = (
     ctx: Context,
@@ -65,7 +65,7 @@ export const changesPoll = (
 };
 
 /**
- * Changes the poll of the status `noteId`, which is `poll`, as {@link changesPoll} says. A poll
+ * Applies the change {@link changesPoll} reports to `poll`, the poll of the status `noteId`. A poll
  * that asks something else loses its votes.
  */
 export const changePoll = async (
@@ -94,10 +94,11 @@ export const hasEnded = (ctx: Context, poll: PollRow): boolean =>
     poll.expires_at !== null && poll.expires_at <= ctx.clock.now();
 
 /**
- * Votes as `accountId` for the options `choices` of the poll `pollId`, in `ctx`'s transaction, as
- * Mastodon allows: once, or in a poll of several choices, once for each, before it ends, and not in
- * one's own polls. A vote that is `resent`, as remote instances may send one again, counts once.
- * Returns the poll, or `undefined` if there is none or `accountId` may not see its status.
+ * Votes as `accountId` for the options `choices` of the poll `pollId`, in `ctx`'s transaction. Like
+ * Mastodon, it allows a vote once, or in a poll of several choices once for each option, before the
+ * poll ends, and not in one's own polls. A vote that is `resent` counts once, because remote
+ * instances may send one again. Returns the poll, or `undefined` if there is none or `accountId`
+ * may not see its status.
  */
 export const castVotes = async (
     ctx: Context,
@@ -121,7 +122,7 @@ export const castVotes = async (
         [];
     if (resent && choices.every((choice) => voted.includes(choice))) return poll;
 
-    // As Mastodon words its errors.
+    // The messages are Mastodon's.
     if (hasEnded(ctx, poll)) throw new Unprocessable("The poll has already ended");
     if (choices.some((choice) => choice < 0 || choice >= poll.options.length)) {
         throw new Unprocessable("The chosen vote option does not exist");

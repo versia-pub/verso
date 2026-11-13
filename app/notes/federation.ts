@@ -52,8 +52,8 @@ const sendNote = async (ctx: Context, noteId: string, pollId?: string) => {
  * Sends remote instances the statuses local users post and edit, and Deletes for the ones they
  * delete, to the instances of each status's audience. An edit and a Delete go to the author's
  * followers as they are now, and an edit to the users it mentions now. A local status whose poll
- * ended is sent again, with its results, as on Mastodon, to its audience and the instances of those
- * who voted. So is one whose votes were counted, a few minutes after the first of them.
+ * ended is sent again, with its results, to its audience and the instances of those who voted. So
+ * is one whose votes were counted, a few minutes after the first of them.
  */
 export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (isNotePosted(event) || isNoteEdited(event)) return await sendNote(ctx, event.noteId);

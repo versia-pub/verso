@@ -1,6 +1,6 @@
 import type { Generated } from "kysely";
 
-/** Whether an account likes a status or dislikes it. Mastodon has only likes, as favourites. */
+/** Whether an account likes a status or dislikes it. Mastodon has only likes, called favourites. */
 export type LikeKind = "like" | "dislike";
 
 /** A status an account likes or dislikes, but never both. */

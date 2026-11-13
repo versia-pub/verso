@@ -13,7 +13,7 @@ import {
     listBlockedDomains,
 } from "./domain_block_queries.ts";
 
-/** `domain` and the domains it is under, such as `b.example` and `example` for `a.b.example`. */
+/** `domain` and the domains it is under, like `b.example` and `example` for `a.b.example`. */
 const domainAndParents = (domain: string) =>
     domain.split(".").map((_, index, labels) => labels.slice(index).join("."));
 
@@ -79,8 +79,7 @@ export const allDomainBlocks = async (
 };
 
 /**
- * `domain` with its middle masked by `*`, keeping dots and a quarter of its length at each end, as
- * Mastodon shows obfuscated blocks.
+ * `domain` with its middle masked by `*`, keeping dots and a quarter of its length at each end.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/domain_block.rb
  */
 export const obfuscateDomain = (domain: string): string => {
@@ -95,8 +94,8 @@ export const obfuscateDomain = (domain: string): string => {
 export type IsBlocked = (ctx: Context, domain: string) => Promise<boolean>;
 
 /**
- * Checks domains against the ones config blocks, and the ones admins blocked, as `blocked` returns
- * them.
+ * Checks domains against the ones config blocks and the ones admins blocked, which `blocked`
+ * returns.
  */
 export const domainBlocks = (
     configured: readonly string[],

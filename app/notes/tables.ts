@@ -36,9 +36,7 @@ export type NotesTable = {
      * a status Verso had when it arrived. It stays when that status is deleted.
      */
     thread_id: string;
-    /**
-     * The status it quotes, or `null` if none, or if it has been deleted.
-     */
+    /** The status it quotes, or `null` if none, or if it has been deleted. */
     quote_id: string | null;
     /**
      * The status it boosts (Mastodon calls this a reblog), or `null` if it isn't a boost. A boost

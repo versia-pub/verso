@@ -391,8 +391,9 @@ Deno.test("input OAuth endpoints can't read is an invalid request, in OAuth's sh
 });
 
 /**
- * Which of `tokens`, by name, were said to be revoked, while watched until `unwatch`, once each, as
- * a watcher may be told twice: by the message, and by its first check if that is still running.
+ * Which of `tokens`, by name, were reported revoked while watched, until `unwatch`. Each is listed
+ * once, since a watcher may be told twice: by the message, and by its first check if that is still
+ * running.
  */
 const watching = (test: { ctx: Context }, tokens: Record<string, string>) => {
     const told = new Set<string>();

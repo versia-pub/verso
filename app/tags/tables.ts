@@ -10,7 +10,7 @@ export type TagsTable = {
     trendable: Generated<boolean | null>;
 };
 
-/** A hashtag that a local user features on their profile, as Mastodon has them. */
+/** A hashtag that a local user features on their profile. */
 export type FeaturedTagsTable = {
     /** Orders featured hashtags by creation time. */
     id: string;

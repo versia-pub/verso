@@ -14,7 +14,7 @@ import { hashtagPage, homePage, listPage, type Origin, publicPage } from "./time
 import { homeSourcesOf, listSourcesOf } from "./timeline_sources.ts";
 
 /**
- * Which public statuses to return. `local` wins over `remote`, as on Mastodon.
+ * Which public statuses to return. `local` wins over `remote`.
  * @see https://docs.joinmastodon.org/methods/timelines/#public
  */
 const PublicQuery = PageQuery({ default: 20, max: 40 }).extend({
@@ -27,7 +27,7 @@ const PublicQuery = PageQuery({ default: 20, max: 40 }).extend({
 const originOf = (query: z.output<typeof PublicQuery>): Origin =>
     query.local ? "local" : query.remote ? "remote" : "all";
 
-/** How many hashtags each of `any`, `all` and `none` may have, as on Mastodon. */
+/** Mastodon's limit on how many hashtags each of `any`, `all` and `none` may have. */
 const hashtagsPerList = 4;
 
 /** Hashtags, as statuses keep them: without their `#`, and in lower case. */
@@ -36,7 +36,7 @@ const Hashtags = Strings.transform((names) =>
 ).default([]);
 
 /**
- * Which statuses of a hashtag's timeline to return, as Mastodon describes them.
+ * Which statuses of a hashtag's timeline to return.
  * @see https://docs.joinmastodon.org/methods/timelines/#tag
  */
 const HashtagQuery = PublicQuery.extend({

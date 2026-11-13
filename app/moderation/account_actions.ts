@@ -1,5 +1,5 @@
 /**
- * Moderating accounts through the admin API, as moderators with the `accounts` permission do. A
+ * Moderating accounts through the admin API, for moderators with the `accounts` permission. A
  * moderator may only act on remote accounts and on local users below their own highest role.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/admin/account_action.rb
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/policies/account_policy.rb
@@ -45,8 +45,7 @@ const highestRole = async (ctx: Context, accountId: string): Promise<number> =>
 
 /**
  * Whether `moderator` outranks `target`: a remote account always, and a local user only if the
- * moderator's highest role is above theirs, as Mastodon's `UserRole#overrides?`. So no one outranks
- * themselves.
+ * moderator's highest role is above theirs. So no one outranks themselves.
  */
 const outranks = async (ctx: Context, moderator: Moderator, target: AccountRow) =>
     target.domain !== null ||

@@ -23,8 +23,8 @@ const open = async () => {
     }
 
     /**
-     * What `accountId` is sent on their `direct` stream, as each event's type, whether the
-     * conversation is unread, and its latest status.
+     * Opens a session of `accountId` on the `direct` stream and records what it is sent: each
+     * event's stream, type, whether the conversation is unread, and its latest status.
      */
     const streaming = (accountId: string, permissions: readonly Permission[] = ["read:note"]) => {
         const sent: unknown[] = [];
@@ -85,7 +85,7 @@ Deno.test("a user is sent their conversation as it gets a status and is marked r
     assertEquals(carol, []);
 
     const [conversation] = await conversationPage(test.ctx, "alice", { limit: 1 });
-    // Each is sent as it is when streamed, so the second waits for the first.
+    // A conversation is rendered as it is when streamed, so each change waits for the one before.
     await markConversationAs(test.ctx, "alice", conversation.id, true);
     await test.idle();
     await markConversationAs(test.ctx, "alice", conversation.id, false);

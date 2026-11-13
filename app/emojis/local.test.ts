@@ -162,7 +162,7 @@ Deno.test("text uses only emojis its author may use whose pictures are ready", a
     });
     assertEquals(await test.shown(note?.id ?? ""), ["blob"]);
 
-    // Nor once their pictures are ready, as the status doesn't use them.
+    // Nor once their pictures are ready, because the status doesn't use them.
     await test.ctx.db.updateTable("media").set({ sha256: "ab", processed_at: test.clock.now() })
         .execute();
     assertEquals(await test.shown(note?.id ?? ""), ["blob"]);

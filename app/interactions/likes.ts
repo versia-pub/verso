@@ -51,9 +51,9 @@ export const like = (
 
 /**
  * Undoes `accountId`'s like of a status, or of the status a boost boosts, and decrements the like
- * count. Returns the status as it is now, or `undefined` if there is none. As on Mastodon, a status
- * it liked can be unliked even if it may no longer see it, and one it didn't like only if it may
- * see it. Local users never dislike statuses, so there is no dislike to undo.
+ * count. Returns the status as it is now, or `undefined` if there is none. A status the account
+ * liked can be unliked even if it may no longer see it, and one it didn't like only if it may see
+ * it. Local users never dislike statuses, so there is no dislike to undo.
  */
 export const unlike = (
     ctx: Context,

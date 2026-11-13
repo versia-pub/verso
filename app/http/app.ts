@@ -27,7 +27,7 @@ const logger = getLogger(["verso", "http"]);
 
 /**
  * The largest body a route accepts unless it says otherwise: enough for any form or JSON, and for a
- * status as long as a long blog post, of 100,000 characters.
+ * status of 100,000 characters.
  */
 const maxBodyBytes = 256 * 1024;
 
@@ -36,7 +36,7 @@ const errorReply = (error: unknown, c: HonoContext<AppEnv>): Response => {
     c.header("cache-control", "no-store");
     if (error instanceof HttpError) return c.json(error, error.status);
 
-    // As Mastodon answers when two requests make the same record at once.
+    // Mastodon's answer when two requests make the same record at once.
     if (isUniqueViolation(error)) return c.json({ error: "Duplicate record" }, 422);
 
     logger.error("{method} {path} failed: {error}", {
@@ -92,7 +92,7 @@ export const createApp = (
     useRequestLog(app, options.trustedProxies ?? []);
     useHeaders(app, ctx.urls.origin);
 
-    // Responses are about one user, or carry secrets such as tokens, so nothing may cache them,
+    // Responses are about one user, or carry secrets like tokens, so nothing may cache them,
     // unless their route says. Errors skip this, so the error handler sets it too.
     app.use(async (c, next) => {
         await next();
@@ -186,7 +186,7 @@ export const createApp = (
         });
     };
 
-    // For load balancers and orchestrators, not clients, so they stay plain text, as on Mastodon.
+    // For load balancers and orchestrators, not clients, so they stay plain text.
     // Ready is whether it can serve: the database answers and the process hears the others.
     app.get("/health", (c) => c.text("OK"));
     app.get("/health/ready", async (c) => {
@@ -245,9 +245,9 @@ export const createApp = (
             "vary": "accept",
         });
 
-    // Pages Verso renders itself, as an anonymous visitor sees them, whatever the request accepts,
-    // as link previews often accept anything. One that anonymous visitors may not see is left to
-    // the web app, where the visitor may be logged in.
+    // Pages Verso renders itself, as an anonymous visitor sees them. They're served whatever the
+    // request accepts, because link previews often accept anything. One that anonymous visitors may
+    // not see is left to the web app, where the visitor may be logged in.
     const views = viewsFor({
         instance: options.instance ?? Instance.parse({}),
         timelines_access: options.timelinesAccess ?? TimelinesAccess.parse({}),

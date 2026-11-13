@@ -17,7 +17,10 @@ export const pollRefreshQueue = "polls-refresh";
 
 const RefreshJob = z.object({ noteId: z.string() });
 
-/** How long a remote poll is shown before a user opening it triggers a fetch, as Mastodon does. */
+/**
+ * How long a remote poll is shown before a user opening it triggers a fetch. Mastodon waits as
+ * long.
+ */
 export const staleMs = 60_000;
 
 /**
@@ -40,8 +43,8 @@ const staleStatus = async (ctx: Context, noteId: string) => {
 };
 
 /**
- * Queues a fetch of the remote status `noteId`, if it has a poll that may have changed, when a
- * local user opens the poll, unless one is queued already.
+ * Queues a fetch of the remote status `noteId` when a local user opens its poll, if the poll may
+ * have changed and no fetch is queued already.
  */
 export const refreshPoll = async (ctx: Context, noteId: string): Promise<void> => {
     const note = await staleStatus(ctx, noteId);
@@ -58,8 +61,8 @@ export const refreshPoll = async (ctx: Context, noteId: string): Promise<void> =
 };
 
 /**
- * Fetches the remote status in the job again, which saves its poll's votes as it does for any
- * status it receives. A status deleted, or with a poll that isn't stale by now, is left alone.
+ * Fetches the remote status in the job again, which saves its poll's votes like any status Verso
+ * receives. A status that was deleted, or whose poll isn't stale by now, is left alone.
  */
 export const pollRefreshHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = RefreshJob.safeParse(job.payload);

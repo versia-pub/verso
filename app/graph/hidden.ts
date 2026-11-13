@@ -19,7 +19,7 @@ export const hiddenFrom = (ctx: Context, accountId: string): Excluded => {
 
 /**
  * The accounts whose notifications don't reach `accountId`: those it blocks, individually or by
- * their domain, and those it currently mutes with their notifications, as on Mastodon.
+ * their domain, and those it currently mutes with their notifications.
  */
 export const notificationsHiddenFrom = (ctx: Context, accountId: string): Excluded => {
     const blocked = blockedByAccount(ctx, accountId);

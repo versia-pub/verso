@@ -2,7 +2,10 @@ import { queueStats } from "../jobs/job_queries.ts";
 import { reachabilityCounts } from "../instances/instance_queries.ts";
 import type { Context } from "../kernel/context.ts";
 
-/** @see https://github.com/prometheus/OpenMetrics/blob/main/specification/OpenMetrics.md */
+/**
+ * The content type of OpenMetrics text.
+ * @see https://github.com/prometheus/OpenMetrics/blob/main/specification/OpenMetrics.md
+ */
 export const metricsType = "application/openmetrics-text; version=1.0.0; charset=utf-8";
 
 /** A gauge and its samples, each with its labels, if any. */
@@ -38,8 +41,8 @@ export const renderGauges = (gauges: readonly Gauge[]): string => {
 };
 
 /**
- * What the database says of the jobs and other instances, the same from any process, as
- * OpenMetrics text.
+ * OpenMetrics text for the jobs and other instances. It reads only the database, so any process
+ * gives the same answer.
  */
 export const metrics = async (ctx: Context): Promise<string> => {
     const now = ctx.clock.now();

@@ -4,7 +4,7 @@ import { AccountRole, Role } from "./role.ts";
 import { FeaturedTag } from "./tag.ts";
 
 /**
- * A name and value pair on a profile, such as a website.
+ * A name and value pair on a profile, like a website.
  * @see https://docs.joinmastodon.org/entities/Account/#Field
  */
 export const Field = z.object({
@@ -17,13 +17,13 @@ export const Field = z.object({
 export type Field = z.infer<typeof Field>;
 
 /**
- * Who can see a status: everyone; everyone but not in public timelines; followers; or mentioned
- * users.
+ * Who can see a status: `public` is everyone, `unlisted` is everyone but left out of public
+ * timelines, `private` is followers, and `direct` is mentioned users.
  */
 export const Visibility = z.enum(["public", "unlisted", "private", "direct"]);
 export type Visibility = z.infer<typeof Visibility>;
 
-/** Who is approved for something in general, such as to feature an account or quote a status. */
+/** Who is approved for something in general, like to feature an account or quote a status. */
 export const ApprovedAudiences = z.array(
     z.enum(["public", "followers", "following", "unsupported_policy"]),
 );
@@ -91,7 +91,7 @@ export const Account = z.object({
     limited: z.literal(true).optional(),
     /** At midnight UTC on the day, rather than the exact time. */
     created_at: z.iso.datetime(),
-    /** The day of its newest status, such as `2026-01-31`, or `null` if it has none. */
+    /** The day of its newest status, like `2026-01-31`, or `null` if it has none. */
     last_status_at: z.iso.date().nullable(),
     statuses_count: z.int().min(0),
     followers_count: z.int().min(0),
@@ -113,8 +113,8 @@ export const Account = z.object({
 export type Account = z.infer<typeof Account>;
 
 /**
- * Enough of an account to show its avatar, as grouped notifications have the accounts beyond each
- * group's first when asked for `partial_avatars`.
+ * Enough of an account to show its avatar. Grouped notifications have these for the accounts beyond
+ * each group's first, when asked for `partial_avatars`.
  * @see https://docs.joinmastodon.org/entities/Account/#PartialAccountWithAvatar
  */
 export const PartialAccountWithAvatar = Account.pick({
@@ -162,8 +162,8 @@ export const CredentialAccount = Account.extend({
     source: AccountSource,
     role: Role,
     /**
-     * Permission names, such as `roles` or `owner:account`: what every user may do and what the
-     * account's roles add. Verso-specific field
+     * Permission names, like `roles` or `owner:account`: what every user may do and what the
+     * account's roles add. Verso's own field.
      */
     permissions: z.array(z.string()),
 });

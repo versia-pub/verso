@@ -28,7 +28,7 @@ import {
     type ReactionEmoji,
 } from "./reaction_queries.ts";
 
-/** Whether `text` is one Unicode emoji, as Unicode recommends them, with any skin tone. */
+/** Whether `text` is one emoji Unicode recommends for general interchange, with any skin tone. */
 export const isUnicodeEmoji = (text: string): boolean => /^\p{RGI_Emoji}$/v.test(text);
 
 /**

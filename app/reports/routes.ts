@@ -7,7 +7,7 @@ import type { Config } from "../kernel/config.ts";
 import { renderReport } from "./render.ts";
 import { fileReport } from "./reports.ts";
 
-/** At most this many characters, as on Mastodon. */
+/** Mastodon's limit on the length of a report's comment, in characters. */
 const commentLimit = 1000;
 
 /** Filing reports, with the rules in `instance` to say were broken. */

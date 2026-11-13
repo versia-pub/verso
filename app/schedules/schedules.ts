@@ -1,5 +1,5 @@
 /**
- * Statuses that local users schedule, to be posted later, as Mastodon limits them.
+ * Statuses that local users schedule, to be posted later, within Mastodon's limits.
  * @see https://docs.joinmastodon.org/methods/scheduled_statuses/
  * @module
  */
@@ -21,18 +21,18 @@ import {
 } from "./schedule_queries.ts";
 import type { ScheduledParams } from "./tables.ts";
 
-/** How soon a status may be scheduled for, at the earliest, as on Mastodon. */
+/** Mastodon's limit on how soon a status may be scheduled for, at the earliest. */
 const minimumOffsetMs = 5 * 60_000;
 
-/** How many statuses one account may have scheduled, as on Mastodon. */
+/** Mastodon's limit on how many statuses one account may have scheduled. */
 const totalLimit = 300;
 
-/** How many statuses one account may have scheduled for one day, in UTC, as on Mastodon. */
+/** Mastodon's limit on how many statuses one account may have scheduled for one day, in UTC. */
 const dailyLimit = 25;
 
 /**
- * Refuses to schedule one of `accountId`'s statuses, other than `exceptId`, for `scheduledAt`, as
- * Mastodon does, and in its words: too soon, or past either limit.
+ * Refuses to schedule one of `accountId`'s statuses, other than `exceptId`, for `scheduledAt` if it
+ * is too soon or past either limit. The messages are Mastodon's.
  */
 const checkSchedule = async (
     ctx: Context,
@@ -68,10 +68,10 @@ export const scheduleNote = (
     params: ScheduledParams,
 ): Promise<ScheduledNoteRow | undefined> =>
     ctx.transaction(async (tx) => {
-        // So that two at once can't both be within the limits.
+        // So that two statuses scheduled at once can't both be within the limits.
         await lockKey(tx.db, `schedule:${accountId}`);
 
-        // Each once, as they are reserved and attached.
+        // Each once, because each is reserved and attached once.
         const mediaIds = [...new Set(params.media_ids ?? [])];
         const replyTo = params.in_reply_to_id;
         if (replyTo !== null && await visibleOriginal(tx, replyTo, accountId) === undefined) {

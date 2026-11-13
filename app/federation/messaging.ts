@@ -1,8 +1,7 @@
 /**
  * Instance messaging: instances tell each other, in plain text, why something the other sent
- * failed, as Versia specifies for debugging federation. Messages Verso receives are only logged,
- * for admins to read, and it sends messages to instances that accept them when it gives up on
- * something they sent.
+ * failed, to help debug federation. Messages Verso receives are only logged, for admins to read,
+ * and it sends messages to instances that accept them when it gives up on something they sent.
  * @see https://versia.pub/extensions/instance-messaging
  * @module
  */
@@ -88,9 +87,9 @@ export const queueMessage = async (ctx: Context, domain: string, text: string): 
 };
 
 /**
- * Runs message jobs: posts each message to its instance, unsigned, as Versia specifies. One to an
- * instance blocked since is dropped. If the instance rejects it with a 4xx, it is given up on; any
- * other failure is retried a few times.
+ * Runs message jobs: posts each message to its instance, unsigned. One to an instance blocked since
+ * is dropped. If the instance rejects it with a 4xx, it is given up on; any other failure is
+ * retried a few times.
  */
 export const messageHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = MessageJob.safeParse(job.payload);

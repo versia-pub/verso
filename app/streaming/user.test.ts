@@ -32,7 +32,7 @@ const open = async () => {
     dispatch.listen(shared);
     for (const id of ["alice", "bob", "carol"]) await createLocalAccount(test.ctx, id);
     await follow(test.ctx, "alice", "bob");
-    // What failed to stream, which nothing should.
+    // What failed to stream. Nothing should.
     const failed: LogRecord[] = [];
     await configure({
         reset: true,
@@ -44,8 +44,9 @@ const open = async () => {
     });
 
     /**
-     * What `accountId` is sent on `streams`, as each event's stream, type, and status or id. Its
-     * session is added to the test's user streams, or `options.sessions`.
+     * Opens a session of `accountId` on `streams` and records what it is sent: each event's stream,
+     * type, and status or id. The session is added to the test's user streams, or
+     * `options.sessions`.
      */
     const streaming = (
         accountId: string,
@@ -108,7 +109,7 @@ const open = async () => {
         return note.id;
     };
 
-    /** User streams of their own, and how many queries they have made. */
+    /** User streams of their own, with a count of the queries they have made. */
     const counted = () => {
         let queries = 0;
         const db = test.ctx.db.withPlugin({
@@ -199,7 +200,7 @@ Deno.test("every user on the user stream is told of announcements as they are pu
     const told = [["user", "announcement", shown.id], ["user", "announcement.delete", shown.id]];
     assertEquals([alice.sent, carol.sent, dave.sent], [told, told, told]);
     assertEquals([notifications.sent, elsewhere.sent], [[], []]);
-    // Telling of an announcement taken down looks nothing up.
+    // Telling of a taken down announcement looks nothing up.
     assertEquals(rendering > 0, true);
     assertEquals(queries(), rendering);
 });
@@ -223,7 +224,7 @@ Deno.test("every user on the user stream is told of the reactions to announcemen
         () => unreactToAnnouncement(test.ctx, "alice", id, "verso"),
         () => unreactToAnnouncement(test.ctx, "bob", id, "verso"),
         () => unreactToAnnouncement(test.ctx, "bob", id, "👍"),
-        // Nobody is told of what failed, or that an announcement that isn't published has any.
+        // Nobody is told of reactions that failed, or of reactions to an unpublished announcement.
         () => reactToAnnouncement(test.ctx, "bob", draft.id, "👍"),
         () => reactToAnnouncement(test.ctx, "bob", id, "nobody"),
     ];
@@ -248,7 +249,7 @@ Deno.test("every user on the user stream is told of the reactions to announcemen
     ]);
     assertEquals(notifications.sent, []);
 
-    // Nor of reactions to one that was taken down or deleted since.
+    // Nobody is told of reactions to an announcement taken down or deleted since, either.
     await unpublishAnnouncement(test.ctx, id);
     alice.sent.length = 0;
     for (const announcementId of [id, draft.id, "nothing"]) {
@@ -302,7 +303,7 @@ Deno.test("a user is sent their notifications on each stream for them, if their 
     const statuses = test.streaming("alice", ["user"], { scopes: ["read:statuses"] });
 
     const note = await test.post("carol", "Hi @alice");
-    // Of bob's, not alice's.
+    // This one is bob's notification, not alice's.
     await test.post("carol", "Hi @bob");
 
     assertEquals(both.sent, [["user:notification", "notification", note], [
@@ -394,8 +395,8 @@ Deno.test("a status is looked up for its author and their followers only, once f
     await using test = await open();
     const one = test.counted();
     test.streaming("alice", ["user"], { sessions: one.sessions });
-    // alice twice more, asked about once, and as many who don't follow bob, nor exist, as one
-    // query asks about with her.
+    // alice twice more, who is asked about once, and as many viewers who neither follow bob nor
+    // exist as one query asks about together with her.
     const many = test.counted();
     const viewers = ["alice", "alice", ...Array.from({ length: 999 }, (_, n) => `nobody${n}`)];
     const sent = viewers.map((accountId) =>

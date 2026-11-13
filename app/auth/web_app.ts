@@ -12,7 +12,7 @@ export type WebAppChange = "added" | "updated" | "unchanged";
 /**
  * Registers Verso's own web app, or brings it up to date. It is a public client with every scope,
  * which sends users back only to this instance's `/oauth/web-callback`. Users aren't asked to
- * allow it, as in Mastodon, whose own web app is trusted the same way.
+ * allow it, because Mastodon's own web app is trusted the same way.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/config/initializers/doorkeeper.rb
  */
 export const ensureWebApp = async (

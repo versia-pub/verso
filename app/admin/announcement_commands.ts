@@ -15,7 +15,7 @@ import {
 } from "../announcements/announcements.ts";
 import { AdminError, type AdminIo, missingCommand } from "./admin_io.ts";
 
-/** A time, as ISO 8601 writes it, such as `2026-11-01T18:00:00Z`, or `none` for none. */
+/** A time in ISO 8601, like `2026-11-01T18:00:00Z`, or `none` for none. */
 const timeArgument = ({ label, name, value }: ArgumentValue): Date | null => {
     if (value === "none") return null;
 

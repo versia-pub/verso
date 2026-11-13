@@ -4,7 +4,7 @@ import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 import type { AccountIdQuery } from "./follow_queries.ts";
 
-/** Instance ids, as a subquery. */
+/** A subquery of instance ids. */
 export type InstanceIdQuery = SelectQueryBuilder<Database, keyof Database, { instance_id: string }>;
 
 /**
@@ -49,7 +49,7 @@ export type Filter = <DB, TB extends keyof DB>(
     eb: ExpressionBuilder<DB, TB>,
 ) => Expression<SqlBool>;
 
-/** Whether the account whose id is in `column`, such as `likes.account_id`, is among `excluded`. */
+/** Whether the account whose id is in `column`, like `likes.account_id`, is among `excluded`. */
 export const isExcluded =
     (excluded: Excluded, column: string): Filter =>
     <DB, TB extends keyof DB>(eb: ExpressionBuilder<DB, TB>): Expression<SqlBool> =>

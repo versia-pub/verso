@@ -1,6 +1,6 @@
 /**
- * Shares as Versia has them: local users' boosts, as remote instances fetch them and are sent them,
- * with the collection of who boosts a status, and remote boosts, as Verso receives them.
+ * Shares in Versia: local users' boosts, which remote instances fetch and are sent, with the
+ * collection of who boosts a status, and remote boosts, which Verso receives.
  * @see https://versia.pub/extensions/share
  * @module
  */
@@ -125,9 +125,9 @@ const wanted = async (ctx: Context, share: v0_6.Share, sender: Sender) => {
 };
 
 /**
- * Shares: remote ones, as remote instances send them, and Deletes undo them, and local users' ones,
- * which remote instances that may see them fetch. Verso stores those it wants, with the statuses
- * they boost, which are fetched for the timelines they are shown in.
+ * Shares that remote instances send, which Deletes undo, and local users' Shares, which remote
+ * instances that may see them fetch. Verso stores those it wants, with the statuses they boost,
+ * which are fetched for the timelines they are shown in.
  */
 export const shareType: EntityType<v0_6.Share> = {
     type: typeName,
@@ -153,7 +153,7 @@ export const shareType: EntityType<v0_6.Share> = {
 
         const note = await knownNoteRow(ctx, parseReference(share.shared, sender.domain));
         if (note === undefined) throw new PermanentFailure(`Verso doesn't have ${share.shared}`);
-        // As for local users' boosts.
+        // Remote users may boost only public and unlisted statuses too.
         if (!everyone.includes(note.visibility)) {
             throw new PermanentFailure(`${share.shared} can't be shared`);
         }

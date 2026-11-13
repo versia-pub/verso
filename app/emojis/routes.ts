@@ -22,8 +22,9 @@ const versiaServerEmojis =
     "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/emojis";
 
 /**
- * An emoji's fields as Versia Server accepts them, with a picture at most as large as `media`
- * allows, named as text can use it, at most as long as Versia Server allows.
+ * An emoji's fields, as Versia Server's routes take them. The picture is at most as large as
+ * `media` allows. The shortcode is one that text can use, and at most as long as Versia Server
+ * allows.
  */
 const emojiFields = (media: MediaLimits, limits: Limits) => ({
     shortcode: z.string()
@@ -40,7 +41,7 @@ const emojiFields = (media: MediaLimits, limits: Limits) => ({
 
 const EmojiId = z.object({ id: z.string() });
 
-/** Who is asking, as the emoji services need them. */
+/** The editor the emoji services take, for `viewer`. */
 const editorOf = async (viewer: RouteViewer & { readonly accountId: string }) => ({
     accountId: viewer.accountId,
     managesEmojis: (await viewer.permissions()).has("emojis"),

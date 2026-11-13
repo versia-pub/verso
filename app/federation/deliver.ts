@@ -46,7 +46,8 @@ export const FanOutJob = z.object({
     /** An account whose followers' instances are sent it too, found when the job runs. */
     followersOf: z.string().optional(),
     /**
-     * Whether the followers that account blocks are left out, as for its followers-only statuses.
+     * Whether the followers that account blocks are left out, as they are for its
+     * followers-only statuses.
      */
     unblockedFollowers: z.boolean().optional(),
     /** Whether every instance Verso knows is sent it, as they are when the job runs. */
@@ -108,10 +109,9 @@ export const queueDeliveriesTo = async (
 };
 
 /**
- * Queues `entity` for delivery to each instance that hosts any of `recipients`, which are account
- * ids, as {@link queueDeliveriesTo} does. Local accounts need nothing delivered. This is for a few
- * accounts, such as those mentioned by a status; an account's followers are found through their
- * instances instead.
+ * Queues `entity` with {@link queueDeliveriesTo} for each instance that hosts any of the account
+ * ids in `recipients`. Local accounts need nothing delivered. This is for a few accounts, like
+ * those mentioned by a status; an account's followers are found through their instances instead.
  */
 export const queueDeliveries = async (
     ctx: Context,
@@ -135,8 +135,8 @@ export const audienceInstances = async (ctx: Context, audience: Audience): Promi
 };
 
 /**
- * The domains a fan-out job sends to: each of its instances that is a Versia instance, and isn't
- * blocked, nor couldn't be reached for as long as the settings say, as on Mastodon, until it is
+ * The domains a fan-out job sends to: each of its instances that is a Versia instance and isn't
+ * blocked. One that couldn't be reached for as long as the settings say is left out until it is
  * heard from again.
  */
 const domainsOf = async (ctx: Context, job: FanOutJob) => {
@@ -172,9 +172,9 @@ const withheld = async (ctx: Context, bodyId: string) => {
 /**
  * Runs fan-out jobs: queues a delivery of the entity to each instance it goes to, grouped by
  * instance so each can be rate limited, or deletes the entity if it goes to none, or is by a
- * suspended or removed user, unless it deletes something. A job run again
- * doesn't queue a delivery that is still queued, but may queue one that was already sent again.
- * The deliveries are due when the job was queued, so the entities queued earlier are sent first.
+ * suspended or removed user, unless it deletes something. A job run again doesn't queue a delivery
+ * that is still queued, but may queue one that was already sent again. The deliveries are due when
+ * the job was queued, so the entities queued earlier are sent first.
  */
 export const fanOutHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = FanOutJob.safeParse(job.payload);
@@ -206,8 +206,8 @@ export const fanOutHandler: Handler = async (ctx: Context, job: JobsTable): Prom
 };
 
 /**
- * The entity a delivery job sends, and when it was queued, or undefined if it was deleted, as it is
- * once its deliveries are given up on.
+ * The entity a delivery job sends, and when it was queued. It is `undefined` if the entity was
+ * deleted, which happens once its deliveries are given up on.
  */
 export const deliveryBody = async (
     ctx: Context,

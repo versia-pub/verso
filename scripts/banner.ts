@@ -1,8 +1,8 @@
 /**
  * Makes a Versia-branded banner for a README: the Versia logo, a title and a tagline. The text is
- * turned into paths, since GitHub shows an SVG as an image, which can't load fonts. Run it with
- * `nix run .#banner`, which provides Inkscape and the Inter font, or from another project with
- * `nix run github:versia-pub/verso#banner`.
+ * turned into paths, because GitHub shows an SVG as an image, and an image can't load fonts. Run
+ * it with `nix run .#banner`, which provides Inkscape and the Inter font, or from another project
+ * with `nix run github:versia-pub/verso#banner`.
  */
 
 const usage =
@@ -14,7 +14,7 @@ a README can show each with a <picture> element and prefers-color-scheme.`;
 const width = 1280;
 const height = 400;
 
-/** Where the text starts, right of the logo, and how far it may reach, as far from the edge. */
+/** Where the text starts, to the right of the logo, and the furthest right it may reach. */
 const textLeft = 352;
 const textRight = width - 104;
 
@@ -36,7 +36,7 @@ type Theme = {
     readonly tagline: string;
 };
 
-/** The logo's tile is the same in both, as it is Versia's colour. */
+/** The logo's tile is Versia's colour, so it is the same in both themes. */
 const themes: Record<string, Theme> = {
     light: {
         background: "#F6EEFA",
@@ -200,7 +200,7 @@ const lines: Line[] = [
         spacing: -4,
         fill: theme.title,
     },
-    // Moved right a little, as the title's first letter has more space on its left than small text.
+    // Moved right a little: the title's first letter has more space on its left than small text.
     {
         id: "tagline",
         text: tagline,

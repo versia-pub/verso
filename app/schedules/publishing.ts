@@ -19,7 +19,8 @@ const batch = 100;
 
 /**
  * Posts `row`, once: the scheduled status is removed in the transaction that posts it. One that
- * can't be posted any more, such as a reply to a status since deleted, is dropped, as on Mastodon.
+ * can't be posted any more, like a reply to a status that was deleted, is dropped. Mastodon drops
+ * it too.
  */
 const publish = async (ctx: Context, row: ScheduledNoteRow) => {
     try {

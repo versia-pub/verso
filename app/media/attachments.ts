@@ -1,7 +1,7 @@
 /**
  * Media attached to statuses. Each attachment is an upload by the status's author, attached to at
- * most one status, and only once it is processed (unless processing failed). Uploads can also be
- * reserved for a scheduled status, until it is posted with them.
+ * most one status, and only once it is processed without failing. Uploads can also be reserved for
+ * a scheduled status, until it is posted with them.
  * @module
  */
 import { Unprocessable } from "../http/errors.ts";
@@ -20,7 +20,7 @@ import { describeUpload, processingFailed, type UploadDescription } from "./uplo
 
 /**
  * The uploads `mediaIds`, each once, in order, if each is an upload by `accountId` that is neither
- * attached to a status nor reserved for a scheduled one, and is processed, as Mastodon requires.
+ * attached to a status nor reserved for a scheduled one, and is processed, which Mastodon requires.
  * @see https://docs.joinmastodon.org/methods/statuses/#create
  */
 const usableUploads = async (
@@ -51,9 +51,9 @@ const usableUploads = async (
 };
 
 /**
- * Attaches the uploads `mediaIds`, in that order, to the status `noteId` by `accountId`, as
- * Mastodon does. Each must be usable, as {@link usableUploads} says. An id given twice is attached
- * once. Run it in the transaction that creates the status; it ends the transaction otherwise.
+ * Attaches the uploads `mediaIds`, in that order, to the status `noteId` by `accountId`. Each must
+ * be usable, see {@link usableUploads}. An id given twice is attached once. Run it in the
+ * transaction that creates the status; it ends the transaction otherwise.
  */
 export const attach = async (
     ctx: Context,
@@ -67,8 +67,8 @@ export const attach = async (
 /**
  * Reserves the uploads `mediaIds`, in that order, for the scheduled status `scheduledId` by
  * `accountId`, so that nothing else attaches them and they aren't removed as unused. Each must be
- * usable, as for {@link attach}. An id given twice is reserved once. The reservation ends with the
- * scheduled status, so they can be attached when it is posted.
+ * usable, see {@link usableUploads}. An id given twice is reserved once. The reservation ends with
+ * the scheduled status, so they can be attached when it is posted.
  */
 export const reserve = async (
     ctx: Context,
@@ -116,11 +116,10 @@ export const changesAttachments = (
 };
 
 /**
- * Replaces the media attached to the status `noteId` by `accountId` with `mediaIds`, as {@link
- * attach} does. If `mediaIds` is `undefined`, the media is kept. Then applies the description
- * `changes` to the attached media, as Mastodon does. Media that is no longer attached can be
- * attached again, or is removed along with other unattached uploads. Run it in the transaction that
- * edits the status.
+ * Replaces the media attached to the status `noteId` by `accountId` with `mediaIds`, like {@link
+ * attach}. If `mediaIds` is `undefined`, the media is kept. Then applies the description `changes`
+ * to the attached media. Media that is no longer attached can be attached again, or is removed
+ * along with other unattached uploads. Run it in the transaction that edits the status.
  * @see https://docs.joinmastodon.org/methods/statuses/#edit
  */
 export const reattach = async (

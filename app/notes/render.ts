@@ -204,12 +204,12 @@ const blockedAmong = async (
  * Renders statuses in the order given, as each of `viewerIds` sees them, or as anyone sees them for
  * `null`, by viewer. Each status's author must exist, which the database guarantees. A boost has
  * the status it boosts as its `reblog`, and is omitted if the viewer may not see that. A remote
- * status shows the larger of Verso's own count and the count its instance reports, as Mastodon
- * does. The likes, boosts and reactions of the accounts the viewer blocks aren't counted. A viewer
- * is told which of their filters each status matches. With `source`, statuses carry the text their
- * authors wrote, as Mastodon returns a deleted status for redrafting. A status that quotes another
- * has it as its `quote`, which is shown by id only if `nested`, as it is inside a quote, so a quote
- * goes no deeper.
+ * status shows the larger of Verso's own count and the count its instance reports. The likes,
+ * boosts and reactions of the accounts the viewer blocks aren't counted. A viewer is told which of
+ * their filters each status matches. With `source`, statuses carry the text their authors wrote.
+ * Mastodon returns a deleted status this way, for redrafting. A status that quotes another has it
+ * as its `quote`, which is shown by id only if `nested`, as it is inside a quote, so a quote goes
+ * no deeper.
  *
  * What is the same for every viewer is looked up once, and what isn't, for all of them together,
  * except whether each may see a boosted or quoted status, and for those that block some who liked,
@@ -339,7 +339,7 @@ export const renderStatusesFor = async (
                     (uncounted.get(viewerId)?.likes.get(note.id) ?? 0),
                 replies_count: Math.max(note.replies_count, totals.get(note.id)?.replies ?? 0),
                 quotes_count: quoted.get(note.id) ?? 0,
-                // As on Mastodon, a boost has no page of its own, so it links to its Versia entity.
+                // A boost has no page of its own, so it links to its Versia entity.
                 url: note.reblog_of_id === null
                     ? statusUrl(ctx, author, note.id)
                     : noteUri(ctx, note, domain).href,
@@ -364,7 +364,7 @@ export const renderStatusesFor = async (
         });
         if (viewerId === null) return rendered;
 
-        // A boost and the status it boosts match the same filters, as on Mastodon.
+        // A boost and the status it boosts match the same filters.
         const active = filters.get(viewerId) ?? [];
         return rendered.map((status) => {
             const filtered = filterResults(active, status);

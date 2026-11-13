@@ -1,5 +1,5 @@
 /**
- * How active the instance has been, week by week, as Mastodon reports it.
+ * How active the instance has been, week by week.
  * @see https://docs.joinmastodon.org/methods/instance/#activity
  * @module
  */
@@ -23,7 +23,8 @@ export const weekStart = (time: Date): Date => {
 
 /**
  * Each of the last 12 weeks, the current one first: how many statuses local users posted, how many
- * of them logged in, as access tokens they were issued show, and how many accounts were created.
+ * accounts logged in (judged by the access tokens issued to them), and how many accounts were
+ * created.
  */
 export const weeklyActivity = async (ctx: Context): Promise<WeeklyActivity[]> => {
     const current = weekStart(ctx.clock.now()).getTime();

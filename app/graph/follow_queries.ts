@@ -226,7 +226,7 @@ export const unsilencedRequestIds = async (
         .execute())
         .map((row) => row.follower_id);
 
-/** Every account on one of an account's lists, as a subquery. */
+/** Every account on one of an account's lists. */
 export const everyListedQuery = (
     ctx: Context,
     list: FollowList,
@@ -294,20 +294,20 @@ export const anyFollowerOn = async (
         .executeTakeFirst() !== undefined;
 
 /**
- * The accounts `accountId` follows, as a subquery, for another module to page through what they
- * wrote. Someone can follow more accounts than a query can name, and a page sorted across them all
- * can't be read in batches.
+ * The accounts `accountId` follows, for another module to page through what they wrote. Someone
+ * can follow more accounts than a query can name, and a page sorted across them all can't be read
+ * in batches.
  */
 export const followedIdsQuery = (
     ctx: Context,
     accountId: string,
 ): AccountIdQuery => listed(ctx, "following", accountId).select("followee_id as account_id");
 
-/** The accounts that follow an account, and were accepted, as a subquery. */
+/** The accounts that follow an account, and were accepted. */
 export const followerIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     listed(ctx, "followers", accountId).select("follower_id as account_id");
 
-/** The accounts an account follows and sees the boosts of, as a subquery. */
+/** The accounts an account follows and sees the boosts of. */
 export const sharingIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     listed(ctx, "following", accountId).where("show_reblogs", "=", true)
         .select("followee_id as account_id");

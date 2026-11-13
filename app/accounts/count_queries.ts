@@ -28,7 +28,7 @@ export const countFollow = async (
         .execute();
 };
 
-/** Account ids, as a subquery from another module, such as those an account follows. */
+/** A subquery of account ids, made by another module. */
 export type AccountIds = SelectQueryBuilder<Database, keyof Database, { account_id: string }>;
 
 /** Decrements the follower count of each of `accounts`, as when one of them is deleted. */

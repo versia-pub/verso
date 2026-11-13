@@ -10,7 +10,7 @@ export const ScheduledStatus = z.object({
     id: z.string(),
     /** When it will be posted. */
     scheduled_at: z.iso.datetime(),
-    /** What it will be posted with, as it was scheduled. What is `null` is the author's default. */
+    /** What it will be posted with, as scheduled. A `null` field means the author's default. */
     params: z.object({
         text: z.string(),
         /** Verso's own: how the text is written. */

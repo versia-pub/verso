@@ -1,7 +1,7 @@
 /**
- * Reports as Versia has them: local users' reports of remote accounts, which Verso sends on
- * anonymously when asked, as Mastodon does, and reports from other instances, which are stored for
- * the moderators with no reporter, but the instance that sent them.
+ * Reports as Versia has them. A local user's report of a remote account is sent on anonymously when
+ * they ask, like Mastodon does. A report from another instance is stored for the moderators with no
+ * reporter, but with the instance that sent it.
  * @see https://versia.pub/extensions/reports
  * @see https://docs.joinmastodon.org/methods/reports/#post
  * @module
@@ -22,12 +22,12 @@ import { findReport, insertReceivedReport } from "./report_queries.ts";
 
 const typeName = "pub.versia:reports/Report";
 
-/** The most of a received report's comment that is kept, as on Mastodon. */
+/** Mastodon's limit on the length of a received report's comment, in characters. */
 const commentLimit = 5000;
 
 /**
- * The instances to send a report of `target` on to, of those at `domains`: `target`'s, and those of
- * the remote accounts that the reported `notes` reply to, as Mastodon sends it.
+ * The instances at `domains` to send a report of `target` on to: `target`'s, and those of the
+ * remote accounts that the reported `notes` reply to.
  */
 const forwardInstances = async (
     ctx: Context,
@@ -98,9 +98,9 @@ const reportedBy = async (ctx: Context, report: v0_6.Report, sender: Sender) => 
 
 /**
  * Reports from other instances, which may say who filed them. They are stored without a reporter,
- * as Verso doesn't fetch them, and each reported account gets its own, with those of its statuses
- * the report names that the sender may see, as Mastodon stores them. A remote account is reported
- * only for statuses that reply to local users, which is when Mastodon sends it on to here; a report
+ * because Verso doesn't fetch it. Each reported account gets a report of its own, with those of
+ * its statuses that the report names and the sender may see. A remote account is reported only
+ * for statuses that reply to local users, which is when Mastodon sends it on to here. A report
  * Verso has nothing in is dropped. A comment is cut at {@link commentLimit} characters.
  */
 export const reportType: EntityType<v0_6.Report> = {

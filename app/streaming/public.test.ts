@@ -42,8 +42,9 @@ const open = async (access?: Parameters<typeof publicStreams>[1]) => {
     await createRemoteAccount(test.ctx, "carol", "b.example");
 
     /**
-     * What `accountId` is sent on `streams`, as each event's stream, type, and status or id, and
-     * each status sent. Its session is added to the test's public streams, or `options.sessions`.
+     * Opens a session of `accountId` on `streams` and records what it is sent: each event's stream,
+     * type, and status or id, and each status. The session is added to the test's public streams,
+     * or `options.sessions`.
      */
     const streaming = (
         accountId: string,
@@ -80,7 +81,7 @@ const open = async (access?: Parameters<typeof publicStreams>[1]) => {
         return { sent, statuses, stop: (options.sessions ?? shared).add(viewer, session) };
     };
 
-    /** Public streams of their own, and how many queries they have made. */
+    /** Public streams of their own, with a count of the queries they have made. */
     const counted = () => {
         let queries = 0;
         const db = test.ctx.db.withPlugin({
@@ -108,7 +109,7 @@ const open = async (access?: Parameters<typeof publicStreams>[1]) => {
         return id;
     };
 
-    /** Says the status `noteId` was deleted, as it would if it were `visibility`. */
+    /** Says the status `noteId`, of `visibility`, was deleted. */
     const deleted = async (noteId: string, visibility: Visibility = "public") =>
         await published({
             event: "delete",
@@ -227,9 +228,9 @@ Deno.test("only statuses of the public timeline are sent, and only deletes of pu
     await test.deleted(unlisted, "unlisted");
     await test.deleted(reply);
 
-    // As deleted statuses are gone, a delete is sent on every stream subscribed to.
+    // A deleted status is gone, so its delete is sent on every stream subscribed to.
     assertEquals(alice.sent, everyStream.map((stream) => [stream, "delete", reply]));
-    // Those passed over didn't fail.
+    // Nothing failed on the statuses passed over.
     assertEquals(logged, []);
 });
 
@@ -255,8 +256,8 @@ Deno.test("statuses are rendered as anyone sees them", async () => {
 
     await test.published({ event: "status.update", noteId: note });
 
-    // Without whether it is liked, as nobody is viewing, and with the like of the account alice
-    // blocks.
+    // No `favourited`, because nobody is viewing, and the count includes the like of the account
+    // alice blocks.
     const [, edited] = alice.statuses;
     assertEquals(["favourited" in edited, edited.favourites_count], [false, 2]);
 });

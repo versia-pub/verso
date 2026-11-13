@@ -1,6 +1,6 @@
 /**
- * Pushing users' notifications to the browsers and apps that subscribed to them, with Web Push, as
- * Mastodon does: one job per subscription, each encrypted for it and signed as this instance.
+ * Pushing users' notifications to the browsers and apps that subscribed to them, with Web Push.
+ * There is one job per subscription, encrypted for it and signed as this instance.
  * @see https://docs.joinmastodon.org/methods/push/
  * @see https://www.rfc-editor.org/rfc/rfc8030
  * @module
@@ -33,10 +33,10 @@ export const pushQueue = "push";
 export const PushJob = z.object({ subscriptionId: z.string(), notificationId: z.string() });
 export type PushJob = z.output<typeof PushJob>;
 
-/** How long push services keep a push for a device that is offline, as on Mastodon: two days. */
+/** Mastodon's value for how long push services keep a push for an offline device: two days. */
 const ttlSeconds = 2 * 24 * 60 * 60;
 
-/** Tries a few times, as on Mastodon, since a push is stale soon after. */
+/** Mastodon's number of tries. A push is stale soon after, so there are only a few. */
 const maxAttempts = 5;
 
 /** Whether `subscription` asks for `created`, by its type and by whom it is from. */
@@ -78,7 +78,7 @@ export const queuePushes = async (ctx: Context, event: DomainEvent): Promise<voi
     await enqueueAll(ctx, jobs);
 };
 
-/** Each type's title, as Mastodon's English one. */
+/** Each type's title, in Mastodon's English wording. */
 const titles: Record<NotificationType, (name: string) => string> = {
     mention: (name) => `You were mentioned by ${name}`,
     status: (name) => `${name} just posted`,
@@ -93,7 +93,7 @@ const titles: Record<NotificationType, (name: string) => string> = {
     poll: (name) => `A poll by ${name} has ended`,
 };
 
-/** How long a push's body may be, in characters, as on Mastodon. */
+/** Mastodon's limit on how long a push's body may be, in characters. */
 const bodyLength = 140;
 
 /** `text` cut to at most `bodyLength` characters, as Rails' `truncate` does. */
@@ -105,8 +105,8 @@ const truncate = (text: string) => {
 };
 
 /**
- * What a push says, as Mastodon's do, so clients can show it, or fetch the notification with the
- * token: its title and body in English, as Verso has no other languages yet.
+ * What a push says, so clients can show it, or fetch the notification with the token: its title
+ * and body in English, since Verso has no other languages yet.
  */
 const pushOf = (
     subscription: PushSubscriptionRow,
@@ -132,8 +132,9 @@ const base64url = (bytes: Uint8Array) =>
     bytes.toBase64({ alphabet: "base64url", omitPadding: true });
 
 /**
- * `plaintext` encrypted and signed for `subscription`, as the headers that say how, and the body.
- * Standard subscriptions take RFC 8291 and RFC 8292, and others the drafts Mastodon used before.
+ * The headers that say how `plaintext` is encrypted and signed for `subscription`, and the
+ * encrypted body. Standard subscriptions get RFC 8291 and RFC 8292, and others get the drafts
+ * Mastodon used before.
  * @see https://docs.joinmastodon.org/methods/push/#create
  */
 const encoded = async (
@@ -174,9 +175,8 @@ const encoded = async (
 
 /**
  * Pushes a notification to a subscription, unless either has gone, its user is suspended, or they
- * aren't shown it, such as one from an account they have muted since. A subscription its push
- * service says has gone is deleted, as on Mastodon. A push service that takes too long isn't tried
- * again.
+ * aren't shown it, like one from an account they have muted since. A subscription its push service
+ * says has gone is deleted. A push service that takes too long isn't tried again.
  */
 export const pushHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = PushJob.safeParse(job.payload);

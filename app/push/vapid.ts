@@ -11,7 +11,7 @@ const validMs = 12 * 60 * 60 * 1000;
 
 /**
  * The JWT for a push to `endpoint` at `now`, signed by `key`, and naming `subject`, a URL to reach
- * the instance's admins by, such as its own.
+ * the instance's admins by, like its own.
  * @see https://www.rfc-editor.org/rfc/rfc8292#section-2
  */
 export const vapidJwt = (

@@ -42,7 +42,7 @@ const blockRoute = (action: "block" | "unblock") =>
 const longestMute = 5 * 365 * 24 * 60 * 60;
 
 /**
- * How the viewer mutes an account, as Mastodon accepts it.
+ * How the viewer mutes an account.
  * @see https://docs.joinmastodon.org/methods/accounts/#mute
  */
 const MuteBody = z.object({
@@ -75,8 +75,8 @@ const muteRoute = defineRoute({
 });
 
 /**
- * The domain the viewer blocks or unblocks, as Mastodon accepts it, in any form a domain name can
- * be written in, such as with capitals.
+ * The domain the viewer blocks or unblocks, in any form a domain name can be written in, like with
+ * capitals.
  * @see https://docs.joinmastodon.org/methods/domain_blocks/
  */
 const DomainBody = (description: string) =>

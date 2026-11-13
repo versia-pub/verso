@@ -37,10 +37,10 @@ import { countShare } from "./share_queries.ts";
 import { visibleOriginal } from "./visibility.ts";
 
 /**
- * Counts a status that its author posted, or uncounts one they deleted, as Mastodon does. A direct
- * status isn't counted, and only a public or unlisted status is counted as a reply, so the counts
- * don't reveal statuses that others can't see. A boost is counted as the author's status, and as a
- * boost of the status it boosts.
+ * Counts a status that its author posted, or uncounts one they deleted. A direct status isn't
+ * counted, and only a public or unlisted status is counted as a reply, so the counts don't reveal
+ * statuses that others can't see. A boost is counted as the author's status, and as a boost of the
+ * status it boosts.
  */
 export const countPosted = async (
     ctx: Context,
@@ -86,8 +86,8 @@ const mentionsMs = 15_000;
 /**
  * The accounts that `mentions` refer to, by {@link mentionKey}, fetching remote users if Verso
  * doesn't have them, from one shared budget, so a post can't make Verso fetch without end. Mentions
- * of nonexistent or suspended accounts are dropped, left as plain text, as on Mastodon, and so are
- * those beyond the number of accounts the settings allow.
+ * of nonexistent or suspended accounts are dropped, left as plain text, and so are those beyond the
+ * number of accounts the settings allow.
  */
 const mentioned = async (ctx: Context, mentions: readonly Mention[]) => {
     const budget = fetchBudget(20, ctx.clock.now().getTime() + mentionsMs);
@@ -161,7 +161,7 @@ export const prepareDraft = async (ctx: Context, draft: Draft): Promise<Prepared
  * Returns `undefined` if the status it replies to doesn't exist or `accountId` may not see it.
  * Throws {@link NotFound} if the status it quotes can't be quoted by them. A status that quotes a
  * private one is private too, and a direct one may only quote a status by a user it mentions, or
- * its own author, as on Mastodon.
+ * its own author.
  */
 export const insertDraft = async (
     ctx: Context,
@@ -185,7 +185,7 @@ export const insertDraft = async (
     }
 
     const chosen = draft.visibility ?? author.default_visibility;
-    // A silenced user's public statuses are unlisted, as on Mastodon.
+    // A silenced user's public statuses are unlisted.
     const requested = chosen === "public" && author.silenced_at !== null ? "unlisted" : chosen;
     const visibility = quoted?.visibility === "private" &&
             (requested === "public" || requested === "unlisted")
@@ -297,8 +297,7 @@ export const editNote = async (
             content: edit.text,
             content_format: format,
             spoiler_text: spoilerText,
-            // As on Mastodon, a content warning sent without an explicit sensitivity makes the
-            // status sensitive.
+            // A content warning sent without an explicit sensitivity makes the status sensitive.
             sensitive: spoilerText !== "" ||
                 (edit.sensitive ?? (edit.spoilerText === undefined && note.sensitive)),
             language: edit.language ?? note.language,

@@ -99,7 +99,7 @@ Deno.test("a remote boost is deleted here only, and the status it boosts stays",
 
     assertEquals(await findNote(test.ctx, shared.id), undefined);
     assertEquals((await findNote(test.ctx, note.id))?.id, note.id);
-    // As when its instance deletes it, rather than as if a local user undid it.
+    // Like when its instance deletes it, not like a local user undoing it.
     assertEquals(test.events.map((event) => event.type), ["notes.deleted"]);
     assertEquals(await deletes(test.ctx), []);
 });

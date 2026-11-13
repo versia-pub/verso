@@ -27,7 +27,7 @@ const text = {
 };
 
 /**
- * A poll, limited by `limits`. Its options are trimmed, and blank ones left out, as on Mastodon.
+ * A poll, limited by `limits`. Its options are trimmed, and blank ones left out.
  * @see https://docs.joinmastodon.org/methods/statuses/#form-data-parameters
  */
 const PollDraft = (limits: Limits) =>

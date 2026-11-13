@@ -47,9 +47,9 @@ import { openApiRoute } from "./openapi.ts";
 import type { Route } from "./route.ts";
 
 /**
- * Every module's routes, with what they accept limited by the configured limits, the instance
- * described as configured, and the API documentation, with the OpenAPI document describing them
- * all.
+ * Every module's routes, plus the API documentation and the OpenAPI document that describes them
+ * all. What the routes accept is limited by the configured limits, and the instance is described as
+ * configured.
  */
 export const routes = (settings: AboutSettings): readonly Route[] => {
     const documented = [

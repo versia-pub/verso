@@ -35,7 +35,7 @@ export const trendingTags = async (ctx: Context): Promise<TrendingTag[]> =>
 
 /**
  * The hashtags that at least `accounts` accounts used in public statuses, not boosts, since
- * `since`. Suspended and silenced accounts' statuses don't count, as on Mastodon.
+ * `since`. Suspended and silenced accounts' statuses don't count.
  */
 export const hashtagsUsedBy = async (
     ctx: Context,
@@ -118,9 +118,9 @@ export type StatusCandidate = {
 
 /**
  * The statuses since `since` that could trend, with at least `interactions` likes and boosts:
- * public ones, but not boosts, replies or ones that are sensitive or have a content warning, by
- * local accounts that are discoverable and by remote accounts, which have no say in it, but not by
- * suspended or silenced accounts, as on Mastodon.
+ * public ones, but not boosts, replies or ones that are sensitive or have a content warning. Their
+ * authors are local accounts that are discoverable or remote accounts, which have no say in it, and
+ * aren't suspended or silenced.
  */
 export const statusCandidates = async (
     ctx: Context,

@@ -45,7 +45,7 @@ const ownProfile = async (ctx: Context, viewer: RouteViewer & { readonly account
         await renderFeaturedTags(ctx, await featuredTagsOf(ctx, viewer.accountId)),
     );
 
-/** The most domains an account may name as able to credit it, as Mastodon allows. */
+/** Mastodon's limit on the domains an account may name as able to credit it. */
 const maxAttributionDomains = 100;
 
 /**

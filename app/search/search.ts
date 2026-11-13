@@ -1,6 +1,6 @@
 /**
- * Searching accounts, statuses and hashtags at once, as Mastodon's `/api/v2/search` does, or what a
- * URL names when asked to resolve it.
+ * Searching accounts, statuses and hashtags at once, for `/api/v2/search`, or what a URL names
+ * when asked to resolve it.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/search_service.rb
  * @module
  */
@@ -46,9 +46,9 @@ export type SearchResults = {
 const nothing: SearchResults = { accounts: [], statuses: [], hashtags: [] };
 
 /**
- * What `search` finds, as Mastodon finds it. A URL is all a search that resolves looks for: what
- * it names, on the first page, if it is of the type wanted. Otherwise each type wanted is searched,
- * statuses only for a viewer, skipping `offset` of each only if there is one type.
+ * What `search` finds. A URL is all a search that resolves looks for: what it names, on the first
+ * page, if it is of the type wanted. Otherwise each type wanted is searched, statuses only for a
+ * viewer, skipping `offset` of each only if there is one type.
  */
 export const searchAll = async (ctx: Context, search: ContentSearch): Promise<SearchResults> => {
     const { viewerId, limit } = search;

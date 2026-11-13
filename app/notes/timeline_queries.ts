@@ -46,7 +46,7 @@ const mergePages = (pages: readonly NoteRow[][], page: PageBounds) => {
     const distinct = new Map(pages.flat().map((note) => [note.id, note]));
     const newestFirst = [...distinct.values()].toSorted((a, b) => b.id.localeCompare(a.id));
 
-    // Just after `min_id` are its oldest rows.
+    // The rows right after `min_id` are the oldest.
     return page.min_id === undefined
         ? newestFirst.slice(0, page.limit)
         : newestFirst.slice(-page.limit);
@@ -98,13 +98,12 @@ export type HomeSources = {
 /**
  * The statuses on `viewerId`'s home timeline: all their own statuses and boosts, the statuses of
  * the accounts they follow that they may see, and the boosts of those whose boosts they see, but
- * for the accounts in their exclusive lists, as on Mastodon. Of those statuses, a direct one must
- * mention them, and a reply must be to them or to someone they follow, with its author among them,
- * as on Mastodon. Nothing from the accounts they block or mute, or from suspended accounts, is
- * included, nor anyone's boosts of their statuses. The public statuses that use the hashtags they
- * follow are included too, replies as well, as on Mastodon. They are four queries, so each can use
- * the index that suits it, however many accounts and hashtags they follow. A status can be in more
- * than one of them.
+ * for the accounts in their exclusive lists. Of those statuses, a direct one must mention them, and
+ * a reply must be to them or to someone they follow, with its author among them. Nothing from the
+ * accounts they block or mute, or from suspended accounts, is included, nor anyone's boosts of
+ * their statuses. The public statuses that use the hashtags they follow are included too, replies
+ * as well. They are four queries, so each can use the index that suits it, however many accounts
+ * and hashtags they follow. A status can be in more than one of them.
  */
 const homeQueries = (ctx: Context, viewerId: string, sources: HomeSources) => {
     const { followed, blockers, sharing, followedTags, exclusive, hidden } = sources;
@@ -191,12 +190,12 @@ export type ListSources = {
 };
 
 /**
- * The statuses on one of `ownerId`'s lists, as Mastodon fills it: the statuses of its members, but
- * direct ones and the followers-only ones of members who block the owner and don't mention it, and
- * the boosts of those whose boosts the owner sees, or the owner's. A reply must be to its own
- * author, to the owner, or as the list's replies policy allows, to someone the owner follows or to
- * a member. Nothing from the accounts the owner blocks or mutes, or from suspended accounts, is
- * included, nor anyone's boosts of their statuses. They are two queries, as on home.
+ * The statuses on one of `ownerId`'s lists: the statuses of its members, but direct ones and the
+ * followers-only ones of members who block the owner and don't mention it, and the boosts of those
+ * whose boosts the owner sees, or the owner's. A reply must be to its own author, to the owner, or
+ * as the list's replies policy allows, to someone the owner follows or to a member. Nothing from
+ * the accounts the owner blocks or mutes, or from suspended accounts, is included, nor anyone's
+ * boosts of their statuses. They are two queries, as on home.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/feed_manager.rb
  */
 const listQueries = (ctx: Context, ownerId: string, sources: ListSources) => {
@@ -262,8 +261,8 @@ export type Origin = "all" | "local" | "remote";
 
 /**
  * The statuses on the public timeline: public statuses, without replies (except replies to their
- * own authors) or boosts, and none of suspended or silenced accounts', as on Mastodon. If there is
- * a viewer, the statuses of the accounts they block or mute, `hidden`, are omitted.
+ * own authors) or boosts, and none of suspended or silenced accounts'. If there is a viewer, the
+ * statuses of the accounts they block or mute, `hidden`, are omitted.
  */
 const publicQuery = (ctx: Context, hidden: Excluded | null) => {
     const query = ctx.db.selectFrom("notes").selectAll()
@@ -340,7 +339,7 @@ export const usesAny = (names: readonly string[]): NoteCondition => (eb) =>
     );
 
 /**
- * The statuses that could be on a hashtag's timeline: public ones, replies too, as on Mastodon.
+ * The statuses that could be on a hashtag's timeline: public ones, replies too.
  * Boosts use no hashtags, so are on none, and leaving them out lets the public timelines' index
  * find the rest. Suspended and silenced accounts' are left out. If there is a viewer, the statuses
  * of the accounts they block or mute, `hidden`, are omitted.
@@ -354,9 +353,9 @@ const hashtagQuery = (ctx: Context, hidden: Excluded | null) => {
 };
 
 /**
- * A page of a hashtag's timeline, newest first, as Mastodon assembles it: the statuses
- * {@link hashtagQuery} finds that use the hashtags `tags` asks for, from `origin`, and with
- * `onlyMedia`, only those with media attached.
+ * A page of a hashtag's timeline, newest first, of the statuses {@link hashtagQuery} finds that use
+ * the hashtags `tags` asks for, from `origin`, and with `onlyMedia`, only those with media
+ * attached.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/tag_feed.rb
  */
 export const hashtagPage = async (

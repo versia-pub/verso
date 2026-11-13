@@ -1,8 +1,8 @@
 /**
  * Direct conversations: for each local user, the direct statuses they posted or were mentioned in,
- * grouped by thread and by who else is in them, as Mastodon has them. A user is added to one as
- * they would be notified of the status, and the user who posts a status has read it. Each change to
- * one that is still there is published, so that the user's apps are told on their `direct` streams.
+ * grouped by thread and by who else is in them. A user is added to one as they would be notified of
+ * the status, and the user who posts a status has read it. Each change to one that is still there
+ * is published, so that the user's apps are told on their `direct` streams.
  * @see https://docs.joinmastodon.org/methods/conversations/
  * @module
  */
@@ -40,9 +40,9 @@ const changed = (ctx: Context, row: ConversationRow) =>
     publish(ctx, conversationChanged, { accountId: row.account_id, conversationId: row.id });
 
 /**
- * Adds the direct status `noteId` to the conversations of its local author and the local users it
- * mentions, as on Mastodon: those it notified, unless their policies filtered the mention, and who
- * don't hide its author.
+ * Adds the direct status `noteId` to the conversations of its local author and of the local users
+ * it mentions. A mentioned user gets it only if the mention notified them, so not if their policy
+ * filtered it, and only if they don't hide its author.
  */
 const addNote = async (ctx: Context, noteId: string) => {
     const note = await findNote(ctx, noteId);

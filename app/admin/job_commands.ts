@@ -28,7 +28,7 @@ const selectionOf = (ids: readonly string[], queue: string | undefined): DeadSel
 
 /**
  * Why the dead letters of `queue` can't run again, if they can't: the worker doesn't run it, or
- * they keep only a summary of their payload, as deliveries do.
+ * they keep only a summary of their payload, like deliveries do.
  */
 const whyNotRetried = (queue: string): string | undefined => {
     const runs = Object.hasOwn(queues, queue) ? queues[queue] : undefined;

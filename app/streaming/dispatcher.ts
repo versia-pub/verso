@@ -1,10 +1,10 @@
 /**
- * Giving a process's streaming sessions what they stream (statuses, notifications, filter changes,
- * conversations, merged notification requests, announcements and reactions to them), from one
- * subscription to each channel rather than one for every session, through a listener for each kind
- * of stream. Messages are handled one at a time, in the order they are heard, so a session is never
- * sent a status's delete before its update, and what published them doesn't wait for them to be
- * streamed.
+ * Giving a process's streaming sessions what they stream: statuses, notifications, filter changes,
+ * conversations, merged notification requests, announcements and reactions to them. It subscribes
+ * once to each channel, not once for every session, and passes each message to a listener for each
+ * kind of stream. Messages are handled one at a time, in the order they are heard, so a session is
+ * never sent a status's delete before its update. What published a message doesn't wait for it to
+ * be streamed.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
@@ -29,7 +29,7 @@ import { notificationsMerged, type NotificationsMergedMessage } from "../notific
 import type { Session } from "./session.ts";
 import { type StatusMessage, statusMessages } from "./statuses.ts";
 
-/** What a kind of stream sends its sessions of each message, as its module decides. */
+/** How a kind of stream sends its sessions each kind of message it handles. */
 export type Listener = {
     readonly statuses?: (message: StatusMessage) => Promise<void>;
     readonly notifications?: (message: NotifiedMessage) => Promise<void>;
@@ -43,14 +43,14 @@ export type Listener = {
 /** A session's viewer, who is logged in. */
 export type StreamViewer = RouteViewer & { readonly accountId: string };
 
-/** What a process's sessions are sent of a kind of stream, for those added to it. */
+/** A listener that sends a kind of stream to the sessions added to it. */
 export type Sessions = Listener & {
-    /** Adds `session` of `viewer`, until the function returned is called. */
+    /** Adds `session` of `viewer`. Calling the function returned removes it. */
     readonly add: (viewer: StreamViewer, session: Session) => () => void;
 };
 
 export type Dispatcher = {
-    /** Gives `listener` each message from now on, until the function returned is called. */
+    /** Gives `listener` each message from now on. Calling the function returned stops that. */
     readonly listen: (listener: Listener) => () => void;
     /** Resolves once every message heard so far is handled. */
     readonly idle: () => Promise<void>;
@@ -101,7 +101,7 @@ export const dispatcher = (ctx: Context): Dispatcher => {
 
         waiting++;
         handled = handled.then(async () => {
-            // One for each kind of stream, so all at once.
+            // There is one listener for each kind of stream, so run them all at once.
             await atMost(listeners.size, [...listeners], run);
             waiting--;
         });

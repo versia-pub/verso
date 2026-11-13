@@ -1,5 +1,5 @@
 /**
- * Pins: statuses that their authors feature on their profiles, as Mastodon has them.
+ * Pins: statuses that their authors feature on their profiles.
  * @see https://docs.joinmastodon.org/methods/statuses/#pin
  * @module
  */
@@ -8,7 +8,7 @@ import type { NoteRow } from "./note_queries.ts";
 import { visibleNote } from "./visibility.ts";
 import { countPins, deletePin, insertPin, pinnedAmong } from "./pin_queries.ts";
 
-/** How many statuses an account may pin, as on Mastodon. */
+/** Mastodon's limit on how many statuses an account may pin. */
 export const pinLimit = 5;
 
 /**

@@ -135,9 +135,8 @@ const mayBeWanted = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
 };
 
 /**
- * The time a remote status's id has: when it was made, so that it sorts by its date, as on
- * Mastodon, however late Verso fetched it, but not after now, nor before 1970, which ids can't
- * hold.
+ * The time a remote status's id has: when it was made, so that it sorts by its date however late
+ * Verso fetched it, but not after now, nor before 1970, which ids can't hold.
  */
 const idTimeOf = (ctx: Context, createdAt: Date): Date =>
     new Date(Math.min(Math.max(createdAt.getTime(), 0), ctx.clock.now().getTime()));

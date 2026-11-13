@@ -33,11 +33,11 @@ export const remoteMediaQueue = "remote-media";
 
 const CacheJob = z.object({ mediaId: z.string(), url: z.string() });
 
-/** The largest video or audio file that is cached, as on Mastodon. */
+/** Mastodon's limit on the size of a video or audio file that is cached. */
 const playableBytes = 99 * 1024 * 1024;
 
 /**
- * Stores remote media for the instance `instanceId`, as {@link storeRemoteMedia} does, and queues
+ * Stores remote media for the instance `instanceId`, like {@link storeRemoteMedia}, and queues
  * caching its file, if it is cached, and the removal of the cached files it stopped using. Returns
  * its id.
  */
@@ -154,7 +154,7 @@ const cache = async (
     const picture = pictureTypes.has(row.media_type);
     const fetched = await fetchLimited(ctx, new URL(row.url), {
         accept: picture ? "image/*" : row.media_type,
-        // What it is is told by its bytes, or else by what its instance said.
+        // Its type comes from its bytes, or else from what its instance said.
         approves: () => true,
         limit: picture ? ctx.settings.maxUploadBytes : playableBytes,
     });
@@ -208,8 +208,8 @@ export const cacheNow = async (
 };
 
 /**
- * Caches the remote media in the job, as {@link cacheNow} does, unless it was cached already, or
- * its URL changed, which queues caching the new one.
+ * Caches the remote media in the job, like {@link cacheNow}, unless it was cached already, or its
+ * URL changed, which queues caching the new one.
  */
 export const remoteMediaHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = CacheJob.safeParse(job.payload);

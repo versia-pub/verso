@@ -95,7 +95,7 @@ const createFamily = {
     },
 };
 
-/** Rebuilds `parents`, as SQLite needs to change a table, copying the rows that `copy` selects. */
+/** Rebuilds `parents` the way SQLite changes a table, copying the rows that `copy` selects. */
 const rebuildParents = (copy: string) => ({
     up: async (db: Kysely<unknown>) => {
         await sql`create table parents_new (id text primary key, name text)`.execute(db);

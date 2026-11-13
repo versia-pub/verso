@@ -1,6 +1,6 @@
 /**
- * Likes and dislikes as Versia has them: local users' likes, as remote instances fetch them and are
- * sent them, with the collections of who likes what, and remote likes, as Verso receives them.
+ * Likes and dislikes in Versia: local users' likes, which remote instances fetch and are sent, with
+ * the collections of who likes what, and remote likes, which Verso receives.
  * @see https://versia.pub/extensions/likes
  * @module
  */
@@ -135,7 +135,7 @@ export const userLikeCollections: Readonly<Record<string, CollectionProvider>> =
     [collectionNames.dislike]: userLikes("dislike"),
 };
 
-/** A Like or Dislike, with the status it is of under one name. */
+/** The author and the status of a Like or Dislike, under one name for both. */
 type Liking = { readonly author: string; readonly note: string };
 
 /** The status `liked`, in a like sent by `sender`, if Verso has it. */
@@ -189,8 +189,8 @@ const likingType = <T extends v0_6.Like | v0_6.Dislike>(
 });
 
 /**
- * Likes and dislikes, as remote instances send them, and Deletes undo them, and local users' likes,
- * which remote instances that may see their statuses fetch.
+ * Likes and dislikes that remote instances send, which Deletes undo, and local users' likes, which
+ * remote instances that may see their statuses fetch.
  */
 export const likeTypes: readonly EntityType[] = [
     {

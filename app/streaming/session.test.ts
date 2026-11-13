@@ -37,7 +37,7 @@ Deno.test("a client subscribes to streams once each, when it connects or later, 
     send(
         { type: "subscribe", stream: "public:local" },
         { type: "subscribe", stream: "user" },
-        // The first, as on Mastodon.
+        // Only the first counts.
         { type: "subscribe", stream: ["user:notification", "public"] },
     );
     assertEquals(session.streams(), ["user", "public:local", "user:notification"]);
@@ -135,13 +135,13 @@ Deno.test("a client subscribes to hashtags' streams, whatever their case, if it 
         { type: "subscribe", stream: ["hashtag", "hashtag:local"], tag: "Rust" },
         { type: "subscribe", stream: "hashtag" },
         { type: "subscribe", stream: "hashtag:local", tag: "" },
-        // Only hashtags' streams have one.
+        // Only hashtags' streams take a tag.
         { type: "subscribe", stream: "public", tag: "nix" },
     );
     assertEquals(session.streams(), ["hashtag#nix", "hashtag:local#nix", "hashtag#rust", "public"]);
     assertEquals(sent, [missing, missing]);
 
-    // Named as the client first wrote them.
+    // Events name hashtags as the client first wrote them.
     sent.length = 0;
     session.deliver(["hashtag#nix", "hashtag#rust", "public"], "update", "{}");
     assertEquals(sent.map((event) => (event as { stream: string[] }).stream), [
@@ -168,10 +168,10 @@ Deno.test("a client subscribes to no more streams than the limit, nor hashtags l
     });
 
     send(
-        // Characters, not bytes or UTF-16 code units.
+        // Counted in code points, not bytes or UTF-16 code units.
         { type: "subscribe", stream: "hashtag", tag: "é😀a" },
         { type: "subscribe", stream: "hashtag", tag: "abcd" },
-        // Which isn't a hashtag's, so its tag counts for nothing.
+        // Not a hashtag's stream, so its tag counts for nothing.
         { type: "subscribe", stream: "public", tag: "abcd" },
         // Already subscribed to.
         { type: "subscribe", stream: "public" },
@@ -213,7 +213,7 @@ Deno.test("a client subscribes to the streams of its viewer's lists, if it names
         { type: "subscribe", stream: "list", list: "bobs" },
         { type: "subscribe", stream: "list" },
     );
-    // Whose list it is takes a query to know.
+    // Checking whose list it is takes a query.
     await Promise.resolve();
     assertEquals(session.streams(), ["list#1", "list#2"]);
     assertEquals(sent, [

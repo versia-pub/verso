@@ -48,7 +48,7 @@ const thumbnailRoute = () => {
 /** How long the instance's stats are cached: clients request them each time they start. */
 const statsMs = 5 * 60_000;
 
-/** How long lists that change slowly may be cached, as Mastodon caches them. */
+/** How long lists that change slowly may be cached. Mastodon uses the same time. */
 const daySeconds = 24 * 60 * 60;
 
 /** What the instance tells clients about itself, with its stats cached for a while. */

@@ -1,7 +1,8 @@
 /**
- * Filters: the keywords and statuses that local users filter out of what they read, each group with
- * the places it applies and what is done with what it matches, as Mastodon's v2 filters. They
- * aren't federated. Each change is published, so that the user's apps are told on their streams.
+ * Filters, as Mastodon's v2 filters have them: the keywords and statuses that local users filter
+ * out of what they read, each group with the places it applies and what is done with what it
+ * matches. They aren't federated. Each change is published, so the user's apps learn of it on their
+ * streams.
  * @see https://docs.joinmastodon.org/methods/filters/
  * @module
  */
@@ -50,7 +51,7 @@ export type NewFilter = Pick<FilterRow, "title" | "context" | "action"> & {
 /** What a filter's owner may change, as {@link NewFilter}. Omitted fields stay as they are. */
 export type FilterInput = Partial<NewFilter>;
 
-/** A change to one of a filter's keywords, as Mastodon's `keywords_attributes` asks for. */
+/** A change to one of a filter's keywords, in the form of Mastodon's `keywords_attributes`. */
 export type KeywordChange =
     | { readonly add: KeywordInput }
     | { readonly change: string; readonly to: Partial<KeywordInput> }

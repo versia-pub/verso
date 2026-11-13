@@ -1,8 +1,8 @@
 /**
- * Reactions to announcements, each with an emoji: a Unicode one, or a custom one, which users take
- * from the local instance's emojis, named by their shortcodes without colons, as on Mastodon. A
- * user reacts to an announcement with each emoji once, and with as many emojis as they like, but
- * an announcement has only a few emojis reactions to it are made with. They aren't federated.
+ * Reactions to announcements, each with an emoji: a Unicode one, or a custom one from the local
+ * instance's emojis, named by its shortcode without colons. A user reacts to an announcement with
+ * each emoji once, and with as many emojis as they like, but an announcement's reactions are made
+ * with only a few different emojis in all. They aren't federated.
  * @see https://docs.joinmastodon.org/methods/announcements/#put-reactions
  * @module
  */
@@ -39,12 +39,12 @@ export const announcementReacted: Channel<AnnouncementReactedMessage> = {
     }),
 };
 
-/** How many different emojis an announcement's reactions are made with, as on Mastodon. */
+/** Mastodon's limit on how many different emojis an announcement's reactions are made with. */
 export const reactionLimit = 8;
 
 /**
  * The emoji a user names to react with: a Unicode emoji, or one of the local instance's global
- * custom emojis by its shortcode, such as `blobcat`, or `undefined` if it is neither.
+ * custom emojis by its shortcode, like `blobcat`, or `undefined` if it is neither.
  */
 export const announcementEmoji = async (
     ctx: Context,

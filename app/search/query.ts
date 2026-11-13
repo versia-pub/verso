@@ -1,6 +1,6 @@
 /**
  * Reading a status search's query as Mastodon does: words, quoted phrases and hashtags that a
- * status must have, or with a `-`, mustn't, and the prefixes Mastodon knows, such as `from:` and
+ * status must have, or with a `-`, mustn't, and the prefixes Mastodon knows, like `from:` and
  * `before:`. A `prefix:` Mastodon doesn't know is searched as words.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/search_query_parser.rb
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/search_query_transformer.rb
@@ -35,12 +35,12 @@ const dayLength = 24 * 60 * 60 * 1000;
 
 /**
  * The time `value` names, from its start until just before its end: a day, `yyyy-MM-dd`, in UTC,
- * as Verso knows no user's time zone, or a millisecond since 1970, as on Mastodon.
+ * since Verso knows no user's time zone, or a millisecond since 1970.
  */
 const timeOf = (value: string) => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
         const start = new Date(`${value}T00:00:00Z`);
-        // Days that don't exist, such as 2024-02-30, aren't read as others.
+        // Days that don't exist, like 2024-02-30, aren't read as others.
         if (!Number.isNaN(start.getTime()) && start.toISOString().startsWith(value)) {
             return { start, end: new Date(start.getTime() + dayLength) };
         }

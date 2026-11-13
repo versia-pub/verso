@@ -1,5 +1,5 @@
 /**
- * Reactions as the client API renders them, as glitch-soc has them.
+ * Reactions as the client API renders them, in glitch-soc's format.
  * @see https://github.com/glitch-soc/mastodon/pull/2462
  * @module
  */
@@ -14,7 +14,7 @@ type Named = Pick<ReactionGroup, "text" | "shortcode" | "domain">;
 
 /**
  * What the reactions with one emoji are called: the Unicode emoji, or the custom emoji's shortcode,
- * with its instance's domain if it is a remote instance's, such as `blob@b.example`.
+ * with its instance's domain if it is a remote instance's, like `blob@b.example`.
  */
 export const reactionName = (group: Named): string => group.text ?? shortcodeOf(group);
 
@@ -29,9 +29,8 @@ const pictureOf = (ctx: Context, reaction: Omit<ReactionWithEmoji, "id">) =>
         : emojiPicture(ctx, { ...reaction, media_type: reaction.media_type });
 
 /**
- * A reaction's emoji, named as Pleroma names it on its emoji reaction notifications: the Unicode
- * emoji, or the custom emoji's shortcode in colons. With the custom emoji's picture's URL if it is
- * ready.
+ * A reaction's emoji, named like Pleroma's emoji reaction notifications name it: the Unicode emoji,
+ * or the custom emoji's shortcode in colons. It has the picture's URL if the picture is ready.
  */
 export const renderReactionEmoji = (
     ctx: Context,
@@ -42,8 +41,8 @@ export const renderReactionEmoji = (
 });
 
 /**
- * The reactions to a status with one emoji, with whether the viewer made one, for a viewer, and
- * the pictures of a custom emoji whose picture is ready.
+ * The reactions to a status with one emoji. For a signed-in viewer, it says whether they made one.
+ * It has the custom emoji's picture URLs if the picture is ready.
  */
 export const renderReaction = (
     ctx: Context,
@@ -61,7 +60,7 @@ export const renderReaction = (
     };
 };
 
-/** Reactions to a status, by emoji, as {@link renderReaction} renders them. */
+/** Reactions to a status, by emoji, each rendered by {@link renderReaction}. */
 export const renderReactions = (
     ctx: Context,
     groups: readonly ReactionGroup[],

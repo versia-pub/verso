@@ -18,9 +18,9 @@ import { userStreams } from "./user.ts";
 const docs = "https://docs.joinmastodon.org/methods/streaming";
 
 /**
- * Streaming: events as they happen, over a WebSocket, with each account's WebSockets on this
- * process, and their streams, no more than `limits` allow, and the public ones as far as `access`
- * lets their viewers see them.
+ * The streaming routes: events as they happen, over a WebSocket. `limits` caps each account's
+ * WebSockets on this process and their streams, and `access` sets who may see statuses on the
+ * public and hashtag streams.
  */
 export const streamingRoutes = (
     limits: StreamingLimits,
@@ -128,7 +128,7 @@ export const streamingRoutes = (
                             const unwatch = watchToken(ctx, viewer.tokenId, () => {
                                 socket.close(1000, "The access token can't be used any more");
                             });
-                            // A socket may stay open for days, through changes to what it may read.
+                            // A socket may stay open for days, while what it may read changes.
                             const unwatchRoles = watchRoles(
                                 ctx,
                                 viewer.accountId,

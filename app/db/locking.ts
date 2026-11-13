@@ -12,9 +12,9 @@ export const skippingLocked = <DB, TB extends keyof DB, O>(
     db.getExecutor().adapter instanceof SqliteAdapter ? query : query.forUpdate().skipLocked();
 
 /**
- * Holds a lock on `key` until the transaction ends, so that transactions that take it for the same
- * key run one at a time, such as one that stores a file under a key and one that removes it. SQLite
- * lets one writer in at a time, and its transactions begin as writers, so it needs none.
+ * Holds a lock on `key` until the transaction ends, so transactions that lock the same key run one
+ * at a time. For example, one that stores a file under a key and one that removes it. SQLite lets
+ * one writer in at a time, and its transactions begin as writers, so it needs none.
  */
 export const lockKey = async <DB>(db: Kysely<DB>, key: string): Promise<void> => {
     if (db.getExecutor().adapter instanceof SqliteAdapter) return;

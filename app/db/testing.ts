@@ -30,8 +30,8 @@ export const testPostgresUrl = async (): Promise<string | undefined> => {
 
 /**
  * `pglite`, which collects garbage when it is closed. A closed PGlite keeps about 200 MB of memory
- * until V8 collects it, which it doesn't hurry to do, so a worker running many tests held
- * gigabytes. The test task passes `--expose-gc` for this.
+ * until V8 collects it, which can take a while, so a worker running many tests held gigabytes.
+ * The test task passes `--expose-gc` for this.
  */
 const collectingOnClose = (pglite: PGlite): PGlite => {
     const close = pglite.close.bind(pglite);

@@ -1,8 +1,8 @@
 /**
  * Single statuses of timelines, looked up for streaming them as they appear. Those of the public
- * and hashtag timelines are rendered as anyone sees them, as Mastodon streams them, so that each is
- * rendered once for every viewer. Those of home timelines are rendered for all their viewers
- * together, as each sees them, and those of lists for each list's owner.
+ * and hashtag timelines are rendered as anyone sees them, so that each is rendered once for every
+ * viewer. Those of home timelines are rendered for all their viewers together, as each sees them,
+ * and those of lists for each list's owner.
  * @module
  */
 import type { Status } from "@versia/client-api";

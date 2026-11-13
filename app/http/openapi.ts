@@ -14,9 +14,7 @@ type Parameter = {
     readonly name: string;
     readonly in: "path" | "query" | "header" | "cookie";
     readonly required: boolean;
-    /**
-     * A property's schema, which JSON Schema lets be `true` for anything or `false` for nothing.
-     */
+    /** A property's schema. JSON Schema also allows `true` for anything and `false` for nothing. */
     readonly schema: JsonSchema | boolean;
 };
 
@@ -65,7 +63,10 @@ type Document = {
     };
 };
 
-/** Every scope, which OpenAPI wants described; Mastodon's names say what they allow. */
+/**
+ * Every scope, which OpenAPI wants described. The descriptions are empty, since Mastodon's names
+ * say what they allow.
+ */
 const scopeList = Object.fromEntries(scopes.map((scope) => [scope, ""]));
 
 /**
@@ -96,7 +97,7 @@ const securitySchemes = {
 /** The media types every body may be sent as, since Mastodon clients send JSON or forms. */
 const bodyTypes = ["application/json", "application/x-www-form-urlencoded", "multipart/form-data"];
 
-/** Each key of an object schema, as a parameter in `where` of the request. */
+/** Each key of an object schema, as a parameter located in `where`. */
 const parameters = (
     where: Parameter["in"],
     schema: z.ZodType | undefined,

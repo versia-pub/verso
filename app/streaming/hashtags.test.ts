@@ -34,8 +34,9 @@ const open = async (access?: Parameters<typeof hashtagStreams>[1]) => {
     await createRemoteAccount(test.ctx, "carol", "b.example");
 
     /**
-     * What `accountId` is sent on `streams`, as each event's stream, type, and status or id. Its
-     * session is added to the test's hashtag streams, or `options.sessions`.
+     * Opens a session of `accountId` on `streams` and records what it is sent: each event's stream,
+     * type, and status or id. The session is added to the test's hashtag streams, or
+     * `options.sessions`.
      */
     const streaming = (
         accountId: string,
@@ -87,7 +88,7 @@ const open = async (access?: Parameters<typeof hashtagStreams>[1]) => {
         return id;
     };
 
-    /** Says the status `noteId` was deleted, as it would if it were `visibility`. */
+    /** Says the status `noteId`, of `visibility`, was deleted. */
     const deleted = async (noteId: string, visibility: Visibility = "public") =>
         await published({
             event: "delete",
@@ -127,7 +128,7 @@ Deno.test("public statuses are sent on the streams of each hashtag they use, for
     const both = await test.post("bob", ["nix", "rust"]);
     await test.published({ event: "status.update", noteId: both });
     const remote = await test.post("carol", ["nix"], { instance_id: "b.example", remote_id: "c1" });
-    // Replies too.
+    // Replies are sent too.
     const reply = await test.post("bob", ["rust"], {
         in_reply_to_id: remote,
         in_reply_to_account_id: "carol",
@@ -165,7 +166,7 @@ Deno.test("only public statuses using hashtags are sent, and only deletes of pub
     await test.deleted(unlisted, "unlisted");
     await test.deleted(untagged);
 
-    // As deleted statuses are gone, a delete is sent on every stream subscribed to.
+    // A deleted status is gone, so its delete is sent on every stream subscribed to.
     assertEquals(alice.sent, everyStream.map((stream) => [stream.join(), "delete", untagged]));
 });
 

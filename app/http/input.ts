@@ -67,7 +67,7 @@ const cookiesOf = (c: HonoContext) =>
 
 /**
  * A form's fields, with Rails-style names read as JSON would have them: `key[]` as an array, and
- * `a[b]` as `b` in the object `a`. Files need plain names, such as `avatar`, as Mastodon's have.
+ * `a[b]` as `b` in the object `a`. Files need plain names, like Mastodon's `avatar`.
  * @see https://github.com/ljharb/qs#parsing-objects
  */
 const formOf = async (c: HonoContext) => {
@@ -90,7 +90,7 @@ const formOf = async (c: HonoContext) => {
 
 /**
  * Mastodon clients send JSON or forms, so every route accepts both, except those that take plain
- * text. They send actions such as follows with no body at all, which Mastodon reads as an empty
+ * text. They send actions like follows with no body at all, and Mastodon reads that as an empty
  * one. Deno's server gives those an empty body, with no type.
  */
 const bodyOf = async (c: HonoContext, route: Route) => {

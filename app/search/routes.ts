@@ -12,8 +12,8 @@ import { renderHashtags } from "./hashtags.ts";
 import { searchAll, type SearchResults } from "./search.ts";
 
 /**
- * What `/api/v1/accounts/search` accepts, as Mastodon describes it, with a query and offset no
- * longer than `limits` allow. Clients may request more than 80 accounts, and get 80.
+ * What `/api/v1/accounts/search` accepts, with a query and offset no longer than `limits` allow.
+ * Clients may request more than 80 accounts, and get 80.
  * @see https://docs.joinmastodon.org/methods/accounts/#search
  */
 const AccountSearchQuery = (
@@ -39,8 +39,8 @@ const AccountSearchQuery = (
 });
 
 /**
- * What `/api/v2/search` accepts, as Mastodon describes it, with a query and offset no longer than
- * `limits` allow. Clients may request more than 40 of each, and get 40.
+ * What `/api/v2/search` accepts, with a query and offset no longer than `limits` allow. Clients
+ * may request more than 40 of each, and get 40.
  * @see https://docs.joinmastodon.org/methods/search/#v2
  */
 const SearchQuery = ({ query_length: maxQueryLength, max_offset: maxOffset }: SearchLimits) =>

@@ -14,7 +14,7 @@ export class MigrationMethods {
     }
 
     /**
-     * Says the viewer moved from the account at `acct`, such as `alice@example.com`, so it can then
+     * Says the viewer moved from the account at `acct`, like `alice@example.com`, so it can then
      * move to theirs.
      */
     setPrevious(acct: string, options?: CallOptions): Promise<AccountMigration> {

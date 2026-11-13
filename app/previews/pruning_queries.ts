@@ -27,9 +27,9 @@ export const oldCardsQuery = (
 };
 
 /**
- * Deletes those of the cards `ids`, at least one, fetched before `before` that no status shows,
- * that aren't trending, and that no admin approved or rejected for trends, so the decision stays.
- * Returns how many it deleted.
+ * Deletes the cards in `ids` (at least one) that were fetched before `before`, that no status
+ * shows, that aren't trending, and that no admin approved or rejected for trends, so the decision
+ * stays. Returns how many it deleted.
  */
 export const deleteUnusedCards = async (
     ctx: Context,
@@ -58,8 +58,9 @@ export const deleteUnusedCards = async (
 };
 
 /**
- * Takes the images off those of the cards `ids`, at least one, fetched before `before`, as Mastodon
- * does, and returns how many lost one. The media they used is removed with other unused media.
+ * Takes the images off the cards in `ids` (at least one) that were fetched before `before`, and
+ * returns how many lost one. Mastodon does the same. The media they used is removed with other
+ * unused media.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/vacuum/preview_cards_vacuum.rb
  */
 export const clearCardImages = async (

@@ -21,7 +21,7 @@ const handshake = {
     "sec-websocket-version": "13",
 };
 
-/** Messages in this process, counting the subscriptions and `onMissed` handlers not yet removed. */
+/** An in-process pub/sub that counts the subscriptions and `onMissed` handlers not yet removed. */
 const countedPubSub = () => {
     const pubsub = memoryPubSub();
     const live = new Set<object>();
@@ -85,11 +85,11 @@ Deno.test("a WebSocket opens with a user's token, sent in a header, as the proto
         await accepted(new WebSocket(url, { headers: { authorization: `Bearer ${test.token}` } })),
         "",
     );
-    // As browsers send it, which accept it only if the server accepts that protocol.
+    // Browsers send the token as the protocol, and accept it only if the server does too.
     assertEquals(await accepted(new WebSocket(url, [test.token])), test.token);
     assertEquals(await accepted(new WebSocket(url, [test.token, "other"])), test.token);
     assertEquals(await accepted(new WebSocket(`${url}?access_token=${test.token}`)), "");
-    // The first, of protocols offered by a client sending its token in the header.
+    // A client that sends its token in the header gets the first protocol it offers accepted.
     assertEquals(
         await accepted(
             new WebSocket(url, {
@@ -148,7 +148,7 @@ Deno.test("a WebSocket's messages reach its session, from the stream asked for o
 
     const heard: unknown[] = [];
     const closed = new Promise<number>((resolve) => socket.onclose = ({ code }) => resolve(code));
-    // Failing rather than waiting forever if no message comes.
+    // Fails rather than waiting forever if no message comes.
     const message = () =>
         new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error("No message")), 5_000);
@@ -209,9 +209,9 @@ Deno.test("a WebSocket closes once its token is revoked, and stops watching it o
 
     const kept = await connect(url, test.token);
     const revoked = await connect(url, issued.token);
-    // Watching each token and its user's roles, and the process hearing statuses, notifications,
-    // filter changes, conversations, merged requests, announcements and reactions to them, once
-    // for every WebSocket, which it does until it stops.
+    // Each WebSocket watches its token and its user's roles. The process hears statuses,
+    // notifications, filter changes, conversations, merged requests, announcements and reactions to
+    // them once, however many WebSockets are open, until it stops.
     assertEquals(test.pubsub.live(), before + 7 + 8);
 
     await revokeToken(test.ctx, app, issued.token);
@@ -242,7 +242,7 @@ Deno.test("a WebSocket streams what its user may read once their roles change, w
     );
     const heard: { payload?: string }[] = [];
     socket.onmessage = ({ data }) => void heard.push(JSON.parse(data));
-    // Once the session is subscribed, which a message it answers shows.
+    // Waits until the session is subscribed, which an answer to a message shows.
     await soon(new Promise((resolve) => socket.onopen = resolve));
     socket.send(JSON.stringify({ type: "subscribe", stream: "nope" }));
     await until(() => heard.length === 1);
@@ -250,7 +250,7 @@ Deno.test("a WebSocket streams what its user may read once their roles change, w
         (await postNote(test.ctx, "alice", { text: "Hi", format: "text/plain", spoilerText: "" }))
             ?.id;
 
-    // Once its permissions were looked up, without read:note.
+    // The first post gets the user's permissions looked up, without read:note.
     await post();
     await createRole(test.ctx, "Reader", ["read:note"]);
     await grantRoleTo(test.ctx, "alice", "Reader");
@@ -275,7 +275,7 @@ Deno.test("an account may have only so many WebSockets open, counting those it c
 
     const first = await connect(url, test.token);
     const second = await connect(url, test.token);
-    // With only so many streams each, as configured.
+    // Each session may have only one stream, as configured.
     const answered = new Promise((resolve) => first.socket.onmessage = ({ data }) => resolve(data));
     first.socket.send(JSON.stringify({ type: "subscribe", stream: "public" }));
     first.socket.send(JSON.stringify({ type: "subscribe", stream: "user" }));
@@ -288,7 +288,7 @@ Deno.test("an account may have only so many WebSockets open, counting those it c
         429,
         "Too many WebSockets are open",
     ]);
-    // Another user's.
+    // Another user's WebSocket isn't counted against alice.
     await createLocalAccount(test.ctx, "bob");
     const bobs = await connect(url, await tokenFor(test.ctx, "bob"));
 
@@ -319,14 +319,14 @@ Deno.test("WebSockets opened at once past an account's limit are closed once ope
     const sockets = [0, 1, 2, 3, 4].map(() => new WebSocket(url, [test.token]));
     const outcomes = await Promise.all(sockets.map(outcome));
 
-    // The others closed once open, or were refused before they opened, by how they raced.
+    // The others were closed once open, or refused before they opened, depending on how they raced.
     assertEquals(outcomes.filter((ended) => ended === "open").length, 1);
     const closing = sockets.filter((socket) => socket.readyState !== WebSocket.CLOSED);
     for (const socket of closing) socket.close();
     await soon(
         Promise.all(closing.map((socket) => new Promise((resolve) => socket.onclose = resolve))),
     );
-    // Counting none of them once closed.
+    // None of them count once closed, so alice may connect again.
     const again = await connect(url, test.token);
     again.socket.close();
     await again.closed();
@@ -343,8 +343,9 @@ Deno.test("WebSockets close, and stop watching their tokens, once Verso stops", 
 
     await server.shutdown();
     await closed();
-    // Only the process still hears statuses, notifications, filter changes, conversations, merged
-    // requests, announcements and reactions to them, until it stops.
+    // Only the process's own subscriptions remain: it hears statuses, notifications, filter
+    // changes, conversations, merged requests, announcements and reactions to them, until it
+    // stops.
     assertEquals(test.pubsub.live(), before + 7);
 });
 
@@ -358,7 +359,7 @@ Deno.test("a WebSocket on the user stream is sent the user's statuses, in Mastod
     const heard: string[] = [];
     socket.onmessage = ({ data }) => void heard.push(data);
 
-    // Once the session is subscribed, which a message it answers shows.
+    // Waits until the session is subscribed, which an answer to a message shows.
     await soon(new Promise((resolve) => socket.onopen = resolve));
     socket.send(JSON.stringify({ type: "subscribe", stream: "nope" }));
     await until(() => heard.length === 1);

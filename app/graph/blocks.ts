@@ -69,8 +69,7 @@ export const blockingAny = async (
 };
 
 /**
- * The accounts that block `accountId`, as a subquery, so that their followers-only statuses can be
- * kept from it.
+ * The accounts that block `accountId`, so that their followers-only statuses can be kept from it.
  */
 export const blockersSubquery = (ctx: Context, accountId: string): AccountIdQuery =>
     blockerIdsQuery(ctx, accountId);

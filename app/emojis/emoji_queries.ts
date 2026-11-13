@@ -22,8 +22,8 @@ export const findRemoteEmoji = async (
         .executeTakeFirst();
 
 /**
- * Of emojis in shortcode order, each global one or `accountId`'s own, one per shortcode: the user's
- * own where both have it.
+ * `emojis`, in shortcode order, with one emoji per shortcode: the user's own where a global one has
+ * the same shortcode.
  */
 const ownFirst = <E extends { readonly shortcode: string; readonly account_id: string | null }>(
     emojis: readonly E[],
@@ -47,7 +47,7 @@ const usableBy = (accountId: string | null) => (eb: ExpressionBuilder<Database, 
 /**
  * The ids of the local instance's custom emojis named any of `shortcodes` that the local user
  * `accountId` may use, by shortcode: global ones and their own, their own where both have a name,
- * or only global ones if `accountId` is `null`. Only those whose pictures are ready are, so that
+ * or only global ones if `accountId` is `null`. Emojis whose pictures aren't ready are left out, so
  * text never uses an emoji that can't be shown.
  */
 export const usableEmojiIds = async (
@@ -63,7 +63,8 @@ export const usableEmojiIds = async (
         .where("emojis.instance_id", "is", null)
         .where(usableBy(accountId))
         .where("emojis.shortcode", "in", shortcodes)
-        // Processed and stored, as the local instance stores its emojis' pictures.
+        // A ready picture is processed and stored, since the local instance stores its emojis'
+        // pictures.
         .where("media.processed_at", "is not", null)
         .where("media.sha256", "is not", null)
         .orderBy("emojis.shortcode")
@@ -95,8 +96,8 @@ export const hasUsableEmoji = async (
 };
 
 /**
- * Adds one of the local instance's emojis, and returns whether it was added, which it isn't if its
- * owner has one of that name, or, if it is global, a global one does.
+ * Adds one of the local instance's emojis, and returns whether it was added. It isn't if its owner
+ * already has one of that name, or, for a global emoji, if a global one does.
  */
 export const insertLocalEmoji = async (
     ctx: Context,

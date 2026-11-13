@@ -26,7 +26,7 @@ export const insertDismissal = async (
  * Whether the account of `table`, an alias of `accounts`, could be suggested to `viewerId`: it
  * isn't them, and isn't followed or requested by them, hidden from them, blocking them or dismissed
  * by them. Local accounts must be discoverable, while remote ones, which have no such setting,
- * always are. As on Mastodon, suspended and silenced accounts, and those that moved, aren't.
+ * always are. Suspended and silenced accounts, and those that moved, aren't suggested either.
  */
 const suggestible = (ctx: Context, viewerId: string, table: string): Filter => (eb) => {
     const id = sql.ref<string>(`${table}.id`);
@@ -74,7 +74,7 @@ export const suggestibleAmong = async (
 /**
  * Up to `limit` accounts that the accounts `viewerId` follows follow, and that could be suggested
  * to them, the ones followed by most of them first, then the ones with fewest followers. Those who
- * hide their follows aren't counted, as on Mastodon.
+ * hide their follows aren't counted.
  */
 export const friendsOfFriends = async (
     ctx: Context,

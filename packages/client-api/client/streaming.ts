@@ -36,9 +36,9 @@ export type Subscription = {
 };
 
 /**
- * What happened, and in which stream, as its name and, for a hashtag's or a list's, the hashtag or
- * the list's id. An event in
- * several streams the client subscribed to comes once for each.
+ * What happened, and in which stream: the stream's name and, for a hashtag's or a list's, the
+ * hashtag or the list's id. An event in several streams the client subscribed to comes once for
+ * each.
  */
 export type StreamEvent =
     | {
@@ -105,13 +105,14 @@ export type StreamEvent =
         /** The instance refused a subscription, or an unsubscription. */
         readonly event: "error";
         readonly error: string;
-        /** As HTTP would say it, such as 401 for a stream the token's scopes don't allow. */
+        /** The status HTTP would give, like 401 for a stream the token's scopes don't allow. */
         readonly status: number | undefined;
     };
 
-/** How the WebSocket closed, as it said. */
+/** How the WebSocket closed, with the code and reason it gave. */
 export type Closed = { readonly code: number; readonly reason: string };
 
+/** How to open a WebSocket to the streaming API. */
 export type ConnectOptions = Pick<CallOptions, "signal"> & {
     /** The streams to subscribe to at once. More can be subscribed to later. */
     readonly subscribe?: readonly Subscription[];
@@ -134,7 +135,7 @@ const jsonOf = (text: unknown): unknown => {
 /** What the instance sends: an event of the streams it is in, or why a subscription was refused. */
 const Message = z.union([
     z.object({ error: z.string(), status: z.int().optional() }),
-    // Events such as `filters_changed` have no payload.
+    // Events like `filters_changed` have no payload.
     z.object({ stream: z.array(z.string()), event: z.string(), payload: z.string().default("") }),
 ]);
 
@@ -215,7 +216,7 @@ export class Stream implements AsyncIterable<StreamEvent>, AsyncDisposable {
         });
     }
 
-    /** Subscribes to a stream, such as `{ stream: "hashtag", tag: "cats" }`. */
+    /** Subscribes to a stream, like `{ stream: "hashtag", tag: "cats" }`. */
     subscribe(subscription: Subscription): void {
         this.#socket.send(JSON.stringify({ type: "subscribe", ...subscription }));
     }
@@ -278,8 +279,8 @@ export class StreamingMethods {
 
     /**
      * Opens a WebSocket to the instance's streaming API, as the viewer, once it is open. The token
-     * is sent as the WebSocket's protocol, as browsers can send it, rather than in the URL, where
-     * it would be logged.
+     * is sent as the WebSocket's protocol, since browsers can send that, rather than in the URL,
+     * where it would be logged.
      * @see https://docs.joinmastodon.org/methods/streaming/#websocket
      */
     async connect(options: ConnectOptions = {}): Promise<Stream> {

@@ -32,7 +32,9 @@ const claimsOf = (media: RemoteMedia) => ({
     description: media.description ?? null,
 });
 
-/** The columns that caching sets, cleared, as remote media is until its file is cached. */
+/**
+ * The columns that caching sets, set to `null`, as remote media has them until its file is cached.
+ */
 const uncached = {
     sha256: null,
     preview_sha256: null,

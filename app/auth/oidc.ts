@@ -8,7 +8,7 @@ export type OidcOptions = {
     readonly clock: Clock;
 };
 
-/** openid-client's `customFetch`, sending through a transport. Its body types are just looser. */
+/** openid-client's `customFetch`, sending through a transport. Only its body types are looser. */
 export const openidFetch = (transport: Transport): client.CustomFetch => (url, options) =>
     transport(new Request(url, options as RequestInit));
 
@@ -81,7 +81,7 @@ export const oidcProvider = (issuer: IssuerConfig, options: OidcOptions): Identi
                 expectedNonce: flow.nonce,
                 idTokenExpected: true,
             });
-            // The grant checks there is an ID token, as `idTokenExpected` asks.
+            // `idTokenExpected` makes the grant check there is an ID token.
             const claims: Claims | undefined = tokens.claims();
             if (claims === undefined) throw new Error("The issuer gave no ID token");
 

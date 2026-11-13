@@ -10,11 +10,11 @@ export type Reference = {
 const idPattern = /^[A-Za-z0-9_-]+$/;
 
 /**
- * Parses a reference found inside an entity, such as a Note's `author`.
+ * Parses a reference found inside an entity, like a Note's `author`.
  *
  * `origin` is the hostname of the instance the entity came from: the one that signed the inbox
- * request, or served the entity we fetched. A bare id refers to an entity on that instance. Returns
- * undefined if the reference is invalid.
+ * request, or served the entity Verso fetched. A bare id refers to an entity on that instance.
+ * Returns undefined if the reference is invalid.
  */
 export const parseReference = (
     text: string,
@@ -64,7 +64,7 @@ export const canonicalize = (host: string): string | undefined => {
 /**
  * Returns the canonical form of an instance's domain, as `Versia-Signed-By` gives it, or undefined
  * if it isn't one: a name with at least two labels, whose last has a letter, and no port. Unlike a
- * reference's hostname, an IP address or a single label such as `localhost` isn't accepted, since
+ * reference's hostname, an IP address or a single label like `localhost` isn't accepted, since
  * the instance it names is fetched from, which must not reach into Verso's own network.
  * @see https://versia.pub/types#domain
  */

@@ -51,8 +51,8 @@ export type NotificationsTable = {
     /** The follow or follow request, for a `follow` or `follow_request`. */
     follow_id: string | null;
     /**
-     * The group it is in, for the types that are grouped: `<type>-<status id>-<hour>`, with no
-     * status id for follows, as on Mastodon. `null` for the others.
+     * The group it is in, for the types that are grouped, in Mastodon's format:
+     * `<type>-<status id>-<hour>`, with no status id for follows. `null` for the others.
      */
     group_key: string | null;
     /**
@@ -63,13 +63,13 @@ export type NotificationsTable = {
     created_at: Date;
 };
 
-/** What a policy does with the notifications it applies to, as on Mastodon. */
+/** What a policy does with the notifications it applies to. */
 export const policyActions = ["accept", "filter", "drop"] as const;
 export type PolicyAction = (typeof policyActions)[number];
 
 /**
- * A local user's notification policy, as Mastodon's: what is done with notifications from
- * accounts of each kind. Users without one have the defaults.
+ * A local user's notification policy: what is done with notifications from accounts of each kind.
+ * Users without one have the defaults.
  * @see https://docs.joinmastodon.org/entities/NotificationPolicy/
  */
 export type NotificationPoliciesTable = {
@@ -90,8 +90,8 @@ export type NotificationPoliciesTable = {
 };
 
 /**
- * The filtered mentions of a local user from one account, which they may accept or dismiss, as
- * Mastodon's notification requests.
+ * A notification request: the filtered mentions of a local user from one account, which they may
+ * accept or dismiss.
  * @see https://docs.joinmastodon.org/entities/NotificationRequest/
  */
 export type NotificationRequestsTable = {
@@ -117,7 +117,7 @@ export type NotificationPermissionsTable = {
     created_at: Date;
 };
 
-/** Every type of notification, which the type's own checks keep complete. */
+/** Every type of notification. `satisfies` keeps it complete. */
 const typeNames = {
     mention: true,
     status: true,

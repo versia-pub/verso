@@ -34,7 +34,7 @@ const accountsOf = async (
 
 /**
  * Accounts that were already fetched, as anyone sees them, by id, with the accounts they moved to,
- * which don't show where they moved in turn, as on Mastodon.
+ * which don't show where they moved in turn.
  */
 export const publicAccountsOf = async (
     ctx: Context,
@@ -54,7 +54,7 @@ const shownAccount = async (ctx: Context, row: AccountRow, movedTo?: Account) =>
 
 /**
  * An account as anyone sees it, with its roles, the custom emojis it uses, and the account it moved
- * to, which doesn't show where it moved in turn, as on Mastodon.
+ * to, which doesn't show where it moved in turn.
  */
 export const publicAccount = async (ctx: Context, row: AccountRow): Promise<Account> => {
     const moved = row.moved_to_account_id === null

@@ -108,14 +108,14 @@ export const mutePage = async (
         page,
     );
 
-/** The accounts `accountId` currently mutes, as a subquery. */
+/** The accounts `accountId` currently mutes. */
 export const mutedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     ctx.db.selectFrom("mutes")
         .select("target_id as account_id")
         .where("account_id", "=", accountId)
         .where(ongoing(ctx.clock.now()));
 
-/** The accounts `accountId` currently mutes with their notifications, as a subquery. */
+/** The accounts `accountId` currently mutes with their notifications. */
 export const notificationMutedIdsQuery = (ctx: Context, accountId: string): AccountIdQuery =>
     mutedIdsQuery(ctx, accountId).where("notifications", "=", true);
 

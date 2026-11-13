@@ -30,7 +30,10 @@ const Id = z.object({ id: z.string() });
 const read = { require: "user", scope: "admin:read:reports", permission: "reports" } as const;
 const write = { require: "user", scope: "admin:write:reports", permission: "reports" } as const;
 
-/** Which reports to list, as Mastodon reads `resolved` and `unresolved`: unresolved by default. */
+/**
+ * Which reports to list for the `resolved` and `unresolved` flags: all if both are set, resolved
+ * if only that one is, and unresolved otherwise.
+ */
 const stateOf = (resolved: boolean, unresolved: boolean): ReportFilter["state"] =>
     resolved ? (unresolved ? "all" : "resolved") : "unresolved";
 

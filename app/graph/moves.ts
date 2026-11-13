@@ -178,7 +178,7 @@ const moveMutes: Step = async (ctx, from, to) => {
     }
 };
 
-/** `account`'s `username@domain`, or only its username if it is local, as Mastodon's `acct`. */
+/** The `acct` of `account`: its `username@domain`, or only its username if it is local. */
 const acctOf = (account: AccountRow) =>
     account.domain === null ? account.username : `${account.username}@${account.domain}`;
 

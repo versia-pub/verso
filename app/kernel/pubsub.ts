@@ -15,7 +15,7 @@ export type Channel<T> = {
     readonly schema: z.ZodType<T>;
 };
 
-/** The subscribers of each channel, as adapters keep them. */
+/** The subscribers of each channel, kept by an adapter. */
 export type Routes = Pick<PubSub, "subscribe" | "onMissed"> & {
     /**
      * Gives `payload` to each subscriber of `channel`, logging rather than throwing if any fails.
@@ -83,7 +83,7 @@ export const memoryPubSub = (): PubSub => {
     };
 };
 
-/** The largest message, as JSON, in bytes, as {@link PubSub}'s `send` takes it. */
+/** The most bytes a message to {@link PubSub}'s `send` may have as JSON. */
 export const maxMessageBytes = 7_000;
 
 /**

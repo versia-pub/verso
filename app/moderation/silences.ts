@@ -1,7 +1,7 @@
 /**
- * Silencing accounts, local or remote, as whoever runs the instance does: Mastodon's "limit". A
- * silenced account's statuses stay out of the public timelines, and its notifications to those who
- * don't follow it go through their policy for limited accounts.
+ * Silencing accounts, local or remote, for admins and moderators. Mastodon calls it "limit". A
+ * silenced account's statuses stay out of the public timelines, and its notifications to those
+ * who don't follow it go through their policy for limited accounts.
  * @module
  */
 import { setSilencedAt } from "../accounts/account_queries.ts";

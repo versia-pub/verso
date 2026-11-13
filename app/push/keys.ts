@@ -1,6 +1,6 @@
 /**
- * The key pair this instance signs Web Push requests with, as VAPID, so push services know they
- * come from it. Clients subscribe with its public half.
+ * The key pair this instance signs Web Push requests with (VAPID), so push services know they come
+ * from it. Clients subscribe with its public half.
  * @see https://www.rfc-editor.org/rfc/rfc8292
  * @module
  */
@@ -34,7 +34,7 @@ export const vapidKey = async (ctx: Pick<Context, "db">): Promise<VapidKey> => {
     };
 };
 
-/** The public key as clients subscribe with it, in URL-safe base64, as Mastodon shows it. */
+/** The public key as clients subscribe with it, in URL-safe base64, padded like Mastodon's. */
 export const vapidPublicKey = async (ctx: Pick<Context, "db">): Promise<string> =>
     Uint8Array.fromBase64((await row(ctx)).public_key).toBase64({ alphabet: "base64url" });
 

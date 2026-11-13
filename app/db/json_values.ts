@@ -28,7 +28,7 @@ class JsonTransformer extends OperationNodeTransformer {
  * Sends plain objects and arrays to the database as JSON text, for the JSON column helper. Left
  * alone, `pg` would send arrays as Postgres arrays and SQLite would reject both.
  *
- * So a query can't take an array as one parameter, as in `= any(${ids})`; use `in` instead.
+ * So a query can't take an array as one parameter, like `= any(${ids})`. Use `in` instead.
  */
 export const jsonValues: KyselyPlugin = {
     transformQuery: ({ node, queryId }) => new JsonTransformer().transformNode(node, queryId),

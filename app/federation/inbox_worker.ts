@@ -55,8 +55,8 @@ export const inboxDeadPayload: DeadPayload = (payload: JobPayload): JobPayload =
  * Runs inbox jobs: validates each entity again, in case Verso changed since it was queued, checks
  * that the instance that sent it is allowed to, and applies it. One from an instance blocked since
  * is dropped. An entity that is invalid or sent by the wrong instance is given up on, and its
- * sender is told why if it accepts instance messages; any other failure, such as a database error,
- * is retried.
+ * sender is told why if it accepts instance messages; any other failure, like a database error, is
+ * retried.
  */
 export const inboxHandler = (registry: Registry): Handler => async (ctx, job) => {
     const payload = InboxJob.safeParse(job.payload);

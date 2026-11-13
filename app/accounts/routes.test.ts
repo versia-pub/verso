@@ -224,7 +224,7 @@ Deno.test("anyone sees several accounts by their ids, in the order asked, withou
     assertEquals(await accts("id=alice"), [200, ["alice"]]);
     assertEquals(await accts(""), [200, []]);
 
-    // At most 40 at once, as on Mastodon.
+    // Mastodon's limit is 40 at once.
     const asking = (n: number) => Array.from({ length: n }, (_, i) => `id[]=${i}`).join("&");
     assertEquals((await accts(asking(40)))[0], 200);
     assertEquals((await accts(asking(41)))[0], 422);

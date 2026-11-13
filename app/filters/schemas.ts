@@ -83,7 +83,7 @@ export const KeywordAttribute = z.object({
 
 export type KeywordAttribute = z.infer<typeof KeywordAttribute>;
 
-// Rails reads nested attributes as an array, or as an object keyed by index, as forms send them.
+// Rails reads nested attributes as an array, or as an object keyed by index, like forms send them.
 export const KeywordAttributes = z.union([
     z.array(KeywordAttribute),
     z.record(z.string(), KeywordAttribute).transform((byIndex) => Object.values(byIndex)),

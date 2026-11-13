@@ -73,8 +73,8 @@ export const reportPage = (
 };
 
 /**
- * Marks the report `id` as resolved at `at` by the moderator `by`, even if it already was, as
- * Mastodon's admin API does. Returns the report, or `undefined` if it doesn't exist.
+ * Marks the report `id` as resolved at `at` by the moderator `by`, even if it already was, like
+ * Mastodon's admin API. Returns the report, or `undefined` if it doesn't exist.
  */
 export const resolveReportBy = (
     ctx: Context,
@@ -119,7 +119,7 @@ export const unresolvedReportIdsAbout = async (
     return rows.map((row) => row.id);
 };
 
-/** Marks the reports `ids` as resolved at `at` by the moderator `by`, as {@link resolveReportBy}. */
+/** Marks the reports `ids` as resolved like {@link resolveReportBy} does. */
 export const resolveReportsBy = async (
     ctx: Context,
     ids: readonly string[],

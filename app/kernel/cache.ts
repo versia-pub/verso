@@ -5,7 +5,7 @@
  */
 import type { Clock } from "./clock.ts";
 
-/** A value cached for a while, as {@link cached} caches it. */
+/** A value kept for a while by {@link cached}. */
 export type Cached<C, T> = {
     /** The value, computed with `ctx` if it isn't cached, or was cached too long. */
     readonly get: (ctx: C) => Promise<T>;

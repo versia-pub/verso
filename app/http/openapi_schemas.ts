@@ -1,5 +1,5 @@
 /**
- * Zod schemas as JSON Schemas, for the OpenAPI document, with the ones Verso names separated out as
+ * Zod schemas as JSON Schemas, for the OpenAPI document. The ones Verso names are separated out as
  * its components, and referred to by name.
  * @module
  */
@@ -10,8 +10,8 @@ export type JsonSchema = z.core.JSONSchema.JSONSchema;
 
 /**
  * The client API's entities, named as the package exports them, so the document describes each
- * once, in its components, and refers to it there. A schema that contains itself, as an account
- * contains the one it moved to, can only be described this way.
+ * once, in its components, and refers to it there. A schema that contains itself, like an account
+ * with the one it moved to, can only be described this way.
  */
 export const naming = (): Naming => {
     const entities = new Map<z.ZodType, string>();
@@ -50,8 +50,8 @@ const toJson = (schema: z.ZodType, names: Naming) =>
     });
 
 /**
- * The schema in `json`, with references to named schemas pointing into the document's components,
- * and the parts Zod named itself, which repeat within one schema, put back in place. `defs` are the
+ * The schema in `json`, with references to named schemas pointing into the document's components.
+ * The parts Zod named itself, which repeat within one schema, are put back in place. `defs` are the
  * schemas Zod provided alongside.
  */
 const resolve = (
@@ -75,6 +75,7 @@ const resolve = (
             : { ...rest, ...resolve(JSON.stringify(defs[id]), defs, names, [...within, id]) };
     });
 
+/** A schema as JSON Schema, with named schemas referred to by their component. */
 export const jsonSchema = (schema: z.ZodType, names: Naming): JsonSchema => {
     const { $schema: _, $defs = {}, ...rest } = toJson(schema, names);
     return resolve(JSON.stringify(rest), $defs, names);

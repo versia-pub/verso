@@ -5,14 +5,14 @@ import { type CallOptions, type Http, path } from "./http.ts";
 /** A new role. */
 export type RoleDraft = {
     readonly name: string;
-    /** Permission names, such as `roles` or `owner:account`, each of which the viewer has. */
+    /** Permission names, like `roles` or `owner:account`, each of which the viewer has. */
     readonly permissions?: readonly string[];
     /** Lower than the viewer's highest role's. Defaults to 0. */
     readonly priority?: number;
     readonly description?: string;
     /** Whether it is shown on the profiles of accounts that have it. */
     readonly visible?: boolean;
-    /** A hex colour in lower case, such as `#ff3838`, or empty for none. */
+    /** A hex colour in lower case, like `#ff3838`, or empty for none. */
     readonly color?: string;
     /** The URL of an image for it, or `null` for none. */
     readonly icon?: string | null;
@@ -33,6 +33,7 @@ export class RoleMethods {
         return this.http.json(z.array(VersiaRole), "GET", "/api/v1/roles", options);
     }
 
+    /** A role, by its id. */
     get(id: string, options?: CallOptions): Promise<VersiaRole> {
         return this.http.json(VersiaRole, "GET", path`/api/v1/roles/${id}`, options);
     }

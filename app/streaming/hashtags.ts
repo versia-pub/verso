@@ -1,6 +1,6 @@
 /**
  * The `hashtag` and `hashtag:local` streams: the public statuses using a hashtag as they appear,
- * change or go, from anywhere or the local instance, as on Mastodon.
+ * change or go, from anywhere or the local instance.
  * @see https://docs.joinmastodon.org/methods/streaming/#hashtag
  * @module
  */
@@ -17,10 +17,10 @@ const isHashtagStream = (stream: string) =>
     stream.startsWith(hashtagStream("hashtag:local", ""));
 
 /**
- * What the sessions of the process `ctx` belongs to are sent of the hashtag streams. A status is
- * sent on the streams of each hashtag it uses if it could be on their timelines, rendered as anyone
- * sees it, to those whose viewers may read statuses, may see statuses from where it is from and
- * don't block or mute its author.
+ * The hashtag streams for the sessions of the process `ctx` belongs to. A status is sent on the
+ * stream of each hashtag it uses, if it could be on its timeline. It is rendered as anyone sees it
+ * and sent to the sessions whose viewers may read statuses, may see statuses from where it is from
+ * and don't block or mute its author.
  */
 export const hashtagStreams = (
     ctx: Context,

@@ -27,7 +27,7 @@ export const announcementRoutes: readonly Route[] = [
         description: "See all currently active announcements set by admins.",
         docs: `${docs}/#get`,
         tags: ["announcements"],
-        // As on Mastodon, any token for a user, whatever its scopes.
+        // Mastodon accepts any token for a user here, whatever its scopes.
         auth: { require: "user" },
         responses: { 200: z.array(Announcement) },
         handler: async (ctx, { viewer }) => ({

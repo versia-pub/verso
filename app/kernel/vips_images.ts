@@ -41,7 +41,7 @@ const savers: Record<ImageFormat, { extension: string; options: string }> = {
 /** The formats whose every frame is read, so animations stay animated. */
 const animated: ReadonlySet<ImageFormat> = new Set(["gif", "webp"]);
 
-/** What `check` makes sure vips won't read, as it would with its untrusted loaders allowed. */
+/** An SVG that `check` makes sure vips can't read, since only its untrusted loaders read SVGs. */
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
 
 /**
@@ -164,7 +164,7 @@ export const vipsImages = (options: VipsOptions): ImageProcessor => {
         return summary;
     };
 
-    /** How many frames the animation at `path` has. vips omits the field for just one. */
+    /** How many frames the animation at `path` has. vips omits the field for one. */
     const framesOf = async (path: string) => {
         const output = await run("vipsheader", ["-f", "n-pages", path]);
         return output.success ? Number(new TextDecoder().decode(output.stdout)) : 1;

@@ -29,6 +29,7 @@ const levelLabels: Record<LogLevel, string> = {
     fatal: "\x1b[1;38;5;231;45m FTL \x1b[0m",
 };
 
+// Each of `levelLabels` has its own colours, so LogTape mustn't add any.
 const noColours: Record<LogLevel, null> = {
     trace: null,
     debug: null,
@@ -49,11 +50,11 @@ const escapeControls = (text: string): string =>
         ({ "\n": "\\n", "\r": "\\r", "\t": "\\t" })[character] ??
             `\\x${character.charCodeAt(0).toString(16).padStart(2, "0")}`);
 
-/** Strings without the quotes LogTape gives them, but escaped, and anything else as it shows it. */
+/** Strings escaped and without LogTape's quotes, and anything else as `inspect` shows it. */
 const value = (value: unknown, inspect: (value: unknown) => string): string =>
     typeof value === "string" ? escapeControls(value) : inspect(value);
 
-/** As `value`, in colour: strings in green, as `inspect` shows them, and anything else as it does. */
+/** As `value`, with strings in green. */
 const colouredValue = (
     value: unknown,
     inspect: (value: unknown, options?: { colors?: boolean }) => string,

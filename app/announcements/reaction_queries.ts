@@ -1,6 +1,6 @@
 /**
- * Users' reactions to announcements. Its queries read the `emojis` and `media` tables directly
- * rather than going through their modules, so that each takes one query.
+ * Queries for users' reactions to announcements. Some read the `emojis` and `media` tables
+ * directly rather than going through their modules, so that each takes one query.
  * @module
  */
 import { sql } from "kysely";
@@ -46,7 +46,7 @@ export const insertReaction = async (
             emoji_id: emoji.emoji_id,
             created_at: ctx.clock.now(),
         })
-        // Either index of one reaction with each emoji.
+        // Whichever unique index applies allows one reaction per account and emoji.
         .onConflict((conflict) => conflict.doNothing())
         .returning("id")
         .executeTakeFirst() !== undefined;

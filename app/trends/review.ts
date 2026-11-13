@@ -21,8 +21,8 @@ import {
 } from "./trend_queries.ts";
 
 /**
- * Whether something trends: an admin approved or rejected it, or hasn't decided and the instance's
- * default, `byDefault`, applies, which is pending approval if it doesn't approve.
+ * Whether something trends: an admin approved or rejected it. If none decided, it is approved if
+ * the instance's default approves it, and pending approval if not.
  */
 export type TrendState = "approved" | "rejected" | "pending";
 

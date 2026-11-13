@@ -2,6 +2,7 @@
  * Notifying local users of what others do: mentions, statuses of accounts they asked to be notified
  * of, boosts, follows, follow requests, likes, reactions, quotes, edits of statuses they boosted or
  * quoted, and of the polls they wrote or voted in ending.
+ *
  * Undoing any of them, or deleting the status, deletes the notification with it. Followers and
  * boosters of a status can be many, so jobs notify them, a batch at a time.
  * @module
@@ -70,13 +71,13 @@ export const groupedTypes: ReadonlySet<NotificationType> = new Set([
     "reaction",
 ]);
 
-/** How long a group may span, as on Mastodon. */
+/** Mastodon's limit on how long a group may span. */
 const groupSpanHours = 12;
 
 /**
- * The group a new notification of `accountId` goes in, as on Mastodon: one of its type and status,
- * keyed by the hour it started, which notifications join for 12 hours from then. Types that aren't
- * grouped have none.
+ * The group a new notification of `accountId` goes in: one of its type and status, keyed by the
+ * hour it started, which notifications join for 12 hours from then. Types that aren't grouped have
+ * none.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/notify_service.rb
  */
 const groupOf = async (
@@ -98,7 +99,7 @@ const groupOf = async (
 
 /**
  * The users of `accountIds` who mute the thread of the status `noteId`, if there is one, and so
- * aren't notified of it, as on Mastodon.
+ * aren't notified of it.
  */
 const mutingThread = async (
     ctx: Context,
@@ -262,9 +263,9 @@ const notifyQuoted = async (ctx: Context, note: NoteRow) => {
 };
 
 /**
- * Notifies the local users a new status mentions, and, as on Mastodon, the author's followers who
- * asked to be notified, unless it is direct, or a reply to someone else. Followers it mentions are
- * notified of the mention only.
+ * Notifies the local users a new status mentions, and the author's followers who asked to be
+ * notified, unless it is direct, or a reply to someone else. Followers it mentions are notified of
+ * the mention only.
  */
 const notifyPosted = async (ctx: Context, note: NoteRow) => {
     const mentioned = await mentionedLocals(ctx, note);
@@ -282,7 +283,7 @@ const notifyPosted = async (ctx: Context, note: NoteRow) => {
 
 /**
  * Notifies the local users an edited status mentions for the first time, and the local users who
- * boosted or quoted it, as on Mastodon.
+ * boosted or quoted it.
  */
 const notifyEdited = async (ctx: Context, note: NoteRow) => {
     const alreadyMentioned = await mentionNotifiedIds(ctx, note.id);
@@ -298,8 +299,8 @@ const notifyEdited = async (ctx: Context, note: NoteRow) => {
 
 /**
  * Notifies a local followee of a follow request, or of a follow. Accepting a request deletes its
- * notification instead, as Mastodon does, rather than notifying of a follow they approved. A follow
- * that ended is already gone, with its notification.
+ * notification instead of notifying of a follow they approved, like Mastodon. A follow that ended
+ * is already gone, with its notification.
  */
 const notifyFollow = async (ctx: Context, event: FollowEvent) => {
     const followee = await findAccount(ctx, event.followeeId);

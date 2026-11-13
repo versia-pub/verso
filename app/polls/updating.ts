@@ -21,12 +21,12 @@ export const pollUpdatesQueue = "polls-updated";
 
 const UpdateJob = z.object({ pollId: z.string() });
 
-/** How long after a vote the poll is sent, as Mastodon waits. */
+/** How long after a vote the poll is sent. Mastodon waits as long. */
 export const updateDelayMs = 3 * 60_000;
 
 /**
- * The poll `pollId`, if its status is a local one and its votes are to be sent: it hasn't ended,
- * whose results are sent when it does, and doesn't hide its totals.
+ * The poll `pollId`, if its status is a local one and its votes are to be sent now. That means it
+ * hasn't ended, because its results are sent when it does, and it doesn't hide its totals.
  */
 const livePoll = async (ctx: Context, pollId: string): Promise<PollWithOptions | undefined> => {
     const poll = await findPoll(ctx, pollId);
@@ -51,8 +51,8 @@ export const queuePollUpdate = async (ctx: Context, event: DomainEvent): Promise
 };
 
 /**
- * Emits that the poll in the job is to be sent again. A poll deleted, ended or changed to hide its
- * totals since the vote isn't.
+ * Emits that the poll in the job is to be sent again. A poll that was deleted, ended or changed to
+ * hide its totals since the vote isn't.
  */
 export const pollUpdateHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = UpdateJob.safeParse(job.payload);

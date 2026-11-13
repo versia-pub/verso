@@ -94,7 +94,7 @@ export type QuoteApproval = z.infer<typeof QuoteApproval>;
 
 /**
  * A status, local or remote. Fields Mastodon added after 4.3 are optional, since older servers omit
- * them, as are the ones only given to a logged-in viewer.
+ * them. So are the fields only given to a logged-in viewer.
  * @see https://docs.joinmastodon.org/entities/Status/
  */
 export const Status = z.object({

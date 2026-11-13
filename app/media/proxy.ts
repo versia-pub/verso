@@ -1,6 +1,6 @@
 /**
  * The media proxy: remote media that isn't cached yet, at a URL of Verso's, which caches it on the
- * spot and redirects to it, as Mastodon's does.
+ * spot and redirects to it.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/controllers/media_proxy_controller.rb
  * @module
  */

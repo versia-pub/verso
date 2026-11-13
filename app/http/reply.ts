@@ -26,8 +26,8 @@ const isSchema = (declared: NonNullable<Responses[200]>): declared is z.ZodType 
     declared instanceof z.ZodType;
 
 /**
- * Why a response's body doesn't match `schema`, or, for a page of a list, lacks its `pages`
- * (cursors or offsets), if it does either.
+ * Why a response doesn't have a body `schema` accepts, with cursors or offsets only when `pages`
+ * asks for them, if it doesn't.
  */
 const bodyProblem = (
     reply: Reply<Responses>,
@@ -98,8 +98,8 @@ const pageHeaders = (route: Route) => ({
 });
 
 /**
- * Sends `reply` as the response to the request in `c`, which arrived at `origin`, which Verso's
- * public URLs start with, as links to other pages of a list do too.
+ * Sends `reply` as the response to the request in `c`. `origin` is what Verso's public URLs start
+ * with, and so do the links to other pages of a list.
  */
 export const send = (
     c: HonoContext,
@@ -147,7 +147,7 @@ export const send = (
         return response;
     }
 
-    // So that the status is one with a body, as only a WebSocket's can't have one.
+    // Only 101 can't have a body, so what follows may assume the status has one.
     if (reply.status === 101) throw new Error(`${route.path} switched protocols without a socket`);
 
     if ("location" in reply) return c.redirect(reply.location, reply.status);

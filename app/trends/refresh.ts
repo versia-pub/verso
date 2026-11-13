@@ -1,8 +1,7 @@
 /**
  * Working out what is trending. Hashtags and links are scored by how many accounts used them today
- * compared with yesterday, statuses by how many times they were liked and boosted, as Mastodon
- * does.
- * Whether admins approved them is checked when they are shown, so approving takes effect at once.
+ * compared with yesterday, statuses by how many times they were liked and boosted. Whether admins
+ * approved them is checked when they are shown, so approving takes effect at once.
  * @module
  */
 import { dayMs } from "../kernel/clock.ts";

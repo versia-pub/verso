@@ -1,7 +1,6 @@
 /**
  * The `public` streams: the statuses of the public timeline as they appear, change or go, from
- * anywhere, the local instance or remote instances, and of those, the ones with media attached, as
- * on Mastodon.
+ * anywhere, the local instance or remote instances, and of those, the ones with media attached.
  * @see https://docs.joinmastodon.org/methods/streaming/#public
  * @module
  */
@@ -21,10 +20,10 @@ const streams = [
 ];
 
 /**
- * What the sessions of the process `ctx` belongs to are sent of the `public` streams. A status is
- * sent if it is on the public timeline, rendered as anyone sees it, to those whose viewers may read
- * statuses, may see statuses from where it is from and don't block or mute its author, as on the
- * public timeline.
+ * The `public` streams for the sessions of the process `ctx` belongs to. A status is sent if it is
+ * on the public timeline. It is rendered as anyone sees it and sent to the sessions whose viewers
+ * may read statuses, may see statuses from where it is from and don't block or mute its author,
+ * as on the public timeline.
  */
 export const publicStreams = (
     ctx: Context,

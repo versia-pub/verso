@@ -11,9 +11,9 @@ import { firstIdAt } from "../kernel/ids.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 
 /**
- * Whether a hashtag's name starts with `start`, in a way its index finds. SQLite's `LIKE` ignores
- * case, which its index can't, so SQLite uses `GLOB`. Wildcards in `start` are themselves, as `_`,
- * common in hashtags, must be.
+ * Whether a hashtag's name starts with `start`, in a way its index can use. SQLite's `LIKE` ignores
+ * case, which its index can't, so SQLite uses `GLOB`. Wildcards in `start` match themselves, since
+ * `_` is common in hashtags.
  */
 const startsWith = (ctx: Pick<Context, "db">, start: string): Expression<SqlBool> => {
     if (usesSqlite(ctx.db)) {
@@ -78,9 +78,9 @@ export const dayOf = (days: readonly Date[]): RawBuilder<number> =>
 
 /**
  * How statuses of the visibilities `visibilities`, public and unlisted unless said otherwise, used
- * each of `names` on each of the days that start at `days`, newest first, each a day long, as
- * Mastodon counts its uses. Days they weren't used are left out, and so are statuses by suspended
- * or silenced accounts, which Mastodon doesn't count.
+ * each of `names` on each of the days that start at `days`, newest first, each a day long. Days
+ * they weren't used are left out, and so are statuses by suspended or silenced accounts, which
+ * Mastodon doesn't count.
  *
  * Only statuses whose ids are from the oldest day on are counted, so that the hashtags' index
  * reads only those, not every use there ever was. Ids have the time a status was made, except a

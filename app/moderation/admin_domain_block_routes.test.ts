@@ -154,7 +154,8 @@ Deno.test("a domain already blocked isn't blocked again, by the API or the confi
     assertEquals(configured.status, 422);
     assertEquals(configured.body.existing_domain_block.id, "config:config.example");
 
-    // A subdomain is blocked as strictly as its parent, which Mastodon allows, and the other way.
+    // Mastodon allows blocking a subdomain as strictly as its parent, and a parent after its
+    // subdomain.
     assertEquals((await create("a.evil.example")).status, 200);
     await test.create("a.bad.example");
     assertEquals((await create("bad.example")).status, 200);

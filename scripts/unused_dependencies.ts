@@ -1,6 +1,6 @@
 /**
  * Fails if an import in deno.json isn't used by any TypeScript file in the repository.
- * `deno info --json` lists each file's imports exactly as written, such as "zod".
+ * `deno info --json` lists each file's imports exactly as written, like "zod".
  */
 import denoConfig from "../deno.json" with { type: "json" };
 
@@ -51,8 +51,8 @@ const addImportsOf = async (file: string) => {
     }
 };
 
-// Tests reach most of the code, and one `deno info` covers everything a file reaches, so only files
-// not reached yet need their own.
+// Tests go first because they reach most of the code. One `deno info` covers everything a file
+// reaches, so only files not reached yet need their own.
 const files = (await typeScriptFiles(".")).sort((a, b) =>
     Number(b.endsWith(".test.ts")) - Number(a.endsWith(".test.ts"))
 );

@@ -28,13 +28,13 @@ export const cardsQueue = "preview-cards";
 
 const CardJob = z.object({ noteId: z.string() });
 
-/** The box a card's image is scaled down to fit in, as Mastodon does. */
+/** The box a card's image is scaled down to fit in. It's the size Mastodon uses. */
 const imageBox = { width: 640, height: 360 };
 
 /** How long a page's card is used before the page is fetched again. */
 const staleMs = 14 * 24 * 60 * 60_000;
 
-/** The formats a page's image may be in, as Mastodon accepts. */
+/** The formats a page's image may be in. They're the ones Mastodon accepts. */
 const imageFormats = new Set(["jpeg", "png", "gif", "webp"]);
 
 /**
@@ -166,9 +166,9 @@ export const cardHandler: Handler = async (ctx: Context, job: JobsTable): Promis
 };
 
 /**
- * Queues a job to make the card of the status `noteId`, if the first link in its text isn't the one
- * its card is for. A remote status waits up to a minute, as Mastodon does, so a status that
- * thousands of servers fetch doesn't make them all fetch the page at once.
+ * Queues a job to make the card of the status `noteId`, if the first link in its text isn't the
+ * one its card is for. A remote status waits up to a minute, so a status that thousands of servers
+ * fetch doesn't make them all fetch the page at once.
  */
 const queueCard = async (ctx: Context, noteId: string, remote: boolean): Promise<void> => {
     const note = await findNote(ctx, noteId);

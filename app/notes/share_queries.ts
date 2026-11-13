@@ -95,7 +95,7 @@ export const deleteShare = async (
         .returningAll()
         .executeTakeFirst();
 
-/** The accounts that boosted any of `noteIds`, as a subquery. */
+/** The accounts that boosted any of `noteIds`. */
 export const sharerIdsQuery = (ctx: Context, noteIds: readonly string[]): AccountIdQuery =>
     ctx.db.selectFrom("notes").select("account_id").where("reblog_of_id", "in", noteIds);
 

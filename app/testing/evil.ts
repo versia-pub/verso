@@ -24,14 +24,14 @@ export type EvilInstance = {
      * Responds to GETs to `path` with `body` as JSON, signed by itself unless `signed` is false.
      */
     readonly serve: (path: string, body: unknown, options?: { signed?: boolean }) => void;
-    /** Replaces its key pair, as an instance whose key leaked would. */
+    /** Replaces its key pair, like an instance whose key leaked would. */
     readonly rotateKey: () => Promise<void>;
 };
 
 const bytesOf = (body: unknown) =>
     new TextEncoder().encode(typeof body === "string" ? body : JSON.stringify(body));
 
-/** Adds an evil instance at `domain` to the network, which says it supports `extensions`. */
+/** Adds an evil instance at `domain` to the network. It says it supports `extensions`. */
 export const addEvilInstance = async (
     network: Network,
     domain: string,

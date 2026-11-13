@@ -10,7 +10,7 @@ export type Query = Readonly<
 >;
 
 /**
- * A form field's value. Objects and arrays are sent with Rails-style names, as `a[b]` and `a[0]`.
+ * A form field's value. Objects and arrays are sent with Rails-style names, like `a[b]` and `a[0]`.
  */
 export type FormValue =
     | string
@@ -77,7 +77,7 @@ export class ApiError extends Error {
     }
 }
 
-/** A success whose body isn't what the method gives, as when the URL isn't a Versia instance. */
+/** A success whose body isn't what the method gives, like when the URL isn't a Versia instance. */
 export class UnexpectedResponse extends Error {
     override readonly name = "UnexpectedResponse";
 
@@ -133,7 +133,7 @@ const errorOf = async (response: Response): Promise<ApiError> => {
 const given = <T>(fields: Readonly<Record<string, T | undefined | null>>): [string, T][] =>
     Object.entries(fields).filter((field): field is [string, T] => field[1] != null);
 
-/** `form` as form data, with each nested field named for its path, as `source[privacy]`. */
+/** `form` as form data, with each nested field named for its path, like `source[privacy]`. */
 const formData = (form: Form): FormData => {
     const data = new FormData();
     const add = (name: string, value: FormValue) => {

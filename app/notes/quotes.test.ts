@@ -226,7 +226,7 @@ Deno.test("who may quote a status is given as Mastodon does, and what a viewer m
         { ...everyone, current_user: "automatic" },
     );
 
-    // An unlisted status may be quoted by anyone, as a public one.
+    // An unlisted status may be quoted by anyone, like a public one.
     const unlisted = await createNote(test.ctx, "alice", { visibility: "unlisted" });
     assertEquals(
         (await test.request("GET", `/api/v1/statuses/${unlisted.id}`, "dave")).body

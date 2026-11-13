@@ -161,7 +161,7 @@ Deno.test("a failed login, or a closed registration, is denied to the app, and e
 });
 
 Deno.test("a callback failing while another logs in leaves that login be", async () => {
-    // The issuer responds "slow" only once told to, rejecting it, as a code used twice would be.
+    // The issuer holds the "slow" code until told to answer, then rejects it like a reused code.
     const { promise: answered, resolve: answer } = Promise.withResolvers<void>();
     const stub = stubProvider();
     const provider: IdentityProvider = {

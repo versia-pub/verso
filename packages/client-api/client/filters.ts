@@ -18,7 +18,7 @@ export type KeywordAttributes = Partial<KeywordInput> & {
     readonly _destroy?: boolean;
 };
 
-/** A filter's properties, as a new filter is made with. */
+/** The properties a new filter is made with. */
 export type FilterInput = {
     readonly title: string;
     readonly context: readonly Filter["context"][number][];

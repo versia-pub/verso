@@ -118,8 +118,8 @@ export const setCodeToken = async (
 };
 
 /**
- * Deletes a flow whose login hasn't finished. Returns false if it has, as when the browser came
- * back twice at once and the other request logged in, so the flow stays for it.
+ * Deletes a flow whose login hasn't finished. Returns false if it has: the browser came back twice
+ * at once, and the other request logged in, so the flow stays for it.
  */
 export const deleteUnfinishedFlow = async (ctx: Context, flowId: string): Promise<boolean> => {
     const deleted = await ctx.db.deleteFrom("oauth_flows")

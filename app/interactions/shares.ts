@@ -22,7 +22,7 @@ export type ShareResult =
     | NoteRow
     /** There is no such status, or the booster may not see it. */
     | "missing"
-    /** Only public and unlisted statuses can be boosted, as on Mastodon. */
+    /** Only public and unlisted statuses can be boosted. */
     | "unshareable";
 
 /**
@@ -88,9 +88,9 @@ export const share = (
 
 /**
  * Undoes `accountId`'s boost of a status, or of the status a boost boosts, and decrements the
- * counts. Returns the boosted status as it is now, or `undefined` if there is none. As on Mastodon,
- * a boosted status can be unboosted even if the booster may no longer see it, and one that isn't
- * boosted only if they may.
+ * counts. Returns the boosted status as it is now, or `undefined` if there is none. A boosted
+ * status can be unboosted even if the booster may no longer see it, and one that isn't boosted
+ * only if they may.
  */
 export const unshare = (
     ctx: Context,

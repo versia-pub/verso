@@ -1,7 +1,7 @@
 /**
  * Notification policies: what a local user's policy does with a notification from another
- * account, by how they are related, as Mastodon's. A notification it drops isn't made. One it
- * filters is kept aside, and a filtered mention is kept in a request from its account.
+ * account, by how they are related. A notification it drops isn't made. One it filters is kept
+ * aside, and a filtered mention is kept in a request from its account.
  * @see https://docs.joinmastodon.org/methods/notifications/#get-policy
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/notify_service.rb
  * @module
@@ -30,13 +30,13 @@ const filterable: ReadonlySet<NotificationType> = new Set([
     "quote",
 ]);
 
-/** How long an account is new for, as on Mastodon. */
+/** Mastodon's value for how long an account counts as new. */
 const newAccountMs = 30 * dayMs;
 
-/** How long a follower is new for, and doesn't count as one yet, as on Mastodon. */
+/** Mastodon's value for how long a follower is new, and doesn't count as one yet. */
 const newFollowerMs = 3 * dayMs;
 
-/** How far up a thread a user's own direct status is looked for, as on Mastodon. */
+/** Mastodon's value for how far up a thread a user's own direct status is looked for. */
 const ancestorsAtMost = 100;
 
 /** How a recipient is related to who caused the notification, as policies ask. */
@@ -50,8 +50,8 @@ type Relation = {
 };
 
 /**
- * Whether `policy` does `action` with a notification from an account `relation` describes, as
- * Mastodon asks, in its order.
+ * Whether `policy` does `action` with a notification from an account `relation` describes. It
+ * checks the conditions in Mastodon's order.
  */
 const doesWith = (policy: Policy, action: PolicyAction, relation: Relation) =>
     (policy.for_limited_accounts === action && relation.limited && relation.notFollowing) ||
@@ -94,9 +94,9 @@ const answeredAmong = async (
 
 /**
  * What the policies of `accountIds`, local users, do with a notification of `type` from `fromId`,
- * about the status `noteId` if it has one: `drop` or `filter`, for those it doesn't accept. As on
- * Mastodon, any policy that drops it wins over any that filters it, and none applies to an account
- * whose request the user accepted.
+ * about the status `noteId` if it has one: `drop` or `filter`, for those it doesn't accept. Any
+ * policy that drops it wins over any that filters it, and none applies to an account whose request
+ * the user accepted.
  */
 export const verdictsOf = async (
     ctx: Context,

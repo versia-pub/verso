@@ -13,7 +13,7 @@ export type PageBounds = {
 
 /**
  * Reads the page of `query`'s rows that `page` asks for, by the column `cursor`, newest first.
- * `since_id` returns the newest rows after it, and `min_id` the oldest, as Mastodon's do.
+ * `since_id` returns the newest rows after it, and `min_id` the oldest.
  */
 export const readPage = async <DB, TB extends keyof DB, O>(
     query: SelectQueryBuilder<DB, TB, O>,

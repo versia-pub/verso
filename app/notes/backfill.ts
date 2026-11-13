@@ -1,7 +1,6 @@
 /**
  * Backfilling remote threads: fetching the replies Verso hasn't heard of, from the replies
- * collections of a remote status and of the replies under it, when a local user opens it, as
- * Mastodon does.
+ * collections of a remote status and of the replies under it, when a local user opens it.
  * @see https://versia.pub/api/endpoints#entity-collections
  * @module
  */
@@ -49,7 +48,7 @@ const walkMs = 4 * 60_000;
  */
 const storedMs = 7 * 24 * 60 * 60_000;
 
-/** How many replies, and pages of replies, one backfill fetches at most, as on Mastodon. */
+/** Mastodon's limits on how many replies, and pages of replies, one backfill fetches. */
 export type BackfillLimits = { readonly replies: number; readonly pages: number };
 
 const limits: BackfillLimits = { replies: 1000, pages: 500 };
@@ -182,7 +181,7 @@ export const fetchReplies = async (
 
 /**
  * Fetches the replies of the status in the job, unless it has been deleted since, and then marks
- * its refresh finished, whether or not it failed, as Mastodon does.
+ * its refresh finished, whether or not it failed.
  */
 export const backfillHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = BackfillJob.safeParse(job.payload);

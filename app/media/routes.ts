@@ -15,13 +15,13 @@ import { deleteUploads, describeUpload, processingFailed, upload } from "./uploa
 /** Room for the form's other fields and boundaries, besides the file. */
 const formBytes = 64 * 1024;
 
-/** Media alt text as Mastodon accepts it, at most as long as `limits` allow. */
+/** Media alt text, at most as long as `limits` allow. */
 export const MediaDescription = (limits: Limits): z.ZodType<string, string> =>
     Text(limits.media_description).meta({
         description: "A plain-text description of the media, for accessibility purposes.",
     });
 
-/** A focus point as Mastodon writes it, such as `0.5,-0.25`, from -1 to 1 on each axis. */
+/** A focus point, like `0.5,-0.25`, from -1 to 1 on each axis. */
 export const FocusPoint = z.string()
     .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, { error: "Must be two numbers, such as 0.5,-0.25" })
     .transform((point) => point.split(",").map(Number))
@@ -34,8 +34,8 @@ export const FocusPoint = z.string()
     });
 
 /**
- * A media upload as Mastodon accepts it. Thumbnails, which Mastodon accepts for videos and audio,
- * aren't supported yet.
+ * A media upload. Mastodon accepts thumbnails for videos and audio, but Verso doesn't support them
+ * yet.
  * @see https://docs.joinmastodon.org/methods/media/#v2
  */
 const UploadBody = (media: MediaLimits, limits: Limits) =>
@@ -65,8 +65,8 @@ const DescriptionBody = (limits: Limits) =>
 const MediaId = z.object({ id: z.string() });
 
 /**
- * The upload response: 200 once processed, or 206 while processing, as Mastodon responds. An image
- * that couldn't be processed is rejected with 422, as on Mastodon.
+ * The upload response, with Mastodon's codes: 200 once processed, 206 while processing, and 422 for
+ * an image that couldn't be processed.
  */
 const progressOf = (ctx: Context, row: MediaRow) => {
     if (processingFailed(row)) {

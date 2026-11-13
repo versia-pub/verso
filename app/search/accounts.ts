@@ -62,12 +62,12 @@ export type AccountSearch = {
     readonly offset: number;
 };
 
-/** How long a query must be to find accounts by their words without signing in, as on Mastodon. */
+/** Mastodon's minimum length of a query that finds accounts by their words without signing in. */
 const minAnonymousLength = 5;
 
 /**
  * The account at the address `query` names, if it names one with its domain, and the viewer
- * follows it when only those are wanted, as on Mastodon. Only the first page has it.
+ * follows it when only those are wanted. Only the first page has it.
  */
 const exactMatch = async (ctx: Context, search: AccountSearch) => {
     if (search.offset > 0 || !search.query.includes("@")) return undefined;
@@ -80,9 +80,9 @@ const exactMatch = async (ctx: Context, search: AccountSearch) => {
 };
 
 /**
- * The accounts `search` finds, as Mastodon does: the account at the address it names, then those
- * whose words start with each of its words. A local address is searched as its username. Without
- * signing in, a short query only finds the account at its address.
+ * The accounts `search` finds: the account at the address it names, then those whose words start
+ * with each of its words. A local address is searched as its username. Without signing in, a short
+ * query only finds the account at its address.
  */
 export const searchAccounts = async (
     ctx: Context,

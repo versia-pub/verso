@@ -11,7 +11,7 @@ export const findAppByClientId = async (
         : await ctx.db.selectFrom("apps").selectAll().where("client_id", "=", clientId)
             .executeTakeFirst();
 
-/** An app by its id, which must exist, as it does for a viewer's token. */
+/** An app by its id, which must exist: a viewer's token always has one. */
 export const getApp = (ctx: Context, id: string): Promise<AppsTable> =>
     ctx.db.selectFrom("apps").selectAll().where("id", "=", id).executeTakeFirstOrThrow();
 

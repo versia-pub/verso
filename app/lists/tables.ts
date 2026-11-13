@@ -23,8 +23,8 @@ export type ListAccountsTable = {
     list_id: string;
     account_id: string;
     /**
-     * The list owner's follow of the account, or request to follow it, which removing also removes
-     * the account from the list, as on Mastodon. `null` if the owner is the account.
+     * The owner's follow of the account, or their request to follow it. Removing it removes the
+     * account from the list. `null` when the account is the owner.
      */
     follow_id: string | null;
     created_at: Date;

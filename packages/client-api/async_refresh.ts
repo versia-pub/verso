@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * A fetch the server is running in the background, such as of the replies of a thread, which a
- * response named in its `Mastodon-Async-Refresh` header.
+ * A fetch the server runs in the background, like of the replies of a thread. A response names it
+ * in its `Mastodon-Async-Refresh` header.
  * @see https://docs.joinmastodon.org/entities/AsyncRefresh/
  */
 export const AsyncRefresh = z.object({

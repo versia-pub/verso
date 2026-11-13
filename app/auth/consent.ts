@@ -18,7 +18,7 @@ import { webClientId } from "./web_app.ts";
 
 const logger = getLogger(["verso", "auth"]);
 
-/** How long an app has to exchange its code for a token, as in Mastodon. */
+/** Mastodon's limit on how long an app has to exchange its code for a token. */
 const codeLifetimeMs = 10 * 60_000;
 
 /** Where to redirect the browser, and what to tell the app. */
@@ -41,8 +41,9 @@ const denied = (flow: OAuthFlowsTable, description: string) =>
     sendBack(flow, { error: "access_denied", error_description: description });
 
 /**
- * Tells the app the login was denied, and deletes its flow, which can't be finished now. If the
- * login finished in the meantime, the flow is left to it, and this response only says it is over.
+ * Tells the app the login was denied, and deletes its flow, which can't be finished now. If another
+ * request finished the login in the meantime, the flow is left to it, and this response only says
+ * the login is over.
  */
 const loginDenied = async (ctx: Context, flow: OAuthFlowsTable, description: string) =>
     await deleteUnfinishedFlow(ctx, flow.id)
@@ -50,8 +51,9 @@ const loginDenied = async (ctx: Context, flow: OAuthFlowsTable, description: str
         : { result: "expired" as const };
 
 /**
- * Gives the app a code, valid for `codeLifetimeMs`, to exchange for a token; only its hash is
- * stored. If the flow already has one, its form was sent twice at once, and only the first counts.
+ * Gives the app a code to exchange for a token, valid for `codeLifetimeMs`. Only its hash is
+ * stored. If the flow already has a code, its form was sent twice at once, and only the first
+ * counts.
  */
 const issueCode = async (
     ctx: Context,
@@ -67,8 +69,8 @@ const issueCode = async (
 
 /**
  * Finishes the login when the issuer sends the browser back. On success the user is asked to allow
- * the app, except Verso's own web app, which gets its code straight away. If the login failed, or the issuer's policy won't let the user register, the app is told
- * the user was denied.
+ * the app, except for Verso's own web app, which gets its code straight away. If the login failed,
+ * or the issuer's policy won't let the user register, the app is told the user was denied.
  */
 export const finishLogin = async (
     ctx: Context,

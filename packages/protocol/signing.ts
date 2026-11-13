@@ -4,12 +4,13 @@
  * Signatures cover the raw body bytes, so verify the bytes exactly as they arrived, and send the
  * bytes exactly as they were signed. Parsing and re-serialising JSON in between breaks them.
  * @see https://versia.pub/signatures
+ * @module
  */
 import { canonicalizeDomain } from "./reference.ts";
 
 /** A request, or a response to one. Responses use the method and pathname of their request. */
 export type SignedMessage = {
-    /** Such as "GET" or "post"; the case doesn't matter. */
+    /** Like "GET" or "post"; the case doesn't matter. */
     readonly method: string;
     /** The URL-encoded path, as `URL.pathname` gives it. The query string isn't signed. */
     readonly pathname: string;

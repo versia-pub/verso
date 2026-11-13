@@ -1,7 +1,7 @@
 /**
- * What an app that doesn't know a notification's type can show instead, as Mastodon's `fallback`:
- * only when the app said which types it supports, and only for types that aren't Mastodon's
- * baseline ones, which every app is taken to know. Of Verso's, that is only `reaction`.
+ * The `fallback` of a notification: what an app that doesn't know its type can show instead. It is
+ * given only when the app said which types it supports, and only for types outside Mastodon's
+ * baseline ones, which every app is taken to know. Of Verso's types, only `reaction` is outside.
  * @see https://docs.joinmastodon.org/entities/Notification/#fallback
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/serializers/concerns/notification_fallback_concern.rb
  * @module

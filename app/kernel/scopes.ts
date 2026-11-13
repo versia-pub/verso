@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Every scope Mastodon defines. As in Mastodon, apps can't register any other.
+ * Every scope Mastodon defines. Apps can't register any others.
  * @see https://docs.joinmastodon.org/api/oauth-scopes/
  */
 export const scopes = [
@@ -89,7 +89,7 @@ const followScopes: readonly Scope[] = [
 /**
  * Whether a token with `granted` may do what needs `needed`: it has that scope, or one that covers
  * it. `read` covers `read:statuses`, `admin:read` covers `admin:read:accounts`, `follow` covers the
- * scopes it was split into, and `read:accounts` covers `profile`, as in Mastodon.
+ * scopes it was split into, and `read:accounts` covers `profile`.
  */
 export const grants = (granted: readonly Scope[], needed: Scope): boolean =>
     granted.some((scope) =>

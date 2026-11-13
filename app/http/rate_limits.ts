@@ -116,8 +116,8 @@ export type RateLimits = {
 
 /**
  * Counts a request against `key` under `policy`, and rejects it once the key is over the limit.
- * Every response says how much of the quota is left, in the draft's headers, which Versia requires,
- * and in Mastodon's, which its clients read.
+ * Every response says how much of the quota is left, in the draft's headers (Versia requires them)
+ * and in Mastodon's (its clients read them).
  * @see https://docs.joinmastodon.org/api/rate-limits/
  */
 export const checkRateLimit = async (
@@ -143,7 +143,7 @@ export const checkRateLimit = async (
     }
 };
 
-/** Counts each request against the client `keyOf` names, as `checkRateLimit` does. */
+/** Counts each request against the client `keyOf` names, using `checkRateLimit`. */
 export const rateLimit = <E extends Env>(
     clock: Clock,
     limits: RateLimits,

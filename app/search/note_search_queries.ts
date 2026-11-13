@@ -33,8 +33,8 @@ export type NoteTerm =
 const never = sql<SqlBool>`1 = 0`;
 
 /**
- * Whether a status has `property`, as Mastodon's search names them. Verso's media are images, and
- * it doesn't yet search polls or link previews, so the others match nothing.
+ * Whether a status has `property`, by the names Mastodon's search uses. Verso's media are images,
+ * and it doesn't yet search polls or link previews, so the others match nothing.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/concerns/status/search_concern.rb
  */
 const hasProperty = (property: string) => (eb: ExpressionBuilder<Database, "notes">) => {
@@ -142,7 +142,7 @@ export type NoteMatch = {
  * mute, and not by silenced authors they don't follow, are found, and never boosts.
  *
  * Only what an index narrows down is searched: statuses with a word, phrase or hashtag, by an
- * author, or in the viewer's library. Anything else, such as `is:sensitive` alone, finds nothing,
+ * author, or in the viewer's library. Anything else, like `is:sensitive` alone, finds nothing,
  * rather than passing every status.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/statuses_search_service.rb
  */
@@ -161,7 +161,7 @@ export const noteIdsMatching = async (
 
     let query = ctx.db.selectFrom("notes")
         .select("notes.id")
-        // Boosts aren't statuses of their own to find, as on Mastodon.
+        // Boosts aren't statuses of their own to find.
         .where("notes.reblog_of_id", "is", null)
         .where((eb) =>
             eb.and(

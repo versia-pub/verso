@@ -20,7 +20,7 @@ const maxThumbhashLength = 100;
 /** The largest number Verso's integer columns hold. */
 const maxInteger = 2 ** 31 - 1;
 
-/** `value`, unless it is too large to store, as a size or a dimension the spec allows can be. */
+/** `value`, unless it is too large to store. The spec allows sizes and dimensions that large. */
 const stored = (value: number | null | undefined) =>
     value !== null && value !== undefined && value <= maxInteger ? value : undefined;
 

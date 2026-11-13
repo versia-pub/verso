@@ -13,7 +13,7 @@ export type AppsTable = {
     client_id: string;
     /**
      * The secret is shown once, when the app registers, and only its hash is stored. `null` for a
-     * public client, such as one running in a browser, which can't keep a secret.
+     * public client, like one running in a browser, which can't keep a secret.
      * @see https://www.rfc-editor.org/rfc/rfc6749#section-2.1
      */
     client_secret_hash: string | null;
@@ -21,7 +21,7 @@ export type AppsTable = {
 };
 
 /**
- * One user authorising one app, from `/oauth/authorize` until the app exchanges its code for a
+ * One user authorizing one app, from `/oauth/authorize` until the app exchanges its code for a
  * token. It is tied to the browser that started it by a cookie, whose hash is the id.
  */
 export type OAuthFlowsTable = {

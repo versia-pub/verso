@@ -75,7 +75,7 @@ const hourly: Record<string, Queue["handler"]> = {
     [resanitiseStartQueue]: (ctx) => startResanitising(ctx),
 };
 
-/** Work the scheduler enqueues every day, as `hourly` is every hour. */
+/** Like `hourly`, but enqueued every day. */
 const daily: Record<string, Queue["handler"]> = {
     [pruneStartQueue]: (ctx) => startPruning(ctx),
     [accountPruneStartQueue]: (ctx) => startAccountPruning(ctx),
@@ -83,7 +83,7 @@ const daily: Record<string, Queue["handler"]> = {
     [mediaPruneStartQueue]: (ctx) => startMediaPruning(ctx),
 };
 
-/** Work the scheduler enqueues every minute, as `hourly` is every hour. */
+/** Like `hourly`, but enqueued every minute. */
 const everyMinute: Record<string, Queue["handler"]> = {
     [announcementsQueue]: (ctx) => publishDueAnnouncements(ctx),
     [endedPollsQueue]: (ctx) => endPolls(ctx),

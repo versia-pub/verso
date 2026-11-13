@@ -1,6 +1,6 @@
 /**
  * Account notes: what an account privately notes about another account, which only it sees, and
- * which is never sent anywhere, as on Mastodon.
+ * which is never sent anywhere.
  * @see https://docs.joinmastodon.org/methods/accounts/#note
  * @module
  */
@@ -8,7 +8,7 @@ import { findAccount } from "../accounts/account_queries.ts";
 import type { Context } from "../kernel/context.ts";
 import { setAccountNote } from "./account_note_queries.ts";
 
-/** The longest an account note may be, in code points, as on Mastodon. */
+/** Mastodon's limit on the length of an account note, in code points. */
 export const accountNoteLimit = 2000;
 
 /**

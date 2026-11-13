@@ -5,7 +5,7 @@ import type { Context } from "../kernel/context.ts";
 import { policiesOf, requestSummaryOf, savePolicy } from "./policy_queries.ts";
 import { policyActions } from "./tables.ts";
 
-/** `accountId`'s policy as Mastodon renders it, with how many requests they have. */
+/** `accountId`'s policy, with how many requests they have. */
 const renderPolicy = async (ctx: Context, accountId: string): Promise<NotificationPolicy> => {
     const policy = (await policiesOf(ctx, [accountId])).get(accountId);
     if (policy === undefined) throw new Error("Every user has a policy");

@@ -12,16 +12,15 @@ export type Pixels = {
 export const hashedSize = 100;
 
 /**
- * The ThumbHash of `pixels`, in base64, as Versia gives it. They must be at most `hashedSize` on
- * each side.
+ * The ThumbHash of `pixels`, in base64, which is how Versia carries it. `pixels` must be at most
+ * `hashedSize` on each side.
  * @see https://evanw.github.io/thumbhash/
  */
 export const thumbhashOf = (pixels: Pixels): string =>
     rgbaToThumbHash(pixels.width, pixels.height, pixels.rgba).toBase64();
 
 /**
- * The BlurHash of `pixels`, as Mastodon gives it, with four components each way as Mastodon and the
- * old server generate it.
+ * The BlurHash of `pixels`, with four components each way, as Mastodon and Versia Server make it.
  * @see https://blurha.sh/
  */
 export const blurhashOf = (pixels: Pixels): string =>

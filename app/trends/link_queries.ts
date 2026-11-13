@@ -25,7 +25,7 @@ export type TrendingCard = PreviewCardRow & { readonly score: number };
  * and public boosts of public statuses, but not of ones that are sensitive or have a content
  * warning. A card could trend if it is for an article with a title, a description, an image and a
  * provider, as Mastodon requires. Boosts count for the cards of the statuses they share. Neither
- * the author nor the booster may be suspended or silenced, as on Mastodon.
+ * the author nor the booster may be suspended or silenced.
  */
 const sharesSince = (ctx: Pick<Context, "db">, since: Date) =>
     ctx.db.selectFrom("notes")
@@ -186,9 +186,9 @@ export const setCardTrendable = async (
 };
 
 /**
- * A page of the public statuses whose first link is the card `cardId`, newest first, as Mastodon
- * lists them: by accounts that are discoverable, and if there is a viewer, not by those they block
- * or mute, `hidden`, and only those from `origin`.
+ * A page of the public statuses whose first link is the card `cardId`, newest first, by accounts
+ * that are discoverable or remote. If there is a viewer, statuses by accounts they block or mute
+ * (`hidden`) are left out. Only those from `origin` are listed.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/link_feed.rb
  */
 export const linkPage = async (

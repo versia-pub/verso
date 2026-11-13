@@ -19,9 +19,10 @@ export type SignedRequest = {
 
 /**
  * Validates the request's signature, and returns who signed it. When the key Verso has for the
- * signer doesn't verify, the key is fetched again, at most so often, in case the instance rotated
- * it. A blocked instance is rejected once the headers are validated, before its key is looked up,
- * so Verso never sends it a request. `beforeFetch` runs before a key Verso doesn't have is fetched.
+ * signer doesn't verify, the key is fetched again, at most once per `refetchAfterMs`, in case the
+ * instance rotated it. A blocked instance is rejected once the headers are validated, before its
+ * key is looked up, so Verso never sends it a request. `beforeFetch` runs before a key Verso
+ * doesn't have is fetched.
  */
 export const verifyRequest = async (
     ctx: Context,

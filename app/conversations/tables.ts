@@ -1,6 +1,6 @@
 /**
  * A local user's direct conversation: the direct statuses of one thread between them and the same
- * other accounts, as Mastodon has them.
+ * other accounts.
  */
 export type ConversationsTable = {
     id: string;

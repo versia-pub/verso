@@ -14,7 +14,7 @@ export const captureLogs = async (): Promise<
         sinks: { memory: (record) => records.push(record) },
         loggers: [
             { category: ["verso"], lowestLevel: "trace", sinks: ["memory"] },
-            // LogTape's own warnings, such as a failing sink, but not its note that it is set up.
+            // LogTape's own warnings, like a failing sink, but not its note that it is set up.
             { category: ["logtape", "meta"], lowestLevel: "warning", sinks: ["memory"] },
         ],
         contextLocalStorage: new AsyncLocalStorage(),

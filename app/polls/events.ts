@@ -4,7 +4,7 @@
  */
 import type { DomainEvent } from "../kernel/context.ts";
 
-/** A poll ended, as Verso saw, on the status `noteId`. */
+/** The poll `pollId` on the status `noteId` ended. */
 export type PollEnded = {
     readonly type: "polls.ended";
     readonly pollId: string;
@@ -13,7 +13,7 @@ export type PollEnded = {
 
 export const isPollEnded = (event: DomainEvent): event is PollEnded => event.type === "polls.ended";
 
-/** `accountId` voted in the poll `pollId` on the status `noteId`, as the votes `voteIds`. */
+/** `accountId` voted in the poll `pollId` on the status `noteId`, with the votes `voteIds`. */
 export type PollVoted = {
     readonly type: "polls.voted";
     readonly pollId: string;

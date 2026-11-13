@@ -19,7 +19,7 @@ import { react, unreact } from "./reactions.ts";
 import { reactionName, renderReactions } from "./render.ts";
 import { share, unshare } from "./shares.ts";
 
-/** Likes a status, or undoes it, as Mastodon's favourites. */
+/** Likes a status, or undoes it, with Mastodon's favourite routes. */
 const likeRoute = (action: "favourite" | "unfavourite") =>
     defineRoute({
         method: "POST",
@@ -63,8 +63,8 @@ const versiaServerReactions =
     "https://github.com/versia-pub/server/tree/main/packages/api/routes/api/v1/statuses/[id]/reactions";
 
 /**
- * Reacts to a status with an emoji, or undoes it, as glitch-soc does. The emoji is a Unicode one,
- * or one of the local instance's by its shortcode.
+ * Reacts to a status with an emoji, or undoes it, like glitch-soc's routes. The emoji is a Unicode
+ * one, or one of the local instance's by its shortcode.
  * @see https://github.com/glitch-soc/mastodon/pull/2462
  */
 const reactionRoute = (action: "react" | "unreact") =>
@@ -200,7 +200,7 @@ export const interactionRoutes: readonly Route[] = [
                 ) => [note.id, note]),
             );
 
-            // A liked status may since have become one the viewer can't see, such as when they stop
+            // A liked status may since have become one the viewer can't see, like when they stop
             // following its author. The page is still as long, so its cursors go by the likes.
             const visible = await seenAmong(ctx, [...notes.keys()], viewer.accountId);
             const seen = likes.flatMap((row) => {

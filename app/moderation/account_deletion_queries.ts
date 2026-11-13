@@ -2,9 +2,8 @@ import { sql } from "kysely";
 import type { Context } from "../kernel/context.ts";
 
 /**
- * The columns referring to an account whose rows are deleted with it when it is kept as a deleted
- * account, in an order that deletes rows before what they refer to. Its media and emojis are
- * deleted separately.
+ * The columns referring to an account whose rows are deleted when it is kept as a deleted account.
+ * The order deletes rows before what they refer to. Its media and emojis are deleted separately.
  */
 export const purgedColumns = [
     ["access_tokens", "account_id"],
@@ -54,10 +53,12 @@ export const purgedColumns = [
 ] as const;
 
 /**
- * The columns referring to an account whose rows are kept with it when it is kept as a deleted
- * account: its login, so it can't sign up again, the reports by and about it and those it
- * resolved, its poll votes, so polls keep their counts, others' statuses mentioning or replying to
- * it, and the accounts that moved to it.
+ * The columns referring to an account whose rows are kept when it is kept as a deleted account:
+ * - its login, so it can't sign up again
+ * - the reports by and about it, and those it resolved
+ * - its poll votes, so polls keep their counts
+ * - others' statuses mentioning or replying to it
+ * - the accounts that moved to it
  */
 export const keptColumns = [
     ["identities", "account_id"],

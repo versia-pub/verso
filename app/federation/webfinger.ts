@@ -1,5 +1,5 @@
 /**
- * Finding users on remote instances by their address, such as `bob@b.example`, with WebFinger.
+ * Finding users on remote instances by their address, like `bob@b.example`, with WebFinger.
  * @see https://versia.pub/federation/discovery
  * @module
  */

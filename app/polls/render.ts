@@ -8,7 +8,7 @@ import { hasEnded } from "./polls.ts";
 /**
  * The polls of those of `notes` that have one, as each of `viewerIds` sees them, or as anyone does
  * for `null`, by viewer, then by status. A poll that hides its totals shows only how many voted
- * until it ends, as on Mastodon, even to its author.
+ * until it ends, even to its author.
  */
 export const renderPollsFor = async (
     ctx: Context,

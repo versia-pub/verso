@@ -25,8 +25,8 @@ export const forgetEverywhere = async (ctx: Context): Promise<void> => {
 };
 
 /**
- * Clears this process's caches whenever any process changes what they hold, or it may have missed
- * being told, until called.
+ * Clears this process's caches whenever any process changes what they hold, or this one may have
+ * missed being told. Returns a function that stops it.
  */
 export const forgetWhenTold = (ctx: Context): () => void => {
     const forget = () => Promise.resolve(ctx.federation.forget());

@@ -1,7 +1,7 @@
 /**
  * Local users moving, as Versia's migration extension has it: a user names the account it moved
  * from as its `previous`, which that account's instance checks before moving it here, and moves to
- * an account that names it, at most once a month, as Mastodon moves accounts.
+ * an account that names it, at most once a month.
  * @see https://versia.pub/extensions/migration
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/move_service.rb
  * @module
@@ -15,7 +15,7 @@ import { type AccountRow, findAccount, updateLocalAccount } from "./account_quer
 import type { AccountMoved, ProfileUpdated } from "./events.ts";
 import { accountAt, referenceOf } from "./moves.ts";
 
-/** How long after moving a local user can't move again, as on Mastodon. */
+/** Mastodon's limit on how soon after moving a local user can move again. */
 const cooldownMs = 30 * 24 * 60 * 60_000;
 
 /** Why a local user couldn't move to an account. */
@@ -82,10 +82,10 @@ const refusalOf = (ctx: Context, from: AccountRow, to: AccountRow): MoveRefusal 
 };
 
 /**
- * Moves the local user `accountId` to `to`, if `to` says it moved from it, as Mastodon does: its
- * local followers then follow `to`, and the instances of its followers and of `to` are sent a
- * Migration, and its profile, which says where it moved. `to` must have been fetched again just
- * now, so that what it says is current.
+ * Moves the local user `accountId` to `to`, if `to` says it moved from it: its local followers
+ * then follow `to`, and the instances of its followers and of `to` are sent a Migration, and its
+ * profile, which says where it moved. `to` must have been fetched again just now, so that what it
+ * says is current.
  */
 export const moveTo = async (
     ctx: Context,
@@ -127,7 +127,7 @@ export const moveTo = async (
 /**
  * Has the local user `accountId` no longer say it moved, and sends its profile to the instances of
  * its followers. Those that moved its followers already keep them where they are, as Versia has no
- * way to undo a move, and it can't move again until a month after it last did, as on Mastodon.
+ * way to undo a move. It can't move again until a month after it last did.
  */
 export const cancelMove = async (ctx: Context, accountId: string): Promise<void> => {
     await ctx.transaction(async (tx) => {

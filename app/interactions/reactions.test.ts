@@ -160,7 +160,7 @@ Deno.test("a status shows its reactions, and the custom emojis they use among it
     const note = await createNote(test.ctx, "alice");
     await react(test.ctx, "bob", note.id, "blob");
     await react(test.ctx, "dave", note.id, "🎉");
-    // A remote instance's reaction with its own emoji, as I10 will store them.
+    // A remote instance's reaction with its own emoji.
     await test.ctx.db.insertInto("reactions")
         .values({
             id: test.ctx.ids(),

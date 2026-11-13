@@ -1,6 +1,6 @@
 /**
- * Reactions as Versia has them: local users' reactions, as remote instances fetch them and are sent
- * them, with the collection of a status's reactions, and remote reactions, as Verso receives them.
+ * Reactions in Versia: local users' reactions, which remote instances fetch and are sent, with the
+ * collection of a status's reactions, and remote reactions, which Verso receives.
  * @see https://versia.pub/extensions/reactions
  * @module
  */
@@ -35,8 +35,8 @@ const typeName = "pub.versia:reactions/Reaction";
 
 /**
  * A local user's reaction as a Versia Reaction, if its user and status still exist. A custom emoji
- * is named in colons, with its picture in the extension for custom emojis, as Versia Server sends
- * them.
+ * is named in colons, with its picture in the extension for custom emojis, which is how Versia
+ * Server sends them.
  */
 const renderVersiaReaction = async (
     ctx: Context,
@@ -64,8 +64,8 @@ const renderVersiaReaction = async (
 
 /**
  * The remote instances a local user's reaction to a status is sent to: the instance of the status's
- * author, which must be told, and for a status anyone may see, those of the reactor's followers, as
- * Versia specifies. Other instances aren't told of reactions to statuses they may not see.
+ * author, which must be told, and for a status anyone may see, those of the reactor's followers,
+ * which Versia specifies. Other instances aren't told of reactions to statuses they may not see.
  */
 const audienceOfReaction = async (
     ctx: Context,
@@ -146,10 +146,10 @@ const remoteReactionEmoji = (reaction: v0_6.Reaction): string | RemoteEmoji | un
 };
 
 /**
- * Reactions: remote ones, as remote instances send them, and Deletes undo them, and local users'
- * ones, which remote instances that may see their statuses fetch. Verso stores those to statuses it
- * has, with an emoji it can display, and drops others. Those to local statuses must be by users who
- * may see them.
+ * Reactions that remote instances send, which Deletes undo, and local users' reactions, which
+ * remote instances that may see their statuses fetch. Verso stores those to statuses it has, with
+ * an emoji it can display, and drops others. Those to local statuses must be by users who may see
+ * them.
  */
 export const reactionType: EntityType<v0_6.Reaction> = {
     type: typeName,

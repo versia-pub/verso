@@ -37,9 +37,9 @@ export const deleteFileIfUnused = (ctx: Context, key: string): Promise<void> =>
     });
 
 /**
- * Queues the removal of the files stored under `keys`, unless something uses them by then, for
- * when a transaction that stops using them can't remove them itself, as that must wait until it
- * commits. Does nothing for no keys.
+ * Queues the removal of the files stored under `keys`, unless something uses them by then. Use it
+ * when a transaction stops using files, because their removal must wait until it commits. Does
+ * nothing for no keys.
  */
 export const enqueueFileCleanup = async (
     ctx: Context,
@@ -63,9 +63,9 @@ export const fileCleanupHandler: Handler = async (ctx: Context, job: JobsTable):
 /**
  * Removes uploads created at least as long ago as the settings say that nothing uses, along with
  * their files unless other uploads use them, in up to `batches` batches per run; the next run
- * removes the rest. The media of a deleted status can be attached again until then, as Mastodon
- * keeps it so the status can be redrafted. Unused remote media is removed too, with the files it
- * cached, such as media of deleted remote statuses or removed by an edit.
+ * removes the rest. The media of a deleted status can be attached again until then, so that the
+ * status can be redrafted. Unused remote media is removed too, with the files it cached, like media
+ * of deleted remote statuses or media removed by an edit.
  */
 export const removeUnusedMedia = async (
     ctx: Context,

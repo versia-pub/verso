@@ -33,7 +33,7 @@ export type ReactionGroup = {
     readonly me: boolean;
 };
 
-/** A status and one of the emojis it was reacted with. */
+/** A key for a status and one of the emojis it was reacted to with. */
 const emojiKey = (
     row: Pick<ReactionRow, "note_id" | "text" | "emoji_id">,
 ): string => `${row.note_id} ${row.emoji_id ?? ""} ${row.text ?? ""}`;
@@ -73,10 +73,11 @@ const reactedAmong = async (
 };
 
 /**
- * The reactions to each of `noteIds`, as each viewer in `viewers` sees them, by viewer, then by
- * status, and by emoji in the order they were first used: with whether the viewer made each, if
- * it isn't `null`, and without those of the accounts it blocks, its value. It takes one query for
- * everyone, one more for the reactions of the viewers, and one for each that blocks some.
+ * The reactions to each of `noteIds` as each viewer in `viewers` sees them, by viewer, then by
+ * status, then by emoji in the order they were first used. A viewer that isn't `null` is told
+ * which ones they made. Each viewer's value is the accounts it blocks, if any, whose reactions are
+ * left out. It takes one query for everyone, one more for the reactions of the viewers, and one
+ * for each that blocks some.
  *
  * The blocked accounts' reactions are counted from those accounts and taken away, rather than
  * each reaction's account being looked up among them. An emoji first used by one of them keeps
@@ -152,8 +153,8 @@ export const reactionsFor = async (
 };
 
 /**
- * The reactions to each of `noteIds`, by status, as `viewerId` sees them without those of the
- * accounts it blocks, `blocked`, as {@link reactionsFor} finds them.
+ * {@link reactionsFor} for one viewer: the reactions to each of `noteIds`, by status, without those
+ * of the accounts `blocked`.
  */
 export const reactionsOf = async (
     ctx: Context,

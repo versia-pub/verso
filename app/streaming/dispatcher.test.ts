@@ -6,7 +6,7 @@ import { createTestContext } from "../testing/context.ts";
 import { dispatcher } from "./dispatcher.ts";
 import { statusMessages } from "./statuses.ts";
 
-/** A promise, with what settles it. */
+/** A promise, with the function that resolves it. */
 const deferred = () => {
     let resolve = () => {};
     const promise = new Promise<void>((settle) => resolve = settle);

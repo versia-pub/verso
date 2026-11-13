@@ -7,7 +7,7 @@ export class AnnouncementMethods {
     constructor(private readonly http: Http) {}
 
     /**
-     * The announcements that are up, the one that starts first first, with dismissed ones too.
+     * The announcements that are up, the earliest starting first, with dismissed ones too.
      * @see https://docs.joinmastodon.org/methods/announcements/#get
      */
     list(options?: CallOptions): Promise<Announcement[]> {

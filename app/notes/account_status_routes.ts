@@ -41,7 +41,7 @@ export const accountStatusesRoute = defineRoute({
         const viewerId = viewer?.accountId ?? null;
         const account = await findAccount(ctx, params.id);
         if (account === undefined) throw new NotFound();
-        // A suspended account shows nothing, as on Mastodon.
+        // A suspended account shows nothing.
         if (account.suspended_at !== null) return { status: 200, body: [], cursors: {} };
 
         const seen = await visibilitiesFor(ctx, account.id, viewerId);

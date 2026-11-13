@@ -6,7 +6,7 @@ export const reportsKey = "pub.versia:reports";
 
 /**
  * A report to the moderators of the instance it is sent to, of the users and Notes in `reported`,
- * with `tags` such as `spam` to sort it by. It is anonymous if `author` is left out.
+ * with `tags` like `spam` to sort it by. It is anonymous if `author` is left out.
  * @see https://versia.pub/extensions/reports
  */
 export const Report = TransientEntity.extend({

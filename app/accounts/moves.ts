@@ -1,8 +1,7 @@
 /**
  * Remote users moving to another account, as Versia's migration extension has them: a Migration
  * entity, or a User whose `new` names the account it moved to. Either moves it only once the
- * account it moved to, fetched again, says it moved from it, at most once a week, as Mastodon moves
- * accounts.
+ * account it moved to, fetched again, says it moved from it, at most once a week.
  * @see https://versia.pub/extensions/migration
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/activitypub/activity/move.rb
  * @module
@@ -14,7 +13,7 @@ import { emit } from "../kernel/events.ts";
 import { type AccountRow, findAccount, findRemoteAccountAt } from "./account_queries.ts";
 import type { AccountMoved } from "./events.ts";
 
-/** How long after moving an account can't move again. */
+/** Mastodon's limit on how soon after moving an account can move again. */
 const cooldownMs = 7 * 24 * 60 * 60_000;
 
 /** The migration extension of `user`, if it has a valid one. */

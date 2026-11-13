@@ -1,5 +1,5 @@
 /**
- * How the viewer is connected to other accounts, as Mastodon's relationships show it.
+ * How the viewer is connected to other accounts.
  * @module
  */
 import { existingAccountIds } from "../accounts/account_queries.ts";

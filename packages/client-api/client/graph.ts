@@ -84,7 +84,7 @@ export class MuteMethods {
 
 const DomainBlockPreview = z.object({ following_count: z.number(), followers_count: z.number() });
 
-/** The domains the viewer blocks, which blocks each of their accounts. */
+/** The domains the viewer blocks. Blocking a domain blocks each of its accounts. */
 export class DomainBlockMethods {
     constructor(private readonly http: Http) {}
 

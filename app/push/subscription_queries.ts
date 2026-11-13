@@ -36,7 +36,7 @@ export const findSubscriptionById = (
         .where("accounts.suspended_at", "is", null)
         .executeTakeFirst();
 
-/** Deletes the subscription `id`, such as when its push service says it has gone. */
+/** Deletes the subscription `id`, like when its push service says it has gone. */
 export const deleteSubscriptionById = async (ctx: Context, id: string): Promise<void> => {
     await ctx.db.deleteFrom("push_subscriptions").where("id", "=", id).execute();
 };

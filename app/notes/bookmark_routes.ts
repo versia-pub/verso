@@ -59,8 +59,8 @@ export const bookmarkRoutes: readonly Route[] = [
             const ids = bookmarks.map((row) => row.note_id);
             const notes = new Map((await findNotes(ctx, ids)).map((note) => [note.id, note]));
 
-            // A bookmarked status may since have become one the viewer can't see. The page is still
-            // as long, so its cursors go by the bookmarks.
+            // A bookmarked status may since have become one the viewer can't see. It's left out,
+            // but the cursors go by the bookmarks, so paging goes on past it.
             const visible = await seenAmong(ctx, [...notes.keys()], viewer.accountId);
             const seen = bookmarks.flatMap((row) => {
                 const note = notes.get(row.note_id);

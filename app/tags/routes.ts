@@ -24,8 +24,8 @@ const HashtagName = z.object({
 });
 
 /**
- * The hashtag `name` as `viewerId` sees it, known yet or not, as Mastodon shows it. A name that
- * isn't a hashtag's is not found.
+ * The hashtag `name` as `viewerId` sees it, whether it is known yet or not. A name that isn't a
+ * hashtag's is not found.
  */
 const shownHashtag = async (ctx: Context, name: string, viewerId: string | null): Promise<Tag> => {
     if (!isHashtagName(name)) throw new NotFound();
@@ -36,6 +36,7 @@ const shownHashtag = async (ctx: Context, name: string, viewerId: string | null)
     return known ? tag : { ...tag, name };
 };
 
+/** Hashtags, and the hashtags an account features and follows. */
 export const tagRoutes: readonly Route[] = [
     defineRoute({
         method: "GET",

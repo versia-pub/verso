@@ -151,7 +151,7 @@ Deno.test("announcements are reacted to, and the reactions are listed with the v
         1,
     ]);
 
-    // As on Mastodon, undoing what wasn't done is not found, and the rest is unprocessable.
+    // Undoing what wasn't done is not found, and the rest is unprocessable.
     assertEquals((await test.call("DELETE", react(made.id, "verso"), alice)).status, 404);
     assertEquals((await test.call("PUT", react(later.id, "👍"), alice)).status, 404);
     assertEquals((await test.call("DELETE", react(later.id, "👍"), alice)).status, 404);

@@ -17,8 +17,8 @@ export type FakeS3 = Server & {
 };
 
 /**
- * Whether `request` is signed with the bucket's key, as of its `x-amz-date`. The signature is
- * computed as aws4fetch computes it, so this validates what it was given, not how it signs.
+ * Whether `request` is signed with the bucket's key, at the time in its `x-amz-date`. The expected
+ * signature is computed with aws4fetch, so this checks what the app sent, not how aws4fetch signs.
  */
 const signed = async (request: Request) => {
     const headers = new Headers(request.headers);

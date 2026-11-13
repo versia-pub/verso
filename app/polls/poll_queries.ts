@@ -62,7 +62,7 @@ export const updatePoll = async (
             multiple: changes.multiple,
             hide_totals: changes.hideTotals,
             expires_at: changes.expiresAt,
-            // Its voters are told again when it comes.
+            // Its voters are told again when the new end comes.
             ...moves ? { ended_at: null } : {},
             ...reset ? { voters_count: 0 } : {},
         })
@@ -76,8 +76,8 @@ export const updatePoll = async (
 };
 
 /**
- * Sets how many votes each option of the remote poll `pollId` has, in order, as its instance says.
- * How many accounts voted is unknown, as Versia doesn't say.
+ * Sets how many votes each option of the remote poll `pollId` has, in order, as its instance
+ * reports them. How many accounts voted is unknown, because Versia doesn't say.
  */
 export const setRemoteVotes = async (
     ctx: Context,
@@ -228,8 +228,8 @@ export const voterInstances = async (
         .execute()).flatMap((row) => row.instance_id ?? []);
 
 /**
- * Marks up to `limit` polls that have ended by now, but weren't marked yet, as ended, and returns
- * them, the first to end first.
+ * Marks up to `limit` polls that have ended but aren't marked yet, and returns them, the first to
+ * end first.
  */
 export const markEndedPolls = async (ctx: Context, limit: number): Promise<PollRow[]> => {
     const now = ctx.clock.now();

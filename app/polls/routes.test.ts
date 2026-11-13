@@ -87,7 +87,7 @@ Deno.test("a status is posted with a poll, which anyone who may see it can view"
         [new Date(test.ctx.clock.now().getTime() + 600_000).toISOString(), false, true, 0, 0],
     );
     assertEquals(tally(poll), ["Red 0", "Blue 0"]);
-    // Its author counts as having voted, as on Mastodon.
+    // Its author counts as having voted.
     assertEquals([poll.voted, poll.own_votes], [true, []]);
 
     assertEquals(await test.poll(poll.id), poll);
@@ -182,7 +182,7 @@ Deno.test("a vote is counted once per account, and once per option in a poll of 
     assertEquals((await test.poll(single.pollId)).voted, true);
     assertEquals((await test.poll(single.pollId, "carol")).voted, false);
 
-    // As Mastodon words its errors.
+    // The messages are Mastodon's.
     const refused = async (pollId: string, choices: unknown, as = "bob") =>
         (await test.vote(pollId, choices, as)).body.error_description;
     assertEquals(await refused(single.pollId, [0]), "You have already voted on this poll");
@@ -202,7 +202,7 @@ Deno.test("a vote is counted once per account, and once per option in a poll of 
     assertEquals((await test.vote(single.pollId, [])).status, 422);
 
     const several = await test.ask({ multiple: true });
-    // As a form sends one choice.
+    // A form sends one choice.
     const form = await test.request(
         "POST",
         `/api/v1/polls/${several.pollId}/votes`,

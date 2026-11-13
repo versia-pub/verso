@@ -1,7 +1,7 @@
 /**
  * Processing uploaded images: storing them upright, without metadata and no larger than allowed,
  * with a preview, or reusing what processing another upload of the same file stored. An image that
- * can't be processed is stored as nothing, as it may hold metadata.
+ * can't be processed is stored as nothing, because it may hold metadata.
  * @module
  */
 import { getLogger } from "@logtape/logtape";
@@ -27,8 +27,8 @@ const fitOf = (row: MediaRow): Fit | undefined =>
         : { width: row.fit_width, height: row.fit_height };
 
 /**
- * Marks the upload `id` as processed as `processed`, unless it already is, and tells the rest of
- * Verso. Returns whether it changed.
+ * Marks the upload `id` as processed with the result `processed`, unless it already is, and tells
+ * the rest of Verso. Returns whether it changed.
  */
 const finishProcessing = async (tx: Context, id: string, processed: Processed) => {
     if (!await finishUpload(tx, id, processed)) return false;
@@ -56,14 +56,14 @@ const processedFrom = (row: MediaRow): Processed => ({
     preview_height: row.preview_height,
 });
 
-/** What an image that can't be processed is stored as: nothing, as it may hold metadata. */
+/** What an image that can't be processed is stored as: nothing, because it may hold metadata. */
 const failed: Processed = { sha256: null, size: null, width: null, height: null };
 
 /**
- * Marks the upload `id` as processed using another upload of the same file, `uploaded`, scaled down
- * to fit the same box `fit`, if there is one, and returns whether there was. Its files are locked
- * and checked to still be stored first, so that if they were removed in the meantime, this upload
- * is processed again rather than left pointing at nothing.
+ * Marks the upload `id` as processed using another upload of the same file, `uploaded`, if one was
+ * scaled down to fit the same box `fit`, and returns whether there was one. Its files are
+ * locked and checked to still be stored first, so that if they were removed in the meantime, this
+ * upload is processed again rather than left pointing at nothing.
  */
 const reuseProcessed = async (
     ctx: Context,
@@ -90,7 +90,7 @@ const reuseProcessed = async (
 /**
  * Processes the image in the job: stores it upright, without metadata and no larger than allowed or
  * than its box, with a preview, then removes the original upload. An image that vips rejects, or
- * that still fails on the job's last attempt, is marked failed and removed, as it may hold
+ * that still fails on the job's last attempt, is marked failed and removed, because it may hold
  * metadata. An upload that was already processed once keeps that result.
  */
 export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
@@ -103,8 +103,8 @@ export const mediaHandler: Handler = async (ctx: Context, job: JobsTable): Promi
     const fit = fitOf(row);
 
     // The other upload of the same file may also have removed the original, or left it for this
-    // one. One that was already processed finds itself here, as a run that stopped after processing
-    // it may have left the original.
+    // one. An upload that was already processed also gets here, because a run that stopped after
+    // processing it may have left the original.
     if (await reuseProcessed(ctx, row.id, uploaded, fit)) {
         return await deleteFileIfUnused(ctx, uploaded);
     }

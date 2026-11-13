@@ -1,6 +1,6 @@
 /**
  * What local users see of a suspended account through the client API: a blank profile, and none of
- * its statuses or follows, as on Mastodon.
+ * its statuses or follows.
  * @module
  */
 import { assertEquals, assertNotEquals } from "@std/assert";
@@ -157,7 +157,7 @@ Deno.test("a suspended account is shown blank, and says so", async () => {
             header_description: "",
         },
     );
-    // Its counts are kept, as on Mastodon.
+    // Its counts are kept.
     assertEquals([body.statuses_count, body.following_count], [1, 1]);
 
     await unsuspend(test.ctx, "carol");
@@ -298,7 +298,7 @@ Deno.test("what a suspended account did is left out of timelines, notifications 
         rebloggedBy: [],
         search: [],
     });
-    // Its full address still finds it, as on Mastodon.
+    // Its full address still finds it.
     const exact = await test.request("GET", "/api/v2/search?q=carol@social.example&type=accounts");
     assertEquals(exact.body.accounts.map((account: { id: string }) => account.id), ["carol"]);
 

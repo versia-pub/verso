@@ -1,6 +1,6 @@
 /**
- * NodeInfo, the small description of an instance that directories and statistics sites read, as
- * Mastodon serves it: a discovery document and the 2.0 schema it points to.
+ * NodeInfo, the small description of an instance that directories and statistics sites read: a
+ * discovery document and the 2.0 schema it points to.
  * @see https://nodeinfo.diaspora.software/protocol.html
  * @module
  */
@@ -15,10 +15,10 @@ import type { Context } from "../kernel/context.ts";
 
 const weekMs = 7 * 24 * 60 * 60 * 1000;
 
-/** How long the discovery document may be cached, as Mastodon says: it never changes. */
+/** Mastodon's cache time for the discovery document, which never changes. */
 const discoverySeconds = 3 * 24 * 60 * 60;
 
-/** How long the schema and the counts in it may be cached, as Mastodon says. */
+/** Mastodon's cache time for the schema and the counts in it. */
 const schemaSeconds = 30 * 60;
 
 /** The schema version this document follows, and the relation that points to it. */
@@ -56,7 +56,7 @@ const NodeInfo = z.object({
     metadata: z.object({ nodeName: z.string(), nodeDescription: z.string() }),
 });
 
-/** How many people use the instance, as Mastodon counts: logins show who was active. */
+/** How many people use the instance. Like Mastodon, it counts who was active by their logins. */
 const countUsage = async (ctx: Context): Promise<Counts> => {
     const now = ctx.clock.now().getTime();
 
@@ -69,10 +69,10 @@ const countUsage = async (ctx: Context): Promise<Counts> => {
 };
 
 /**
- * `/.well-known/nodeinfo` and the document it points to. Anyone may read them. They are as
- * Mastodon's, apart from the software and its protocol: Verso federates over Versia, which NodeInfo
- * has no name for, so it says `versia`, as Versia Server does. Nobody can sign up, as the instance
- * API says, so registrations are never open.
+ * `/.well-known/nodeinfo` and the document it points to. Anyone may read them. They match
+ * Mastodon's, except for the software and its protocol. Verso federates over Versia, which NodeInfo
+ * has no name for, so it reports `versia`, like Versia Server. Nobody can sign up, so registrations
+ * are never open.
  */
 export const nodeInfoRoutes = (instance: Config["instance"]): readonly Route[] => {
     const counts = cached(schemaSeconds * 1000, countUsage);

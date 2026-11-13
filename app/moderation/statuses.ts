@@ -1,5 +1,5 @@
 /**
- * Removing any user's statuses, as whoever runs the instance does.
+ * Removing any user's statuses, for admins and moderators.
  * @module
  */
 import { unshare } from "../interactions/shares.ts";

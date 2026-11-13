@@ -31,13 +31,13 @@ import {
 } from "./routes.ts";
 import type { NotificationType } from "./tables.ts";
 
-/** Mastodon's: reactions are grouped only when a client asks. */
+/** Mastodon's default. Reactions are grouped only when a client asks. */
 const groupedByDefault: readonly NotificationType[] = ["favourite", "follow", "reblog"];
 
 /**
- * The types to group, or Mastodon's by default. Types Verso doesn't group, such as `mention`, have
- * no groups anyway, and those it doesn't have, such as `poll`, are left out, so asking for only
- * `poll` groups none, as on Mastodon.
+ * The types to group, or `groupedByDefault` when none are given. Types Verso doesn't group, like
+ * `mention`, have no groups anyway. Types Verso doesn't have, like `poll`, are left out, so asking
+ * for only `poll` groups nothing.
  */
 const GroupedTypes = NotificationTypes.meta({
     description: "Restrict which notification types can be grouped.",

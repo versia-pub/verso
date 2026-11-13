@@ -30,7 +30,7 @@ const linksOf = (header: string | null): Map<string, string> =>
  * getting each as it is needed.
  *
  * Most lists give their items as an array, which is the page's `body`. Some give them in a shape of
- * their own, such as notification groups with the accounts and statuses they refer to, and then
+ * their own, like notification groups with the accounts and statuses they refer to, and then
  * `body` is that, and `items` are picked from it.
  */
 export class Page<T, B = readonly T[]> implements AsyncIterable<T> {

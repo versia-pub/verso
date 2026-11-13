@@ -19,7 +19,7 @@ export const renderScheduled = async (
         scheduled_at: row.scheduled_at.toISOString(),
         params: {
             ...row.params,
-            // As Mastodon has them once a status is scheduled.
+            // Mastodon's values for a status that is scheduled.
             scheduled_at: null,
             idempotency: null,
             with_rate_limit: false,

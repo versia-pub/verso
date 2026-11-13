@@ -17,9 +17,8 @@ const Jrd = z.object({
 const acctUri = /^acct:([^@\s]+)@([^@\s]+)$/i;
 
 /**
- * Finds a local account by its address, returning the URL of its Versia User entity, as Versia's
- * discovery does. Anyone may request it, whatever config lets clients view, since this is how
- * remote instances find users.
+ * Finds a local account by its address, returning the URL of its Versia User entity. Anyone may
+ * request it, whatever config lets clients view, since this is how remote instances find users.
  * @see https://versia.pub/federation/discovery
  */
 export const webfingerRoutes: readonly Route[] = [

@@ -14,9 +14,9 @@ import { Forbidden, LoginDisabled, NotPermitted, Unauthorized, UserRequired } fr
 import type { Route, RouteViewer, Viewer } from "./route.ts";
 
 /**
- * Who is calling, validated against the route's `auth` as Mastodon validates it. A token sent where
- * none is needed is ignored; on other routes, a token sent must be valid, and its user not
- * suspended. A user that moved may only call the routes for users that allow it.
+ * Who is calling, validated against the route's `auth`. A token sent where none is needed is
+ * ignored; on other routes, a token sent must be valid, and its user not suspended. A user that
+ * moved may only call the routes for users that allow it.
  */
 export const viewerOf = async (
     ctx: Context,
@@ -88,9 +88,9 @@ export const bearerToken = (authorization: string | undefined): string | undefin
     /^Bearer\s+(\S+)$/i.exec(authorization ?? "")?.[1];
 
 /**
- * The viewer the request's bearer token stands for, if it is valid, or, `elsewhere`, the token its
- * `Sec-WebSocket-Protocol` or `access_token` holds, without a bearer token. It is looked up once,
- * though both the rate limit and the route ask.
+ * The viewer the request's bearer token stands for, if it is valid. With `elsewhere` and no bearer
+ * token, the token in `Sec-WebSocket-Protocol` or `access_token` is used instead. It is looked up
+ * once, though both the rate limit and the route ask.
  */
 const bearerOf = (
     ctx: Context,
@@ -114,9 +114,9 @@ const bearerOf = (
 
 /**
  * Who a request counts against: the user its access token is for, or else the client's IP address.
- * Every token of a user counts as theirs, and an app's own tokens, which any app can create, as
- * their client, so creating more tokens doesn't allow more requests. A token that isn't valid
- * doesn't count either, or a client could send a new made-up one each time.
+ * Every token of a user counts as theirs, and an app's own tokens (which any app can create) as
+ * their client's, so creating more tokens doesn't allow more requests. A token that isn't valid
+ * counts as the client's too, or a client could send a new made-up one each time.
  */
 export const rateLimitKey = async (
     ctx: Context,

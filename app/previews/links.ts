@@ -4,7 +4,7 @@
  */
 import { Parser } from "htmlparser2";
 
-/** Classes of links that mean a person or hashtag rather than a page, as Mastodon writes them. */
+/** Classes of links that mean a person or hashtag rather than a page. Mastodon's HTML uses them. */
 const skippedClasses = new Set(["mention", "hashtag", "u-url", "h-card"]);
 
 /**

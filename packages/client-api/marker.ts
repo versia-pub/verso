@@ -13,7 +13,7 @@ export const Marker = z.object({
 });
 export type Marker = z.infer<typeof Marker>;
 
-/** The markers of a user, in those of the timelines asked for that they have one in. */
+/** The markers of a user, for the timelines asked for that they have one in. */
 export const Markers = z.object({
     home: Marker.optional(),
     notifications: Marker.optional(),

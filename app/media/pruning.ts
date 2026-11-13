@@ -1,7 +1,7 @@
 /**
  * Pruning the files cached for remote attachments: those cached longer ago than `remote_media_days`
- * are removed, and the media proxy fetches them again if anyone asks for them, as on Mastodon.
- * Avatars, headers and custom emojis stay cached until nothing uses them.
+ * are removed, and the media proxy fetches them again if anyone asks for them. Avatars, headers and
+ * custom emojis stay cached until nothing uses them.
  * @module
  */
 import { z } from "zod";

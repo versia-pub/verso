@@ -107,7 +107,7 @@ Deno.test("a deleted status's mentions fit in its message, as many as a status m
         type: "notes.deleted",
         noteId: crypto.randomUUID(),
         accountId: crypto.randomUUID(),
-        // The longest name.
+        // The longest visibility name.
         visibility: "unlisted",
         mentionIds: Array.from({ length: 150 }, () => crypto.randomUUID()),
         inReplyToAccountId: null,

@@ -3,7 +3,7 @@ export type JsonResult =
     | { readonly ok: true; readonly value: unknown }
     | { readonly ok: false; readonly reason: string };
 
-// The spec's characters, plus `+` for content formats such as `image/svg+xml`, and a leading `$`
+// The spec's characters, plus `+` for content formats like `image/svg+xml`, and a leading `$`
 // for `$schema`, both of which the spec's own entities use (see "Where the spec is unclear" in
 // docs/federation.md).
 const keyPattern = /^\$?[A-Za-z0-9\-_.#/:+]+$/;

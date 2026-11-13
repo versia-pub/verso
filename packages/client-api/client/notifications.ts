@@ -238,7 +238,7 @@ export class NotificationMethods {
 }
 
 /**
- * The viewer's notifications in groups, such as the likes of a status. Each page gives its groups
+ * The viewer's notifications in groups, like the likes of a status. Each page gives its groups
  * as its items, and the accounts and statuses they refer to in its `body`.
  */
 export class GroupedNotificationMethods {

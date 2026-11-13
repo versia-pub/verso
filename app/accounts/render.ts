@@ -26,8 +26,8 @@ import type { ProfileField } from "./tables.ts";
 const everyone = { id: "-99", name: "", color: "", highlighted: false };
 
 /**
- * The account's highest role, as Mastodon gives each user one, with everything the account may do,
- * from all its roles and what every user may do.
+ * The account's highest role (Mastodon gives each user only one), with everything the account may
+ * do, from all its roles and what every user may do.
  */
 export const renderRole = (roles: readonly RoleRow[], permissions: Iterable<Permission>): Role => {
     const [highest] = roles;
@@ -105,8 +105,8 @@ const pictureUrls = (
 };
 
 /**
- * The profile of a suspended account as it is shown: blank, with the default pictures, as on
- * Mastodon. Anything else is shown as it is.
+ * The profile of a suspended account as it is shown: blank, with the default pictures. Anything
+ * else is shown as it is.
  */
 const suspendedAs = (row: AccountRow): AccountRow =>
     row.suspended_at === null ? row : {
@@ -131,7 +131,7 @@ const suspendedAs = (row: AccountRow): AccountRow =>
 /**
  * An account as anyone sees it, with its roles, highest first, the custom emojis it uses, and the
  * account it moved to, if it did, as that account is shown. A suspended account says so, and shows
- * nothing of its profile, nor where it moved, as on Mastodon.
+ * nothing of its profile, nor where it moved.
  */
 export const renderAccount = (
     ctx: Context,

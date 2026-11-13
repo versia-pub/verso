@@ -15,13 +15,13 @@ export const outOfBand = "urn:ietf:wg:oauth:2.0:oob";
 /** An app, as it registers. */
 export type AppRegistration = {
     readonly client_name: string;
-    /** Where users may be sent back to after logging in, such as `outOfBand`. */
+    /** Where users may be sent back to after logging in, like `outOfBand`. */
     readonly redirect_uris: readonly string[];
     /** The most the app may ask for. Defaults to `read`. */
     readonly scopes?: readonly string[];
     readonly website?: string;
     /**
-     * `none` registers a public client, such as one running in a browser, which gets no secret and
+     * `none` registers a public client, like one running in a browser, which gets no secret and
      * must use PKCE. Only Verso takes this.
      */
     readonly token_endpoint_auth_method?: "client_secret_basic" | "client_secret_post" | "none";
@@ -51,7 +51,7 @@ export type Pkce = {
     readonly challenge: string;
 };
 
-/** Base64url, without padding, as PKCE uses. */
+/** Base64url without padding, the encoding PKCE uses. */
 const base64url = (bytes: Uint8Array): string =>
     btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(
         /=+$/,

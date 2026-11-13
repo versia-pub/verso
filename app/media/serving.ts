@@ -19,8 +19,8 @@ export type ServedFile = { readonly location: string } | {
 
 /**
  * The file stored under `key`, if processed or cached media is stored as it, or has it as its
- * preview. The original upload of an image is never served, as it may hold metadata: it is only
- * stored until processing finishes.
+ * preview. The original upload of an image is never served because it may hold metadata. It is
+ * only stored until processing finishes.
  */
 export const serveFile = async (ctx: Context, key: string): Promise<ServedFile | undefined> => {
     const row = await findServedFile(ctx, key);

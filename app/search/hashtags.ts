@@ -1,5 +1,5 @@
 /**
- * Finding hashtags by how they start, as Mastodon does.
+ * Finding hashtags by how they start.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/tag_search_service.rb
  * @module
  */
@@ -29,9 +29,9 @@ export const searchHashtags = async (ctx: Context, search: HashtagSearch): Promi
 const dayLength = 24 * 60 * 60 * 1000;
 
 /**
- * The hashtags `names`, with how they were used on each of the past week's days, today first, in
- * UTC, as Mastodon shows them, by the names they were first written with. Each one's id is its name
- * in lower case. A signed-in viewer, `viewerId`, is told whether they follow and feature each.
+ * The hashtags `names`, each by the name it was first written with, with how it was used on each of
+ * the past week's days, today first, in UTC. Its id is its name in lower case. A signed-in viewer,
+ * `viewerId`, is told whether they follow and feature it.
  */
 export const renderHashtags = async (
     ctx: Context,

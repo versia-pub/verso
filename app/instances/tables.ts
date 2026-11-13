@@ -12,14 +12,14 @@ export type InstancesTable = {
     protocol: "versia";
     /**
      * Its public key, SPKI in base64, which every Versia instance has. Protocols whose keys are per
-     * user, such as ActivityPub, have none here.
+     * user, like ActivityPub, have none here.
      */
     public_key: string | null;
     /** When the key was last fetched, so that a stale one can be fetched again. */
     key_fetched_at: Date | null;
     /** How many times in a row it couldn't be reached. */
     failures: Generated<number>;
-    /** While set, deliveries wait for it to pass, when one of them probes whether it is back. */
+    /** While in the future, deliveries wait. After it, one of them probes whether it is back. */
     parked_until: Date | null;
     /** Since when it couldn't be reached, if it can't now. Nothing is sent to it after a while. */
     unreachable_since: Date | null;

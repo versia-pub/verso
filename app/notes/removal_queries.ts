@@ -2,14 +2,14 @@ import type { Database } from "../db/database.ts";
 import type { Context } from "../kernel/context.ts";
 import type { SelectQueryBuilder } from "kysely";
 
-/** Status ids, as a subquery. */
+/** A subquery of status ids. */
 export type NoteIdQuery = SelectQueryBuilder<Database, keyof Database, { id: string }>;
 
-/** The statuses and boosts of `accountId`, as a subquery. */
+/** The statuses and boosts of `accountId`. */
 export const notesOfQuery = (ctx: Context, accountId: string): NoteIdQuery =>
     ctx.db.selectFrom("notes").select("notes.id").where("notes.account_id", "=", accountId);
 
-/** The statuses `ids`, at least one, as a subquery. */
+/** The statuses `ids`, at least one. */
 export const notesAmongQuery = (ctx: Context, ids: readonly string[]): NoteIdQuery =>
     ctx.db.selectFrom("notes").select("notes.id").where("notes.id", "in", ids);
 

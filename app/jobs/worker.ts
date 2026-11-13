@@ -192,7 +192,8 @@ const workQueue = async (ctx: Context, name: string, queue: Queue, options: Work
         const free = queue.concurrency - running.size;
         const finishedBefore = finishedCount;
 
-        // Claiming no more than one group may run means releasing few when they share one.
+        // Claim no more than one group may run, so that if the jobs all share a group, few go over
+        // its limit and have to be released.
         const limit = Math.min(free, perGroup);
         let jobs: JobsTable[] = [];
         if (limit > 0) {

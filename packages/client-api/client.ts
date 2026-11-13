@@ -104,6 +104,7 @@ export {
 } from "./client/streaming.ts";
 export type { HashtagTimelineQuery, PublicTimelineQuery } from "./client/timelines.ts";
 
+/** What a {@link Client} is made with. */
 export type ClientOptions = {
     /** The user's or app's access token. Without one, requests are made as nobody. */
     readonly token?: string;
@@ -165,7 +166,7 @@ export class Client {
     readonly conversations: ConversationMethods;
     /** The viewer's notifications, each on its own. */
     readonly notifications: NotificationMethods;
-    /** The viewer's notifications in groups, such as the likes of a status. */
+    /** The viewer's notifications in groups, like the likes of a status. */
     readonly groupedNotifications: GroupedNotificationMethods;
     /** Where the viewer last read up to in their home timeline and notifications. */
     readonly markers: MarkerMethods;
@@ -188,7 +189,7 @@ export class Client {
     /** Moderating the instance, as the viewer's permissions allow. */
     readonly admin: AdminMethods;
 
-    /** A client for the instance at `url`, such as `https://verso.example`. */
+    /** A client for the instance at `url`, like `https://verso.example`. */
     constructor(url: string | URL, options: ClientOptions = {}) {
         this.#fetch = options.fetch ?? ((input, init) => fetch(input, init));
         this.#http = new Http(new URL(url), options.token, this.#fetch);
@@ -254,7 +255,7 @@ export class Client {
         return search(this.#http, query, options);
     }
 
-    /** A client for the same instance, making requests with `token`, such as one just issued. */
+    /** A client for the same instance, making requests with `token`, like one just issued. */
     withToken(token: string): Client {
         return new Client(this.#http.url, { token, fetch: this.#fetch });
     }

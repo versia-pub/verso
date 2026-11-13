@@ -31,7 +31,7 @@ export const MediaJob = z.object({ mediaId: z.string() });
 /** A file being uploaded. */
 export type NewUpload = {
     readonly file: Blob;
-    /** The media type the client says the file has, such as `application/zip`. */
+    /** The media type the client says the file has, like `application/zip`. */
     readonly mediaType: string;
     readonly description?: string;
     /** The point an image's thumbnails are cropped around, from -1 to 1 on each axis. */
@@ -189,8 +189,9 @@ export const upload = async (
 ): Promise<MediaRow> => await store(ctx, accountId, given, await formatOf(given.file));
 
 /**
- * Stores an image uploaded by `accountId`, such as an avatar, to be scaled down to fit in `fit` as
- * it is processed, as `upload` does. Returns `undefined`, storing nothing, if it isn't an image.
+ * Stores an image uploaded by `accountId`, like an avatar, to be scaled down to fit in `fit` when
+ * it is processed. Otherwise it works like {@link upload}. Returns `undefined`, storing nothing, if
+ * it isn't an image.
  */
 export const uploadPicture = async (
     ctx: Context,

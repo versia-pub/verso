@@ -25,10 +25,10 @@ export type PictureChange = {
     readonly description?: string;
 };
 
-/** The box an avatar is scaled down to fit in, as Mastodon's avatars are. */
+/** Mastodon's size for avatars: they are scaled down to fit this box. */
 const avatarFit: Fit = { width: 400, height: 400 };
 
-/** The box a header is scaled down to fit in, as Mastodon's headers are. */
+/** Mastodon's size for headers: they are scaled down to fit this box. */
 const headerFit: Fit = { width: 1500, height: 500 };
 
 /** What a user changes about their profile. Omitted fields stay as they are. */

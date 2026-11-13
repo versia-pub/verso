@@ -14,7 +14,7 @@ export const hasAttachments = (
 
 /**
  * The ids in `ids` that are uploads by `accountId`, not attached to a status nor reserved for a
- * scheduled one. Images scaled down to fit a box, such as avatars, are left out, as they aren't
+ * scheduled one. Images scaled down to fit a box, like avatars, are left out because they aren't
  * attachments.
  */
 export const unattachedUploads = async (

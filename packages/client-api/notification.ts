@@ -55,11 +55,11 @@ export const Notification = z.object({
     /** The status it is about, for the types about one. */
     status: Status.optional(),
     /**
-     * The emoji of a `reaction`: a Unicode emoji, or a custom one's shortcode in colons, as the
-     * status's reactions name it. As Pleroma has it on its emoji reaction notifications.
+     * The emoji of a `reaction`: a Unicode emoji, or a custom one's shortcode in colons, named like
+     * the status's reactions. Pleroma's field, on its emoji reaction notifications.
      */
     emoji: z.string().optional(),
-    /** The picture of a `reaction`'s custom emoji, or `null` for a Unicode one. As on Pleroma. */
+    /** The picture of a `reaction`'s custom emoji, or `null` for a Unicode one. Pleroma's field. */
     emoji_url: z.url().nullable().optional(),
 });
 export type Notification = z.infer<typeof Notification>;
@@ -68,7 +68,7 @@ export type Notification = z.infer<typeof Notification>;
 export const ReactionEmoji = Notification.pick({ emoji: true, emoji_url: true }).required();
 
 /**
- * Notifications grouped together, such as the likes of a status, or one on its own.
+ * Notifications grouped together, like the likes of a status, or one on its own.
  * @see https://docs.joinmastodon.org/entities/GroupedNotificationsResults/#NotificationGroup
  */
 export const NotificationGroup = z.object({
@@ -90,8 +90,8 @@ export const NotificationGroup = z.object({
     /** The status it is about, for the types about one. */
     status_id: z.string().optional(),
     /**
-     * The different emojis of a `reaction` group's newest reactions, newest first, as its
-     * notifications have them. Verso's own, as a group can have several.
+     * The different emojis of a `reaction` group's newest reactions, newest first, each as a
+     * `reaction` notification has it. Verso's own, since a group can have several.
      */
     emojis: z.array(ReactionEmoji).optional(),
 });

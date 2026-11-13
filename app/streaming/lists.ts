@@ -1,6 +1,6 @@
 /**
- * The `list` stream: the statuses of one of a user's lists as they appear, change or go, as on
- * Mastodon. Sessions only subscribe to their viewers' own lists.
+ * The `list` stream: the statuses of one of a user's lists as they appear, change or go. Sessions
+ * only subscribe to their viewers' own lists.
  * @see https://docs.joinmastodon.org/methods/streaming/#list
  * @module
  */
@@ -20,10 +20,10 @@ const listIdsOf = (session: Session) =>
         .map((stream) => stream.slice(listStream("").length));
 
 /**
- * What the sessions of the process `ctx` belongs to are sent of their viewers' `list` streams. A
- * status goes on the streams of the subscribed lists its author is in, if it is on the list when it
- * is heard of, rendered once for each list, as its owner sees it, and sent as long as they may read
- * statuses. A deleted status's id goes on them all, unless it was direct, as clients ignore
+ * The `list` streams for the sessions of the process `ctx` belongs to. A status goes on the stream
+ * of each subscribed list its author is in, if it is on the list when it is heard of. It is
+ * rendered once for each list, as its owner sees it, and sent as long as the owner may read
+ * statuses. A deleted status's id goes on all of them, unless it was direct, because clients ignore
  * statuses they don't have.
  */
 export const listStreams = (ctx: Context): Sessions => {

@@ -1,7 +1,7 @@
 /**
  * Reading what a web page says about itself, for its preview card: the title, description, image,
  * site and author it gives in JSON-LD, Open Graph and ordinary meta tags, in that order of
- * preference, as Mastodon does.
+ * preference. Mastodon prefers them in the same order.
  * @see https://ogp.me/
  * @see https://schema.org/Article
  * @module
@@ -32,7 +32,7 @@ const limits = { title: 300, description: 1000, name: 200, url: 2000 };
 
 const clip = (text: string, length: number) => [...text].slice(0, length).join("");
 
-/** `text` with runs of whitespace as single spaces, and no whitespace at the ends. */
+/** `text` with runs of whitespace replaced by one space, none at the ends, and cut to `length`. */
 const tidy = (text: string, length: number) => clip(text.replace(/\s+/g, " ").trim(), length);
 
 /** `value` as an absolute web address, resolved against `base`, or `undefined` if it isn't one. */
@@ -145,7 +145,7 @@ const described = (blocks: readonly string[]): Json | undefined => {
     return undefined;
 };
 
-/** A language code, such as `en-GB`, as its ISO 639-1 language, or `null` if it isn't one. */
+/** The ISO 639-1 language of a code like `en-GB`, which is `en`, or `null` if it has none. */
 const languageOf = (code: string | undefined): string | null => {
     try {
         const [language] = Intl.getCanonicalLocales(code?.trim().replace(/_/g, "-") ?? "")[0]

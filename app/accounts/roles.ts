@@ -25,8 +25,8 @@ import {
 const logger = getLogger(["verso", "accounts"]);
 
 /**
- * Says an account's roles changed, or with no account, that a role did, so what anyone may do may
- * have, and every process looks it up again for what it keeps open, such as streams.
+ * Says an account's roles changed, or, with no account, that a role did. What anyone may do may
+ * have changed, so every process looks it up again for what it keeps open, such as streams.
  */
 const rolesChanged: Channel<{ readonly accountId: string | null }> = {
     name: "roles.changed",

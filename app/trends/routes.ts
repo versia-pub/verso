@@ -142,7 +142,8 @@ export const trendRoutes = (
             responses: { 200: Paged(Status) },
             handler: async (ctx, { query, viewer }) => {
                 const viewerId = viewer?.accountId ?? null;
-                // Mastodon decides it by the `local` and `remote` it is sent, which it doesn't use.
+                // Mastodon decides it by the `local` and `remote` a client sends, which Verso
+                // doesn't use.
                 const origin = await visibleOrigin(access.topic_feeds, "all", viewer);
                 const card = instance.show_trends
                     ? (await approvedTrendingCards(ctx, instance.trendable_by_default))

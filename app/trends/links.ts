@@ -1,7 +1,7 @@
 /**
  * Trending links: which preview cards may be shown as trending, and how they are shown. A card
  * trends if an admin approved it, or else its website or a parent domain of it, or else the
- * instance's default approves, as Mastodon decides.
+ * instance's default approves.
  * @module
  */
 import type { TrendsLink } from "@versia/client-api";
@@ -25,9 +25,9 @@ export const approvedTrendingCards = async (
 const dayLength = 24 * 60 * 60 * 1000;
 
 /**
- * The cards `cards` as Mastodon renders trending links: with how they were shared on each of the
- * past week's days, today first, in UTC. A link's `url` is its card's, which is what the link
- * timeline looks cards up by. `viewerId` is who sees them, if signed in.
+ * The trending links of `cards`, with how they were shared on each of the past week's days, today
+ * first, in UTC. A link's `url` is its card's, which the link timeline looks cards up by.
+ * `viewerId` is who sees them, if signed in.
  */
 export const renderTrendingLinks = async (
     ctx: Context,

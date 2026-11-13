@@ -55,8 +55,8 @@ export const deleteFollowNotifications = async (
 };
 
 /**
- * Deletes `accountId`'s `quoted_update` notifications about their status `noteId`, so that only the
- * newest remains, as on Mastodon.
+ * Deletes `accountId`'s `quoted_update` notifications about their status `noteId`, so that only
+ * the newest remains.
  */
 export const deleteQuotedUpdates = async (
     ctx: Context,
@@ -96,8 +96,8 @@ export type NotificationFilter = {
     /** Only those from this account, if given. */
     readonly fromId?: string;
     /**
-     * Whether to include those the user's policy filtered, as they are when listing one account's,
-     * as on Mastodon.
+     * Whether to include those the user's policy filtered. They are included anyway when listing
+     * one account's.
      */
     readonly includeFiltered?: boolean;
 };

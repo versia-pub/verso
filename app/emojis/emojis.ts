@@ -1,7 +1,7 @@
 /**
- * Custom emojis, which text displays where it has their names, such as `:blobcat:`. Remote
- * instances' emojis are stored as they name them, one per name per instance, as on Mastodon: a
- * newer picture for a name replaces the older one wherever it is used.
+ * Custom emojis, which text displays where it has their names, like `:blobcat:`. Remote
+ * instances' emojis are stored as they name them, one per name per instance. A newer picture for a
+ * name replaces the older one wherever it is used.
  * @see https://versia.pub/extensions/custom-emojis
  * @module
  */
@@ -67,8 +67,8 @@ export const keepRemoteEmojis = async (
 };
 
 /**
- * A local user who adds, changes or looks up custom emojis, and whether they manage emojis, with
- * the `emojis` permission: global emojis and other users' own emojis.
+ * A local user who adds, changes or looks up custom emojis. They manage emojis if they have the
+ * `emojis` permission, which covers global emojis and other users' own emojis.
  */
 export type EmojiEditor = {
     readonly accountId: string;
@@ -119,8 +119,9 @@ const uploadEmojiPicture = async (
 
 /**
  * Adds a custom emoji from `editor`, and returns its id. Its picture is processed by a job, and
- * until then text doesn't use the emoji. A user can't add one named as one they may already use,
- * their own or a global one, though users may each have one of the same name, as in Versia Server.
+ * until then text doesn't use the emoji. A user can't add one with the name of an emoji they may
+ * already use, their own or a global one. Users may each have one of the same name, as in Versia
+ * Server.
  */
 export const addEmoji = async (
     ctx: Context,
@@ -138,7 +139,7 @@ export const addEmoji = async (
     );
 
     // Someone may have added one of the same name since. The picture is then removed once unused,
-    // as other unused media is.
+    // like other unused media.
     const id = ctx.ids();
     const added = await insertLocalEmoji(ctx, {
         id,
@@ -173,8 +174,8 @@ export const findEmojiFor = async (
 
 /**
  * The local emoji `id`, if `editor` may see it. A global one is refused unless they manage emojis,
- * as only those who do may `what`. Any other they see is theirs to change, as only those who manage
- * emojis see other users' own emojis.
+ * because only those who do may `what`. Any other emoji they see is theirs to change, because only
+ * users who manage emojis see other users' own emojis.
  */
 const changeableEmoji = async (ctx: Context, editor: EmojiEditor, id: string, what: string) => {
     const emoji = await findEmojiFor(ctx, editor, id);
@@ -188,7 +189,7 @@ const changeableEmoji = async (ctx: Context, editor: EmojiEditor, id: string, wh
  * see it. Users change their own emojis; those who manage emojis change any. A global emoji made a
  * user's own becomes the editor's. Renames are held to the same names as new emojis, and statuses
  * that use the emoji keep it, though their text has its old name. A new picture is processed by a
- * job, and until then the emoji isn't shown, as a new one isn't.
+ * job, and until then the emoji isn't shown, like a new emoji.
  */
 export const changeEmoji = async (
     ctx: Context,
@@ -231,8 +232,8 @@ export const changeEmoji = async (
 /**
  * Deletes the local emoji `id` as `editor` asks, and returns whether they may see it. Users delete
  * their own emojis; those who manage emojis delete any. Statuses and accounts that used it no
- * longer do, and local users' reactions with it are undone. Its picture is removed once unused, as
- * other unused media is.
+ * longer do, and local users' reactions with it are undone. Its picture is removed once unused,
+ * like other unused media.
  */
 export const deleteEmoji = async (
     ctx: Context,
@@ -251,8 +252,8 @@ export const deleteEmoji = async (
 };
 
 /**
- * Deletes the local user `accountId`'s own emojis, as {@link deleteEmoji} does, for an account
- * being deleted. Their pictures are deleted with the account's other media.
+ * Deletes the local user `accountId`'s own emojis like {@link deleteEmoji}, for an account being
+ * deleted. Their pictures are deleted with the account's other media.
  */
 export const deleteEmojisOf = async (ctx: Context, accountId: string): Promise<void> => {
     for (const id of await emojiIdsOf(ctx, accountId)) {

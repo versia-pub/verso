@@ -1,5 +1,5 @@
 /**
- * Media such as an image. Remote media is stored by URL and the metadata its instance provided, and
+ * Media, like an image. Remote media is stored by URL and the metadata its instance provided, and
  * a copy of its file is cached in the file store; local media is an upload stored in the file store
  * under its SHA-256.
  */
@@ -9,7 +9,7 @@ export type MediaTable = {
     instance_id: string | null;
     /** Where remote media is hosted. */
     url: string | null;
-    /** Such as `image/png`. For remote media, the type its instance gave. */
+    /** The media type, like `image/png`. For remote media, the type its instance gave. */
     media_type: string;
     /** In bytes. */
     size: number | null;
@@ -59,7 +59,7 @@ export type MediaTable = {
     focus_x: number | null;
     focus_y: number | null;
     /**
-     * The box a local image was scaled down to fit in, such as for an avatar, or `null` for one
+     * The box a local image was scaled down to fit in, like for an avatar, or `null` for one
      * only scaled down to the pixel limit.
      */
     fit_width: number | null;

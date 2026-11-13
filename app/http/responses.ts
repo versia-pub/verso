@@ -131,7 +131,10 @@ type ReplyFor<S, R> = R extends typeof Page ? { status: S; page: Html }
  */
 export type CookieChanges = Readonly<Record<string, string | null>>;
 
-/** One of the responses a route declares: a body its schema accepts, a page, or a redirect. */
+/**
+ * One of the responses a route declares: a body, no body, a page, a redirect, a file or a WebSocket
+ * upgrade.
+ */
 export type Reply<R extends Responses> = {
     [S in keyof R & Status]: ReplyFor<S, NonNullable<R[S]>> & {
         cookies?: CookieChanges;

@@ -1,6 +1,6 @@
 /**
  * The `direct` stream: a user's direct conversations as they get new statuses, lose their latest,
- * or are marked read or unread, as on Mastodon.
+ * or are marked read or unread.
  * @see https://docs.joinmastodon.org/methods/streaming/#direct
  * @module
  */
@@ -13,9 +13,9 @@ import type { Session } from "./session.ts";
 type Entry = { readonly viewer: StreamViewer; readonly session: Session };
 
 /**
- * What the sessions of the process `ctx` belongs to are sent of their viewers' `direct` streams. A
- * conversation is rendered once, as it is when it is heard of, and sent to its owner's sessions as
- * long as they may read statuses. One that is gone by then is sent to none, as on Mastodon.
+ * The `direct` streams for the sessions of the process `ctx` belongs to. A conversation is rendered
+ * once, as it is when it is heard of, and sent to its owner's sessions as long as they may read
+ * statuses. One that is gone by then is sent to none.
  */
 export const directStreams = (ctx: Context): Sessions => {
     const sessions = new Set<Entry>();

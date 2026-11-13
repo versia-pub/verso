@@ -1,5 +1,5 @@
 /**
- * Featured hashtags: the hashtags local users feature on their profiles, as Mastodon has them.
+ * Featured hashtags: the hashtags local users feature on their profiles.
  * Versia has no featured hashtags, so they aren't federated, and remote accounts have none.
  * @see https://docs.joinmastodon.org/methods/featured_tags/
  * @module
@@ -16,10 +16,10 @@ import {
 } from "./featured_tag_queries.ts";
 import { insertTags } from "./tag_queries.ts";
 
-/** How many hashtags a user may feature, as on Mastodon. */
+/** Mastodon's limit on how many hashtags a user may feature. */
 export const featuredTagLimit = 10;
 
-/** How many of a user's latest statuses suggestions come from, as on Mastodon. */
+/** Mastodon's count of a user's latest statuses that suggestions come from. */
 const suggestedFrom = 1000;
 
 /** The result of featuring a hashtag. */

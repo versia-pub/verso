@@ -72,8 +72,8 @@ const blocksInstance = (accountId: string) => (eb: ExpressionBuilder<Database, "
     );
 
 /**
- * The instances on the domains `accountId` blocks, and on their subdomains, as a subquery. They are
- * far fewer than the accounts on them.
+ * The instances on the domains `accountId` blocks, and on their subdomains. They are far fewer than
+ * the accounts on them.
  */
 export const domainBlockedInstancesQuery = (ctx: Context, accountId: string): InstanceIdQuery =>
     ctx.db.selectFrom("instances")

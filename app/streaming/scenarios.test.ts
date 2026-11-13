@@ -25,7 +25,8 @@ Deno.test("a remote status that arrives, and its delete, are streamed on each st
     await followAddress(alice, "bob@b.test");
     await network.drain();
 
-    // Served for real, as a WebSocket needs, though other instances reach it through the network.
+    // Served on a real port, because a WebSocket needs one. Other instances still reach it through
+    // the network.
     const served = Deno.serve({ hostname: "127.0.0.1", port: 0, onListen: () => {} }, a.app.fetch);
     await using server = Object.assign(served, {
         [Symbol.asyncDispose]: () => served.shutdown(),
@@ -50,7 +51,7 @@ Deno.test("a remote status that arrives, and its delete, are streamed on each st
     await network.drain();
     await until(() => heard.length === 4);
 
-    /** What was heard, as each event's stream, type, and status's URI or notification's type. */
+    /** What was heard: each event's stream, type, and status's URI or notification's type. */
     const events = () =>
         heard.map(({ stream, event, payload }) => {
             const body = event === "delete" ? payload : JSON.parse(payload);

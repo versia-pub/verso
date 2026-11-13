@@ -103,10 +103,10 @@ const Document = z.strictObject({
     updated: z.date({ error: "Must be a date, such as 2026-10-01, without quotes" }),
 });
 
-/** What the instance tells people about itself. */
 /** Who may see something: nobody, signed-in users, or everyone. */
 const Audience = z.enum(["none", "users", "all"]);
 
+/** What the instance tells people about itself. */
 export const Instance = z.strictObject({
     /** Its name. Without one, it goes by its domain. */
     name: z.string().trim().min(1).optional(),

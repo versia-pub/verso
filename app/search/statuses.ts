@@ -1,7 +1,7 @@
 /**
  * Finding statuses by the start of their words, among those Mastodon searches: public statuses by
  * authors who chose to be `indexable`, and those the viewer wrote, was mentioned in, liked or
- * boosted. Only signed-in users search statuses, as on Mastodon.
+ * boosted. Only signed-in users search statuses.
  * @see https://docs.joinmastodon.org/methods/search/#v2
  * @module
  */
@@ -31,8 +31,8 @@ export type StatusSearch = {
 };
 
 /**
- * `term`, with `from:`'s author found among the accounts Verso has: the viewer for `me`, as on
- * Mastodon, or the account at the address given, if there is one.
+ * `term`, with `from:`'s author found among the accounts Verso has: the viewer for `me`, or the
+ * account at the address given, if there is one.
  */
 const authorOf = async (ctx: Context, term: QueryTerm, viewerId: string): Promise<NoteTerm> => {
     if (term.kind !== "from") return term;

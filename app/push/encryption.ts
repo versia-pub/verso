@@ -1,7 +1,7 @@
 /**
- * Encrypting what is pushed so only the browser that subscribed can read it, as Web Push requires,
- * in the `aes128gcm` content encoding, or the older `aesgcm` one that subscriptions ask for unless
- * they say they are `standard`, as on Mastodon.
+ * Encrypting what is pushed so only the browser that subscribed can read it, as Web Push requires.
+ * The content encoding is `aes128gcm` for subscriptions that say they are `standard`, and the older
+ * `aesgcm` for the rest, like Mastodon.
  * @see https://www.rfc-editor.org/rfc/rfc8291
  * @see https://www.rfc-editor.org/rfc/rfc8188
  * @see https://datatracker.ietf.org/doc/html/draft-ietf-webpush-encryption-04
@@ -21,7 +21,7 @@ export type Sender = { readonly keyPair: CryptoKeyPair; readonly salt: Uint8Arra
 
 const curve = { name: "ECDH", namedCurve: "P-256" };
 
-/** The size of a record, which push services take, as RFC 8291 has it. */
+/** The size of a record that push services accept, from RFC 8291. */
 const recordSize = 4096;
 
 /**
@@ -67,10 +67,6 @@ export const randomSender = async (): Promise<Sender> => ({
     salt: crypto.getRandomValues(new Uint8Array(16)),
 });
 
-/**
- * `plaintext` encrypted for the browser with `keys`, as one record, with the header that says how
- * to decrypt it.
- */
 /** The sender's public key, as an uncompressed point. */
 export const senderKey = async (sender: Sender): Promise<Uint8Array<ArrayBuffer>> =>
     new Uint8Array(await crypto.subtle.exportKey("raw", sender.keyPair.publicKey));
@@ -98,6 +94,10 @@ const seal = async (
     return new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, record));
 };
 
+/**
+ * `plaintext` encrypted for the browser with `keys`, as one record, with the header that says how
+ * to decrypt it.
+ */
 export const encryptPush = async (
     plaintext: Uint8Array,
     keys: BrowserKeys,

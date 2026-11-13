@@ -1,8 +1,8 @@
 /**
- * Announcements: what the instance's admins tell its users, through `verso admin announcements`,
- * from when they publish them, or when they scheduled them for, until the events they announce
- * end, as on Mastodon. They aren't federated. Each one published, changed or taken down is
- * published too, so that users' apps are told on their streams.
+ * Announcements: what the instance's admins tell its users, through `verso admin announcements`.
+ * One is shown from when it is published, or from when it was scheduled for, until the event it
+ * announces ends. They aren't federated. Each one published, changed or taken down is published
+ * on {@link announcementChanged} too, so that users' apps are told on their streams.
  * @see https://docs.joinmastodon.org/methods/announcements/
  * @module
  */
@@ -56,7 +56,7 @@ export type AnnouncementResult = AnnouncementRow | "missing" | { readonly invali
 /** How long saving an announcement may spend fetching the statuses it links to. */
 const linksMs = 15_000;
 
-/** Why `input` isn't an announcement, as Mastodon checks, or `undefined` if it is one. */
+/** Why `input` isn't an announcement by Mastodon's checks, or `undefined` if it is one. */
 const problemWith = (input: AnnouncementInput) => {
     if (input.text.trim() === "") return "The text can't be empty";
     if ((input.startsAt === null) !== (input.endsAt === null)) {
@@ -66,9 +66,8 @@ const problemWith = (input: AnnouncementInput) => {
 };
 
 /**
- * What `text` mentions and links to, and its HTML. Mentions are of the accounts Verso has, as on
- * Mastodon. Linked statuses are fetched if Verso doesn't have them, and kept if they are public or
- * unlisted.
+ * What `text` mentions and links to, and its HTML. Only the accounts Verso has are mentioned.
+ * Linked statuses are fetched if Verso doesn't have them, and kept if they are public or unlisted.
  */
 const derived = async (ctx: Context, text: string) => {
     const found = scanText(text, "text/plain");
@@ -111,8 +110,8 @@ const changed = (ctx: Context, id: string, published: boolean) =>
     publish(ctx, announcementChanged, { id, published });
 
 /**
- * Makes an announcement, published at once unless it is scheduled for later, as on Mastodon.
- * Returns it, or why it can't be made.
+ * Makes an announcement, published at once unless it is scheduled for later. Returns it, or why it
+ * can't be made.
  */
 export const createAnnouncement = async (
     ctx: Context,
@@ -144,7 +143,7 @@ export const createAnnouncement = async (
 
 /**
  * Changes the announcement `id` as `changes` say, leaving out what they leave out. A published one
- * is streamed again, as on Mastodon.
+ * is streamed again.
  */
 export const changeAnnouncement = async (
     ctx: Context,
@@ -244,8 +243,9 @@ export const removeAnnouncement = (ctx: Context, id: string): Promise<boolean> =
 export const announcementsQueue = "announcements";
 
 /**
- * Publishes the announcements scheduled for by now, and takes down those whose events ended by now,
- * as Mastodon does every minute. Unlike on Mastodon, apps are told those taken down are gone.
+ * Publishes the announcements scheduled for by now, and takes down those whose events ended by now.
+ * Mastodon does this every minute. Unlike Mastodon, Verso tells apps that those taken down are
+ * gone.
  */
 export const publishDueAnnouncements = async (ctx: Context): Promise<void> => {
     const now = ctx.clock.now();

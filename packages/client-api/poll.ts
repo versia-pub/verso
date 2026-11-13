@@ -22,7 +22,7 @@ export const Poll = z.object({
     })),
     /** The custom emojis used in the options. */
     emojis: z.array(CustomEmoji),
-    /** Whether the viewer voted, or wrote it. Only for a logged-in viewer, as is `own_votes`. */
+    /** Whether the viewer voted, or wrote it. Like `own_votes`, only for a logged-in viewer. */
     voted: z.boolean().optional(),
     /** The options the viewer voted for, by index. */
     own_votes: z.array(z.int().min(0)).optional(),

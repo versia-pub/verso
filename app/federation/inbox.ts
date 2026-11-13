@@ -36,7 +36,7 @@ export type InboxJob = z.output<typeof InboxJob>;
 
 const Typed = z.object({ type: z.string() });
 
-/** Extension types are namespaced, such as `pub.versia:likes/Like`; core ones aren't. */
+/** Extension types are namespaced, like `pub.versia:likes/Like`; core ones aren't. */
 const isExtensionType = (type: string) => type.includes(":");
 
 /** A schema's problems by field path, as the client API reports them. */
@@ -55,7 +55,7 @@ export type Checked = { readonly type: EntityType; readonly entity: unknown };
 /**
  * Validates an entity's body: it must be Versia JSON, of a type in `registry`, matching its schema.
  * It throws when it isn't, and returns `undefined` for an extension type Verso doesn't know, which
- * is dropped, as the spec says.
+ * the spec says to drop.
  * @see https://versia.pub/extensions
  */
 export const checkEntity = (registry: Registry, body: Uint8Array): Checked | undefined => {

@@ -52,7 +52,7 @@ export type RouteViewer = Viewer & {
      * requested, and again after {@link RouteViewer.forgetPermissions}.
      */
     readonly permissions: () => Promise<ReadonlySet<Permission>>;
-    /** Makes the next {@link RouteViewer.permissions} look them up again, as they changed. */
+    /** Makes the next {@link RouteViewer.permissions} look them up again, for when they changed. */
     readonly forgetPermissions: () => void;
 };
 

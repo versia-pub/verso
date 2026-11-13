@@ -1,6 +1,6 @@
 /**
- * Groups of notifications, as Mastodon's grouped notifications show them: pages of them, what each
- * shows, and the notifications and accounts in one.
+ * Groups of notifications: pages of them, what each shows, and the notifications and accounts in
+ * one.
  * @see https://docs.joinmastodon.org/methods/grouped_notifications/
  * @module
  */
@@ -17,7 +17,7 @@ import {
 } from "./notification_queries.ts";
 import type { NotificationType } from "./tables.ts";
 
-/** Where a group's key is `ungrouped-<id>`, for a notification on its own. */
+/** The start of the key `ungrouped-<id>` of a group that is one notification on its own. */
 const ungrouped = "ungrouped-";
 
 /**
@@ -28,14 +28,15 @@ export const groupKeyOf = (row: NotificationRow, grouped: readonly NotificationT
     row.group_key !== null && grouped.includes(row.type) ? row.group_key : `${ungrouped}${row.id}`;
 
 /**
- * A page of the groups of the notifications of `accountId`, newest first, as {@link shownQuery} and
- * `filter` allow, as one notification of each: the newest in the page, or the oldest after
- * `min_id`. `page.limit` counts groups, and only the types `grouped` are grouped.
+ * A page of the groups of the notifications of `accountId`, newest first, from those
+ * {@link shownQuery} and `filter` allow. Each group is shown as one of its notifications: the
+ * newest in the page, or the oldest after `min_id`. `page.limit` counts groups, and only the types
+ * `grouped` are grouped.
  *
- * Mastodon finds them in one recursive query; Verso reads the page a part at a time, leaving out
- * the groups it has found, so that it works on SQLite too. Each part finds a group at least, and
- * reads twice as many notifications as the last, so that large groups, which a part may be full
- * of, take few parts.
+ * Mastodon finds them in one recursive query. Verso reads the page a part at a time, leaving out
+ * the groups it has found, so that it works on SQLite too. Each part finds at least one group and
+ * reads twice as many notifications as the last, so large groups, which can fill a part, take few
+ * parts.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/models/notification.rb
  */
 export const notificationGroupPage = async (
@@ -96,7 +97,7 @@ export type GroupStats = {
     readonly reactionIds: readonly string[];
 };
 
-/** How many accounts, and reactions, a group's {@link GroupStats} has, as on Mastodon. */
+/** Mastodon's limit on how many accounts, and reactions, a group's {@link GroupStats} has. */
 const sampleSize = 8;
 
 /**
@@ -196,8 +197,9 @@ export const groupStatsOf = async (
 };
 
 /**
- * Whether a notification is in the group `key`: has it as its stored key, or is the notification
- * that `ungrouped-<id>` names, even if it has a key, as when its type wasn't asked to be grouped.
+ * Whether a notification is in the group `key`. It has `key` as its stored key, or it's the one
+ * that `ungrouped-<id>` names. The latter holds even if it has a stored key, for example when its
+ * type wasn't asked to be grouped.
  */
 const inGroup = (key: string) => (eb: ExpressionBuilder<Database, "notifications">) =>
     key.startsWith(ungrouped)
@@ -219,7 +221,7 @@ export const findGroupNotification = async (
 
 /**
  * A page of the notifications of `accountId`'s group `key` that {@link shownQuery} allows, newest
- * first, as the newest of each account's, so that each account is on one page once.
+ * first. Only the newest of each account's is included, so each account is listed once.
  */
 export const groupAccountPage = async (
     ctx: Context,

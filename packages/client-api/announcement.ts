@@ -19,9 +19,9 @@ export const AnnouncementReaction = z.object({
 export type AnnouncementReaction = z.infer<typeof AnnouncementReaction>;
 
 /**
- * A change in the reactions to an announcement with one emoji, as the user stream sends it. Unlike
- * the reactions in an announcement, it has none of them if the last was undone, and it never says
- * whether the viewer made one.
+ * A change in the reactions to an announcement with one emoji, sent on the user stream. Unlike the
+ * reactions in an announcement, its `count` is 0 if the last was undone, and it never says whether
+ * the viewer made one.
  */
 export const AnnouncementReactionChange = z.object({
     announcement_id: z.string(),
@@ -38,7 +38,7 @@ export type AnnouncementReactionChange = z.infer<typeof AnnouncementReactionChan
  */
 export const Announcement = z.object({
     id: z.string(),
-    /** As HTML. */
+    /** HTML. */
     content: z.string(),
     /** When the event it announces starts and ends, if it is about one. */
     starts_at: z.iso.datetime().nullable(),

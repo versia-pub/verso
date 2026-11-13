@@ -22,7 +22,7 @@ const open = async (settings: { previewCardMs?: number | null } = {}) => {
     return test;
 };
 
-/** Prunes the cards fetched before now, as the command does. */
+/** Prunes the cards fetched before now. The command does the same. */
 const prune = (ctx: Context) => pruneCards(ctx, new Date(ctx.clock.now().getTime() + 1));
 
 /** The cards left, by id, with whether each still has its image. */

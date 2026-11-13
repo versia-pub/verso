@@ -11,9 +11,9 @@ import type { AppsTable } from "./tables.ts";
 const scriptSchemes = ["data:", "javascript:", "vbscript:"];
 
 /**
- * Absolute, such as `https://app.example/callback`, `tusky://oauth` or Mastodon's
- * `urn:ietf:wg:oauth:2.0:oob`, with no fragment. No whitespace either, since `redirect_uri` joins
- * them with newlines.
+ * An absolute URI with no fragment, like `https://app.example/callback`, `tusky://oauth` or
+ * Mastodon's `urn:ietf:wg:oauth:2.0:oob`. No whitespace either, since `redirect_uri` joins them
+ * with newlines.
  */
 const RedirectUri = z.string().refine((text) => {
     const url = URL.parse(text);
@@ -21,8 +21,8 @@ const RedirectUri = z.string().refine((text) => {
 }, "Must be an absolute URI without a fragment");
 
 /**
- * Mastodon's parameters and limits, and RFC 7591's `token_endpoint_auth_method`, which only Verso
- * takes: `none` registers a public client, which gets no secret and must use PKCE.
+ * Mastodon's parameters and limits. `token_endpoint_auth_method` is from RFC 7591, and only Verso
+ * takes it: `none` registers a public client, which gets no secret and must use PKCE.
  * @see https://docs.joinmastodon.org/methods/apps/#create
  * @see https://www.rfc-editor.org/rfc/rfc7591#section-2
  */
@@ -80,7 +80,7 @@ const postApps = defineRoute({
 });
 
 /**
- * Any valid token works, with no scope needed, as in Mastodon 4.3 and later.
+ * Any valid token works, with no scope needed, like Mastodon 4.3 and later.
  * @see https://docs.joinmastodon.org/methods/apps/#verify_credentials
  */
 const verifyAppCredentials = defineRoute({

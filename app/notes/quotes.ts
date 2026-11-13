@@ -16,9 +16,8 @@ import { notesSeenBy } from "./thread_queries.ts";
 import { onlookerOf, visibleOriginal } from "./visibility.ts";
 
 /**
- * Whether anyone may quote `note`, as Mastodon decides it: a direct status can't be quoted, and a
- * private one only by its author, since its followers' quotes could reach others than its
- * audience.
+ * Whether anyone may quote `note`: a direct status can't be quoted, and a private one only by its
+ * author, since its followers' quotes could reach others than its audience.
  */
 const quotableBy = (note: Pick<NoteRow, "visibility" | "account_id">, viewerId: string): boolean =>
     note.visibility === "public" || note.visibility === "unlisted" ||
@@ -26,8 +25,8 @@ const quotableBy = (note: Pick<NoteRow, "visibility" | "account_id">, viewerId: 
 
 /**
  * The status `quoterId` quotes by naming `id`, or `undefined` if they may not. A boost stands for
- * the status it boosts, as on Mastodon. `quoterId` has to be able to see the status, and not block
- * its author, individually or by their domain.
+ * the status it boosts. `quoterId` has to be able to see the status, and not block its author,
+ * individually or by their domain.
  */
 export const quotableNote = async (
     ctx: Context,
@@ -68,7 +67,7 @@ export type QuoteView = {
  * How each of `quotes`, which maps a status to the status it quotes, appears to `viewerId`, or to
  * anyone if it is `null`, by the id of the quoting status. A quote of a status the viewer may not
  * see is `unauthorized`. Those that the viewer blocks, by domain or individually, and mutes still
- * show, with their state, as on Mastodon, except to the quoted author.
+ * show, with their state, except to the quoted author.
  */
 export const quoteViews = async (
     ctx: Context,

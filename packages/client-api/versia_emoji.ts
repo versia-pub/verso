@@ -3,8 +3,8 @@ import { CustomEmoji } from "./custom_emoji.ts";
 
 /**
  * A custom emoji as Versia's emoji endpoints render it, with its id, whether it is global, and its
- * alt text. Versia Server's extension to the Mastodon API. Its picture's URLs are `null`
- * while the picture is processed, as Verso processes pictures after they are uploaded.
+ * alt text. Versia Server's extension to the Mastodon API. The picture's URLs are `null` while it
+ * is processed, which Verso does after the upload.
  * @see https://github.com/versia-pub/server/blob/main/packages/client/schemas/emoji.ts
  */
 export const VersiaEmoji = CustomEmoji.extend({

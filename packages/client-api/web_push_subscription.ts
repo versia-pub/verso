@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Which notifications are pushed, by their type, as Mastodon names them. */
+/** Which notifications are pushed, by their type. */
 export const PushAlerts = z.object({
     mention: z.boolean(),
     status: z.boolean(),
@@ -31,11 +31,11 @@ export const WebPushSubscription = z.object({
     /** Where the notifications are pushed to. */
     endpoint: z.string(),
     alerts: PushAlerts,
-    /** The instance's VAPID public key, which push services check the pushes are signed with. */
+    /** The instance's VAPID public key. Push services check that pushes are signed with it. */
     server_key: z.string(),
     /**
-     * Whose notifications are pushed: everyone's, or only those the user follows, or who follow
-     * them, or no one's.
+     * Whose notifications are pushed: everyone's, those of accounts the user follows, those of
+     * accounts that follow them, or no one's.
      */
     policy: z.enum(["all", "followed", "follower", "none"]),
     /** Whether pushes are in the standard `aes128gcm` encoding, rather than the older `aesgcm`. */

@@ -30,7 +30,7 @@ const Id = z.object({ id: z.string() });
 const read = { require: "user", scope: "admin:read:accounts", permission: "accounts" } as const;
 const write = { require: "user", scope: "admin:write:accounts", permission: "accounts" } as const;
 
-/** The roles of staff, as Mastodon counts them: those that may deal with reports. */
+/** The roles Mastodon counts as staff: those that may deal with reports. */
 const staffRoleIds = async (ctx: Context): Promise<string[]> =>
     (await listRoles(ctx)).filter((role) => role.permissions.includes("reports"))
         .map((role) => role.id);
@@ -45,7 +45,7 @@ const orRefusal = (result: Moderated): void => {
 
 const Status = z.enum(["active", "pending", "disabled", "silenced", "suspended", "sensitized"]);
 
-/** The v1 query's status flags, the later winning when several are given, as on Mastodon. */
+/** The v1 query's status flags. Mastodon lets the later one win when several are given. */
 const v1Statuses = ["active", "pending", "disabled", "silenced", "suspended"] as const;
 
 /** The admin API's account routes, which show what `permissions.default` lets every user do. */

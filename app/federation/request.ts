@@ -79,10 +79,7 @@ const send = async (
     }
 };
 
-/**
- * Sends a request to a remote instance, signed as this instance, and reads the response, as `send`
- * does.
- */
+/** Like `send`, but signed as this instance. */
 export const sendSigned = async (
     ctx: Context,
     method: "GET" | "POST",
@@ -108,15 +105,15 @@ export const sendSigned = async (
 };
 
 /**
- * Fetches from a remote instance without signing, for what any server may request, such as its
- * metadata or WebFinger, and reads the response, as `send` does.
+ * Like `send` for a GET, but unsigned, for what any server may request, like its metadata or
+ * WebFinger.
  */
 export const fetchUnsigned = (ctx: Context, url: URL, accept: string): Promise<FederationReply> =>
     send(ctx, url, { method: "GET", headers: { accept } });
 
 /**
- * Posts plain text to a remote instance without signing, for what Versia doesn't sign, such as
- * instance messages, and reads the response, as `send` does.
+ * Like `send` for a POST of plain text, but unsigned, for what Versia doesn't sign, like instance
+ * messages.
  */
 export const postUnsigned = (ctx: Context, url: URL, text: string): Promise<FederationReply> =>
     send(ctx, url, {

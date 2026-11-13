@@ -22,7 +22,7 @@ const exposed = [
 ];
 
 /**
- * Lets any site call these paths with these methods, without cookies, as Mastodon does. Access
+ * Mastodon's CORS rules: any site may call these paths with these methods, without cookies. Access
  * tokens travel in a header, so another site learns nothing it couldn't already read itself.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/config/initializers/cors.rb
  */

@@ -38,7 +38,7 @@ export const keepingColumns = [
 
 /**
  * Up to `limit` remote accounts last fetched before `before`, after `after`, that could be pruned:
- * not suspended, silenced or bots, as on Mastodon. Exported for the tests of its query plan.
+ * not suspended, silenced or bots. Exported for the tests of its query plan.
  */
 export const oldRemoteAccountsQuery = (
     ctx: Context,

@@ -20,7 +20,7 @@ const remoteEmojiLimit = 100;
  * The emojis an entity's `extensions` say its text uses, without any whose picture clients can't
  * display, and with the first of any named twice. Versia lets names have other characters around
  * them, but Mastodon's clients only look for colons, so emojis named otherwise are omitted. An
- * extension that isn't as Versia defines it is treated as having none.
+ * extension that doesn't match what Versia defines is treated as having no emojis.
  */
 export const remoteEmojisOf = (
     extensions: v0_6.Entity["extensions"],
@@ -44,8 +44,8 @@ export const remoteEmojisOf = (
 
 /**
  * The `extensions` of an entity whose text uses `emojis`, or `undefined` if it uses none. Emojis
- * whose pictures aren't ready are omitted. A remote emoji is given at its instance's URL, as the
- * type its instance gave, not as Verso caches it.
+ * whose pictures aren't ready are omitted. A remote emoji is given at its instance's URL, with the
+ * type its instance gave, rather than from Verso's cache.
  */
 export const emojiExtensions = (
     ctx: Context,

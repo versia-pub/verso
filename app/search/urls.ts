@@ -1,6 +1,6 @@
 /**
- * Finding what a URL names, as Mastodon's search does when asked to resolve it: a Versia User or
- * Note at its entity URL, which is the `uri` Verso shows for an account or status, fetched if Verso
+ * Finding what a URL names when a search is asked to resolve it: a Versia User or Note at its
+ * entity URL, which is the `uri` Verso shows for an account or status. It is fetched if Verso
  * doesn't have it.
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/resolve_url_service.rb
  * @module
@@ -12,7 +12,7 @@ import type { Budget, Context } from "../kernel/context.ts";
 import type { NoteRow } from "../notes/note_queries.ts";
 import { visibleNote } from "../notes/visibility.ts";
 
-/** Whether `query` is a URL, which a search that resolves finds alone, as on Mastodon. */
+/** Whether `query` is a URL, which a search that resolves finds alone. */
 export const isUrlQuery = (query: string): boolean => /^https?:\/\//.test(query);
 
 const entityPath = /^\/\.versia\/v0\.6\/entities\/(User|Note)\/([A-Za-z0-9_-]+)$/;
