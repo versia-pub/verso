@@ -2,10 +2,10 @@
  * Points at an entity: its id, and the hostname of the instance that created it.
  * @see https://versia.pub/types#reference
  */
-export interface Reference {
+export type Reference = {
     readonly host: string;
     readonly id: string;
-}
+};
 
 const idPattern = /^[A-Za-z0-9_-]+$/;
 

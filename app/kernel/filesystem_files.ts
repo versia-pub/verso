@@ -1,3 +1,4 @@
+import { getLogger } from "@logtape/logtape";
 import { checkFileKey, type FileStore } from "./files.ts";
 
 /**
@@ -30,7 +31,12 @@ export const filesystemFiles = (root: string): FileStore => ({
             await Deno.writeFile(temp, await file.open());
             await Deno.rename(temp, path);
         } catch (error) {
-            await Deno.remove(temp).catch(() => {});
+            await Deno.remove(temp).catch((removeError) => {
+                getLogger(["verso", "kernel"]).warning("Couldn't remove {temp}: {error}", {
+                    temp,
+                    error: removeError,
+                });
+            });
             throw error;
         }
 

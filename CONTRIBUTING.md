@@ -94,7 +94,9 @@ and upgrade them.
   functions declare their return types. If you really need to break a rule, add a `deno-lint-ignore`
   comment with the reason after `--`.
 - Write functions as arrow functions, not with the `function` keyword. Methods and generators are
-  the exception. Our own lint rules live in `lint/plugin.ts`.
+  the exception.
+- Declare object types with `type`, not `interface`, and use unions of string literals instead of
+  enums. Import types with `import type`. Our own lint rules live in `lint/plugin.ts`.
 - Don't use `console` for logging. Logs go through LogTape so they stay structured. Printing command
   output, like `--version`, is fine with a lint-ignore comment.
 - Get a logger with `getLogger(["verso", "<module>"])`. Put values in the log's properties, as in

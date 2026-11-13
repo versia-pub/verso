@@ -8,14 +8,14 @@
 import { canonicalizeDomain } from "./reference.ts";
 
 /** A request, or a response to one. Responses use the method and pathname of their request. */
-export interface SignedMessage {
+export type SignedMessage = {
     /** Such as "GET" or "post"; the case doesn't matter. */
     readonly method: string;
     /** The URL-encoded path, as `URL.pathname` gives it. The query string isn't signed. */
     readonly pathname: string;
     /** Empty for GET requests. */
     readonly body: Uint8Array<ArrayBuffer>;
-}
+};
 
 export type Verification =
     | { readonly ok: true; readonly signedBy: string }

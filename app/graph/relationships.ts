@@ -13,7 +13,7 @@ import { endorsedAmong } from "./endorsement_queries.ts";
 import { followsFrom, followsOf } from "./follow_queries.ts";
 import { mutesOf } from "./mute_queries.ts";
 import { renderRelationship } from "./render.ts";
-import { Relationship } from "@versia/client-api";
+import type { Relationship } from "@versia/client-api";
 
 /**
  * How the viewer is connected to each of `ids` that is an account, in the order requested, leaving

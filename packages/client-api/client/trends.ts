@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TrendsLink } from "../preview_card.ts";
 import { Status } from "../status.ts";
 import { Tag } from "../tag.ts";
-import { type CallOptions, type Http } from "./http.ts";
+import type { CallOptions, Http } from "./http.ts";
 
 /** Which of a trending list to fetch. */
 export type TrendQuery = {

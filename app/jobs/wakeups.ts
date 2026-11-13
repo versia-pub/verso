@@ -37,7 +37,9 @@ export const listenForJobs = async (
         await client.query(`listen ${jobsChannel}`);
     } catch (error) {
         logger.warning("Couldn't listen for new jobs, so workers only poll: {error}", { error });
-        await client.end().catch(() => {});
+        await client.end().catch((error) => {
+            logger.debug("Couldn't close the connection that failed: {error}", { error });
+        });
         return undefined;
     }
 

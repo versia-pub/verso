@@ -7,8 +7,8 @@ import type { Context as HonoContext } from "@hono/hono";
 import { deleteCookie, setCookie } from "@hono/hono/cookie";
 import { z } from "zod";
 import { linkHeader, offsetLinkHeader } from "./paging.ts";
-import { type Route } from "./route.ts";
-import { type CookieChanges, type Reply, type Responses } from "./responses.ts";
+import type { Route } from "./route.ts";
+import type { CookieChanges, Reply, Responses } from "./responses.ts";
 
 const setCookies = (c: HonoContext, cookies: CookieChanges = {}) => {
     for (const [name, value] of Object.entries(cookies)) {

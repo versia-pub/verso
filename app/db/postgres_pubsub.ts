@@ -92,7 +92,9 @@ export const postgresPubSub = <DB>(
             await listener.query(`listen ${messagesChannel}`);
         } catch (error) {
             logger.warning("Couldn't hear other processes' messages: {error}", { error });
-            await listener.end().catch(() => {});
+            await listener.end().catch((error) => {
+                logger.debug("Couldn't close the connection that failed: {error}", { error });
+            });
             return false;
         }
 

@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { VersiaRole } from "@versia/client-api";
+import type { VersiaRole } from "@versia/client-api";
 import { tokenFor } from "../auth/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createInstance } from "../instances/testing.ts";

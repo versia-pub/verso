@@ -26,6 +26,28 @@ const plugin: Deno.lint.Plugin = {
                 };
             },
         },
+
+        // One way to declare an object type. Enums emit runtime code, and a union of string literals
+        // does the same job without any.
+        "prefer-type-aliases": {
+            create(context) {
+                return {
+                    TSInterfaceDeclaration(node) {
+                        context.report({
+                            node,
+                            message: "Use a `type` alias instead of `interface`.",
+                        });
+                    },
+
+                    TSEnumDeclaration(node) {
+                        context.report({
+                            node,
+                            message: "Use a union of string literals instead of `enum`.",
+                        });
+                    },
+                };
+            },
+        },
     },
 };
 

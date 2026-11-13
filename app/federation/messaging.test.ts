@@ -9,7 +9,7 @@ import { registry } from "../registry.ts";
 import { createTestContext } from "../testing/context.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork, type Network } from "../testing/network.ts";
-import { messageHandler, MessageJob, messageQueue } from "./messaging.ts";
+import { messageHandler, type MessageJob, messageQueue } from "./messaging.ts";
 
 /** a.test, and the messages it logs, until disposed. */
 const open = async () => {

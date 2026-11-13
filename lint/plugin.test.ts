@@ -16,3 +16,24 @@ Deno.test("arrow functions, methods and generators are allowed", () => {
     assertEquals(problems("class C { m() {} }"), 0);
     assertEquals(problems("function* g() { yield 1; }"), 0);
 });
+
+Deno.test("interfaces and enums are reported", () => {
+    assertEquals(problems("interface A { a: string }"), 1);
+    assertEquals(problems("export interface B extends A { b: number }"), 1);
+    assertEquals(problems("enum C { X, Y }"), 1);
+    assertEquals(problems('const enum D { X = "x" }'), 1);
+});
+
+Deno.test("type aliases and string unions are allowed", () => {
+    assertEquals(problems("type A = { a: string };"), 0);
+    assertEquals(problems("type B = A & { b: number };"), 0);
+    assertEquals(problems('type C = "x" | "y";'), 0);
+});
+
+Deno.test("an interface and an enum are each told what to use instead", () => {
+    const messages = (source: string) =>
+        Deno.lint.runPlugin(plugin, "sample.ts", source).map((problem) => problem.message);
+
+    assertEquals(messages("interface A {}"), ["Use a `type` alias instead of `interface`."]);
+    assertEquals(messages("enum C { X }"), ["Use a union of string literals instead of `enum`."]);
+});

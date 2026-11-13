@@ -2,6 +2,7 @@
  * Reading a body that a remote server sends, which may be of any size.
  * @module
  */
+import { getLogger } from "@logtape/logtape";
 
 /**
  * Reads up to `limit` bytes of `stream`, and stops there. `truncated` says whether the stream had
@@ -34,7 +35,10 @@ export const readLimited = async (
                 size += value.length;
             }
         } finally {
-            await reader.cancel().catch(() => {});
+            // The body is already read, so a failed cancel changes nothing.
+            await reader.cancel().catch((error) => {
+                getLogger(["verso", "kernel"]).debug("Couldn't cancel a body: {error}", { error });
+            });
         }
     }
 

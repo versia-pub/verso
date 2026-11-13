@@ -47,7 +47,8 @@
                 "no-console",
                 "no-explicit-any",
                 "no-non-null-assertion",
-                "no-unused-vars"
+                "no-unused-vars",
+                "verbatim-module-syntax"
             ]
         }
     },

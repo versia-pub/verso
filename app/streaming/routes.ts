@@ -4,7 +4,7 @@ import { watchToken } from "../auth/tokens.ts";
 import { HttpError, NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { Binary, Upgrade } from "../http/responses.ts";
-import { StreamingLimits, TimelinesAccess } from "../kernel/config_sections.ts";
+import { type StreamingLimits, TimelinesAccess } from "../kernel/config_sections.ts";
 import type { Context } from "../kernel/context.ts";
 import { findList } from "../lists/list_queries.ts";
 import { directStreams } from "./direct.ts";

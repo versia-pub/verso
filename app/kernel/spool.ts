@@ -3,11 +3,18 @@
  * memory as little as can be.
  * @module
  */
+import { getLogger } from "@logtape/logtape";
 import { createHash } from "node:crypto";
 import type { FileSource } from "./files.ts";
 
 /** A file written to a temporary file, removed once it is disposed of. */
 export type SpooledFile = FileSource & AsyncDisposable & { readonly path: string };
+
+// A temporary file left behind only costs disk space, so it's reported rather than thrown.
+const removeTemp = (path: string): Promise<void> =>
+    Deno.remove(path).catch((error) => {
+        getLogger(["verso", "kernel"]).warning("Couldn't remove {path}: {error}", { path, error });
+    });
 
 /**
  * Writes `stream` to a new temporary file in `directory`, or the system's, hashing it as it goes.
@@ -32,7 +39,7 @@ export const spool = async (
         );
         await Deno.writeFile(path, counted);
     } catch (error) {
-        await Deno.remove(path).catch(() => {});
+        await removeTemp(path);
         throw error;
     }
 
@@ -41,6 +48,6 @@ export const spool = async (
         size,
         sha256: hash.digest("hex"),
         open: async () => (await Deno.open(path)).readable,
-        [Symbol.asyncDispose]: () => Deno.remove(path).catch(() => {}),
+        [Symbol.asyncDispose]: () => removeTemp(path),
     };
 };
