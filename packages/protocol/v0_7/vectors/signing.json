@@ -1,0 +1,62 @@
+{
+    "about": "Versia 0.7 signing vectors (https://versia.pub/signatures). Generated with OpenSSL, not with Verso, so they check Verso against an independent implementation. The key is the spec's example key. Bodies are UTF-8 text, signed as their exact bytes.",
+    "private_key": "MC4CAQAwBQYDK2VwBCIEILrNXhbWxC/MhKQDsJOAAF1FH/R+Am5G/eZKnqNum5ro",
+    "public_key": "MCowBQYDK2VwAyEA9oGFPbz+LThzQSOhWhOpUdFxLG07Rqmn0HtAFaCz/hM=",
+    "vectors": [
+        {
+            "name": "POST to an inbox, the spec example",
+            "method": "POST",
+            "host": "alice.example",
+            "target": "/.versia/v0.7/inbox",
+            "signed_by": "bob.example",
+            "body": "{\"content\":\"Hello, world!\"}",
+            "signed_at": "1729243417",
+            "signed_string": "post alice.example /.versia/v0.7/inbox 1729243417 4+e2vswDyKEalby/akgnvZl4yJTXIbN1u42bC6inlOo=",
+            "signature": "oDxf2KvGcN8pn5M0vhklBMGElHFKvAJtx1ktz2BJtmOot5ClUKeuBJX9BPiD3Lkmc5/Uv3z0nQBckjAC2oJSCA=="
+        },
+        {
+            "name": "GET, which signs the hash of an empty body",
+            "method": "GET",
+            "host": "alice.example",
+            "target": "/.versia/v0.7/entities/User/1jddtg8t2vhp4gs3jx",
+            "signed_by": "bob.example",
+            "body": "",
+            "signed_at": "1729243417",
+            "signed_string": "get alice.example /.versia/v0.7/entities/User/1jddtg8t2vhp4gs3jx 1729243417 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+            "signature": "KNfC86OWwMJ6pcZNLxn+oq4nEpl2VbkGuzAuH5rbWQVGWGFreWWtrFqn2zgOqY/B2a+ZlWP6jkH9FLKnMeqvAw=="
+        },
+        {
+            "name": "GET with a query, and a type name that is not percent-encoded",
+            "method": "GET",
+            "host": "alice.example",
+            "target": "/.versia/v0.7/entities/pub.versia:social/Note/1j0q0j3wb4v0hgtw6w/collections/replies?offset=10&limit=20",
+            "signed_by": "bob.example",
+            "body": "",
+            "signed_at": "1729243417",
+            "signed_string": "get alice.example /.versia/v0.7/entities/pub.versia:social/Note/1j0q0j3wb4v0hgtw6w/collections/replies?offset=10&limit=20 1729243417 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+            "signature": "t0xp4Vq12czJ/zTc5pfDfhlU75DNZ4i4xp6RavKaT9Xr21aMnARBBbHhrN3I6/wdUZMj9y12PvxRv7rc/yeeDg=="
+        },
+        {
+            "name": "GET with an encoded query, signed as encoded",
+            "method": "GET",
+            "host": "alice.example",
+            "target": "/.versia/v0.7/entities/User/1jddtg8t2vhp4gs3jx/collections/subscribers?offset=%31",
+            "signed_by": "bob.example",
+            "body": "",
+            "signed_at": "1729243417",
+            "signed_string": "get alice.example /.versia/v0.7/entities/User/1jddtg8t2vhp4gs3jx/collections/subscribers?offset=%31 1729243417 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+            "signature": "at/zE+UFDN1B41xMF5Hq0Xe/6qzeWNuQD1KdAa9Q1EDvADzZOYXhpCDNs46uaZptWfLmsDhalvWDFdURNoGiBw=="
+        },
+        {
+            "name": "Response to a GET, signed by the instance it was sent to, with non-ASCII text",
+            "method": "get",
+            "host": "alice.example",
+            "target": "/.versia/v0.7/entities/User/1jddtg8t2vhp4gs3jx",
+            "signed_by": "alice.example",
+            "body": "{\"display_name\":\"Alice ✨ Liddell\",\"username\":\"alice\"}",
+            "signed_at": "1729243417",
+            "signed_string": "get alice.example /.versia/v0.7/entities/User/1jddtg8t2vhp4gs3jx 1729243417 ofkHfT18oNLSC3hRa0HGDED2yQJmgODS0ssVuj9TlN4=",
+            "signature": "LBvvZz3l6WSwSycu+yQGeErycU/eZKwamB90uVtPkFnEJfo76UUnl9Qqbed11xecR863Gii1f4cltGyIt99WCg=="
+        }
+    ]
+}
