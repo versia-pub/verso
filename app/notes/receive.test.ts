@@ -618,8 +618,14 @@ Deno.test("a note's id has the time it was made, however late it arrived, but no
     const mentions = [`a.test:${test.alice}`];
     /** The time `remoteId`'s id has, as a.test keeps it. */
     const idTime = async (remoteId: string) => {
-        const hex = (await test.kept(remoteId))?.id.replace("-", "").slice(0, 12) ?? "";
-        return new Date(Number.parseInt(hex, 16)).toISOString();
+        // An id is base32, with its time in milliseconds above the low 48 bits.
+        const id = (await test.kept(remoteId))?.id ?? "";
+        const value = [...id].reduce(
+            (number, char) =>
+                number * 32n + BigInt("0123456789abcdefghjkmnpqrstvwxyz".indexOf(char)),
+            0n,
+        );
+        return new Date(Number(value >> 48n)).toISOString();
     };
 
     test.network.clock.advance(60_000);

@@ -59,8 +59,8 @@ Apps can show only what the user may do. `permissions` on the user's own Account
 
 ## Ids, pages and errors
 
-Ids are strings holding UUIDs rather than numbers. They're UUIDv7s, so they sort by creation time,
-but apps should treat them as opaque.
+Ids are strings of 18 lowercase letters and digits rather than numbers. They start with the creation
+time, so they sort by it, but apps should treat them as opaque.
 
 Lists are paged newest first, with Mastodon's `max_id`, `since_id`, `min_id` and `limit`, and the
 `Link` header points to the next and previous pages.

@@ -137,7 +137,7 @@ world, so tests can swap any of it for a fake:
 | ------------------- | ----------------------------------------- | ---------------------------- |
 | `db`                | Kysely, or the current transaction        | Postgres, PGlite, SQLite     |
 | `clock`             | the time; nothing calls `Date.now()`      | system clock, test clock     |
-| `ids`               | new UUIDv7 ids                            |                              |
+| `ids`               | new ids of 18 characters                  |                              |
 | `urls`              | every public URL Verso hands out          |                              |
 | `transport`         | HTTP requests to other servers            | `fetch`, a test network      |
 | `files`             | where uploaded files are kept             | disk, S3                     |
@@ -191,8 +191,9 @@ for changes that stuck. [Events, jobs and messages](events-and-jobs.md) covers e
 
 ## Ids, references and URLs
 
-Every row's primary key is a UUIDv7 from `ctx.ids`. They sort by time, so they double as paging
-cursors.
+Every row's primary key is an 18-character id from `ctx.ids`, the longest id Versia allows. It
+starts with the time in milliseconds, so ids sort by time and double as paging cursors. See
+`app/kernel/ids.ts` for the layout.
 
 Remote accounts, statuses and so on share tables with local ones. `instance_id` is `null` for local
 rows, and remote rows also keep `remote_id`, their id on their own instance.

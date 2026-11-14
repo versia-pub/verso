@@ -29,7 +29,7 @@ import { subscribe } from "../kernel/pubsub.ts";
 import { postponeGroup, resumeGroup } from "./job_pause_queries.ts";
 import { jobWakeups } from "./wakeups.ts";
 
-const firstId = "019b76da-a800-7000-8000-000000000001";
+const firstId = "cvevdag00000000001";
 
 const open = () => createTestContext();
 

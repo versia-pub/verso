@@ -11,7 +11,7 @@ Deno.test("urls are https on the instance's domain", () => {
         "https://social.example/api/v1/instance",
     );
 
-    const id = "019b76da-a800-7000-8000-000000000001";
+    const id = "cvevdag00000000001";
     assertEquals(
         urls.url`/api/v1/accounts/${id}/statuses`,
         `https://social.example/api/v1/accounts/${id}/statuses`,

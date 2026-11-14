@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertRejects } from "@std/assert";
+import { assert, assertEquals, assertMatch, assertRejects } from "@std/assert";
 import { type Kysely, sql } from "kysely";
 import { firstIdAt } from "../kernel/ids.ts";
 import { checkForeignKeys } from "./columns.ts";
@@ -413,4 +413,323 @@ Deno.test("domain blocks there were get ids in the order they were made", async 
             .values({ id: "other", domain: "a.example", reason: "", created_at: newer })
             .execute()
     );
+});
+
+Deno.test("ids that were UUIDv7 become 18 characters, in every table that holds them", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0105_versia_ids"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    const created = new Date("2026-01-01T00:00:00Z");
+    const raw = db as unknown as Kysely<{
+        accounts: {
+            id: string;
+            username: string;
+            remote_id: string | null;
+            previous_id: string | null;
+            created_at: Date;
+        };
+        notes: {
+            id: string;
+            account_id: string;
+            in_reply_to_id: string | null;
+            thread_id: string;
+            visibility: string;
+            content: string;
+            content_format: string;
+            content_html: string;
+            created_at: Date;
+        };
+        bookmarks: { id: string; account_id: string; note_id: string; created_at: Date };
+        markers: {
+            account_id: string;
+            timeline: string;
+            last_read_id: string;
+            version: number;
+            updated_at: Date;
+        };
+        jobs: {
+            id: string;
+            queue: string;
+            payload: string;
+            dedupe_key: string;
+            run_at: Date;
+            attempts: number;
+            max_attempts: number;
+            created_at: Date;
+        };
+        roles: {
+            id: string;
+            name: string;
+            permissions: string;
+            created_at: Date;
+        };
+    }>;
+
+    // The id and time of RFC 9562's example UUIDv7, so the new id is known.
+    const vector = "017f22e2-79b0-7cc3-98c4-dc0c0c07398f";
+    const account = "018f0000-0000-7000-8000-000000000001";
+    const note = "018f0000-0001-7000-8000-000000000002";
+    const reply = "018f0000-0002-7000-8000-000000000003";
+    const bookmark = "018f0000-0003-7000-8000-000000000004";
+    const foreign = "018f1111-1111-7111-9111-111111111111";
+
+    await raw.insertInto("accounts").values([
+        { id: account, username: "a", remote_id: null, previous_id: null, created_at: created },
+        {
+            id: "remote",
+            username: "b",
+            remote_id: vector,
+            previous_id: foreign,
+            created_at: created,
+        },
+        {
+            id: "other",
+            username: "c",
+            remote_id: "https://remote.example/users/c",
+            previous_id: null,
+            created_at: created,
+        },
+    ]).execute();
+    await raw.insertInto("notes").values([
+        {
+            id: note,
+            account_id: account,
+            in_reply_to_id: null,
+            thread_id: note,
+            visibility: "public",
+            content: "Hi",
+            content_format: "text/plain",
+            content_html:
+                `<a href="https://verso.example/notes/${note}">a</a> <a href="https://other.example/notes/${foreign}">b</a>`,
+            created_at: created,
+        },
+        {
+            id: reply,
+            account_id: account,
+            in_reply_to_id: note,
+            thread_id: note,
+            visibility: "public",
+            content: "Hello",
+            content_format: "text/plain",
+            content_html: "",
+            created_at: created,
+        },
+    ]).execute();
+    await raw.insertInto("bookmarks")
+        .values({ id: bookmark, account_id: account, note_id: reply, created_at: created })
+        .execute();
+    await raw.insertInto("markers")
+        .values({
+            account_id: account,
+            timeline: "home",
+            last_read_id: note,
+            version: 1,
+            updated_at: created,
+        })
+        .execute();
+    await raw.insertInto("jobs")
+        .values({
+            id: "job",
+            queue: "q",
+            payload: JSON.stringify({ note, other: foreign, list: [reply] }),
+            dedupe_key: `deliver:${note}:${foreign}`,
+            run_at: created,
+            attempts: 0,
+            max_attempts: 5,
+            created_at: created,
+        })
+        .execute();
+    await raw.insertInto("roles")
+        .values({ id: "moderator", name: "Moderator", permissions: "[]", created_at: created })
+        .execute();
+
+    assertEquals((await migrate(db)).ok, true);
+
+    const idFormat = /^[0-9a-hjkmnp-tv-z]{18}$/;
+    const accounts = await db.selectFrom("accounts").selectAll().execute();
+    const [newAccount] = accounts.filter((row) => row.username === "a");
+    const notes = await db.selectFrom("notes").selectAll().orderBy("created_at").orderBy("id")
+        .execute();
+    const [newNote, newReply] = notes;
+    const [newBookmark] = await db.selectFrom("bookmarks").selectAll().execute();
+
+    for (const id of [newAccount.id, newNote.id, newReply.id, newBookmark.id]) {
+        assertMatch(id, idFormat);
+    }
+    assertEquals(newReply.in_reply_to_id, newNote.id);
+    assertEquals(newReply.account_id, newAccount.id);
+    assertEquals(newBookmark.account_id, newAccount.id);
+    assertEquals(newBookmark.note_id, newReply.id);
+    assertEquals(newNote.thread_id, newNote.id);
+    assertEquals(newReply.thread_id, newNote.id);
+
+    // Each id keeps the millisecond of the UUIDv7 it came from.
+    for (
+        const [id, uuid] of [
+            [newAccount.id, account],
+            [newNote.id, note],
+            [newReply.id, reply],
+            [newBookmark.id, bookmark],
+        ]
+    ) {
+        const at = parseInt(uuid.replaceAll("-", "").slice(0, 12), 16);
+        assert(id >= firstIdAt(new Date(at)) && id < firstIdAt(new Date(at + 1)));
+    }
+
+    // Ids in longer values are rewritten when they are local, and left alone when they aren't.
+    assertEquals(
+        newNote.content_html,
+        `<a href="https://verso.example/notes/${newNote.id}">a</a> <a href="https://other.example/notes/${foreign}">b</a>`,
+    );
+    const marker = await db.selectFrom("markers").selectAll().executeTakeFirstOrThrow();
+    assertEquals(marker.last_read_id, newNote.id);
+    assertEquals(marker.account_id, newAccount.id);
+
+    const job = await db.selectFrom("jobs").selectAll().executeTakeFirstOrThrow();
+    assertEquals(job.payload, { note: newNote.id, other: foreign, list: [newReply.id] });
+    assertEquals(job.dedupe_key, `deliver:${newNote.id}:${foreign}`);
+
+    // Remote ids come from the UUIDv7 alone. Ids that aren't a UUIDv7 stay as they are.
+    const remote = accounts.find((row) => row.username === "b");
+    assertEquals(remote?.id, "remote");
+    assertEquals(remote?.remote_id, "bz4bh7kc6c6rrke0r3");
+    assertMatch(remote?.previous_id ?? "", idFormat);
+    assertEquals(
+        accounts.find((row) => row.username === "c")?.remote_id,
+        "https://remote.example/users/c",
+    );
+    assertEquals((await db.selectFrom("roles").select("id").execute()).map((row) => row.id), [
+        "moderator",
+    ]);
+
+    await checkForeignKeys(db);
+});
+
+Deno.test("the UUIDv7 of RFC 9562 becomes a known id", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0105_versia_ids"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    await (db as unknown as Kysely<{
+        accounts: { id: string; username: string; created_at: Date };
+    }>).insertInto("accounts")
+        .values({
+            id: "017f22e2-79b0-7cc3-98c4-dc0c0c07398f",
+            username: "a",
+            created_at: new Date(),
+        })
+        .execute();
+
+    assertEquals((await migrate(db)).ok, true);
+
+    const accounts = await db.selectFrom("accounts").select("id").execute();
+    assertEquals(accounts.map((row) => row.id), ["bz4bh7kc6c6rrke0r3"]);
+});
+
+Deno.test("ids that differ only after the bits an id keeps stay different", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0105_versia_ids"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    // The bits these keep end in 24 ones, so a moved id's counter wraps to 0.
+    const first = "018f0000-0000-7abc-bfff-fffffffffff1";
+    const second = "018f0000-0000-7abc-bfff-fffffffffff2";
+    const third = "018f0000-0000-7abc-bfff-fffffffffff3";
+    const old = db as unknown as Kysely<{
+        accounts: { id: string; username: string; created_at: Date };
+        blocks: { id: string; account_id: string; target_id: string; created_at: Date };
+    }>;
+    await old.insertInto("accounts")
+        .values([
+            { id: third, username: "third", created_at: new Date() },
+            { id: second, username: "second", created_at: new Date() },
+            { id: first, username: "first", created_at: new Date() },
+        ])
+        .execute();
+    await old.insertInto("blocks")
+        .values({
+            id: "018f0000-0000-7000-8000-000000000001",
+            account_id: first,
+            target_id: second,
+            created_at: new Date(),
+        })
+        .execute();
+
+    assertEquals((await migrate(db)).ok, true);
+
+    // The smallest UUID keeps its id, and each later one takes the next free counter.
+    const accounts = await db.selectFrom("accounts").select(["id", "username"]).orderBy("id")
+        .execute();
+    assertEquals(accounts, [
+        { id: "cf0000005bszzg0000", username: "second" },
+        { id: "cf0000005bszzg0001", username: "third" },
+        { id: "cf0000005bszzzzzzz", username: "first" },
+    ]);
+
+    const blocks = await db.selectFrom("blocks").select(["account_id", "target_id"]).execute();
+    assertEquals(blocks, [{ account_id: "cf0000005bszzzzzzz", target_id: "cf0000005bszzg0000" }]);
+});
+
+Deno.test("only whole UUIDv7 become ids, and only those dated before 2109", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0105_versia_ids"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    const old = db as unknown as Kysely<{
+        accounts: { id: string; username: string; remote_id: string | null; created_at: Date };
+    }>;
+    const badVariant = "018f0000-0000-7abc-cdef-0123456789a1";
+    const longer = "018f0000-0000-7abc-8def-0123456789a1/old";
+    await old.insertInto("accounts")
+        .values([
+            { id: badVariant, username: "a", remote_id: null, created_at: new Date() },
+            { id: "b", username: "b", remote_id: longer, created_at: new Date() },
+            {
+                id: "04000000-0000-7000-8000-000000000000",
+                username: "late",
+                remote_id: null,
+                created_at: new Date(),
+            },
+        ])
+        .execute();
+
+    assertEquals((await migrate(db)).ok, false);
+
+    // The last millisecond that fits works.
+    await old.updateTable("accounts")
+        .set({ id: "03ffffff-ffff-7000-8000-000000000000" })
+        .where("username", "=", "late")
+        .execute();
+    assertEquals((await migrate(db)).ok, true);
+
+    const accounts = await db.selectFrom("accounts").select(["id", "remote_id"]).orderBy("username")
+        .execute();
+    assertEquals(accounts, [
+        { id: badVariant, remote_id: null },
+        { id: "b", remote_id: longer },
+        { id: "zzzzzzzzr000000000", remote_id: null },
+    ]);
+});
+
+Deno.test("foreign keys are not deferrable once the migrations have run", async () => {
+    await using db = await testDatabase<Database>();
+    assertEquals((await migrate(db)).ok, true);
+
+    if (testDatabaseKind === "sqlite") return;
+
+    const { rows } = await sql<{ total: number; deferrable: number }>`
+        select count(*)::int as total, count(*) filter (where condeferrable)::int as deferrable
+        from pg_constraint where contype = 'f'`.execute(db);
+
+    assert(rows[0].total > 0);
+    assertEquals(rows[0].deferrable, 0);
 });

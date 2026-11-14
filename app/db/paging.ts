@@ -2,7 +2,7 @@ import { type SelectQueryBuilder, sql } from "kysely";
 
 /**
  * Which page of a list to read: what is older than `max_id`, newer than `since_id`, or just newer
- * than `min_id`, using a cursor that sorts by age, such as a UUIDv7 id.
+ * than `min_id`, using a cursor that sorts by age, such as an id from `ctx.ids`.
  */
 export type PageBounds = {
     readonly max_id?: string;

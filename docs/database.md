@@ -112,7 +112,7 @@ export const markers: Migration = {
 Migrations only go forward: there's no `down`, so to undo one, write another. Never change a
 migration once it's released, because instances have already run it. All pending migrations run in
 one transaction, on both databases, so if one fails, none are applied. Ids are `text` columns,
-holding a UUIDv7 from `ctx.ids`.
+holding an 18-character id from `ctx.ids`.
 
 SQLite changes most things about a table by copying it to a new one. Foreign keys are off while
 migrating on SQLite, since dropping the old table would otherwise delete the rows that refer to it,

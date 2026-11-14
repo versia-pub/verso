@@ -25,7 +25,8 @@ export type PushAlerts = z.infer<typeof PushAlerts>;
  */
 export const WebPushSubscription = z.object({
     /**
-     * Mastodon's ids are numbers in strings and Verso's are UUIDs; clients treat both as opaque.
+     * Mastodon's ids are numbers in strings and Verso's are 18-character strings. Clients treat
+     * both as opaque.
      */
     id: z.string(),
     /** Where the notifications are pushed to. */

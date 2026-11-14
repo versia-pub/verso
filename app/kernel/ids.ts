@@ -1,40 +1,66 @@
 import type { Clock } from "./clock.ts";
 
 /**
- * Returns a new UUIDv7 each time it is called, with the time it is called, or `at`, which must be
- * after 1970 and not after the year 10889, a UUIDv7's last.
+ * Returns a new id each time it is called, with the time it is called, or `at`, which must be from
+ * 1970 until before the year 2109, where an id's time runs out. Throws a `RangeError` otherwise.
  */
 export type IdGenerator = (at?: Date) => string;
 
 /** Fills the array with random bytes, like `crypto.getRandomValues`. */
 export type RandomSource = (bytes: Uint8Array) => void;
 
+const alphabet = "0123456789abcdefghjkmnpqrstvwxyz";
+const length = 18;
+const timeLimit = 2 ** 42;
+
+const encode = (value: bigint): string => {
+    let id = "";
+
+    for (let i = 0; i < length; i++) {
+        id = alphabet[Number(value & 31n)] + id;
+        value >>= 5n;
+    }
+
+    return id;
+};
+
 /**
- * Generates UUIDv7 ids (RFC 9562): the first 48 bits are the clock's time in milliseconds, so ids
- * sort by creation time and can be used as pagination cursors. The rest is random. Ids generated in
- * the same millisecond sort in random order.
+ * Generates ids of 18 characters, the longest a Versia id may be, written in lowercase Crockford
+ * base32. An id is a 90-bit number, from the high bits down:
+ *
+ * | Bits | Holds                                            |
+ * | ---- | ------------------------------------------------ |
+ * | 42   | The clock's time in milliseconds since 1970      |
+ * | 24   | A node id, random and picked once per generator  |
+ * | 24   | A counter, which starts random and adds 1 per id |
+ *
+ * Ids of the same length sort like their numbers, so they sort by creation time and can be used as
+ * pagination cursors. Ids from one generator never collide, unless its counter wraps within one
+ * millisecond. Ids from different processes collide only if they are made in the same millisecond
+ * and have the same node id and counter, which is 1 in 2^48 for each pair.
  */
 export const idGenerator = (
     clock: Clock,
     random: RandomSource = (bytes) => crypto.getRandomValues(bytes),
-): IdGenerator =>
-(at) => {
-    const bytes = new Uint8Array(16);
+): IdGenerator => {
+    const bytes = new Uint8Array(6);
     random(bytes);
 
-    const time = (at ?? clock.now()).getTime();
-    for (let i = 0; i < 6; i++) {
-        bytes[i] = Math.floor(time / 2 ** (8 * (5 - i))) % 256;
-    }
+    const node = BigInt((bytes[0] << 16) | (bytes[1] << 8) | bytes[2]);
+    let counter = BigInt((bytes[3] << 16) | (bytes[4] << 8) | bytes[5]);
 
-    bytes[6] = 0x70 | (bytes[6] & 0x0f); // version 7
-    bytes[8] = 0x80 | (bytes[8] & 0x3f); // variant 10
+    return (at) => {
+        const time = (at ?? clock.now()).getTime();
+        // A `Date`'s time is a whole number or NaN, which fails both comparisons.
+        if (!(time >= 0 && time < timeLimit)) {
+            throw new RangeError(`An id's time must be from 1970 to 2109, but it is ${time}`);
+        }
 
-    const hex = bytes.toHex();
+        const id = encode((BigInt(time) << 48n) | (node << 24n) | counter);
+        counter = (counter + 1n) & 0xffffffn;
 
-    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${
-        hex.slice(20)
-    }`;
+        return id;
+    };
 };
 
 /**
