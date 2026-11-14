@@ -159,7 +159,7 @@ Deno.test("a local user lists the public and unlisted notes they like", async ()
     );
 });
 
-Deno.test("likes and their collections are served at encoded URLs", async () => {
+Deno.test("likes and their collections are served at their unencoded URLs", async () => {
     await using network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"].ctx;
     const b = network.instances["b.test"].ctx;
@@ -174,7 +174,7 @@ Deno.test("likes and their collections are served at encoded URLs", async () => 
 
     assertEquals(
         new URL(entityUrl("a.test", "pub.versia:likes/Like", row?.id ?? "")).pathname,
-        `/.versia/v0.6/entities/pub.versia%3Alikes%2FLike/${row?.id}`,
+        `/.versia/v0.7/entities/pub.versia:likes/Like/${row?.id}`,
     );
 
     const [status, entity] = await read(
@@ -183,9 +183,7 @@ Deno.test("likes and their collections are served at encoded URLs", async () => 
     assertEquals([status, entity.liked], [200, note.id]);
 
     const collection = new URL(
-        `${entityUrl("a.test", "Note", note.id)}/collections/${
-            encodeURIComponent("pub.versia:likes/Likes")
-        }`,
+        `${entityUrl("a.test", "Note", note.id)}/collections/pub.versia:likes/Likes`,
     );
     assertEquals(await read(collection), [200, { author: "alice", total: 1, items: [row?.id] }]);
 });

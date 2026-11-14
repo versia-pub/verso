@@ -182,7 +182,7 @@ Deno.test("accounts, statuses and hashtags are searched together, or one of them
 
 Deno.test("a search that resolves a URL finds only what it names, on the first page, of the type wanted", async () => {
     await using test = await openAnnual();
-    const entities = "https://social.example/.versia/v0.6/entities";
+    const entities = "https://social.example/.versia/v0.7/entities";
     const url = `${entities}/Note/${test.id}`;
     // Which the words of the URL find.
     const quoting = await createNote(test.ctx, "alice", { content_html: `<p>See ${url}</p>` });

@@ -44,7 +44,7 @@ const open = async () => {
         assertExists(serve);
         network.transport.servers.set("b.test", (request) =>
             new URL(request.url).pathname ===
-                    `/.versia/v0.6/entities/Note/${id}/collections/replies`
+                    `/.versia/v0.7/entities/Note/${id}/collections/replies`
                 ? Promise.resolve(answer())
                 : serve(request));
     };
@@ -53,7 +53,7 @@ const open = async () => {
     const asked = (id: string) =>
         network.transport.sent.filter((request) =>
             new URL(request.url).pathname ===
-                `/.versia/v0.6/entities/Note/${id}/collections/replies`
+                `/.versia/v0.7/entities/Note/${id}/collections/replies`
         ).length;
 
     return {
@@ -155,7 +155,7 @@ Deno.test("replies stored are fetched again only once they are a week old", asyn
     const fetches = () =>
         test.network.transport.sent.filter((request) => {
             const path = new URL(request.url).pathname;
-            return path.startsWith("/.versia/v0.6/entities/Note/") &&
+            return path.startsWith("/.versia/v0.7/entities/Note/") &&
                 !path.includes("/collections/");
         }).length;
 
@@ -241,7 +241,7 @@ Deno.test("failing to fetch the replies of a thread's start fails, unless it has
     assertEquals(await test.under(), []);
 
     const evil = await addEvilInstance(test.network, "e.test");
-    evil.serve("/.versia/v0.6/entities/User/eve", {
+    evil.serve("/.versia/v0.7/entities/User/eve", {
         type: "User",
         id: "eve",
         created_at: "2026-01-01T00:00:00Z",
@@ -250,7 +250,7 @@ Deno.test("failing to fetch the replies of a thread's start fails, unless it has
         manually_approves_followers: false,
         indexable: true,
     });
-    evil.serve("/.versia/v0.6/entities/Note/n1", {
+    evil.serve("/.versia/v0.7/entities/Note/n1", {
         type: "Note",
         id: "n1",
         created_at: "2026-01-01T00:00:00Z",
@@ -278,9 +278,9 @@ Deno.test("failing to fetch the replies of a thread's start fails, unless it has
 
     await fetchReplies(test.a, evilsRow);
     test.network.transport.servers.set("e.test", serve);
-    evil.serve("/.versia/v0.6/entities/Note/n1/collections/replies", { total: 1 });
+    evil.serve("/.versia/v0.7/entities/Note/n1/collections/replies", { total: 1 });
     await assertRejects(() => fetchReplies(test.a, evilsRow), PermanentFailure);
-    evil.serve("/.versia/v0.6/entities/Note/n1/collections/replies", "{");
+    evil.serve("/.versia/v0.7/entities/Note/n1/collections/replies", "{");
     await assertRejects(() => fetchReplies(test.a, evilsRow), PermanentFailure);
 
     await using fresh = await open();

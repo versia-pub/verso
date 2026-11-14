@@ -35,7 +35,7 @@ const open = async () => {
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test", ["pub.versia:migration"]);
     const c = await addEvilInstance(network, "c.test", ["pub.versia:migration"]);
-    const path = (id: string) => `/.versia/v0.6/entities/User/${id}`;
+    const path = (id: string) => `/.versia/v0.7/entities/User/${id}`;
     b.serve(path("bob"), user("bob"));
     c.serve(path("bob2"), user("bob2", "b.test:bob"));
     c.serve(path("carol"), user("carol"));
@@ -54,7 +54,7 @@ const open = async () => {
 
     /** Has b.test say bob moved to bob2, and a.test do what follows. */
     const migrate = async () => {
-        const response = await b.send("https://a.test/.versia/v0.6/inbox", {
+        const response = await b.send("https://a.test/.versia/v0.7/inbox", {
             body: {
                 type: "pub.versia:migration/Migration",
                 created_at: network.clock.now().toISOString(),

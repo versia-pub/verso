@@ -123,7 +123,7 @@ Deno.test("sharing a status gives the share, with the status in it", async () =>
     );
     assertEquals(
         shared.body.uri,
-        `https://${test.ctx.urls.domain}/.versia/v0.6/entities/pub.versia%3Ashare%2FShare/${shared.body.id}`,
+        `https://${test.ctx.urls.domain}/.versia/v0.7/entities/pub.versia:share/Share/${shared.body.id}`,
     );
 
     const undone = await test.request("POST", `${path}/unreblog`);

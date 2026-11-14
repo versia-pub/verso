@@ -18643,7 +18643,7 @@
                 }
             }
         },
-        "/.versia/v0.6/entities/User/{id}": {
+        "/.versia/v0.7/entities/User/{id}": {
             "get": {
                 "summary": "Get a User",
                 "tags": [
@@ -19298,9 +19298,9 @@
                 }
             }
         },
-        "/.versia/v0.6/entities/User/{id}/collections/{name}": {
+        "/.versia/v0.7/entities/User/{id}/collections/followers": {
             "get": {
-                "summary": "Get a collection of a User",
+                "summary": "Get the followers collection of a User",
                 "tags": [
                     "versia"
                 ],
@@ -19317,14 +19317,6 @@
                         "schema": {
                             "type": "string",
                             "pattern": "^[A-Za-z0-9_-]+$"
-                        }
-                    },
-                    {
-                        "name": "name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
                         }
                     },
                     {
@@ -19462,7 +19454,787 @@
                 }
             }
         },
-        "/.versia/v0.6/entities/Note/{id}": {
+        "/.versia/v0.7/entities/User/{id}/collections/following": {
+            "get": {
+                "summary": "Get the following collection of a User",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/User/{id}/collections/outbox": {
+            "get": {
+                "summary": "Get the outbox collection of a User",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/User/{id}/collections/featured": {
+            "get": {
+                "summary": "Get the featured collection of a User",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/User/{id}/collections/pub.versia:likes/Likes": {
+            "get": {
+                "summary": "Get the pub.versia:likes/Likes collection of a User",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/User/{id}/collections/pub.versia:likes/Dislikes": {
+            "get": {
+                "summary": "Get the pub.versia:likes/Dislikes collection of a User",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/Note/{id}": {
             "get": {
                 "summary": "Get a Note",
                 "tags": [
@@ -19904,9 +20676,9 @@
                 }
             }
         },
-        "/.versia/v0.6/entities/Note/{id}/collections/{name}": {
+        "/.versia/v0.7/entities/Note/{id}/collections/replies": {
             "get": {
-                "summary": "Get a collection of a Note",
+                "summary": "Get the replies collection of a Note",
                 "tags": [
                     "versia"
                 ],
@@ -19923,14 +20695,6 @@
                         "schema": {
                             "type": "string",
                             "pattern": "^[A-Za-z0-9_-]+$"
-                        }
-                    },
-                    {
-                        "name": "name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
                         }
                     },
                     {
@@ -20068,7 +20832,787 @@
                 }
             }
         },
-        "/.versia/v0.6/entities/pub.versia%3Alikes%2FLike/{id}": {
+        "/.versia/v0.7/entities/Note/{id}/collections/quotes": {
+            "get": {
+                "summary": "Get the quotes collection of a Note",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/Note/{id}/collections/pub.versia:likes/Likes": {
+            "get": {
+                "summary": "Get the pub.versia:likes/Likes collection of a Note",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/Note/{id}/collections/pub.versia:likes/Dislikes": {
+            "get": {
+                "summary": "Get the pub.versia:likes/Dislikes collection of a Note",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/Note/{id}/collections/pub.versia:share/Shares": {
+            "get": {
+                "summary": "Get the pub.versia:share/Shares collection of a Note",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/Note/{id}/collections/pub.versia:reactions/Reactions": {
+            "get": {
+                "summary": "Get the pub.versia:reactions/Reactions collection of a Note",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]+$"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "string",
+                                                                "pattern": "^[A-Za-z0-9_-]+$"
+                                                            },
+                                                            "type": {
+                                                                "type": "string"
+                                                            },
+                                                            "created_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                                            },
+                                                            "$schema": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "format": "uri"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "extensions": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "object",
+                                                                        "propertyNames": {
+                                                                            "type": "string",
+                                                                            "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
+                                                                        },
+                                                                        "additionalProperties": {}
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "type",
+                                                            "created_at"
+                                                        ],
+                                                        "additionalProperties": {}
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "author": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "minimum": 0,
+                                                    "maximum": 9007199254740991
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/entities/pub.versia:likes/Like/{id}": {
             "get": {
                 "summary": "Get a pub.versia:likes/Like",
                 "tags": [
@@ -20158,7 +21702,7 @@
                 }
             }
         },
-        "/.versia/v0.6/entities/pub.versia%3Ashare%2FShare/{id}": {
+        "/.versia/v0.7/entities/pub.versia:share/Share/{id}": {
             "get": {
                 "summary": "Get a pub.versia:share/Share",
                 "tags": [
@@ -20248,7 +21792,7 @@
                 }
             }
         },
-        "/.versia/v0.6/entities/pub.versia%3Areactions%2FReaction/{id}": {
+        "/.versia/v0.7/entities/pub.versia:reactions/Reaction/{id}": {
             "get": {
                 "summary": "Get a pub.versia:reactions/Reaction",
                 "tags": [
@@ -20343,7 +21887,7 @@
                 }
             }
         },
-        "/.versia/v0.6/inbox": {
+        "/.versia/v0.7/inbox": {
             "post": {
                 "summary": "Receive entities",
                 "tags": [
@@ -20361,7 +21905,7 @@
                 }
             }
         },
-        "/.versia/v0.6/messaging": {
+        "/.versia/v0.7/extensions/pub.versia:instance_messaging/messaging": {
             "post": {
                 "summary": "Receive a message",
                 "description": "Another instance says why something this one sent failed.",
@@ -20712,7 +22256,8 @@
                                         "versions": {
                                             "type": "array",
                                             "items": {
-                                                "type": "string"
+                                                "type": "string",
+                                                "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
                                             }
                                         }
                                     },
@@ -20726,7 +22271,7 @@
                 }
             }
         },
-        "/.versia/v0.6/instance": {
+        "/.versia/v0.7/instance": {
             "get": {
                 "summary": "Get Versia instance metadata",
                 "tags": [
@@ -20749,17 +22294,6 @@
                                             "format": "date-time",
                                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                                         },
-                                        "$schema": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "string",
-                                                    "format": "uri"
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
-                                        },
                                         "extensions": {
                                             "anyOf": [
                                                 {
@@ -20768,7 +22302,13 @@
                                                         "type": "string",
                                                         "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
                                                     },
-                                                    "additionalProperties": {}
+                                                    "additionalProperties": {
+                                                        "type": "object",
+                                                        "propertyNames": {
+                                                            "type": "string"
+                                                        },
+                                                        "additionalProperties": {}
+                                                    }
                                                 },
                                                 {
                                                     "type": "null"
@@ -20796,21 +22336,15 @@
                                         "compatibility": {
                                             "type": "object",
                                             "properties": {
-                                                "versions": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "string"
-                                                    }
-                                                },
                                                 "extensions": {
                                                     "type": "array",
                                                     "items": {
-                                                        "type": "string"
+                                                        "type": "string",
+                                                        "pattern": "^[a-z0-9.-]+:[a-z0-9_]+@[1-9][0-9]*$"
                                                     }
                                                 }
                                             },
                                             "required": [
-                                                "versions",
                                                 "extensions"
                                             ]
                                         },
@@ -20821,9 +22355,7 @@
                                             ]
                                         },
                                         "domain": {
-                                            "type": "string",
-                                            "format": "hostname",
-                                            "pattern": "^(?=.{1,253}\\.?$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[-0-9a-zA-Z]{0,61}[0-9a-zA-Z])?)*\\.?$"
+                                            "type": "string"
                                         },
                                         "public_key": {
                                             "type": "object",
@@ -20848,107 +22380,97 @@
                                             "anyOf": [
                                                 {
                                                     "type": "object",
-                                                    "propertyNames": {
-                                                        "type": "string",
-                                                        "pattern": "^[\\w.+-]+\\/[\\w.+-]+$"
-                                                    },
-                                                    "additionalProperties": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "content": {
-                                                                "type": "string"
-                                                            },
-                                                            "remote": {
-                                                                "type": "boolean"
-                                                            },
-                                                            "description": {
-                                                                "type": [
-                                                                    "string",
-                                                                    "null"
-                                                                ]
-                                                            },
-                                                            "size": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "hash": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "string",
-                                                                        "pattern": "^[0-9a-fA-F]{64}$"
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "thumbhash": {
-                                                                "type": [
-                                                                    "string",
-                                                                    "null"
-                                                                ]
-                                                            },
-                                                            "width": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "height": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "fps": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "duration": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "number",
-                                                                        "minimum": 0
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            }
+                                                    "properties": {
+                                                        "url": {
+                                                            "type": "string",
+                                                            "format": "uri"
                                                         },
-                                                        "required": [
-                                                            "content",
-                                                            "remote"
-                                                        ]
-                                                    }
+                                                        "media_type": {
+                                                            "type": "string",
+                                                            "pattern": "^[\\w.+-]+\\/[\\w.+-]+$"
+                                                        },
+                                                        "description": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "size": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "integer",
+                                                                    "minimum": 0,
+                                                                    "maximum": 9007199254740991
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "hash": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string",
+                                                                    "pattern": "^[0-9a-f]{64}$"
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "thumbhash": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string",
+                                                                    "format": "base64",
+                                                                    "contentEncoding": "base64",
+                                                                    "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "width": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "integer",
+                                                                    "minimum": 0,
+                                                                    "maximum": 9007199254740991
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "height": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "integer",
+                                                                    "minimum": 0,
+                                                                    "maximum": 9007199254740991
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "duration": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "number",
+                                                                    "minimum": 0
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "url",
+                                                        "media_type"
+                                                    ]
                                                 },
                                                 {
                                                     "type": "null"
@@ -20959,107 +22481,97 @@
                                             "anyOf": [
                                                 {
                                                     "type": "object",
-                                                    "propertyNames": {
-                                                        "type": "string",
-                                                        "pattern": "^[\\w.+-]+\\/[\\w.+-]+$"
-                                                    },
-                                                    "additionalProperties": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "content": {
-                                                                "type": "string"
-                                                            },
-                                                            "remote": {
-                                                                "type": "boolean"
-                                                            },
-                                                            "description": {
-                                                                "type": [
-                                                                    "string",
-                                                                    "null"
-                                                                ]
-                                                            },
-                                                            "size": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "hash": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "string",
-                                                                        "pattern": "^[0-9a-fA-F]{64}$"
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "thumbhash": {
-                                                                "type": [
-                                                                    "string",
-                                                                    "null"
-                                                                ]
-                                                            },
-                                                            "width": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "height": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "fps": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "duration": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "number",
-                                                                        "minimum": 0
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            }
+                                                    "properties": {
+                                                        "url": {
+                                                            "type": "string",
+                                                            "format": "uri"
                                                         },
-                                                        "required": [
-                                                            "content",
-                                                            "remote"
-                                                        ]
-                                                    }
+                                                        "media_type": {
+                                                            "type": "string",
+                                                            "pattern": "^[\\w.+-]+\\/[\\w.+-]+$"
+                                                        },
+                                                        "description": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "size": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "integer",
+                                                                    "minimum": 0,
+                                                                    "maximum": 9007199254740991
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "hash": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string",
+                                                                    "pattern": "^[0-9a-f]{64}$"
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "thumbhash": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string",
+                                                                    "format": "base64",
+                                                                    "contentEncoding": "base64",
+                                                                    "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "width": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "integer",
+                                                                    "minimum": 0,
+                                                                    "maximum": 9007199254740991
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "height": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "integer",
+                                                                    "minimum": 0,
+                                                                    "maximum": 9007199254740991
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "duration": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "number",
+                                                                    "minimum": 0
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "url",
+                                                        "media_type"
+                                                    ]
                                                 },
                                                 {
                                                     "type": "null"
@@ -21075,6 +22587,138 @@
                                         "compatibility",
                                         "domain",
                                         "public_key"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/instance/collections/admins": {
+            "get": {
+                "summary": "Get the admins of the instance",
+                "description": "The local users who can manage roles.",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                        },
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "total",
+                                        "items"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/.versia/v0.7/instance/collections/moderators": {
+            "get": {
+                "summary": "Get the moderators of the instance",
+                "description": "The local users who can handle reports.",
+                "tags": [
+                    "versia"
+                ],
+                "security": [
+                    {
+                        "VersiaSignature": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "default": 0,
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/vnd.versia+json; charset=utf-8": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                        },
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "total",
+                                        "items"
                                     ]
                                 }
                             }

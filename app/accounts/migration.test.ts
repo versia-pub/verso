@@ -55,7 +55,7 @@ Deno.test("a user says which account they moved from, and then from none", async
     await using network = await createNetwork(["a.test"]);
     const { ctx, app } = network.instances["a.test"];
     const b = await addEvilInstance(network, "b.test", ["pub.versia:migration"]);
-    b.serve("/.versia/v0.6/entities/User/bob", user("bob"));
+    b.serve("/.versia/v0.7/entities/User/bob", user("bob"));
     const bob = await ctx.federation.resolve(ctx, { host: "b.test", id: "bob" }, "User");
     assertExists(bob);
     const alice = await createLocalAccount(ctx, "alice");
@@ -122,7 +122,7 @@ Deno.test("a remote user moves to a local account that says it moved from it", a
     await using network = await createNetwork(["a.test"]);
     const { ctx, app } = network.instances["a.test"];
     const b = await addEvilInstance(network, "b.test", ["pub.versia:migration"]);
-    b.serve("/.versia/v0.6/entities/User/bob", user("bob"));
+    b.serve("/.versia/v0.7/entities/User/bob", user("bob"));
     const bob = await ctx.federation.resolve(ctx, { host: "b.test", id: "bob" }, "User");
     assertExists(bob);
     const alice = await createLocalAccount(ctx, "alice");
@@ -132,7 +132,7 @@ Deno.test("a remote user moves to a local account that says it moved from it", a
     const token = await tokenFor(ctx, alice);
     await call(app, token, "PUT", "/api/v1/migration/previous", { acct: "bob@b.test" });
 
-    const sent = await b.send("https://a.test/.versia/v0.6/inbox", {
+    const sent = await b.send("https://a.test/.versia/v0.7/inbox", {
         body: {
             type: "pub.versia:migration/Migration",
             created_at: network.clock.now().toISOString(),
@@ -264,7 +264,7 @@ Deno.test("a user moves only to an available account, fetched just now, saying i
     const { ctx, app } = network.instances["a.test"];
     const b = await addEvilInstance(network, "b.test", ["pub.versia:migration"]);
     const alice = await createLocalAccount(ctx, "alice");
-    const path = (id: string) => `/.versia/v0.6/entities/User/${id}`;
+    const path = (id: string) => `/.versia/v0.7/entities/User/${id}`;
     const resolve = (id: string) => ctx.federation.resolve(ctx, { host: "b.test", id }, "User");
 
     b.serve(path("carol"), user("carol"));
@@ -323,11 +323,11 @@ Deno.test("a user that moved is sent saying so, along with a Migration to where 
     const c = await addEvilInstance(network, "c.test", ["pub.versia:migration"]);
     const alice = await createLocalAccount(ctx, "alice");
     const dan = await createLocalAccount(ctx, "dan");
-    c.serve("/.versia/v0.6/entities/User/carol", user("carol"));
+    c.serve("/.versia/v0.7/entities/User/carol", user("carol"));
     const carol = await ctx.federation.resolve(ctx, { host: "c.test", id: "carol" }, "User");
     assertExists(carol);
     await insertFollow(ctx, { followerId: carol, followeeId: alice, accepted: true, options: {} });
-    b.serve("/.versia/v0.6/entities/User/bob", user("bob", `a.test:${alice}`));
+    b.serve("/.versia/v0.7/entities/User/bob", user("bob", `a.test:${alice}`));
     await ctx.federation.resolve(ctx, { host: "b.test", id: "bob" }, "User");
     const token = await tokenFor(ctx, alice);
     await call(app, token, "PUT", "/api/v1/migration/previous", { acct: "dan" });
@@ -366,7 +366,7 @@ Deno.test("only local users move", async () => {
     const { ctx } = network.instances["a.test"];
     const b = await addEvilInstance(network, "b.test", ["pub.versia:migration"]);
     const alice = await createLocalAccount(ctx, "alice");
-    b.serve("/.versia/v0.6/entities/User/bob", user("bob", `a.test:${alice}`));
+    b.serve("/.versia/v0.7/entities/User/bob", user("bob", `a.test:${alice}`));
     const bob = await ctx.federation.resolve(ctx, { host: "b.test", id: "bob" }, "User");
     const to = await findAccount(ctx, alice);
     assertExists(bob);

@@ -3,7 +3,7 @@
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import { canonicalizeDomain, importPublicKey, v0_6 } from "@versia/protocol";
+import { canonicalizeDomain, importPublicKey, v0_7 } from "@versia/protocol";
 import { messagingExtension } from "../federation/messaging.ts";
 import { fetchUnsigned } from "../federation/request.ts";
 import { versiaJson } from "../http/responses.ts";
@@ -55,14 +55,14 @@ type Metadata = {
 /**
  * Fetches the metadata of the instance at `domain`. Returns its public key and whether it accepts
  * instance messages, or `undefined` if the fetch fails or the metadata is for another domain.
- * @see https://versia.pub/api/endpoints
+ * @see https://versia.pub/federation/endpoints
  */
 const fetchMetadata = async (ctx: Context, domain: string): Promise<Metadata | undefined> => {
     try {
         const reply = await fetchUnsigned(ctx, versiaUrl(domain, "/instance"), versiaJson);
         if (reply.status < 200 || reply.status > 299) throw new Error(`HTTP ${reply.status}`);
 
-        const metadata = v0_6.InstanceMetadata.parse(
+        const metadata = v0_7.InstanceMetadata.parse(
             JSON.parse(new TextDecoder().decode(reply.body)),
         );
         if (canonicalizeDomain(metadata.domain) !== domain) {
@@ -71,7 +71,7 @@ const fetchMetadata = async (ctx: Context, domain: string): Promise<Metadata | u
 
         return {
             key: metadata.public_key.key,
-            takesMessages: metadata.compatibility.extensions.includes(messagingExtension),
+            takesMessages: metadata.compatibility.extensions.includes(`${messagingExtension}@1`),
         };
     } catch (error) {
         logger.warn("Couldn't get the key of {domain}: {error}", { domain, error });

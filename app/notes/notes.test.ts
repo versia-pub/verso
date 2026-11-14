@@ -37,7 +37,7 @@ const statusesCount = async (ctx: Context, id: string) =>
 const post = (ctx: Context, accountId: string, text: string, draft: Partial<Draft> = {}) =>
     postNote(ctx, accountId, { text, format: "text/plain", spoilerText: "", ...draft });
 
-const user = "https://social.example/.versia/v0.6/entities/User";
+const user = "https://social.example/.versia/v0.7/entities/User";
 
 const mention = (uri: string, username: string) =>
     `<span class="h-card" translate="no"><a href="${uri}" class="u-url mention">` +
@@ -70,7 +70,7 @@ Deno.test("a posted note links who it mentions and its hashtags, and is counted"
     assertEquals(
         note.content_html,
         `<p>Hi ${mention(`${user}/bob`, "bob")}, ` +
-            `${mention("https://b.example/.versia/v0.6/entities/User/carol", "Carol")} and ` +
+            `${mention("https://b.example/.versia/v0.7/entities/User/carol", "Carol")} and ` +
             `@nobody <a href="https://social.example/tags/verso" class="mention hashtag" ` +
             `rel="tag">#<span>Verso</span></a> <a href="https://social.example/tags/verso" ` +
             `class="mention hashtag" rel="tag">#<span>verso</span></a></p>`,
@@ -300,7 +300,7 @@ Deno.test("a note's mentions make Verso fetch twenty times at most", async () =>
 
     const fetches = network.transport.sent.filter((request) => {
         const { host, pathname } = new URL(request.url);
-        return host === "b.test" && pathname !== "/.versia/v0.6/instance";
+        return host === "b.test" && pathname !== "/.versia/v0.7/instance";
     });
     assertEquals(fetches.length, 20);
     assertEquals((await mentionsOf(a, [note.id])).get(note.id)?.length, 10);

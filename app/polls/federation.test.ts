@@ -156,7 +156,7 @@ const open = async (options: { multiple?: boolean; visibility?: Visibility } = {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
-    b.serve("/.versia/v0.6/entities/User/bob", {
+    b.serve("/.versia/v0.7/entities/User/bob", {
         type: "User",
         id: "bob",
         created_at: "2026-01-01T00:00:00Z",
@@ -170,7 +170,7 @@ const open = async (options: { multiple?: boolean; visibility?: Visibility } = {
 
     /** Has b.test send `entity` to a.test, and a.test receive it. */
     const send = async (entity: object) => {
-        await b.send("https://a.test/.versia/v0.6/inbox", { body: entity });
+        await b.send("https://a.test/.versia/v0.7/inbox", { body: entity });
         await network.drain();
     };
 

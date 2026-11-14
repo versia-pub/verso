@@ -56,7 +56,7 @@ Deno.test("a local note is a status, with its mentions, hashtags and the note it
     const [status] = await renderStatuses(test.ctx, [{ ...note, replies_count: 2 }], null);
     assertEquals(status, {
         id: note.id,
-        uri: `https://social.example/.versia/v0.6/entities/Note/${note.id}`,
+        uri: `https://social.example/.versia/v0.7/entities/Note/${note.id}`,
         created_at: test.clock.now().toISOString(),
         account: alice,
         content: "<p>Hi <b>there</b></p>",
@@ -104,7 +104,7 @@ Deno.test("a remote note is sanitised, and has its instance's id", async () => {
     assertEquals(
         [status.uri, status.url, status.content],
         [
-            "https://b.example/.versia/v0.6/entities/Note/c1",
+            "https://b.example/.versia/v0.7/entities/Note/c1",
             `https://social.example/@carol@b.example/${note.id}`,
             "<p>Hi</p>",
         ],
@@ -123,13 +123,13 @@ Deno.test("a boost has no page of its own, so its url is its uri", async () => {
     const statuses = await renderStatuses(test.ctx, [local, remote], null);
     assertEquals(statuses.map((status) => [status.uri, status.url, status.reblog?.url]), [
         [
-            `https://social.example/.versia/v0.6/entities/pub.versia%3Ashare%2FShare/${local.id}`,
-            `https://social.example/.versia/v0.6/entities/pub.versia%3Ashare%2FShare/${local.id}`,
+            `https://social.example/.versia/v0.7/entities/pub.versia:share/Share/${local.id}`,
+            `https://social.example/.versia/v0.7/entities/pub.versia:share/Share/${local.id}`,
             `https://social.example/@alice/${posted.id}`,
         ],
         [
-            "https://b.example/.versia/v0.6/entities/Note/s",
-            "https://b.example/.versia/v0.6/entities/Note/s",
+            "https://b.example/.versia/v0.7/entities/Note/s",
+            "https://b.example/.versia/v0.7/entities/Note/s",
             `https://social.example/@alice/${posted.id}`,
         ],
     ]);

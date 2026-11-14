@@ -1,7 +1,8 @@
 import { assertEquals } from "@std/assert";
+import { v0_7 } from "@versia/protocol";
 import { updateProfile } from "../accounts/profile.ts";
 import { createLocalAccount } from "../accounts/testing.ts";
-import { createInstance } from "../instances/testing.ts";
+import { createInstance, keyPair } from "../instances/testing.ts";
 import { enqueue } from "../jobs/job_queries.ts";
 import { drain } from "../jobs/worker.ts";
 import { blockDomain } from "../moderation/domain_blocks.ts";
@@ -11,26 +12,52 @@ import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { type DeliverJob, deliverQueue } from "./deliver.ts";
 import { deliveryOf } from "./testing.ts";
-import {
-    deliverDeadPayload,
-    deliverHandler,
-    rateLimitReset,
-    retryAfter,
-} from "./deliver_worker.ts";
+import { deliverDeadPayload, deliverHandler, retryAfter } from "./deliver_worker.ts";
+import { requestTarget } from "./request.ts";
 
 const minute = 60_000;
 const hour = 60 * minute;
 const queues = { [deliverQueue]: { handler: deliverHandler, concurrency: 1 } };
 
-/** b.example answering deliveries as `answer` says, and recording what it received. */
+/**
+ * b.example answering deliveries as `answer` says, signed unless `signs` is false, and recording
+ * what it received.
+ */
 const open = async (settings: Partial<Settings> = {}) => {
     const test = await createTestContext({ settings });
     await createInstance(test.ctx, "b.example");
+    const pair = await keyPair();
+    // Its key is known, so checking its replies doesn't fetch it.
+    await test.ctx.db.updateTable("instances").set({ public_key: pair.spki })
+        .where("domain", "=", "b.example").execute();
+
     let answer = () => new Response(null, { status: 202 });
+    let signs = true;
     const received: Request[] = [];
-    test.transport.servers.set("b.example", (request) => {
+    test.transport.servers.set("b.example", async (request) => {
         received.push(request);
-        return answer();
+
+        const reply = answer();
+        if (!signs) return reply;
+
+        const body = new Uint8Array(await reply.arrayBuffer());
+        const headers = await v0_7.sign(
+            {
+                method: request.method,
+                host: "b.example",
+                target: requestTarget(new URL(request.url)),
+                body,
+            },
+            pair.privateKey,
+            "b.example",
+            test.clock.now(),
+        );
+
+        // A body is not allowed on some statuses, like 204.
+        return new Response(body.length === 0 ? null : body, {
+            status: reply.status,
+            headers: { ...Object.fromEntries(reply.headers), ...headers },
+        });
     });
 
     /** Queues a delivery to b.example and returns its id. */
@@ -51,9 +78,13 @@ const open = async (settings: Partial<Settings> = {}) => {
     const job = (id: string) =>
         test.ctx.db.selectFrom("jobs").selectAll().where("id", "=", id).executeTakeFirst();
 
-    /** Delivers once, with b.example answering with `status` and `headers`, and returns the job. */
-    const deliver = async (status: number, headers: HeadersInit = {}) => {
+    /**
+     * Delivers once, with b.example answering with `status` and `headers`, signed unless `signed`
+     * is false, and returns the job.
+     */
+    const deliver = async (status: number, headers: HeadersInit = {}, signed = true) => {
         answer = () => new Response(null, { status, headers });
+        signs = signed;
         const id = await queue();
         await drain(test.ctx, queues);
 
@@ -94,21 +125,21 @@ Deno.test("the body is posted as it was queued, to the instance's inbox", async 
     await test.deliver(202);
 
     const [request] = test.received;
-    assertEquals([request.method, request.url], ["POST", "https://b.example/.versia/v0.6/inbox"]);
+    assertEquals([request.method, request.url], ["POST", "https://b.example/.versia/v0.7/inbox"]);
     assertEquals(await request.text(), '{"type": "Thing"}');
     assertEquals(request.headers.get("versia-signed-by"), "social.example");
 });
 
-Deno.test("a refusal is given up on, and anything else is retried", async () => {
+Deno.test("a refusal is given up on, and anything else is retried, but a 401", async () => {
     await using test = await open();
 
     for (const status of [200, 202, 204]) {
         assertEquals(test.outcome(await test.deliver(status)), "done", String(status));
     }
-    for (const status of [400, 401, 403, 404, 410, 413, 422]) {
+    for (const status of [400, 403, 404, 410, 413, 422]) {
         assertEquals(test.outcome(await test.deliver(status)), "given up", String(status));
     }
-    for (const status of [301, 408, 429, 500, 502, 503]) {
+    for (const status of [301, 401, 408, 429, 500, 502, 503]) {
         assertEquals(test.outcome(await test.deliver(status)), "retried", String(status));
     }
 
@@ -116,8 +147,46 @@ Deno.test("a refusal is given up on, and anything else is retried", async () => 
     assertEquals(test.outcome(await test.deliver(202)), "retried");
 });
 
+Deno.test("a 2xx the instance didn't sign isn't a delivery, so it is retried", async () => {
+    await using test = await open();
+
+    assertEquals(test.outcome(await test.deliver(202, {}, false)), "retried");
+    assertEquals(test.outcome(await test.deliver(204, {}, false)), "retried");
+    assertEquals(test.outcome(await test.deliver(202)), "done");
+
+    // It answered, so it is up.
+    assertEquals(await test.failures(), 0);
+});
+
+Deno.test("a reply signed over another request isn't a delivery", async () => {
+    await using test = await open();
+    const other = await keyPair();
+    // Signed with a key that isn't the one Verso has for b.example.
+    test.transport.servers.set("b.example", async (request) => {
+        const body = new Uint8Array();
+        const headers = await v0_7.sign(
+            {
+                method: "POST",
+                host: "b.example",
+                target: requestTarget(new URL(request.url)),
+                body,
+            },
+            other.privateKey,
+            "b.example",
+            test.clock.now(),
+        );
+
+        return new Response(null, { status: 202, headers });
+    });
+    const id = await test.queue();
+
+    await drain(test.ctx, queues);
+
+    assertEquals(test.outcome(await test.job(id)), "retried");
+});
+
 Deno.test("an instance that asks to wait is tried again when it says", async () => {
-    for (const status of [429, 503]) {
+    for (const status of [429, 503, 500, 401, 408]) {
         await using test = await open();
         const now = test.clock.now().getTime();
 
@@ -126,14 +195,20 @@ Deno.test("an instance that asks to wait is tried again when it says", async () 
         assertEquals([job?.run_at.getTime(), job?.attempts], [now + 120_000, 0], String(status));
     }
 
+    // Also when it accepted the delivery without signing the reply.
+    await using unsigned = await open();
+    const now = unsigned.clock.now().getTime();
+    const discarded = await unsigned.deliver(202, { "retry-after": "120" }, false);
+    assertEquals([discarded?.run_at.getTime(), discarded?.attempts], [now + 120_000, 0]);
+
     await using test = await open();
     const date = new Date(test.clock.now().getTime() + hour);
     const job = await test.deliver(429, { "retry-after": date.toUTCString() });
     assertEquals(job?.run_at, date);
 
-    // Only those two statuses say when to retry.
+    // Without one, a failure is retried by the queue's own backoff.
     await using other = await open();
-    const failed = await other.deliver(500, { "retry-after": "120" });
+    const failed = await other.deliver(500);
     assertEquals(failed?.attempts, 1);
 });
 
@@ -152,17 +227,12 @@ Deno.test("an instance that asks to wait gets no deliveries until then", async (
     await test.deliver(202);
     assertEquals(test.received.length, 1);
 
-    // Its rate limit says the same, even when it accepts the delivery, the first one made.
+    // Its rate limit headers aren't read, so they don't pause it.
     test.clock.advance(120_000);
     await test.deliver(202, { "ratelimit-remaining": "0", "ratelimit-reset": "60" });
-    assertEquals(test.received.length, 2);
+    // The three postponed, the one queued since, and this one.
+    assertEquals(test.received.length, 6);
     assertEquals(await test.job(waiting[0]), undefined);
-    assertEquals(await pausedUntil(), now + 180_000);
-
-    test.clock.advance(60_000);
-    await test.deliver(202, { "ratelimit-remaining": "1", "ratelimit-reset": "60" });
-    // The four postponed, and this one.
-    assertEquals(test.received.length, 7);
     assertEquals(await test.job(job?.id ?? ""), undefined);
 });
 
@@ -301,20 +371,6 @@ Deno.test("a delivery to an instance blocked since it was queued is dropped", as
 
     assertEquals(test.outcome(await test.job(id)), "done");
     assertEquals(test.received, []);
-});
-
-Deno.test("a rate limit says when it resets only once none are left", () => {
-    const now = new Date("2026-10-18T12:00:00Z");
-    const reset = (headers: Record<string, string>) => rateLimitReset(new Headers(headers), now);
-
-    assertEquals(
-        reset({ "ratelimit-remaining": "0", "ratelimit-reset": "30" }),
-        new Date("2026-10-18T12:00:30Z"),
-    );
-    assertEquals(reset({ "ratelimit-remaining": "1", "ratelimit-reset": "30" }), undefined);
-    assertEquals(reset({ "ratelimit-remaining": "0", "ratelimit-reset": "soon" }), undefined);
-    assertEquals(reset({ "ratelimit-remaining": "0" }), undefined);
-    assertEquals(reset({ "ratelimit-reset": "30" }), undefined);
 });
 
 Deno.test("Retry-After is read as seconds or a date", () => {

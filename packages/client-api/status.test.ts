@@ -6,7 +6,7 @@ import { account } from "./testing.ts";
 /** A status as a server claiming Mastodon 4.3 sends it. */
 const status = {
     id: "1",
-    uri: "https://social.example/.versia/v0.6/entities/Note/1",
+    uri: "https://social.example/.versia/v0.7/entities/Note/1",
     created_at: "2026-01-31T12:00:00.000Z",
     account,
     content: '<p>Hi <a href="https://social.example/@bob">@bob</a> #verso</p>',
@@ -34,7 +34,7 @@ const status = {
     reblogs_count: 0,
     favourites_count: 0,
     replies_count: 0,
-    url: "https://social.example/.versia/v0.6/entities/Note/1",
+    url: "https://social.example/.versia/v0.7/entities/Note/1",
     in_reply_to_id: null,
     in_reply_to_account_id: null,
     reblog: null,

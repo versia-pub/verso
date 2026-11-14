@@ -76,7 +76,7 @@ Deno.test("a suspended local user isn't served, nor followed, and only their del
             `/entities/Note/${note?.id}/collections/replies`,
         ]
     ) {
-        assertEquals(await fetched(b, a, `/.versia/v0.6${path}`), 404, path);
+        assertEquals(await fetched(b, a, `/.versia/v0.7${path}`), 404, path);
     }
 
     const finger = await a.app.request("/.well-known/webfinger?resource=acct:alice@a.test");
@@ -101,7 +101,7 @@ Deno.test("a suspended local user isn't served, nor followed, and only their del
 
     await unsuspend(a.ctx, "alice");
 
-    assertEquals(await fetched(b, a, "/.versia/v0.6/entities/User/alice"), 200);
+    assertEquals(await fetched(b, a, "/.versia/v0.7/entities/User/alice"), 200);
 });
 
 Deno.test("a suspended remote user's instance can only delete, change their profile, and end follows", async () => {

@@ -1,4 +1,5 @@
-import { sign } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
+import { requestTarget } from "../federation/request.ts";
 import { type KeyPair, keyPair, metadata } from "../instances/testing.ts";
 import type { Network } from "./network.ts";
 
@@ -41,8 +42,8 @@ export const addEvilInstance = async (
     const served = new Map<string, { body: unknown; signed: boolean }>();
 
     network.transport.servers.set(domain, async (request) => {
-        const pathname = new URL(request.url).pathname;
-        if (pathname === "/.versia/v0.6/instance") {
+        const { pathname } = new URL(request.url);
+        if (pathname === "/.versia/v0.7/instance") {
             return Response.json(metadata(domain, pair.spki, "ed25519", extensions));
         }
 
@@ -51,8 +52,13 @@ export const addEvilInstance = async (
 
         const body = bytesOf(entry.body);
         const headers = entry.signed
-            ? await sign(
-                { method: request.method, pathname, body },
+            ? await v0_7.sign(
+                {
+                    method: request.method,
+                    host: domain,
+                    target: requestTarget(new URL(request.url)),
+                    body,
+                },
                 pair.privateKey,
                 domain,
                 network.clock.now(),
@@ -69,8 +75,9 @@ export const addEvilInstance = async (
         send: async (url, request = {}) => {
             const method = request.method ?? (request.body === undefined ? "GET" : "POST");
             const body = request.body === undefined ? new Uint8Array() : bytesOf(request.body);
-            const headers = await sign(
-                { method, pathname: new URL(url).pathname, body },
+            const to = new URL(url);
+            const headers = await v0_7.sign(
+                { method, host: to.hostname, target: requestTarget(to), body },
                 pair.privateKey,
                 request.signedBy ?? domain,
                 request.signedAt ?? network.clock.now(),

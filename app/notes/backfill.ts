@@ -1,7 +1,7 @@
 /**
  * Backfilling remote threads: fetching the replies Verso hasn't heard of, from the replies
  * collections of a remote status and of the replies under it, when a local user opens it.
- * @see https://versia.pub/api/endpoints#entity-collections
+ * @see https://versia.pub/federation/endpoints#entity-collections
  * @module
  */
 import { getLogger } from "@logtape/logtape";

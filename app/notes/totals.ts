@@ -2,7 +2,7 @@
  * Totals of remote statuses: how many likes, boosts and replies their instances report. Verso can't
  * count these itself, as it only hears of some of them. A job fetches them from the status's
  * collections, so saving a status doesn't wait on its instance.
- * @see https://versia.pub/api/endpoints#entity-collections
+ * @see https://versia.pub/federation/endpoints#entity-collections
  * @module
  */
 import { z } from "zod";
@@ -76,7 +76,7 @@ export const fetchNoteCollection = async (
     page: { readonly offset?: number; readonly limit: number },
 ): Promise<unknown> => {
     const url = entityUrl(domain, "Note", remoteId);
-    url.pathname += `/collections/${encodeURIComponent(name)}`;
+    url.pathname += `/collections/${name}`;
     if (page.offset !== undefined) url.searchParams.set("offset", String(page.offset));
     url.searchParams.set("limit", String(page.limit));
 

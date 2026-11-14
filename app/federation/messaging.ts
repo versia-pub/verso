@@ -33,7 +33,7 @@ const logger = getLogger(["verso", "federation", "messaging"]);
  */
 export const messagingRoute: Route = defineRoute({
     method: "POST",
-    path: "/.versia/v0.6/messaging",
+    path: `/.versia/v0.7/extensions/${messagingExtension}/messaging`,
     summary: "Receive a message",
     description: "Another instance says why something this one sent failed.",
     tags: ["versia"],
@@ -99,7 +99,11 @@ export const messageHandler: Handler = async (ctx: Context, job: JobsTable): Pro
 
     if (await ctx.federation.isBlocked(ctx, domain)) return;
 
-    const { status } = await postUnsigned(ctx, versiaUrl(domain, "/messaging"), text);
+    const { status } = await postUnsigned(
+        ctx,
+        versiaUrl(domain, `/extensions/${messagingExtension}/messaging`),
+        text,
+    );
     if (status >= 200 && status <= 299) return;
 
     if (status >= 400 && status <= 499 && status !== 408 && status !== 429) {

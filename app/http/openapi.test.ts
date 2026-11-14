@@ -220,7 +220,7 @@ Deno.test("a route without inputs or tags lists only its summary and responses",
         }),
         defineRoute({
             method: "GET",
-            path: "/.versia/v0.6/instance",
+            path: "/.versia/v0.7/instance",
             summary: "For other instances",
             contentType: "application/vnd.versia+json; charset=utf-8",
             responses: { 200: z.object({}) },
@@ -253,7 +253,7 @@ Deno.test("a route without inputs or tags lists only its summary and responses",
                 responses: { 200: { description: "A file", content: { "image/png": {} } } },
             },
         },
-        "/.versia/v0.6/instance": {
+        "/.versia/v0.7/instance": {
             get: {
                 summary: "For other instances",
                 responses: {
@@ -435,4 +435,21 @@ Deno.test("a deprecated route is marked so, and others aren't", () => {
     const { paths } = openApiDocument([route("/old", "2022-11-14"), route("/new")], info, origin);
     assertEquals(paths["/old"].get.deprecated, true);
     assertFalse("deprecated" in paths["/new"].get);
+});
+
+Deno.test("a : inside a path segment, like an extension's name, isn't a parameter", () => {
+    const route = defineRoute({
+        method: "GET",
+        path: "/.versia/v0.7/entities/pub.versia:likes/Like/:id/collections/pub.versia:likes/Likes",
+        summary: "Get likes",
+        params: z.object({ id: z.string() }),
+        responses: { 200: z.object({ ok: z.boolean() }) },
+        handler: unused,
+    });
+
+    const { paths } = openApiDocument([route], info, origin);
+
+    assertEquals(Object.keys(paths), [
+        "/.versia/v0.7/entities/pub.versia:likes/Like/{id}/collections/pub.versia:likes/Likes",
+    ]);
 });

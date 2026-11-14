@@ -1,18 +1,23 @@
 import { assert, assertEquals, assertNotEquals, assertRejects } from "@std/assert";
-import { importPublicKey, sign, verify } from "@versia/protocol";
+import { importPublicKey, v0_7 } from "@versia/protocol";
 import { createTestContext } from "../testing/context.ts";
 import type { InstanceKey } from "../kernel/context.ts";
 import { createInstanceKey, ensureInstanceKey, instanceKey, rotateInstanceKey } from "./keys.ts";
 
-const message = { method: "GET", pathname: "/.versia/v0.6/instance", body: new Uint8Array() };
+const message = {
+    method: "GET",
+    host: "b.example",
+    target: "/.versia/v0.7/instance",
+    body: new Uint8Array(),
+};
 const now = new Date("2026-01-01T00:00:00Z");
 
 /** Whether the key's private half signs what its public half verifies. */
 const isPair = async (key: InstanceKey) => {
-    const headers = new Headers(await sign(message, key.privateKey, "a.example", now));
+    const headers = new Headers(await v0_7.sign(message, key.privateKey, "a.example", now));
     const publicKey = await importPublicKey(key.publicKey);
 
-    return (await verify(message, headers, () => Promise.resolve(publicKey), now)).ok;
+    return (await v0_7.verify(message, headers, () => Promise.resolve(publicKey), now)).ok;
 };
 
 Deno.test("each instance has its own key, which signs what its public key verifies", async () => {

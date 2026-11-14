@@ -184,11 +184,11 @@ Deno.test("a User sent unasked updates one Verso has, and is dropped otherwise",
         a.db.selectFrom("accounts").innerJoin("instances", "instances.id", "accounts.instance_id")
             .select(["username", "display_name", "remote_id", "domain"]).execute();
 
-    await evil.send("https://a.test/.versia/v0.6/inbox", { body: user });
+    await evil.send("https://a.test/.versia/v0.7/inbox", { body: user });
     await network.drain();
     assertEquals(await account(), []);
 
-    evil.serve("/.versia/v0.6/entities/User/alice", user);
+    evil.serve("/.versia/v0.7/entities/User/alice", user);
     await a.federation.resolve(a, { host: "evil.test", id: "alice" }, "User");
     assertEquals(await account(), [{
         username: "alice",
@@ -197,7 +197,7 @@ Deno.test("a User sent unasked updates one Verso has, and is dropped otherwise",
         domain: "evil.test",
     }]);
 
-    await evil.send("https://a.test/.versia/v0.6/inbox", {
+    await evil.send("https://a.test/.versia/v0.7/inbox", {
         body: { ...user, display_name: "Alice" },
     });
     await network.drain();

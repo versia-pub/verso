@@ -27,7 +27,7 @@ Deno.test("a local account links to itself on this instance", async () => {
     const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], []));
 
     assertEquals(account.acct, "alice");
-    assertEquals(account.uri, "https://social.example/.versia/v0.6/entities/User/alice");
+    assertEquals(account.uri, "https://social.example/.versia/v0.7/entities/User/alice");
     assertEquals(account.url, "https://social.example/@alice");
     assertEquals(account.avatar, "https://social.example/accounts/alice/avatar.png");
     assertEquals(account.header_static, "https://social.example/accounts/alice/header.png");
@@ -53,7 +53,7 @@ Deno.test("a remote account links to its own instance", async () => {
     const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, "r"), [], []));
 
     assertEquals(account.acct, "bob@b.example");
-    assertEquals(account.uri, "https://b.example/.versia/v0.6/entities/User/a%2Fb");
+    assertEquals(account.uri, "https://b.example/.versia/v0.7/entities/User/a%2Fb");
     assertEquals(account.url, "https://social.example/@bob@b.example");
     assertEquals(account.avatar, "https://social.example/accounts/r/avatar.png");
     assertEquals(account.last_status_at, "2026-02-01");

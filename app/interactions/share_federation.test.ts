@@ -146,7 +146,7 @@ Deno.test("a local note lists its public and unlisted shares, for instances that
     assertEquals(await test.shares(alice.id, "d.example"), undefined);
 });
 
-Deno.test("shares and their collection are served at encoded URLs", async () => {
+Deno.test("shares and their collection are served at their unencoded URLs", async () => {
     await using network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"].ctx;
     const b = network.instances["b.test"].ctx;
@@ -162,9 +162,7 @@ Deno.test("shares and their collection are served at encoded URLs", async () => 
     assertEquals([status, entity.shared], [200, note.id]);
 
     const collection = new URL(
-        `${entityUrl("a.test", "Note", note.id)}/collections/${
-            encodeURIComponent("pub.versia:share/Shares")
-        }`,
+        `${entityUrl("a.test", "Note", note.id)}/collections/pub.versia:share/Shares`,
     );
     assertEquals(await read(collection), [200, { author: "alice", total: 1, items: [shared.id] }]);
 });

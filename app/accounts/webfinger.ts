@@ -43,7 +43,7 @@ export const webfingerRoutes: readonly Route[] = [
             // A suspended user is no longer served.
             if (!account || account.suspended_at !== null) throw new NotFound();
 
-            const user = ctx.urls.url`/.versia/v0.6/entities/User/${account.id}`;
+            const user = ctx.urls.url`/.versia/v0.7/entities/User/${account.id}`;
 
             return {
                 status: 200,

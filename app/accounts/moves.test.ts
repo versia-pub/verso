@@ -41,7 +41,7 @@ const open = async () => {
     const app = network.instances["a.test"].app;
     const b = await addEvilInstance(network, "b.test", ["pub.versia:migration"]);
     const c = await addEvilInstance(network, "c.test", ["pub.versia:migration"]);
-    const path = (id: string) => `/.versia/v0.6/entities/User/${id}`;
+    const path = (id: string) => `/.versia/v0.7/entities/User/${id}`;
 
     b.serve(path("bob"), user("bob"));
     for (const id of ["bob2", "bob3"]) c.serve(path(id), user(id, { previous: "b.test:bob" }));
@@ -55,7 +55,7 @@ const open = async () => {
     /** Has `from` send `entity` to a.test, and a.test receive it. */
     const send = async (entity: object, from = b) => {
         assertEquals(
-            (await from.send("https://a.test/.versia/v0.6/inbox", { body: entity })).status,
+            (await from.send("https://a.test/.versia/v0.7/inbox", { body: entity })).status,
             202,
         );
         await network.drain();

@@ -52,7 +52,7 @@ export const deliveries = async (
     const hosts: Record<string, number> = {};
     for (const request of network.transport.sent.slice(from)) {
         const url = new URL(request.url);
-        if (request.method !== "POST" || url.pathname !== "/.versia/v0.6/inbox") continue;
+        if (request.method !== "POST" || url.pathname !== "/.versia/v0.7/inbox") continue;
         if ((await request.clone().json()).type !== type) continue;
 
         hosts[url.host] = (hosts[url.host] ?? 0) + 1;

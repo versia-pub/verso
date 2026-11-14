@@ -218,7 +218,7 @@ Deno.test("a local note lists its reactions, for instances that may see it", asy
     assertEquals(await test.reactions(share.id, "d.example"), undefined);
 });
 
-Deno.test("reactions and their collection are served at encoded URLs", async () => {
+Deno.test("reactions and their collection are served at their unencoded URLs", async () => {
     await using network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"].ctx;
     const b = network.instances["b.test"].ctx;
@@ -235,9 +235,7 @@ Deno.test("reactions and their collection are served at encoded URLs", async () 
     assertEquals([status, entity.content], [200, "🎉"]);
 
     const collection = new URL(
-        `${entityUrl("a.test", "Note", note.id)}/collections/${
-            encodeURIComponent("pub.versia:reactions/Reactions")
-        }`,
+        `${entityUrl("a.test", "Note", note.id)}/collections/pub.versia:reactions/Reactions`,
     );
     assertEquals(await read(collection), [200, { author: "alice", total: 1, items: [id] }]);
 });

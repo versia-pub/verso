@@ -109,7 +109,7 @@ const countUsersSent = (network: Network, domain: string) => {
 
     let sent = 0;
     network.transport.servers.set(domain, async (request) => {
-        if (new URL(request.url).pathname === "/.versia/v0.6/inbox") {
+        if (new URL(request.url).pathname === "/.versia/v0.7/inbox") {
             if ((await request.clone().json()).type === "User") sent += 1;
         }
 

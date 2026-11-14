@@ -27,11 +27,14 @@ const open = async () => {
     /** Sends a.test `body`, unsigned, as `type`. */
     const send = async (body: string, type = "text/plain") =>
         (await network.transport(
-            new Request("https://a.test/.versia/v0.6/messaging", {
-                method: "POST",
-                body,
-                headers: { "content-type": type },
-            }),
+            new Request(
+                "https://a.test/.versia/v0.7/extensions/pub.versia:instance_messaging/messaging",
+                {
+                    method: "POST",
+                    body,
+                    headers: { "content-type": type },
+                },
+            ),
         )).status;
 
     /** The messages a.test has logged. */
@@ -84,7 +87,10 @@ const like = (created_at = "2026-01-01T00:00:00Z") => ({
 const messagesSent = async (network: Network) =>
     await Promise.all(
         network.transport.sent
-            .filter((request) => new URL(request.url).pathname === "/.versia/v0.6/messaging")
+            .filter((request) =>
+                new URL(request.url).pathname ===
+                    "/.versia/v0.7/extensions/pub.versia:instance_messaging/messaging"
+            )
             .map(async (request) => [
                 request.url,
                 request.headers.get("content-type"),
@@ -99,12 +105,12 @@ Deno.test("an instance that takes messages is told why Verso gave up on what it 
 
     // Sent again, the same mistake is explained only once.
     for (const created_at of ["2026-01-01T00:00:00Z", "2026-01-01T00:00:01Z"]) {
-        await c.send("https://a.test/.versia/v0.6/inbox", { body: like(created_at) });
+        await c.send("https://a.test/.versia/v0.7/inbox", { body: like(created_at) });
         await network.drain();
     }
 
     assertEquals(await messagesSent(network), [[
-        "https://c.test/.versia/v0.6/messaging",
+        "https://c.test/.versia/v0.7/extensions/pub.versia:instance_messaging/messaging",
         "text/plain; charset=utf-8",
         false,
         "a.test gave up on the pub.versia:likes/Like l1 you sent its inbox: c.test may not send " +
@@ -120,7 +126,7 @@ Deno.test("what fails for now, and is tried again, isn't explained", async () =>
     const note = await createNote(a, alice);
 
     // Its author can't be fetched while c.test is down.
-    await c.send("https://a.test/.versia/v0.6/inbox", {
+    await c.send("https://a.test/.versia/v0.7/inbox", {
         body: { ...like(), author: "bob", liked: `a.test:${note.id}` },
     });
     network.transport.down.add("c.test");
@@ -133,7 +139,7 @@ Deno.test("an instance that doesn't take messages isn't sent any", async () => {
     await using network = await createNetwork(["a.test"]);
     const d = await addEvilInstance(network, "d.test");
 
-    await d.send("https://a.test/.versia/v0.6/inbox", {
+    await d.send("https://a.test/.versia/v0.7/inbox", {
         body: { ...like(), author: "e.test:bob" },
     });
     await network.drain();

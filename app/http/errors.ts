@@ -113,16 +113,6 @@ export class UserRequired extends HttpError {
     }
 }
 
-/**
- * A Versia signature made further from now, either way, than `maxClockSkewSeconds` in
- * `packages/protocol/signing.ts` allows.
- */
-export class StaleSignature extends HttpError {
-    constructor() {
-        super(422, "The signature is too old, or from the future");
-    }
-}
-
 /** Input that doesn't match a route's schemas. `details` lists the problems by field path. */
 export class ValidationFailed extends HttpError {
     constructor(readonly details: Record<string, string[]>) {

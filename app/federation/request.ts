@@ -3,7 +3,7 @@
  * @see https://versia.pub/signatures
  * @module
  */
-import { sign } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { versiaJson } from "../http/responses.ts";
 import type { Context } from "../kernel/context.ts";
 import { readLimited } from "../kernel/limited.ts";
@@ -38,6 +38,17 @@ export class BadReply extends Error {
 export class Unreachable extends Error {
     override readonly name = "Unreachable";
 }
+
+/**
+ * The path and query of `url` as they go in the request line, without the fragment. Unlike
+ * `pathname + search`, it keeps a `?` with nothing after it, which the signature covers.
+ */
+export const requestTarget = (url: URL): string => {
+    const target = url.href.slice(url.origin.length);
+    const fragment = target.indexOf("#");
+
+    return fragment === -1 ? target : target.slice(0, fragment);
+};
 
 /** Reads a body, failing as soon as it exceeds `maxReplyBytes`. */
 const readCapped = async (response: Response): Promise<Uint8Array<ArrayBuffer>> => {
@@ -86,8 +97,8 @@ export const sendSigned = async (
     url: URL,
     body: Uint8Array<ArrayBuffer> = new Uint8Array(),
 ): Promise<FederationReply> => {
-    const signature = await sign(
-        { method, pathname: url.pathname, body },
+    const signature = await v0_7.sign(
+        { method, host: url.hostname, target: requestTarget(url), body },
         (await ctx.federation.instanceKey(ctx)).privateKey,
         ctx.urls.domain,
         ctx.clock.now(),
@@ -123,17 +134,16 @@ export const postUnsigned = (ctx: Context, url: URL, text: string): Promise<Fede
     });
 
 /**
- * Fetches from a remote instance with a signed GET. A successful response is only returned if the
- * instance that was asked signed it, so nobody in between, nor another instance, can answer for it.
+ * Whether `reply`, to `method` and `url`, is signed by the instance it was asked of, so nobody in
+ * between, nor another instance, can answer for it.
  */
-export const fetchSigned = async (
+export const verifyReply = async (
     ctx: Context,
+    method: "GET" | "POST",
     url: URL,
-): Promise<FederationReply> => {
-    const reply = await sendSigned(ctx, "GET", url);
-    if (reply.status < 200 || reply.status > 299) return reply;
-
-    const message = { method: "GET", pathname: url.pathname, body: reply.body };
+    reply: FederationReply,
+): Promise<boolean> => {
+    const message = { method, host: url.hostname, target: requestTarget(url), body: reply.body };
     const verification = await checkSignature(
         ctx,
         ctx.federation.remoteKeys,
@@ -141,7 +151,23 @@ export const fetchSigned = async (
         reply.headers,
         url.hostname,
     );
-    if (!verification.ok) throw new BadReply(`The reply isn't signed by ${url.hostname}`);
+
+    return verification.ok;
+};
+
+/**
+ * Fetches from a remote instance with a signed GET. A successful response is only returned if the
+ * instance that was asked signed it.
+ */
+export const fetchSigned = async (
+    ctx: Context,
+    url: URL,
+): Promise<FederationReply> => {
+    const reply = await sendSigned(ctx, "GET", url);
+    if (reply.status < 200 || reply.status > 299) return reply;
+    if (!await verifyReply(ctx, "GET", url, reply)) {
+        throw new BadReply(`The reply isn't signed by ${url.hostname}`);
+    }
 
     return reply;
 };

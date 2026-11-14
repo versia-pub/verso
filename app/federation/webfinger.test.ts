@@ -41,26 +41,26 @@ Deno.test("only a Versia User link on the same host is followed", async () => {
     const lookup = () => webfinger(a, "x", "evil.test");
     const self = (href: string, type = versia) => ({ rel: "self", type, href });
 
-    links(self("https://evil.test/.versia/v0.6/entities/User/x1"));
+    links(self("https://evil.test/.versia/v0.7/entities/User/x1"));
     assertEquals(await lookup(), { host: "evil.test", id: "x1" });
 
     links(
         { rel: "http://webfinger.net/rel/profile-page", href: "https://evil.test/@x" },
-        self("https://evil.test/.versia/v0.6/entities/User/x2", `${versia}; charset=utf-8`),
+        self("https://evil.test/.versia/v0.7/entities/User/x2", `${versia}; charset=utf-8`),
     );
     assertEquals(await lookup(), { host: "evil.test", id: "x2" });
 
     for (
         const link of [
-            self("https://b.test/.versia/v0.6/entities/User/x"),
-            self("http://evil.test/.versia/v0.6/entities/User/x"),
-            self("https://evil.test/.versia/v0.6/entities/Note/x"),
-            self("https://evil.test/.versia/v0.6/entities/User/x?y=1"),
-            self("https://evil.test/.versia/v0.6/entities/User/x", "application/activity+json"),
+            self("https://b.test/.versia/v0.7/entities/User/x"),
+            self("http://evil.test/.versia/v0.7/entities/User/x"),
+            self("https://evil.test/.versia/v0.7/entities/Note/x"),
+            self("https://evil.test/.versia/v0.7/entities/User/x?y=1"),
+            self("https://evil.test/.versia/v0.7/entities/User/x", "application/activity+json"),
             {
                 rel: "alternate",
                 type: versia,
-                href: "https://evil.test/.versia/v0.6/entities/User/x",
+                href: "https://evil.test/.versia/v0.7/entities/User/x",
             },
         ]
     ) {

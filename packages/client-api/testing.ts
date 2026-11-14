@@ -6,7 +6,7 @@ export const account = {
     username: "alice",
     acct: "alice",
     url: "https://social.example/@alice",
-    uri: "https://social.example/.versia/v0.6/entities/User/1",
+    uri: "https://social.example/.versia/v0.7/entities/User/1",
     display_name: "Alice",
     note: "<p>Hi</p>",
     avatar: "https://social.example/accounts/1/avatar.png",

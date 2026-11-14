@@ -39,8 +39,7 @@ const note = {
 };
 
 /** Where b.test serves the collection `name` of bob's status. */
-const collection = (name: string) =>
-    `/.versia/v0.6/entities/Note/n1/collections/${encodeURIComponent(name)}`;
+const collection = (name: string) => `/.versia/v0.7/entities/Note/n1/collections/${name}`;
 
 /**
  * a.test, with alice, who follows bob, and b.test, which sends whatever it is told to, with bob and
@@ -50,7 +49,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
-    b.serve("/.versia/v0.6/entities/User/bob", user);
+    b.serve("/.versia/v0.7/entities/User/bob", user);
 
     for (
         const [name, total] of [
@@ -66,7 +65,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
     const bob = await a.federation.resolve(a, { host: "b.test", id: "bob" }, "User");
     assertExists(bob);
     await follow(a, alice, bob);
-    await b.send("https://a.test/.versia/v0.6/inbox", {
+    await b.send("https://a.test/.versia/v0.7/inbox", {
         body: {
             type: "FollowAccept",
             author: "bob",
@@ -78,7 +77,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
 
     /** Has b.test send bob's status to a.test, and a.test receive it, totals and all. */
     const send = async () => {
-        const sent = await b.send("https://a.test/.versia/v0.6/inbox", { body: note });
+        const sent = await b.send("https://a.test/.versia/v0.7/inbox", { body: note });
         assertEquals(sent.status, 202);
         await network.drain();
 
@@ -100,7 +99,7 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
     /** How many requests b.test received for the collections of bob's status. */
     const asked = () =>
         network.transport.sent.filter((request) =>
-            new URL(request.url).pathname.startsWith("/.versia/v0.6/entities/Note/n1/collections/")
+            new URL(request.url).pathname.startsWith("/.versia/v0.7/entities/Note/n1/collections/")
         ).length;
 
     return {

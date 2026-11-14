@@ -54,7 +54,7 @@ const open = async () => {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
-    b.serve("/.versia/v0.6/entities/User/bob", user(emojis("blob")));
+    b.serve("/.versia/v0.7/entities/User/bob", user(emojis("blob")));
 
     const alice = await createLocalAccount(a, "alice");
     const bob = await a.federation.resolve(a, { host: "b.test", id: "bob" }, "User");
@@ -65,7 +65,7 @@ const open = async () => {
     const send = async (entity: object) => {
         network.clock.advance(1000);
         assertEquals(
-            (await b.send("https://a.test/.versia/v0.6/inbox", { body: entity })).status,
+            (await b.send("https://a.test/.versia/v0.7/inbox", { body: entity })).status,
             202,
         );
         await network.drain();

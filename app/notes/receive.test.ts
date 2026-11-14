@@ -52,7 +52,7 @@ const open = async (settings: Partial<Settings> = {}) => {
     const network = await createNetwork(["a.test"], { settings });
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
-    for (const id of ["bob", "carol"]) b.serve(`/.versia/v0.6/entities/User/${id}`, user(id));
+    for (const id of ["bob", "carol"]) b.serve(`/.versia/v0.7/entities/User/${id}`, user(id));
 
     const alice = await createLocalAccount(a, "alice");
     const bob = await a.federation.resolve(a, { host: "b.test", id: "bob" }, "User");
@@ -62,7 +62,7 @@ const open = async (settings: Partial<Settings> = {}) => {
     const send = async (entity: object, from: EvilInstance = b) => {
         network.clock.advance(1000);
         assertEquals(
-            (await from.send("https://a.test/.versia/v0.6/inbox", { body: entity })).status,
+            (await from.send("https://a.test/.versia/v0.7/inbox", { body: entity })).status,
             202,
         );
         await network.drain();
@@ -156,8 +156,8 @@ Deno.test("a note sent unasked is kept only if it mentions or replies to somethi
 
 Deno.test("a note sent unasked that isn't wanted makes Verso fetch nothing it names", async () => {
     await using test = await open();
-    test.b.serve("/.versia/v0.6/entities/Note/p1", note("p1"));
-    test.b.serve("/.versia/v0.6/entities/User/dave", user("dave"));
+    test.b.serve("/.versia/v0.7/entities/Note/p1", note("p1"));
+    test.b.serve("/.versia/v0.7/entities/User/dave", user("dave"));
 
     await test.send(
         note("n1", { author: "dave", mentions: ["b.test:carol"], replies_to: "b.test:p1" }),
@@ -166,10 +166,10 @@ Deno.test("a note sent unasked that isn't wanted makes Verso fetch nothing it na
     assertEquals([await test.kept("n1"), await test.kept("p1")], [undefined, undefined]);
 
     const fetched = test.network.transport.sent.filter((request) =>
-        new URL(request.url).pathname.startsWith("/.versia/v0.6/entities/")
+        new URL(request.url).pathname.startsWith("/.versia/v0.7/entities/")
     );
     assertEquals(fetched.map((request) => new URL(request.url).pathname), [
-        "/.versia/v0.6/entities/User/bob",
+        "/.versia/v0.7/entities/User/bob",
     ]);
     assertEquals(await test.errors(), []);
 });
@@ -552,7 +552,7 @@ Deno.test("a note by a user who can't be had is given up on", async () => {
 
 Deno.test("what a reply replies to is fetched, and kept with it", async () => {
     await using test = await open();
-    test.b.serve("/.versia/v0.6/entities/Note/n0", note("n0"));
+    test.b.serve("/.versia/v0.7/entities/Note/n0", note("n0"));
 
     await test.send(note("n1", { mentions: [`a.test:${test.alice}`], replies_to: "n0" }));
 
@@ -574,8 +574,8 @@ Deno.test("what a followed author's note, or a kept note sent again, names is fe
         follower: `a.test:${test.alice}`,
         created_at: "2026-01-01T00:00:00Z",
     });
-    test.b.serve("/.versia/v0.6/entities/Note/n0", note("n0"));
-    test.b.serve("/.versia/v0.6/entities/User/dave", user("dave"));
+    test.b.serve("/.versia/v0.7/entities/Note/n0", note("n0"));
+    test.b.serve("/.versia/v0.7/entities/User/dave", user("dave"));
 
     await test.send(note("n1", { replies_to: "n0" }));
     await test.send(note("n2", { author: "dave", mentions: [`a.test:${test.alice}`] }));
@@ -591,7 +591,7 @@ Deno.test("what a followed author's note, or a kept note sent again, names is fe
 Deno.test("what a note quotes is fetched, and kept with it, and quoting a local note is enough", async () => {
     await using test = await open();
     const local = await createNote(test.a, test.alice);
-    test.b.serve("/.versia/v0.6/entities/Note/n0", note("n0"));
+    test.b.serve("/.versia/v0.7/entities/Note/n0", note("n0"));
 
     await test.send(note("n1", { mentions: [`a.test:${test.alice}`], quotes: "n0" }));
     await test.send(note("n2", { quotes: `a.test:${local.id}` }));
@@ -650,7 +650,7 @@ Deno.test("a note's id has the time it was made, however late it arrived, but no
 Deno.test("notes with the same id on two instances are two notes", async () => {
     await using test = await open();
     const c = await addEvilInstance(test.network, "c.test");
-    c.serve("/.versia/v0.6/entities/User/bob", user("bob"));
+    c.serve("/.versia/v0.7/entities/User/bob", user("bob"));
     const mentions = [`a.test:${test.alice}`];
 
     await test.send(note("n1", { mentions }));

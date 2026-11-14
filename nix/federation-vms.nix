@@ -197,7 +197,7 @@ pkgs.testers.runNixOSTest {
     # b.test finds alice with WebFinger, and fetches her.
     found = api(b, "bea-token", "GET", "/api/v1/accounts/lookup?acct=alice@a.test")
     assert found["acct"] == "alice@a.test", f"b.test found {found!r}"
-    assert found["uri"] == "https://a.test/.versia/v0.6/entities/User/alice", found["uri"]
+    assert found["uri"] == "https://a.test/.versia/v0.7/entities/User/alice", found["uri"]
 
     kept = sql(b, "select a.username, i.domain from accounts a join instances i on i.id = a.instance_id")
     assert kept.strip() == "alice|a.test", f"b.test kept {kept!r}"

@@ -110,7 +110,7 @@ Deno.test("another share of a note by the same user replaces the first", async (
 
 Deno.test("a share of another note by someone a local user follows is kept, with the note", async () => {
     await using test = await open();
-    test.b.serve("/.versia/v0.6/entities/Note/n1", note("n1"));
+    test.b.serve("/.versia/v0.7/entities/Note/n1", note("n1"));
 
     // a.test has bob, but no local user follows him yet, so neither the boost nor its status is
     // stored.

@@ -61,7 +61,7 @@ Deno.test("a remote status that arrives, and its delete, are streamed on each st
                 event === "delete" ? body : event === "notification" ? body.type : body.uri,
             ];
         }).toSorted();
-    const uri = `https://b.test/.versia/v0.6/entities/Note/${posted.body.id}`;
+    const uri = `https://b.test/.versia/v0.7/entities/Note/${posted.body.id}`;
     // Not on the local hashtag's stream, as it isn't local.
     assertEquals(events(), [
         ["hashtag,Nix", "update", uri],

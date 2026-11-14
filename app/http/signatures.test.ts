@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { importPublicKey, sign, verify } from "@versia/protocol";
+import { importPublicKey, v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import { instanceKey } from "../instances/keys.ts";
 import { remoteKeys } from "../instances/remote_keys.ts";
@@ -13,6 +13,7 @@ import { createTestApp } from "../testing/app.ts";
 import { NotFound } from "./errors.ts";
 import { memoryRateLimitStore, type RateLimits } from "./rate_limits.ts";
 import { defineRoute } from "./route.ts";
+import { requestTargetOf } from "./signatures.ts";
 
 const routes = [
     defineRoute({
@@ -78,17 +79,33 @@ const open = async (options: { silentBlocks?: boolean; rateLimits?: RateLimits }
 
     /**
      * Sends a request signed as `signedBy` with `key`, over `signed` unless the request differs.
+     * `host` is the `Host` header, and `signed.host` the host that is signed, which is this
+     * instance's own domain unless it says otherwise.
      */
     const send = async (
-        request: { method?: string; path?: string; body?: string; signedBy?: string },
-        signed: { method?: string; path?: string; body?: string; at?: Date; key?: KeyPair } = {},
+        request: {
+            method?: string;
+            path?: string;
+            body?: string;
+            signedBy?: string;
+            host?: string;
+        },
+        signed: {
+            method?: string;
+            path?: string;
+            host?: string;
+            body?: string;
+            at?: Date;
+            key?: KeyPair;
+        } = {},
     ) => {
         const method = request.method ?? "GET";
         const path = request.path ?? "/federated";
-        const headers = await sign(
+        const headers = await v0_7.sign(
             {
                 method: signed.method ?? method,
-                pathname: signed.path ?? path,
+                host: signed.host ?? "social.example",
+                target: signed.path ?? path,
                 body: new TextEncoder().encode(signed.body ?? request.body ?? ""),
             },
             (signed.key ?? pair).privateKey,
@@ -99,7 +116,11 @@ const open = async (options: { silentBlocks?: boolean; rateLimits?: RateLimits }
         const response = await app.request(path, {
             method,
             body: request.body,
-            headers: { ...headers, "content-type": "application/json" },
+            headers: {
+                ...headers,
+                "content-type": "application/json",
+                ...(request.host === undefined ? {} : { host: request.host }),
+            },
         });
         const text = await response.text();
         return { status: response.status, body: text === "" ? undefined : JSON.parse(text) };
@@ -114,10 +135,9 @@ Deno.test("a request signed by another instance says who signed it", async () =>
     await using test = await open();
 
     assertEquals(await test.send({}), { status: 200, body: { signed_by: "b.example" } });
-    assertEquals(await test.send({ signedBy: "B.EXAMPLE:443" }), {
-        status: 200,
-        body: { signed_by: "b.example" },
-    });
+    // Versia 0.7 wants the signer as a lowercase domain, so these aren't read as b.example.
+    assertEquals(await test.send({ signedBy: "B.EXAMPLE" }), badSignature);
+    assertEquals(await test.send({ signedBy: "b.example:443" }), badSignature);
     assertEquals(
         await test.send({ method: "POST", path: "/inbox", body: '{"text":"Hi"}' }),
         { status: 200, body: { text: "Hi" } },
@@ -156,6 +176,38 @@ Deno.test("a request without a valid signature is refused", async () => {
         }),
         badSignature,
     );
+});
+
+Deno.test("the request target is signed as sent, with its query and an empty ?", async () => {
+    await using test = await open();
+    const ok = { status: 200, body: { signed_by: "b.example" } };
+
+    for (const path of ["/federated?a=%7e&b=", "/federated?", "/federated?a=1&a=2"]) {
+        assertEquals(await test.send({ path }), ok, path);
+    }
+
+    assertEquals(await test.send({ path: "/federated?" }, { path: "/federated" }), badSignature);
+    assertEquals(await test.send({ path: "/federated?a=%7e" }, { path: "/federated?a=~" }), {
+        status: 401,
+        body: { error: "The signature is missing or invalid" },
+    });
+    assertEquals(await test.send({ path: "/federated?a=1" }, { path: "/federated" }), badSignature);
+});
+
+Deno.test("the signed host is this instance's own domain, whatever Host says", async () => {
+    await using test = await open();
+
+    assertEquals((await test.send({ host: "evil.example" })).status, 200);
+    assertEquals(await test.send({}, { host: "evil.example" }), badSignature);
+    assertEquals(await test.send({ host: "evil.example" }, { host: "evil.example" }), badSignature);
+});
+
+Deno.test("a request target is everything from the first / after the scheme", () => {
+    assertEquals(requestTargetOf("https://a.example/inbox"), "/inbox");
+    assertEquals(requestTargetOf("http://localhost:8080/a/b?c=%7e&d="), "/a/b?c=%7e&d=");
+    assertEquals(requestTargetOf("https://a.example/a?"), "/a?");
+    assertEquals(requestTargetOf("https://a.example/a%2Fb/%7E?x=a/b"), "/a%2Fb/%7E?x=a/b");
+    assertEquals(requestTargetOf("https://a.example//x"), "//x");
 });
 
 Deno.test("instances are limited by who signed, and bad signatures as clients", async () => {
@@ -209,8 +261,8 @@ Deno.test("a signature more than five minutes off is refused as stale", async ()
     assertEquals((await test.send({}, { at: at(300) })).status, 200);
     for (const seconds of [-301, 301]) {
         assertEquals(await test.send({}, { at: at(seconds) }), {
-            status: 422,
-            body: { error: "The signature is too old, or from the future" },
+            status: 401,
+            body: { error: "The signature is missing or invalid" },
         });
     }
 });
@@ -230,7 +282,7 @@ Deno.test("a blocked instance is refused before Verso asks it for its key", asyn
 
     // The headers and the time are validated first.
     const old = new Date(test.clock.now().getTime() - 600_000);
-    assertEquals((await test.send({ signedBy: "blocked.example" }, { at: old })).status, 422);
+    assertEquals((await test.send({ signedBy: "blocked.example" }, { at: old })).status, 401);
 
     // A block applies to an instance whose key Verso already has, too.
     assertEquals((await test.send({})).status, 200);
@@ -279,8 +331,13 @@ Deno.test("replies to signed requests are signed by this instance, over what was
     await using test = await open();
     const ours = await importPublicKey((await instanceKey(test.ctx)).publicKey);
     const checked = async (method: string, path: string, body?: string) => {
-        const headers = await sign(
-            { method, pathname: path, body: new TextEncoder().encode(body ?? "") },
+        const headers = await v0_7.sign(
+            {
+                method,
+                host: "social.example",
+                target: path,
+                body: new TextEncoder().encode(body ?? ""),
+            },
             test.pair.privateKey,
             "b.example",
             test.clock.now(),
@@ -292,8 +349,8 @@ Deno.test("replies to signed requests are signed by this instance, over what was
         });
         const bytes = new Uint8Array(await response.arrayBuffer());
 
-        return await verify(
-            { method, pathname: path, body: bytes },
+        return await v0_7.verify(
+            { method, host: "social.example", target: path, body: bytes },
             response.headers,
             (domain) => Promise.resolve(domain === "social.example" ? ours : undefined),
             test.clock.now(),
@@ -301,6 +358,11 @@ Deno.test("replies to signed requests are signed by this instance, over what was
     };
 
     assertEquals(await checked("GET", "/federated"), { ok: true, signedBy: "social.example" });
+    // The reply covers the request's query too.
+    assertEquals(await checked("GET", "/federated?a=%7e&b="), {
+        ok: true,
+        signedBy: "social.example",
+    });
     assertEquals((await test.app.request("/public")).headers.get("versia-signature"), null);
     assertEquals(await checked("POST", "/inbox", '{"text":"Hi"}'), {
         ok: true,
@@ -317,8 +379,8 @@ Deno.test("error replies to signed routes are signed too, even when the request 
 
         return {
             status: response.status,
-            verification: await verify(
-                { method: "GET", pathname: path, body: bytes },
+            verification: await v0_7.verify(
+                { method: "GET", host: "social.example", target: path, body: bytes },
                 response.headers,
                 (domain) => Promise.resolve(domain === "social.example" ? ours : undefined),
                 test.clock.now(),
@@ -327,8 +389,8 @@ Deno.test("error replies to signed routes are signed too, even when the request 
     };
     const signed = { ok: true, signedBy: "social.example" } as const;
 
-    const headers = await sign(
-        { method: "GET", pathname: "/missing", body: new Uint8Array() },
+    const headers = await v0_7.sign(
+        { method: "GET", host: "social.example", target: "/missing", body: new Uint8Array() },
         test.pair.privateKey,
         "b.example",
         test.clock.now(),

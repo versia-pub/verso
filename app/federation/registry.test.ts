@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from "@std/assert";
-import { sign } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import { keyPair, metadataServer } from "../instances/testing.ts";
 import { createTestApp } from "../testing/app.ts";
@@ -40,20 +40,31 @@ const transient: EntityType = {
     ...ignored,
 };
 
+/** An extension's type, whose name has a `:` and a `/`, as are its collections'. */
+const gadget: EntityType<z.infer<typeof Thing>> = {
+    ...thing,
+    type: "test.example:gadgets/Gadget",
+    collections: {
+        "test.example:gadgets/Parts": (_ctx, id, page) =>
+            Promise.resolve({ author: id, total: page.limit, items: [] }),
+    },
+};
+
 const open = async () => {
     const test = await createTestContext();
     const pair = await keyPair();
     test.transport.servers.set("b.example", metadataServer("b.example", pair));
-    const app = createTestApp(test.ctx, entityRoutes(createRegistry([thing, transient])), {
+    const app = createTestApp(test.ctx, entityRoutes(createRegistry([thing, gadget, transient])), {
         checkResponses: true,
     });
 
     /** GETs `path` as b.example. */
     const get = async (path: string) => {
-        const headers = await sign(
+        const headers = await v0_7.sign(
             {
                 method: "GET",
-                pathname: new URL(path, "https://x").pathname,
+                host: test.ctx.urls.domain,
+                target: path,
                 body: new Uint8Array(),
             },
             pair.privateKey,
@@ -71,31 +82,48 @@ const open = async () => {
 Deno.test("a type's entities are fetched at its own path, as the requester may see them", async () => {
     await using test = await open();
 
-    assertEquals(await test.get("/.versia/v0.6/entities/Thing/1"), {
+    assertEquals(await test.get("/.versia/v0.7/entities/Thing/1"), {
         status: 200,
         body: { type: "Thing", id: "1", seen_by: "b.example" },
     });
-    assertEquals((await test.get("/.versia/v0.6/entities/Ping/1")).status, 404);
+    assertEquals((await test.get("/.versia/v0.7/entities/Ping/1")).status, 404);
+});
+
+Deno.test("an extension's type and collections are fetched at paths that keep their : and /", async () => {
+    await using test = await open();
+    const path = "/.versia/v0.7/entities/test.example:gadgets/Gadget";
+
+    assertEquals(await test.get(`${path}/g1`), {
+        status: 200,
+        body: { type: "Thing", id: "g1", seen_by: "b.example" },
+    });
+    assertEquals(await test.get(`${path}/g1/collections/test.example:gadgets/Parts?limit=3`), {
+        status: 200,
+        body: { author: "g1", total: 3, items: [] },
+    });
+    // Nothing answers to the percent-encoded name.
+    const encoded = "/.versia/v0.7/entities/test.example%3Agadgets%2FGadget/g1";
+    assertEquals((await test.get(encoded)).status, 404);
 });
 
 Deno.test("a type's collections are paged, and unknown ones aren't found", async () => {
     await using test = await open();
 
-    assertEquals(await test.get("/.versia/v0.6/entities/Thing/1/collections/parts?offset=3"), {
+    assertEquals(await test.get("/.versia/v0.7/entities/Thing/1/collections/parts?offset=3"), {
         status: 200,
         body: { author: "1", total: 3040, items: [] },
     });
     for (
         const path of ["1/collections/other", "1/collections/toString", "missing/collections/parts"]
     ) {
-        assertEquals((await test.get(`/.versia/v0.6/entities/Thing/${path}`)).status, 404, path);
+        assertEquals((await test.get(`/.versia/v0.7/entities/Thing/${path}`)).status, 404, path);
     }
 });
 
 Deno.test("a collection's pages start at the first item, and hold from 1 to 40", async () => {
     await using test = await open();
     const asked = async (query: string) =>
-        (await test.get(`/.versia/v0.6/entities/Thing/1/collections/parts?${query}`)).body.total;
+        (await test.get(`/.versia/v0.7/entities/Thing/1/collections/parts?${query}`)).body.total;
 
     assertEquals(await asked(""), 40);
     assertEquals(await asked("limit=5"), 5);

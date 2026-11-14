@@ -31,12 +31,12 @@ Deno.test("a local account is found by its address, in any case", async () => {
         type: "application/jrd+json",
         body: {
             subject: "acct:alice@social.example",
-            aliases: ["https://social.example/.versia/v0.6/entities/User/alice"],
+            aliases: ["https://social.example/.versia/v0.7/entities/User/alice"],
             links: [
                 {
                     rel: "self",
                     type: "application/vnd.versia+json",
-                    href: "https://social.example/.versia/v0.6/entities/User/alice",
+                    href: "https://social.example/.versia/v0.7/entities/User/alice",
                 },
                 {
                     rel: "http://webfinger.net/rel/avatar",

@@ -92,10 +92,10 @@ Deno.test("an instance can't answer for one user with another", async () => {
         links: [{
             rel: "self",
             type: "application/vnd.versia+json",
-            href: "https://evil.test/.versia/v0.6/entities/User/mallory",
+            href: "https://evil.test/.versia/v0.7/entities/User/mallory",
         }],
     });
-    evil.serve("/.versia/v0.6/entities/User/mallory", {
+    evil.serve("/.versia/v0.7/entities/User/mallory", {
         type: "User",
         id: "mallory",
         created_at: "2026-10-18T12:00:00Z",

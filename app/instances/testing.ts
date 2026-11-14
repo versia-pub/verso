@@ -53,7 +53,10 @@ export const keyPair = async (): Promise<KeyPair> => {
     return { privateKey: pair.privateKey, spki };
 };
 
-/** Metadata saying an instance is `domain`, with this public key, supporting `extensions`. */
+/**
+ * Metadata saying an instance is `domain`, with this public key, supporting `extensions`, which are
+ * named without versions, and so listed at version 1.
+ */
 export const metadata = (
     domain: string,
     spki: string,
@@ -64,7 +67,7 @@ export const metadata = (
     created_at: "2026-01-01T00:00:00Z",
     name: domain,
     software: { name: "Test", version: "1.0.0" },
-    compatibility: { versions: ["0.6.0"], extensions },
+    compatibility: { extensions: extensions.map((name) => `${name}@1`) },
     domain,
     public_key: { algorithm, key: spki },
 });

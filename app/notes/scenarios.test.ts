@@ -52,7 +52,7 @@ const open = async () => {
         const statuses = await users[user]("GET", "/api/v1/timelines/home");
 
         return statuses.body.find((status: { uri: string }) =>
-            status.uri === `https://a.test/.versia/v0.6/entities/Note/${id}`
+            status.uri === `https://a.test/.versia/v0.7/entities/Note/${id}`
         );
     };
 
@@ -139,7 +139,7 @@ Deno.test("a note can be fetched only by the instances it is shown on", async ()
     const direct = await test.post("Psst @erin@e.test", "direct");
     const followers = await test.post("Friends only", "private");
     const fetched = async (domain: string, id: string) => {
-        const url = new URL(`https://a.test/.versia/v0.6/entities/Note/${id}`);
+        const url = new URL(`https://a.test/.versia/v0.7/entities/Note/${id}`);
         return (await fetchSigned(test.network.instances[domain].ctx, url)).status;
     };
 

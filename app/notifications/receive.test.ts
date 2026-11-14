@@ -65,7 +65,7 @@ const open = async () => {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
-    b.serve("/.versia/v0.6/entities/User/bob", user("bob"));
+    b.serve("/.versia/v0.7/entities/User/bob", user("bob"));
 
     const alice = await createLocalAccount(a, "alice");
     const carol = await createLocalAccount(a, "carol");
@@ -79,7 +79,7 @@ const open = async () => {
     const send = async (entity: object) => {
         network.clock.advance(1000);
         assertEquals(
-            (await b.send("https://a.test/.versia/v0.6/inbox", { body: entity })).status,
+            (await b.send("https://a.test/.versia/v0.7/inbox", { body: entity })).status,
             202,
         );
         await network.drain();
@@ -148,7 +148,7 @@ Deno.test("remote statuses notify those they mention, and followers who asked", 
 Deno.test("remote statuses Verso fetched notify no one", async () => {
     await using test = await open();
     test.b.serve(
-        "/.versia/v0.6/entities/Note/n0",
+        "/.versia/v0.7/entities/Note/n0",
         note("n0", "Hi @alice", { mentions: [`a.test:${test.alice}`] }),
     );
 

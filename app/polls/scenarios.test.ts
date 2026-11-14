@@ -74,7 +74,7 @@ const open = async () => {
 Deno.test("a vote reaches the poll's instance, and the results the voter's when it ends", async () => {
     await using test = await open();
     const id = await test.ask("alice", true);
-    const uri = `https://a.test/.versia/v0.6/entities/Note/${id}`;
+    const uri = `https://a.test/.versia/v0.7/entities/Note/${id}`;
 
     await test.vote("bob", uri, [0, 2]);
 
@@ -94,7 +94,7 @@ Deno.test("a vote reaches the poll's instance, and the results the voter's when 
 Deno.test("votes in a remote poll are counted by its instance, and others' reach the voter's when it ends", async () => {
     await using test = await open();
     const id = await test.ask("bob", false);
-    const uri = `https://b.test/.versia/v0.6/entities/Note/${id}`;
+    const uri = `https://b.test/.versia/v0.7/entities/Note/${id}`;
 
     await test.vote("alice", uri, [1]);
     // Bob asked, so he can't vote, but someone else on b.test can.
@@ -121,7 +121,7 @@ Deno.test("votes in a remote poll are counted by its instance, and others' reach
 /** How many times `domain` was asked for the status `id`. */
 const fetches = (network: Awaited<ReturnType<typeof open>>["network"], id: string) =>
     network.transport.sent.filter((request) =>
-        new URL(request.url).pathname === `/.versia/v0.6/entities/Note/${id}`
+        new URL(request.url).pathname === `/.versia/v0.7/entities/Note/${id}`
     ).length;
 
 Deno.test("votes in a local poll reach its followers' instances a few minutes after the first", async () => {
@@ -129,7 +129,7 @@ Deno.test("votes in a local poll reach its followers' instances a few minutes af
     const a = test.network.instances["a.test"];
     const carol = await clientOf(a, await createLocalAccount(a.ctx, "carol"));
     const id = await test.ask("alice", false);
-    const uri = `https://a.test/.versia/v0.6/entities/Note/${id}`;
+    const uri = `https://a.test/.versia/v0.7/entities/Note/${id}`;
     const poll = (await carol("GET", `/api/v1/statuses/${id}`)).body.poll;
     const dave = await clientOf(a, await createLocalAccount(a.ctx, "dave"));
 
@@ -165,7 +165,7 @@ Deno.test("a remote poll opened by a user is fetched again once it is a minute o
     const b = test.network.instances["b.test"];
     const carol = await clientOf(b, await createLocalAccount(b.ctx, "carol"));
     const id = await test.ask("bob", false);
-    const uri = `https://b.test/.versia/v0.6/entities/Note/${id}`;
+    const uri = `https://b.test/.versia/v0.7/entities/Note/${id}`;
     const poll = (await carol("GET", `/api/v1/statuses/${id}`)).body.poll;
     assertEquals(
         (await carol("POST", `/api/v1/polls/${poll.id}/votes`, { choices: [2] })).status,

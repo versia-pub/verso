@@ -118,7 +118,7 @@ export const queueEntity = async (
 export const inboxRoute = (registry: Registry): Route =>
     defineRoute({
         method: "POST",
-        path: "/.versia/v0.6/inbox",
+        path: "/.versia/v0.7/inbox",
         summary: "Receive entities",
         tags: ["versia"],
         signed: true,

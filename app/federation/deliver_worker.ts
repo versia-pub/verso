@@ -12,7 +12,7 @@ import { type Handler, PermanentFailure, RetryAt } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
 import { versiaUrl } from "../kernel/urls.ts";
 import { DeliverJob, deliverQueue, deliveryBody } from "./deliver.ts";
-import { type FederationReply, sendSigned, Unreachable } from "./request.ts";
+import { type FederationReply, sendSigned, Unreachable, verifyReply } from "./request.ts";
 
 const logger = getLogger(["verso", "federation"]);
 
@@ -27,19 +27,6 @@ export const retryAfter = (headers: Headers, now: Date): Date | undefined => {
     return Number.isNaN(date.getTime()) ? undefined : date;
 };
 
-/**
- * When an instance's rate limit allows requests again, if it says none are left, using
- * `RateLimit-Remaining` and `RateLimit-Reset` in seconds, as Verso sends them.
- */
-export const rateLimitReset = (headers: Headers, now: Date): Date | undefined => {
-    const reset = headers.get("ratelimit-reset");
-    if (headers.get("ratelimit-remaining") !== "0" || !reset || !/^\d+$/.test(reset)) {
-        return undefined;
-    }
-
-    return new Date(now.getTime() + Number(reset) * 1000);
-};
-
 /** What a delivery stores once it dies: the instance it was for, without the entity. */
 export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload => {
     const job = DeliverJob.safeParse(payload);
@@ -47,12 +34,13 @@ export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload
 };
 
 /**
- * Runs delivery jobs: signs each entity and posts it to the instance's inbox. If the instance
- * rejects it with a 4xx other than 408 and 429, the delivery is given up on. Any other failure is
- * retried, for as long as the settings say, at the times the instance asks for, if it does. A
- * delivery to an instance blocked since is dropped. An instance that asks to wait, or has no
- * requests left, isn't sent any delivery until then, and nor is one that couldn't be reached too
- * often in a row, except for an occasional probe.
+ * Runs delivery jobs: signs each entity and posts it to the instance's inbox. A 2xx counts as
+ * delivered only if the instance signed it, and one it didn't is retried. If the instance rejects
+ * the entity with a 4xx other than 401, 408 and 429, the delivery is given up on. Any other failure
+ * is retried, for as long as the settings say, at the time the instance asks for in `Retry-After`,
+ * if it does. A delivery to an instance blocked since is dropped. An instance that asks to wait
+ * isn't sent any delivery until then, and nor is one that couldn't be reached too often in a row,
+ * except for an occasional probe.
  *
  * How the pausing works, from the start:
  * 1. An instance that fails (`Unreachable` or a 5xx or 408 reply) is counted by
@@ -60,8 +48,8 @@ export const deliverDeadPayload: DeadPayload = (payload: JobPayload): JobPayload
  *    the park lasts, `parkedUntil` tells every delivery of the instance to wait. Once it is over,
  *    one delivery gets through as a probe while the others wait a minute.
  * 2. `postponeGroup` writes the instance's pause to `job_pauses` (`job_pause_queries.ts`), keyed by
- *    this queue and the domain, which is each delivery's group. The pause comes from the park, from
- *    `Retry-After` and from a rate limit with nothing left.
+ *    this queue and the domain, which is each delivery's group. The pause comes from the park and
+ *    from `Retry-After`.
  * 3. `postponeGroup` also makes the instance's waiting deliveries due when the pause ends, and
  *    `enqueue` does the same for new ones, so claims don't read them meanwhile. `claim` skips any
  *    of the group's jobs due before then all the same, so its deliveries aren't leased at all. A
@@ -118,24 +106,27 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
     if (status >= 500 || status === 408) await unreachable();
     else if (await recordReached(ctx, domain)) await resumeGroup(ctx, deliverQueue, domain);
 
-    const quotaBack = rateLimitReset(reply.headers, now);
-    if (quotaBack && quotaBack > now) await postponeGroup(ctx, deliverQueue, domain, quotaBack);
+    const delivered = status >= 200 && status <= 299 && await verifyReply(ctx, "POST", url, reply);
+    if (delivered) return;
 
-    if (status >= 200 && status <= 299) return;
-
-    if (status === 429 || status === 503) {
-        const runAt = retryAfter(reply.headers, now);
-        if (runAt && runAt >= giveUpAt) {
-            throw new PermanentFailure(`${domain} asked to wait past ${tried}`);
-        }
-        if (runAt && runAt > now) {
-            await postponeGroup(ctx, deliverQueue, domain, runAt);
-            throw new RetryAt(runAt, `${domain} asked to wait (${status})`);
-        }
-    }
-
-    if (status >= 400 && status <= 499 && status !== 408 && status !== 429) {
+    // A 401 can be temporary, as after a key rotation, so it is retried.
+    if (status >= 400 && status <= 499 && status !== 401 && status !== 408 && status !== 429) {
         throw new PermanentFailure(`${domain} refused the delivery (${status})`);
     }
-    throw new Error(`${domain} answered ${status}`);
+
+    // Every other reply is retried, when the instance says if it does.
+    const runAt = retryAfter(reply.headers, now);
+    if (runAt && runAt >= giveUpAt) {
+        throw new PermanentFailure(`${domain} asked to wait past ${tried}`);
+    }
+    if (runAt && runAt > now) {
+        await postponeGroup(ctx, deliverQueue, domain, runAt);
+        throw new RetryAt(runAt, `${domain} asked to wait (${status})`);
+    }
+
+    throw new Error(
+        status >= 200 && status <= 299
+            ? `${domain} answered ${status} without signing it`
+            : `${domain} answered ${status}`,
+    );
 };

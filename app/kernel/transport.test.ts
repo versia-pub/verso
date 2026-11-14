@@ -48,10 +48,10 @@ const internal = [
 Deno.test("another instance is reached at its public address, and its redirects aren't followed", async () => {
     const { transport, sent } = open({ "b.example": ["93.184.216.34", "2606:2800:220:1::1"] });
 
-    const response = await transport(new Request("https://b.example/.versia/v0.6/instance"));
+    const response = await transport(new Request("https://b.example/.versia/v0.7/instance"));
 
     assertEquals(response.status, 302);
-    assertEquals(sent, [{ url: "https://b.example/.versia/v0.6/instance", redirect: "manual" }]);
+    assertEquals(sent, [{ url: "https://b.example/.versia/v0.7/instance", redirect: "manual" }]);
 });
 
 Deno.test("a name that resolves to an internal address, or not at all, isn't reached", async () => {

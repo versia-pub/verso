@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
-import { importPublicKey, sign, v0_6, verify } from "@versia/protocol";
+import { importPublicKey, v0_6, v0_7 } from "@versia/protocol";
 import { encode } from "fast-png";
+import { requestTarget } from "../federation/request.ts";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
@@ -15,10 +16,10 @@ import { createLocalAccount } from "./testing.ts";
  * signed by `to`.
  */
 const fetchSigned = async (from: Context, to: Context, path: string) => {
-    // The query isn't signed.
-    const { pathname } = new URL(path, to.urls.origin);
-    const headers = await sign(
-        { method: "GET", pathname, body: new Uint8Array() },
+    const url = new URL(path, to.urls.origin);
+    const target = requestTarget(url);
+    const headers = await v0_7.sign(
+        { method: "GET", host: to.urls.domain, target, body: new Uint8Array() },
         (await instanceKey(from)).privateKey,
         from.urls.domain,
         from.clock.now(),
@@ -31,8 +32,8 @@ const fetchSigned = async (from: Context, to: Context, path: string) => {
     );
     const body = new Uint8Array(await response.arrayBuffer());
     const theirs = await importPublicKey((await instanceKey(to)).publicKey);
-    const signature = await verify(
-        { method: "GET", pathname, body },
+    const signature = await v0_7.verify(
+        { method: "GET", host: to.urls.domain, target, body },
         response.headers,
         (signer) => Promise.resolve(signer === to.urls.domain ? theirs : undefined),
         from.clock.now(),
@@ -59,7 +60,7 @@ Deno.test("another instance fetches a local user, signed both ways", async () =>
         indexable: true,
     });
 
-    assertEquals(await fetchSigned(b, a, "/.versia/v0.6/entities/User/alice"), {
+    assertEquals(await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice"), {
         status: 200,
         type: "application/vnd.versia+json; charset=utf-8",
         signedBy: "a.test",
@@ -111,14 +112,14 @@ Deno.test("a user's own pictures are given once processed, and the default ones 
         header: { file: new Blob([png]) },
     });
 
-    const pending = await fetchSigned(b, a, "/.versia/v0.6/entities/User/alice");
+    const pending = await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice");
     assertEquals(pending.body.avatar, {
         "image/png": { content: "https://a.test/accounts/alice/avatar.png", remote: true },
     });
 
     await network.drain();
 
-    const { body } = await fetchSigned(b, a, "/.versia/v0.6/entities/User/alice");
+    const { body } = await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice");
     const [[type, avatar]] = Object.entries(v0_6.ContentFormat.parse(body.avatar));
     assertEquals([type, avatar.content], ["image/png", `https://a.test/media/${avatar.hash}`]);
     assertEquals([avatar.width, avatar.height, avatar.description], [400, 100, "Me"]);
@@ -135,7 +136,7 @@ Deno.test("a user without a name or bio leaves them out", async () => {
     const { body } = await fetchSigned(
         network.instances["b.test"].ctx,
         a,
-        "/.versia/v0.6/entities/User/bob",
+        "/.versia/v0.7/entities/User/bob",
     );
 
     assertEquals(
@@ -161,7 +162,7 @@ Deno.test("text is given in the format its owner wrote it in", async () => {
     const { body } = await fetchSigned(
         network.instances["b.test"].ctx,
         a,
-        "/.versia/v0.6/entities/User/alice",
+        "/.versia/v0.7/entities/User/alice",
     );
 
     assertEquals(body.bio, {
@@ -186,12 +187,12 @@ Deno.test("only local users are given, and only to other instances", async () =>
         .execute();
 
     const unsigned = await b.transport(
-        new Request("https://a.test/.versia/v0.6/entities/User/alice"),
+        new Request("https://a.test/.versia/v0.7/entities/User/alice"),
     );
     assertEquals(unsigned.status, 401);
     for (const id of ["remote", "missing"]) {
         assertEquals(
-            (await fetchSigned(b, a, `/.versia/v0.6/entities/User/${id}`)).status,
+            (await fetchSigned(b, a, `/.versia/v0.7/entities/User/${id}`)).status,
             404,
             id,
         );
@@ -203,7 +204,7 @@ Deno.test("a local user's collections are given, empty until there is something 
     const a = network.instances["a.test"].ctx;
     const b = network.instances["b.test"].ctx;
     await createLocalAccount(a, "alice");
-    const collection = (path: string) => fetchSigned(b, a, `/.versia/v0.6/entities/User/${path}`);
+    const collection = (path: string) => fetchSigned(b, a, `/.versia/v0.7/entities/User/${path}`);
 
     for (const name of ["outbox", "featured"]) {
         assertEquals(await collection(`alice/collections/${name}?offset=10&limit=20`), {
@@ -221,7 +222,7 @@ Deno.test("a local user's collections are given, empty until there is something 
     }
 
     const unsigned = await b.transport(
-        new Request("https://a.test/.versia/v0.6/entities/User/alice/collections/outbox"),
+        new Request("https://a.test/.versia/v0.7/entities/User/alice/collections/outbox"),
     );
     assertEquals(unsigned.status, 401);
 });

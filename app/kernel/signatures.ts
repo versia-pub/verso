@@ -3,7 +3,7 @@
  * @see https://versia.pub/signatures
  * @module
  */
-import { type SignedMessage, type Verification, verify } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import type { Context, KeyStore } from "./context.ts";
 
 /**
@@ -14,21 +14,23 @@ import type { Context, KeyStore } from "./context.ts";
 export const checkSignature = async (
     ctx: Context,
     keys: KeyStore,
-    message: SignedMessage,
+    message: v0_7.SignedMessage,
     headers: Headers,
     from?: string,
-): Promise<Verification> => {
+): Promise<v0_7.Verification> => {
     const now = ctx.clock.now();
     const allowed = (domain: string) => from === undefined || domain === from;
 
     let known = false;
-    const first = await verify(message, headers, async (domain) => {
+    const first = await v0_7.verify(message, headers, async (domain) => {
         const key = allowed(domain) ? await keys.get(ctx, domain) : undefined;
         known = key !== undefined;
         return key;
     }, now);
 
-    if (first.ok || first.reason === "expired" || !known) return first;
+    // `known` is only set once the headers and timestamp are valid, so a stale signature never
+    // refetches a key.
+    if (first.ok || !known) return first;
 
-    return await verify(message, headers, (domain) => keys.refresh(ctx, domain), now);
+    return await v0_7.verify(message, headers, (domain) => keys.refresh(ctx, domain), now);
 };

@@ -257,8 +257,8 @@ export const openApiDocument = (
     const paths: Record<string, Record<string, Operation>> = {};
 
     for (const route of routes) {
-        // Hono's `:id` is OpenAPI's `{id}`.
-        const path = route.path.replaceAll(/:(\w+)/g, "{$1}");
+        // Hono's `:id` is OpenAPI's `{id}`. A `:` inside a segment, like `pub.versia:likes`, isn't.
+        const path = route.path.replaceAll(/\/:(\w+)/g, "/{$1}");
         (paths[path] ??= {})[route.method.toLowerCase()] = operation(route, names);
     }
 

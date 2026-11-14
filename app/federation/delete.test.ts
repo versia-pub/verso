@@ -3,7 +3,7 @@ import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
 import { deleteEntity, userEntity } from "./testing.ts";
 
-const inbox = "https://a.test/.versia/v0.6/inbox";
+const inbox = "https://a.test/.versia/v0.7/inbox";
 
 const user = (id: string) =>
     userEntity(id, {
@@ -25,7 +25,7 @@ const open = async () => {
             "bob",
         ]] as const
     ) {
-        instance.serve(`/.versia/v0.6/entities/User/${id}`, user(id));
+        instance.serve(`/.versia/v0.7/entities/User/${id}`, user(id));
         await a.federation.resolve(a, { host, id }, "User");
     }
 

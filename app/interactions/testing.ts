@@ -57,7 +57,7 @@ export const openFederation = async (users: readonly string[]): Promise<Federati
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
-    for (const id of users) b.serve(`/.versia/v0.6/entities/User/${id}`, user(id));
+    for (const id of users) b.serve(`/.versia/v0.7/entities/User/${id}`, user(id));
 
     const alice = await createLocalAccount(a, "alice");
     const local = await createNote(a, alice);
@@ -66,7 +66,7 @@ export const openFederation = async (users: readonly string[]): Promise<Federati
     const send = async (entity: object) => {
         network.clock.advance(1000);
         assertEquals(
-            (await b.send("https://a.test/.versia/v0.6/inbox", { body: entity })).status,
+            (await b.send("https://a.test/.versia/v0.7/inbox", { body: entity })).status,
             202,
         );
         await network.drain();

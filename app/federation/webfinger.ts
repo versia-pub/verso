@@ -15,8 +15,8 @@ const Jrd = z.object({
         .default([]),
 });
 
-/** Where a Versia 0.6 User is fetched from, so the link gives its id. */
-const userPath = /^\/\.versia\/v0\.6\/entities\/User\/([A-Za-z0-9_-]+)$/;
+/** Where a Versia 0.7 User is fetched from, so the link gives its id. */
+const userPath = /^\/\.versia\/v0\.7\/entities\/User\/([A-Za-z0-9_-]+)$/;
 
 /** The user that a WebFinger link points at, if it is a Versia User on `domain`. */
 const userOf = (domain: string, href: string): Reference | undefined => {

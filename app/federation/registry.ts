@@ -15,9 +15,9 @@ import { bySuspendedUser } from "./authors.ts";
 /**
  * Which page of a collection to return: from `offset`, at most `limit` items. Limits from 1 to 40
  * must work, so other values are clamped to that range, and a missing one defaults to the maximum.
- * @see https://versia.pub/api/endpoints
+ * @see https://versia.pub/federation/endpoints
  */
-const CollectionPage = z.object({
+export const CollectionPage = z.object({
     offset: z.coerce.number().int().min(0).default(0),
     limit: z.coerce.number().int().optional()
         .transform((limit) => Math.max(1, Math.min(limit ?? 40, 40))),
@@ -145,9 +145,9 @@ export const createRegistry = (
  */
 const routesOf = (type: EntityType): Route[] => {
     const { find, collections } = type;
-    // Encoded, as remote instances request it, so an extension's type is one path segment and its
-    // `:` isn't mistaken for a parameter. Collection names are encoded too, and arrive decoded.
-    const path = `/.versia/v0.6/entities/${encodeURIComponent(type.type)}/:id`;
+    // Type and collection names are in the path as they are, like `pub.versia:likes/Like`. A `:`
+    // that isn't at the start of a segment is not a parameter in Hono.
+    const path = `/.versia/v0.7/entities/${type.type}/:id`;
     const routes: Route[] = [];
 
     if (find) {
@@ -171,22 +171,21 @@ const routesOf = (type: EntityType): Route[] => {
         }));
     }
 
-    if (collections) {
+    // A route for each collection, since a name like `pub.versia:likes/Likes` has a `/`, so it
+    // can't be one parameter.
+    for (const [name, provider] of Object.entries(collections ?? {})) {
         routes.push(defineRoute({
             method: "GET",
-            path: `${path}/collections/:name`,
-            summary: `Get a collection of a ${type.type}`,
+            path: `${path}/collections/${name}`,
+            summary: `Get the ${name} collection of a ${type.type}`,
             tags: ["versia"],
             signed: true,
             contentType: versiaJson,
-            params: z.object({ id: v0_6.Id, name: z.string() }),
+            params: z.object({ id: v0_6.Id }),
             query: CollectionPage,
             responses: { 200: z.union([v0_6.Collection, v0_6.URICollection]) },
             handler: async (ctx, { params, query, signedBy }) => {
-                const provider = Object.hasOwn(collections, params.name)
-                    ? collections[params.name]
-                    : undefined;
-                const page = await provider?.(ctx, params.id, query, signedBy);
+                const page = await provider(ctx, params.id, query, signedBy);
                 if (page === undefined || await bySuspendedUser(ctx, page, ctx.urls.domain)) {
                     throw new NotFound();
                 }

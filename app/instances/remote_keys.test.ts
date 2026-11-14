@@ -53,7 +53,7 @@ Deno.test("a key is fetched from the instance's metadata once, then stored", asy
             request.headers.get("user-agent"),
         ]),
         [[
-            "https://b.example/.versia/v0.6/instance",
+            "https://b.example/.versia/v0.7/instance",
             "application/vnd.versia+json; charset=utf-8",
             `Verso/${denoConfig.version} (+https://social.example)`,
         ]],
@@ -81,12 +81,12 @@ Deno.test("a lookup that finds nothing stored uses a key fetched since", async (
     assertEquals(test.transport.sent.length, 1);
 });
 
-Deno.test("metadata may write the instance's domain in any case", async () => {
+Deno.test("metadata must write the instance's domain in lowercase, as Versia 0.7 says", async () => {
     await using test = await open();
     const pair = await keyPair();
     test.transport.servers.set("b.example", metadataServer("B.Example", pair));
 
-    assert(await isKeyOf(await remoteKeys().get(test.ctx, "b.example"), pair));
+    assertEquals(await remoteKeys().get(test.ctx, "b.example"), undefined);
 });
 
 Deno.test("a key isn't taken from metadata that is wrong, or from an unreachable instance", async () => {
@@ -139,6 +139,30 @@ Deno.test("a key is fetched again to refresh it only once it is old enough", asy
     assertEquals((await test.row("b.example"))?.public_key, after.spki);
     assertEquals(await test.takesMessages("b.example"), true);
     assertEquals(test.transport.sent.length, 2);
+});
+
+Deno.test("an instance takes messages only if it lists the messaging extension at version 1", async () => {
+    for (
+        const [extension, takes] of [
+            ["pub.versia:instance_messaging@1", true],
+            ["pub.versia:instance_messaging@2", false],
+            ["pub.versia:instance_messaging@10", false],
+        ] as const
+    ) {
+        await using test = await open();
+        const pair = await keyPair();
+        test.transport.servers.set(
+            "b.example",
+            () =>
+                Response.json({
+                    ...metadata("b.example", pair.spki),
+                    compatibility: { extensions: [extension] },
+                }),
+        );
+        await remoteKeys().get(test.ctx, "b.example");
+
+        assertEquals(await test.takesMessages("b.example"), takes, extension);
+    }
 });
 
 Deno.test("an instance whose key couldn't be had isn't asked again for a while", async () => {

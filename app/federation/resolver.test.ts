@@ -32,7 +32,7 @@ const open = async (options: ResolverOptions = {}) => {
     const fetched = (host: string) =>
         network.transport.sent.filter((request) => {
             const url = new URL(request.url);
-            return url.host === host && url.pathname.startsWith("/.versia/v0.6/entities/");
+            return url.host === host && url.pathname.startsWith("/.versia/v0.7/entities/");
         }).length;
 
     const user = (host: string, id: string, budget?: Budget) =>
@@ -156,7 +156,7 @@ Deno.test("an instance can't answer with another entity, or unsigned", async () 
     const { network, a, user } = await open();
     await using _ = network;
     const evil = await addEvilInstance(network, "evil.test");
-    const path = (id: string) => `/.versia/v0.6/entities/User/${id}`;
+    const path = (id: string) => `/.versia/v0.7/entities/User/${id}`;
 
     evil.serve(path("alice"), userEntity("mallory"));
     evil.serve(path("note"), { ...userEntity("note"), type: "Note" });
@@ -182,7 +182,7 @@ Deno.test("an instance can't answer with an entity of another type with the same
     };
     const resolve = createResolver(createRegistry([userType, thing]));
 
-    evil.serve("/.versia/v0.6/entities/User/alice", { type: "Thing", id: "alice" });
+    evil.serve("/.versia/v0.7/entities/User/alice", { type: "Thing", id: "alice" });
 
     await assertRejects(
         () => resolve(a, { host: "evil.test", id: "alice" }, "User"),
@@ -204,7 +204,7 @@ Deno.test("an instance can't send an entity only another instance may", async ()
     };
     const resolve = createResolver(createRegistry([elsewhere]));
 
-    evil.serve("/.versia/v0.6/entities/Elsewhere/1", { type: "Elsewhere", id: "1" });
+    evil.serve("/.versia/v0.7/entities/Elsewhere/1", { type: "Elsewhere", id: "1" });
 
     await assertRejects(
         () => resolve(a, { host: "evil.test", id: "1" }, "Elsewhere"),
@@ -233,7 +233,7 @@ Deno.test("a fetched entity is prepared before its transaction, from the same bu
     };
     const resolve = createResolver(createRegistry([thing]));
 
-    evil.serve("/.versia/v0.6/entities/Thing/1", { type: "Thing", id: "1" });
+    evil.serve("/.versia/v0.7/entities/Thing/1", { type: "Thing", id: "1" });
 
     assertEquals(await resolve(a, { host: "evil.test", id: "1" }, "Thing", fetchBudget(5)), "1");
     assertEquals(prepared, [[false, true, 0, 4]]);
@@ -262,9 +262,9 @@ Deno.test("entities that refer to each other are fetched once each, without wait
     // Read only once the type is created, when the first entity is prepared.
     const resolve: Resolver = createResolver(createRegistry([linked]));
 
-    evil.serve("/.versia/v0.6/entities/Linked/1", { type: "Linked", id: "1", next: "2" });
-    evil.serve("/.versia/v0.6/entities/Linked/2", { type: "Linked", id: "2", next: "1" });
-    evil.serve("/.versia/v0.6/entities/Linked/3", { type: "Linked", id: "3", next: "3" });
+    evil.serve("/.versia/v0.7/entities/Linked/1", { type: "Linked", id: "1", next: "2" });
+    evil.serve("/.versia/v0.7/entities/Linked/2", { type: "Linked", id: "2", next: "1" });
+    evil.serve("/.versia/v0.7/entities/Linked/3", { type: "Linked", id: "3", next: "3" });
 
     assertEquals(await resolve(a, { host: "evil.test", id: "1" }, "Linked"), "1");
     assertEquals(await resolve(a, { host: "evil.test", id: "3" }, "Linked"), "3");

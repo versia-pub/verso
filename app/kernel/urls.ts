@@ -44,18 +44,17 @@ export const urlBuilder = (domain: string, origin = `https://${domain}`): UrlBui
 };
 
 /**
- * A URL on a remote Versia instance, at `domain`: `path` under its `/.versia/v0.6`, such as
+ * A URL on a remote Versia instance, at `domain`: `path` under its `/.versia/v0.7`, such as
  * `/inbox`. The path is Verso's own, so it is used as it is.
- * @see https://versia.pub/api/endpoints
+ * @see https://versia.pub/federation/endpoints
  */
 export const versiaUrl = (domain: string, path: string): URL =>
-    new URL(`/.versia/v0.6${path}`, `https://${domain}`);
+    new URL(`/.versia/v0.7${path}`, `https://${domain}`);
 
 /**
- * Where an entity of `type` on a remote Versia instance, at `domain`, is fetched. Its type and id
- * are encoded, so each stays one segment, even an extension's type, such as
- * `pub.versia:likes/Like`.
- * @see https://versia.pub/api/endpoints
+ * Where an entity of `type` on a remote Versia instance, at `domain`, is fetched. Its type is in
+ * the path as it is, like `pub.versia:likes/Like`, and its id is encoded, so it stays one segment.
+ * @see https://versia.pub/federation/http#encoding
  */
 export const entityUrl = (domain: string, type: string, id: string): URL =>
-    versiaUrl(domain, `/entities/${encodeURIComponent(type)}/${encodeURIComponent(id)}`);
+    versiaUrl(domain, `/entities/${type}/${encodeURIComponent(id)}`);

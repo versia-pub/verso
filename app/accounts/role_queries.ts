@@ -1,4 +1,5 @@
 import type { Selectable } from "kysely";
+import { countAll, readCount } from "../db/count.ts";
 import type { Context } from "../kernel/context.ts";
 import type { Permission } from "../kernel/permissions.ts";
 import type { RolesTable } from "./tables.ts";
@@ -207,4 +208,42 @@ export const setClaimedRoles = async (
         })))
         .onConflict((conflict) => conflict.doNothing())
         .execute();
+};
+
+/**
+ * The ids of the active local accounts with a role that has `permission`, whoever granted it, each
+ * once, oldest first. `offset` and `limit` pick a page of them, and `total` counts all of them.
+ * Suspended and deleted accounts aren't included.
+ */
+export const staffWith = async (
+    ctx: Context,
+    permission: Permission,
+    page: { readonly offset: number; readonly limit: number },
+): Promise<{ readonly total: number; readonly ids: string[] }> => {
+    // Permissions are JSON, which SQLite, Postgres and PGlite read differently, so pick the roles
+    // here. There are few.
+    const roleIds = (await listRoles(ctx))
+        .filter((role) => role.permissions.includes(permission))
+        .map((role) => role.id);
+    if (roleIds.length === 0) return { total: 0, ids: [] };
+
+    const staff = ctx.db.selectFrom("accounts")
+        .where("accounts.instance_id", "is", null)
+        .where("accounts.suspended_at", "is", null)
+        .where("accounts.deleted_at", "is", null)
+        .where(
+            "accounts.id",
+            "in",
+            ctx.db.selectFrom("account_roles").select("account_id").where("role_id", "in", roleIds),
+        );
+
+    const total = await staff.select(countAll).executeTakeFirstOrThrow();
+    const rows = await staff.select("accounts.id")
+        .orderBy("accounts.created_at")
+        .orderBy("accounts.id")
+        .offset(page.offset)
+        .limit(page.limit)
+        .execute();
+
+    return { total: readCount(total), ids: rows.map((row) => row.id) };
 };

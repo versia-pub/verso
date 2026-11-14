@@ -41,7 +41,7 @@ Deno.test("a user's OpenID claims name their account, for a GET or a POST", asyn
     await using test = await open();
     const claims = {
         iss: "https://social.example",
-        sub: "https://social.example/.versia/v0.6/entities/User/alice",
+        sub: "https://social.example/.versia/v0.7/entities/User/alice",
         name: "Alice",
         preferred_username: "alice",
         profile: "https://social.example/@alice",

@@ -42,7 +42,7 @@ const open = async () => {
 
     /** The status `user` has on their own home timeline for alice's status `id`, if any. */
     const seen = async (user: string, id: string) => {
-        const uri = `https://a.test/.versia/v0.6/entities/Note/${id}`;
+        const uri = `https://a.test/.versia/v0.7/entities/Note/${id}`;
         const statuses = await users[user]("GET", "/api/v1/timelines/home");
         return statuses.body.find((status: { uri: string; reblog: { uri: string } | null }) =>
             status.uri === uri || status.reblog?.uri === uri
@@ -183,7 +183,7 @@ Deno.test("a pinned note is in its author's featured notes for other instances",
 
     const alice = await test.users.alice("GET", "/api/v1/accounts/verify_credentials");
     const featured = await fetched(
-        `https://a.test/.versia/v0.6/entities/User/${alice.body.id}/collections/featured`,
+        `https://a.test/.versia/v0.7/entities/User/${alice.body.id}/collections/featured`,
     );
     assertEquals(featured.total, 2);
     assertEquals(

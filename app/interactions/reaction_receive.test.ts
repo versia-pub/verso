@@ -75,9 +75,9 @@ Deno.test("a reaction to a local note is kept, once, and a Delete undoes it", as
 
     // A different remote instance can't undo it, though its own reaction has that id.
     const c = await addEvilInstance(test.network, "c.test");
-    c.serve("/.versia/v0.6/entities/User/bob", user("bob"));
+    c.serve("/.versia/v0.7/entities/User/bob", user("bob"));
     assertEquals(
-        (await c.send("https://a.test/.versia/v0.6/inbox", {
+        (await c.send("https://a.test/.versia/v0.7/inbox", {
             body: undo("pub.versia:reactions/Reaction", "r1"),
         })).status,
         202,

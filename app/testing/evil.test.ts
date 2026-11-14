@@ -4,7 +4,7 @@ import { BadReply, fetchSigned } from "../federation/request.ts";
 import { addEvilInstance } from "./evil.ts";
 import { createNetwork } from "./network.ts";
 
-const bobUrl = "https://a.test/.versia/v0.6/entities/User/bob";
+const bobUrl = "https://a.test/.versia/v0.7/entities/User/bob";
 
 Deno.test("an evil instance's requests are signed with a key the others can fetch", async () => {
     await using network = await createNetwork(["a.test"]);
@@ -16,7 +16,7 @@ Deno.test("an evil instance's requests are signed with a key the others can fetc
     assertEquals(
         (await evil.send(bobUrl, { signedAt: new Date(network.clock.now().getTime() - 3_600_000) }))
             .status,
-        422,
+        401,
     );
 });
 

@@ -4,10 +4,20 @@
  * @module
  */
 import type { Context as HonoContext } from "@hono/hono";
-import { sign } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import type { Context, KeyStore } from "../kernel/context.ts";
 import { checkSignature } from "../kernel/signatures.ts";
-import { BadSignature, Defederated, StaleSignature } from "./errors.ts";
+import { BadSignature, Defederated } from "./errors.ts";
+
+/**
+ * The request target of a request URL, as sent: everything from the first `/` after `://`. It is
+ * sliced as text, since parsing the URL again can change how it is encoded, and the signature
+ * covers the exact bytes.
+ */
+export const requestTargetOf = (url: string): string => {
+    const start = url.indexOf("://") + 3;
+    return url.slice(url.indexOf("/", start));
+};
 
 /** A request with a valid signature: who signed it, the body they signed, and the signature. */
 export type SignedRequest = {
@@ -29,9 +39,11 @@ export const verifyRequest = async (
     c: HonoContext,
     beforeFetch?: () => Promise<void>,
 ): Promise<SignedRequest> => {
+    // The host is this instance's own domain, never the `Host` header, which a sender can choose.
     const message = {
         method: c.req.method,
-        pathname: new URL(c.req.url).pathname,
+        host: ctx.urls.domain,
+        target: requestTargetOf(c.req.url),
         body: new Uint8Array(await c.req.arrayBuffer()),
     };
 
@@ -52,11 +64,11 @@ export const verifyRequest = async (
     }
     if (blocked) throw new Defederated();
 
-    throw verification.reason === "expired" ? new StaleSignature() : new BadSignature();
+    throw new BadSignature();
 };
 
 /**
- * Signs a response as this instance, over the request's method and path and the response's exact
+ * Signs a response as this instance, over the request's method and target and the response's exact
  * bytes, so the instance that sent the request can tell it came from here unchanged.
  * @see https://versia.pub/signatures
  */
@@ -65,10 +77,11 @@ export const signReply = async (
     c: HonoContext,
     response: Response,
 ): Promise<Response> => {
-    const headers = await sign(
+    const headers = await v0_7.sign(
         {
             method: c.req.method,
-            pathname: new URL(c.req.url).pathname,
+            host: ctx.urls.domain,
+            target: requestTargetOf(c.req.url),
             body: new Uint8Array(await response.clone().arrayBuffer()),
         },
         (await ctx.federation.instanceKey(ctx)).privateKey,

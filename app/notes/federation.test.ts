@@ -610,7 +610,7 @@ Deno.test("a note's collections are served to other instances", async () => {
     const a = network.instances["a.test"].ctx;
     await createLocalAccount(a, "alice");
     const note = await createNote(a, "alice");
-    const url = new URL(`https://a.test/.versia/v0.6/entities/Note/${note.id}/collections/quotes`);
+    const url = new URL(`https://a.test/.versia/v0.7/entities/Note/${note.id}/collections/quotes`);
 
     const reply = await fetchSigned(network.instances["b.test"].ctx, url);
     assertEquals([reply.status, JSON.parse(new TextDecoder().decode(reply.body))], [

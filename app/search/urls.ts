@@ -15,7 +15,7 @@ import { visibleNote } from "../notes/visibility.ts";
 /** Whether `query` is a URL, which a search that resolves finds alone. */
 export const isUrlQuery = (query: string): boolean => /^https?:\/\//.test(query);
 
-const entityPath = /^\/\.versia\/v0\.6\/entities\/(User|Note)\/([A-Za-z0-9_-]+)$/;
+const entityPath = /^\/\.versia\/v0\.7\/entities\/(User|Note)\/([A-Za-z0-9_-]+)$/;
 
 /** The User or Note at the entity URL `text`, if it is one. */
 const entityAt = (text: string) => {

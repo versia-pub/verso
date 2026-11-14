@@ -125,7 +125,7 @@ const openNetwork = async () => {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
-    b.serve("/.versia/v0.6/entities/User/bob", {
+    b.serve("/.versia/v0.7/entities/User/bob", {
         type: "User",
         id: "bob",
         created_at: "2026-01-01T00:00:00Z",
@@ -146,7 +146,7 @@ const openNetwork = async () => {
     const send = async (entity: Record<string, string>, from = b) => {
         network.clock.advance(1000);
         const body = { created_at: network.clock.now().toISOString(), ...entity };
-        assertEquals((await from.send("https://a.test/.versia/v0.6/inbox", { body })).status, 202);
+        assertEquals((await from.send("https://a.test/.versia/v0.7/inbox", { body })).status, 202);
         await network.drain();
     };
 
@@ -174,7 +174,7 @@ Deno.test("a follow of another instance's user is sent there, and waits for them
     assertEquals(await follow(a, alice, bob), "requested");
     await test.network.drain();
     const [request] = test.network.transport.sent.filter((sent) => sent.method === "POST");
-    assertEquals(request?.url, "https://b.test/.versia/v0.6/inbox");
+    assertEquals(request?.url, "https://b.test/.versia/v0.7/inbox");
     assertEquals(await request?.json(), {
         type: "Follow",
         created_at: test.network.clock.now().toISOString(),

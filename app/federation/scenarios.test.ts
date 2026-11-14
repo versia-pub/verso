@@ -41,7 +41,7 @@ const sentTo = (network: Network, host: string, path?: string) =>
         return url.host === host && (path === undefined || url.pathname === path);
     }).length;
 
-const inbox = "/.versia/v0.6/inbox";
+const inbox = "/.versia/v0.7/inbox";
 
 Deno.test("a user found by address is followed, and their followers see profile changes", async () => {
     await using network = await createNetwork(["a.test", "b.test"]);
