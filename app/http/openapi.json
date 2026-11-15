@@ -19257,9 +19257,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/User/{id}/collections/followers": {
+        "/.versia/v0.7/entities/User/{id}/collections/subscribers": {
             "get": {
-                "summary": "Get the followers collection of a User",
+                "summary": "Get the subscribers collection of a User",
                 "tags": [
                     "versia"
                 ],
@@ -19408,9 +19408,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/User/{id}/collections/following": {
+        "/.versia/v0.7/entities/User/{id}/collections/subscriptions": {
             "get": {
-                "summary": "Get the following collection of a User",
+                "summary": "Get the subscriptions collection of a User",
                 "tags": [
                     "versia"
                 ],

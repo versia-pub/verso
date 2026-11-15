@@ -71,7 +71,7 @@ Deno.test("a suspended local user isn't served, nor followed, and only their del
     for (
         const path of [
             "/entities/User/alice",
-            "/entities/User/alice/collections/followers",
+            "/entities/User/alice/collections/subscribers",
             `/entities/pub.versia:social/Note/${note?.id}`,
             `/entities/pub.versia:social/Note/${note?.id}/collections/replies`,
         ]

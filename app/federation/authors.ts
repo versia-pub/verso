@@ -9,12 +9,17 @@ import type { Context } from "../kernel/context.ts";
 
 /**
  * The reference to the user an entity, or a page of a collection, is by: a User's own id, or its
- * `author`. `undefined` if it names none.
+ * `author`. A subscription entity has none, so it is by its `subscriber`, or by its `target` if
+ * that answers. `undefined` if it names none.
  */
 export const authorOf = (entity: unknown): string | undefined => {
     if (typeof entity !== "object" || entity === null) return undefined;
-    const { type, id, author } = entity as Record<string, unknown>;
-    const reference = type === "User" ? id : author;
+    const { type, id, author, subscriber, target } = entity as Record<string, unknown>;
+
+    let reference = author;
+    if (type === "User") reference = id;
+    else if (type === "Subscribe" || type === "Unsubscribe") reference = subscriber;
+    else if (type === "SubscribeAccept" || type === "SubscribeReject") reference = target;
 
     return typeof reference === "string" ? reference : undefined;
 };

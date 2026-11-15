@@ -5,6 +5,7 @@ import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts"
 import { queuedDeliveries } from "../federation/testing.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
+import { suspend } from "../moderation/suspensions.ts";
 import { registry } from "../registry.ts";
 import { createTestContext } from "../testing/context.ts";
 import { addEvilInstance } from "../testing/evil.ts";
@@ -33,7 +34,7 @@ Deno.test("a user's followers are references, oldest first, a page at a time", a
     await using test = await open();
     const domain = test.ctx.urls.domain;
     const followers = (offset: number, limit: number) =>
-        followCollections.followers(test.ctx, "alice", { offset, limit }, "b.example");
+        followCollections.subscribers(test.ctx, "alice", { offset, limit }, "b.example");
 
     assertEquals(await followers(0, 40), {
         author: "alice",
@@ -45,11 +46,21 @@ Deno.test("a user's followers are references, oldest first, a page at a time", a
 
     // Alice only requested to follow carol.
     assertEquals(
-        await followCollections.following(test.ctx, "alice", { offset: 0, limit: 40 }, "b.example"),
+        await followCollections.subscriptions(
+            test.ctx,
+            "alice",
+            { offset: 0, limit: 40 },
+            "b.example",
+        ),
         { author: "alice", total: 0, items: [] },
     );
     assertEquals(
-        await followCollections.following(test.ctx, "bob", { offset: 0, limit: 40 }, "b.example"),
+        await followCollections.subscriptions(
+            test.ctx,
+            "bob",
+            { offset: 0, limit: 40 },
+            "b.example",
+        ),
         { author: "bob", total: 1, items: [`${domain}:alice`] },
     );
 });
@@ -60,7 +71,12 @@ Deno.test("a user who hides their follows shows only how many there are", async 
         .where("id", "=", "alice").execute();
 
     assertEquals(
-        await followCollections.followers(test.ctx, "alice", { offset: 0, limit: 40 }, "b.example"),
+        await followCollections.subscribers(
+            test.ctx,
+            "alice",
+            { offset: 0, limit: 40 },
+            "b.example",
+        ),
         { author: "alice", total: 3, items: [] },
     );
 });
@@ -70,24 +86,24 @@ Deno.test("only local users' follows are given, as Users' collections", async ()
     const page = { offset: 0, limit: 40 };
 
     assertEquals(
-        await followCollections.followers(test.ctx, "carol", page, "b.example"),
+        await followCollections.subscribers(test.ctx, "carol", page, "b.example"),
         undefined,
     );
     assertEquals(
-        await followCollections.following(test.ctx, "nobody", page, "b.example"),
+        await followCollections.subscriptions(test.ctx, "nobody", page, "b.example"),
         undefined,
     );
 
     const collections = registry.types.get("User")?.collections;
-    assertEquals(collections?.followers, followCollections.followers);
-    assertEquals(collections?.following, followCollections.following);
+    assertEquals(collections?.subscribers, followCollections.subscribers);
+    assertEquals(collections?.subscriptions, followCollections.subscriptions);
     assertEquals(Object.keys(collections ?? {}).toSorted(), [
-        "followers",
-        "following",
         "pub.versia:likes/Dislikes",
         "pub.versia:likes/Likes",
         "pub.versia:social/Featured",
         "pub.versia:social/Notes",
+        "subscribers",
+        "subscriptions",
     ]);
 });
 
@@ -99,13 +115,14 @@ const queued = async (ctx: Context) =>
 Deno.test("only what local users do to follows with other instances' users is sent", async () => {
     await using test = await open();
     const at = (msAgo: number) => new Date(test.clock.now().getTime() - msAgo).toISOString();
-    const request = { author: "alice", followee: "b.example:carol" };
-    const answer = { author: "alice", follower: "b.example:carol" };
+    const alice = `${test.ctx.urls.domain}:alice`;
+    const request = { subscriber: alice, target: "b.example:carol", target_type: "User" };
+    const answer = { subscriber: "b.example:carol", target: alice, target_type: "User" };
 
     // Of the follows created, alice accepted carol's, and requested to follow carol.
     assertEquals(await queued(test.ctx), [
-        ["b.example", { type: "FollowAccept", created_at: at(1), ...answer }],
-        ["b.example", { type: "Follow", created_at: at(0), ...request }],
+        ["b.example", { type: "SubscribeAccept", created_at: at(1), ...answer }],
+        ["b.example", { type: "Subscribe", created_at: at(0), ...request }],
     ]);
 
     await unfollow(test.ctx, "bob", "alice");
@@ -115,9 +132,9 @@ Deno.test("only what local users do to follows with other instances' users is se
     await rejectFollow(test.ctx, "carol", "alice");
     await rejectFollow(test.ctx, "dave", "alice");
     assertEquals((await queued(test.ctx)).slice(2), [
-        ["b.example", { type: "Unfollow", created_at: at(0), ...request }],
-        ["b.example", { type: "FollowAccept", created_at: at(0), ...answer }],
-        ["b.example", { type: "FollowReject", created_at: at(0), ...answer }],
+        ["b.example", { type: "Unsubscribe", created_at: at(0), ...request }],
+        ["b.example", { type: "SubscribeAccept", created_at: at(0), ...answer }],
+        ["b.example", { type: "SubscribeReject", created_at: at(0), ...answer }],
     ]);
 });
 
@@ -150,6 +167,16 @@ const openNetwork = async () => {
         await network.drain();
     };
 
+    /** The types of what a.test sent to b.test, in order. */
+    const sentToB = async () => {
+        await network.drain();
+        const sent = network.transport.sent.filter((request) =>
+            request.method === "POST" && new URL(request.url).host === "b.test"
+        );
+
+        return await Promise.all(sent.map(async (request) => (await request.clone().json()).type));
+    };
+
     /** Whether alice follows bob, or has requested to, if either. */
     const state = async () => {
         const [row] = await followsFrom(a, alice, [bob]);
@@ -161,11 +188,21 @@ const openNetwork = async () => {
         a,
         alice,
         bob,
+        b,
         send,
+        sentToB,
         state,
         [Symbol.asyncDispose]: network[Symbol.asyncDispose],
     };
 };
+
+/** A Subscribe, or other subscription entity, from `subscriber` to `target`, which are Users. */
+const subscription = (type: string, subscriber: string, target: string) => ({
+    type,
+    subscriber,
+    target,
+    target_type: "User",
+});
 
 Deno.test("a follow of another instance's user is sent there, and waits for them", async () => {
     await using test = await openNetwork();
@@ -176,13 +213,14 @@ Deno.test("a follow of another instance's user is sent there, and waits for them
     const [request] = test.network.transport.sent.filter((sent) => sent.method === "POST");
     assertEquals(request?.url, "https://b.test/.versia/v0.7/inbox");
     assertEquals(await request?.json(), {
-        type: "Follow",
+        type: "Subscribe",
         created_at: test.network.clock.now().toISOString(),
-        author: alice,
-        followee: "b.test:bob",
+        subscriber: `a.test:${alice}`,
+        target: "b.test:bob",
+        target_type: "User",
     });
 
-    await test.send({ type: "FollowAccept", author: "bob", follower: `a.test:${alice}` });
+    await test.send(subscription("SubscribeAccept", `a.test:${alice}`, "b.test:bob"));
     assertEquals(await test.state(), "following");
     const counted = await a.db.selectFrom("accounts").select(["following_count", "followers_count"])
         .where("id", "in", [alice, bob]).orderBy("id").execute();
@@ -192,7 +230,7 @@ Deno.test("a follow of another instance's user is sent there, and waits for them
     ]);
 
     // Accepting again changes nothing.
-    await test.send({ type: "FollowAccept", author: "b.test:bob", follower: `a.test:${alice}` });
+    await test.send(subscription("SubscribeAccept", `a.test:${alice}`, "b.test:bob"));
     assertEquals(await test.state(), "following");
 });
 
@@ -200,15 +238,20 @@ Deno.test("another instance's user rejects a request, or removes a follower", as
     await using test = await openNetwork();
     const { a, alice, bob } = test;
     const answer = (type: string) =>
-        test.send({ type, author: "bob", follower: `a.test:${alice}` });
+        test.send({
+            type,
+            subscriber: `a.test:${alice}`,
+            target: "b.test:bob",
+            target_type: "User",
+        });
 
     await follow(a, alice, bob);
-    await answer("FollowReject");
+    await answer("SubscribeReject");
     assertEquals(await test.state(), undefined);
 
     await follow(a, alice, bob);
-    await answer("FollowAccept");
-    await answer("FollowReject");
+    await answer("SubscribeAccept");
+    await answer("SubscribeReject");
     assertEquals(await test.state(), undefined);
     const alices = await a.db.selectFrom("accounts").select("following_count")
         .where("id", "=", alice).executeTakeFirstOrThrow();
@@ -219,10 +262,13 @@ Deno.test("another instance's user rejects a request, or removes a follower", as
     const sent = test.network.transport.sent.filter((request) =>
         request.method === "POST" && new URL(request.url).host === "b.test"
     );
-    assertEquals(await Promise.all(sent.map(async (request) => (await request.json()).type)), [
-        "Follow",
-        "Follow",
-    ]);
+    assertEquals(
+        await Promise.all(sent.map(async (request) => (await request.clone().json()).type)),
+        [
+            "Subscribe",
+            "Subscribe",
+        ],
+    );
 });
 
 Deno.test("only the followee's instance answers for them, and only about local users", async () => {
@@ -231,10 +277,13 @@ Deno.test("only the followee's instance answers for them, and only about local u
     const c = await addEvilInstance(test.network, "c.test");
     await follow(a, alice, bob);
 
-    await test.send({ type: "FollowAccept", author: "b.test:bob", follower: `a.test:${alice}` }, c);
-    await test.send({ type: "FollowAccept", author: "bob", follower: alice });
-    await test.send({ type: "FollowAccept", author: "bob", follower: "a.test:nobody" });
-    await test.send({ type: "FollowAccept", author: "nobody", follower: `a.test:${alice}` });
+    const accept = (subscriber: string, target: string, from = test.b) =>
+        test.send(subscription("SubscribeAccept", subscriber, target), from);
+
+    await accept(`a.test:${alice}`, "b.test:bob", c);
+    await accept(`b.test:${alice}`, "b.test:bob");
+    await accept("a.test:nobody", "b.test:bob");
+    await accept(`a.test:${alice}`, "b.test:nobody");
     assertEquals(await test.state(), "requested");
 
     const errors = await a.db.selectFrom("jobs").select("last_error")
@@ -243,7 +292,7 @@ Deno.test("only the followee's instance answers for them, and only about local u
     assertEquals(errors.length, 2);
     assertStringIncludes(
         errors[0].last_error ?? "",
-        "c.test may not send this FollowAccept, which only b.test may",
+        "c.test may not send this SubscribeAccept, which only b.test may",
     );
     assertStringIncludes(errors[1].last_error ?? "", `${alice} isn't a user here`);
 });
@@ -331,18 +380,21 @@ Deno.test("a locked user's follower waits, and is told when they are accepted or
 
 Deno.test("a follower who asks again is accepted again, unless they wait to be", async () => {
     await using test = await openNetwork();
-    const ask = () =>
-        test.send({ type: "Follow", author: "bob", followee: `a.test:${test.alice}` });
+    const ask = () => test.send(subscription("Subscribe", "b.test:bob", `a.test:${test.alice}`));
     const answers = () =>
-        test.network.transport.sent.filter((request) =>
-            request.method === "POST" && new URL(request.url).host === "b.test"
-        ).length;
+        Promise.all(
+            test.network.transport.sent
+                .filter((request) =>
+                    request.method === "POST" && new URL(request.url).host === "b.test"
+                )
+                .map(async (request) => JSON.parse(await request.clone().text()).type),
+        );
 
     await ask();
     await ask();
     const [followed] = await followsFrom(test.a, test.bob, [test.alice]);
     assertEquals(followed?.accepted, true);
-    assertEquals(answers(), 2);
+    assertEquals(await answers(), ["SubscribeAccept", "SubscribeAccept"]);
 
     await unfollow(test.a, test.bob, test.alice);
     await test.a.db.updateTable("accounts").set({ locked: true }).where("id", "=", test.alice)
@@ -351,25 +403,27 @@ Deno.test("a follower who asks again is accepted again, unless they wait to be",
     await ask();
     const [asked] = await followsFrom(test.a, test.bob, [test.alice]);
     assertEquals(asked?.accepted, false);
-    assertEquals(answers(), 2);
+    assertEquals((await answers()).length, 2);
 });
 
 Deno.test("only a user's instance follows for them, and only local users", async () => {
     await using test = await openNetwork();
     const c = await addEvilInstance(test.network, "c.test");
 
-    await test.send({ type: "Follow", author: "b.test:bob", followee: `a.test:${test.alice}` }, c);
-    await test.send({ type: "Follow", author: "bob", followee: "c.test:carol" });
-    await test.send({ type: "Follow", author: "bob", followee: "a.test:nobody" });
+    const alice = `a.test:${test.alice}`;
+
+    await test.send(subscription("Subscribe", "b.test:bob", alice), c);
+    await test.send(subscription("Subscribe", "b.test:bob", "c.test:carol"));
+    await test.send(subscription("Subscribe", "b.test:bob", "a.test:nobody"));
     // b.test says there is no such user.
-    await test.send({ type: "Follow", author: "nobody", followee: `a.test:${test.alice}` });
+    await test.send(subscription("Subscribe", "b.test:nobody", alice));
     assertEquals(await test.a.db.selectFrom("follows").selectAll().execute(), []);
 
     const errors = await test.a.db.selectFrom("jobs").select("last_error")
         .where("queue", "=", "inbox").where("last_error", "is not", null).orderBy("created_at")
         .execute();
     assertEquals(errors.length, 2);
-    assertStringIncludes(errors[0].last_error ?? "", "c.test may not send this Follow");
+    assertStringIncludes(errors[0].last_error ?? "", "c.test may not send this Subscribe");
     assertStringIncludes(errors[1].last_error ?? "", "c.test:carol isn't a user here");
 });
 
@@ -377,16 +431,117 @@ Deno.test("a user stops following a local one, or asking to", async () => {
     await using test = await openNetwork();
     const followee = `a.test:${test.alice}`;
 
-    await test.send({ type: "Follow", author: "bob", followee });
-    await test.send({ type: "Unfollow", author: "bob", followee });
+    await test.send(subscription("Subscribe", "b.test:bob", followee));
+    await test.send(subscription("Unsubscribe", "b.test:bob", followee));
     assertEquals(await followsFrom(test.a, test.bob, [test.alice]), []);
 
     await test.a.db.updateTable("accounts").set({ locked: true }).where("id", "=", test.alice)
         .execute();
-    await test.send({ type: "Follow", author: "bob", followee });
-    await test.send({ type: "Unfollow", author: "bob", followee });
-    await test.send({ type: "Unfollow", author: "nobody", followee });
+    await test.send(subscription("Subscribe", "b.test:bob", followee));
+    await test.send(subscription("Unsubscribe", "b.test:bob", followee));
+    await test.send(subscription("Unsubscribe", "b.test:nobody", followee));
     assertEquals(await followsFrom(test.a, test.bob, [test.alice]), []);
+});
+
+Deno.test("a Subscribe for a target that isn't a User is refused as invalid", async () => {
+    await using test = await openNetwork();
+    const body = {
+        ...subscription("Subscribe", "b.test:bob", `a.test:${test.alice}`),
+        target_type: "Note",
+    };
+
+    const response = await test.b.send("https://a.test/.versia/v0.7/inbox", {
+        body: { created_at: test.network.clock.now().toISOString(), ...body },
+    });
+
+    assertEquals(response.status, 422);
+    assertEquals(await test.a.db.selectFrom("follows").selectAll().execute(), []);
+});
+
+Deno.test("a Subscribe to a user who can't be followed is rejected, not left unanswered", async () => {
+    await using test = await openNetwork();
+    const ask = () => test.send(subscription("Subscribe", "b.test:bob", `a.test:${test.alice}`));
+
+    await suspend(test.a, test.alice);
+    await ask();
+    assertEquals(await test.sentToB(), ["SubscribeReject"]);
+
+    await test.a.db.updateTable("accounts").set({
+        suspended_at: null,
+        moved_to_account_id: test.bob,
+    })
+        .where("id", "=", test.alice).execute();
+    await ask();
+    assertEquals(await test.sentToB(), ["SubscribeReject", "SubscribeReject"]);
+    assertEquals(await followsFrom(test.a, test.bob, [test.alice]), []);
+});
+
+Deno.test("a Subscribe naming a user Verso doesn't have is rejected back to its sender", async () => {
+    await using test = await openNetwork();
+
+    await test.send(subscription("Subscribe", "b.test:bob", "a.test:nobody"));
+    // b.test says there is no such user.
+    await test.send(subscription("Subscribe", "b.test:nobody", `a.test:${test.alice}`));
+    await test.network.drain();
+
+    const sent = await Promise.all(
+        test.network.transport.sent
+            .filter((request) =>
+                request.method === "POST" && new URL(request.url).host === "b.test"
+            )
+            .map(async (request) => {
+                const { type, subscriber, target, target_type } = await request.clone().json();
+                return { type, subscriber, target, target_type };
+            }),
+    );
+    assertEquals(sent, [
+        subscription("SubscribeReject", "b.test:bob", "a.test:nobody"),
+        subscription("SubscribeReject", "b.test:nobody", `a.test:${test.alice}`),
+    ]);
+});
+
+Deno.test("a SubscribeAccept for no follow is answered with an Unsubscribe", async () => {
+    await using test = await openNetwork();
+
+    await test.send(subscription("SubscribeAccept", `a.test:${test.alice}`, "b.test:bob"));
+
+    assertEquals(await test.sentToB(), ["Unsubscribe"]);
+    assertEquals(await test.state(), undefined);
+});
+
+Deno.test("a SubscribeAccept for a follow already accepted sends nothing", async () => {
+    await using test = await openNetwork();
+    await follow(test.a, test.alice, test.bob);
+    await test.send(subscription("SubscribeAccept", `a.test:${test.alice}`, "b.test:bob"));
+    assertEquals(await test.sentToB(), ["Subscribe"]);
+
+    await test.send(subscription("SubscribeAccept", `a.test:${test.alice}`, "b.test:bob"));
+
+    assertEquals(await test.sentToB(), ["Subscribe"]);
+    assertEquals(await test.state(), "following");
+});
+
+Deno.test("a subscription entity is only sent by the instance that sends it for its author", async () => {
+    await using test = await openNetwork();
+    await follow(test.a, test.alice, test.bob);
+
+    // b.test sends an accept as if from a.test's user, and a subscribe as if from a.test's.
+    await test.send(subscription("SubscribeAccept", "b.test:bob", `a.test:${test.alice}`));
+    await test.send(subscription("Subscribe", `a.test:${test.alice}`, "b.test:bob"));
+
+    assertEquals(await test.state(), "requested");
+    const errors = await test.a.db.selectFrom("jobs").select("last_error")
+        .where("queue", "=", "inbox").where("last_error", "is not", null).orderBy("created_at")
+        .execute();
+    assertEquals(errors.length, 2);
+    assertStringIncludes(
+        errors[0].last_error ?? "",
+        "b.test may not send this SubscribeAccept, which only a.test may",
+    );
+    assertStringIncludes(
+        errors[1].last_error ?? "",
+        "b.test may not send this Subscribe, which only a.test may",
+    );
 });
 
 Deno.test("a changed profile is sent to the instances of its followers", async () => {

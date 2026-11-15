@@ -40,9 +40,10 @@ const open = async () => {
         assertExists(bob);
         await follow(a, alice, bob);
         await send({
-            type: "FollowAccept",
-            author: "bob",
-            follower: `a.test:${alice}`,
+            type: "SubscribeAccept",
+            subscriber: `a.test:${alice}`,
+            target: "b.test:bob",
+            target_type: "User",
             created_at: "2026-01-01T00:00:00Z",
         });
     };

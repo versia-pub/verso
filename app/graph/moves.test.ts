@@ -80,15 +80,15 @@ const open = async () => {
             ]),
         );
 
-    /** The follows and unfollows a.test sent for `username`, as their host, type and followee. */
+    /** What a.test sent for `username`, as the host, type and target of each. */
     const sentBy = async (username: string) => {
         const sent = [];
         for (const request of network.transport.sent) {
             if (request.method !== "POST" || request.url.startsWith("https://a.test/")) continue;
 
             const body = await request.clone().json();
-            if (body.author === username) {
-                sent.push([new URL(request.url).host, body.type, body.followee]);
+            if (body.subscriber === `a.test:${username}`) {
+                sent.push([new URL(request.url).host, body.type, body.target]);
             }
         }
 
@@ -162,9 +162,9 @@ Deno.test("local followers of a user that moved follow the account it moved to i
         test.bob2,
     ]);
     assertEquals(await test.sentBy("alice"), [
-        ["b.test", "Follow", "b.test:bob"],
-        ["c.test", "Follow", "c.test:bob2"],
-        ["b.test", "Unfollow", "b.test:bob"],
+        ["b.test", "Subscribe", "b.test:bob"],
+        ["c.test", "Subscribe", "c.test:bob2"],
+        ["b.test", "Unsubscribe", "b.test:bob"],
     ]);
 });
 

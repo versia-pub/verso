@@ -145,7 +145,7 @@ const domainsOf = async (ctx: Context, job: FanOutJob) => {
 
 /**
  * Whether the entity stored as `bodyId` is by a local user suspended or removed since, and isn't a
- * Delete.
+ * Delete, nor a SubscribeReject, which answers a Subscribe, as every one must be.
  */
 const withheld = async (ctx: Context, bodyId: string) => {
     const row = await ctx.db.selectFrom("delivery_bodies").select("body").where("id", "=", bodyId)
@@ -153,7 +153,8 @@ const withheld = async (ctx: Context, bodyId: string) => {
     if (row === undefined) return false;
 
     const entity: unknown = JSON.parse(row.body);
-    if ((entity as { type?: unknown }).type === "Delete") return false;
+    const { type } = entity as { type?: unknown };
+    if (type === "Delete" || type === "SubscribeReject") return false;
 
     return await bySuspendedUser(ctx, entity, ctx.urls.domain) ||
         await byRemovedUser(ctx, entity);

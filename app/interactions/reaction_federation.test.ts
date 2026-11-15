@@ -70,7 +70,7 @@ const open = async () => {
 const sent = async (ctx: Context) =>
     (await queuedDeliveries(ctx))
         .map((job): [string, Record<string, unknown>] => [job.domain, JSON.parse(job.body)])
-        .filter(([, entity]) => entity.type !== "FollowAccept");
+        .filter(([, entity]) => entity.type !== "SubscribeAccept");
 
 Deno.test("a reaction is sent to the note's author and the reactor's followers, and a Delete when undone", async () => {
     await using test = await open();

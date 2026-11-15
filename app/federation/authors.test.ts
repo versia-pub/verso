@@ -9,6 +9,15 @@ Deno.test("a User is by itself, and anything else by its author", () => {
     assertEquals(authorOf({ type: "Note", id: "1", author: "bob" }), "bob");
 });
 
+Deno.test("a subscription entity is by the user who sends it", () => {
+    const users = { subscriber: "a.test:alice", target: "b.test:bob" };
+
+    assertEquals(authorOf({ type: "Subscribe", ...users }), "a.test:alice");
+    assertEquals(authorOf({ type: "Unsubscribe", ...users }), "a.test:alice");
+    assertEquals(authorOf({ type: "SubscribeAccept", ...users }), "b.test:bob");
+    assertEquals(authorOf({ type: "SubscribeReject", ...users }), "b.test:bob");
+});
+
 Deno.test("an entity without a string author is by nobody", () => {
     assertEquals(authorOf({ type: "Note", author: 5 }), undefined);
     assertEquals(authorOf({ type: "User" }), undefined);

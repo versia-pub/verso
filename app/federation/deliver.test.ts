@@ -367,21 +367,30 @@ Deno.test("an entity for every instance goes to each one Verso knows and may sen
     assertEquals((await test.queued()).map((job) => job.domain), ["b.example", "c.example"]);
 });
 
-Deno.test("what a local user deleted since queued isn't sent, except their Deletes", async () => {
+Deno.test("what a local user deleted since queued isn't sent, except Deletes and rejections", async () => {
     await using test = await open();
     await test.send(["b1"]);
     const removed = deleteEntity(test.ctx, test.alice, "User", test.alice);
-    await test.ctx.transaction((tx) =>
-        queueDeliveriesTo(tx, removed, { instanceIds: ["c.example"] })
-    );
+    // Every Subscribe is answered, even one to a user being removed.
+    const rejected = {
+        type: "SubscribeReject",
+        subscriber: "c.example:c1",
+        target: `${test.ctx.urls.domain}:${test.alice}`,
+        target_type: "User",
+    };
+    await test.ctx.transaction(async (tx) => {
+        await queueDeliveriesTo(tx, removed, { instanceIds: ["c.example"] });
+        await queueDeliveriesTo(tx, rejected, { instanceIds: ["c.example"] });
+    });
 
     await deleteAccount(test.ctx, test.alice);
 
     const jobs = await test.queued();
-    assertEquals(jobs.map((job) => [job.domain, JSON.parse(job.body).type]), [
+    assertEquals(jobs.map((job) => [job.domain, JSON.parse(job.body).type]).toSorted(), [
         ["c.example", "Delete"],
+        ["c.example", "SubscribeReject"],
     ]);
-    assertEquals((await test.bodies()).length, 1);
+    assertEquals((await test.bodies()).length, 2);
 });
 
 Deno.test("a fan-out run again queues no delivery twice", async () => {

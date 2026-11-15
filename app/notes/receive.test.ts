@@ -98,9 +98,10 @@ Deno.test("a note by someone a local user follows is kept, and counted", async (
     await using test = await open();
     await follow(test.a, test.alice, test.bob);
     await test.send({
-        type: "FollowAccept",
-        author: "bob",
-        follower: `a.test:${test.alice}`,
+        type: "SubscribeAccept",
+        subscriber: `a.test:${test.alice}`,
+        target: "b.test:bob",
+        target_type: "User",
         created_at: "2026-01-01T00:00:00Z",
     });
 
@@ -553,9 +554,10 @@ Deno.test("what a followed author's note, or a kept note sent again, names is fe
     await using test = await open();
     await follow(test.a, test.alice, test.bob);
     await test.send({
-        type: "FollowAccept",
-        author: "bob",
-        follower: `a.test:${test.alice}`,
+        type: "SubscribeAccept",
+        subscriber: `a.test:${test.alice}`,
+        target: "b.test:bob",
+        target_type: "User",
         created_at: "2026-01-01T00:00:00Z",
     });
     test.b.serve("/.versia/v0.7/entities/pub.versia:social/Note/n0", note("n0"));

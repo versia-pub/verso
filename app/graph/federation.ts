@@ -1,11 +1,13 @@
 /**
- * Who follows whom, as Versia renders it: local users' followers and follows, as collections remote
- * instances fetch, and follows between local users and remote users, sent and received.
- * @see https://versia.pub/entities/follow
+ * Who follows whom, as Versia renders it: local users' subscribers and subscriptions, as collections
+ * remote instances fetch, and follows between local users and remote users, sent and received as
+ * Subscribe, Unsubscribe, SubscribeAccept and SubscribeReject.
+ * @see https://versia.pub/entities/subscribe
  * @module
  */
-import { parseReference, v0_6 } from "@versia/protocol";
-import { findAccount, isSuspended } from "../accounts/account_queries.ts";
+import { parseReference, v0_7 } from "@versia/protocol";
+import { z } from "zod";
+import { findAccount } from "../accounts/account_queries.ts";
 import { isProfileUpdated } from "../accounts/events.ts";
 import {
     hasPicturesProcessing,
@@ -38,55 +40,61 @@ const followCollection = (side: FollowSide): CollectionProvider => async (ctx, i
 };
 
 /** The collections the graph adds to Users. */
-export const followCollections: Readonly<Record<FollowSide, CollectionProvider>> = {
-    followers: followCollection("followers"),
-    following: followCollection("following"),
-};
-
-/** Sends a follower's Follow or Unfollow to their followee's instance, if it is remote. */
-const sendToFollowee = async (
-    ctx: Context,
-    type: "Follow" | "Unfollow",
-    followerId: string,
-    followeeId: string,
-) => {
-    const [author, followee] = await userReferences(ctx, [followerId, followeeId]);
-    if (author === undefined || followee === undefined) return;
-
-    const entity: v0_6.Follow | v0_6.Unfollow = {
-        type,
-        created_at: ctx.clock.now().toISOString(),
-        author,
-        followee,
-    };
-
-    await queueDeliveries(ctx, entity, [followeeId]);
-};
-
-/** Sends a followee's response to their follower's instance, if it is remote. */
-const sendToFollower = async (
-    ctx: Context,
-    type: "FollowAccept" | "FollowReject",
-    followerId: string,
-    followeeId: string,
-) => {
-    const [author, follower] = await userReferences(ctx, [followeeId, followerId]);
-    if (author === undefined || follower === undefined) return;
-
-    const entity: v0_6.FollowAccept | v0_6.FollowReject = {
-        type,
-        created_at: ctx.clock.now().toISOString(),
-        author,
-        follower,
-    };
-
-    await queueDeliveries(ctx, entity, [followerId]);
+export const followCollections: Readonly<
+    Record<"subscribers" | "subscriptions", CollectionProvider>
+> = {
+    subscribers: followCollection("followers"),
+    subscriptions: followCollection("following"),
 };
 
 /**
+ * Sends a subscription entity about a follow to the instance of `recipientId`, if it is remote:
+ * the follower's Subscribe or Unsubscribe to the followee's, or the followee's answer to the
+ * follower's.
+ */
+const sendSubscription = async (
+    ctx: Context,
+    type: "Subscribe" | "Unsubscribe" | "SubscribeAccept" | "SubscribeReject",
+    followerId: string,
+    followeeId: string,
+    recipientId: string,
+) => {
+    const references = await userReferences(ctx, [followerId, followeeId]);
+    // v0.7 references always have a host.
+    const [subscriber, target] = withHosts(ctx, references);
+    if (subscriber === undefined || target === undefined) return;
+
+    const entity = {
+        type,
+        created_at: ctx.clock.now().toISOString(),
+        subscriber,
+        target,
+        target_type: "User",
+    };
+
+    await queueDeliveries(ctx, entity, [recipientId]);
+};
+
+/** Sends a follower's Subscribe or Unsubscribe to their followee's instance, if it is remote. */
+const sendToFollowee = (
+    ctx: Context,
+    type: "Subscribe" | "Unsubscribe",
+    followerId: string,
+    followeeId: string,
+) => sendSubscription(ctx, type, followerId, followeeId, followeeId);
+
+/** Sends a followee's response to their follower's instance, if it is remote. */
+const sendToFollower = (
+    ctx: Context,
+    type: "SubscribeAccept" | "SubscribeReject",
+    followerId: string,
+    followeeId: string,
+) => sendSubscription(ctx, type, followerId, followeeId, followerId);
+
+/**
  * Sends remote instances what happened to follows between their users and local ones: a local
- * user's follows and unfollows, to the followee's instance, and a local user's responses, to the
- * follower's. A follow between local users needs nothing sent.
+ * user's Subscribes and Unsubscribes, to the followee's instance, and a local user's responses,
+ * to the follower's. A follow between local users needs nothing sent.
  */
 export const followDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isFollowEvent(event)) return;
@@ -94,13 +102,13 @@ export const followDeliveries = async (ctx: Context, event: DomainEvent): Promis
 
     switch (event.type) {
         case "graph.follow_requested":
-            return await sendToFollowee(ctx, "Follow", followerId, followeeId);
+            return await sendToFollowee(ctx, "Subscribe", followerId, followeeId);
         case "graph.unfollowed":
-            return await sendToFollowee(ctx, "Unfollow", followerId, followeeId);
+            return await sendToFollowee(ctx, "Unsubscribe", followerId, followeeId);
         case "graph.follow_accepted":
-            return await sendToFollower(ctx, "FollowAccept", followerId, followeeId);
+            return await sendToFollower(ctx, "SubscribeAccept", followerId, followeeId);
         case "graph.follow_rejected":
-            return await sendToFollower(ctx, "FollowReject", followerId, followeeId);
+            return await sendToFollower(ctx, "SubscribeReject", followerId, followeeId);
     }
 };
 
@@ -118,97 +126,155 @@ export const profileDeliveries = async (ctx: Context, event: DomainEvent): Promi
     await queueDeliveriesTo(ctx, user, { instanceIds: [], followersOf: event.accountId });
 };
 
-/** The author of an entity sent by their instance, which only they may send. */
-const authorOf = (entity: { author: string }, origin: string) =>
-    parseReference(entity.author, origin)?.host;
+/** The instance of the subscriber of an entity, which only it may send. */
+const subscriberHost = (entity: { subscriber: string }, origin: string) =>
+    parseReference(entity.subscriber, origin)?.host;
+
+/** The instance of the target of an entity, which only it may send. */
+const targetHost = (entity: { target: string }, origin: string) =>
+    parseReference(entity.target, origin)?.host;
 
 /**
- * The two users named by a follow entity sent by `sender`: `local`, which must be a local user, and
- * its author, on the sender. Either is `undefined` if Verso doesn't have it.
+ * The two users named by a subscription entity sent by `sender`: `local`, which must be a local
+ * user, and `remote`, on the sender. Either is `undefined` if Verso doesn't have it.
  */
-const partiesOf = async (ctx: Context, local: string, author: string, sender: Sender) => {
+const partiesOf = async (ctx: Context, local: string, remote: string, sender: Sender) => {
     const localUser = parseReference(local, sender.domain);
     if (localUser?.host !== ctx.urls.domain) {
         throw new PermanentFailure(`${local} isn't a user here`);
     }
 
-    // The authority is the author's host, so it is the sender's.
-    const remoteUser = parseReference(author, sender.domain);
+    // The authority is the sender's host, which is the remote user's.
+    const remoteUser = parseReference(remote, sender.domain);
 
     return {
         localId: (await knownUser(ctx, localUser))?.id,
-        authorId: remoteUser && (await knownUser(ctx, remoteUser))?.id,
+        remoteId: remoteUser && (await knownUser(ctx, remoteUser))?.id,
     };
 };
 
+// Verso only has subscribable Users, so any other `target_type` is invalid.
+const Subscribe = v0_7.Subscribe.extend({ target_type: z.literal("User") });
+const Unsubscribe = v0_7.Unsubscribe.extend({ target_type: z.literal("User") });
+const SubscribeAccept = v0_7.SubscribeAccept.extend({ target_type: z.literal("User") });
+const SubscribeReject = v0_7.SubscribeReject.extend({ target_type: z.literal("User") });
+
 /**
  * A user requesting to follow a local one. It is accepted at once, unless the local user is locked
- * or the follower is silenced. A follower requesting again is accepted again, in case their
- * instance missed it. A suspended user can't be followed, and their instance isn't told.
+ * or the follower is silenced, which leaves it waiting for the local user to answer. A follower
+ * requesting again is accepted again, in case their instance missed it. A Subscribe to a user who
+ * can't be followed, because they are suspended or moved, or naming a user Verso doesn't have, is
+ * rejected.
  */
-const followType: EntityType<v0_6.Follow> = {
-    type: "Follow",
-    schema: v0_6.Follow,
-    authority: authorOf,
+const subscribeType: EntityType<z.infer<typeof Subscribe>> = {
+    type: "Subscribe",
+    schema: Subscribe,
+    authority: subscriberHost,
     // The follower is often new to Verso.
     prepare: async (ctx, entity, sender, budget) => {
-        const author = parseReference(entity.author, sender.domain);
-        if (author) await ctx.federation.resolve(ctx, author, "User", budget);
+        const subscriber = parseReference(entity.subscriber, sender.domain);
+        if (subscriber) await ctx.federation.resolve(ctx, subscriber, "User", budget);
     },
     receive: async (ctx, entity, sender) => {
-        const { localId, authorId } = await partiesOf(ctx, entity.followee, entity.author, sender);
-        if (localId === undefined || authorId === undefined) return;
-        if (await isSuspended(ctx, null, localId)) return;
+        const { localId, remoteId } = await partiesOf(
+            ctx,
+            entity.target,
+            entity.subscriber,
+            sender,
+        );
+        // Every Subscribe is answered, so one Verso can't apply is rejected back to its sender.
+        if (localId === undefined || remoteId === undefined) {
+            const { subscriber, target, target_type } = entity;
+            const reject = {
+                type: "SubscribeReject",
+                created_at: ctx.clock.now().toISOString(),
+                subscriber,
+                target,
+                target_type,
+            };
 
-        const [existing] = await followsFrom(ctx, authorId, [localId]);
-        await follow(ctx, authorId, localId);
-        if (existing?.accepted) await sendToFollower(ctx, "FollowAccept", authorId, localId);
+            return await queueDeliveriesTo(ctx, reject, { instanceIds: [sender.instanceId] });
+        }
+
+        const [existing] = await followsFrom(ctx, remoteId, [localId]);
+        const result = await follow(ctx, remoteId, localId);
+
+        // Every Subscribe is answered. A new follow was answered when `follow` emitted it.
+        if (result === "missing" || result === "moved") {
+            await sendToFollower(ctx, "SubscribeReject", remoteId, localId);
+        } else if (existing?.accepted) {
+            await sendToFollower(ctx, "SubscribeAccept", remoteId, localId);
+        }
     },
 };
 
 /** A user who no longer follows a local one, or no longer requests to. */
-const unfollowType: EntityType<v0_6.Unfollow> = {
-    type: "Unfollow",
-    schema: v0_6.Unfollow,
-    authority: authorOf,
+const unsubscribeType: EntityType<z.infer<typeof Unsubscribe>> = {
+    type: "Unsubscribe",
+    schema: Unsubscribe,
+    authority: subscriberHost,
     receive: async (ctx, entity, sender) => {
-        const { localId, authorId } = await partiesOf(ctx, entity.followee, entity.author, sender);
-        if (localId !== undefined && authorId !== undefined) {
-            await unfollow(ctx, authorId, localId);
+        const { localId, remoteId } = await partiesOf(
+            ctx,
+            entity.target,
+            entity.subscriber,
+            sender,
+        );
+        if (localId !== undefined && remoteId !== undefined) {
+            await unfollow(ctx, remoteId, localId);
         }
     },
 };
 
-/** A user accepting a local user's follow request. */
-const followAcceptType: EntityType<v0_6.FollowAccept> = {
-    type: "FollowAccept",
-    schema: v0_6.FollowAccept,
-    authority: authorOf,
+/**
+ * A user accepting a local user's follow request. If Verso has neither a request nor a follow, the
+ * user is told to stop, as the spec says.
+ */
+const subscribeAcceptType: EntityType<z.infer<typeof SubscribeAccept>> = {
+    type: "SubscribeAccept",
+    schema: SubscribeAccept,
+    authority: targetHost,
     receive: async (ctx, entity, sender) => {
-        const { localId, authorId } = await partiesOf(ctx, entity.follower, entity.author, sender);
-        if (localId !== undefined && authorId !== undefined) {
-            await acceptFollow(ctx, localId, authorId);
+        const { localId, remoteId } = await partiesOf(
+            ctx,
+            entity.subscriber,
+            entity.target,
+            sender,
+        );
+        if (localId === undefined || remoteId === undefined) return;
+
+        const [existing] = await followsFrom(ctx, localId, [remoteId]);
+        if (existing === undefined) {
+            await sendToFollowee(ctx, "Unsubscribe", localId, remoteId);
+            return;
         }
+
+        await acceptFollow(ctx, localId, remoteId);
     },
 };
 
 /** A user rejecting a local user's follow request, or removing them as a follower. */
-const followRejectType: EntityType<v0_6.FollowReject> = {
-    type: "FollowReject",
-    schema: v0_6.FollowReject,
-    authority: authorOf,
+const subscribeRejectType: EntityType<z.infer<typeof SubscribeReject>> = {
+    type: "SubscribeReject",
+    schema: SubscribeReject,
+    authority: targetHost,
     receive: async (ctx, entity, sender) => {
-        const { localId, authorId } = await partiesOf(ctx, entity.follower, entity.author, sender);
-        if (localId !== undefined && authorId !== undefined) {
-            await rejectFollow(ctx, localId, authorId);
+        const { localId, remoteId } = await partiesOf(
+            ctx,
+            entity.subscriber,
+            entity.target,
+            sender,
+        );
+        if (localId !== undefined && remoteId !== undefined) {
+            await rejectFollow(ctx, localId, remoteId);
         }
     },
 };
 
 /** The transient entities that follows are sent as. */
 export const followTypes: readonly EntityType[] = [
-    followType,
-    unfollowType,
-    followAcceptType,
-    followRejectType,
+    subscribeType,
+    unsubscribeType,
+    subscribeAcceptType,
+    subscribeRejectType,
 ];

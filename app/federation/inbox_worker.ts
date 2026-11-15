@@ -85,7 +85,7 @@ export const inboxHandler = (registry: Registry): Handler => async (ctx, job) =>
  * What a suspended user's instance may still send, as on Mastodon: deletions, profile changes, and
  * ending follows.
  */
-const fromSuspended = new Set(["Delete", "User", "Unfollow", "FollowReject"]);
+const fromSuspended = new Set(["Delete", "User", "Unsubscribe", "SubscribeReject"]);
 
 /** Validates the entity `signer` sent, and applies it, unless it is by a suspended user. */
 const apply = async (ctx: Context, registry: Registry, signer: string, body: string) => {

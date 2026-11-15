@@ -1,19 +1,13 @@
 import { assertEquals } from "@std/assert";
 import { Delete } from "./delete.ts";
-import { Follow, FollowAccept, FollowReject, Unfollow } from "./follow.ts";
 
 const base = {
     author: "6e0204a2-746c-4972-8602-c4f37fc63bbe",
     created_at: "2021-01-01T00:00:00.000Z",
 };
-const other = "example.com:02e1e3b2-cb1f-4e4a-b82e-98866bee5de7";
 
 // The spec's examples, one per entity.
 const examples = [
-    [Follow, { ...base, type: "Follow", followee: other }],
-    [FollowAccept, { ...base, type: "FollowAccept", follower: other }],
-    [FollowReject, { ...base, type: "FollowReject", follower: other }],
-    [Unfollow, { ...base, type: "Unfollow", followee: other }],
     [Delete, {
         ...base,
         type: "Delete",
@@ -54,7 +48,7 @@ Deno.test("invalid references and missing fields are rejected", () => {
 });
 
 Deno.test("a Delete without an author comes from the instance", () => {
-    const [, example] = examples[4];
+    const [, example] = examples[0];
 
     assertEquals(
         Delete.safeParse({ ...example, author: undefined }).success,
