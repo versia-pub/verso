@@ -38,7 +38,7 @@ const interaction = (type: string, id: string, fields: Record<string, unknown>) 
     type,
     id,
     created_at: "2026-01-01T00:00:00Z",
-    author: "bob",
+    author: "b.test:bob",
     ...fields,
 });
 
@@ -110,12 +110,12 @@ Deno.test("remote likes, boosts and reactions notify, until they are deleted", a
     const other = await createNote(test.a, test.alice);
     const object = `a.test:${test.local.id}`;
 
-    await test.send(interaction(like, "l1", { liked: object }));
-    await test.send(interaction(like, "l1", { liked: object }));
-    await test.send(interaction(dislike, "d1", { disliked: `a.test:${other.id}` }));
-    await test.send(interaction(shared, "s1", { shared: object }));
-    await test.send(interaction(reaction, "r1", { object, content: "🎉" }));
-    await test.send(interaction(reaction, "r1", { object, content: "🎉" }));
+    await test.send(interaction(like, "l1", { target: object }));
+    await test.send(interaction(like, "l1", { target: object }));
+    await test.send(interaction(dislike, "d1", { target: `a.test:${other.id}` }));
+    await test.send(interaction(shared, "s1", { target: object }));
+    await test.send(interaction(reaction, "r1", { target: object, content: "🎉" }));
+    await test.send(interaction(reaction, "r1", { target: object, content: "🎉" }));
 
     assertEquals(await test.of(test.alice), [
         `reaction ${test.bob} ${test.local.id}`,

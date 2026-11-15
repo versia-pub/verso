@@ -4,7 +4,7 @@
  * @see https://versia.pub/extensions/share
  * @module
  */
-import { parseReference, v0_6 } from "@versia/protocol";
+import { parseReference, v0_7 } from "@versia/protocol";
 import { instancesHosting } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import { type Audience, queueDeliveriesTo } from "../federation/deliver.ts";
@@ -32,19 +32,20 @@ const typeName = "pub.versia:share/Share";
 const renderVersiaShare = async (
     ctx: Context,
     share: NoteRow,
-): Promise<v0_6.Share | undefined> => {
+): Promise<v0_7.Share | undefined> => {
     if (share.reblog_of_id === null) return undefined;
 
-    const [author] = await userReferences(ctx, [share.account_id]);
-    const shared = (await noteReferenceMap(ctx, [share.reblog_of_id])).get(share.reblog_of_id);
-    if (author === undefined || shared === undefined) return undefined;
+    const [author] = withHosts(ctx, await userReferences(ctx, [share.account_id]));
+    const note = (await noteReferenceMap(ctx, [share.reblog_of_id])).get(share.reblog_of_id);
+    const [target] = withHosts(ctx, note === undefined ? [] : [note]);
+    if (author === undefined || target === undefined) return undefined;
 
     return {
         type: typeName,
         id: share.id,
         created_at: share.created_at.toISOString(),
         author,
-        shared,
+        target,
     };
 };
 
@@ -118,8 +119,8 @@ export const noteShareCollections: Readonly<Record<string, CollectionProvider>> 
  * local status, or by someone a local user follows. Others could fill Verso with boosts nobody
  * local would see.
  */
-const wanted = async (ctx: Context, share: v0_6.Share, sender: Sender) => {
-    if (parseReference(share.shared, sender.domain)?.host === ctx.urls.domain) return true;
+const wanted = async (ctx: Context, share: v0_7.Share, sender: Sender) => {
+    if (parseReference(share.target, sender.domain)?.host === ctx.urls.domain) return true;
 
     const reference = parseReference(share.author, sender.domain);
     const author = reference && await knownUser(ctx, reference);
@@ -131,10 +132,10 @@ const wanted = async (ctx: Context, share: v0_6.Share, sender: Sender) => {
  * instances that may see them fetch. Verso stores those it wants, with the statuses they boost,
  * which are fetched for the timelines they are shown in.
  */
-export const shareType: EntityType<v0_6.Share> = {
+export const shareType: EntityType<v0_7.Share> = {
     type: typeName,
     extension,
-    schema: v0_6.Share,
+    schema: v0_7.Share,
     // Only its author's instance may send it.
     authority: authorityOf,
     prepare: async (ctx, share, sender, budget) => {
@@ -142,8 +143,8 @@ export const shareType: EntityType<v0_6.Share> = {
 
         // Without them, the boost can't be stored, so it is retried later.
         await resolveAuthor(ctx, share, sender, budget);
-        const shared = parseReference(share.shared, sender.domain);
-        if (shared) await ctx.federation.resolve(ctx, shared, "pub.versia:social/Note", budget);
+        const target = parseReference(share.target, sender.domain);
+        if (target) await ctx.federation.resolve(ctx, target, "pub.versia:social/Note", budget);
     },
     receive: async (ctx, share, sender) => {
         if (!await wanted(ctx, share, sender)) return;
@@ -152,14 +153,14 @@ export const shareType: EntityType<v0_6.Share> = {
         const user = author && await knownUser(ctx, author);
         if (user === undefined) throw new PermanentFailure(`Verso doesn't have ${share.author}`);
 
-        const note = await knownNoteRow(ctx, parseReference(share.shared, sender.domain));
-        if (note === undefined) throw new PermanentFailure(`Verso doesn't have ${share.shared}`);
+        const note = await knownNoteRow(ctx, parseReference(share.target, sender.domain));
+        if (note === undefined) throw new PermanentFailure(`Verso doesn't have ${share.target}`);
         // Remote users may boost only public and unlisted statuses too.
         if (!everyone.includes(note.visibility)) {
-            throw new PermanentFailure(`${share.shared} can't be shared`);
+            throw new PermanentFailure(`${share.target} can't be shared`);
         }
         if (note.instance_id === null && !await canSee(ctx, note, user.id)) {
-            throw new PermanentFailure(`${share.author} may not see ${share.shared}`);
+            throw new PermanentFailure(`${share.author} may not see ${share.target}`);
         }
 
         await keepRemoteShare(ctx, {

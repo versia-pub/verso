@@ -3,12 +3,11 @@
  * @see https://versia.pub/structures/content-format
  * @module
  */
-import { type v0_6, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import type { Context } from "../kernel/context.ts";
 import type { MediaRow, RemoteMedia } from "./media_queries.ts";
 import { fileUrl } from "./render.ts";
 import { servedTypeOf } from "./serving.ts";
-import { pictureTypes } from "./uploads.ts";
 
 /** The longest URL Verso stores from a peer. */
 export const maxUrlLength = 2048;
@@ -25,7 +24,7 @@ const maxInteger = 2 ** 31 - 1;
 const stored = (value: number | null | undefined) =>
     value !== null && value !== undefined && value <= maxInteger ? value : undefined;
 
-/** What either version of Versia says about a file besides where it is and what type it is. */
+/** What Versia says about a file besides where it is and what type it is. */
 type Details = {
     readonly size?: number | null;
     readonly hash?: string | null;
@@ -57,25 +56,6 @@ const storableMedia = (url: string, mediaType: string, details: Details): Remote
 };
 
 /**
- * The first version of the media at a URL whose type `takes` accepts. Versions with a URL or type
- * too long to store are skipped, and numbers too large to store, or thumbhashes too long to be one,
- * are left out.
- */
-const firstOf = (
-    formats: v0_6.ContentFormat | null | undefined,
-    takes: (mediaType: string) => boolean,
-): RemoteMedia | null => {
-    for (const [mediaType, entry] of Object.entries(formats ?? {})) {
-        if (!entry.remote || !takes(mediaType)) continue;
-
-        const media = storableMedia(entry.content, mediaType, entry);
-        if (media !== null) return media;
-    }
-
-    return null;
-};
-
-/**
  * The media `media`, as Verso stores it, or `null` if there is none or `takes` doesn't accept its
  * type.
  */
@@ -84,10 +64,6 @@ export const remoteMedia = (
     takes: (mediaType: string) => boolean,
 ): RemoteMedia | null =>
     media && takes(media.media_type) ? storableMedia(media.url, media.media_type, media) : null;
-
-/** The first version of an image at a URL that clients can display. */
-export const remotePicture = (formats: v0_6.ContentFormat | null | undefined): RemoteMedia | null =>
-    firstOf(formats, (mediaType) => pictureTypes.has(mediaType));
 
 /** What a processed `row` tells Versia about its file, besides its URL and type. */
 const detailsOf = (row: MediaRow) => ({

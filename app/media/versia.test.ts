@@ -2,72 +2,34 @@ import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
 import { findMedia } from "./media_queries.ts";
 import { pictureTypes } from "./uploads.ts";
-import { remoteMedia, remotePicture, versiaMedia } from "./versia.ts";
+import { remoteMedia, versiaMedia } from "./versia.ts";
 
-Deno.test("a version that isn't at a web address isn't taken, even if it reads as one", () => {
+Deno.test("media that isn't at a web address isn't taken", () => {
     assertEquals(
-        remotePicture({
-            "image/png": { content: "https://b.example/inline.png", remote: false },
-            "image/webp": { content: "https://b.example/bob.webp", remote: true },
-        })?.url,
-        "https://b.example/bob.webp",
+        remoteMedia({ url: "data:image/png;base64,AA", media_type: "image/png" }, () => true),
+        null,
+    );
+    assertEquals(
+        remoteMedia({ url: "ftp://b.example/bob.png", media_type: "image/png" }, () => true),
+        null,
     );
 });
 
 Deno.test("a remote media's hash is stored in lowercase", () => {
     const hash = "AB".repeat(32);
 
-    const media = remotePicture({
-        "image/webp": { content: "https://b.example/bob.webp", remote: true, hash },
-    });
+    const media = remoteMedia({
+        url: "https://b.example/bob.webp",
+        media_type: "image/webp",
+        hash,
+    }, () => true);
 
     assertEquals(media?.sha256, hash.toLowerCase());
 });
 
-Deno.test("what is too large to store is left out of remote media, or skips its version", () => {
-    const url = "https://b.example/bob.webp";
-    const largest = 2 ** 31 - 1;
-    const kept = remotePicture({
-        "image/webp": { content: url, remote: true, size: largest, width: largest, height: 1 },
-    });
-
-    assertEquals([kept?.size, kept?.width, kept?.height], [largest, largest, 1]);
-
-    const tooLarge = remotePicture({
-        "image/webp": {
-            content: url,
-            remote: true,
-            size: largest + 1,
-            width: largest + 1,
-            height: largest + 1,
-            thumbhash: "a".repeat(101),
-        },
-    });
-
-    assertEquals(
-        [tooLarge?.url, tooLarge?.size, tooLarge?.width, tooLarge?.height, tooLarge?.thumbhash],
-        [url, undefined, undefined, undefined, undefined],
-    );
-    assertEquals(
-        remotePicture({ "image/webp": { content: url, remote: true, thumbhash: "a".repeat(100) } })
-            ?.thumbhash,
-        "a".repeat(100),
-    );
-
-    const longUrl = `https://b.example/${"a".repeat(2048 - 18)}`;
-    assertEquals(remotePicture({ "image/webp": { content: longUrl, remote: true } })?.url, longUrl);
-    assertEquals(
-        remotePicture({
-            "image/png": { content: `${longUrl}a`, remote: true },
-            "image/webp": { content: url, remote: true },
-        })?.url,
-        url,
-    );
-});
-
 const pictures = (mediaType: string) => pictureTypes.has(mediaType);
 
-Deno.test("v0.7 media is stored with what it says, and left out if its type isn't taken", () => {
+Deno.test("media is stored with what it says, and left out if its type isn't taken", () => {
     const hash = "AB".repeat(32);
 
     assertEquals(
@@ -100,7 +62,7 @@ Deno.test("v0.7 media is stored with what it says, and left out if its type isn'
     assertEquals(remoteMedia(null, pictures), null);
 });
 
-Deno.test("v0.7 media that is too large to store is left out, or isn't taken", () => {
+Deno.test("media that is too large to store is left out, or isn't taken", () => {
     const url = "https://b.example/bob.webp";
     const largest = 2 ** 31 - 1;
     const media = { url, media_type: "image/webp" };
@@ -121,6 +83,10 @@ Deno.test("v0.7 media that is too large to store is left out, or isn't taken", (
     );
 
     const longUrl = `https://b.example/${"a".repeat(2048 - 18)}`;
+    assertEquals(
+        remoteMedia({ ...media, thumbhash: "a".repeat(100) }, pictures)?.thumbhash,
+        "a".repeat(100),
+    );
     assertEquals(remoteMedia({ ...media, url: longUrl }, pictures)?.url, longUrl);
     assertEquals(remoteMedia({ ...media, url: `${longUrl}a` }, pictures), null);
 
@@ -129,7 +95,7 @@ Deno.test("v0.7 media that is too large to store is left out, or isn't taken", (
     assertEquals(remoteMedia({ url, media_type: `${type}a` }, () => true), null);
 });
 
-Deno.test("local media is given to v0.7 as its file, once processed", async () => {
+Deno.test("local media is given to Versia as its file, once processed", async () => {
     await using test = await createTestContext();
     const insert = async (changes: { processed_at: Date | null; sha256: string | null }) => {
         const id = test.ctx.ids();

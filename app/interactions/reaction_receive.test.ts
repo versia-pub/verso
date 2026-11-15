@@ -6,13 +6,13 @@ import { registry } from "../registry.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { openFederation, undo, user } from "./testing.ts";
 
-/** bob's Reaction to the status `object` with `content`, and the emojis of `extensions`. */
-const reaction = (id: string, object: string, content: string, extensions?: object) => ({
+/** bob's Reaction to the status `target` with `content`, and the emojis of `extensions`. */
+const reaction = (id: string, target: string, content: string, extensions?: object) => ({
     type: "pub.versia:reactions/Reaction",
     id,
     created_at: "2026-01-01T00:00:00Z",
-    author: "bob",
-    object,
+    author: "b.test:bob",
+    target,
     content,
     extensions,
 });
@@ -22,7 +22,7 @@ const emoji = (shortcode: string) => ({
     "pub.versia:custom_emojis": {
         emojis: [{
             name: `:${shortcode}:`,
-            content: { "image/png": { content: `https://b.test/${shortcode}.png`, remote: true } },
+            content: { url: `https://b.test/${shortcode}.png`, media_type: "image/png" },
         }],
     },
 });

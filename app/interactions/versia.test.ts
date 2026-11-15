@@ -63,8 +63,8 @@ Deno.test("a like of another instance's note is sent there, and a Delete when un
             type: "pub.versia:likes/Like",
             id: row?.id,
             created_at: now,
-            author: "alice",
-            liked: "b.example:n1",
+            author: "social.example:alice",
+            target: "b.example:n1",
         }],
         ["b.example", {
             type: "Delete",
@@ -74,6 +74,56 @@ Deno.test("a like of another instance's note is sent there, and a Delete when un
             deleted: row?.id,
         }],
     ]);
+});
+
+/** The likes and Deletes of likes among the deliveries, as the instance and the like's status. */
+const likesSent = async (ctx: Context) =>
+    (await sent(ctx))
+        .filter(([, entity]) => entity.type === "pub.versia:likes/Like" || entity.type === "Delete")
+        .map(([domain, entity]) => [domain, entity.type === "Delete" ? "Delete" : entity.target]);
+
+Deno.test("a like of a public or unlisted status goes to the liker's followers' instances too", async () => {
+    await using test = await open();
+    await follow(test.ctx, "erin", "alice");
+    const note = (visibility: "public" | "unlisted" | "private", remoteId: string) =>
+        createNote(
+            test.ctx,
+            "carol",
+            { instance_id: "b.example", remote_id: remoteId, visibility },
+            ["alice"],
+        );
+    const notes = [
+        await note("public", "n1"),
+        await note("unlisted", "n2"),
+        await note("private", "n3"),
+    ];
+
+    for (const each of notes) await like(test.ctx, "alice", each.id);
+    for (const each of notes) await unlike(test.ctx, "alice", each.id);
+
+    assertEquals(await likesSent(test.ctx), [
+        ["b.example", "b.example:n1"],
+        ["c.example", "b.example:n1"],
+        ["b.example", "b.example:n2"],
+        ["c.example", "b.example:n2"],
+        ["b.example", "b.example:n3"],
+        ["b.example", "Delete"],
+        ["c.example", "Delete"],
+        ["b.example", "Delete"],
+        ["c.example", "Delete"],
+        ["b.example", "Delete"],
+    ]);
+});
+
+Deno.test("a like of a local public status is sent to the liker's remote followers", async () => {
+    await using test = await open();
+    await follow(test.ctx, "erin", "alice");
+    const note = await createNote(test.ctx, "bob");
+
+    await like(test.ctx, "alice", note.id);
+    await like(test.ctx, "bob", note.id);
+
+    assertEquals(await likesSent(test.ctx), [["c.example", `social.example:${note.id}`]]);
 });
 
 Deno.test("a local like is fetched by instances that may see its note, or whose note it is", async () => {
@@ -94,7 +144,10 @@ Deno.test("a local like is fetched by instances that may see its note, or whose 
         );
 
     assertEquals(await find(hidden.id, "b.example"), undefined);
-    assertEquals((await find(theirs.id, "b.example") as { liked?: string })?.liked, "b.example:n1");
+    assertEquals(
+        (await find(theirs.id, "b.example") as { target?: string })?.target,
+        "b.example:n1",
+    );
     assertEquals(await find(theirs.id, "c.example"), undefined);
     assertEquals(
         await test.type("pub.versia:likes/Like").find?.(test.ctx, "missing", "b.example"),
@@ -206,7 +259,7 @@ Deno.test("likes and their collections are served at their unencoded URLs", asyn
     const [status, entity] = await read(
         entityUrl("a.test", "pub.versia:likes/Like", row?.id ?? ""),
     );
-    assertEquals([status, entity.liked], [200, note.id]);
+    assertEquals([status, entity.target], [200, `a.test:${note.id}`]);
 
     const collection = new URL(
         `${

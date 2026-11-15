@@ -68,8 +68,8 @@ Deno.test("a share is sent to the sharer's followers and the note's author, and 
         type: "pub.versia:share/Share",
         id: shared.id,
         created_at: now,
-        author: "alice",
-        shared: "b.example:n1",
+        author: "social.example:alice",
+        target: "b.example:n1",
     };
     const deleted = {
         type: "Delete",
@@ -81,11 +81,11 @@ Deno.test("a share is sent to the sharer's followers and the note's author, and 
 
     const sentFor = (await sent(test.ctx)).map((
         [domain, each],
-    ) => [domain, each.shared ?? each.deleted]);
+    ) => [domain, each.target ?? each.deleted]);
     assertEquals(sentFor, [
         ["b.example", "b.example:n1"],
         ["c.example", "b.example:n1"],
-        ["c.example", local.id],
+        ["c.example", `social.example:${local.id}`],
         ["b.example", shared.id],
         ["c.example", shared.id],
     ]);
@@ -107,15 +107,15 @@ Deno.test("a local share is fetched by instances that may see it, or whose note 
         remote_id: "s1",
     });
 
-    assertEquals((await test.find(hidden.id, "b.example"))?.shared, "b.example:n1");
-    assertEquals((await test.find(hidden.id, "c.example"))?.shared, "b.example:n1");
+    assertEquals((await test.find(hidden.id, "b.example"))?.target, "b.example:n1");
+    assertEquals((await test.find(hidden.id, "c.example"))?.target, "b.example:n1");
     assertEquals(await test.find(hidden.id, "d.example"), undefined);
     assertEquals(await test.find(seen.id, "d.example"), {
         type: "pub.versia:share/Share",
         id: seen.id,
         created_at: seen.created_at.toISOString(),
-        author: "alice",
-        shared: local.id,
+        author: "social.example:alice",
+        target: `social.example:${local.id}`,
     });
 
     // Neither remote instances' Shares, nor Notes, are fetched as Shares.
@@ -159,7 +159,7 @@ Deno.test("shares and their collection are served at their unencoded URLs", asyn
     };
 
     const [status, entity] = await read(entityUrl("a.test", "pub.versia:share/Share", shared.id));
-    assertEquals([status, entity.shared], [200, note.id]);
+    assertEquals([status, entity.target], [200, `a.test:${note.id}`]);
 
     const collection = new URL(
         `${

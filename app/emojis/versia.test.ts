@@ -1,17 +1,12 @@
 import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
 import type { ShownEmoji } from "./emoji_queries.ts";
-import {
-    emojiExtensions,
-    emojiExtensionsV07,
-    remoteEmojisOf,
-    remoteEmojisOfV07,
-} from "./versia.ts";
+import { emojiExtensions, remoteEmojisOf } from "./versia.ts";
 
 /** An emoji named `name`, with a picture at `url` of `type`. */
 const emoji = (name: string, url = "https://b.example/blob.png", type = "image/png") => ({
     name,
-    content: { [type]: { content: url, remote: true, width: 32 } },
+    content: { url, media_type: type, width: 32 },
 });
 
 const extensions = (...emojis: object[]) => ({ "pub.versia:custom_emojis": { emojis } });
@@ -42,14 +37,21 @@ Deno.test("emojis clients can't show, named again, named without colons or too l
             emoji("!bang!"),
             emoji(`:${"a".repeat(101)}:`),
             emoji(":vector:", "https://b.example/vector.svg", "image/svg+xml"),
-            { name: ":here:", content: { "image/png": { content: "here.png", remote: false } } },
+            emoji(":cat:", "https://b.example/cat.png"),
         )),
-        [["blob", "https://b.example/blob.png"]],
+        [["blob", "https://b.example/blob.png"], ["cat", "https://b.example/cat.png"]],
     );
     assertEquals(kept(extensions(emoji(`:${"a".repeat(100)}:`))), [[
         "a".repeat(100),
         "https://b.example/blob.png",
     ]]);
+});
+
+Deno.test("an emoji's name needs a colon on both sides", () => {
+    assertEquals(
+        kept(extensions(emoji(":blob!"), emoji("!blob:"), emoji("!blob!"), emoji(":blob:"))),
+        [["blob", "https://b.example/blob.png"]],
+    );
 });
 
 Deno.test("an entity has at most 100 emojis, and a malformed extension has none", () => {
@@ -62,6 +64,14 @@ Deno.test("an entity has at most 100 emojis, and a malformed extension has none"
     assertEquals(remoteEmojisOf({ "pub.versia:custom_emojis": { emojis: "blob" } }), []);
     // A name without anything around it makes the whole extension malformed.
     assertEquals(remoteEmojisOf(extensions(emoji(":blob:"), emoji("blob"))), []);
+    // A picture that isn't a single Media, as in v0.6, is malformed too.
+    assertEquals(
+        remoteEmojisOf(extensions({
+            name: ":blob:",
+            content: { "image/png": { content: "https://b.example/blob.png", remote: true } },
+        })),
+        [],
+    );
 });
 
 Deno.test("emojis are sent by name, with their pictures, once ready", async () => {
@@ -78,112 +88,6 @@ Deno.test("emojis are sent by name, with their pictures, once ready", async () =
     };
     const sent = (picture: Partial<ShownEmoji>) =>
         emojiExtensions(test.ctx, [{ ...emoji, ...picture }]);
-
-    assertEquals(sent({ url: "https://a.example/blob.gif" }), {
-        "pub.versia:custom_emojis": {
-            emojis: [{
-                name: ":blob:",
-                content: { "image/gif": { content: "https://a.example/blob.gif", remote: true } },
-            }],
-        },
-    });
-    assertEquals(
-        sent({ url: null, sha256: "ab", processed_at: test.clock.now() }),
-        {
-            "pub.versia:custom_emojis": {
-                emojis: [{
-                    name: ":blob:",
-                    content: {
-                        "image/gif": { content: "https://social.example/media/ab", remote: true },
-                    },
-                }],
-            },
-        },
-    );
-
-    // A remote emoji is sent at its own URL, even once cached.
-    assertEquals(
-        sent({
-            instance_id: "b",
-            url: "https://b.example/blob.gif",
-            sha256: "ab",
-            processed_at: test.clock.now(),
-        }),
-        {
-            "pub.versia:custom_emojis": {
-                emojis: [{
-                    name: ":blob:",
-                    content: {
-                        "image/gif": { content: "https://b.example/blob.gif", remote: true },
-                    },
-                }],
-            },
-        },
-    );
-
-    // Stored, but not processed, or processing failed.
-    assertEquals(sent({ url: null, sha256: "ab" }), undefined);
-    assertEquals(sent({ url: null, processed_at: test.clock.now() }), undefined);
-    assertEquals(emojiExtensions(test.ctx, []), undefined);
-});
-
-/** A v0.7 emoji named `name`, with a picture at `url` of `type`. */
-const emojiV07 = (name: string, url = "https://b.example/blob.png", type = "image/png") => ({
-    name,
-    content: { url, media_type: type, width: 32 },
-});
-
-const keptV07 = (value: Parameters<typeof remoteEmojisOfV07>[0]) =>
-    remoteEmojisOfV07(value).map((each) => [each.shortcode, each.picture.url]);
-
-Deno.test("a v0.7 entity's emojis are kept like v0.6 ones, by name, once, and only if shown", () => {
-    const [blob] = remoteEmojisOfV07(extensions(emojiV07(":blob:")));
-
-    assertEquals([blob?.shortcode, blob?.picture.mediaType, blob?.picture.width], [
-        "blob",
-        "image/png",
-        32,
-    ]);
-    assertEquals(
-        keptV07(extensions(
-            emojiV07(":blob:"),
-            emojiV07(":blob:", "https://b.example/other.png"),
-            emojiV07("!bang!"),
-            emojiV07(`:${"a".repeat(101)}:`),
-            emojiV07(":vector:", "https://b.example/vector.svg", "image/svg+xml"),
-            emojiV07(":cat:", "https://b.example/cat.png"),
-        )),
-        [["blob", "https://b.example/blob.png"], ["cat", "https://b.example/cat.png"]],
-    );
-});
-
-Deno.test("a v0.7 entity has at most 100 emojis, and a malformed extension has none", () => {
-    const many = Array.from({ length: 101 }, (_, index) => emojiV07(`:e${index}:`));
-
-    assertEquals(remoteEmojisOfV07(extensions(...many)).length, 100);
-
-    assertEquals(remoteEmojisOfV07(undefined), []);
-    assertEquals(remoteEmojisOfV07({}), []);
-    assertEquals(remoteEmojisOfV07({ "pub.versia:custom_emojis": { emojis: "blob" } }), []);
-    assertEquals(remoteEmojisOfV07(extensions(emojiV07(":blob:"), emojiV07("blob"))), []);
-    // v0.6's shape, with several versions of a picture, isn't v0.7's.
-    assertEquals(remoteEmojisOfV07(extensions(emoji(":blob:"))), []);
-});
-
-Deno.test("emojis are sent to v0.7 by name, with their pictures, once ready", async () => {
-    await using test = await createTestContext();
-    const emoji: ShownEmoji = {
-        shortcode: "blob",
-        category: null,
-        instance_id: null,
-        url: null,
-        media_type: "image/gif",
-        sha256: null,
-        preview_sha256: null,
-        processed_at: null,
-    };
-    const sent = (picture: Partial<ShownEmoji>) =>
-        emojiExtensionsV07(test.ctx, [{ ...emoji, ...picture }]);
     const only = (url: string) => ({
         "pub.versia:custom_emojis": {
             emojis: [{ name: ":blob:", content: { url, media_type: "image/gif" } }],
@@ -196,5 +100,14 @@ Deno.test("emojis are sent to v0.7 by name, with their pictures, once ready", as
         only("https://social.example/media/ab"),
     );
     assertEquals(sent({ url: null, sha256: "ab" }), undefined);
-    assertEquals(emojiExtensionsV07(test.ctx, []), undefined);
+    // A remote emoji goes out at its instance's URL, whether or not Verso has a copy of it.
+    assertEquals(
+        sent({ url: "https://a.example/blob.gif", sha256: "ab", processed_at: test.clock.now() }),
+        only("https://a.example/blob.gif"),
+    );
+    assertEquals(
+        sent({ url: "https://a.example/blob.gif", sha256: null, processed_at: null }),
+        only("https://a.example/blob.gif"),
+    );
+    assertEquals(emojiExtensions(test.ctx, []), undefined);
 });

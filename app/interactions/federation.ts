@@ -4,10 +4,10 @@
  * @see https://versia.pub/extensions/likes
  * @module
  */
-import { parseReference, v0_6 } from "@versia/protocol";
+import { parseReference, v0_7 } from "@versia/protocol";
 import { findAccount } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
-import { queueDeliveries } from "../federation/deliver.ts";
+import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
@@ -16,6 +16,7 @@ import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { canSee } from "../notes/visibility.ts";
 import { knownNoteRow } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
+import { audienceOfInteraction } from "./audience.ts";
 import { authorityOf, resolveAuthor } from "./authors.ts";
 import { isLikeEvent } from "./events.ts";
 import {
@@ -45,17 +46,18 @@ const collectionNames: Readonly<Record<LikeKind, string>> = {
 };
 
 /** A local user's like as a Versia Like, if its user and status still exist. */
-const renderVersiaLike = async (ctx: Context, like: LikeRow): Promise<v0_6.Like | undefined> => {
-    const [author] = await userReferences(ctx, [like.account_id]);
-    const liked = (await noteReferenceMap(ctx, [like.note_id])).get(like.note_id);
-    if (author === undefined || liked === undefined) return undefined;
+const renderVersiaLike = async (ctx: Context, like: LikeRow): Promise<v0_7.Like | undefined> => {
+    const [author] = withHosts(ctx, await userReferences(ctx, [like.account_id]));
+    const note = (await noteReferenceMap(ctx, [like.note_id])).get(like.note_id);
+    const [target] = withHosts(ctx, note === undefined ? [] : [note]);
+    if (author === undefined || target === undefined) return undefined;
 
     return {
         type: "pub.versia:likes/Like",
         id: like.id,
         created_at: like.created_at.toISOString(),
         author,
-        liked,
+        target,
     };
 };
 
@@ -67,8 +69,8 @@ const maySeeLike = (ctx: Context, note: NoteRow, requester: string) =>
     instanceMaySeeInteraction(ctx, note, note, requester);
 
 /**
- * Sends a local user's like of a remote status to that status's instance, and a Delete when they
- * undo it. Likes of local statuses are for a local author, so nothing is sent.
+ * Sends a local user's like to the instance of the status's author, and for a status anyone may see,
+ * to those of the user's followers. A Delete goes to the same instances when they undo it.
  */
 export const likeDeliveries = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isLikeEvent(event)) return;
@@ -79,7 +81,13 @@ export const likeDeliveries = async (ctx: Context, event: DomainEvent): Promise<
     if (event.type === "interactions.liked") {
         const like = await findLocalLike(ctx, event.likeId);
         const entity = like && await renderVersiaLike(ctx, like);
-        if (entity) await queueDeliveries(ctx, entity, [note.account_id]);
+        if (entity) {
+            await queueDeliveriesTo(
+                ctx,
+                entity,
+                await audienceOfInteraction(ctx, like.account_id, note),
+            );
+        }
         return;
     }
 
@@ -87,7 +95,7 @@ export const likeDeliveries = async (ctx: Context, event: DomainEvent): Promise<
     if (author?.domain !== null) return;
 
     const entity = deleteEntity(ctx, author.id, typeNames.like, event.likeId);
-    await queueDeliveries(ctx, entity, [note.account_id]);
+    await queueDeliveriesTo(ctx, entity, await audienceOfInteraction(ctx, author.id, note));
 };
 
 /**
@@ -136,22 +144,18 @@ export const userLikeCollections: Readonly<Record<string, CollectionProvider>> =
     [collectionNames.dislike]: userLikes("dislike"),
 };
 
-/** The author and the status of a Like or Dislike, under one name for both. */
-type Liking = { readonly author: string; readonly note: string };
-
-/** The status `liked`, in a like sent by `sender`, if Verso has it. */
-const likedNote = (ctx: Context, liked: string, sender: Sender) =>
-    knownNoteRow(ctx, parseReference(liked, sender.domain));
+/** The status `target`, in a like sent by `sender`, if Verso has it. */
+const likedNote = (ctx: Context, target: string, sender: Sender) =>
+    knownNoteRow(ctx, parseReference(target, sender.domain));
 
 /**
  * Likes or dislikes of statuses. Verso stores those of statuses it has, and drops others, rather
  * than fetching statuses no local user may want. Those of local statuses must be by users who may
  * see them.
  */
-const likingType = <T extends v0_6.Like | v0_6.Dislike>(
+const likingType = <T extends v0_7.Like | v0_7.Dislike>(
     kind: LikeKind,
     schema: EntityType<T>["schema"],
-    liking: (entity: T) => Liking,
 ): EntityType<T> => ({
     type: typeNames[kind],
     extension,
@@ -160,20 +164,20 @@ const likingType = <T extends v0_6.Like | v0_6.Dislike>(
     authority: authorityOf,
     // The author is only fetched for a like Verso will store.
     prepare: async (ctx, entity, sender, budget) => {
-        if (await likedNote(ctx, liking(entity).note, sender) === undefined) return;
+        if (await likedNote(ctx, entity.target, sender) === undefined) return;
 
         await resolveAuthor(ctx, entity, sender, budget);
     },
     receive: async (ctx, entity, sender) => {
-        const { author, note: liked } = liking(entity);
-        const note = await likedNote(ctx, liked, sender);
+        const { author, target } = entity;
+        const note = await likedNote(ctx, target, sender);
         if (note === undefined) return;
 
         const reference = parseReference(author, sender.domain);
         const user = reference && await knownUser(ctx, reference);
         if (user === undefined) throw new PermanentFailure(`Verso doesn't have ${author}`);
         if (note.instance_id === null && !await canSee(ctx, note, user.id)) {
-            throw new PermanentFailure(`${author} may not see ${liked}`);
+            throw new PermanentFailure(`${author} may not see ${target}`);
         }
 
         await keepRemoteLike(ctx, {
@@ -194,7 +198,7 @@ const likingType = <T extends v0_6.Like | v0_6.Dislike>(
  */
 export const likeTypes: readonly EntityType[] = [
     {
-        ...likingType("like", v0_6.Like, (like) => ({ author: like.author, note: like.liked })),
+        ...likingType("like", v0_7.Like),
         find: async (ctx, id, requester) => {
             const like = await findLocalLike(ctx, id);
             const note = like && await findNote(ctx, like.note_id);
@@ -204,9 +208,5 @@ export const likeTypes: readonly EntityType[] = [
             return await renderVersiaLike(ctx, like);
         },
     },
-    likingType(
-        "dislike",
-        v0_6.Dislike,
-        (dislike) => ({ author: dislike.author, note: dislike.disliked }),
-    ),
+    likingType("dislike", v0_7.Dislike),
 ];

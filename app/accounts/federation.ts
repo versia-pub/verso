@@ -8,7 +8,7 @@ import { isDiscardedVersion } from "../federation/versions.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml, sanitizerVersion, textOfHtml } from "../kernel/html.ts";
 import { emojisOfAccounts, type ShownEmoji } from "../emojis/emoji_queries.ts";
-import { emojiExtensionsV07, remoteEmojisOfV07 } from "../emojis/versia.ts";
+import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
 import { findMedia } from "../media/media_queries.ts";
 import type { RemoteMedia } from "../media/media_queries.ts";
 import { isPlayable, pictureTypes } from "../media/uploads.ts";
@@ -152,7 +152,7 @@ const renderVersiaUser = (
     extensions: someExtensions({
         ...profileExtension(row),
         ...decorationsExtension(decorations),
-        ...emojiExtensionsV07(ctx, emojis),
+        ...emojiExtensions(ctx, emojis),
         ...migrationExtension(row, movedTo),
     }),
 });
@@ -375,6 +375,6 @@ export const remoteAccountOf = (instanceId: string, user: v0_7.User): RemoteAcco
         avatar: remoteImage(user.avatar),
         header: remoteImage(decorations.header),
         decorations: remoteDecorationsOf(decorations),
-        emojis: remoteEmojisOfV07(user.extensions),
+        emojis: remoteEmojisOf(user.extensions),
     };
 };

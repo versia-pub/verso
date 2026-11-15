@@ -9,7 +9,7 @@ import { userReferenceMap } from "../accounts/federation.ts";
 import { statusUrl } from "../accounts/render.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
-import { emojiExtensionsV07 } from "../emojis/versia.ts";
+import { emojiExtensions } from "../emojis/versia.ts";
 import type { Context } from "../kernel/context.ts";
 import { withHosts } from "../federation/references.ts";
 import { attachmentsOf } from "../media/attachment_queries.ts";
@@ -85,7 +85,7 @@ export const renderVersiaNotes = async (
         }
 
         const extensions = {
-            ...emojiExtensionsV07(ctx, emojis.get(note.id) ?? []),
+            ...emojiExtensions(ctx, emojis.get(note.id) ?? []),
             ...pollExtensions(ctx, polls.get(note.id)),
         };
         // A reference to a local entity is bare, and v0.7 references always have a host.

@@ -11,7 +11,7 @@ import { accountUrl } from "../accounts/render.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { setNoteEmojis } from "../emojis/emoji_queries.ts";
 import { keepRemoteEmojis } from "../emojis/emojis.ts";
-import { remoteEmojisOfV07 } from "../emojis/versia.ts";
+import { remoteEmojisOf } from "../emojis/versia.ts";
 import type { Known, Sender } from "../federation/registry.ts";
 import { isRemoteFailure } from "../federation/resolver.ts";
 import { isDiscardedVersion } from "../federation/versions.ts";
@@ -246,7 +246,7 @@ export const receiveNote = async (
     const emojiIds = await keepRemoteEmojis(
         ctx,
         sender.instanceId,
-        remoteEmojisOfV07(note.extensions),
+        remoteEmojisOf(note.extensions),
     );
     const files = note.attachments.flatMap((media) => remoteMedia(media, () => true) ?? []);
     const poll = remotePollOf(note.extensions);

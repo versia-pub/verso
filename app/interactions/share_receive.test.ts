@@ -20,13 +20,13 @@ const note = (id: string) => ({
     previews: [],
 });
 
-/** bob's Share of the status `shared`. */
-const sharing = (id: string, shared: string, created_at = "2026-01-01T00:00:00Z") => ({
+/** bob's Share of the status `target`. */
+const sharing = (id: string, target: string, created_at = "2026-01-01T00:00:00Z") => ({
     type: "pub.versia:share/Share",
     id,
     created_at,
-    author: "bob",
-    shared,
+    author: "b.test:bob",
+    target,
 });
 
 /** a.test, with alice and her status, and b.test, which serves bob and carol. */
@@ -92,6 +92,21 @@ Deno.test("a share of a local note is kept and counted, once, and a Delete undoe
     assertEquals(await test.errors(), []);
 });
 
+Deno.test("a share of a local note its sharer may not see is refused, and stores nothing", async () => {
+    await using test = await open();
+    // Nobody may see a suspended account's statuses, even public ones.
+    await test.a.db.updateTable("accounts").set({ suspended_at: test.network.clock.now() })
+        .where("id", "=", test.alice).execute();
+
+    await test.send(sharing("s1", `a.test:${test.local.id}`));
+
+    assertEquals(await test.kept("s1"), undefined);
+    assertEquals(await test.counts(test.local.id), [0, 0]);
+    const [refused, ...others] = await test.errors();
+    assertStringIncludes(refused ?? "", "b.test:bob may not see");
+    assertEquals(others, []);
+});
+
 Deno.test("another share of a note by the same user replaces the first", async () => {
     await using test = await open();
     const shared = `a.test:${test.local.id}`;
@@ -116,11 +131,11 @@ Deno.test("a share of another note by someone a local user follows is kept, with
     // a.test has bob, but no local user follows him yet, so neither the boost nor its status is
     // stored.
     await test.a.federation.resolve(test.a, { host: "b.test", id: "bob" }, "User");
-    await test.send(sharing("s1", "n1"));
+    await test.send(sharing("s1", "b.test:n1"));
     assertEquals([await test.kept("s1"), await test.kept("n1")], [undefined, undefined]);
 
     await test.followBob();
-    await test.send(sharing("s2", "n1"));
+    await test.send(sharing("s2", "b.test:n1"));
     const original = await test.kept("n1");
     assertExists(original);
     const share = await test.kept("s2");
@@ -153,8 +168,8 @@ Deno.test("a share isn't taken for a note, nor a note for a share", async () => 
         type: "pub.versia:likes/Like",
         id: "l1",
         created_at: "2026-01-01T00:00:00Z",
-        author: "bob",
-        liked: "s1",
+        author: "b.test:bob",
+        target: "b.test:s1",
     });
     await test.send(sharing("n1", `a.test:${test.local.id}`, "2026-01-02T00:00:00Z"));
     await test.send(undo("pub.versia:share/Share", "n1"));

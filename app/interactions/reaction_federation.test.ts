@@ -101,18 +101,16 @@ Deno.test("a reaction is sent to the note's author and the reactor's followers, 
         type: "pub.versia:reactions/Reaction",
         id: blob,
         created_at: reactedAt,
-        author: "alice",
-        object: "b.example:n1",
+        author: "social.example:alice",
+        target: "b.example:n1",
         content: ":blob:",
         extensions: {
             "pub.versia:custom_emojis": {
                 emojis: [{
                     name: ":blob:",
                     content: {
-                        "image/png": {
-                            content: "https://social.example/media/emoji-blob",
-                            remote: true,
-                        },
+                        url: "https://social.example/media/emoji-blob",
+                        media_type: "image/png",
                     },
                 }],
             },
@@ -159,7 +157,7 @@ Deno.test("a local reaction is fetched by instances that may see its note, or wh
     const hidden = await test.reacted("alice", theirs.id, "🎉");
     const followed = await test.reacted("alice", local.id, "blob");
 
-    assertEquals((await test.find(hidden, "b.example"))?.object, "b.example:n1");
+    assertEquals((await test.find(hidden, "b.example"))?.target, "b.example:n1");
     assertEquals(await test.find(hidden, "c.example"), undefined);
 
     const madeAt = test.ctx.clock.now().toISOString();

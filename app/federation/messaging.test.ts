@@ -80,7 +80,7 @@ const like = (created_at = "2026-01-01T00:00:00Z") => ({
     id: "l1",
     created_at,
     author: "d.test:bob",
-    liked: "a.test:n1",
+    target: "a.test:n1",
 });
 
 /** The messages a.test sent, by destination. */
@@ -127,7 +127,7 @@ Deno.test("what fails for now, and is tried again, isn't explained", async () =>
 
     // Its author can't be fetched while c.test is down.
     await c.send("https://a.test/.versia/v0.7/inbox", {
-        body: { ...like(), author: "bob", liked: `a.test:${note.id}` },
+        body: { ...like(), author: "c.test:bob", target: `a.test:${note.id}` },
     });
     network.transport.down.add("c.test");
     await network.drain();

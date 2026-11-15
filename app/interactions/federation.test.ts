@@ -10,12 +10,12 @@ import { openFederation, undo } from "./testing.ts";
 const likeType = (kind: "Like" | "Dislike") => `pub.versia:likes/${kind}`;
 
 /** bob's Like, or Dislike, of the status `note`. */
-const liking = (kind: "Like" | "Dislike", id: string, note: string, author = "bob") => ({
+const liking = (kind: "Like" | "Dislike", id: string, note: string, author = "b.test:bob") => ({
     type: likeType(kind),
     id,
     created_at: "2026-01-01T00:00:00Z",
     author,
-    [kind === "Like" ? "liked" : "disliked"]: note,
+    target: note,
 });
 
 /** a.test, with alice and her status, and b.test, which serves bob. */

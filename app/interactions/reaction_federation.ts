@@ -4,20 +4,20 @@
  * @see https://versia.pub/extensions/reactions
  * @module
  */
-import { parseReference, v0_6 } from "@versia/protocol";
-import { instancesHosting } from "../accounts/account_queries.ts";
+import { parseReference, v0_7 } from "@versia/protocol";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import type { RemoteEmoji } from "../emojis/emojis.ts";
 import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
-import { type Audience, queueDeliveriesTo } from "../federation/deliver.ts";
+import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
-import { everyone, instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
+import { instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
 import { findNote, type NoteRow } from "../notes/note_queries.ts";
 import { canSee } from "../notes/visibility.ts";
 import { knownNoteRow } from "../notes/remote.ts";
 import { noteReferenceMap } from "../notes/versia.ts";
+import { audienceOfInteraction } from "./audience.ts";
 import { authorityOf, resolveAuthor } from "./authors.ts";
 import { isReactionEvent } from "./events.ts";
 import {
@@ -42,10 +42,11 @@ const typeName = "pub.versia:reactions/Reaction";
 const renderVersiaReaction = async (
     ctx: Context,
     reaction: LocalReaction,
-): Promise<v0_6.Reaction | undefined> => {
-    const [author] = await userReferences(ctx, [reaction.account_id]);
-    const object = (await noteReferenceMap(ctx, [reaction.note_id])).get(reaction.note_id);
-    if (author === undefined || object === undefined) return undefined;
+): Promise<v0_7.Reaction | undefined> => {
+    const [author] = withHosts(ctx, await userReferences(ctx, [reaction.account_id]));
+    const note = (await noteReferenceMap(ctx, [reaction.note_id])).get(reaction.note_id);
+    const [target] = withHosts(ctx, note === undefined ? [] : [note]);
+    if (author === undefined || target === undefined) return undefined;
 
     const { shortcode, media_type } = reaction;
     const emojis = shortcode === null || media_type === null
@@ -57,27 +58,10 @@ const renderVersiaReaction = async (
         id: reaction.id,
         created_at: reaction.created_at.toISOString(),
         author,
-        object,
+        target,
         content: reaction.text ?? `:${shortcode ?? ""}:`,
         extensions: emojiExtensions(ctx, emojis),
     };
-};
-
-/**
- * The remote instances a local user's reaction to a status is sent to: the instance of the status's
- * author, which must be told, and for a status anyone may see, those of the reactor's followers,
- * which Versia specifies. Other instances aren't told of reactions to statuses they may not see.
- */
-const audienceOfReaction = async (
-    ctx: Context,
-    accountId: string,
-    note: NoteRow,
-): Promise<Audience> => {
-    const author = await instancesHosting(ctx, [note.account_id]);
-
-    return everyone.includes(note.visibility)
-        ? { instanceIds: author, followersOf: accountId }
-        : { instanceIds: author };
 };
 
 /** Sends local users' reactions, and a Delete when they undo one. */
@@ -86,7 +70,7 @@ export const reactionDeliveries = async (ctx: Context, event: DomainEvent): Prom
 
     const note = await findNote(ctx, event.noteId);
     if (note === undefined) return;
-    const audience = await audienceOfReaction(ctx, event.accountId, note);
+    const audience = await audienceOfInteraction(ctx, event.accountId, note);
 
     if (event.type === "interactions.reacted") {
         const reaction = await findLocalReaction(ctx, event.reactionId);
@@ -131,15 +115,15 @@ export const noteReactionCollections: Readonly<Record<string, CollectionProvider
 };
 
 /** The status that a reaction sent by `sender` is to, if Verso has it. */
-const reactedNote = (ctx: Context, reaction: v0_6.Reaction, sender: Sender) =>
-    knownNoteRow(ctx, parseReference(reaction.object, sender.domain));
+const reactedNote = (ctx: Context, reaction: v0_7.Reaction, sender: Sender) =>
+    knownNoteRow(ctx, parseReference(reaction.target, sender.domain));
 
 /**
  * The emoji of a reaction sent by a remote instance: a Unicode emoji, or one of its custom emojis,
  * named in colons, with its picture in the reaction's extensions. Versia lets a reaction be any
  * text, which Mastodon's clients can't display, so for others it is `undefined`.
  */
-const remoteReactionEmoji = (reaction: v0_6.Reaction): string | RemoteEmoji | undefined => {
+const remoteReactionEmoji = (reaction: v0_7.Reaction): string | RemoteEmoji | undefined => {
     if (isUnicodeEmoji(reaction.content)) return reaction.content;
 
     const shortcode = /^:([A-Za-z0-9_-]+):$/u.exec(reaction.content)?.[1];
@@ -152,10 +136,10 @@ const remoteReactionEmoji = (reaction: v0_6.Reaction): string | RemoteEmoji | un
  * an emoji it can display, and drops others. Those to local statuses must be by users who may see
  * them.
  */
-export const reactionType: EntityType<v0_6.Reaction> = {
+export const reactionType: EntityType<v0_7.Reaction> = {
     type: typeName,
     extension,
-    schema: v0_6.Reaction,
+    schema: v0_7.Reaction,
     // Only its author's instance may send it.
     authority: authorityOf,
     // The author is only fetched for a reaction Verso will store.
@@ -174,7 +158,7 @@ export const reactionType: EntityType<v0_6.Reaction> = {
         const user = reference && await knownUser(ctx, reference);
         if (user === undefined) throw new PermanentFailure(`Verso doesn't have ${reaction.author}`);
         if (note.instance_id === null && !await canSee(ctx, note, user.id)) {
-            throw new PermanentFailure(`${reaction.author} may not see ${reaction.object}`);
+            throw new PermanentFailure(`${reaction.author} may not see ${reaction.target}`);
         }
 
         await keepRemoteReaction(ctx, {
