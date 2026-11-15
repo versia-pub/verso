@@ -97,7 +97,7 @@ Deno.test("the same user sent again later is queued again, as a profile can chan
 
 Deno.test("anything else sent again later, as a delivery tried again is, is queued once", async () => {
     await using test = await open();
-    const deleted = deleteEntity("1", { deleted_type: "Note" });
+    const deleted = deleteEntity("1", { deleted_type: "pub.versia:social/Note" });
 
     await test.send(deleted);
     test.network.clock.advance(1000);

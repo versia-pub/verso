@@ -2,10 +2,11 @@
  * Statuses, local or remote: posting and editing them, who may see them, and deleting them.
  * @module
  */
+import { v0_7 } from "@versia/protocol";
 import { type AccountRow, findAccount } from "../accounts/account_queries.ts";
 import { countNote } from "../accounts/count_queries.ts";
 import { findAccountByAddress, parseAddress } from "../accounts/addresses.ts";
-import { userUri } from "../accounts/render.ts";
+import { accountUrl } from "../accounts/render.ts";
 import type { TextFormat } from "../accounts/tables.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { setNoteEmojis, usableEmojiIds } from "../emojis/emoji_queries.ts";
@@ -116,7 +117,17 @@ const renderDraft = (
 ) => renderText(text, format, {
     mention: (mention) => {
         const row = accounts.get(mentionKey(mention));
-        return row && userUri(ctx, row);
+        if (row === undefined) return undefined;
+
+        // Versia peers find the account by its reference, not by the link.
+        const id = row.domain === null ? row.id : row.remote_id;
+
+        return {
+            url: accountUrl(ctx, row),
+            reference: id === null
+                ? undefined
+                : v0_7.formatReference({ host: row.domain ?? ctx.urls.domain, id }),
+        };
     },
     hashtag: (tag) => ctx.urls.url`/tags/${tag.toLowerCase()}`,
 });

@@ -2,10 +2,10 @@
  * Statuses as Versia Notes: local ones, as remote instances fetch them and are sent them, and
  * remote ones, as Verso receives them. What each side accepts is in `audience.ts`, `versia.ts` and
  * `remote.ts`; this module connects them to the federation engine.
- * @see https://versia.pub/entities/note
+ * @see https://versia.pub/extensions/social#note
  * @module
  */
-import { parseReference, v0_6, type v0_7 } from "@versia/protocol";
+import { parseReference, v0_7 } from "@versia/protocol";
 import { findAccount, findRemoteAccount } from "../accounts/account_queries.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
@@ -26,8 +26,8 @@ import { voterInstances } from "../polls/poll_queries.ts";
 
 /**
  * Sends a local status that was just posted or edited to the instances of its audience, and if it
- * has a poll that ended or whose votes were counted, to those of its voters. Versia has no edits,
- * so an edited status is sent again in full and replaces the version the remote instance has. A
+ * has a poll that ended or whose votes were counted, to those of its voters. An edited status is
+ * sent again in full, with when it was edited, and replaces the version the remote instance has. A
  * followers-only status isn't sent to the followers, nor the voters, that its author blocks, unless
  * it mentions them.
  */
@@ -72,7 +72,7 @@ export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
         visibility: event.visibility,
         in_reply_to_account_id: event.inReplyToAccountId,
     };
-    const entity = deleteEntity(ctx, author.id, "Note", event.noteId);
+    const entity = deleteEntity(ctx, author.id, "pub.versia:social/Note", event.noteId);
     await queueDeliveriesTo(
         ctx,
         entity,
@@ -81,49 +81,46 @@ export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
 };
 
 /**
- * Notes as the items of a v0.7 collection. They are v0.6 Notes until they move to v0.7, which
- * differ only in the type of `extensions`: its values are objects, as they are here.
- */
-const asItems = (notes: v0_6.Note[]) => notes as v0_7.Collection["items"];
-
-/**
  * A local user's public and unlisted statuses, oldest first, so pages stay stable as more are
  * posted.
  */
-const outbox: CollectionProvider = async (ctx, id, page) => {
+const notes: CollectionProvider = async (ctx, id, page) => {
     const owner = await findAccount(ctx, id);
     if (owner?.domain !== null) return undefined;
 
-    const notes = await notesBy(ctx, id, everyone, page.offset, page.limit);
+    const rows = await notesBy(ctx, id, everyone, page.offset, page.limit);
 
     return {
         author: id,
         total: await countNotesBy(ctx, id, everyone),
-        items: asItems(await renderVersiaNotes(ctx, notes)),
+        items: await renderVersiaNotes(ctx, rows),
     };
 };
 
 /**
  * The public and unlisted statuses a local user pins to their profile, which Versia calls featuring
- * them, latest pinned first, as the profile shows them.
+ * them, latest pinned first, as the profile shows them, as references.
  */
 const featured: CollectionProvider = async (ctx, id, page) => {
     const owner = await findAccount(ctx, id);
     if (owner?.domain !== null) return undefined;
 
-    const notes = await pinnedNotes(ctx, id, everyone);
+    const pinned = await pinnedNotes(ctx, id, everyone);
+    const shown = pinned.slice(page.offset, page.offset + page.limit);
+    const references = await noteReferenceMap(ctx, shown.map((note) => note.id));
 
     return {
         author: id,
-        total: notes.length,
-        items: asItems(
-            await renderVersiaNotes(ctx, notes.slice(page.offset, page.offset + page.limit)),
-        ),
+        total: pinned.length,
+        items: withHosts(ctx, shown.flatMap((note) => references.get(note.id) ?? [])),
     };
 };
 
 /** The collections that statuses add to Users. */
-export const noteCollections: Readonly<Record<string, CollectionProvider>> = { outbox, featured };
+export const noteCollections: Readonly<Record<string, CollectionProvider>> = {
+    "pub.versia:social/Notes": notes,
+    "pub.versia:social/Featured": featured,
+};
 
 /**
  * Removes the statuses of a user that a remote instance deleted, before the user is removed, in
@@ -162,9 +159,9 @@ const linkCollection = (link: NoteLink): CollectionProvider => async (ctx, id, p
  * Versia Notes: local ones, fetched by remote instances that may see them, and remote ones, sent or
  * fetched, with their authors, mentioned users and replied-to statuses fetched first.
  */
-export const noteType: EntityType<v0_6.Note> = {
-    type: "Note",
-    schema: v0_6.Note,
+export const noteType: EntityType<v0_7.Note> = {
+    type: "pub.versia:social/Note",
+    schema: v0_7.Note,
     // An edit can change a status back to what it was.
     resendable: true,
     // Only its author's instance may send it.

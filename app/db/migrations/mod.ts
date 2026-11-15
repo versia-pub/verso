@@ -106,6 +106,7 @@ import { webPreferences } from "./0104_web_preferences.ts";
 import { versiaIds } from "./0105_versia_ids.ts";
 import { userProfiles } from "./0106_user_profiles.ts";
 import { accountUpdatedAt } from "./0107_account_updated_at.ts";
+import { noteUrlUpdatedAt } from "./0108_note_url_updated_at.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -219,4 +220,5 @@ export const migrations: Record<string, Migration> = {
     "0105_versia_ids": versiaIds,
     "0106_user_profiles": userProfiles,
     "0107_account_updated_at": accountUpdatedAt,
+    "0108_note_url_updated_at": noteUrlUpdatedAt,
 };

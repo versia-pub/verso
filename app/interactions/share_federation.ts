@@ -143,7 +143,7 @@ export const shareType: EntityType<v0_6.Share> = {
         // Without them, the boost can't be stored, so it is retried later.
         await resolveAuthor(ctx, share, sender, budget);
         const shared = parseReference(share.shared, sender.domain);
-        if (shared) await ctx.federation.resolve(ctx, shared, "Note", budget);
+        if (shared) await ctx.federation.resolve(ctx, shared, "pub.versia:social/Note", budget);
     },
     receive: async (ctx, share, sender) => {
         if (!await wanted(ctx, share, sender)) return;

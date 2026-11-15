@@ -22,8 +22,11 @@ export type Found = {
 
 /** Where mentions and hashtags link to. Without a link, they are left as text. */
 export type Links = {
-    /** The profile of the account a mention is of, if it was found. */
-    readonly mention?: (mention: Mention) => string | undefined;
+    /**
+     * The profile of the account a mention is of, if it was found, and a Versia reference to the
+     * account, which Versia peers read the mention by.
+     */
+    readonly mention?: (mention: Mention) => { url: string; reference?: string } | undefined;
     readonly hashtag?: (tag: string) => string;
 };
 
@@ -128,11 +131,17 @@ const configure = (md: MarkdownIt) => {
     md.renderer.rules.mention = (tokens, idx, _options, env) => {
         const token = tokens[idx];
         const mention = mentions.get(token);
-        const url = mention && linksOf(env).mention?.(mention);
-        if (mention === undefined || url === undefined) return escape(token.content);
+        const target = mention && linksOf(env).mention?.(mention);
+        if (mention === undefined || target === undefined) return escape(token.content);
 
-        return `<span class="h-card" translate="no"><a href="${escape(url)}" ` +
-            `class="u-url mention">@<span>${escape(mention.username)}</span></a></span>`;
+        const reference = target.reference === undefined
+            ? ""
+            : ` data-mention="${escape(target.reference)}"`;
+
+        return `<span class="h-card" translate="no"><a href="${escape(target.url)}"` +
+            `${reference} class="u-url mention">@<span>${
+                escape(mention.username)
+            }</span></a></span>`;
     };
 
     md.renderer.rules.hashtag = (tokens, idx, _options, env) => {
@@ -168,6 +177,9 @@ const parsers: Record<MarkupFormat, MarkdownIt> = {
         markdownIt("default", { html: false, breaks: true, linkify: true }).disable("image"),
     ),
 };
+
+/** `text` as HTML text, with the characters HTML reads as markup written as entities. */
+export const escapeHtml = (text: string): string => parsers["text/plain"].utils.escapeHtml(text);
 
 /** The mentions, hashtags and shortcodes in `text`. */
 export const scanText = (text: string, format: MarkupFormat): Found => {

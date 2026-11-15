@@ -48,8 +48,8 @@ const remoteIdOn = async (instance: Instance, username: string) =>
 
 /** The text of the statuses `instance` has from other instances. */
 const remoteStatuses = async (instance: Instance) =>
-    (await instance.ctx.db.selectFrom("notes").select("content")
-        .where("instance_id", "is not", null).execute()).map((row) => row.content);
+    (await instance.ctx.db.selectFrom("notes").select("content_html")
+        .where("instance_id", "is not", null).execute()).map((row) => row.content_html);
 
 Deno.test("a suspended local user isn't served, nor followed, and only their deletions are sent", async () => {
     await using network = await open();
@@ -64,7 +64,7 @@ Deno.test("a suspended local user isn't served, nor followed, and only their del
     });
     await network.drain();
 
-    assertEquals(await remoteStatuses(b), ["Hi"]);
+    assertEquals(await remoteStatuses(b), ["<p>Hi</p>"]);
 
     await suspend(a.ctx, "alice");
 
@@ -72,8 +72,8 @@ Deno.test("a suspended local user isn't served, nor followed, and only their del
         const path of [
             "/entities/User/alice",
             "/entities/User/alice/collections/followers",
-            `/entities/Note/${note?.id}`,
-            `/entities/Note/${note?.id}/collections/replies`,
+            `/entities/pub.versia:social/Note/${note?.id}`,
+            `/entities/pub.versia:social/Note/${note?.id}/collections/replies`,
         ]
     ) {
         assertEquals(await fetched(b, a, `/.versia/v0.7${path}`), 404, path);
@@ -121,7 +121,7 @@ Deno.test("a suspended remote user's instance can only delete, change their prof
     await network.drain();
 
     // Kept, though not taken further.
-    assertEquals(await remoteStatuses(a), ["Before"]);
+    assertEquals(await remoteStatuses(a), ["<p>Before</p>"]);
     assertEquals(await followersOf(a, "alice"), [bobOnA]);
 
     await updateProfile(b.ctx, "bob", { displayName: "Bob" });

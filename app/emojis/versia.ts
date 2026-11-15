@@ -6,7 +6,7 @@
 import { v0_6, v0_7 } from "@versia/protocol";
 import type { Context } from "../kernel/context.ts";
 import type { RemoteMedia } from "../media/media_queries.ts";
-import { remoteMediaV07, remotePicture } from "../media/versia.ts";
+import { remoteMedia, remotePicture } from "../media/versia.ts";
 import { pictureTypes } from "../media/uploads.ts";
 import type { EmojiPicture } from "./emoji_queries.ts";
 import type { RemoteEmoji } from "./emojis.ts";
@@ -71,7 +71,7 @@ export const remoteEmojisOfV07 = (extensions: v0_7.Entity["extensions"]): Remote
     return remoteEmojis(
         parsed.data.emojis.map((emoji) => ({
             name: emoji.name,
-            picture: () => remoteMediaV07(emoji.content, (type) => pictureTypes.has(type)),
+            picture: () => remoteMedia(emoji.content, (type) => pictureTypes.has(type)),
         })),
     );
 };

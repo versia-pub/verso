@@ -1,27 +1,30 @@
 /**
  * Remote statuses, as Verso receives them, sent or fetched, as Versia Notes.
- * @see https://versia.pub/entities/note
+ * @see https://versia.pub/extensions/social#note
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import { parseReference, type Reference, type v0_6 } from "@versia/protocol";
-import { knownUser, remoteText } from "../accounts/federation.ts";
+import { parseReference, type Reference, v0_7 } from "@versia/protocol";
+import { findAccounts } from "../accounts/account_queries.ts";
+import { knownUser } from "../accounts/federation.ts";
+import { accountUrl } from "../accounts/render.ts";
 import type { Visibility } from "../kernel/visibility.ts";
 import { setNoteEmojis } from "../emojis/emoji_queries.ts";
 import { keepRemoteEmojis } from "../emojis/emojis.ts";
-import { remoteEmojisOf } from "../emojis/versia.ts";
+import { remoteEmojisOfV07 } from "../emojis/versia.ts";
 import type { Known, Sender } from "../federation/registry.ts";
 import { isRemoteFailure } from "../federation/resolver.ts";
+import { isDiscardedVersion } from "../federation/versions.ts";
 import { hasFollowers } from "../graph/follows.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import { attachedTo, attachRemote, changesRemoteAttachments } from "../media/attachments.ts";
-import { remoteFile } from "../media/versia.ts";
+import { maxUrlLength, remoteMedia } from "../media/versia.ts";
 import { pollOf } from "../polls/poll_queries.ts";
 import { editsRemotePoll, keepRemotePoll, remotePollOf } from "../polls/versia.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import { sanitizerVersion, shownHtml, textOfHtml } from "../kernel/html.ts";
-import { renderText, scanText } from "../kernel/markup.ts";
+import { sanitizeHtml, sanitizerVersion, shownHtml, textOfHtml } from "../kernel/html.ts";
+import { scanText } from "../kernel/markup.ts";
 import {
     findNote,
     findRemoteNote,
@@ -37,12 +40,13 @@ import { fetchTotalsLater } from "./totals.ts";
 
 const logger = getLogger(["verso", "notes"]);
 
-/**
- * A status's visibility, from the audience Versia gives. Verso has no groups, so a group's Note is
- * only visible to the users it mentions.
- */
-const visibilityOf = (group: string | null | undefined): Visibility =>
-    group === "public" ? "public" : group === "followers" ? "private" : "direct";
+/** A status's visibility, from the one Versia's Social extension gives. */
+const visibilities = {
+    public: "public",
+    unlisted: "unlisted",
+    subscribers: "private",
+    mentions: "direct",
+} as const satisfies Record<v0_7.Note["visibility"], Visibility>;
 
 /**
  * The status that `reference` points at, local or remote, if Verso has it, without fetching it.
@@ -74,12 +78,12 @@ const remoteTags = 100;
  * The references in a Note sent by `sender`: its author, the first accounts it mentions (as many as
  * the settings allow), and the statuses it replies to and quotes.
  */
-const referencesIn = (ctx: Context, note: v0_6.Note, sender: Sender) => ({
+const referencesIn = (ctx: Context, note: v0_7.Note, sender: Sender) => ({
     author: parseReference(note.author, sender.domain),
     mentions: [...new Set(note.mentions)].slice(0, ctx.settings.mentions)
         .flatMap((text) => parseReference(text, sender.domain) ?? []),
     parent: note.replies_to ? parseReference(note.replies_to, sender.domain) : undefined,
-    quote: note.quotes ? parseReference(note.quotes, sender.domain) : undefined,
+    quote: note.quoting ? parseReference(note.quoting, sender.domain) : undefined,
 });
 
 /**
@@ -89,7 +93,7 @@ const referencesIn = (ctx: Context, note: v0_6.Note, sender: Sender) => ({
 const resolveIfAble = async (
     ctx: Context,
     reference: Reference,
-    type: "User" | "Note",
+    type: "User" | "pub.versia:social/Note",
     budget: Budget,
 ) => {
     try {
@@ -124,7 +128,7 @@ const wanted = async (
  * has, before fetching what it references. Fetched entities are stored, so an unwanted Note mustn't
  * make Verso fetch them.
  */
-const mayBeWanted = async (ctx: Context, note: v0_6.Note, sender: Sender) => {
+const mayBeWanted = async (ctx: Context, note: v0_7.Note, sender: Sender) => {
     const references = referencesIn(ctx, note, sender);
     const named = [...references.mentions, references.parent, references.quote];
     if (named.some((reference) => reference?.host === ctx.urls.domain)) return true;
@@ -151,19 +155,33 @@ export const knownNoteRow = async (
 };
 
 /**
+ * When a version of a status that Verso counts as an edit was made: its `updated_at`, but not in
+ * the future, nor before the status was created, or else now.
+ */
+const editedAt = (ctx: Context, note: v0_7.Note, createdAt: Date): Date => {
+    const now = ctx.clock.now();
+    if (!note.updated_at) return now;
+
+    const given = Math.max(new Date(note.updated_at).getTime(), createdAt.getTime());
+    return new Date(Math.min(given, now.getTime()));
+};
+
+/**
  * Saves a remote status sent by `sender`, or updates the stored one, with its custom emojis, media
- * attachments (for each, the format clients can best display) and poll. Mentioned users, and the
- * statuses it replies to or quotes, are omitted if Verso doesn't have them.
+ * attachments and poll. Mentioned users, and the statuses it replies to or quotes, are omitted if
+ * Verso doesn't have them. A mention of a user Verso has links to that user's page, not to where
+ * the sender wrote it.
  *
  * A new status is counted, and its totals are fetched later, unless it was fetched to backfill a
- * thread. What it replies to and quotes is never changed by a newer version. A newer version with
- * different content is marked as edited at the time it is received, since Versia doesn't say when,
- * and the previous content is saved in its edit history. A poll's counts changing isn't an edit,
- * but its options changing is. A new status, or an edited one, is emitted.
+ * thread. What it replies to and quotes is never changed by a newer version. A version with an
+ * older `updated_at` than the stored one, or another `created_at`, is discarded. A newer version
+ * with different content is marked as edited at its `updated_at`, or at the time it is received if
+ * it has none, and the previous content is saved in its edit history. A poll's counts changing
+ * isn't an edit, but its options changing is. A new status, or an edited one, is emitted.
  */
 export const receiveNote = async (
     ctx: Context,
-    note: v0_6.Note,
+    note: v0_7.Note,
     sender: Sender,
 ): Promise<void> => {
     const references = referencesIn(ctx, note, sender);
@@ -172,7 +190,13 @@ export const receiveNote = async (
     const mentions = [];
     for (const reference of references.mentions) {
         const user = await knownUser(ctx, reference);
-        if (user) mentions.push({ id: user.id, local: reference.host === ctx.urls.domain });
+        if (user) {
+            mentions.push({
+                id: user.id,
+                local: reference.host === ctx.urls.domain,
+                reference: v0_7.formatReference(reference),
+            });
+        }
     }
 
     const parent = await knownNoteRow(ctx, references.parent);
@@ -190,37 +214,46 @@ export const receiveNote = async (
     if (existing && existing.account_id !== author.id) {
         throw new PermanentFailure(`${sender.domain} may not give ${note.id} another author`);
     }
+    if (
+        existing &&
+        isDiscardedVersion({ createdAt: existing.created_at, updatedAt: existing.updated_at }, note)
+    ) {
+        return;
+    }
 
-    const content = remoteText(note.content, (text, format) => renderText(text, format));
+    const rows = await findAccounts(ctx, mentions.map((mention) => mention.id));
+    const mentionHrefs = new Map(mentions.flatMap((mention) => {
+        const row = rows.find((each) => each.id === mention.id);
+        return row ? [[mention.reference, accountUrl(ctx, row)] as const] : [];
+    }));
+    const html = sanitizeHtml(note.content ?? "", mentionHrefs);
     const changes = {
-        visibility: visibilityOf(note.group),
-        content: content.text,
-        content_format: content.format,
-        content_html: content.html,
+        visibility: visibilities[note.visibility],
+        // Versia sends only HTML.
+        content: "",
+        content_format: "text/plain" as const,
+        content_html: html,
         html_version: sanitizerVersion,
         spoiler_text: note.subject ?? "",
         sensitive: note.is_sensitive,
+        url: note.url && note.url.length <= maxUrlLength ? note.url : null,
+        updated_at: note.updated_at ? new Date(note.updated_at) : null,
         fetched_at: ctx.clock.now(),
     };
     const mentionIds = mentions.map((mention) => mention.id);
-    // A Note with only HTML content has its hashtags in that.
-    const hashtags = content.text === ""
-        ? scanText(textOfHtml(content.html), "text/plain").hashtags
-        : scanText(content.text, content.format).hashtags;
     // They differ in more than case already.
-    const tags = hashtags.slice(0, remoteTags);
+    const tags = scanText(textOfHtml(html), "text/plain").hashtags.slice(0, remoteTags);
     const emojiIds = await keepRemoteEmojis(
         ctx,
         sender.instanceId,
-        remoteEmojisOf(note.extensions),
+        remoteEmojisOfV07(note.extensions),
     );
-    const files = note.attachments.flatMap((formats) => remoteFile(formats) ?? []);
+    const files = note.attachments.flatMap((media) => remoteMedia(media, () => true) ?? []);
     const poll = remotePollOf(note.extensions);
 
     if (existing) {
         const previousPoll = await pollOf(ctx, existing.id);
-        const edited = changes.content !== existing.content ||
-            changes.content_format !== existing.content_format ||
+        const edited =
             // Stored before it was sanitised on arrival, it is compared as it was shown.
             changes.content_html !== shownHtml(existing.content_html, existing.html_version) ||
             changes.spoiler_text !== existing.spoiler_text ||
@@ -238,7 +271,10 @@ export const receiveNote = async (
         await updateNote(
             ctx,
             existing.id,
-            { ...changes, edited_at: edited ? ctx.clock.now() : existing.edited_at },
+            {
+                ...changes,
+                edited_at: edited ? editedAt(ctx, note, existing.created_at) : existing.edited_at,
+            },
             mentionIds,
             tags,
         );
@@ -299,7 +335,7 @@ export const receiveNote = async (
  */
 export const prepareNote = async (
     ctx: Context,
-    note: v0_6.Note,
+    note: v0_7.Note,
     sender: Sender,
     budget: Budget,
 ): Promise<void> => {
@@ -310,6 +346,6 @@ export const prepareNote = async (
     if (author) await ctx.federation.resolve(ctx, author, "User", budget);
 
     for (const mention of mentions) await resolveIfAble(ctx, mention, "User", budget);
-    if (parent) await resolveIfAble(ctx, parent, "Note", budget);
-    if (quote) await resolveIfAble(ctx, quote, "Note", budget);
+    if (parent) await resolveIfAble(ctx, parent, "pub.versia:social/Note", budget);
+    if (quote) await resolveIfAble(ctx, quote, "pub.versia:social/Note", budget);
 };

@@ -32,7 +32,8 @@ Deno.test("announcements are listed with what they link to, and whether they wer
     await createLocalEmoji(test.ctx, "verso");
     await createLocalEmoji(test.ctx, "other");
     const note = await createNote(test.ctx, "bob");
-    const url = (id: string) => `https://social.example/.versia/v0.7/entities/Note/${id}`;
+    const url = (id: string) =>
+        `https://social.example/.versia/v0.7/entities/pub.versia:social/Note/${id}`;
 
     const made = await announce(test.ctx, `Hi @bob :verso: #News ${url(note.id)}`, {
         startsAt: new Date("2026-02-01T00:00:00Z"),

@@ -25,12 +25,12 @@ const user = {
 
 /** bob's public status `n1`. */
 const note = {
-    type: "Note",
+    type: "pub.versia:social/Note",
     id: "n1",
     created_at: "2026-01-01T00:00:00Z",
-    author: "bob",
-    content: { "text/plain": { content: "Hi", remote: false } },
-    group: "public",
+    author: "b.test:bob",
+    content: "<p>Hi</p>",
+    visibility: "public",
     is_sensitive: false,
     mentions: [],
     attachments: [],
@@ -38,7 +38,8 @@ const note = {
 };
 
 /** Where b.test serves the collection `name` of bob's status. */
-const collection = (name: string) => `/.versia/v0.7/entities/Note/n1/collections/${name}`;
+const collection = (name: string) =>
+    `/.versia/v0.7/entities/pub.versia:social/Note/n1/collections/${name}`;
 
 /**
  * a.test, with alice, who follows bob, and b.test, which sends whatever it is told to, with bob and
@@ -98,7 +99,9 @@ const open = async (totals: { likes?: unknown; shares?: unknown; replies?: unkno
     /** How many requests b.test received for the collections of bob's status. */
     const asked = () =>
         network.transport.sent.filter((request) =>
-            new URL(request.url).pathname.startsWith("/.versia/v0.7/entities/Note/n1/collections/")
+            new URL(request.url).pathname.startsWith(
+                "/.versia/v0.7/entities/pub.versia:social/Note/n1/collections/",
+            )
         ).length;
 
     return {
@@ -225,7 +228,11 @@ Deno.test("a Verso instance gives its notes' totals to another", async () => {
         in_reply_to_id: posted.id,
         in_reply_to_account_id: alice,
     });
-    const received = await b.federation.resolve(b, { host: "a.test", id: posted.id }, "Note");
+    const received = await b.federation.resolve(
+        b,
+        { host: "a.test", id: posted.id },
+        "pub.versia:social/Note",
+    );
     assertExists(received);
     await network.drain();
 

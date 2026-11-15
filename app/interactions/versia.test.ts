@@ -29,7 +29,12 @@ const open = async () => {
     };
 
     /** A page of a local entity's collection, as `requester` may see it. */
-    const collection = (entity: "User" | "Note", name: string, id: string, requester: string) => {
+    const collection = (
+        entity: "User" | "pub.versia:social/Note",
+        name: string,
+        id: string,
+        requester: string,
+    ) => {
         const provider = type(entity).collections?.[name];
         return provider?.(test.ctx, id, { offset: 0, limit: 40 }, requester);
     };
@@ -118,18 +123,39 @@ Deno.test("a local note lists its likes and dislikes, for instances that may see
     const bob = await findLike(test.ctx, "bob", note.id);
     assertExists(bob);
 
-    assertEquals(await test.collection("Note", "pub.versia:likes/Likes", note.id, "c.example"), {
-        author: "alice",
-        total: 2,
-        items: [`${test.ctx.urls.domain}:${bob.id}`, "b.example:l1"],
-    });
-    assertEquals(await test.collection("Note", "pub.versia:likes/Dislikes", note.id, "b.example"), {
-        author: "alice",
-        total: 1,
-        items: ["c.example:d1"],
-    });
     assertEquals(
-        await test.collection("Note", "pub.versia:likes/Likes", hidden.id, "b.example"),
+        await test.collection(
+            "pub.versia:social/Note",
+            "pub.versia:likes/Likes",
+            note.id,
+            "c.example",
+        ),
+        {
+            author: "alice",
+            total: 2,
+            items: [`${test.ctx.urls.domain}:${bob.id}`, "b.example:l1"],
+        },
+    );
+    assertEquals(
+        await test.collection(
+            "pub.versia:social/Note",
+            "pub.versia:likes/Dislikes",
+            note.id,
+            "b.example",
+        ),
+        {
+            author: "alice",
+            total: 1,
+            items: ["c.example:d1"],
+        },
+    );
+    assertEquals(
+        await test.collection(
+            "pub.versia:social/Note",
+            "pub.versia:likes/Likes",
+            hidden.id,
+            "b.example",
+        ),
         undefined,
     );
 });
@@ -183,7 +209,9 @@ Deno.test("likes and their collections are served at their unencoded URLs", asyn
     assertEquals([status, entity.liked], [200, note.id]);
 
     const collection = new URL(
-        `${entityUrl("a.test", "Note", note.id)}/collections/pub.versia:likes/Likes`,
+        `${
+            entityUrl("a.test", "pub.versia:social/Note", note.id)
+        }/collections/pub.versia:likes/Likes`,
     );
     assertEquals(await read(collection), [200, { total: 1, items: [`a.test:${row?.id}`] }]);
 });

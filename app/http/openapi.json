@@ -19559,9 +19559,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/User/{id}/collections/outbox": {
+        "/.versia/v0.7/entities/User/{id}/collections/pub.versia:social/Notes": {
             "get": {
-                "summary": "Get the outbox collection of a User",
+                "summary": "Get the pub.versia:social/Notes collection of a User",
                 "tags": [
                     "versia"
                 ],
@@ -19710,9 +19710,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/User/{id}/collections/featured": {
+        "/.versia/v0.7/entities/User/{id}/collections/pub.versia:social/Featured": {
             "get": {
-                "summary": "Get the featured collection of a User",
+                "summary": "Get the pub.versia:social/Featured collection of a User",
                 "tags": [
                     "versia"
                 ],
@@ -20163,9 +20163,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/Note/{id}": {
+        "/.versia/v0.7/entities/pub.versia:social/Note/{id}": {
             "get": {
-                "summary": "Get a Note",
+                "summary": "Get a pub.versia:social/Note",
                 "tags": [
                     "versia"
                 ],
@@ -20195,22 +20195,23 @@
                                     "properties": {
                                         "id": {
                                             "type": "string",
-                                            "pattern": "^[A-Za-z0-9_-]+$"
+                                            "pattern": "^[a-z0-9_-]{1,18}$"
                                         },
                                         "type": {
                                             "type": "string",
-                                            "const": "Note"
+                                            "const": "pub.versia:social/Note"
                                         },
                                         "created_at": {
                                             "type": "string",
                                             "format": "date-time",
                                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                                         },
-                                        "$schema": {
+                                        "updated_at": {
                                             "anyOf": [
                                                 {
                                                     "type": "string",
-                                                    "format": "uri"
+                                                    "format": "date-time",
+                                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                                                 },
                                                 {
                                                     "type": "null"
@@ -20225,7 +20226,13 @@
                                                         "type": "string",
                                                         "pattern": "^[a-z0-9.-]+:[a-z0-9_]+$"
                                                     },
-                                                    "additionalProperties": {}
+                                                    "additionalProperties": {
+                                                        "type": "object",
+                                                        "propertyNames": {
+                                                            "type": "string"
+                                                        },
+                                                        "additionalProperties": {}
+                                                    }
                                                 },
                                                 {
                                                     "type": "null"
@@ -20236,240 +20243,112 @@
                                             "type": "array",
                                             "items": {
                                                 "type": "object",
-                                                "propertyNames": {
-                                                    "type": "string",
-                                                    "pattern": "^[\\w.+-]+\\/[\\w.+-]+$"
-                                                },
-                                                "additionalProperties": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "content": {
-                                                            "type": "string"
-                                                        },
-                                                        "remote": {
-                                                            "type": "boolean"
-                                                        },
-                                                        "description": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "size": {
-                                                            "anyOf": [
-                                                                {
-                                                                    "type": "integer",
-                                                                    "minimum": 0,
-                                                                    "maximum": 9007199254740991
-                                                                },
-                                                                {
-                                                                    "type": "null"
-                                                                }
-                                                            ]
-                                                        },
-                                                        "hash": {
-                                                            "anyOf": [
-                                                                {
-                                                                    "type": "string",
-                                                                    "pattern": "^[0-9a-fA-F]{64}$"
-                                                                },
-                                                                {
-                                                                    "type": "null"
-                                                                }
-                                                            ]
-                                                        },
-                                                        "thumbhash": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
-                                                        },
-                                                        "width": {
-                                                            "anyOf": [
-                                                                {
-                                                                    "type": "integer",
-                                                                    "minimum": 0,
-                                                                    "maximum": 9007199254740991
-                                                                },
-                                                                {
-                                                                    "type": "null"
-                                                                }
-                                                            ]
-                                                        },
-                                                        "height": {
-                                                            "anyOf": [
-                                                                {
-                                                                    "type": "integer",
-                                                                    "minimum": 0,
-                                                                    "maximum": 9007199254740991
-                                                                },
-                                                                {
-                                                                    "type": "null"
-                                                                }
-                                                            ]
-                                                        },
-                                                        "fps": {
-                                                            "anyOf": [
-                                                                {
-                                                                    "type": "integer",
-                                                                    "minimum": 0,
-                                                                    "maximum": 9007199254740991
-                                                                },
-                                                                {
-                                                                    "type": "null"
-                                                                }
-                                                            ]
-                                                        },
-                                                        "duration": {
-                                                            "anyOf": [
-                                                                {
-                                                                    "type": "number",
-                                                                    "minimum": 0
-                                                                },
-                                                                {
-                                                                    "type": "null"
-                                                                }
-                                                            ]
-                                                        }
+                                                "properties": {
+                                                    "url": {
+                                                        "type": "string",
+                                                        "format": "uri"
                                                     },
-                                                    "required": [
-                                                        "content",
-                                                        "remote"
-                                                    ]
-                                                }
+                                                    "media_type": {
+                                                        "type": "string",
+                                                        "pattern": "^[\\w.+-]+\\/[\\w.+-]+$"
+                                                    },
+                                                    "description": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "size": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "integer",
+                                                                "minimum": 0,
+                                                                "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "hash": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string",
+                                                                "pattern": "^[0-9a-f]{64}$"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "thumbhash": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string",
+                                                                "format": "base64",
+                                                                "contentEncoding": "base64",
+                                                                "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "width": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "integer",
+                                                                "minimum": 0,
+                                                                "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "height": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "integer",
+                                                                "minimum": 0,
+                                                                "maximum": 9007199254740991
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "duration": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "number",
+                                                                "minimum": 0
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "url",
+                                                    "media_type"
+                                                ]
                                             }
                                         },
                                         "author": {
                                             "type": "string"
                                         },
                                         "category": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "microblog",
-                                                        "forum",
-                                                        "blog",
-                                                        "image",
-                                                        "video",
-                                                        "audio",
-                                                        "messaging"
-                                                    ]
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
+                                            "type": [
+                                                "string",
+                                                "null"
                                             ]
                                         },
                                         "content": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "object",
-                                                    "propertyNames": {
-                                                        "type": "string",
-                                                        "pattern": "^[\\w.+-]+\\/[\\w.+-]+$"
-                                                    },
-                                                    "additionalProperties": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "content": {
-                                                                "type": "string"
-                                                            },
-                                                            "remote": {
-                                                                "type": "boolean"
-                                                            },
-                                                            "description": {
-                                                                "type": [
-                                                                    "string",
-                                                                    "null"
-                                                                ]
-                                                            },
-                                                            "size": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "hash": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "string",
-                                                                        "pattern": "^[0-9a-fA-F]{64}$"
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "thumbhash": {
-                                                                "type": [
-                                                                    "string",
-                                                                    "null"
-                                                                ]
-                                                            },
-                                                            "width": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "height": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "fps": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "integer",
-                                                                        "minimum": 0,
-                                                                        "maximum": 9007199254740991
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            },
-                                                            "duration": {
-                                                                "anyOf": [
-                                                                    {
-                                                                        "type": "number",
-                                                                        "minimum": 0
-                                                                    },
-                                                                    {
-                                                                        "type": "null"
-                                                                    }
-                                                                ]
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "content",
-                                                            "remote"
-                                                        ]
-                                                    }
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
+                                            "type": [
+                                                "string",
+                                                "null"
                                             ]
                                         },
                                         "device": {
@@ -20507,10 +20386,13 @@
                                                 }
                                             ]
                                         },
-                                        "group": {
-                                            "type": [
-                                                "string",
-                                                "null"
+                                        "visibility": {
+                                            "type": "string",
+                                            "enum": [
+                                                "public",
+                                                "unlisted",
+                                                "subscribers",
+                                                "mentions"
                                             ]
                                         },
                                         "is_sensitive": {
@@ -20569,7 +20451,7 @@
                                                 ]
                                             }
                                         },
-                                        "quotes": {
+                                        "quoting": {
                                             "type": [
                                                 "string",
                                                 "null"
@@ -20586,6 +20468,17 @@
                                                 "string",
                                                 "null"
                                             ]
+                                        },
+                                        "url": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string",
+                                                    "format": "uri"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -20594,6 +20487,7 @@
                                         "created_at",
                                         "attachments",
                                         "author",
+                                        "visibility",
                                         "is_sensitive",
                                         "mentions",
                                         "previews"
@@ -20605,9 +20499,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/Note/{id}/collections/replies": {
+        "/.versia/v0.7/entities/pub.versia:social/Note/{id}/collections/replies": {
             "get": {
-                "summary": "Get the replies collection of a Note",
+                "summary": "Get the replies collection of a pub.versia:social/Note",
                 "tags": [
                     "versia"
                 ],
@@ -20756,9 +20650,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/Note/{id}/collections/quotes": {
+        "/.versia/v0.7/entities/pub.versia:social/Note/{id}/collections/quotes": {
             "get": {
-                "summary": "Get the quotes collection of a Note",
+                "summary": "Get the quotes collection of a pub.versia:social/Note",
                 "tags": [
                     "versia"
                 ],
@@ -20907,9 +20801,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/Note/{id}/collections/pub.versia:likes/Likes": {
+        "/.versia/v0.7/entities/pub.versia:social/Note/{id}/collections/pub.versia:likes/Likes": {
             "get": {
-                "summary": "Get the pub.versia:likes/Likes collection of a Note",
+                "summary": "Get the pub.versia:likes/Likes collection of a pub.versia:social/Note",
                 "tags": [
                     "versia"
                 ],
@@ -21058,9 +20952,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/Note/{id}/collections/pub.versia:likes/Dislikes": {
+        "/.versia/v0.7/entities/pub.versia:social/Note/{id}/collections/pub.versia:likes/Dislikes": {
             "get": {
-                "summary": "Get the pub.versia:likes/Dislikes collection of a Note",
+                "summary": "Get the pub.versia:likes/Dislikes collection of a pub.versia:social/Note",
                 "tags": [
                     "versia"
                 ],
@@ -21209,9 +21103,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/Note/{id}/collections/pub.versia:share/Shares": {
+        "/.versia/v0.7/entities/pub.versia:social/Note/{id}/collections/pub.versia:share/Shares": {
             "get": {
-                "summary": "Get the pub.versia:share/Shares collection of a Note",
+                "summary": "Get the pub.versia:share/Shares collection of a pub.versia:social/Note",
                 "tags": [
                     "versia"
                 ],
@@ -21360,9 +21254,9 @@
                 }
             }
         },
-        "/.versia/v0.7/entities/Note/{id}/collections/pub.versia:reactions/Reactions": {
+        "/.versia/v0.7/entities/pub.versia:social/Note/{id}/collections/pub.versia:reactions/Reactions": {
             "get": {
-                "summary": "Get the pub.versia:reactions/Reactions collection of a Note",
+                "summary": "Get the pub.versia:reactions/Reactions collection of a pub.versia:social/Note",
                 "tags": [
                     "versia"
                 ],

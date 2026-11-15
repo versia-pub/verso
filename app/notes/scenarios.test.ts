@@ -44,7 +44,10 @@ const open = async () => {
         assertEquals(posted.status, 200);
         await network.drain();
 
-        return { id: posted.body.id as string, sent: await deliveries(network, "Note", from) };
+        return {
+            id: posted.body.id as string,
+            sent: await deliveries(network, "pub.versia:social/Note", from),
+        };
     };
 
     /** The status `user` sees on their own instance for alice's status `id`, found by its URI. */
@@ -52,7 +55,7 @@ const open = async () => {
         const statuses = await users[user]("GET", "/api/v1/timelines/home");
 
         return statuses.body.find((status: { uri: string }) =>
-            status.uri === `https://a.test/.versia/v0.7/entities/Note/${id}`
+            status.uri === `https://a.test/.versia/v0.7/entities/pub.versia:social/Note/${id}`
         );
     };
 
@@ -139,7 +142,7 @@ Deno.test("a note can be fetched only by the instances it is shown on", async ()
     const direct = await test.post("Psst @erin@e.test", "direct");
     const followers = await test.post("Friends only", "private");
     const fetched = async (domain: string, id: string) => {
-        const url = new URL(`https://a.test/.versia/v0.7/entities/Note/${id}`);
+        const url = new URL(`https://a.test/.versia/v0.7/entities/pub.versia:social/Note/${id}`);
         return (await fetchSigned(test.network.instances[domain].ctx, url)).status;
     };
 
@@ -159,7 +162,10 @@ Deno.test("an edit reaches every instance that has the note, with its history", 
     assertEquals(edited.status, 200);
     await test.network.drain();
 
-    assertEquals(await deliveries(test.network, "Note", from), { "b.test": 1, "c.test": 1 });
+    assertEquals(await deliveries(test.network, "pub.versia:social/Note", from), {
+        "b.test": 1,
+        "c.test": 1,
+    });
 
     const status = await test.seen("carol", note.id);
     assertStringIncludes(status?.content, "Hi *all*");

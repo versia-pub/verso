@@ -121,7 +121,7 @@ Deno.test("a local poll that ends is sent again, to its audience and those who v
         expiresAt: test.clock.now(),
     });
 
-    const notes = () => sent(test.ctx, "Note");
+    const notes = () => sent(test.ctx, "pub.versia:social/Note");
     assertEquals((await notes()).map(([domain]) => domain), ["c.example", "c.example"]);
 
     test.clock.advance(3600_000);
@@ -136,7 +136,8 @@ Deno.test("a local poll that ends is sent again, to its audience and those who v
     ]);
     assertEquals(again?.id, note.id);
     assertEquals(
-        (again?.extensions as Record<string, { votes: number[] }>)["pub.versia:polls"].votes,
+        (again?.extensions as Record<string, { options: { votes: number }[] }>)["pub.versia:polls"]
+            .options.map((option) => option.votes),
         [0, 1],
     );
 });
@@ -221,12 +222,12 @@ Deno.test("a followers-only poll that ends isn't sent to the voters its author b
     await block(test.ctx, "alice", "frank");
     await block(test.ctx, "alice", "gus");
     await blockDomainFor(test.ctx, "alice", "h.example");
-    const before = (await sent(test.ctx, "Note")).length;
+    const before = (await sent(test.ctx, "pub.versia:social/Note")).length;
 
     test.clock.advance(3600_000);
     await endPolls(test.ctx);
 
-    const again = (await sent(test.ctx, "Note")).slice(before)
+    const again = (await sent(test.ctx, "pub.versia:social/Note")).slice(before)
         .map(([domain, entity]) => [domain, entity.id]);
     assertEquals(
         again.toSorted(),

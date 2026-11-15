@@ -75,5 +75,5 @@ export const pollRefreshHandler: Handler = async (ctx: Context, job: JobsTable):
     if (domain === undefined) return;
 
     const reference = { host: domain, id: note.remote_id };
-    await ctx.federation.resolve(ctx, reference, "Note", undefined, staleMs);
+    await ctx.federation.resolve(ctx, reference, "pub.versia:social/Note", undefined, staleMs);
 };

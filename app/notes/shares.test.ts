@@ -127,14 +127,14 @@ Deno.test("shares aren't sent as notes", async () => {
     const note = await createNote(test.ctx, "alice");
     const share = await createShare(test.ctx, "alice", note.id);
 
-    const noteType = registry.types.get("Note");
+    const noteType = registry.types.get("pub.versia:social/Note");
     assertEquals(await noteType?.find?.(test.ctx, share.id, "b.example"), undefined);
     assertEquals(
         await knownNote(test.ctx, { host: test.ctx.urls.domain, id: share.id }),
         undefined,
     );
 
-    const outbox = registry.types.get("User")?.collections?.outbox;
+    const outbox = registry.types.get("User")?.collections?.["pub.versia:social/Notes"];
     const sent = await outbox?.(test.ctx, "alice", { offset: 0, limit: 40 }, "b.example");
     assertEquals([sent?.total, sent?.items.length], [1, 1]);
 });

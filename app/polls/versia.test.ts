@@ -11,13 +11,14 @@ import { endPolls } from "./ending.ts";
 import { pollOf, votesAmong } from "./poll_queries.ts";
 import { vote } from "./polls.ts";
 
-const text = (content: string) => ({ "text/plain": { content, remote: false } });
+/** The option of a poll with the HTML `content` and `votes` votes. */
+const option = (content: string, votes = 0) => ({ content, votes });
 
 Deno.test("polls are an extension Verso supports", () => {
     assertEquals(registry.extensions.includes("pub.versia:polls"), true);
 });
 
-Deno.test("a local poll is in its Note, with its counts hidden until it ends if it hides them", async () => {
+Deno.test("a local poll is in its Note, with its options as HTML text and its counts hidden until it ends if it hides them", async () => {
     await using test = await createTestContext();
     for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
 
@@ -26,7 +27,12 @@ Deno.test("a local poll is in its Note, with its counts hidden until it ends if 
             text: "Which?",
             format: "text/plain",
             spoilerText: "",
-            poll: { options: ["Red", "Blue"], expiresIn: 3600, multiple: hideTotals, hideTotals },
+            poll: {
+                options: ["Red & <b>", "Blue"],
+                expiresIn: 3600,
+                multiple: hideTotals,
+                hideTotals,
+            },
         });
         assertExists(note);
 
@@ -43,8 +49,7 @@ Deno.test("a local poll is in its Note, with its counts hidden until it ends if 
     const expiresAt = new Date(test.clock.now().getTime() + 3600_000).toISOString();
     const poll = (votes: number[], multiple: boolean) => ({
         "pub.versia:polls": {
-            options: [text("Red"), text("Blue")],
-            votes,
+            options: [option("Red &amp; &lt;b&gt;", votes[0]), option("Blue", votes[1])],
             multiple_choice: multiple,
             expires_at: expiresAt,
         },
@@ -57,20 +62,19 @@ Deno.test("a local poll is in its Note, with its counts hidden until it ends if 
 
 /** A public status by bob on b.test, which mentions alice, with the poll `fields` give. */
 const note = (fields: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
-    type: "Note",
+    type: "pub.versia:social/Note",
     id: "n1",
     created_at: "2026-01-01T00:00:00Z",
-    author: "bob",
-    content: text("Which?"),
-    group: "public",
+    author: "b.test:bob",
+    content: "<p>Which?</p>",
+    visibility: "public",
     is_sensitive: false,
     mentions: ["a.test:alice"],
     attachments: [],
     previews: [],
     extensions: {
         "pub.versia:polls": {
-            options: [text("Red"), text("Blue")],
-            votes: [3, 4],
+            options: [option("Red", 3), option("Blue", 4)],
             multiple_choice: false,
             ...fields,
         },
@@ -137,14 +141,12 @@ Deno.test("a remote poll is kept with its counts, but not who voted", async () =
 
 Deno.test("a remote poll's options may be HTML, and those without counts have no votes", async () => {
     await using test = await open();
-    // Text that is remote is a link to it, which isn't fetched.
-    const html = {
-        "text/plain": { content: "https://b.test/option.txt", remote: true },
-        "text/html": { content: "<p>Light <b>blue</b></p>", remote: false },
-    };
-    const options = [...Array(101).keys()].map((index) => text(` Option ${index} `));
+    const options = [...Array(101).keys()].map((index) => option(` Option ${index} `));
 
-    await test.send(note({ options: [html, ...options], votes: [5], multiple_choice: true }));
+    await test.send(note({
+        options: [option("<p>Light <b>blue</b></p>", 5), ...options],
+        multiple_choice: true,
+    }));
 
     const asked = await test.asked();
     assertEquals(asked?.options.slice(0, 3), [["Light blue", 5], ["Option 0", 0], [
@@ -158,7 +160,11 @@ Deno.test("a remote poll's options may be HTML, and those without counts have no
 Deno.test("a poll that isn't as Versia defines it, or has no options, is no poll", async () => {
     await using test = await open();
 
-    for (const fields of [{ options: [] }, { votes: [-1, 0] }, { multiple_choice: "no" }]) {
+    for (
+        const fields of [{ options: [] }, { options: [option("Red", -1)] }, {
+            multiple_choice: "no",
+        }]
+    ) {
         await test.send(note(fields));
         assertEquals(await test.asked(), undefined, JSON.stringify(fields));
     }
@@ -170,7 +176,7 @@ Deno.test("a remote poll sent again with new counts isn't edited, and keeps loca
     const poll = await pollOf(test.a, (await test.kept()).id);
     await vote(test.a, "alice", poll?.id ?? "", [0]);
 
-    await test.send(note({ votes: [8, 4] }));
+    await test.send(note({ options: [option("Red", 8), option("Blue", 4)] }));
 
     assertEquals((await test.asked())?.options, [["Red", 8], ["Blue", 4]]);
     assertEquals((await test.kept()).edited_at, null);
@@ -186,12 +192,12 @@ Deno.test("a remote poll that asks something else, or is removed, is an edit", a
     const poll = await pollOf(test.a, (await test.kept()).id);
     await vote(test.a, "alice", poll?.id ?? "", [0]);
 
-    await test.send(note({ options: [text("Red"), text("Green")], votes: [0, 1] }));
+    await test.send(note({ options: [option("Red"), option("Green", 1)] }));
     assertEquals((await test.kept()).edited_at, test.network.clock.now());
     assertEquals((await test.asked())?.options, [["Red", 0], ["Green", 1]]);
     assertEquals(await votesAmong(test.a, ["alice"], [poll?.id ?? ""]), new Map());
 
-    await test.send(note({ options: [text("Red"), text("Green")], multiple_choice: true }));
+    await test.send(note({ options: [option("Red"), option("Green", 1)], multiple_choice: true }));
     assertEquals((await test.kept()).edited_at, test.network.clock.now());
 
     await test.send(note({}, { extensions: undefined }));
@@ -224,7 +230,10 @@ Deno.test("a remote poll that ended, sent again, doesn't end again", async () =>
 
     test.network.clock.advance(60_000);
     await endPolls(test.a);
-    await test.send(note({ expires_at: expiresAt.toISOString(), votes: [3, 5] }));
+    await test.send(note({
+        expires_at: expiresAt.toISOString(),
+        options: [option("Red", 3), option("Blue", 5)],
+    }));
     await endPolls(test.a);
     assertEquals(await notified(), ["dave"]);
 

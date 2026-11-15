@@ -82,12 +82,12 @@ Deno.test("only local users' follows are given, as Users' collections", async ()
     assertEquals(collections?.followers, followCollections.followers);
     assertEquals(collections?.following, followCollections.following);
     assertEquals(Object.keys(collections ?? {}).toSorted(), [
-        "featured",
         "followers",
         "following",
-        "outbox",
         "pub.versia:likes/Dislikes",
         "pub.versia:likes/Likes",
+        "pub.versia:social/Featured",
+        "pub.versia:social/Notes",
     ]);
 });
 

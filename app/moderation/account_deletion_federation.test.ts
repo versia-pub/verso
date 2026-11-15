@@ -44,8 +44,8 @@ const remoteUsers = async (instance: Instance) =>
 
 /** The text of the statuses `instance` has from other instances. */
 const remoteStatuses = async (instance: Instance) =>
-    (await instance.ctx.db.selectFrom("notes").select("content")
-        .where("instance_id", "is not", null).execute()).map((row) => row.content);
+    (await instance.ctx.db.selectFrom("notes").select("content_html")
+        .where("instance_id", "is not", null).execute()).map((row) => row.content_html);
 
 for (const tombstone of [true, false]) {
     Deno.test(`a deleted user is deleted by every instance that knows them (tombstone: ${tombstone})`, async () => {
@@ -55,7 +55,7 @@ for (const tombstone of [true, false]) {
         await postNote(a.ctx, "alice", { text: "Hi", format: "text/plain", spoilerText: "" });
         await network.drain();
 
-        assertEquals(await remoteStatuses(b), ["Hi"]);
+        assertEquals(await remoteStatuses(b), ["<p>Hi</p>"]);
         assertEquals([await remoteUsers(b), await remoteUsers(c)], [["alice"], ["alice"]]);
 
         await deleteLocalAccount(a.ctx, "alice", { tombstone });

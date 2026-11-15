@@ -20,12 +20,12 @@ const user = (id: string) => ({
 
 /** A public status by bob saying `text`, unless `fields` says otherwise. */
 const note = (id: string, text: string, fields: Record<string, unknown> = {}) => ({
-    type: "Note",
+    type: "pub.versia:social/Note",
     id,
     created_at: "2026-01-01T00:00:00Z",
-    author: "bob",
-    content: { "text/plain": { content: text, remote: false } },
-    group: "public",
+    author: "b.test:bob",
+    content: `<p>${text}</p>`,
+    visibility: "public",
     is_sensitive: false,
     mentions: [],
     attachments: [],
@@ -138,7 +138,7 @@ Deno.test("remote statuses notify those they mention, and followers who asked", 
     assertEquals(await test.of(test.alice), [`mention ${test.bob} ${n1}`]);
     assertEquals(await test.of(test.carol), [`status ${test.bob} ${n1}`]);
 
-    await test.send(undo("Note", "n1"));
+    await test.send(undo("pub.versia:social/Note", "n1"));
 
     assertEquals(await test.of(test.alice), []);
     assertEquals(await test.of(test.carol), []);
@@ -147,11 +147,11 @@ Deno.test("remote statuses notify those they mention, and followers who asked", 
 Deno.test("remote statuses Verso fetched notify no one", async () => {
     await using test = await open();
     test.b.serve(
-        "/.versia/v0.7/entities/Note/n0",
+        "/.versia/v0.7/entities/pub.versia:social/Note/n0",
         note("n0", "Hi @alice", { mentions: [`a.test:${test.alice}`] }),
     );
 
-    await test.send(note("n1", "And more", { replies_to: "n0" }));
+    await test.send(note("n1", "And more", { replies_to: "b.test:n0" }));
 
     assertEquals(await test.of(test.alice), []);
     assertEquals(await test.of(test.carol), [`status ${test.bob} ${await test.kept("n1")}`]);

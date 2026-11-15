@@ -43,13 +43,15 @@ import { displayNamesOf } from "../tags/tag_queries.ts";
  */
 const noteUri = (ctx: Context, note: NoteRow, domain: string | null) => {
     if (domain === null) {
-        const type = note.reblog_of_id === null ? "Note" : "pub.versia:share/Share";
+        const type = note.reblog_of_id === null
+            ? "pub.versia:social/Note"
+            : "pub.versia:share/Share";
         return entityUrl(ctx.urls.domain, type, note.id);
     }
 
     if (note.remote_id === null) throw new Error(`Remote note ${note.id} has no remote id`);
 
-    return entityUrl(domain, "Note", note.remote_id);
+    return entityUrl(domain, "pub.versia:social/Note", note.remote_id);
 };
 
 /**
@@ -345,7 +347,7 @@ export const renderStatusesFor = async (
                 quotes_count: quoted.get(note.id) ?? 0,
                 // A boost has no page of its own, so it links to its Versia entity.
                 url: note.reblog_of_id === null
-                    ? statusUrl(ctx, author, note.id)
+                    ? note.url ?? statusUrl(ctx, author, note.id)
                     : noteUri(ctx, note, domain).href,
                 in_reply_to_id: note.in_reply_to_id,
                 in_reply_to_account_id: note.in_reply_to_account_id,

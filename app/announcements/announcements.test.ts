@@ -132,7 +132,8 @@ Deno.test("an announcement links what it mentions, its hashtags and its statuses
     const shown = await createNote(test.ctx, "bob");
     const unlisted = await createNote(test.ctx, "bob", { visibility: "unlisted" });
     const hidden = await createNote(test.ctx, "bob", { visibility: "private" });
-    const url = (id: string) => `https://social.example/.versia/v0.7/entities/Note/${id}`;
+    const url = (id: string) =>
+        `https://social.example/.versia/v0.7/entities/pub.versia:social/Note/${id}`;
 
     const made = await announce(
         test.ctx,

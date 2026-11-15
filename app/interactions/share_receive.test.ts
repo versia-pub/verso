@@ -8,12 +8,12 @@ import { openFederation, undo } from "./testing.ts";
 
 /** A public status by carol. */
 const note = (id: string) => ({
-    type: "Note",
+    type: "pub.versia:social/Note",
     id,
     created_at: "2026-01-01T00:00:00Z",
-    author: "carol",
-    content: { "text/plain": { content: "Hi", remote: false } },
-    group: "public",
+    author: "b.test:carol",
+    content: "<p>Hi</p>",
+    visibility: "public",
     is_sensitive: false,
     mentions: [],
     attachments: [],
@@ -82,7 +82,7 @@ Deno.test("a share of a local note is kept and counted, once, and a Delete undoe
     assertEquals(await test.counts(test.local.id), [1, 1]);
 
     // A Note's Delete doesn't delete a Share.
-    await test.send(undo("Note", "s1"));
+    await test.send(undo("pub.versia:social/Note", "s1"));
     assertEquals((await test.kept("s1"))?.id, share?.id);
 
     await test.send(undo("pub.versia:share/Share", "s1"));
@@ -110,7 +110,7 @@ Deno.test("another share of a note by the same user replaces the first", async (
 
 Deno.test("a share of another note by someone a local user follows is kept, with the note", async () => {
     await using test = await open();
-    test.b.serve("/.versia/v0.7/entities/Note/n1", note("n1"));
+    test.b.serve("/.versia/v0.7/entities/pub.versia:social/Note/n1", note("n1"));
 
     // a.test has bob, but no local user follows him yet, so neither the boost nor its status is
     // stored.
@@ -144,10 +144,10 @@ Deno.test("a share isn't taken for a note, nor a note for a share", async () => 
     await using test = await open();
     await test.followBob();
     await test.send(sharing("s1", `a.test:${test.local.id}`));
-    await test.send({ ...note("n1"), author: "bob" });
+    await test.send({ ...note("n1"), author: "b.test:bob" });
 
     // A Note, or a like, naming the Share's id doesn't find it.
-    await test.send({ ...note("s1"), author: "bob" });
+    await test.send({ ...note("s1"), author: "b.test:bob" });
     await test.send({
         type: "pub.versia:likes/Like",
         id: "l1",

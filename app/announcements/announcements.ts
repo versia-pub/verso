@@ -94,7 +94,7 @@ const derived = async (ctx: Context, text: string) => {
     const html = renderText(text, "text/plain", {
         mention: (mention) => {
             const row = accounts.get(`${mention.username}@${mention.domain}`.toLowerCase());
-            return row && userUri(ctx, row);
+            return row && { url: userUri(ctx, row) };
         },
         hashtag: (tag) => ctx.urls.url`/tags/${tag.toLowerCase()}`,
     });

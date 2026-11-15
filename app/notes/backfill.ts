@@ -138,7 +138,7 @@ export const fetchReplies = async (
                 const id = await ctx.federation.resolve(
                     timed,
                     reference,
-                    "Note",
+                    "pub.versia:social/Note",
                     { ...fetchBudget(20, until), backfill: true },
                     storedMs,
                 ).catch((error) => {

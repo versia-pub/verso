@@ -75,7 +75,7 @@ export const fetchNoteCollection = async (
     name: string,
     page: { readonly offset?: number; readonly limit: number },
 ): Promise<unknown> => {
-    const url = entityUrl(domain, "Note", remoteId);
+    const url = entityUrl(domain, "pub.versia:social/Note", remoteId);
     url.pathname += `/collections/${name}`;
     if (page.offset !== undefined) url.searchParams.set("offset", String(page.offset));
     url.searchParams.set("limit", String(page.limit));

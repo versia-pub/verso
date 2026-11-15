@@ -28,7 +28,11 @@ const open = async () => {
         });
     await reply(root);
 
-    const rootId = await a.federation.resolve(a, { host: "b.test", id: root.id }, "Note");
+    const rootId = await a.federation.resolve(
+        a,
+        { host: "b.test", id: root.id },
+        "pub.versia:social/Note",
+    );
     assertExists(rootId);
     const copy = await findNote(a, rootId);
     assertExists(copy);

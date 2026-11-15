@@ -24,26 +24,26 @@ Deno.test("an entity URL finds the local account or status it names, if the view
     };
 
     assertEquals(await find(`${entities}/User/bob`), "bob");
-    assertEquals(await find(`${entities}/Note/${open.id}`), open.id);
+    assertEquals(await find(`${entities}/pub.versia:social/Note/${open.id}`), open.id);
     assertEquals(
-        await find(`http://SOCIAL.example/.versia/v0.7/entities/Note/${open.id}`),
+        await find(`http://SOCIAL.example/.versia/v0.7/entities/pub.versia:social/Note/${open.id}`),
         open.id,
     );
-    assertEquals(await find(`${entities}/Note/${closed.id}`), undefined);
+    assertEquals(await find(`${entities}/pub.versia:social/Note/${closed.id}`), undefined);
     await follow(test.ctx, "alice", "bob");
-    assertEquals(await find(`${entities}/Note/${closed.id}`), closed.id);
+    assertEquals(await find(`${entities}/pub.versia:social/Note/${closed.id}`), closed.id);
 
     for (
         const url of [
             `${entities}/User/nobody`,
-            `${entities}/Note/bob`,
+            `${entities}/pub.versia:social/Note/bob`,
             `${entities}/User/${open.id}`,
             // Boosts aren't statuses here.
             `${entities}/pub.versia:share/Share/${share.id}`,
-            `${entities}/Note/${share.id}`,
-            `${entities}/Note/${open.id}/extra`,
-            `${entities}/Note/%62ob`,
-            `https://social.example/bob/.versia/v0.7/entities/Note/${open.id}`,
+            `${entities}/pub.versia:social/Note/${share.id}`,
+            `${entities}/pub.versia:social/Note/${open.id}/extra`,
+            `${entities}/pub.versia:social/Note/%62ob`,
+            `https://social.example/bob/.versia/v0.7/entities/pub.versia:social/Note/${open.id}`,
             `https://social.example/@bob/${open.id}`,
             "https://",
             "bob",
@@ -67,14 +67,14 @@ Deno.test("an entity URL on a remote instance is fetched, unless it fails", asyn
         manually_approves_subscribers: false,
         indexable: true,
     });
-    for (const [id, group] of [["n1", "public"], ["n2", "followers"]]) {
-        b.serve(`/.versia/v0.7/entities/Note/${id}`, {
-            type: "Note",
+    for (const [id, visibility] of [["n1", "public"], ["n2", "subscribers"]]) {
+        b.serve(`/.versia/v0.7/entities/pub.versia:social/Note/${id}`, {
+            type: "pub.versia:social/Note",
             id,
             created_at: "2026-01-01T00:00:00Z",
-            author: "carol",
-            content: { "text/plain": { content: "Hi", remote: false } },
-            group,
+            author: "b.test:carol",
+            content: "<p>Hi</p>",
+            visibility,
             is_sensitive: false,
             mentions: [],
             attachments: [],
@@ -91,14 +91,17 @@ Deno.test("an entity URL on a remote instance is fetched, unless it fails", asyn
     };
 
     assertEquals(await find(`${entities}/User/carol`), "carol");
-    assertEquals(await find(`${entities}/Note/n1`), "n1");
+    assertEquals(await find(`${entities}/pub.versia:social/Note/n1`), "n1");
     // Fetched, but for carol's followers only.
-    assertEquals(await find(`${entities}/Note/n2`), undefined);
+    assertEquals(await find(`${entities}/pub.versia:social/Note/n2`), undefined);
     assertEquals((await findRemoteNoteAt(a, "b.test", "n2"))?.visibility, "private");
-    assertEquals(await find(`${entities}/Note/n3`), undefined);
+    assertEquals(await find(`${entities}/pub.versia:social/Note/n3`), undefined);
     assertEquals(await find("https://c.test/.versia/v0.7/entities/User/dan"), undefined);
     // Each URL names what its own instance has.
-    assertEquals(await find("https://a.test/.versia/v0.7/entities/Note/b.test:n1"), undefined);
+    assertEquals(
+        await find("https://a.test/.versia/v0.7/entities/pub.versia:social/Note/b.test:n1"),
+        undefined,
+    );
 });
 
 Deno.test("a failure other than a remote instance's isn't hidden", async () => {

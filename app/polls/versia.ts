@@ -4,9 +4,10 @@
  * @see https://versia.pub/extensions/polls
  * @module
  */
-import { v0_6 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import type { Context } from "../kernel/context.ts";
-import { textOfHtml } from "../kernel/html.ts";
+import { sanitizeHtml, textOfHtml } from "../kernel/html.ts";
+import { escapeHtml } from "../kernel/markup.ts";
 import {
     deletePoll,
     insertPoll,
@@ -29,52 +30,41 @@ export type RemotePoll = NewPoll & { readonly votes: readonly number[] };
 /**
  * The `extensions` that a local status with the poll `poll` has, or `undefined` if it has none.
  * Like Mastodon, a poll that hides its totals sends none until it ends, but Versia requires them,
- * so each option has 0.
+ * so each option has 0. The voters aren't sent.
  */
 export const pollExtensions = (
     ctx: Context,
     poll: PollWithOptions | undefined,
-): v0_6.Entity["extensions"] => {
+): v0_7.Entity["extensions"] => {
     if (poll === undefined) return undefined;
 
     const hidden = poll.hide_totals && !hasEnded(ctx, poll);
-    const extension: v0_6.Polls = {
+    const extension: v0_7.Polls = {
         options: poll.options.map((option) => ({
-            "text/plain": { content: option.title, remote: false },
+            content: escapeHtml(option.title),
+            votes: hidden ? 0 : option.votes_count,
         })),
-        votes: poll.options.map((option) => hidden ? 0 : option.votes_count),
         multiple_choice: poll.multiple,
         expires_at: poll.expires_at?.toISOString(),
     };
 
-    return { [v0_6.pollsKey]: extension };
-};
-
-/** An option's title, as text, from its plain text or else its HTML. */
-const titleOf = (option: v0_6.ContentFormat) => {
-    const text = (type: string) => {
-        const format = option[type];
-        return format === undefined || format.remote ? undefined : format.content;
-    };
-
-    const html = text("text/html");
-    return (text("text/plain") ?? (html === undefined ? "" : textOfHtml(html))).trim();
+    return { [v0_7.pollsKey]: extension };
 };
 
 /**
  * The poll a remote Note's `extensions` give, with its first options, as many as Verso stores, or
- * `undefined` if it has none. An option without a count has no votes. An extension that doesn't
- * match Versia's definition, or a poll with no options, is treated as no poll.
+ * `undefined` if it has none. An extension that doesn't match Versia's definition, or a poll with
+ * no options, is treated as no poll.
  */
-export const remotePollOf = (extensions: v0_6.Entity["extensions"]): RemotePoll | undefined => {
-    const parsed = v0_6.Polls.safeParse(extensions?.[v0_6.pollsKey]);
+export const remotePollOf = (extensions: v0_7.Entity["extensions"]): RemotePoll | undefined => {
+    const parsed = v0_7.Polls.safeParse(extensions?.[v0_7.pollsKey]);
     if (!parsed.success || parsed.data.options.length === 0) return undefined;
 
     const options = parsed.data.options.slice(0, remoteOptions);
 
     return {
-        options: options.map(titleOf),
-        votes: options.map((_, index) => parsed.data.votes[index] ?? 0),
+        options: options.map((option) => textOfHtml(sanitizeHtml(option.content)).trim()),
+        votes: options.map((option) => option.votes),
         multiple: parsed.data.multiple_choice,
         // Versia has no such setting.
         hideTotals: false,

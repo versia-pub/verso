@@ -3,14 +3,18 @@ import { countText, type Links, linksIn, renderText, scanText } from "./markup.t
 
 const links: Links = {
     mention: (mention) =>
-        mention.username === "nobody"
-            ? undefined
-            : `https://a.example/@${mention.username}${mention.domain ? `@${mention.domain}` : ""}`,
+        mention.username === "nobody" ? undefined : {
+            url: `https://a.example/@${mention.username}${
+                mention.domain ? `@${mention.domain}` : ""
+            }`,
+            reference: mention.domain ? undefined : `a.example:${mention.username}`,
+        },
     hashtag: (tag) => `https://a.example/tags/${tag}`,
 };
 
-const mention = (username: string, href: string) =>
-    `<span class="h-card" translate="no"><a href="${href}" class="u-url mention">` +
+const mention = (username: string, href: string, reference?: string) =>
+    `<span class="h-card" translate="no"><a href="${href}"` +
+    `${reference ? ` data-mention="${reference}"` : ""} class="u-url mention">` +
     `@<span>${username}</span></a></span>`;
 
 const hashtag = (tag: string) =>
@@ -53,7 +57,9 @@ Deno.test("plain text is escaped, in paragraphs and line breaks, with links", ()
             "text/plain",
             links,
         ),
-        `<p>Hi ${mention("alice", "https://a.example/@alice")}, @nobody ${hashtag("Verso")} ` +
+        `<p>Hi ${mention("alice", "https://a.example/@alice", "a.example:alice")}, @nobody ${
+            hashtag("Verso")
+        } ` +
             ":blob:<br>&lt;b&gt;x&lt;/b&gt; &amp;amp; \\*y\\*</p>" +
             `<p>see ${link("https://a.example/?a=1&amp;b")}</p>`,
     );

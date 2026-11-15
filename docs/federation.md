@@ -22,7 +22,7 @@ resolver and the entity routes all work from it:
 
 | Field           | What it does                                                           |
 | --------------- | ---------------------------------------------------------------------- |
-| `type`          | the name, such as `Note` or `pub.versia:likes/Like`                    |
+| `type`          | the name, such as `User` or `pub.versia:social/Note`                   |
 | `extension`     | the extension that defines it, for an extension's type                 |
 | `schema`        | the Zod schema from `@versia/protocol`                                 |
 | `authority`     | the only instance that may send it, usually its author's               |
@@ -73,9 +73,30 @@ as a user whose profile changed and then changed back. For those, the key includ
 only an identical request counts as a duplicate. A transient entity that Verso stores, such as a
 Report, has no id to tell it by, so it is stored with a hash of itself, in case its job runs again.
 
-A User version is discarded if its `updated_at` is older than the stored one's, or if its
+A User or Note version is discarded if its `updated_at` is older than the stored one's, or if its
 `created_at` isn't the stored one's. If either version has no `updated_at`, the last one received
 wins. [`app/federation/versions.ts`](../app/federation/versions.ts) decides this.
+
+### Notes
+
+A status is a `pub.versia:social/Note`. Verso maps the Note's `visibility` like this:
+
+| Note          | Verso      |
+| ------------- | ---------- |
+| `public`      | `public`   |
+| `unlisted`    | `unlisted` |
+| `subscribers` | `private`  |
+| `mentions`    | `direct`   |
+
+- A received Note's `content` is sanitised and stored as HTML. Its `url` is shown as the status's
+  `url`, unless it's longer than 2048 characters. Its `quoting` is the status it quotes.
+- Its `updated_at` is kept as received. A version that changes the text, warning, sensitivity,
+  attachments or poll is an edit made at `updated_at`, but not before the status was created and not
+  in the future. A Note without `updated_at` is an edit made now.
+- A mention links to the account Verso has for the reference in its `data-mention`, not to the
+  `href` the sender wrote. A mention of an account Verso doesn't have keeps its `href`.
+- A poll is in the Note's `pub.versia:polls` extension. Each option is RichText, and Verso shows its
+  text only. A poll that hides its totals sends 0 votes for every option until it ends.
 
 `Delete` is handled in [`app/federation/delete.ts`](../app/federation/delete.ts), which calls
 `prepareDelete` and `deleteRemote` on the deleted entity's type.
@@ -156,7 +177,15 @@ done. See [`app/notes/async_refreshes.ts`](../app/notes/async_refreshes.ts).
 
 `entityRoutes` in `app/federation/registry.ts` builds the entity and collection routes from the
 registry. They use each type's `find` and `collections`, which check what the requesting instance
-may see. The discovery and instance metadata routes are in
+may see.
+
+A user's `pub.versia:social/Notes` collection holds their public and unlisted statuses, oldest
+first. Its `pub.versia:social/Featured` collection holds references to the ones they pin, latest
+first. A reference to a local entity always has Verso's host, because v0.7 has no bare ids. A local
+status's mentions are written with a `data-mention` reference, and the link goes to the account's
+page.
+
+The discovery and instance metadata routes are in
 [`app/instances/versia_routes.ts`](../app/instances/versia_routes.ts).
 
 ## Signatures and keys
@@ -236,8 +265,6 @@ upstream.
   optional, and a missing author means the signing instance.
 - `compatibility.versions` should hold `0.X`, but every example says `0.6.0`. Verso sends `0.6.0`
   and accepts any string.
-- The Note `group` keywords `public` and `followers` are also valid bare ids. Verso treats them as
-  the keywords.
 - Some rules are only written in prose, such as avatars being `image/*` and attachments being
   remote. Verso enforces them.
 - Domains can't have a port, but the spec doesn't say whether references can. Verso allows a port in

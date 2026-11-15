@@ -15,7 +15,11 @@ import { visibleNote } from "../notes/visibility.ts";
 /** Whether `query` is a URL, which a search that resolves finds alone. */
 export const isUrlQuery = (query: string): boolean => /^https?:\/\//.test(query);
 
-const entityPath = /^\/\.versia\/v0\.7\/entities\/(User|Note)\/([A-Za-z0-9_-]+)$/;
+const entityPath =
+    /^\/\.versia\/v0\.7\/entities\/(User|pub\.versia:social\/Note)\/([A-Za-z0-9_-]+)$/;
+
+/** The registry name of each type that a URL can name. */
+const registryNames = { User: "User", Note: "pub.versia:social/Note" } as const;
 
 /** The User or Note at the entity URL `text`, if it is one. */
 const entityAt = (text: string) => {
@@ -49,7 +53,12 @@ export const resolveEntityAt = async (
     if (entity === undefined) return undefined;
 
     try {
-        const id = await ctx.federation.resolve(ctx, entity.reference, entity.type, budget);
+        const id = await ctx.federation.resolve(
+            ctx,
+            entity.reference,
+            registryNames[entity.type],
+            budget,
+        );
         return id === undefined ? undefined : { type: entity.type, id };
     } catch (error) {
         if (!isRemoteFailure(error)) throw error;

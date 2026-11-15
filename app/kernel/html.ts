@@ -127,6 +127,29 @@ const withCite = (tagName: string, attribs: sanitize.Attributes) => {
     return { tagName, attribs: address === undefined ? rest : { ...rest, cite: address } };
 };
 
+/**
+ * The `a` transform. A mention whose reference is in `mentionHrefs` links to the address it maps
+ * to, not to the one the sender gave.
+ */
+const linkTag =
+    (mentionHrefs: ReadonlyMap<string, string> = new Map()) =>
+    (tagName: string, attribs: sanitize.Attributes) => {
+        const { href: _href, rel: _rel, target: _target, ...rest } = attribs;
+        const { "data-mention": mention, ...plain } = rest;
+        const mentioned = mention === undefined || !v0_7.ReferenceText.safeParse(mention).success
+            ? undefined
+            : mention;
+        const href = (mentioned && mentionHrefs.get(mentioned)) ?? linkAddress(attribs.href);
+
+        // The link is gone, and its text stays.
+        if (href === undefined) return { tagName: "span", attribs: {} };
+
+        const link = { ...linkAttributes, ...plain, href };
+        if (mentioned === undefined) return { tagName, attribs: link };
+
+        return { tagName, attribs: { ...link, "data-mention": mentioned, class: "u-url mention" } };
+    };
+
 // Raise `sanitizerVersion` whenever these change.
 const options: sanitize.IOptions = {
     allowedTags,
@@ -174,32 +197,27 @@ const options: sanitize.IOptions = {
         q: withCite,
         del: withCite,
         ins: withCite,
-        a: (tagName, attribs) => {
-            const { href: _href, rel: _rel, target: _target, ...rest } = attribs;
-            const { "data-mention": mention, ...plain } = rest;
-            const href = linkAddress(attribs.href);
-
-            // The link is gone, and its text stays.
-            if (href === undefined) return { tagName: "span", attribs: {} };
-
-            const link = { ...linkAttributes, ...plain, href };
-            if (mention === undefined || !v0_7.ReferenceText.safeParse(mention).success) {
-                return { tagName, attribs: link };
-            }
-
-            return {
-                tagName,
-                attribs: { ...link, "data-mention": mention, class: "u-url mention" },
-            };
-        },
+        a: linkTag(),
     },
 };
 
 /**
  * HTML with only the tags, attributes and classes clients can be trusted with. The text of any
  * other tag is kept, except in scripts, styles and the like.
+ *
+ * `mentionHrefs` maps references like `example.com:abc` to the address a mention of that reference
+ * links to. The map is Verso's own, so its addresses aren't checked again.
  */
-export const sanitizeHtml = (html: string): string => sanitize(html, options);
+export const sanitizeHtml = (
+    html: string,
+    mentionHrefs?: ReadonlyMap<string, string>,
+): string =>
+    sanitize(
+        html,
+        mentionHrefs === undefined
+            ? options
+            : { ...options, transformTags: { ...options.transformTags, a: linkTag(mentionHrefs) } },
+    );
 
 /**
  * Which version of the options remote HTML is sanitised with. Remote HTML is stored sanitised, with

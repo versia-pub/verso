@@ -165,12 +165,13 @@ Deno.test("a local note lists other instances' reactions by their ids there", as
     await test.send(reaction("r1", `a.test:${test.local.id}`, "🎉"));
 
     assertEquals(
-        await registry.types.get("Note")?.collections?.["pub.versia:reactions/Reactions"]?.(
-            test.a,
-            test.local.id,
-            { offset: 0, limit: 40 },
-            "c.test",
-        ),
+        await registry.types.get("pub.versia:social/Note")?.collections
+            ?.["pub.versia:reactions/Reactions"]?.(
+                test.a,
+                test.local.id,
+                { offset: 0, limit: 40 },
+                "c.test",
+            ),
         { author: test.alice, total: 1, items: ["b.test:r1"] },
     );
 });

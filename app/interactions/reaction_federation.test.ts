@@ -46,12 +46,13 @@ const open = async () => {
 
     /** A page of a local status's reactions, as `requester` may see them. */
     const reactions = (id: string, requester: string, page = { offset: 0, limit: 40 }) =>
-        registry.types.get("Note")?.collections?.["pub.versia:reactions/Reactions"]?.(
-            test.ctx,
-            id,
-            page,
-            requester,
-        );
+        registry.types.get("pub.versia:social/Note")?.collections
+            ?.["pub.versia:reactions/Reactions"]?.(
+                test.ctx,
+                id,
+                page,
+                requester,
+            );
 
     /** Reacts for `accountId`, and returns the id of the reaction. */
     const reacted = async (accountId: string, noteId: string, name: string) => {
@@ -235,7 +236,9 @@ Deno.test("reactions and their collection are served at their unencoded URLs", a
     assertEquals([status, entity.content], [200, "🎉"]);
 
     const collection = new URL(
-        `${entityUrl("a.test", "Note", note.id)}/collections/pub.versia:reactions/Reactions`,
+        `${
+            entityUrl("a.test", "pub.versia:social/Note", note.id)
+        }/collections/pub.versia:reactions/Reactions`,
     );
     assertEquals(await read(collection), [200, { total: 1, items: [`a.test:${id}`] }]);
 });

@@ -34,7 +34,7 @@ const open = async () => {
 
     /** A page of a local status's boosts, as `requester` may see them. */
     const shares = (id: string, requester: string, page = { offset: 0, limit: 40 }) =>
-        registry.types.get("Note")?.collections?.["pub.versia:share/Shares"]?.(
+        registry.types.get("pub.versia:social/Note")?.collections?.["pub.versia:share/Shares"]?.(
             test.ctx,
             id,
             page,
@@ -162,7 +162,9 @@ Deno.test("shares and their collection are served at their unencoded URLs", asyn
     assertEquals([status, entity.shared], [200, note.id]);
 
     const collection = new URL(
-        `${entityUrl("a.test", "Note", note.id)}/collections/pub.versia:share/Shares`,
+        `${
+            entityUrl("a.test", "pub.versia:social/Note", note.id)
+        }/collections/pub.versia:share/Shares`,
     );
     assertEquals(await read(collection), [200, { total: 1, items: [`a.test:${shared.id}`] }]);
 });

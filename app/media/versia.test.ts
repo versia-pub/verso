@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { createTestContext } from "../testing/context.ts";
 import { findMedia } from "./media_queries.ts";
 import { pictureTypes } from "./uploads.ts";
-import { remoteFile, remoteMediaV07, remotePicture, versiaMediaV07 } from "./versia.ts";
+import { remoteMedia, remotePicture, versiaMedia } from "./versia.ts";
 
 Deno.test("a version that isn't at a web address isn't taken, even if it reads as one", () => {
     assertEquals(
@@ -63,11 +63,6 @@ Deno.test("what is too large to store is left out of remote media, or skips its 
         })?.url,
         url,
     );
-
-    const type = `application/${"a".repeat(255 - 12)}`;
-
-    assertEquals(remoteFile({ [type]: { content: url, remote: true } })?.mediaType, type);
-    assertEquals(remoteFile({ [`${type}a`]: { content: url, remote: true } }), null);
 });
 
 const pictures = (mediaType: string) => pictureTypes.has(mediaType);
@@ -76,7 +71,7 @@ Deno.test("v0.7 media is stored with what it says, and left out if its type isn'
     const hash = "AB".repeat(32);
 
     assertEquals(
-        remoteMediaV07({
+        remoteMedia({
             url: "https://b.example/bob.webp",
             media_type: "image/webp",
             description: "Bob",
@@ -98,11 +93,11 @@ Deno.test("v0.7 media is stored with what it says, and left out if its type isn'
         },
     );
     assertEquals(
-        remoteMediaV07({ url: "https://b.example/sea.svg", media_type: "image/svg+xml" }, pictures),
+        remoteMedia({ url: "https://b.example/sea.svg", media_type: "image/svg+xml" }, pictures),
         null,
     );
-    assertEquals(remoteMediaV07(undefined, pictures), null);
-    assertEquals(remoteMediaV07(null, pictures), null);
+    assertEquals(remoteMedia(undefined, pictures), null);
+    assertEquals(remoteMedia(null, pictures), null);
 });
 
 Deno.test("v0.7 media that is too large to store is left out, or isn't taken", () => {
@@ -110,10 +105,10 @@ Deno.test("v0.7 media that is too large to store is left out, or isn't taken", (
     const largest = 2 ** 31 - 1;
     const media = { url, media_type: "image/webp" };
 
-    const kept = remoteMediaV07({ ...media, size: largest, width: largest, height: 1 }, pictures);
+    const kept = remoteMedia({ ...media, size: largest, width: largest, height: 1 }, pictures);
     assertEquals([kept?.size, kept?.width, kept?.height], [largest, largest, 1]);
 
-    const tooLarge = remoteMediaV07({
+    const tooLarge = remoteMedia({
         ...media,
         size: largest + 1,
         width: largest + 1,
@@ -126,12 +121,12 @@ Deno.test("v0.7 media that is too large to store is left out, or isn't taken", (
     );
 
     const longUrl = `https://b.example/${"a".repeat(2048 - 18)}`;
-    assertEquals(remoteMediaV07({ ...media, url: longUrl }, pictures)?.url, longUrl);
-    assertEquals(remoteMediaV07({ ...media, url: `${longUrl}a` }, pictures), null);
+    assertEquals(remoteMedia({ ...media, url: longUrl }, pictures)?.url, longUrl);
+    assertEquals(remoteMedia({ ...media, url: `${longUrl}a` }, pictures), null);
 
     const type = `application/${"a".repeat(255 - 12)}`;
-    assertEquals(remoteMediaV07({ url, media_type: type }, () => true)?.mediaType, type);
-    assertEquals(remoteMediaV07({ url, media_type: `${type}a` }, () => true), null);
+    assertEquals(remoteMedia({ url, media_type: type }, () => true)?.mediaType, type);
+    assertEquals(remoteMedia({ url, media_type: `${type}a` }, () => true), null);
 });
 
 Deno.test("local media is given to v0.7 as its file, once processed", async () => {
@@ -160,7 +155,7 @@ Deno.test("local media is given to v0.7 as its file, once processed", async () =
     };
 
     const processed = await insert({ processed_at: test.clock.now(), sha256: "ab".repeat(32) });
-    assertEquals(versiaMediaV07(test.ctx, processed), {
+    assertEquals(versiaMedia(test.ctx, processed), {
         url: `https://social.example/media/${"ab".repeat(32)}`,
         media_type: "image/png",
         description: "Me",
@@ -172,11 +167,11 @@ Deno.test("local media is given to v0.7 as its file, once processed", async () =
     });
 
     assertEquals(
-        versiaMediaV07(test.ctx, await insert({ processed_at: null, sha256: "ab" })),
+        versiaMedia(test.ctx, await insert({ processed_at: null, sha256: "ab" })),
         undefined,
     );
     assertEquals(
-        versiaMediaV07(test.ctx, await insert({ processed_at: test.clock.now(), sha256: null })),
+        versiaMedia(test.ctx, await insert({ processed_at: test.clock.now(), sha256: null })),
         undefined,
     );
 });

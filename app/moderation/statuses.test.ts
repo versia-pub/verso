@@ -55,7 +55,7 @@ Deno.test("a local status is deleted with its media, and other instances are tol
 
     assertEquals(await findNote(test.ctx, note.id), undefined);
     assertEquals(await findMedia(test.ctx, mediaId), undefined);
-    assertEquals(await deletes(test.ctx), [["c.example", "Note", note.id]]);
+    assertEquals(await deletes(test.ctx), [["c.example", "pub.versia:social/Note", note.id]]);
     assertEquals(await removeStatus(test.ctx, note.id), false);
 });
 

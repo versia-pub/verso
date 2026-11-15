@@ -67,6 +67,12 @@ export const profileUrl = (
         ? ctx.urls.url`/@${row.username}`
         : ctx.urls.url`/@${row.username}@${row.domain}`;
 
+/** A remote account's own page, if it gave one, or else its {@link profileUrl}. */
+export const accountUrl = (
+    ctx: Context,
+    row: Pick<AccountRow, "username" | "domain" | "url">,
+): string => row.domain !== null && row.url !== null ? row.url : profileUrl(ctx, row);
+
 /** The web page on this instance of the status `id` by the account `row`, under its profile's. */
 export const statusUrl = (
     ctx: Context,
@@ -194,7 +200,7 @@ export const renderAccount = (
         username: row.username,
         acct: local ? row.username : `${row.username}@${row.domain}`,
         // A remote account's own page, if it gave one.
-        url: !local && shown.url !== null ? shown.url : profileUrl(ctx, row),
+        url: accountUrl(ctx, shown),
         uri,
         display_name: shown.display_name,
         note: html(shown.note_html),

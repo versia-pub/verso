@@ -8,7 +8,7 @@ import type { Context } from "../kernel/context.ts";
 import type { MediaRow, RemoteMedia } from "./media_queries.ts";
 import { fileUrl } from "./render.ts";
 import { servedTypeOf } from "./serving.ts";
-import { isPlayable, pictureTypes } from "./uploads.ts";
+import { pictureTypes } from "./uploads.ts";
 
 /** The longest URL Verso stores from a peer. */
 export const maxUrlLength = 2048;
@@ -76,10 +76,10 @@ const firstOf = (
 };
 
 /**
- * The media `media`, as {@link firstOf} stores one version, or `null` if there is none or `takes`
- * doesn't accept its type.
+ * The media `media`, as Verso stores it, or `null` if there is none or `takes` doesn't accept its
+ * type.
  */
-export const remoteMediaV07 = (
+export const remoteMedia = (
     media: v0_7.Media | null | undefined,
     takes: (mediaType: string) => boolean,
 ): RemoteMedia | null =>
@@ -88,13 +88,6 @@ export const remoteMediaV07 = (
 /** The first version of an image at a URL that clients can display. */
 export const remotePicture = (formats: v0_6.ContentFormat | null | undefined): RemoteMedia | null =>
     firstOf(formats, (mediaType) => pictureTypes.has(mediaType));
-
-/**
- * The first version of the media at a URL that clients can display as an image, otherwise play,
- * otherwise any.
- */
-export const remoteFile = (formats: v0_6.ContentFormat): RemoteMedia | null =>
-    remotePicture(formats) ?? firstOf(formats, isPlayable) ?? firstOf(formats, () => true);
 
 /** What a processed `row` tells Versia about its file, besides its URL and type. */
 const detailsOf = (row: MediaRow) => ({
@@ -112,20 +105,7 @@ const detailsOf = (row: MediaRow) => ({
  * it. Versia has no focus point to crop images around, so that is omitted. Media that isn't
  * processed yet, or isn't stored because processing failed, is `undefined`.
  */
-export const versiaFile = (ctx: Context, row: MediaRow): v0_6.ContentFormat | undefined => {
-    if (row.processed_at === null || row.sha256 === null) return undefined;
-
-    return {
-        [servedTypeOf(row)]: {
-            content: fileUrl(ctx, row.sha256),
-            remote: true,
-            ...detailsOf(row),
-        },
-    };
-};
-
-/** Local media as {@link versiaFile} gives it, in Versia v0.7's shape. */
-export const versiaMediaV07 = (ctx: Context, row: MediaRow): v0_7.Media | undefined => {
+export const versiaMedia = (ctx: Context, row: MediaRow): v0_7.Media | undefined => {
     if (row.processed_at === null || row.sha256 === null) return undefined;
 
     return { url: fileUrl(ctx, row.sha256), media_type: servedTypeOf(row), ...detailsOf(row) };

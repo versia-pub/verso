@@ -48,6 +48,10 @@ export type NotesTable = {
     shares_count: Generated<number>;
     created_at: Date;
     edited_at: Date | null;
+    /** A remote status's `updated_at` as received, or `null` if none, or if it is local. */
+    updated_at: Date | null;
+    /** A remote status's web page, or `null` if it gave none, or if it is local. */
+    url: string | null;
     /** When it was last fetched or sent, or `null` if it is a local status. */
     fetched_at: Date | null;
 };

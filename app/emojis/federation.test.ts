@@ -14,16 +14,6 @@ const emojis = (...shortcodes: string[]) => ({
     "pub.versia:custom_emojis": {
         emojis: shortcodes.map((shortcode) => ({
             name: `:${shortcode}:`,
-            content: { "image/png": { content: `https://b.test/${shortcode}.png`, remote: true } },
-        })),
-    },
-});
-
-/** The extension for emojis as a user has them, in Versia v0.7's shape. */
-const userEmojis = (...shortcodes: string[]) => ({
-    "pub.versia:custom_emojis": {
-        emojis: shortcodes.map((shortcode) => ({
-            name: `:${shortcode}:`,
             content: { url: `https://b.test/${shortcode}.png`, media_type: "image/png" },
         })),
     },
@@ -42,13 +32,14 @@ const user = (extensions: object) => ({
 });
 
 /** bob's public status `n1`, saying `text` with the emojis of `extensions`. */
-const note = (text: string, extensions: object, created_at = "2026-01-01T00:00:00Z") => ({
-    type: "Note",
+const note = (text: string, extensions: object, updated_at = "2026-01-01T00:00:00Z") => ({
+    type: "pub.versia:social/Note",
     id: "n1",
-    created_at,
-    author: "bob",
-    content: { "text/plain": { content: text, remote: false } },
-    group: "public",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at,
+    author: "b.test:bob",
+    content: `<p>${text}</p>`,
+    visibility: "public",
     is_sensitive: false,
     mentions: [],
     attachments: [],
@@ -63,7 +54,7 @@ const open = async () => {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
-    b.serve("/.versia/v0.7/entities/User/bob", user(userEmojis("blob")));
+    b.serve("/.versia/v0.7/entities/User/bob", user(emojis("blob")));
 
     const alice = await createLocalAccount(a, "alice");
     const bob = await a.federation.resolve(a, { host: "b.test", id: "bob" }, "User");
@@ -135,7 +126,7 @@ Deno.test("a remote user's emojis are shown with their account", async () => {
     }]);
 
     // Sent again with others, it uses only those.
-    await test.send(user(userEmojis("cat")));
+    await test.send(user(emojis("cat")));
     assertEquals(test.shown(await test.account()), [["cat", "https://b.test/cat.png"]]);
 
     await test.send(user({}));

@@ -29,7 +29,11 @@ const open = async () => {
     const carols = await reply(root);
     const daves = await reply(carols, "dave");
 
-    const rootId = await a.federation.resolve(a, { host: "b.test", id: root.id }, "Note");
+    const rootId = await a.federation.resolve(
+        a,
+        { host: "b.test", id: root.id },
+        "pub.versia:social/Note",
+    );
     assertExists(rootId);
     const copy = await findNote(a, rootId);
     assertExists(copy);
@@ -44,7 +48,7 @@ const open = async () => {
         assertExists(serve);
         network.transport.servers.set("b.test", (request) =>
             new URL(request.url).pathname ===
-                    `/.versia/v0.7/entities/Note/${id}/collections/replies`
+                    `/.versia/v0.7/entities/pub.versia:social/Note/${id}/collections/replies`
                 ? Promise.resolve(answer())
                 : serve(request));
     };
@@ -53,7 +57,7 @@ const open = async () => {
     const asked = (id: string) =>
         network.transport.sent.filter((request) =>
             new URL(request.url).pathname ===
-                `/.versia/v0.7/entities/Note/${id}/collections/replies`
+                `/.versia/v0.7/entities/pub.versia:social/Note/${id}/collections/replies`
         ).length;
 
     return {
@@ -155,7 +159,7 @@ Deno.test("replies stored are fetched again only once they are a week old", asyn
     const fetches = () =>
         test.network.transport.sent.filter((request) => {
             const path = new URL(request.url).pathname;
-            return path.startsWith("/.versia/v0.7/entities/Note/") &&
+            return path.startsWith("/.versia/v0.7/entities/pub.versia:social/Note/") &&
                 !path.includes("/collections/");
         }).length;
 
@@ -237,24 +241,28 @@ Deno.test("a replies page is v0.7 references, each with its host", async () => {
         manually_approves_subscribers: false,
         indexable: true,
     });
-    evil.serve("/.versia/v0.7/entities/Note/n1", {
-        type: "Note",
+    evil.serve("/.versia/v0.7/entities/pub.versia:social/Note/n1", {
+        type: "pub.versia:social/Note",
         id: "n1",
         created_at: "2026-01-01T00:00:00Z",
-        author: "eve",
-        content: { "text/plain": { content: "Hi", remote: false } },
-        group: "public",
+        author: "e.test:eve",
+        content: "<p>Hi</p>",
+        visibility: "public",
         is_sensitive: false,
         mentions: [],
         attachments: [],
         previews: [],
     });
-    const id = await test.a.federation.resolve(test.a, { host: "e.test", id: "n1" }, "Note");
+    const id = await test.a.federation.resolve(
+        test.a,
+        { host: "e.test", id: "n1" },
+        "pub.versia:social/Note",
+    );
     assertExists(id);
     const row = await findNote(test.a, id);
     assertExists(row);
 
-    const replies = "/.versia/v0.7/entities/Note/n1/collections/replies";
+    const replies = "/.versia/v0.7/entities/pub.versia:social/Note/n1/collections/replies";
     evil.serve(replies, { total: 1, items: ["n2"] });
     await assertRejects(() => fetchReplies(test.a, row), PermanentFailure);
 
@@ -285,20 +293,24 @@ Deno.test("failing to fetch the replies of a thread's start fails, unless it has
         manually_approves_subscribers: false,
         indexable: true,
     });
-    evil.serve("/.versia/v0.7/entities/Note/n1", {
-        type: "Note",
+    evil.serve("/.versia/v0.7/entities/pub.versia:social/Note/n1", {
+        type: "pub.versia:social/Note",
         id: "n1",
         created_at: "2026-01-01T00:00:00Z",
-        author: "eve",
-        content: { "text/plain": { content: "Hi", remote: false } },
-        group: "public",
+        author: "e.test:eve",
+        content: "<p>Hi</p>",
+        visibility: "public",
         is_sensitive: false,
         mentions: [],
         attachments: [],
         previews: [],
     });
 
-    const evils = await test.a.federation.resolve(test.a, { host: "e.test", id: "n1" }, "Note");
+    const evils = await test.a.federation.resolve(
+        test.a,
+        { host: "e.test", id: "n1" },
+        "pub.versia:social/Note",
+    );
     assertExists(evils);
     const evilsRow = await findNote(test.a, evils);
     assertExists(evilsRow);
@@ -313,9 +325,11 @@ Deno.test("failing to fetch the replies of a thread's start fails, unless it has
 
     await fetchReplies(test.a, evilsRow);
     test.network.transport.servers.set("e.test", serve);
-    evil.serve("/.versia/v0.7/entities/Note/n1/collections/replies", { total: 1 });
+    evil.serve("/.versia/v0.7/entities/pub.versia:social/Note/n1/collections/replies", {
+        total: 1,
+    });
     await assertRejects(() => fetchReplies(test.a, evilsRow), PermanentFailure);
-    evil.serve("/.versia/v0.7/entities/Note/n1/collections/replies", "{");
+    evil.serve("/.versia/v0.7/entities/pub.versia:social/Note/n1/collections/replies", "{");
     await assertRejects(() => fetchReplies(test.a, evilsRow), PermanentFailure);
 
     await using fresh = await open();

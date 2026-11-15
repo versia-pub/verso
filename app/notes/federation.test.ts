@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import { v0_6 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { encode } from "fast-png";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { audienceInstances } from "../federation/deliver.ts";
@@ -28,6 +28,9 @@ import { editNote, postNote } from "./notes.ts";
 import { removeNote } from "./removal.ts";
 import { pin } from "./pins.ts";
 import { createNote } from "./testing.ts";
+
+/** The type of a Note. */
+const noteName = "pub.versia:social/Note";
 
 const png = new Uint8Array(encode({
     width: 2,
@@ -61,7 +64,7 @@ const open = async (options: TestContextOptions = {}) => {
 const queued = async (ctx: Context) =>
     (await queuedDeliveries(ctx))
         .map((job): [string, Record<string, unknown>] => [job.domain, JSON.parse(job.body)])
-        .filter(([, entity]) => entity.type === "Note" || entity.type === "Delete");
+        .filter(([, entity]) => entity.type === noteName || entity.type === "Delete");
 
 /** The instance each of `queued` is for, and the type and id of the entity sent. */
 const sent = async (ctx: Context) =>
@@ -104,21 +107,20 @@ Deno.test("a local note is a Versia Note, with who it mentions, what it replies 
 
     const entity = await test.find(note.id, "");
     assertEquals(entity, {
-        type: "Note",
+        type: noteName,
         id: note.id,
         created_at: test.clock.now().toISOString(),
-        author: "alice",
+        updated_at: undefined,
+        author: "social.example:alice",
         category: "microblog",
-        content: {
-            "text/markdown": { content: "Hi *@bob*", remote: false },
-            "text/html": { content: "<p>Hi <em>@bob</em></p>", remote: false },
-        },
-        group: "public",
+        content: "<p>Hi <em>@bob</em></p>",
+        visibility: "unlisted",
         is_sensitive: true,
         subject: "Greeting",
-        mentions: ["bob", "b.example:carol"],
+        mentions: ["social.example:bob", "b.example:carol"],
         replies_to: "b.example:c1",
-        quotes: "b.example:c2",
+        quoting: "b.example:c2",
+        url: `https://social.example/@alice/${note.id}`,
         attachments: [],
         previews: [],
         extensions: {
@@ -126,19 +128,17 @@ Deno.test("a local note is a Versia Note, with who it mentions, what it replies 
                 emojis: [{
                     name: ":blob:",
                     content: {
-                        "image/png": {
-                            content: "https://social.example/media/emoji-blob",
-                            remote: true,
-                        },
+                        url: "https://social.example/media/emoji-blob",
+                        media_type: "image/png",
                     },
                 }],
             },
         },
     });
-    assertEquals(v0_6.Note.safeParse(entity).success, true);
+    assertEquals(v0_7.Note.safeParse(entity).success, true);
 });
 
-Deno.test("a local reply is to a bare id, and a note without a warning or emojis has neither", async () => {
+Deno.test("a local reply is to a reference with a host, and a note without a warning or emojis has neither", async () => {
     await using test = await open();
     const parent = await createNote(test.ctx, "bob");
     const note = await createNote(test.ctx, "alice", {
@@ -149,7 +149,7 @@ Deno.test("a local reply is to a bare id, and a note without a warning or emojis
     const entity = await test.find(note.id, "");
     assertEquals(
         [entity?.replies_to, entity?.subject, entity?.is_sensitive, entity?.extensions],
-        [parent.id, undefined, false, undefined],
+        [`social.example:${parent.id}`, undefined, false, undefined],
     );
 });
 
@@ -184,35 +184,29 @@ Deno.test("a local note's files are at the URLs they are served at, as what they
     // As sent, without the omitted fields.
     assertEquals(JSON.parse(JSON.stringify(entity?.attachments)), [
         {
-            "video/mp4": {
-                content: `https://social.example/media/${video.sha256}`,
-                remote: true,
-                size: 9,
-                hash: video.sha256 ?? undefined,
-            },
+            url: `https://social.example/media/${video.sha256}`,
+            media_type: "video/mp4",
+            size: 9,
+            hash: video.sha256 ?? undefined,
         },
         {
-            "image/png": {
-                content: `https://social.example/media/${kept?.sha256}`,
-                remote: true,
-                description: "A red square",
-                size: kept?.size ?? undefined,
-                hash: kept?.sha256 ?? undefined,
-                thumbhash: kept?.thumbhash ?? undefined,
-                width: 2,
-                height: 2,
-            },
+            url: `https://social.example/media/${kept?.sha256}`,
+            media_type: "image/png",
+            description: "A red square",
+            size: kept?.size ?? undefined,
+            hash: kept?.sha256 ?? undefined,
+            thumbhash: kept?.thumbhash ?? undefined,
+            width: 2,
+            height: 2,
         },
         {
-            "application/octet-stream": {
-                content: `https://social.example/media/${file.sha256}`,
-                remote: true,
-                size: 8,
-                hash: file.sha256 ?? undefined,
-            },
+            url: `https://social.example/media/${file.sha256}`,
+            media_type: "application/octet-stream",
+            size: 8,
+            hash: file.sha256 ?? undefined,
         },
     ]);
-    assertEquals(v0_6.Note.safeParse(entity).success, true);
+    assertEquals(v0_7.Note.safeParse(entity).success, true);
     assertEquals(kept?.thumbhash !== null && kept?.size !== null, true);
 
     // If one were no longer stored, the others would still be included.
@@ -239,10 +233,7 @@ Deno.test("a local note's files are where the store serves them, if it does", as
 
     const entity = await test.find(note.id, "");
 
-    assertEquals(
-        entity?.attachments[0]["application/octet-stream"].content,
-        `https://cdn.example/${file.sha256}`,
-    );
+    assertEquals(entity?.attachments[0].url, `https://cdn.example/${file.sha256}`);
 });
 
 Deno.test("a reply to a remote note without its instance's id is a mistake", async () => {
@@ -256,17 +247,30 @@ Deno.test("a reply to a remote note without its instance's id is a mistake", asy
     await assertRejects(() => test.find(note.id, ""), Error, "has no remote id");
 });
 
-Deno.test("a private note is for followers, and a direct one only for those it mentions", async () => {
+Deno.test("a note says its visibility as Versia's Social extension does", async () => {
     await using test = await open();
-    const group = async (visibility: "public" | "unlisted" | "private" | "direct") => {
+    const visibility = async (visibility: "public" | "unlisted" | "private" | "direct") => {
         const note = await createNote(test.ctx, "alice", { visibility }, ["erin"]);
-        return (await test.find(note.id, "c.example"))?.group;
+        return (await test.find(note.id, "c.example"))?.visibility;
     };
 
-    assertEquals(await group("public"), "public");
-    assertEquals(await group("unlisted"), "public");
-    assertEquals(await group("private"), "followers");
-    assertEquals(await group("direct"), undefined);
+    assertEquals(await visibility("public"), "public");
+    assertEquals(await visibility("unlisted"), "unlisted");
+    assertEquals(await visibility("private"), "subscribers");
+    assertEquals(await visibility("direct"), "mentions");
+});
+
+Deno.test("a note says when it was edited, and its page", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "alice");
+    test.clock.advance(5000);
+    await test.ctx.db.updateTable("notes").set({ edited_at: test.clock.now() })
+        .where("id", "=", note.id).execute();
+
+    const entity = await test.find(note.id, "");
+
+    assertEquals(entity?.updated_at, test.clock.now().toISOString());
+    assertEquals(entity?.url, `https://social.example/@alice/${note.id}`);
 });
 
 Deno.test("a note is given only to instances with someone it is shown to", async () => {
@@ -343,11 +347,11 @@ Deno.test("a note is shown on the instances of who it mentions, the followers, a
     assertEquals(await shownOn(note("direct", null), [], "frank"), []);
 });
 
-Deno.test("a user's outbox is their public and unlisted notes, oldest first", async () => {
+Deno.test("a user's Notes are their public and unlisted notes, oldest first", async () => {
     await using test = await open();
     const user = registry.types.get("User");
-    const outbox: CollectionProvider | undefined = user?.collections?.outbox;
-    if (outbox === undefined) throw new Error("Users have no outbox");
+    const outbox: CollectionProvider | undefined = user?.collections?.["pub.versia:social/Notes"];
+    if (outbox === undefined) throw new Error("Users have no Notes collection");
 
     const ids = [];
     for (const visibility of ["public", "private", "unlisted", "direct", "public"] as const) {
@@ -366,6 +370,10 @@ Deno.test("a user's outbox is their public and unlisted notes, oldest first", as
 
     assertEquals(await page(0, 2), { author: "alice", total: 3, items: [ids[0], ids[2]] });
     assertEquals(await page(2, 2), { author: "alice", total: 3, items: [ids[4]] });
+    assertEquals(
+        (await outbox(test.ctx, "alice", { offset: 0, limit: 1 }, "b.example"))?.items[0],
+        await test.find(ids[0], "b.example"),
+    );
     assertEquals(await outbox(test.ctx, "carol", { offset: 0, limit: 40 }, "b.example"), undefined);
     assertEquals(
         await outbox(test.ctx, "nobody", { offset: 0, limit: 40 }, "b.example"),
@@ -373,10 +381,10 @@ Deno.test("a user's outbox is their public and unlisted notes, oldest first", as
     );
 });
 
-Deno.test("a user's featured notes are the public and unlisted ones they pin, the latest first", async () => {
+Deno.test("a user's Featured are references to the public and unlisted notes they pin, the latest first", async () => {
     await using test = await open();
     const featured: CollectionProvider | undefined = registry.types.get("User")?.collections
-        ?.featured;
+        ?.["pub.versia:social/Featured"];
     if (featured === undefined) throw new Error("Users have no featured notes");
 
     const ids = [];
@@ -390,14 +398,16 @@ Deno.test("a user's featured notes are the public and unlisted ones they pin, th
     await createNote(test.ctx, "alice");
     const page = async (offset: number, limit: number) => {
         const collection = await featured(test.ctx, "alice", { offset, limit }, "b.example");
-        return collection && {
-            ...collection,
-            items: collection.items.map((item) => (item as { id: string }).id),
-        };
+        return collection;
     };
+    const reference = (id: string) => `social.example:${id}`;
 
-    assertEquals(await page(0, 2), { author: "alice", total: 3, items: [ids[3], ids[2]] });
-    assertEquals(await page(2, 2), { author: "alice", total: 3, items: [ids[0]] });
+    assertEquals(await page(0, 2), {
+        author: "alice",
+        total: 3,
+        items: [reference(ids[3]), reference(ids[2])],
+    });
+    assertEquals(await page(2, 2), { author: "alice", total: 3, items: [reference(ids[0])] });
     assertEquals(
         await featured(test.ctx, "carol", { offset: 0, limit: 40 }, "b.example"),
         undefined,
@@ -438,9 +448,9 @@ Deno.test("a posted note is sent to the instances of those it is shown to", asyn
     await post(test.ctx, "bob", "Just here");
 
     assertEquals(await sent(test.ctx), [
-        ["b.example", "Note", note?.id],
-        ["c.example", "Note", note?.id],
-        ["d.example", "Note", reply?.id],
+        ["b.example", noteName, note?.id],
+        ["c.example", noteName, note?.id],
+        ["d.example", noteName, reply?.id],
     ]);
 
     const [[, entity]] = await queued(test.ctx);
@@ -456,7 +466,7 @@ Deno.test("an edited note is sent again, whole, to those it is shown to now", as
     await editNote(test.ctx, "alice", note.id, { text: "Hi @erin@c.example" });
     await editNote(test.ctx, "alice", note.id, { text: "Hi @erin@c.example" });
 
-    assertEquals(await sent(test.ctx), [["c.example", "Note", note.id]]);
+    assertEquals(await sent(test.ctx), [["c.example", noteName, note.id]]);
 
     const [[, entity]] = await queued(test.ctx);
     assertEquals(entity, JSON.parse(JSON.stringify(await test.find(note.id, "c.example"))));
@@ -497,7 +507,7 @@ Deno.test("a deleted local note is deleted where it was sent, and a remote one n
         type: "Delete",
         created_at: test.clock.now().toISOString(),
         author: "alice",
-        deleted_type: "Note",
+        deleted_type: noteName,
         deleted: note.id,
     });
 });
@@ -514,12 +524,12 @@ Deno.test("a followers-only note doesn't reach an instance where its author bloc
 
     assertEquals((await sent(test.ctx)).toSorted(), [
         ["b.example", "Delete", hidden?.id],
-        ["b.example", "Note", mentioning?.id],
-        ["b.example", "Note", shown?.id],
+        ["b.example", noteName, mentioning?.id],
+        ["b.example", noteName, shown?.id],
         ["c.example", "Delete", hidden?.id],
-        ["c.example", "Note", hidden?.id],
-        ["c.example", "Note", mentioning?.id],
-        ["c.example", "Note", shown?.id],
+        ["c.example", noteName, hidden?.id],
+        ["c.example", noteName, mentioning?.id],
+        ["c.example", noteName, shown?.id],
     ]);
     assertEquals(await test.find(hidden?.id ?? "", "b.example"), undefined);
     assertEquals((await test.find(mentioning?.id ?? "", "b.example"))?.id, mentioning?.id);
@@ -612,11 +622,35 @@ Deno.test("a note's collections are served to other instances", async () => {
     const a = network.instances["a.test"].ctx;
     await createLocalAccount(a, "alice");
     const note = await createNote(a, "alice");
-    const url = new URL(`https://a.test/.versia/v0.7/entities/Note/${note.id}/collections/quotes`);
+    const url = new URL(
+        `https://a.test/.versia/v0.7/entities/pub.versia:social/Note/${note.id}/collections/quotes`,
+    );
 
     const reply = await fetchSigned(network.instances["b.test"].ctx, url);
     assertEquals([reply.status, JSON.parse(new TextDecoder().decode(reply.body))], [
         200,
         { total: 0, items: [] },
     ]);
+});
+
+Deno.test("a user's Notes and Featured are served to other instances", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"].ctx;
+    await createLocalAccount(a, "alice");
+    const note = await createNote(a, "alice");
+    await pin(a, "alice", note.id);
+    const url = (name: string) =>
+        new URL(`https://a.test/.versia/v0.7/entities/User/alice/collections/${name}`);
+    const fetch = async (name: string) => {
+        const reply = await fetchSigned(network.instances["b.test"].ctx, url(name));
+        return [reply.status, JSON.parse(new TextDecoder().decode(reply.body))];
+    };
+
+    const [status, collection] = await fetch("pub.versia:social/Notes");
+    const [featuredStatus, featured] = await fetch("pub.versia:social/Featured");
+
+    assertEquals([status, collection.total, collection.items[0].id], [200, 1, note.id]);
+    assertEquals(v0_7.Note.safeParse(collection.items[0]).success, true);
+    assertEquals([featuredStatus, featured], [200, { total: 1, items: [`a.test:${note.id}`] }]);
+    assertEquals((await fetch("outbox"))[0], 404);
 });

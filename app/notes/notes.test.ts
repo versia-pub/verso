@@ -37,11 +37,14 @@ const statusesCount = async (ctx: Context, id: string) =>
 const post = (ctx: Context, accountId: string, text: string, draft: Partial<Draft> = {}) =>
     postNote(ctx, accountId, { text, format: "text/plain", spoilerText: "", ...draft });
 
-const user = "https://social.example/.versia/v0.7/entities/User";
+/** A mention of the user with `reference`, linked to their page, which shows `username`. */
+const mention = (page: string, reference: string, username: string) =>
+    `<span class="h-card" translate="no"><a href="${page}" data-mention="${reference}" ` +
+    `class="u-url mention">@<span>${username}</span></a></span>`;
 
-const mention = (uri: string, username: string) =>
-    `<span class="h-card" translate="no"><a href="${uri}" class="u-url mention">` +
-    `@<span>${username}</span></a></span>`;
+/** A mention of a local user, shown as `username`. */
+const local = (name: string, username = name) =>
+    mention(`https://social.example/@${name}`, `social.example:${name}`, username);
 
 Deno.test("a note mentions as many accounts as settings allow, and leaves the rest as text", async () => {
     await using test = await open({ settings: { mentions: 2 } });
@@ -50,7 +53,7 @@ Deno.test("a note mentions as many accounts as settings allow, and leaves the re
     if (note === undefined) throw new Error("Not posted");
 
     assertEquals((await mentionsOf(test.ctx, [note.id])).get(note.id), ["bob", "dave"]);
-    assertEquals(note.content_html.includes(`${user}/erin`), false);
+    assertEquals(note.content_html.includes("social.example:erin"), false);
 });
 
 Deno.test("a posted note links who it mentions and its hashtags, and is counted", async () => {
@@ -59,6 +62,9 @@ Deno.test("a posted note links who it mentions and its hashtags, and is counted"
         subscribers: [(_, event) => Promise.resolve(void events.push(event))],
     });
     events.length = 0;
+    // Not her id here, so a mention can't give that in its stead.
+    await test.ctx.db.updateTable("accounts").set({ remote_id: "c4rol" }).where("id", "=", "carol")
+        .execute();
 
     const note = await post(
         test.ctx,
@@ -69,8 +75,10 @@ Deno.test("a posted note links who it mentions and its hashtags, and is counted"
 
     assertEquals(
         note.content_html,
-        `<p>Hi ${mention(`${user}/bob`, "bob")}, ` +
-            `${mention("https://b.example/.versia/v0.7/entities/User/carol", "Carol")} and ` +
+        `<p>Hi ${local("bob")}, ` +
+            `${
+                mention("https://social.example/@carol@b.example", "b.example:c4rol", "Carol")
+            } and ` +
             `@nobody <a href="https://social.example/tags/verso" class="mention hashtag" ` +
             `rel="tag">#<span>Verso</span></a> <a href="https://social.example/tags/verso" ` +
             `class="mention hashtag" rel="tag">#<span>verso</span></a></p>`,
@@ -85,8 +93,8 @@ Deno.test("a mention is linked however it is written", async () => {
     await using test = await open();
     const note = await post(test.ctx, "alice", "@bob @BOB");
 
-    const bob = mention(`${user}/bob`, "bob");
-    assertEquals(note?.content_html, `<p>${bob} ${mention(`${user}/bob`, "BOB")}</p>`);
+    const bob = local("bob");
+    assertEquals(note?.content_html, `<p>${bob} ${local("bob", "BOB")}</p>`);
 });
 
 Deno.test("a note is written in Markdown if its author says so", async () => {
@@ -95,7 +103,7 @@ Deno.test("a note is written in Markdown if its author says so", async () => {
 
     assertEquals(
         [note?.content, note?.content_format, note?.content_html],
-        ["Hi *@bob*", "text/markdown", `<p>Hi <em>${mention(`${user}/bob`, "bob")}</em></p>`],
+        ["Hi *@bob*", "text/markdown", `<p>Hi <em>${local("bob")}</em></p>`],
     );
 });
 
@@ -171,7 +179,7 @@ Deno.test("an edited note links who it mentions and its hashtags anew, and is ma
         [
             "Hi *@erin* #Deno",
             "text/markdown",
-            `<p>Hi <em>${mention(`${user}/erin`, "erin")}</em> <a href="https://social.example/` +
+            `<p>Hi <em>${local("erin")}</em> <a href="https://social.example/` +
             `tags/deno" class="mention hashtag" rel="tag">#<span>Deno</span></a></p>`,
             "en",
         ],

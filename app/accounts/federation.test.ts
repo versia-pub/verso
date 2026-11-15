@@ -272,7 +272,7 @@ Deno.test("a local user's collections are given, empty until there is something 
     await createLocalAccount(a, "alice");
     const collection = (path: string) => fetchSigned(b, a, `/.versia/v0.7/entities/User/${path}`);
 
-    for (const name of ["outbox", "featured"]) {
+    for (const name of ["pub.versia:social/Notes", "pub.versia:social/Featured"]) {
         assertEquals(await collection(`alice/collections/${name}?offset=10&limit=20`), {
             status: 200,
             type: "application/vnd.versia+json; charset=utf-8",
@@ -282,13 +282,19 @@ Deno.test("a local user's collections are given, empty until there is something 
     }
 
     assertEquals((await collection("alice/collections/likes")).status, 404);
-    assertEquals((await collection("missing/collections/outbox")).status, 404);
+    assertEquals((await collection("missing/collections/pub.versia:social/Notes")).status, 404);
     for (const query of ["offset=-1", "offset=a", "limit=1.5"]) {
-        assertEquals((await collection(`alice/collections/outbox?${query}`)).status, 422, query);
+        assertEquals(
+            (await collection(`alice/collections/pub.versia:social/Notes?${query}`)).status,
+            422,
+            query,
+        );
     }
 
     const unsigned = await b.transport(
-        new Request("https://a.test/.versia/v0.7/entities/User/alice/collections/outbox"),
+        new Request(
+            "https://a.test/.versia/v0.7/entities/User/alice/collections/pub.versia:social/Notes",
+        ),
     );
     assertEquals(unsigned.status, 401);
 });

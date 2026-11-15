@@ -396,10 +396,10 @@ Deno.test("a quote is sent to the instance of the quoted author, and so is its d
     });
 
     const posted = await test.quote(remote.id, "alice");
-    assertEquals(await test.delivered("Note"), ["d.example"]);
+    assertEquals(await test.delivered("pub.versia:social/Note"), ["d.example"]);
 
     const [sent] = await queuedDeliveries(test.ctx);
-    assertEquals(JSON.parse(sent.body).quotes, "d.example:f");
+    assertEquals(JSON.parse(sent.body).quoting, "d.example:f");
 
     await removeNote(test.ctx, posted.body.id);
     assertEquals(await test.delivered("Delete"), ["d.example"]);
