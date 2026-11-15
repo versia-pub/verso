@@ -5943,6 +5943,53 @@
                                         "type": "string",
                                         "description": "A plain-text description of the media, for accessibility purposes."
                                     },
+                                    "pronouns": {
+                                        "type": "object",
+                                        "propertyNames": {
+                                            "type": "string"
+                                        },
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "birthday": {
+                                        "type": "string"
+                                    },
+                                    "location": {
+                                        "type": "string"
+                                    },
+                                    "timezone": {
+                                        "type": "string"
+                                    },
+                                    "avatar_overlays": {
+                                        "minItems": 1,
+                                        "maxItems": 4,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary",
+                                            "contentEncoding": "binary",
+                                            "maxLength": 16777216
+                                        }
+                                    },
+                                    "avatar_mask": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "background": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "audio": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
                                     "fields_attributes": {
                                         "anyOf": [
                                             {
@@ -6090,6 +6137,53 @@
                                         "type": "string",
                                         "description": "A plain-text description of the media, for accessibility purposes."
                                     },
+                                    "pronouns": {
+                                        "type": "object",
+                                        "propertyNames": {
+                                            "type": "string"
+                                        },
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "birthday": {
+                                        "type": "string"
+                                    },
+                                    "location": {
+                                        "type": "string"
+                                    },
+                                    "timezone": {
+                                        "type": "string"
+                                    },
+                                    "avatar_overlays": {
+                                        "minItems": 1,
+                                        "maxItems": 4,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary",
+                                            "contentEncoding": "binary",
+                                            "maxLength": 16777216
+                                        }
+                                    },
+                                    "avatar_mask": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "background": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "audio": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
                                     "fields_attributes": {
                                         "anyOf": [
                                             {
@@ -6236,6 +6330,53 @@
                                     "header_description": {
                                         "type": "string",
                                         "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "pronouns": {
+                                        "type": "object",
+                                        "propertyNames": {
+                                            "type": "string"
+                                        },
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "birthday": {
+                                        "type": "string"
+                                    },
+                                    "location": {
+                                        "type": "string"
+                                    },
+                                    "timezone": {
+                                        "type": "string"
+                                    },
+                                    "avatar_overlays": {
+                                        "minItems": 1,
+                                        "maxItems": 4,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary",
+                                            "contentEncoding": "binary",
+                                            "maxLength": 16777216
+                                        }
+                                    },
+                                    "avatar_mask": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "background": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "audio": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
                                     },
                                     "fields_attributes": {
                                         "anyOf": [
@@ -6614,6 +6755,53 @@
                                         "type": "string",
                                         "description": "A plain-text description of the media, for accessibility purposes."
                                     },
+                                    "pronouns": {
+                                        "type": "object",
+                                        "propertyNames": {
+                                            "type": "string"
+                                        },
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "birthday": {
+                                        "type": "string"
+                                    },
+                                    "location": {
+                                        "type": "string"
+                                    },
+                                    "timezone": {
+                                        "type": "string"
+                                    },
+                                    "avatar_overlays": {
+                                        "minItems": 1,
+                                        "maxItems": 4,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary",
+                                            "contentEncoding": "binary",
+                                            "maxLength": 16777216
+                                        }
+                                    },
+                                    "avatar_mask": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "background": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "audio": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
                                     "fields_attributes": {
                                         "anyOf": [
                                             {
@@ -6747,6 +6935,53 @@
                                     "header_description": {
                                         "type": "string",
                                         "description": "A plain-text description of the media, for accessibility purposes."
+                                    },
+                                    "pronouns": {
+                                        "type": "object",
+                                        "propertyNames": {
+                                            "type": "string"
+                                        },
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "birthday": {
+                                        "type": "string"
+                                    },
+                                    "location": {
+                                        "type": "string"
+                                    },
+                                    "timezone": {
+                                        "type": "string"
+                                    },
+                                    "avatar_overlays": {
+                                        "minItems": 1,
+                                        "maxItems": 4,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary",
+                                            "contentEncoding": "binary",
+                                            "maxLength": 16777216
+                                        }
+                                    },
+                                    "avatar_mask": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "background": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "audio": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
                                     },
                                     "fields_attributes": {
                                         "anyOf": [
@@ -6882,6 +7117,53 @@
                                         "type": "string",
                                         "description": "A plain-text description of the media, for accessibility purposes."
                                     },
+                                    "pronouns": {
+                                        "type": "object",
+                                        "propertyNames": {
+                                            "type": "string"
+                                        },
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "birthday": {
+                                        "type": "string"
+                                    },
+                                    "location": {
+                                        "type": "string"
+                                    },
+                                    "timezone": {
+                                        "type": "string"
+                                    },
+                                    "avatar_overlays": {
+                                        "minItems": 1,
+                                        "maxItems": 4,
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary",
+                                            "contentEncoding": "binary",
+                                            "maxLength": 16777216
+                                        }
+                                    },
+                                    "avatar_mask": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "background": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
+                                    "audio": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "contentEncoding": "binary",
+                                        "maxLength": 16777216
+                                    },
                                     "fields_attributes": {
                                         "anyOf": [
                                             {
@@ -6997,6 +7279,118 @@
                 "externalDocs": {
                     "url": "https://docs.joinmastodon.org/methods/profile/#delete-profile-header"
                 },
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CredentialAccount"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/profile/avatar_overlays": {
+            "delete": {
+                "summary": "Delete profile avatar overlays",
+                "description": "Deletes the images drawn over the avatar of the user's profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CredentialAccount"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/profile/avatar_mask": {
+            "delete": {
+                "summary": "Delete profile avatar mask",
+                "description": "Deletes the image that masks the avatar of the user's profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CredentialAccount"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/profile/background": {
+            "delete": {
+                "summary": "Delete profile background",
+                "description": "Deletes the background image of the user's profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
+                "tags": [
+                    "accounts"
+                ],
+                "security": [
+                    {
+                        "OAuth2": [
+                            "write:accounts"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON body",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CredentialAccount"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/profile/audio": {
+            "delete": {
+                "summary": "Delete profile audio",
+                "description": "Deletes the sound of the user's profile.\n\nNeeds a token for a user, not one an app got for itself. Needs the `owner:account` permission.",
                 "tags": [
                     "accounts"
                 ],
@@ -22687,6 +23081,73 @@
                     "invalid_handle": {
                         "type": "boolean",
                         "const": true
+                    },
+                    "pronouns": {
+                        "type": "object",
+                        "propertyNames": {
+                            "type": "string"
+                        },
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "birthday": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "location": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "timezone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "avatar_overlays": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uri"
+                        }
+                    },
+                    "avatar_mask": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "background": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "audio": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -23598,6 +24059,73 @@
                     "invalid_handle": {
                         "type": "boolean",
                         "const": true
+                    },
+                    "pronouns": {
+                        "type": "object",
+                        "propertyNames": {
+                            "type": "string"
+                        },
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "birthday": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "location": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "timezone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "avatar_overlays": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uri"
+                        }
+                    },
+                    "avatar_mask": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "background": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "audio": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "source": {
                         "$ref": "#/components/schemas/AccountSource"
@@ -25013,6 +25541,73 @@
                         "type": "boolean",
                         "const": true
                     },
+                    "pronouns": {
+                        "type": "object",
+                        "propertyNames": {
+                            "type": "string"
+                        },
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "birthday": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "location": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "timezone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "avatar_overlays": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uri"
+                        }
+                    },
+                    "avatar_mask": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "background": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "audio": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "mute_expires_at": {
                         "anyOf": [
                             {
@@ -25836,6 +26431,73 @@
                         "items": {
                             "$ref": "#/components/schemas/FeaturedTag"
                         }
+                    },
+                    "pronouns": {
+                        "type": "object",
+                        "propertyNames": {
+                            "type": "string"
+                        },
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "birthday": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "location": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "timezone": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "avatar_overlays": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uri"
+                        }
+                    },
+                    "avatar_mask": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "background": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "audio": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "required": [

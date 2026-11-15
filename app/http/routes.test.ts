@@ -58,7 +58,11 @@ Deno.test("a user that moved may only call the migration, settings and streaming
     assertEquals(allowed, [
         "DELETE /api/v1/migration/move",
         "DELETE /api/v1/migration/previous",
+        "DELETE /api/v1/profile/audio",
         "DELETE /api/v1/profile/avatar",
+        "DELETE /api/v1/profile/avatar_mask",
+        "DELETE /api/v1/profile/avatar_overlays",
+        "DELETE /api/v1/profile/background",
         "DELETE /api/v1/profile/header",
         "GET /api/v1/accounts/verify_credentials",
         "GET /api/v1/migration",

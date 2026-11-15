@@ -67,20 +67,28 @@ const cookiesOf = (c: HonoContext) =>
 
 /**
  * A form's fields, with Rails-style names read as JSON would have them: `key[]` as an array, and
- * `a[b]` as `b` in the object `a`. Files need plain names, like Mastodon's `avatar`.
+ * `a[b]` as `b` in the object `a`. Files need plain names used once, like Mastodon's `avatar`, or
+ * `name[]` for several, which are an array under `name`, in the order sent.
  * @see https://github.com/ljharb/qs#parsing-objects
  */
 const formOf = async (c: HonoContext) => {
     const text = new URLSearchParams();
-    const files = new Map<string, File>();
+    const files = new Map<string, File | File[]>();
 
     for (const [name, value] of await c.req.formData()) {
+        const listed = /^(\w+)\[\]$/.exec(name)?.[1];
+        const given = files.get(listed ?? name);
+
         if (typeof value === "string") {
             text.append(name, value);
-        } else if (/^\w+$/.test(name) && !files.has(name)) {
+        } else if (listed !== undefined && (given === undefined || Array.isArray(given))) {
+            files.set(listed, [...given ?? [], value]);
+        } else if (listed === undefined && /^\w+$/.test(name) && given === undefined) {
             files.set(name, value);
         } else {
-            throw new BadRequest(`A file must have a plain name, used once, unlike "${name}"`);
+            throw new BadRequest(
+                `A file must have a plain name, used once, or end in [], unlike "${name}"`,
+            );
         }
     }
 

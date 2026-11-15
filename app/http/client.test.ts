@@ -301,6 +301,35 @@ Deno.test("a user changes their profile as JSON, or as a form with a picture", a
     assertEquals((await alice.accounts.deleteHeader()).header, named.header);
 });
 
+Deno.test("a user sets their profile's text and decorations, and removes them", async () => {
+    await using test = await open();
+    const alice = await test.as("alice");
+    const image = (name: string) => new File([png(8, 8)], name, { type: "image/png" });
+
+    const set = await alice.accounts.updateProfile({
+        pronouns: { en: "she/her" },
+        birthday: "--02-29",
+        location: "Paris",
+        timezone: "america/new_york",
+        avatar_overlays: [image("a.png"), image("b.png")],
+        background: image("c.png"),
+    });
+    await drain(test.ctx, queues);
+    const shown = await alice.accounts.verifyCredentials();
+    const removed = await alice.accounts.deleteAvatarOverlays();
+    await alice.accounts.deleteBackground();
+    await alice.accounts.deleteAvatarMask();
+    const unsounded = await alice.accounts.deleteAudio();
+
+    assertEquals(
+        [set.pronouns, set.birthday, set.location, set.timezone],
+        [{ en: "she/her" }, "--02-29", "Paris", "America/New_York"],
+    );
+    assertEquals(shown.avatar_overlays?.length, 2);
+    assert(typeof shown.background === "string");
+    assertEquals([removed.avatar_overlays, unsounded.background], [[], null]);
+});
+
 Deno.test("a user follows, is followed back on request, and sees both sides", async () => {
     await using test = await open();
     const alice = await test.as("alice");

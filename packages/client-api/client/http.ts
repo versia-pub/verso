@@ -134,14 +134,19 @@ const errorOf = async (response: Response): Promise<ApiError> => {
 const given = <T>(fields: Readonly<Record<string, T | undefined | null>>): [string, T][] =>
     Object.entries(fields).filter((field): field is [string, T] => field[1] != null);
 
-/** `form` as form data, with each nested field named for its path, like `source[privacy]`. */
+/**
+ * `form` as form data, with each nested field named for its path, like `source[privacy]`. A list of
+ * files is named `name[]`, as servers read several files under one name.
+ */
 const formData = (form: Form): FormData => {
     const data = new FormData();
     const add = (name: string, value: FormValue) => {
         if (value === undefined || value === null) return;
 
         if (value instanceof Blob) data.append(name, value);
-        else if (typeof value !== "object") data.append(name, String(value));
+        else if (Array.isArray(value) && value.every((item) => item instanceof Blob)) {
+            for (const file of value) data.append(`${name}[]`, file);
+        } else if (typeof value !== "object") data.append(name, String(value));
         else for (const [key, item] of Object.entries(value)) add(`${name}[${key}]`, item);
     };
 

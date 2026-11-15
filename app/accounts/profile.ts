@@ -5,17 +5,18 @@ import { Unprocessable } from "../http/errors.ts";
 import type { Fit } from "../kernel/images.ts";
 import { scanText } from "../kernel/markup.ts";
 import { isMediaProcessed } from "../media/events.ts";
-import { describeUpload, uploadPicture } from "../media/uploads.ts";
+import { describeUpload, isPlayable, upload, uploadPicture } from "../media/uploads.ts";
 import {
     type AccountChanges,
     type AccountRow,
     findAccount,
     findAccountByPicture,
+    replaceDecorationKind,
     updateLocalAccount,
 } from "./account_queries.ts";
 import type { ProfileUpdated } from "./events.ts";
 import type { Visibility } from "../kernel/visibility.ts";
-import type { ProfileField } from "./tables.ts";
+import type { DecorationKind, ProfileField } from "./tables.ts";
 import { escapeHtml, textToHtml } from "./text.ts";
 
 /** A picture of a profile: a new image, or a new description of the current one, or both. */
@@ -30,6 +31,14 @@ const avatarFit: Fit = { width: 400, height: 400 };
 
 /** Mastodon's size for headers: they are scaled down to fit this box. */
 const headerFit: Fit = { width: 1500, height: 500 };
+
+/** What the decorations that are images are called in errors, and the box they are scaled to fit. */
+const decorationImages = {
+    // The avatar goes in the inner 80% of an overlay, and avatars fit 400x400.
+    avatar_overlay: { name: "Avatar overlay", fit: { width: 500, height: 500 } },
+    avatar_mask: { name: "Avatar mask", fit: { width: 400, height: 400 } },
+    background: { name: "Background", fit: { width: 1920, height: 1080 } },
+} as const;
 
 /** What a user changes about their profile. Omitted fields stay as they are. */
 export type ProfileChanges = {
@@ -52,6 +61,21 @@ export type ProfileChanges = {
     readonly defaultSensitive?: boolean;
     /** An ISO 639-1 code, or empty for none. */
     readonly defaultLanguage?: string;
+    /** By BCP 47 language tag, in plain text, replacing all of them. Blank ones are dropped. */
+    readonly pronouns?: Readonly<Record<string, string>>;
+    /** As `YYYY-MM-DD` or `--MM-DD`, or empty for none. */
+    readonly birthday?: string;
+    /** In plain text, or empty for none. */
+    readonly location?: string;
+    /** An IANA name, or empty for none. */
+    readonly timezone?: string;
+    /** All the overlays of the avatar, replacing the old ones, topmost first. `null` removes them. */
+    readonly avatarOverlays?: readonly Blob[] | null;
+    /** `null` removes the decoration. */
+    readonly avatarMask?: Blob | null;
+    readonly background?: Blob | null;
+    /** A sound file. */
+    readonly audio?: Blob | null;
     /** `null` removes the picture, so the account shows its default one. */
     readonly avatar?: PictureChange | null;
     readonly header?: PictureChange | null;
@@ -122,6 +146,42 @@ const uploadedPicture = async (
 };
 
 /**
+ * The decorations of the kind `kind` that `accountId` has after the change: new ones, uploaded, or
+ * none if they are removed, or `undefined` if they stay. Refuses a file that isn't an image, or for
+ * audio, isn't audio.
+ */
+const uploadedDecorations = async (
+    ctx: Context,
+    accountId: string,
+    kind: DecorationKind,
+    change: readonly Blob[] | Blob | null | undefined,
+): Promise<string[] | undefined> => {
+    if (change === undefined) return undefined;
+
+    const files = change === null ? [] : change instanceof Blob ? [change] : change;
+    const ids = [];
+
+    for (const file of files) {
+        if (kind === "audio") {
+            if (!file.type.startsWith("audio/") || !isPlayable(file.type)) {
+                throw new Unprocessable("Audio must be audio");
+            }
+
+            ids.push((await upload(ctx, accountId, { file, mediaType: file.type })).id);
+            continue;
+        }
+
+        const { name, fit } = decorationImages[kind];
+        const row = await uploadPicture(ctx, accountId, { file, mediaType: file.type }, fit);
+        if (row === undefined) throw new Unprocessable(`${name} must be an image`);
+
+        ids.push(row.id);
+    }
+
+    return ids;
+};
+
+/**
  * Updates a local account's profile, rendering the HTML of what was written, finding the custom
  * emojis it uses, and emitting an event for the rest of Verso, even if nothing changed, as Mastodon
  * does. New pictures are processed by a job, and until then the account shows its default ones;
@@ -146,9 +206,24 @@ export const updateProfile = async (
         default_visibility: changes.defaultVisibility,
         default_sensitive: changes.defaultSensitive,
         default_language: changes.defaultLanguage,
+        birthday: changes.birthday === undefined ? undefined : changes.birthday || null,
+        location: changes.location === undefined ? undefined : changes.location.trim() || null,
+        timezone: changes.timezone === undefined ? undefined : changes.timezone || null,
         // Uploaded before the transaction, which mustn't wait on the file store.
         avatar_id: await uploadedPicture(ctx, accountId, "Avatar", changes.avatar, avatarFit),
         header_id: await uploadedPicture(ctx, accountId, "Header", changes.header, headerFit),
+    };
+
+    const decorations = {
+        avatar_overlay: await uploadedDecorations(
+            ctx,
+            accountId,
+            "avatar_overlay",
+            changes.avatarOverlays,
+        ),
+        avatar_mask: await uploadedDecorations(ctx, accountId, "avatar_mask", changes.avatarMask),
+        background: await uploadedDecorations(ctx, accountId, "background", changes.background),
+        audio: await uploadedDecorations(ctx, accountId, "audio", changes.audio),
     };
 
     if (changes.note !== undefined) {
@@ -164,11 +239,23 @@ export const updateProfile = async (
             .map(({ name, value }) => plainField(name, value));
     }
 
+    if (changes.pronouns !== undefined) {
+        set.pronouns = Object.fromEntries(
+            Object.entries(changes.pronouns)
+                .map(([tag, pronouns]) => [tag, pronouns.trim()])
+                .filter(([, pronouns]) => pronouns !== ""),
+        );
+    }
+
     await ctx.transaction(async (tx) => {
         const before = await findAccount(tx, accountId);
         if (before?.domain !== null) return;
 
         await updateLocalAccount(tx, accountId, set);
+        for (const [kind, ids] of Object.entries(decorations) as [DecorationKind, string[]?][]) {
+            if (ids !== undefined) await replaceDecorationKind(tx, accountId, kind, ids);
+        }
+
         await describeKept(tx, accountId, before.avatar_id, changes.avatar);
         await describeKept(tx, accountId, before.header_id, changes.header);
         const after = await findAccount(tx, accountId);
@@ -181,9 +268,9 @@ export const updateProfile = async (
 };
 
 /**
- * Tells the rest of Verso that a local profile changed once its new avatar or header finished
- * processing, as until then the account showed its default one, and its followers' instances are
- * only sent it once its pictures are ready.
+ * Tells the rest of Verso that a local profile changed once its new avatar, header or decoration
+ * finished processing, as until then the account showed its default picture or none, and its
+ * followers' instances are only sent it once its pictures are ready.
  */
 export const showProcessedPictures = async (ctx: Context, event: DomainEvent): Promise<void> => {
     if (!isMediaProcessed(event)) return;

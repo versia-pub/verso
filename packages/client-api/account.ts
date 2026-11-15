@@ -109,6 +109,46 @@ export const Account = z.object({
     feature_approval: FeatureApproval,
     /** Present, and `true`, when its `acct` can't be validated, so may not work elsewhere. */
     invalid_handle: z.literal(true).optional(),
+    /**
+     * The pronouns it uses, as plain text by BCP 47 language tag, like `{ "en": "she/her" }`.
+     * Verso's own, from Versia's Profile extension.
+     */
+    pronouns: z.record(z.string(), z.string()).optional(),
+    /**
+     * Its birthday, as `YYYY-MM-DD` or `--MM-DD` without the year.
+     * Verso's own, from Versia's Profile extension.
+     */
+    birthday: z.string().nullable().optional(),
+    /**
+     * Where it says it is, as plain text.
+     * Verso's own, from Versia's Profile extension.
+     */
+    location: z.string().nullable().optional(),
+    /**
+     * Its time zone, as an IANA name like `America/New_York`.
+     * Verso's own, from Versia's Profile extension.
+     */
+    timezone: z.string().nullable().optional(),
+    /**
+     * The images drawn over its avatar, topmost first.
+     * Verso's own, from Versia's Decorations extension.
+     */
+    avatar_overlays: z.array(z.url()).optional(),
+    /**
+     * The image that masks its avatar's shape.
+     * Verso's own, from Versia's Decorations extension.
+     */
+    avatar_mask: z.url().nullable().optional(),
+    /**
+     * The image behind its profile.
+     * Verso's own, from Versia's Decorations extension.
+     */
+    background: z.url().nullable().optional(),
+    /**
+     * The sound played on its profile.
+     * Verso's own, from Versia's Decorations extension.
+     */
+    audio: z.url().nullable().optional(),
 });
 export type Account = z.infer<typeof Account>;
 
@@ -214,6 +254,16 @@ export const Profile = z.object({
     /** The websites that may credit the account as an author. */
     attribution_domains: z.array(z.string()),
     featured_tags: z.array(FeaturedTag),
+    ...Account.pick({
+        pronouns: true,
+        birthday: true,
+        location: true,
+        timezone: true,
+        avatar_overlays: true,
+        avatar_mask: true,
+        background: true,
+        audio: true,
+    }).shape,
 });
 export type Profile = z.infer<typeof Profile>;
 

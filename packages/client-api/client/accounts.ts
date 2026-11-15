@@ -59,6 +59,17 @@ export type DirectoryQuery = {
     readonly local?: boolean;
 };
 
+/** Whether `changes` has a file, which makes it a form. */
+const hasFiles = (changes: ProfileChanges): boolean =>
+    [
+        changes.avatar,
+        changes.header,
+        changes.avatar_overlays,
+        changes.avatar_mask,
+        changes.background,
+        changes.audio,
+    ].some((file) => file !== undefined);
+
 /** Changes to the viewer's profile and settings. What is omitted stays as it was. */
 export type ProfileChanges = {
     readonly display_name?: string;
@@ -79,6 +90,25 @@ export type ProfileChanges = {
     readonly avatar_description?: string;
     readonly header?: Blob;
     readonly header_description?: string;
+    /**
+     * The pronouns it uses, as plain text by BCP 47 language tag, replacing all of them. Blank
+     * ones are dropped.
+     */
+    readonly pronouns?: Readonly<Record<string, string>>;
+    /** As `YYYY-MM-DD`, or `--MM-DD` without the year, or empty for none. */
+    readonly birthday?: string;
+    /** In plain text, or empty for none. */
+    readonly location?: string;
+    /** An IANA time zone name, like `America/New_York`, or empty for none. */
+    readonly timezone?: string;
+    /** From 1 to 4 images drawn over the avatar, topmost first, replacing the old ones. */
+    readonly avatar_overlays?: readonly Blob[];
+    /** An image that masks the avatar's shape. */
+    readonly avatar_mask?: Blob;
+    /** An image behind the profile. */
+    readonly background?: Blob;
+    /** A sound played on the profile. */
+    readonly audio?: Blob;
     /** Replaces the profile's fields, in order. */
     readonly fields_attributes?: readonly { readonly name: string; readonly value: string }[];
     /** Defaults for the viewer's new statuses. */
@@ -174,16 +204,14 @@ export class AccountMethods {
     }
 
     /**
-     * Changes the viewer's profile and settings. Sent as a form if it has a picture, and as JSON
+     * Changes the viewer's profile and settings. Sent as a form if it has a file, and as JSON
      * if not.
      * @see https://docs.joinmastodon.org/methods/accounts/#update_credentials
      */
     updateCredentials(changes: ProfileChanges, options?: CallOptions): Promise<CredentialAccount> {
-        const pictures = changes.avatar !== undefined || changes.header !== undefined;
-
         return this.http.json(CredentialAccount, "PATCH", "/api/v1/accounts/update_credentials", {
             ...options,
-            ...pictures ? { form: changes } : { json: changes },
+            ...hasFiles(changes) ? { form: changes } : { json: changes },
         });
     }
 
@@ -196,15 +224,13 @@ export class AccountMethods {
     }
 
     /**
-     * Changes the viewer's profile. Sent as a form if it has a picture, and as JSON if not.
+     * Changes the viewer's profile. Sent as a form if it has a file, and as JSON if not.
      * @see https://docs.joinmastodon.org/methods/profile/#update
      */
     updateProfile(changes: ProfileUpdate, options?: CallOptions): Promise<Profile> {
-        const pictures = changes.avatar !== undefined || changes.header !== undefined;
-
         return this.http.json(Profile, "PATCH", "/api/v1/profile", {
             ...options,
-            ...pictures ? { form: changes } : { json: changes },
+            ...hasFiles(changes) ? { form: changes } : { json: changes },
         });
     }
 
@@ -222,6 +248,31 @@ export class AccountMethods {
      */
     deleteHeader(options?: CallOptions): Promise<CredentialAccount> {
         return this.http.json(CredentialAccount, "DELETE", "/api/v1/profile/header", options);
+    }
+
+    /** Removes the images drawn over the viewer's avatar. */
+    deleteAvatarOverlays(options?: CallOptions): Promise<CredentialAccount> {
+        return this.http.json(
+            CredentialAccount,
+            "DELETE",
+            "/api/v1/profile/avatar_overlays",
+            options,
+        );
+    }
+
+    /** Removes the image that masks the viewer's avatar. */
+    deleteAvatarMask(options?: CallOptions): Promise<CredentialAccount> {
+        return this.http.json(CredentialAccount, "DELETE", "/api/v1/profile/avatar_mask", options);
+    }
+
+    /** Removes the viewer's profile background. */
+    deleteBackground(options?: CallOptions): Promise<CredentialAccount> {
+        return this.http.json(CredentialAccount, "DELETE", "/api/v1/profile/background", options);
+    }
+
+    /** Removes the sound of the viewer's profile. */
+    deleteAudio(options?: CallOptions): Promise<CredentialAccount> {
+        return this.http.json(CredentialAccount, "DELETE", "/api/v1/profile/audio", options);
     }
 
     /**

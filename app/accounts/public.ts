@@ -6,7 +6,12 @@ import type { Account } from "@versia/client-api";
 import { emojisOfAccounts } from "../emojis/emoji_queries.ts";
 import { renderEmojis } from "../emojis/render.ts";
 import type { Context } from "../kernel/context.ts";
-import { type AccountRow, findAccount, findAccounts } from "./account_queries.ts";
+import {
+    type AccountRow,
+    decorationsOfAccounts,
+    findAccount,
+    findAccounts,
+} from "./account_queries.ts";
 import { renderAccount } from "./render.ts";
 import { rolesOf, rolesOfAccounts } from "./role_queries.ts";
 
@@ -19,6 +24,7 @@ const accountsOf = async (
     const ids = rows.map((row) => row.id);
     const roles = await rolesOfAccounts(ctx, ids);
     const emojis = await emojisOfAccounts(ctx, ids);
+    const decorations = await decorationsOfAccounts(ctx, ids);
 
     return new Map(rows.map((row) => [
         row.id,
@@ -27,6 +33,7 @@ const accountsOf = async (
             row,
             roles.get(row.id) ?? [],
             renderEmojis(ctx, emojis.get(row.id) ?? []),
+            decorations.get(row.id) ?? [],
             row.moved_to_account_id === null ? undefined : movedTo.get(row.moved_to_account_id),
         ),
     ]));
@@ -46,10 +53,19 @@ export const publicAccountsOf = async (
     return await accountsOf(ctx, rows, movedTo);
 };
 
-/** An account as anyone sees it, with its roles and the custom emojis it uses. */
+/** An account as anyone sees it, with its roles, the custom emojis it uses and its decorations. */
 const shownAccount = async (ctx: Context, row: AccountRow, movedTo?: Account) => {
     const emojis = (await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? [];
-    return renderAccount(ctx, row, await rolesOf(ctx, row.id), renderEmojis(ctx, emojis), movedTo);
+    const decorations = (await decorationsOfAccounts(ctx, [row.id])).get(row.id) ?? [];
+
+    return renderAccount(
+        ctx,
+        row,
+        await rolesOf(ctx, row.id),
+        renderEmojis(ctx, emojis),
+        decorations,
+        movedTo,
+    );
 };
 
 /**

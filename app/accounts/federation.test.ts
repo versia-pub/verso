@@ -10,7 +10,7 @@ import { findMedia } from "../media/media_queries.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
 import { findAccount, findAccountDecorations } from "./account_queries.ts";
-import { remoteAccountOf } from "./federation.ts";
+import { hasPicturesProcessing, remoteAccountOf } from "./federation.ts";
 import { updateProfile } from "./profile.ts";
 import { saveRemoteAccount } from "./remote.ts";
 import { createLocalAccount } from "./testing.ts";
@@ -587,4 +587,24 @@ Deno.test("a received user stores its profile and decorations, and loses them wh
     assertEquals(bare?.header_id, null);
     assertEquals(await findAccountDecorations(test.ctx, id), []);
     assertEquals(await test.ctx.db.selectFrom("media").select("id").execute(), []);
+});
+
+Deno.test("an account has pictures processing while any of its decorations is", async () => {
+    await using test = await createTestContext();
+    await createLocalAccount(test.ctx, "alice");
+    assertEquals(await hasPicturesProcessing(test.ctx, "alice"), false);
+
+    const done = await createFile(test.ctx, "1", "image/png");
+    const pending = await createFile(test.ctx, "2", "audio/ogg", false);
+    await test.ctx.db.insertInto("account_decorations")
+        .values([
+            { account_id: "alice", kind: "avatar_overlay", position: 0, media_id: done },
+            { account_id: "alice", kind: "audio", position: 0, media_id: pending },
+        ])
+        .execute();
+    assertEquals(await hasPicturesProcessing(test.ctx, "alice"), true);
+
+    await test.ctx.db.updateTable("media").set({ processed_at: test.clock.now() })
+        .where("id", "=", pending).execute();
+    assertEquals(await hasPicturesProcessing(test.ctx, "alice"), false);
 });

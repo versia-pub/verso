@@ -753,6 +753,14 @@ Deno.test("a user sees their own profile as they wrote it, with no pictures unti
         show_media_replies: true,
         show_featured: true,
         attribution_domains: ["blog.example"],
+        pronouns: {},
+        birthday: null,
+        location: null,
+        timezone: null,
+        avatar_overlays: [],
+        avatar_mask: null,
+        background: null,
+        audio: null,
         featured_tags: [{
             id: body.featured_tags[0].id,
             name: "Cats",
@@ -915,4 +923,238 @@ Deno.test("a profile takes an avatar and a header as large as uploads may be, to
     const noisy = noise(150);
 
     assertEquals((await profileOf(test, formOf({ avatar: noisy, header: noisy }))).status, 200);
+});
+
+Deno.test("a user sets their pronouns, birthday, location and timezone, and clears them", async () => {
+    await using test = await openApi();
+
+    const set = await test.update(JSON.stringify({
+        pronouns: { EN: "she/her", "de-at": " sie ", fr: " " },
+        birthday: "--02-29",
+        location: "Paris",
+        timezone: "america/new_york",
+    }));
+
+    assertEquals(set.status, 200);
+    assertEquals(set.body.pronouns, { en: "she/her", "de-AT": "sie" });
+    assertEquals([set.body.birthday, set.body.location, set.body.timezone], [
+        "--02-29",
+        "Paris",
+        "America/New_York",
+    ]);
+
+    const form = new FormData();
+    form.append("pronouns[en]", "they/them");
+    const byForm = await test.update(form);
+    assertEquals(byForm.body.pronouns, { en: "they/them" });
+    assertEquals(byForm.body.birthday, "--02-29");
+
+    const cleared = await test.update(JSON.stringify({
+        pronouns: {},
+        birthday: "",
+        location: "",
+        timezone: "",
+    }));
+    assertEquals(cleared.body.pronouns, {});
+    assertEquals([cleared.body.birthday, cleared.body.location, cleared.body.timezone], [
+        null,
+        null,
+        null,
+    ]);
+    assertEquals(cleared.body.avatar_overlays, []);
+    assertEquals([cleared.body.avatar_mask, cleared.body.background, cleared.body.audio], [
+        null,
+        null,
+        null,
+    ]);
+});
+
+Deno.test("a birthday is a real date, with or without its year", async () => {
+    await using test = await openApi();
+    const birthday = async (value: string) =>
+        (await test.update(JSON.stringify({ birthday: value }))).status;
+
+    for (
+        const refused of ["2024-02-30", "2023-02-29", "2024-13-01", "2024-00-10", "--04-31", "x"]
+    ) {
+        assertEquals(await birthday(refused), 422, refused);
+    }
+    for (const accepted of ["2024-02-29", "--02-29", "--12-31", "1999-01-01"]) {
+        assertEquals(await birthday(accepted), 200, accepted);
+    }
+});
+
+Deno.test("a timezone is stored in its canonical form, and an unknown one is refused", async () => {
+    await using test = await openApi();
+
+    const canonical = await test.update(JSON.stringify({ timezone: "europe/paris" }));
+    assertEquals(canonical.body.timezone, "Europe/Paris");
+
+    for (const unknown of ["Mars/Base", "nowhere", "  ", "+01:00", "-0500"]) {
+        const refused = await test.update(JSON.stringify({ timezone: unknown }));
+        assertEquals(refused.status, 422, unknown);
+    }
+    assertEquals((await test.update("{}")).body.timezone, "Europe/Paris");
+});
+
+Deno.test("pronouns need valid language tags, and are held to the limits, not counting blank ones", async () => {
+    await using test = await openApi(Limits.parse({ fields: 2, field_name: 5 }));
+
+    for (
+        const pronouns of [
+            { "not a tag": "x" },
+            { "": "x" },
+            { en: "x".repeat(6) },
+            { en: "a", fr: "b", de: "c" },
+            { en: 1 },
+        ]
+    ) {
+        const refused = await test.update(JSON.stringify({ pronouns }));
+        assertEquals(refused.status, 422, JSON.stringify(pronouns));
+    }
+
+    const accepted = await test.update(
+        JSON.stringify({ pronouns: { en: "a", fr: "b", de: " " } }),
+    );
+    assertEquals(accepted.body.pronouns, { en: "a", fr: "b" });
+});
+
+Deno.test("a user sets two avatar overlays in a form, and they show in order once processed", async () => {
+    await using test = await openApi();
+    const form = new FormData();
+    form.append("avatar_overlays[]", new File([png(4, 4)], "top.png"));
+    form.append("avatar_overlays[]", new File([png(6, 6)], "bottom.png"));
+    form.append("avatar_mask", new File([png(4, 4)], "mask.png"));
+    form.append(
+        "audio",
+        new File([new Uint8Array([79, 103, 103, 83])], "a.ogg", {
+            type: "audio/ogg",
+        }),
+    );
+
+    const before = await test.update(form);
+    assertEquals(before.status, 200);
+    assertEquals([before.body.avatar_overlays, before.body.avatar_mask], [[], null]);
+
+    await drain(test.ctx, queues);
+    const { body } = await test.get("/api/v1/accounts/alice");
+    const urls: string[] = body.avatar_overlays;
+
+    assertEquals(urls.length, 2);
+    assertEquals(new Set(urls).size, 2);
+    for (const url of [...urls, body.avatar_mask, body.audio]) {
+        assertEquals(url.startsWith("https://social.example/media/"), true, url);
+    }
+    assertEquals(body.background, null);
+
+    const rows = await test.ctx.db.selectFrom("account_decorations")
+        .innerJoin("media", "media.id", "account_decorations.media_id")
+        .select(["account_decorations.kind", "account_decorations.position", "media.width"])
+        .where("account_decorations.kind", "=", "avatar_overlay")
+        .orderBy("account_decorations.position")
+        .execute();
+    assertEquals(rows.map((row) => [row.position, row.width]), [[0, 4], [1, 6]]);
+});
+
+Deno.test("at most four avatar overlays are accepted, and at least one", async () => {
+    await using test = await openApi();
+    const overlays = (count: number) => {
+        const form = new FormData();
+        for (let i = 0; i < count; i++) {
+            form.append("avatar_overlays[]", new File([png(4, 4)], `${i}.png`));
+        }
+
+        return form;
+    };
+
+    assertEquals((await test.update(overlays(5))).status, 422);
+    assertEquals((await test.update(overlays(4))).status, 200);
+    assertEquals((await test.update(overlays(5))).status, 422);
+    assertEquals((await test.update(overlays(1))).status, 200);
+});
+
+Deno.test("a decoration that isn't an image, or audio that isn't audio, is refused", async () => {
+    await using test = await openApi();
+    const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2]);
+
+    for (
+        const [name, message] of [
+            ["avatar_mask", "Avatar mask must be an image"],
+            ["background", "Background must be an image"],
+            ["audio", "Audio must be audio"],
+        ]
+    ) {
+        const refused = await test.update(formOf({ [name]: zip }));
+        assertEquals([refused.status, refused.body.error_description], [422, message], name);
+    }
+});
+
+Deno.test("a user removes each decoration of their profile, and the others stay", async () => {
+    await using test = await openApi();
+    const form = formOf({ avatar_mask: png(4, 4), background: png(4, 4) });
+    form.append("avatar_overlays[]", new File([png(4, 4)], "o.png"));
+    form.append(
+        "audio",
+        new File([new Uint8Array([79, 103, 103, 83])], "a.ogg", {
+            type: "audio/ogg",
+        }),
+    );
+    await test.update(form);
+    await drain(test.ctx, queues);
+
+    /** Deletes alice's decoration `name`, with a token that has `scopes`. */
+    const remove = async (name: string, scopes?: Scope[]) => {
+        const response = await test.app.request(`/api/v1/profile/${name}`, {
+            method: "DELETE",
+            headers: { authorization: `Bearer ${await tokenFor(test.ctx, "alice", scopes)}` },
+        });
+        return { status: response.status, body: await response.json() };
+    };
+    /** Which decorations alice's account shows. */
+    const shown = (body: Record<string, unknown>) =>
+        ["avatar_overlays", "avatar_mask", "background", "audio"].filter((name) => {
+            const value = body[name];
+            return Array.isArray(value) ? value.length > 0 : value !== null;
+        });
+
+    assertEquals((await remove("audio", ["read"])).status, 403);
+    assertEquals(shown((await test.get("/api/v1/accounts/alice")).body).length, 4);
+
+    const names = ["avatar_overlays", "avatar_mask", "background", "audio"];
+    for (const [index, name] of names.entries()) {
+        const removed = await remove(name);
+
+        assertEquals(removed.status, 200, name);
+        assertEquals(shown(removed.body), names.slice(index + 1), name);
+    }
+
+    // Nothing to remove is still removed.
+    assertEquals((await remove("audio")).status, 200);
+});
+
+Deno.test("a profile's pronouns, birthday, location, timezone and decorations are changed too", async () => {
+    await using test = await openApi();
+
+    const set = await profileOf(
+        test,
+        JSON.stringify({
+            pronouns: { en: "she/her" },
+            birthday: "2000-12-31",
+            location: "Paris",
+            timezone: "europe/paris",
+        }),
+    );
+
+    assertEquals(set.status, 200);
+    assertEquals(
+        [set.body.pronouns, set.body.birthday, set.body.location, set.body.timezone],
+        [{ en: "she/her" }, "2000-12-31", "Paris", "Europe/Paris"],
+    );
+    assertEquals(
+        [set.body.avatar_overlays, set.body.avatar_mask, set.body.background, set.body.audio],
+        [[], null, null, null],
+    );
+
+    assertEquals((await profileOf(test, JSON.stringify({ birthday: "2024-02-30" }))).status, 422);
+    assertEquals((await profileOf(test, JSON.stringify({ timezone: "Mars/Base" }))).status, 422);
 });

@@ -11,7 +11,7 @@ import type { Context } from "../kernel/context.ts";
 import { MediaDescription } from "../media/routes.ts";
 import { featuredTagsOf } from "../tags/featured_tag_queries.ts";
 import { renderFeaturedTags } from "../tags/render.ts";
-import { type AccountRow, findAccount } from "./account_queries.ts";
+import { type AccountRow, decorationsOfAccounts, findAccount } from "./account_queries.ts";
 import { findAccountByAddress, parseAddress } from "./addresses.ts";
 import { pictureRoutes } from "./picture_routes.ts";
 import { type ProfileChanges, updateProfile } from "./profile.ts";
@@ -24,7 +24,10 @@ const found = (row: AccountRow | undefined) => {
     return row;
 };
 
-/** The viewer's own account, with its roles, what it may do, and who has requested to follow it. */
+/**
+ * The viewer's own account, with its roles, decorations, what it may do, and who has requested to
+ * follow it.
+ */
 const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly accountId: string }) => {
     const row = found(await findAccount(ctx, viewer.accountId));
 
@@ -33,17 +36,19 @@ const ownAccount = async (ctx: Context, viewer: RouteViewer & { readonly account
         row,
         await rolesOf(ctx, row.id),
         renderEmojis(ctx, (await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? []),
+        (await decorationsOfAccounts(ctx, [row.id])).get(row.id) ?? [],
         await viewer.permissions(),
         await countFollowRequests(ctx, row.id),
     );
 };
 
-/** The viewer's own profile, as they wrote it, with the hashtags they feature. */
+/** The viewer's own profile, as they wrote it, with the hashtags they feature and decorations. */
 const ownProfile = async (ctx: Context, viewer: RouteViewer & { readonly accountId: string }) =>
     renderProfile(
         ctx,
         found(await findAccount(ctx, viewer.accountId)),
         await renderFeaturedTags(ctx, await featuredTagsOf(ctx, viewer.accountId)),
+        (await decorationsOfAccounts(ctx, [viewer.accountId])).get(viewer.accountId) ?? [],
     );
 
 /** Mastodon's limit on the domains an account may name as able to credit it. */
@@ -72,7 +77,92 @@ const AttributionDomains = Strings
         }),
     );
 
-/** Room for the form's other fields and boundaries, besides the pictures. */
+/** How many images may be drawn over an avatar. */
+const maxAvatarOverlays = 4;
+
+/** The days in each month of a leap year, which a birthday without a year may be any day of. */
+const leapMonthDays = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+/** Whether `year` has a 29th of February. */
+const isLeapYear = (year: number) => year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+
+/** A birthday as Versia has it: `YYYY-MM-DD` that is a real date, or `--MM-DD` without a year. */
+const Birthday = z.string().refine((birthday) => {
+    if (birthday === "") return true;
+
+    const [, year, month, day] = /^(?:(\d{4})|-)-(\d{2})-(\d{2})$/.exec(birthday) ?? [];
+    if (month === undefined) return false;
+
+    const days = leapMonthDays[Number(month) - 1];
+    if (days === undefined) return false;
+
+    const most = month === "02" && year !== undefined && !isLeapYear(Number(year)) ? 28 : days;
+
+    return Number(day) >= 1 && Number(day) <= most;
+}, { error: "Must be a date like 2000-12-31, or --12-31 without the year" });
+
+/** The canonical form of the time zone `name`, or `undefined` if it isn't one. */
+const canonicalTimeZone = (name: string) => {
+    try {
+        const zone = new Intl.DateTimeFormat("en", { timeZone: name }).resolvedOptions().timeZone;
+        // Intl also takes offsets like "+01:00", which aren't IANA names.
+        return /^[+-]/.test(zone) ? undefined : zone;
+    } catch {
+        return undefined;
+    }
+};
+
+/** An IANA time zone in its canonical case, or empty for none. */
+const Timezone = z.string().transform((name, ctx) => {
+    const zone = name === "" ? "" : canonicalTimeZone(name);
+    if (zone !== undefined) return zone;
+
+    ctx.addIssue({ code: "custom", message: "Must be an IANA time zone, like America/New_York" });
+    return z.NEVER;
+});
+
+/** The canonical form of the BCP 47 language tag `tag`, or `undefined` if it isn't one. */
+const canonicalTag = (tag: string) => {
+    try {
+        return Intl.getCanonicalLocales(tag)[0];
+    } catch {
+        return undefined;
+    }
+};
+
+/** Pronouns by BCP 47 language tag, with the tags in canonical form, within `limits`. */
+const Pronouns = (limits: Limits) =>
+    z.record(z.string(), Text(limits.field_name))
+        // Blank values are dropped when stored, so they don't count.
+        .refine(
+            (pronouns) =>
+                Object.values(pronouns).filter((value) => value.trim() !== "").length <=
+                    limits.fields,
+            {
+                error: `At most ${limits.fields} languages`,
+            },
+        )
+        .transform((pronouns, ctx) => {
+            const canonical: Record<string, string> = {};
+
+            for (const [tag, value] of Object.entries(pronouns)) {
+                const language = canonicalTag(tag);
+                if (language === undefined) {
+                    ctx.addIssue({
+                        code: "custom",
+                        path: [tag],
+                        message: "Must be a BCP 47 language tag, like en",
+                    });
+                    continue;
+                }
+
+                canonical[language] = value;
+            }
+
+            return canonical;
+        });
+
+/** Room for the form's other fields and boundaries, besides the files. */
 const formBytes = 64 * 1024;
 
 /** What `update_credentials` or `PATCH /api/v1/profile` sets, as `updateProfile` takes it. */
@@ -90,6 +180,14 @@ const profileUpdate = (
     attributionDomains: body.attribution_domains,
     avatar: { file: body.avatar, description: body.avatar_description },
     header: { file: body.header, description: body.header_description },
+    pronouns: body.pronouns,
+    birthday: body.birthday,
+    location: body.location,
+    timezone: body.timezone,
+    avatarOverlays: body.avatar_overlays,
+    avatarMask: body.avatar_mask,
+    background: body.background,
+    audio: body.audio,
 });
 
 /**
@@ -120,6 +218,16 @@ const credentialChanges = (media: MediaLimits, limits: Limits) => {
         avatar_description: MediaDescription(limits).optional(),
         header: Picture.optional(),
         header_description: MediaDescription(limits).optional(),
+        pronouns: Pronouns(limits).optional(),
+        birthday: Birthday.optional(),
+        location: Text(limits.field_value).optional(),
+        timezone: Timezone.optional(),
+        avatar_overlays: z.array(Picture).min(1).max(maxAvatarOverlays, {
+            error: `At most ${maxAvatarOverlays} overlays`,
+        }).optional(),
+        avatar_mask: Picture.optional(),
+        background: Picture.optional(),
+        audio: Picture.optional(),
         /** An array, or an object by index, as forms send it; either way in order. */
         fields_attributes: z.union([
             z.array(ProfileField),
@@ -148,6 +256,34 @@ const profileChanges = (media: MediaLimits, limits: Limits) =>
         show_media_replies: Flag.optional(),
         show_featured: Flag.optional(),
     });
+
+/** The routes that remove a decoration, with the change `updateProfile` takes for each. */
+const removableDecorations = [
+    {
+        path: "avatar_overlays",
+        change: "avatarOverlays",
+        summary: "Delete profile avatar overlays",
+        description: "Deletes the images drawn over the avatar of the user's profile.",
+    },
+    {
+        path: "avatar_mask",
+        change: "avatarMask",
+        summary: "Delete profile avatar mask",
+        description: "Deletes the image that masks the avatar of the user's profile.",
+    },
+    {
+        path: "background",
+        change: "background",
+        summary: "Delete profile background",
+        description: "Deletes the background image of the user's profile.",
+    },
+    {
+        path: "audio",
+        change: "audio",
+        summary: "Delete profile audio",
+        description: "Deletes the sound of the user's profile.",
+    },
+] as const;
 
 /**
  * Accounts, and the default pictures of accounts without their own, with profiles held to `limits`
@@ -179,7 +315,7 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
             permission: "owner:account",
             whileMoved: true,
         },
-        maxBodyBytes: 2 * media.max_upload_bytes + formBytes,
+        maxBodyBytes: 9 * media.max_upload_bytes + formBytes,
         body: credentialChanges(media, limits),
         responses: { 200: CredentialAccount },
         handler: async (ctx, { viewer, body }) => {
@@ -285,7 +421,7 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
             permission: "owner:account",
             whileMoved: true,
         },
-        maxBodyBytes: 2 * media.max_upload_bytes + formBytes,
+        maxBodyBytes: 9 * media.max_upload_bytes + formBytes,
         body: profileChanges(media, limits),
         responses: { 200: Profile },
         handler: async (ctx, { viewer, body }) => {
@@ -318,6 +454,26 @@ export const accountRoutes = (media: MediaLimits, limits: Limits): readonly Rout
             responses: { 200: CredentialAccount },
             handler: async (ctx, { viewer }) => {
                 await updateProfile(ctx, viewer.accountId, { [picture]: null });
+                return { status: 200, body: await ownAccount(ctx, viewer) };
+            },
+        })
+    ),
+    ...removableDecorations.map(({ path, change, summary, description }) =>
+        defineRoute({
+            method: "DELETE",
+            path: `/api/v1/profile/${path}`,
+            summary,
+            description,
+            tags: ["accounts"],
+            auth: {
+                require: "user",
+                scope: "write:accounts",
+                permission: "owner:account",
+                whileMoved: true,
+            },
+            responses: { 200: CredentialAccount },
+            handler: async (ctx, { viewer }) => {
+                await updateProfile(ctx, viewer.accountId, { [change]: null });
                 return { status: 200, body: await ownAccount(ctx, viewer) };
             },
         })

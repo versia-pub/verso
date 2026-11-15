@@ -211,6 +211,29 @@ Deno.test("forms name nested fields as Rails does, and leave out those not given
     assertEquals(form.get("locked"), "false");
 });
 
+Deno.test("a list of files is sent under name[], and a decoration alone makes a form", async () => {
+    const { client, sent } = fake(() => json({}, { status: 500 }));
+    const file = (name: string) => new File([new Uint8Array([1])], name, { type: "image/png" });
+
+    await assertRejects(() =>
+        client.accounts.updateProfile({
+            avatar_overlays: [file("top.png"), file("bottom.png")],
+            pronouns: { en: "she/her" },
+        })
+    );
+    await assertRejects(() => client.accounts.updateProfile({ background: file("bg.png") }));
+    await assertRejects(() => client.accounts.updateProfile({ pronouns: { en: "she/her" } }));
+
+    const form = await sent[0].formData();
+    assertEquals([...form.keys()], ["avatar_overlays[]", "avatar_overlays[]", "pronouns[en]"]);
+    assertEquals(
+        form.getAll("avatar_overlays[]").map((value) => value instanceof File && value.name),
+        ["top.png", "bottom.png"],
+    );
+    assertEquals([...(await sent[1].formData()).keys()], ["background"]);
+    assertEquals(await sent[2].json(), { pronouns: { en: "she/her" } });
+});
+
 Deno.test("a profile change without pictures is sent as JSON", async () => {
     const { client, sent } = fake(() => json({}, { status: 500 }));
 

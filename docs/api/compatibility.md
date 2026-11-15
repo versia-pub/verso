@@ -293,4 +293,8 @@ Verso also has:
 - reactions to statuses, with `reactions` on each status and `/api/v1/statuses/:id/react/:name`,
   from glitch-soc, and `/api/v1/statuses/:id/reactions`, from Versia Server
 - moving accounts, with `/api/v1/migration`
+- Versia's Profile and Decorations extensions on accounts and profiles: `pronouns`, `birthday`,
+  `location`, `timezone`, `avatar_overlays`, `avatar_mask`, `background` and `audio`.
+  `update_credentials` and `PATCH /api/v1/profile` set them, and
+  `DELETE /api/v1/profile/avatar_overlays`, `avatar_mask`, `background` and `audio` remove them
 - the web app's settings for each user, with [`/api/v1/web_preferences`](web_preferences.md)

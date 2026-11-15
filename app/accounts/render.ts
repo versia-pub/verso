@@ -15,12 +15,12 @@ import type {
 import type { Context } from "../kernel/context.ts";
 import { entityUrl } from "../kernel/urls.ts";
 import { shownHtml } from "../kernel/html.ts";
-import { fileUrl } from "../media/render.ts";
-import type { AccountRow } from "./account_queries.ts";
+import { fileUrl, mediaUrl } from "../media/render.ts";
+import type { AccountRow, ShownDecoration } from "./account_queries.ts";
 import { type Permission, permissionNames } from "../kernel/permissions.ts";
 import { mastodonPermissions } from "./permissions.ts";
 import type { RoleRow } from "./role_queries.ts";
-import type { ProfileField } from "./tables.ts";
+import type { DecorationKind, ProfileField } from "./tables.ts";
 
 /** The role Mastodon gives users that have none. */
 const everyone = { id: "-99", name: "", color: "", highlighted: false };
@@ -123,21 +123,45 @@ const suspendedAs = (row: AccountRow): AccountRow =>
         header_description: null,
         locked: false,
         fields: [],
+        pronouns: {},
+        birthday: null,
+        location: null,
+        timezone: null,
+        url: null,
         bot: false,
         discoverable: false,
         indexable: false,
     };
 
 /**
- * An account as anyone sees it, with its roles, highest first, the custom emojis it uses, and the
- * account it moved to, if it did, as that account is shown. A suspended account says so, and shows
- * nothing of its profile, nor where it moved.
+ * The decorations as an account shows them: overlays in order, and the one of each other kind, or
+ * `null`. Those that have no URL yet are left out.
+ */
+const renderDecorations = (ctx: Context, decorations: readonly ShownDecoration[]) => {
+    const urls = (kind: DecorationKind) =>
+        decorations.filter((decoration) => decoration.kind === kind)
+            .toSorted((a, b) => a.position - b.position)
+            .flatMap(({ media }) => mediaUrl(ctx, media) ?? []);
+
+    return {
+        avatar_overlays: urls("avatar_overlay"),
+        avatar_mask: urls("avatar_mask")[0] ?? null,
+        background: urls("background")[0] ?? null,
+        audio: urls("audio")[0] ?? null,
+    };
+};
+
+/**
+ * An account as anyone sees it, with its roles, highest first, the custom emojis it uses, its
+ * decorations, and the account it moved to, if it did, as that account is shown. A suspended account
+ * says so, and shows nothing of its profile, nor where it moved.
  */
 export const renderAccount = (
     ctx: Context,
     row: AccountRow,
     roles: readonly RoleRow[],
     emojis: readonly CustomEmoji[],
+    decorations: readonly ShownDecoration[],
     movedTo?: Account,
 ): Account => {
     const shown = suspendedAs(row);
@@ -169,7 +193,8 @@ export const renderAccount = (
         id: row.id,
         username: row.username,
         acct: local ? row.username : `${row.username}@${row.domain}`,
-        url: profileUrl(ctx, row),
+        // A remote account's own page, if it gave one.
+        url: !local && shown.url !== null ? shown.url : profileUrl(ctx, row),
         uri,
         display_name: shown.display_name,
         note: html(shown.note_html),
@@ -181,6 +206,11 @@ export const renderAccount = (
         header_description: shown.header_description ?? "",
         locked: shown.locked,
         fields: renderFields(shown.fields, (field) => html(field.value_html)),
+        pronouns: shown.pronouns,
+        birthday: shown.birthday,
+        location: shown.location,
+        timezone: shown.timezone,
+        ...renderDecorations(ctx, suspended ? [] : decorations),
         emojis: suspended ? [] : [...emojis],
         bot: shown.bot,
         group: false,
@@ -210,18 +240,19 @@ export const renderAccount = (
 
 /**
  * An account as its owner sees it, with the settings they can change, its roles (highest first),
- * the custom emojis it uses, everything it may do, and how many accounts have requested to follow
- * it.
+ * the custom emojis it uses, its decorations, everything it may do, and how many accounts have
+ * requested to follow it.
  */
 export const renderCredentialAccount = (
     ctx: Context,
     row: AccountRow,
     roles: readonly RoleRow[],
     emojis: readonly CustomEmoji[],
+    decorations: readonly ShownDecoration[],
     permissions: Iterable<Permission>,
     followRequests: number,
 ): CredentialAccount => ({
-    ...renderAccount(ctx, row, roles, emojis),
+    ...renderAccount(ctx, row, roles, emojis, decorations),
     source: {
         note: row.note,
         fields: renderFields(row.fields, (field) => field.value),
@@ -241,15 +272,16 @@ export const renderCredentialAccount = (
 });
 
 /**
- * A user's own profile as they wrote it, with the hashtags they feature. Pictures they don't have
- * are `null`, not the default ones.
+ * A user's own profile as they wrote it, with the hashtags they feature and their decorations.
+ * Pictures they don't have are `null`, not the default ones.
  */
 export const renderProfile = (
     ctx: Context,
     row: AccountRow,
     featuredTags: readonly FeaturedTag[],
+    decorations: readonly ShownDecoration[],
 ): Profile => {
-    const account = renderAccount(ctx, row, [], []);
+    const account = renderAccount(ctx, row, [], [], decorations);
     const own = <T>(id: string | null, shown: T): T | null => id === null ? null : shown;
     const field = (value: (field: ProfileField) => string) => (field: ProfileField) => ({
         name: field.name,
@@ -280,6 +312,14 @@ export const renderProfile = (
         show_featured: row.show_featured,
         attribution_domains: row.attribution_domains,
         featured_tags: [...featuredTags],
+        pronouns: account.pronouns,
+        birthday: account.birthday,
+        location: account.location,
+        timezone: account.timezone,
+        avatar_overlays: account.avatar_overlays,
+        avatar_mask: account.avatar_mask,
+        background: account.background,
+        audio: account.audio,
     };
 };
 

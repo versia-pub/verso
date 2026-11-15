@@ -164,6 +164,23 @@ const echo = defineRoute({
     handler: (_, { body }) => Promise.resolve({ status: 200, body }),
 });
 
+const echoFiles = defineRoute({
+    method: "POST",
+    path: "/echo-files",
+    summary: "Answers with the names of the files in the body, by form name",
+    body: z.record(z.string(), z.union([z.file(), z.array(z.file())])),
+    responses: { 200: z.record(z.string(), z.array(z.string())) },
+    handler: (_, { body }) =>
+        Promise.resolve({
+            status: 200,
+            body: Object.fromEntries(
+                Object.entries(body).map((
+                    [name, files],
+                ) => [name, [files].flat().map((f) => f.name)]),
+            ),
+        }),
+});
+
 const echoText = defineRoute({
     method: "POST",
     path: "/echo-text",
@@ -261,6 +278,7 @@ const open = async () => {
         duplicate,
         old,
         echo,
+        echoFiles,
         echoText,
         echoLong,
         sloppy,
@@ -405,13 +423,32 @@ Deno.test("a form's files must have plain names", async () => {
     const plain = await post("avatar");
     assertEquals([plain.status, Object.keys(await plain.json())], [200, ["avatar"]]);
 
-    for (const [name, times] of [["avatar[0]", 1], ["avatars[]", 1], ["avatar", 2]] as const) {
+    for (const [name, times] of [["avatar[0]", 1], ["avatar[b][]", 1], ["avatar", 2]] as const) {
         const refused = await post(name, times);
         assertEquals(
             [refused.status, (await refused.json()).error_description],
-            [400, `A file must have a plain name, used once, unlike "${name}"`],
+            [400, `A file must have a plain name, used once, or end in [], unlike "${name}"`],
         );
     }
+});
+
+Deno.test("a form's files named name[] are collected in order under name", async () => {
+    await using test = await open();
+    const post = (names: readonly string[]) => {
+        const form = new FormData();
+        names.forEach((name, i) => form.append(name, new File(["x"], `${i}.png`)));
+
+        return test.app.request("/echo-files", { method: "POST", body: form });
+    };
+
+    const several = await post(["avatars[]", "avatars[]", "avatars[]"]);
+    assertEquals([several.status, await several.json()], [200, {
+        avatars: ["0.png", "1.png", "2.png"],
+    }]);
+
+    const mixed = await post(["avatars[]", "avatars"]);
+    assertEquals(mixed.status, 400);
+    assertEquals((await post(["avatars", "avatars[]"])).status, 400);
 });
 
 Deno.test("a body must be well-formed JSON or form data", async () => {

@@ -1,14 +1,15 @@
 import { assertEquals, assertExists } from "@std/assert";
-import { Account, CredentialAccount } from "@versia/client-api";
+import { Account, CredentialAccount, Profile } from "@versia/client-api";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizerVersion } from "../kernel/html.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findAccount } from "./account_queries.ts";
+import type { MediaRow } from "../media/media_queries.ts";
+import { findAccount, type ShownDecoration } from "./account_queries.ts";
 import { saveRemoteAccount } from "./remote.ts";
-import { renderAccount, renderCredentialAccount } from "./render.ts";
+import { renderAccount, renderCredentialAccount, renderProfile } from "./render.ts";
 import type { RoleRow } from "./role_queries.ts";
-import type { ProfileField } from "./tables.ts";
+import type { DecorationKind, ProfileField } from "./tables.ts";
 import { createLocalAccount } from "./testing.ts";
 
 const find = async (ctx: Context, id: string) => {
@@ -24,7 +25,7 @@ Deno.test("a local account links to itself on this instance", async () => {
         .set({ created_at: new Date("2026-01-31T15:04:05Z") })
         .execute();
 
-    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], []));
+    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], [], []));
 
     assertEquals(account.acct, "alice");
     assertEquals(account.uri, "https://social.example/.versia/v0.7/entities/User/alice");
@@ -50,7 +51,7 @@ Deno.test("a remote account links to its own instance", async () => {
         })
         .execute();
 
-    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, "r"), [], []));
+    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, "r"), [], [], []));
 
     assertEquals(account.acct, "bob@b.example");
     assertEquals(account.uri, "https://b.example/.versia/v0.7/entities/User/a%2Fb");
@@ -102,7 +103,7 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
         emojis: [],
     });
 
-    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], []));
+    const account = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], [], []));
 
     assertEquals(account.note, safe);
     assertEquals(account.fields, [{ name: "Site", value: safe, verified_at: null }]);
@@ -121,7 +122,7 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
         .set({ sha256: "ab", preview_sha256: "cd", processed_at: test.clock.now() })
         .where("id", "=", avatar_id)
         .execute();
-    const cached = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], []));
+    const cached = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], [], []));
     assertEquals([cached.avatar, cached.avatar_static], [
         "https://social.example/media/ab",
         "https://social.example/media/cd",
@@ -130,7 +131,7 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
     // Caching that failed leaves the picture at its URL.
     await test.ctx.db.updateTable("media").set({ sha256: null }).execute();
     assertEquals(
-        Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], [])).avatar,
+        Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], [], [])).avatar,
         "https://pictures.example/bob.png",
     );
 });
@@ -172,7 +173,7 @@ Deno.test("a remote account's HTML, sanitised when it was stored, is shown as it
         emojis: [],
     });
 
-    const account = renderAccount(test.ctx, await find(test.ctx, id), [], []);
+    const account = renderAccount(test.ctx, await find(test.ctx, id), [], [], []);
     assertEquals([account.note, account.fields[0].value], [stored, stored]);
 });
 
@@ -196,11 +197,11 @@ Deno.test("others see the bio and fields as HTML, and their owner as written", a
         .execute();
     const row = await find(test.ctx, id);
 
-    const account = renderAccount(test.ctx, row, [], []);
+    const account = renderAccount(test.ctx, row, [], [], []);
     assertEquals(account.note, "<p><strong>Hi</strong></p>");
     assertEquals(account.fields, [{ name: "Site", value: "<em>me</em>", verified_at: null }]);
 
-    const own = renderCredentialAccount(test.ctx, row, [], [], [], 0);
+    const own = renderCredentialAccount(test.ctx, row, [], [], [], [], 0);
     assertEquals(own.source.note, "**Hi**");
     assertEquals(own.source.fields, [{ name: "Site", value: "*me*", verified_at: null }]);
 });
@@ -216,6 +217,7 @@ Deno.test("an owner sees their settings, the role everyone has, and their permis
         renderCredentialAccount(
             test.ctx,
             await find(test.ctx, id),
+            [],
             [],
             [],
             ["roles", "owner:account", "roles"],
@@ -255,7 +257,7 @@ Deno.test("others see an account's visible roles, highest first", async () => {
     const id = await createLocalAccount(test.ctx, "alice");
     const roles = [role("admin", 100, true), role("hidden", 50, false), role("mod", 10, true)];
 
-    const account = renderAccount(test.ctx, await find(test.ctx, id), roles, []);
+    const account = renderAccount(test.ctx, await find(test.ctx, id), roles, [], []);
 
     assertEquals(account.roles, [
         { id: "admin", name: "The admins", color: "#ff3838" },
@@ -269,7 +271,7 @@ Deno.test("an owner sees their highest role, with everything they may do", async
     const roles = [role("hidden", 100, false), role("mod", 10, true)];
 
     const own = CredentialAccount.parse(
-        renderCredentialAccount(test.ctx, await find(test.ctx, id), roles, [], ["roles"], 0),
+        renderCredentialAccount(test.ctx, await find(test.ctx, id), roles, [], [], ["roles"], 0),
     );
 
     assertEquals(own.role, {
@@ -281,8 +283,176 @@ Deno.test("an owner sees their highest role, with everything they may do", async
         collection_limit: 0,
     });
     assertEquals(
-        renderCredentialAccount(test.ctx, await find(test.ctx, id), [roles[1]], [], [], 0).role
+        renderCredentialAccount(test.ctx, await find(test.ctx, id), [roles[1]], [], [], [], 0).role
             .highlighted,
         true,
     );
+});
+
+/** A local decoration's media, processed under `sha256` unless it says otherwise. */
+const decoration = (
+    kind: DecorationKind,
+    position: number,
+    sha256: string | null,
+    media: Partial<MediaRow> = {},
+): ShownDecoration => ({
+    kind,
+    position,
+    media: {
+        id: `${kind}${position}`,
+        instance_id: null,
+        url: null,
+        media_type: "image/png",
+        size: null,
+        sha256,
+        remote_sha256: null,
+        cached_type: null,
+        width: null,
+        height: null,
+        thumbhash: null,
+        description: null,
+        created_at: new Date(0),
+        account_id: null,
+        upload_sha256: null,
+        processed_at: new Date(0),
+        preview_sha256: null,
+        preview_width: null,
+        preview_height: null,
+        blurhash: null,
+        focus_x: null,
+        focus_y: null,
+        fit_width: null,
+        fit_height: null,
+        ...media,
+    },
+});
+
+const decorated = [
+    decoration("avatar_overlay", 1, "o1"),
+    decoration("avatar_overlay", 0, "o0"),
+    decoration("avatar_mask", 0, "mask"),
+    decoration("background", 0, "back"),
+    decoration("audio", 0, "sound"),
+];
+
+Deno.test("an account shows its pronouns, birthday, location, time zone and decorations", async () => {
+    await using test = await createTestContext();
+    const id = await createLocalAccount(test.ctx, "alice");
+    await test.ctx.db.updateTable("accounts")
+        .set({
+            pronouns: { en: "she/her", fr: "elle" },
+            birthday: "--02-29",
+            location: "Paris",
+            timezone: "Europe/Paris",
+        })
+        .execute();
+
+    const account = Account.parse(
+        renderAccount(test.ctx, await find(test.ctx, id), [], [], decorated),
+    );
+
+    assertEquals(account.pronouns, { en: "she/her", fr: "elle" });
+    assertEquals(
+        [account.birthday, account.location, account.timezone],
+        ["--02-29", "Paris", "Europe/Paris"],
+    );
+    assertEquals(account.avatar_overlays, [
+        "https://social.example/media/o0",
+        "https://social.example/media/o1",
+    ]);
+    assertEquals(
+        [account.avatar_mask, account.background, account.audio],
+        [
+            "https://social.example/media/mask",
+            "https://social.example/media/back",
+            "https://social.example/media/sound",
+        ],
+    );
+
+    const plain = Account.parse(renderAccount(test.ctx, await find(test.ctx, id), [], [], []));
+    assertEquals(plain.avatar_overlays, []);
+    assertEquals([plain.avatar_mask, plain.background, plain.audio], [null, null, null]);
+});
+
+Deno.test("a profile and an owner's account show the same decorations", async () => {
+    await using test = await createTestContext();
+    const id = await createLocalAccount(test.ctx, "alice");
+    const row = await find(test.ctx, id);
+
+    const profile = Profile.parse(renderProfile(test.ctx, row, [], decorated));
+    const own = CredentialAccount.parse(
+        renderCredentialAccount(test.ctx, row, [], [], decorated, [], 0),
+    );
+
+    assertEquals(profile.avatar_overlays, own.avatar_overlays);
+    assertEquals([profile.audio, profile.pronouns], ["https://social.example/media/sound", {}]);
+});
+
+Deno.test("a decoration that isn't processed, or couldn't be, is left out", async () => {
+    await using test = await createTestContext();
+    const id = await createLocalAccount(test.ctx, "alice");
+    const waiting = { processed_at: null };
+
+    const account = Account.parse(
+        renderAccount(test.ctx, await find(test.ctx, id), [], [], [
+            decoration("avatar_overlay", 0, "o0", waiting),
+            decoration("avatar_overlay", 1, "o1"),
+            decoration("avatar_mask", 0, null),
+            decoration("background", 0, null, waiting),
+        ]),
+    );
+
+    assertEquals(account.avatar_overlays, ["https://social.example/media/o1"]);
+    assertEquals([account.avatar_mask, account.background], [null, null]);
+});
+
+Deno.test("a suspended account shows no pronouns, birthday, location, time zone or decorations", async () => {
+    await using test = await createTestContext();
+    const id = await createLocalAccount(test.ctx, "alice");
+    await test.ctx.db.updateTable("accounts")
+        .set({
+            pronouns: { en: "she/her" },
+            birthday: "2000-01-01",
+            location: "Paris",
+            timezone: "Europe/Paris",
+            suspended_at: test.clock.now(),
+        })
+        .execute();
+
+    const account = Account.parse(
+        renderAccount(test.ctx, await find(test.ctx, id), [], [], decorated),
+    );
+
+    assertEquals(account.pronouns, {});
+    assertEquals([account.birthday, account.location, account.timezone], [null, null, null]);
+    assertEquals(account.avatar_overlays, []);
+    assertEquals([account.avatar_mask, account.background, account.audio], [null, null, null]);
+});
+
+Deno.test("a remote account links to its own page if it gave one, and to Verso's if not", async () => {
+    await using test = await createTestContext();
+    const instance = await createInstance(test.ctx, "b.example");
+    const insert = (id: string, username: string, url: string | null) =>
+        test.ctx.db.insertInto("accounts")
+            .values({
+                id,
+                username,
+                instance_id: instance,
+                remote_id: id,
+                created_at: test.clock.now(),
+                url,
+            })
+            .execute();
+    await insert("r1", "bob", "https://b.example/@bob");
+    await insert("r2", "carol", null);
+
+    const bob = Account.parse(renderAccount(test.ctx, await find(test.ctx, "r1"), [], [], []));
+    const carol = Account.parse(renderAccount(test.ctx, await find(test.ctx, "r2"), [], [], []));
+
+    assertEquals(bob.url, "https://b.example/@bob");
+    assertEquals(carol.url, "https://social.example/@carol@b.example");
+
+    await test.ctx.db.updateTable("accounts").set({ suspended_at: test.clock.now() }).execute();
+    const suspended = renderAccount(test.ctx, await find(test.ctx, "r1"), [], [], []);
+    assertEquals(suspended.url, "https://social.example/@bob@b.example");
 });

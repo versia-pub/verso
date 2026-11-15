@@ -41,6 +41,18 @@ export const proxyUrl = (ctx: Context, id: string, small = false): string =>
     small ? ctx.urls.url`/media/proxy/${id}/small` : ctx.urls.url`/media/proxy/${id}`;
 
 /**
+ * Where the media `row` is served: at the media proxy's URL if it will be cached, else Verso's once
+ * processed or cached, else the remote instance's. Local media that isn't processed has none yet,
+ * and neither has local media that couldn't be processed.
+ */
+export const mediaUrl = (ctx: Context, row: MediaRow): string | null =>
+    proxied(ctx, row)
+        ? proxyUrl(ctx, row.id)
+        : row.processed_at !== null && row.sha256 !== null
+        ? fileUrl(ctx, row.sha256)
+        : row.url;
+
+/**
  * Media as Mastodon's API renders it. Local media is served at Verso's URL once processed, and
  * remote media once cached; until then, remote media that will be cached is at the media proxy's
  * URL, and other remote media at the remote instance's URL.
@@ -56,19 +68,14 @@ export const renderAttachment = (ctx: Context, row: MediaRow): MediaAttachment =
     return {
         id: row.id,
         type: typeOf(row),
-        ...proxied(ctx, row)
-            ? {
-                url: proxyUrl(ctx, row.id),
-                // Only images get a preview.
-                preview_url: pictureTypes.has(row.media_type) ? proxyUrl(ctx, row.id, true) : null,
-            }
-            : {
-                // Local media has no URL of its own, so it has none until processed.
-                url: row.processed_at !== null && row.sha256 !== null
-                    ? fileUrl(ctx, row.sha256)
-                    : row.url,
-                preview_url: row.preview_sha256 ? fileUrl(ctx, row.preview_sha256) : null,
-            },
+        // Local media has no URL of its own, so it has none until processed.
+        url: mediaUrl(ctx, row),
+        preview_url: proxied(ctx, row)
+            // Only images get a preview.
+            ? pictureTypes.has(row.media_type) ? proxyUrl(ctx, row.id, true) : null
+            : row.preview_sha256
+            ? fileUrl(ctx, row.preview_sha256)
+            : null,
         // Local media has no remote URL.
         remote_url: row.url,
         // A preview is only made for an image whose size is known.

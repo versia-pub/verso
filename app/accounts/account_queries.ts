@@ -16,7 +16,8 @@ import { countAll, readCount } from "../db/count.ts";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
-import type { AccountDecorationsTable, AccountsTable } from "./tables.ts";
+import type { MediaRow } from "../media/media_queries.ts";
+import type { AccountDecorationsTable, AccountsTable, DecorationKind } from "./tables.ts";
 
 /**
  * An account, with the domain of its instance (`null` for the local instance), and its own
@@ -358,6 +359,70 @@ export const replaceAccountDecorations = async (
         .execute();
 };
 
+/** Replaces the decorations of the kind `kind` of the account `accountId` with `mediaIds`. */
+export const replaceDecorationKind = async (
+    ctx: Context,
+    accountId: string,
+    kind: DecorationKind,
+    mediaIds: readonly string[],
+): Promise<void> => {
+    await ctx.db.deleteFrom("account_decorations")
+        .where("account_id", "=", accountId)
+        .where("kind", "=", kind)
+        .execute();
+    if (mediaIds.length === 0) return;
+
+    await ctx.db.insertInto("account_decorations")
+        .values(mediaIds.map((media_id, position) => ({
+            account_id: accountId,
+            kind,
+            position,
+            media_id,
+        })))
+        .execute();
+};
+
+/** A decoration of an account, with its media. */
+export type ShownDecoration = {
+    readonly kind: DecorationKind;
+    readonly position: number;
+    readonly media: MediaRow;
+};
+
+/**
+ * The decorations of the accounts `ids`, with their media, by account, each in the order of their
+ * slots. Accounts without any are left out.
+ */
+export const decorationsOfAccounts = async (
+    ctx: Context,
+    ids: readonly string[],
+): Promise<Map<string, ShownDecoration[]>> => {
+    const decorations = new Map<string, ShownDecoration[]>();
+
+    for (const batch of batchesOf(ids)) {
+        const rows = await ctx.db.selectFrom("account_decorations")
+            .innerJoin("media", "media.id", "account_decorations.media_id")
+            .selectAll("media")
+            .select([
+                "account_decorations.account_id as decorated_id",
+                "account_decorations.kind as decoration_kind",
+                "account_decorations.position as decoration_position",
+            ])
+            .where("account_decorations.account_id", "in", batch)
+            .orderBy("account_decorations.kind")
+            .orderBy("account_decorations.position")
+            .execute();
+
+        for (const { decorated_id, decoration_kind, decoration_position, ...media } of rows) {
+            const shown = decorations.get(decorated_id) ?? [];
+            shown.push({ kind: decoration_kind, position: decoration_position, media });
+            decorations.set(decorated_id, shown);
+        }
+    }
+
+    return decorations;
+};
+
 /** The ids of the media that decorate the accounts `ids`. */
 export const findDecorationMedia = async (
     ctx: Context,
@@ -374,13 +439,27 @@ export const findDecorationMedia = async (
     return media;
 };
 
-/** The id of the account that has the media `mediaId` as its avatar or header, if any. */
+/**
+ * The id of the account that has the media `mediaId` as its avatar, header or a decoration, if
+ * any.
+ */
 export const findAccountByPicture = async (
     ctx: Context,
     mediaId: string,
 ): Promise<string | undefined> =>
     (await ctx.db.selectFrom("accounts").select("id")
-        .where((eb) => eb.or([eb("avatar_id", "=", mediaId), eb("header_id", "=", mediaId)]))
+        .where((eb) =>
+            eb.or([
+                eb("avatar_id", "=", mediaId),
+                eb("header_id", "=", mediaId),
+                eb(
+                    "id",
+                    "in",
+                    eb.selectFrom("account_decorations").select("account_id")
+                        .where("media_id", "=", mediaId),
+                ),
+            ])
+        )
         .executeTakeFirst())?.id;
 
 /** Deletes an account. */
