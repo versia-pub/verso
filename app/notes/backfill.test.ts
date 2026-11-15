@@ -226,6 +226,42 @@ Deno.test("replies are fetched for 4 minutes at most", async () => {
     assertEquals(test.asked(test.root.id), 1);
 });
 
+Deno.test("a replies page is v0.7 references, each with its host", async () => {
+    await using test = await open();
+    const evil = await addEvilInstance(test.network, "e.test");
+    evil.serve("/.versia/v0.7/entities/User/eve", {
+        type: "User",
+        id: "eve",
+        created_at: "2026-01-01T00:00:00Z",
+        username: "eve",
+        manually_approves_subscribers: false,
+        indexable: true,
+    });
+    evil.serve("/.versia/v0.7/entities/Note/n1", {
+        type: "Note",
+        id: "n1",
+        created_at: "2026-01-01T00:00:00Z",
+        author: "eve",
+        content: { "text/plain": { content: "Hi", remote: false } },
+        group: "public",
+        is_sensitive: false,
+        mentions: [],
+        attachments: [],
+        previews: [],
+    });
+    const id = await test.a.federation.resolve(test.a, { host: "e.test", id: "n1" }, "Note");
+    assertExists(id);
+    const row = await findNote(test.a, id);
+    assertExists(row);
+
+    const replies = "/.versia/v0.7/entities/Note/n1/collections/replies";
+    evil.serve(replies, { total: 1, items: ["n2"] });
+    await assertRejects(() => fetchReplies(test.a, row), PermanentFailure);
+
+    evil.serve(replies, { total: 1, items: ["e.test:n2"] });
+    await fetchReplies(test.a, row);
+});
+
 Deno.test("no replies are fetched from a blocked instance", async () => {
     await using test = await open();
     await blockDomain(test.a, "b.test");

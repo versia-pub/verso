@@ -4,7 +4,7 @@
  * here.
  * @module
  */
-import { type Reference, v0_6 } from "@versia/protocol";
+import { type Reference, v0_6, v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import { NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
@@ -25,6 +25,14 @@ export const CollectionPage = z.object({
 export type CollectionPage = z.output<typeof CollectionPage>;
 
 /**
+ * A page of a collection with the user it belongs to. `author` is checked for suspension and isn't
+ * sent, since v0.7 collections have none.
+ */
+export type OwnedCollectionPage = (v0_7.Collection | v0_7.ReferenceCollection) & {
+    readonly author: string;
+};
+
+/**
  * A page of one of a local entity's collections, as `requester` may see it, or `undefined` if there
  * is no such local entity.
  */
@@ -33,7 +41,7 @@ export type CollectionProvider = (
     id: string,
     page: CollectionPage,
     requester: string,
-) => Promise<v0_6.Collection | v0_6.URICollection | undefined>;
+) => Promise<OwnedCollectionPage | undefined>;
 
 /** An entity Verso has: its local id, and when it was last fetched, or `null` if it is local. */
 export type Known = { readonly id: string; readonly fetchedAt: Date | null };
@@ -183,14 +191,16 @@ const routesOf = (type: EntityType): Route[] => {
             contentType: versiaJson,
             params: z.object({ id: v0_6.Id }),
             query: CollectionPage,
-            responses: { 200: z.union([v0_6.Collection, v0_6.URICollection]) },
+            responses: { 200: z.union([v0_7.Collection, v0_7.ReferenceCollection]) },
             handler: async (ctx, { params, query, signedBy }) => {
                 const page = await provider(ctx, params.id, query, signedBy);
                 if (page === undefined || await bySuspendedUser(ctx, page, ctx.urls.domain)) {
                     throw new NotFound();
                 }
 
-                return { status: 200, body: page };
+                const { author: _author, ...body } = page;
+
+                return { status: 200, body };
             },
         }));
     }

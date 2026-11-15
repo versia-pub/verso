@@ -121,7 +121,7 @@ Deno.test("a local note lists its likes and dislikes, for instances that may see
     assertEquals(await test.collection("Note", "pub.versia:likes/Likes", note.id, "c.example"), {
         author: "alice",
         total: 2,
-        items: [bob.id, "b.example:l1"],
+        items: [`${test.ctx.urls.domain}:${bob.id}`, "b.example:l1"],
     });
     assertEquals(await test.collection("Note", "pub.versia:likes/Dislikes", note.id, "b.example"), {
         author: "alice",
@@ -147,7 +147,7 @@ Deno.test("a local user lists the public and unlisted notes they like", async ()
     assertEquals(await test.collection("User", "pub.versia:likes/Likes", "alice", "c.example"), {
         author: "alice",
         total: 2,
-        items: ["b.example:n1", notes[1].id],
+        items: ["b.example:n1", `${test.ctx.urls.domain}:${notes[1].id}`],
     });
     assertEquals(
         await test.collection("User", "pub.versia:likes/Dislikes", "alice", "c.example"),
@@ -185,5 +185,5 @@ Deno.test("likes and their collections are served at their unencoded URLs", asyn
     const collection = new URL(
         `${entityUrl("a.test", "Note", note.id)}/collections/pub.versia:likes/Likes`,
     );
-    assertEquals(await read(collection), [200, { author: "alice", total: 1, items: [row?.id] }]);
+    assertEquals(await read(collection), [200, { total: 1, items: [`a.test:${row?.id}`] }]);
 });

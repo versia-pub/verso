@@ -22,6 +22,7 @@ import { authorityOf, resolveAuthor } from "./authors.ts";
 import { isShareEvent } from "./events.ts";
 import { keepRemoteShare, undoRemoteShare } from "./shares.ts";
 import { deleteEntity } from "../federation/delete.ts";
+import { withHosts } from "../federation/references.ts";
 
 const extension = "pub.versia:share";
 
@@ -89,7 +90,7 @@ const maySeeShare = (ctx: Context, share: NoteRow, note: NoteRow, requester: str
 
 /**
  * The public and unlisted boosts of a local status, oldest first, for an instance that may see it,
- * as references to them: bare ids for local ones, and the host and id for remote ones.
+ * as references to them, each with its host and id.
  */
 const noteShares: CollectionProvider = async (ctx, id, page, requester) => {
     const note = await findNote(ctx, id);
@@ -103,7 +104,7 @@ const noteShares: CollectionProvider = async (ctx, id, page, requester) => {
     return {
         author: note.account_id,
         total: await countSharesOf(ctx, id, everyone),
-        items: ids.flatMap((each) => references.get(each) ?? []),
+        items: withHosts(ctx, ids.flatMap((each) => references.get(each) ?? [])),
     };
 };
 

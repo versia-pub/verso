@@ -202,12 +202,12 @@ Deno.test("a local note lists its reactions, for instances that may see it", asy
     assertEquals(await test.reactions(note.id, "d.example"), {
         author: "bob",
         total: 2,
-        items: [first, second],
+        items: [`${test.ctx.urls.domain}:${first}`, `${test.ctx.urls.domain}:${second}`],
     });
     assertEquals(await test.reactions(note.id, "d.example", { offset: 1, limit: 1 }), {
         author: "bob",
         total: 2,
-        items: [second],
+        items: [`${test.ctx.urls.domain}:${second}`],
     });
     assertEquals((await test.reactions(hidden.id, "c.example"))?.total, 1);
     assertEquals(await test.reactions(hidden.id, "d.example"), undefined);
@@ -237,7 +237,7 @@ Deno.test("reactions and their collection are served at their unencoded URLs", a
     const collection = new URL(
         `${entityUrl("a.test", "Note", note.id)}/collections/pub.versia:reactions/Reactions`,
     );
-    assertEquals(await read(collection), [200, { author: "alice", total: 1, items: [id] }]);
+    assertEquals(await read(collection), [200, { total: 1, items: [`a.test:${id}`] }]);
 });
 
 Deno.test("Verso says it supports reactions", () => {

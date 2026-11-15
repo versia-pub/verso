@@ -4,6 +4,7 @@
  */
 import { formatReference, type Reference, type v0_6, v0_7 } from "@versia/protocol";
 import type { EntityType, Known } from "../federation/registry.ts";
+import { isDiscardedVersion } from "../federation/versions.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml, sanitizerVersion, textOfHtml } from "../kernel/html.ts";
 import { emojisOfAccounts, type ShownEmoji } from "../emojis/emoji_queries.ts";
@@ -141,6 +142,7 @@ const renderVersiaUser = (
     type: "User",
     id: row.id,
     created_at: row.created_at.toISOString(),
+    updated_at: row.updated_at?.toISOString(),
     username: row.username,
     display_name: row.display_name === "" ? undefined : row.display_name,
     avatar,
@@ -230,7 +232,14 @@ export const userType: EntityType<v0_7.User> = {
     receive: async (ctx, user, sender) => {
         // Verso chooses which users it stores, so an instance can't fill it with users nobody
         // requested: a user sent unsolicited only updates a user Verso already has.
-        if (!sender.fetched && !await findRemoteAccount(ctx, sender.instanceId, user.id)) return;
+        const held = await findRemoteAccount(ctx, sender.instanceId, user.id);
+        if (!sender.fetched && !held) return;
+        if (
+            held &&
+            isDiscardedVersion({ createdAt: held.created_at, updatedAt: held.updated_at }, user)
+        ) {
+            return;
+        }
 
         const id = await saveRemoteAccount(ctx, remoteAccountOf(sender.instanceId, user));
         await savePrevious(ctx, id, user, sender.domain);
@@ -375,6 +384,7 @@ export const remoteAccountOf = (instanceId: string, user: v0_7.User): RemoteAcco
         instanceId,
         remoteId: user.id,
         createdAt: new Date(user.created_at),
+        updatedAt: user.updated_at ? new Date(user.updated_at) : null,
         profile: {
             username: user.username,
             display_name: user.display_name ?? "",

@@ -53,6 +53,7 @@ export const setPrevious = async (
         await updateLocalAccount(tx, accountId, {
             previous_host: reference?.host ?? null,
             previous_id: reference?.id ?? null,
+            updated_at: tx.clock.now(),
         });
         await profileUpdated(tx, accountId);
     });
@@ -102,6 +103,7 @@ export const moveTo = async (
         await updateLocalAccount(tx, from.id, {
             moved_to_account_id: to.id,
             moved_at: tx.clock.now(),
+            updated_at: tx.clock.now(),
         });
 
         const moved: AccountMoved = {
@@ -131,7 +133,10 @@ export const moveTo = async (
  */
 export const cancelMove = async (ctx: Context, accountId: string): Promise<void> => {
     await ctx.transaction(async (tx) => {
-        await updateLocalAccount(tx, accountId, { moved_to_account_id: null });
+        await updateLocalAccount(tx, accountId, {
+            moved_to_account_id: null,
+            updated_at: tx.clock.now(),
+        });
         await profileUpdated(tx, accountId);
     });
 };

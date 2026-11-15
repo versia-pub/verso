@@ -38,6 +38,8 @@ export type RemoteAccount = {
     /** Its id on its instance. */
     readonly remoteId: string;
     readonly createdAt: Date;
+    /** When its profile last changed, if its instance says. */
+    readonly updatedAt: Date | null;
     readonly profile: RemoteProfile;
     readonly avatar: RemoteMedia | null;
     readonly header: RemoteMedia | null;

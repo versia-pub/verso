@@ -276,10 +276,16 @@ export const upsertRemoteAccount = async (
         readonly instanceId: string;
         readonly remoteId: string;
         readonly createdAt: Date;
+        /** When its profile last changed, if its instance says. */
+        readonly updatedAt: Date | null;
         readonly profile: RemoteProfile;
     },
 ): Promise<AccountPictures> => {
-    const changes = { ...account.profile, fetched_at: ctx.clock.now() };
+    const changes = {
+        ...account.profile,
+        updated_at: account.updatedAt,
+        fetched_at: ctx.clock.now(),
+    };
 
     return await ctx.db.insertInto("accounts")
         .values({
@@ -296,14 +302,17 @@ export const upsertRemoteAccount = async (
         .executeTakeFirstOrThrow();
 };
 
-/** A remote account, by its id on its instance, with its pictures. */
+/** A remote account's pictures and the version of its profile that Verso holds. */
+export type HeldRemoteAccount = AccountPictures & Pick<AccountRow, "created_at" | "updated_at">;
+
+/** A remote account, by its id on its instance, with its pictures and version. */
 export const findRemoteAccount = (
     ctx: Context,
     instanceId: string,
     remoteId: string,
-): Promise<AccountPictures | undefined> =>
+): Promise<HeldRemoteAccount | undefined> =>
     ctx.db.selectFrom("accounts")
-        .select(["id", "avatar_id", "header_id"])
+        .select(["id", "avatar_id", "header_id", "created_at", "updated_at"])
         .where("instance_id", "=", instanceId)
         .where("remote_id", "=", remoteId)
         .executeTakeFirst();

@@ -28,7 +28,7 @@ import {
 } from "./reaction_queries.ts";
 import { isUnicodeEmoji, keepRemoteReaction, undoRemoteReaction } from "./reactions.ts";
 import { deleteEntity } from "../federation/delete.ts";
-import { referencesTo } from "../federation/references.ts";
+import { referencesTo, withHosts } from "../federation/references.ts";
 
 const extension = "pub.versia:reactions";
 
@@ -108,7 +108,7 @@ const maySeeReaction = (ctx: Context, note: NoteRow, requester: string) =>
 
 /**
  * The reactions to a local status, oldest first, for an instance that may see it, as references to
- * them: bare ids for local ones, and the host and id for remote ones.
+ * them, each with its host and id.
  */
 const noteReactions: CollectionProvider = async (ctx, id, page, requester) => {
     const note = await findNote(ctx, id);
@@ -121,7 +121,7 @@ const noteReactions: CollectionProvider = async (ctx, id, page, requester) => {
     return {
         author: note.account_id,
         total: await countReactionsOf(ctx, id),
-        items: referencesTo(ctx, reactions),
+        items: withHosts(ctx, referencesTo(ctx, reactions)),
     };
 };
 

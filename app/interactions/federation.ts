@@ -29,7 +29,7 @@ import {
 import { keepRemoteLike, undoRemoteLike } from "./likes.ts";
 import type { LikeKind } from "./tables.ts";
 import { deleteEntity } from "../federation/delete.ts";
-import { referencesTo } from "../federation/references.ts";
+import { referencesTo, withHosts } from "../federation/references.ts";
 
 const extension = "pub.versia:likes";
 
@@ -92,7 +92,7 @@ export const likeDeliveries = async (ctx: Context, event: DomainEvent): Promise<
 
 /**
  * The likes or dislikes of a local status, oldest first, for an instance that may see it, as
- * references to them: bare ids for local ones, and the host and id for remote ones.
+ * references to them, each with its host and id.
  */
 const noteLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page, requester) => {
     const note = await findNote(ctx, id);
@@ -103,7 +103,7 @@ const noteLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page, 
     return {
         author: note.account_id,
         total: await countLikesOfNote(ctx, id, kind),
-        items: referencesTo(ctx, likes),
+        items: withHosts(ctx, referencesTo(ctx, likes)),
     };
 };
 
@@ -120,7 +120,7 @@ const userLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page) 
     return {
         author: id,
         total: await countNotesLikedBy(ctx, id, kind, everyone),
-        items: ids.flatMap((each) => references.get(each) ?? []),
+        items: withHosts(ctx, ids.flatMap((each) => references.get(each) ?? [])),
     };
 };
 

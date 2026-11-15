@@ -2,12 +2,15 @@
  * Making HTML from remote instances safe to display.
  * @module
  */
+import { v0_7 } from "@versia/protocol";
 import sanitize from "sanitize-html";
 
 /**
- * Text formatting, lists, quotes, headings and tables. Anything that loads from elsewhere (images,
- * video, audio) or acts like part of the page (forms, fonts and colours) is removed: Verso doesn't
+ * The elements of Versia's RichText, except images, video and audio. Anything that loads from
+ * elsewhere or acts like part of the page (forms, fonts and colours) is removed: Verso doesn't
  * proxy media embedded in HTML, so loading it would reveal readers' addresses to whoever sent it.
+ * `strike` isn't in RichText, but Mastodon's clients show it.
+ * @see https://versia.pub/structures/rich-text
  */
 const allowedTags = [
     "a",
@@ -51,6 +54,25 @@ const allowedTags = [
     "ruby",
     "rt",
     "rp",
+    "dl",
+    "dt",
+    "dd",
+    "figure",
+    "figcaption",
+    "ins",
+    "kbd",
+    "samp",
+    "var",
+    "sub",
+    "sup",
+    "abbr",
+    "cite",
+    "dfn",
+    "q",
+    "time",
+    "bdi",
+    "bdo",
+    "wbr",
 ];
 
 /** Microformats, and the classes Mastodon's clients style. */
@@ -69,35 +91,105 @@ const allowedClasses = [
 /** What links say about themselves: that they lead away, and vouch for nothing. */
 const linkAttributes = { rel: "nofollow noopener noreferrer", target: "_blank" };
 
-/** A link's address, if it is a full http or https URL, which is the only kind allowed. */
-const webAddress = (href: string | undefined) => {
-    const url = href === undefined ? null : URL.parse(href);
-    return url?.protocol === "http:" || url?.protocol === "https:" ? href : undefined;
+/** The schemes RichText allows in links. */
+const linkSchemes = [
+    "http",
+    "https",
+    "mailto",
+    "web+versia",
+    "dat",
+    "dweb",
+    "ipfs",
+    "ipns",
+    "ssb",
+    "gopher",
+    "xmpp",
+    "magnet",
+    "gemini",
+];
+
+/** A web address that names its host, not one like `http:path` that browsers read as relative. */
+const withHost = /^https?:\/\//i;
+
+/** A link's address, if it is a full URL with an allowed scheme. */
+const linkAddress = (href: string | undefined) => {
+    const protocol = href === undefined ? undefined : URL.parse(href)?.protocol;
+    if (protocol === undefined || !linkSchemes.includes(protocol.slice(0, -1))) return undefined;
+
+    return protocol.startsWith("http") && !withHost.test(href ?? "") ? undefined : href;
+};
+
+/** An element with its `cite` kept only if it is a full URL with an allowed scheme. */
+const withCite = (tagName: string, attribs: sanitize.Attributes) => {
+    const { cite, ...rest } = attribs;
+    const address = linkAddress(cite);
+
+    return { tagName, attribs: address === undefined ? rest : { ...rest, cite: address } };
 };
 
 // Raise `sanitizerVersion` whenever these change.
 const options: sanitize.IOptions = {
     allowedTags,
     allowedAttributes: {
-        a: ["href", "title", "rel", "target"],
+        "*": ["lang", "dir", "title"],
+        a: ["href", "data-mention", "rel", "target"],
         span: ["translate"],
-        ol: ["start", "reversed"],
+        ol: ["start", "reversed", "type"],
         li: ["value"],
+        th: ["colspan", "rowspan", "scope"],
+        td: ["colspan", "rowspan"],
+        time: ["datetime"],
+        del: ["datetime", "cite"],
+        ins: ["datetime", "cite"],
+        blockquote: ["cite"],
+        q: ["cite"],
+        details: ["open"],
     },
-    allowedClasses: { "*": allowedClasses },
-    // The library's own check of links, though `webAddress` is stricter.
-    allowedSchemes: ["http", "https"],
+    allowedClasses: {
+        "*": allowedClasses,
+        code: [...allowedClasses, "language-*"],
+        pre: [...allowedClasses, "language-*"],
+    },
+    // The library's own check of links and `cite`, though `linkAddress` is stricter.
+    allowedSchemes: linkSchemes,
     allowProtocolRelative: false,
+    selfClosing: [...sanitize.defaults.selfClosing, "wbr"],
     // Their text means nothing outside them.
-    nonTextTags: ["script", "style", "textarea", "option", "noscript", "template", "title"],
+    nonTextTags: [
+        "script",
+        "style",
+        "textarea",
+        "option",
+        "noscript",
+        "template",
+        "title",
+        "iframe",
+        "object",
+        "embed",
+        "svg",
+        "math",
+    ],
     transformTags: {
+        blockquote: withCite,
+        q: withCite,
+        del: withCite,
+        ins: withCite,
         a: (tagName, attribs) => {
             const { href: _href, rel: _rel, target: _target, ...rest } = attribs;
-            const href = webAddress(attribs.href);
+            const { "data-mention": mention, ...plain } = rest;
+            const href = linkAddress(attribs.href);
+
+            // The link is gone, and its text stays.
+            if (href === undefined) return { tagName: "span", attribs: {} };
+
+            const link = { ...linkAttributes, ...plain, href };
+            if (mention === undefined || !v0_7.ReferenceText.safeParse(mention).success) {
+                return { tagName, attribs: link };
+            }
 
             return {
                 tagName,
-                attribs: { ...linkAttributes, ...rest, ...(href === undefined ? {} : { href }) },
+                attribs: { ...link, "data-mention": mention, class: "u-url mention" },
             };
         },
     },
@@ -113,7 +205,7 @@ export const sanitizeHtml = (html: string): string => sanitize(html, options);
  * Which version of the options remote HTML is sanitised with. Remote HTML is stored sanitised, with
  * the version it was sanitised with, or 0 if it was stored as received.
  */
-export const sanitizerVersion = 1;
+export const sanitizerVersion = 2;
 
 /**
  * Stored remote HTML as it may be shown: as it is, if sanitised with this version, or else
@@ -134,7 +226,8 @@ const entities: readonly [string, string][] = [
 ];
 
 /** Tags that start or end a block of text, or a line, rather than being part of one. */
-const blockTag = /<(?=\/?(?:p|br|div|li|ul|ol|blockquote|pre|h[1-6]|hr|table|tr|td|th)\b)/gi;
+const blockTag =
+    /<(?=\/?(?:p|br|div|li|ul|ol|blockquote|pre|h[1-6]|hr|table|tr|td|th|dl|dt|dd|figure|figcaption)\b)/gi;
 
 /**
  * The text of `html`, as plain text, with a space where each block or line break was, so the text

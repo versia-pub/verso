@@ -1,6 +1,7 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
+import { createLocalAccount } from "../accounts/testing.ts";
 import { keyPair, metadataServer } from "../instances/testing.ts";
 import { createTestApp } from "../testing/app.ts";
 import { createTestContext } from "../testing/context.ts";
@@ -99,7 +100,7 @@ Deno.test("an extension's type and collections are fetched at paths that keep th
     });
     assertEquals(await test.get(`${path}/g1/collections/test.example:gadgets/Parts?limit=3`), {
         status: 200,
-        body: { author: "g1", total: 3, items: [] },
+        body: { total: 3, items: [] },
     });
     // Nothing answers to the percent-encoded name.
     const encoded = "/.versia/v0.7/entities/test.example%3Agadgets%2FGadget/g1";
@@ -111,13 +112,26 @@ Deno.test("a type's collections are paged, and unknown ones aren't found", async
 
     assertEquals(await test.get("/.versia/v0.7/entities/Thing/1/collections/parts?offset=3"), {
         status: 200,
-        body: { author: "1", total: 3040, items: [] },
+        body: { total: 3040, items: [] },
     });
     for (
         const path of ["1/collections/other", "1/collections/toString", "missing/collections/parts"]
     ) {
         assertEquals((await test.get(`/.versia/v0.7/entities/Thing/${path}`)).status, 404, path);
     }
+});
+
+Deno.test("a collection of a suspended user isn't found, and its page has no author", async () => {
+    await using test = await open();
+    await createLocalAccount(test.ctx, "owner");
+    const path = "/.versia/v0.7/entities/Thing/owner/collections/parts";
+
+    assertEquals(Object.keys((await test.get(path)).body), ["total", "items"]);
+
+    await test.ctx.db.updateTable("accounts").set({ suspended_at: test.clock.now() })
+        .where("id", "=", "owner").execute();
+
+    assertEquals((await test.get(path)).status, 404);
 });
 
 Deno.test("a collection's pages start at the first item, and hold from 1 to 40", async () => {

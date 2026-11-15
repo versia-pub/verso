@@ -9,8 +9,8 @@ import { sanitizerVersion } from "../kernel/html.ts";
 import { findMedia } from "../media/media_queries.ts";
 import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
-import { findAccount, findAccountDecorations } from "./account_queries.ts";
-import { hasPicturesProcessing, remoteAccountOf } from "./federation.ts";
+import { findAccount, findAccountDecorations, findRemoteAccount } from "./account_queries.ts";
+import { hasPicturesProcessing, remoteAccountOf, userType } from "./federation.ts";
 import { updateProfile } from "./profile.ts";
 import { saveRemoteAccount } from "./remote.ts";
 import { createLocalAccount } from "./testing.ts";
@@ -79,6 +79,7 @@ Deno.test("another instance fetches a local user, signed both ways", async () =>
             type: "User",
             id: "alice",
             created_at: a.clock.now().toISOString(),
+            updated_at: a.clock.now().toISOString(),
             username: "alice",
             display_name: "Alice",
             avatar: { url: "https://a.test/accounts/alice/avatar.png", media_type: "image/png" },
@@ -276,7 +277,7 @@ Deno.test("a local user's collections are given, empty until there is something 
             status: 200,
             type: "application/vnd.versia+json; charset=utf-8",
             signedBy: "a.test",
-            body: { author: "alice", total: 0, items: [] },
+            body: { total: 0, items: [] },
         }, name);
     }
 
@@ -342,6 +343,7 @@ Deno.test("a remote user becomes an account, with its text as plain text and as 
         instanceId: "b.test",
         remoteId: "abc",
         createdAt: new Date("2026-01-01T00:00:00Z"),
+        updatedAt: null,
         profile: {
             username: "bob",
             display_name: "Bob",
@@ -587,6 +589,70 @@ Deno.test("a received user stores its profile and decorations, and loses them wh
     assertEquals(bare?.header_id, null);
     assertEquals(await findAccountDecorations(test.ctx, id), []);
     assertEquals(await test.ctx.db.selectFrom("media").select("id").execute(), []);
+});
+
+Deno.test("a received user is kept unless it is older than the held one or has another created_at", async () => {
+    await using test = await createTestContext();
+    const instanceId = await createInstance(test.ctx, "b.test");
+    const sender = { domain: "b.test", instanceId, fetched: true };
+    const receive = (changes: Partial<v0_7.User>) =>
+        userType.receive(test.ctx, user({ ...changes }), sender);
+    const display = async () => (await findRemoteAccount(test.ctx, instanceId, "abc"))?.updated_at;
+    const name = async () => {
+        const held = await findRemoteAccount(test.ctx, instanceId, "abc");
+        return (await findAccount(test.ctx, held?.id ?? ""))?.display_name;
+    };
+
+    await receive({ display_name: "Second", updated_at: "2026-02-01T00:00:00Z" });
+
+    assertEquals(await display(), new Date("2026-02-01T00:00:00Z"));
+    assertEquals(await name(), "Second");
+
+    await receive({ display_name: "First", updated_at: "2026-01-15T00:00:00Z" });
+
+    assertEquals(await name(), "Second");
+
+    await receive({
+        display_name: "Other",
+        created_at: "2026-01-02T00:00:00Z",
+        updated_at: "2026-03-01T00:00:00Z",
+    });
+
+    assertEquals(await name(), "Second");
+    assertEquals(await display(), new Date("2026-02-01T00:00:00Z"));
+
+    await receive({ display_name: "Third", updated_at: "2026-02-02T00:00:00Z" });
+
+    assertEquals(await name(), "Third");
+    assertEquals(await display(), new Date("2026-02-02T00:00:00Z"));
+
+    await receive({ display_name: "Last" });
+
+    assertEquals(await name(), "Last");
+    assertEquals(await display(), null);
+});
+
+Deno.test("a local profile edit sets updated_at, and the user given carries it", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"].ctx;
+    const b = network.instances["b.test"].ctx;
+    await createLocalAccount(a, "alice");
+
+    assertEquals((await findAccount(a, "alice"))?.updated_at, null);
+    assertEquals(
+        (await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice")).body.updated_at,
+        undefined,
+    );
+
+    network.clock.advance(60_000);
+    await updateProfile(a, "alice", { displayName: "Alice" });
+
+    const edited = a.clock.now();
+    assertEquals((await findAccount(a, "alice"))?.updated_at, edited);
+    assertEquals(
+        (await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice")).body.updated_at,
+        edited.toISOString(),
+    );
 });
 
 Deno.test("an account has pictures processing while any of its decorations is", async () => {

@@ -5,7 +5,7 @@
  * @see https://versia.pub/entities/note
  * @module
  */
-import { parseReference, v0_6 } from "@versia/protocol";
+import { parseReference, v0_6, type v0_7 } from "@versia/protocol";
 import { findAccount, findRemoteAccount } from "../accounts/account_queries.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
@@ -19,6 +19,7 @@ import { pinnedNotes } from "./pin_queries.ts";
 import { knownNote, prepareNote, receiveNote } from "./remote.ts";
 import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";
 import { deleteEntity } from "../federation/delete.ts";
+import { withHosts } from "../federation/references.ts";
 import { blockedByAccount } from "../graph/blocks.ts";
 import { isPollEnded, isPollUpdated } from "../polls/events.ts";
 import { voterInstances } from "../polls/poll_queries.ts";
@@ -80,6 +81,12 @@ export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
 };
 
 /**
+ * Notes as the items of a v0.7 collection. They are v0.6 Notes until they move to v0.7, which
+ * differ only in the type of `extensions`: its values are objects, as they are here.
+ */
+const asItems = (notes: v0_6.Note[]) => notes as v0_7.Collection["items"];
+
+/**
  * A local user's public and unlisted statuses, oldest first, so pages stay stable as more are
  * posted.
  */
@@ -92,7 +99,7 @@ const outbox: CollectionProvider = async (ctx, id, page) => {
     return {
         author: id,
         total: await countNotesBy(ctx, id, everyone),
-        items: await renderVersiaNotes(ctx, notes),
+        items: asItems(await renderVersiaNotes(ctx, notes)),
     };
 };
 
@@ -109,7 +116,9 @@ const featured: CollectionProvider = async (ctx, id, page) => {
     return {
         author: id,
         total: notes.length,
-        items: await renderVersiaNotes(ctx, notes.slice(page.offset, page.offset + page.limit)),
+        items: asItems(
+            await renderVersiaNotes(ctx, notes.slice(page.offset, page.offset + page.limit)),
+        ),
     };
 };
 
@@ -145,7 +154,7 @@ const linkCollection = (link: NoteLink): CollectionProvider => async (ctx, id, p
     return {
         author: note.account_id,
         total: await countLinkedNotes(ctx, link, id, everyone),
-        items: ids.flatMap((each) => references.get(each) ?? []),
+        items: withHosts(ctx, ids.flatMap((each) => references.get(each) ?? [])),
     };
 };
 

@@ -135,7 +135,7 @@ Deno.test("a local note lists its public and unlisted shares, for instances that
     assertEquals(await test.shares(note.id, "d.example"), {
         author: "bob",
         total: 2,
-        items: [alice.id, "b.example:s1"],
+        items: [`${test.ctx.urls.domain}:${alice.id}`, "b.example:s1"],
     });
     assertEquals(await test.shares(note.id, "d.example", { offset: 1, limit: 1 }), {
         author: "bob",
@@ -164,5 +164,5 @@ Deno.test("shares and their collection are served at their unencoded URLs", asyn
     const collection = new URL(
         `${entityUrl("a.test", "Note", note.id)}/collections/pub.versia:share/Shares`,
     );
-    assertEquals(await read(collection), [200, { author: "alice", total: 1, items: [shared.id] }]);
+    assertEquals(await read(collection), [200, { total: 1, items: [`a.test:${shared.id}`] }]);
 });

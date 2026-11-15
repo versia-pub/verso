@@ -193,6 +193,7 @@ export const updateProfile = async (
     changes: ProfileChanges,
 ): Promise<void> => {
     const set: AccountChanges = {
+        updated_at: ctx.clock.now(),
         display_name: changes.displayName?.trim(),
         locked: changes.locked,
         bot: changes.bot,

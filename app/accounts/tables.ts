@@ -93,6 +93,8 @@ export type AccountsTable = {
     header_id: string | null;
     /** When a remote account was last fetched or received, or `null` for local accounts. */
     fetched_at: Date | null;
+    /** When the profile last changed, as the User said (remote) or as edited (local). */
+    updated_at: Date | null;
     /** When an admin suspended it, or `null` if it isn't suspended. */
     suspended_at: Date | null;
     /** When an admin silenced it, or `null` if it isn't silenced. */

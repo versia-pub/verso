@@ -70,6 +70,7 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
         instanceId,
         remoteId: "bob",
         createdAt: test.clock.now(),
+        updatedAt: null,
         profile: {
             username: "bob",
             display_name: "",
@@ -145,6 +146,7 @@ Deno.test("a remote account's HTML, sanitised when it was stored, is shown as it
         instanceId,
         remoteId: "bob",
         createdAt: test.clock.now(),
+        updatedAt: null,
         profile: {
             username: "bob",
             display_name: "",

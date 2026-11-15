@@ -33,6 +33,7 @@ const bob: RemoteAccount = {
     instanceId: "b.example",
     remoteId: "abc",
     createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: null,
     profile,
     avatar: { url: "https://b.example/bob.png", mediaType: "image/png", width: 64 },
     header: null,

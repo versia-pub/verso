@@ -12,6 +12,15 @@ export type EntityRow = {
 };
 
 /**
+ * `references` with the host written for local entities too, as a v0.7 collection holds them: it
+ * has no sender whose host a bare id could mean.
+ */
+export const withHosts = (ctx: Context, references: readonly string[]): string[] =>
+    references.map((reference) =>
+        reference.includes(":") ? reference : `${ctx.urls.domain}:${reference}`
+    );
+
+/**
  * References to `rows`, in the form Verso sends: a bare id for a local entity, and the host and id
  * for a remote one. A remote entity whose remote id Verso doesn't know is omitted.
  */

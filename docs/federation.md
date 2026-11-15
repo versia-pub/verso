@@ -73,6 +73,10 @@ as a user whose profile changed and then changed back. For those, the key includ
 only an identical request counts as a duplicate. A transient entity that Verso stores, such as a
 Report, has no id to tell it by, so it is stored with a hash of itself, in case its job runs again.
 
+A User version is discarded if its `updated_at` is older than the stored one's, or if its
+`created_at` isn't the stored one's. If either version has no `updated_at`, the last one received
+wins. [`app/federation/versions.ts`](../app/federation/versions.ts) decides this.
+
 `Delete` is handled in [`app/federation/delete.ts`](../app/federation/delete.ts), which calls
 `prepareDelete` and `deleteRemote` on the deleted entity's type.
 
@@ -193,9 +197,10 @@ through `ctx.webTransport`, which allows ports 80 and 443 and those in
 `[federation] extra_web_ports`, so they can't make Verso probe other services on a public host.
 `allow_internal_addresses` lifts the port limit too.
 
-Remote HTML is sanitised when it's stored, by [`app/kernel/html.ts`](../app/kernel/html.ts). Images
-and anything else that loads from elsewhere are removed: Verso doesn't proxy remote media, and
-loading it would reveal readers' IP addresses.
+Remote HTML is sanitised when it's stored, by [`app/kernel/html.ts`](../app/kernel/html.ts). It
+keeps the elements and link schemes of Versia's RichText, and a mention's `data-mention` if it's a
+valid reference. Images and anything else that loads from elsewhere are removed: Verso doesn't proxy
+remote media, and loading it would reveal readers' IP addresses.
 
 Each row records which version of the sanitiser its HTML went through. When the version goes up, a
 job sanitises the stored HTML again, and until then it is sanitised when shown. Sanitising again can

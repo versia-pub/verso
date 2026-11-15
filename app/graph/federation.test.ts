@@ -31,13 +31,14 @@ const open = async () => {
 
 Deno.test("a user's followers are references, oldest first, a page at a time", async () => {
     await using test = await open();
+    const domain = test.ctx.urls.domain;
     const followers = (offset: number, limit: number) =>
         followCollections.followers(test.ctx, "alice", { offset, limit }, "b.example");
 
     assertEquals(await followers(0, 40), {
         author: "alice",
         total: 3,
-        items: ["bob", "b.example:carol", "dave"],
+        items: [`${domain}:bob`, "b.example:carol", `${domain}:dave`],
     });
     assertEquals(await followers(1, 1), { author: "alice", total: 3, items: ["b.example:carol"] });
     assertEquals(await followers(3, 40), { author: "alice", total: 3, items: [] });
@@ -49,7 +50,7 @@ Deno.test("a user's followers are references, oldest first, a page at a time", a
     );
     assertEquals(
         await followCollections.following(test.ctx, "bob", { offset: 0, limit: 40 }, "b.example"),
-        { author: "bob", total: 1, items: ["alice"] },
+        { author: "bob", total: 1, items: [`${domain}:alice`] },
     );
 });
 

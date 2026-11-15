@@ -14,6 +14,7 @@ import {
     userReferences,
 } from "../accounts/federation.ts";
 import { queueDeliveries, queueDeliveriesTo } from "../federation/deliver.ts";
+import { withHosts } from "../federation/references.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
@@ -33,7 +34,7 @@ const followCollection = (side: FollowSide): CollectionProvider => async (ctx, i
     if (owner.hide_collections) return { author: id, total, items: [] };
 
     const ids = await followIdsFrom(ctx, side, id, page.offset, page.limit);
-    return { author: id, total, items: await userReferences(ctx, ids) };
+    return { author: id, total, items: withHosts(ctx, await userReferences(ctx, ids)) };
 };
 
 /** The collections the graph adds to Users. */

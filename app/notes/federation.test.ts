@@ -576,7 +576,7 @@ Deno.test("a note's replies and quotes are the public and unlisted ones, oldest 
         assertEquals(await collection(kind), {
             author: "alice",
             total: 2,
-            items: [own.id, `b.example:c-${kind}`],
+            items: [`${test.ctx.urls.domain}:${own.id}`, `b.example:c-${kind}`],
         }, kind);
         assertEquals(await collection(kind, note.id, "c.example", { offset: 1, limit: 1 }), {
             author: "alice",
@@ -600,7 +600,9 @@ Deno.test("a note's replies are only for the instances that may see the note", a
     };
 
     // Carol, on b.example, follows alice.
-    assertEquals((await replies(note.id, "b.example"))?.items, [reply.id]);
+    assertEquals((await replies(note.id, "b.example"))?.items, [
+        `${test.ctx.urls.domain}:${reply.id}`,
+    ]);
     assertEquals(await replies(note.id, "c.example"), undefined);
     assertEquals(await replies("missing", "b.example"), undefined);
 });
@@ -615,6 +617,6 @@ Deno.test("a note's collections are served to other instances", async () => {
     const reply = await fetchSigned(network.instances["b.test"].ctx, url);
     assertEquals([reply.status, JSON.parse(new TextDecoder().decode(reply.body))], [
         200,
-        { author: "alice", total: 0, items: [] },
+        { total: 0, items: [] },
     ]);
 });

@@ -41,6 +41,7 @@ const bob: RemoteAccount = {
     instanceId: "b.example",
     remoteId: "bob",
     createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: null,
     profile: {
         username: "bob",
         display_name: "Bobby Tables",
