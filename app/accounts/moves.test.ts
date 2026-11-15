@@ -13,13 +13,12 @@ import { createLocalAccount } from "./testing.ts";
 const week = 7 * 24 * 60 * 60_000;
 
 /** A user `id`, with `migration` as its migration extension, if any. */
-const user = (id: string, migration?: { previous?: string; new?: string }) => ({
+const user = (id: string, migration?: { previous?: string; destination?: string }) => ({
     type: "User",
     id,
     created_at: "2026-01-01T00:00:00Z",
     username: id,
-    fields: [],
-    manually_approves_followers: false,
+    manually_approves_subscribers: false,
     indexable: true,
     ...(migration === undefined ? {} : { extensions: { "pub.versia:migration": migration } }),
 });
@@ -214,7 +213,7 @@ Deno.test("a user moves again only a week after it last did", async () => {
 Deno.test("a user saying it moved is moved, and stays so once it no longer says it", async () => {
     await using test = await open();
 
-    await test.send(user("bob", { new: "c.test:bob2" }));
+    await test.send(user("bob", { destination: "c.test:bob2" }));
     assertEquals((await test.movedTo()).acct, "bob2@c.test");
 
     await test.send(user("bob"));
@@ -223,7 +222,7 @@ Deno.test("a user saying it moved is moved, and stays so once it no longer says 
 
 Deno.test("a user fetched saying it moved is moved", async () => {
     await using test = await open();
-    test.b.serve(test.path("bob"), user("bob", { new: "c.test:bob2" }));
+    test.b.serve(test.path("bob"), user("bob", { destination: "c.test:bob2" }));
 
     await test.a.federation.resolve(test.a, { host: "b.test", id: "bob" }, "User", undefined, 0);
     assertEquals((await test.movedTo()).acct, "bob2@c.test");
@@ -238,7 +237,7 @@ Deno.test("a user saying it moved from another is saved as such, until it no lon
     };
     assertEquals(await previous(), ["b.test", "bob"]);
 
-    await test.send(user("bob2", { previous: "someone" }), test.c);
+    await test.send(user("bob2", { previous: "c.test:someone" }), test.c);
     assertEquals(await previous(), ["c.test", "someone"]);
 
     await test.send(user("bob2"), test.c);

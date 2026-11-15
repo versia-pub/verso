@@ -1,14 +1,18 @@
 import { assertEquals } from "@std/assert";
-import { importPublicKey, v0_6, v0_7 } from "@versia/protocol";
+import { importPublicKey, v0_7 } from "@versia/protocol";
 import { encode } from "fast-png";
 import { requestTarget } from "../federation/request.ts";
 import { instanceKey } from "../instances/keys.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizerVersion } from "../kernel/html.ts";
+import { findMedia } from "../media/media_queries.ts";
+import { createTestContext } from "../testing/context.ts";
 import { createNetwork } from "../testing/network.ts";
+import { findAccount, findAccountDecorations } from "./account_queries.ts";
 import { remoteAccountOf } from "./federation.ts";
 import { updateProfile } from "./profile.ts";
+import { saveRemoteAccount } from "./remote.ts";
 import { createLocalAccount } from "./testing.ts";
 
 /**
@@ -47,6 +51,11 @@ const fetchSigned = async (from: Context, to: Context, path: string) => {
     };
 };
 
+const defaultHeader = (id: string) => ({
+    url: `https://a.test/accounts/${id}/header.png`,
+    media_type: "image/png",
+});
+
 Deno.test("another instance fetches a local user, signed both ways", async () => {
     await using network = await createNetwork(["a.test", "b.test"]);
     const a = network.instances["a.test"].ctx;
@@ -60,7 +69,9 @@ Deno.test("another instance fetches a local user, signed both ways", async () =>
         indexable: true,
     });
 
-    assertEquals(await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice"), {
+    const response = await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice");
+
+    assertEquals(response, {
         status: 200,
         type: "application/vnd.versia+json; charset=utf-8",
         signedBy: "a.test",
@@ -70,30 +81,20 @@ Deno.test("another instance fetches a local user, signed both ways", async () =>
             created_at: a.clock.now().toISOString(),
             username: "alice",
             display_name: "Alice",
-            bio: {
-                "text/plain": { content: "Hi <there>", remote: false },
-                "text/html": { content: "<p>Hi &lt;there&gt;</p>", remote: false },
-            },
-            fields: [{
-                key: {
-                    "text/plain": { content: "Site & more", remote: false },
-                    "text/html": { content: "Site &amp; more", remote: false },
-                },
-                value: {
-                    "text/plain": { content: "a & b", remote: false },
-                    "text/html": { content: "a &amp; b", remote: false },
-                },
-            }],
-            avatar: {
-                "image/png": { content: "https://a.test/accounts/alice/avatar.png", remote: true },
-            },
-            header: {
-                "image/png": { content: "https://a.test/accounts/alice/header.png", remote: true },
-            },
-            manually_approves_followers: true,
+            avatar: { url: "https://a.test/accounts/alice/avatar.png", media_type: "image/png" },
+            manually_approves_subscribers: true,
             indexable: true,
+            url: "https://a.test/@alice",
+            extensions: {
+                [v0_7.profileKey]: {
+                    bio: "<p>Hi &lt;there&gt;</p>",
+                    fields: [{ key: "Site &amp; more", value: "a &amp; b" }],
+                },
+                [v0_7.decorationsKey]: { header: defaultHeader("alice") },
+            },
         },
     });
+    assertEquals(v0_7.User.parse(response.body).username, "alice");
 });
 
 Deno.test("a user's own pictures are given once processed, and the default ones until then", async () => {
@@ -114,18 +115,23 @@ Deno.test("a user's own pictures are given once processed, and the default ones 
 
     const pending = await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice");
     assertEquals(pending.body.avatar, {
-        "image/png": { content: "https://a.test/accounts/alice/avatar.png", remote: true },
+        url: "https://a.test/accounts/alice/avatar.png",
+        media_type: "image/png",
     });
 
     await network.drain();
 
     const { body } = await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice");
-    const [[type, avatar]] = Object.entries(v0_6.ContentFormat.parse(body.avatar));
-    assertEquals([type, avatar.content], ["image/png", `https://a.test/media/${avatar.hash}`]);
-    assertEquals([avatar.width, avatar.height, avatar.description], [400, 100, "Me"]);
+    const user = v0_7.User.parse(body);
+    const avatar = user.avatar;
+    assertEquals(avatar?.url, `https://a.test/media/${avatar?.hash}`);
+    assertEquals(
+        [avatar?.media_type, avatar?.width, avatar?.height, avatar?.description],
+        ["image/png", 400, 100, "Me"],
+    );
 
-    const [[, header]] = Object.entries(v0_6.ContentFormat.parse(body.header));
-    assertEquals([header.content, header.width], [`https://a.test/media/${header.hash}`, 800]);
+    const header = v0_7.Decorations.parse(user.extensions?.[v0_7.decorationsKey]).header;
+    assertEquals([header?.url, header?.width], [`https://a.test/media/${header?.hash}`, 800]);
 });
 
 Deno.test("a user without a name or bio leaves them out", async () => {
@@ -140,34 +146,93 @@ Deno.test("a user without a name or bio leaves them out", async () => {
     );
 
     assertEquals(
-        [
-            body.display_name,
-            body.bio,
-            body.fields,
-            body.manually_approves_followers,
-            body.indexable,
-        ],
-        [undefined, undefined, [], false, false],
+        [body.display_name, body.manually_approves_subscribers, body.indexable],
+        [undefined, false, false],
     );
+    assertEquals(body.extensions, { [v0_7.decorationsKey]: { header: defaultHeader("bob") } });
 });
 
-Deno.test("text is given in the format its owner wrote it in", async () => {
-    await using network = await createNetwork(["a.test", "b.test"]);
-    const a = network.instances["a.test"].ctx;
-    await createLocalAccount(a, "alice");
-    await a.db.updateTable("accounts")
-        .set({ note: "**Hi**", note_format: "text/markdown", note_html: "<p><b>Hi</b></p>" })
+/** A processed local file of `media_type` for `ctx`, stored under the SHA-256 `digit` repeated. */
+const createFile = async (ctx: Context, digit: string, mediaType: string, processed = true) => {
+    const id = ctx.ids();
+    await ctx.db.insertInto("media")
+        .values({
+            id,
+            instance_id: null,
+            media_type: mediaType,
+            sha256: digit.repeat(64),
+            // An image Verso processed has a preview, and is served as its own type.
+            preview_sha256: mediaType.startsWith("image/") ? digit.repeat(64) : null,
+            processed_at: processed ? ctx.clock.now() : null,
+            created_at: ctx.clock.now(),
+        })
         .execute();
 
-    const { body } = await fetchSigned(
-        network.instances["b.test"].ctx,
-        a,
-        "/.versia/v0.7/entities/User/alice",
-    );
+    return id;
+};
 
-    assertEquals(body.bio, {
-        "text/markdown": { content: "**Hi**", remote: false },
-        "text/html": { content: "<p><b>Hi</b></p>", remote: false },
+Deno.test("a local user's pronouns, details and decorations are given, apart from unprocessed ones", async () => {
+    await using network = await createNetwork(["a.test", "b.test"]);
+    const a = network.instances["a.test"].ctx;
+    const b = network.instances["b.test"].ctx;
+    await createLocalAccount(a, "alice");
+    await a.db.updateTable("accounts")
+        .set({
+            pronouns: { en: "she/her" },
+            birthday: "--03-04",
+            location: "Paris",
+            timezone: "Europe/Paris",
+        })
+        .execute();
+    const decorations = [
+        ["avatar_overlay", 0, await createFile(a, "1", "image/png")],
+        ["avatar_overlay", 1, await createFile(a, "2", "image/webp")],
+        ["avatar_mask", 0, await createFile(a, "3", "image/png", false)],
+        ["background", 0, await createFile(a, "4", "image/png")],
+        ["audio", 0, await createFile(a, "5", "audio/ogg")],
+    ] as const;
+    await a.db.insertInto("account_decorations")
+        .values(decorations.map(([kind, position, media_id]) => ({
+            account_id: "alice",
+            kind,
+            position,
+            media_id,
+        })))
+        .execute();
+
+    const { body } = await fetchSigned(b, a, "/.versia/v0.7/entities/User/alice");
+
+    const user = v0_7.User.parse(body);
+    assertEquals(user.extensions?.[v0_7.profileKey], {
+        pronouns: { en: "she/her" },
+        birthday: "--03-04",
+        location: "Paris",
+        timezone: "Europe/Paris",
+    });
+    assertEquals(user.extensions?.[v0_7.decorationsKey], {
+        header: defaultHeader("alice"),
+        avatar_overlays: [
+            {
+                url: `https://a.test/media/${"1".repeat(64)}`,
+                media_type: "image/png",
+                hash: "1".repeat(64),
+            },
+            {
+                url: `https://a.test/media/${"2".repeat(64)}`,
+                media_type: "image/webp",
+                hash: "2".repeat(64),
+            },
+        ],
+        background: {
+            url: `https://a.test/media/${"4".repeat(64)}`,
+            media_type: "image/png",
+            hash: "4".repeat(64),
+        },
+        audio: {
+            url: `https://a.test/media/${"5".repeat(64)}`,
+            media_type: "audio/ogg",
+            hash: "5".repeat(64),
+        },
     });
 });
 
@@ -227,35 +292,50 @@ Deno.test("a local user's collections are given, empty until there is something 
     assertEquals(unsigned.status, 401);
 });
 
-const user = (changes: Partial<v0_6.User> = {}): v0_6.User => ({
+const user = (changes: Partial<v0_7.User> = {}): v0_7.User => ({
     type: "User",
     id: "abc",
     created_at: "2026-01-01T00:00:00Z",
     username: "bob",
-    fields: [],
-    manually_approves_followers: false,
+    manually_approves_subscribers: false,
     indexable: true,
     ...changes,
 });
 
-Deno.test("a remote user becomes an account, with its text as written and as HTML", () => {
+/** A user with `profile` and `decorations` as its extensions. */
+const withExtensions = (
+    profile: v0_7.Profile | Record<string, unknown> | undefined,
+    decorations: v0_7.Decorations | undefined = undefined,
+    changes: Partial<v0_7.User> = {},
+): v0_7.User =>
+    user({
+        ...changes,
+        extensions: {
+            ...profile && { [v0_7.profileKey]: profile },
+            ...decorations && { [v0_7.decorationsKey]: decorations },
+        },
+    });
+
+const image = (name: string): v0_7.Media => ({
+    url: `https://b.test/${name}.png`,
+    media_type: "image/png",
+});
+
+Deno.test("a remote user becomes an account, with its text as plain text and as HTML", () => {
     const account = remoteAccountOf(
         "b.test",
-        user({
-            display_name: "Bob",
-            bio: {
-                "text/plain": { content: "Hi there", remote: false },
-                "text/html": { content: "<p>Hi <b>there</b></p>", remote: false },
+        withExtensions(
+            {
+                bio: "<p>Hi <b>there</b></p>",
+                fields: [{ key: "Site", value: '<a href="https://b.test">b.test</a>' }],
+                pronouns: { en: "he/him" },
+                birthday: "1990-05-06",
+                location: "Berlin",
+                timezone: "Europe/Berlin",
             },
-            fields: [{
-                key: { "text/plain": { content: "Site", remote: false } },
-                value: {
-                    "text/plain": { content: "b.test", remote: false },
-                    "text/html": { content: '<a href="https://b.test">b.test</a>', remote: false },
-                },
-            }],
-            manually_approves_followers: true,
-        }),
+            undefined,
+            { display_name: "Bob", manually_approves_subscribers: true },
+        ),
     );
 
     assertEquals(account, {
@@ -276,80 +356,69 @@ Deno.test("a remote user becomes an account, with its text as written and as HTM
                 value_html:
                     '<a rel="nofollow noopener noreferrer" target="_blank" href="https://b.test">b.test</a>',
             }],
+            pronouns: { en: "he/him" },
+            birthday: "1990-05-06",
+            location: "Berlin",
+            timezone: "Europe/Berlin",
+            url: null,
             html_version: sanitizerVersion,
             locked: true,
             indexable: true,
         },
         avatar: null,
         header: null,
+        decorations: [],
         emojis: [],
     });
 });
 
-Deno.test("a remote field named only in HTML is named by its text", () => {
+Deno.test("a remote user without a profile has an empty one, and manually_approves_subscribers locks it", () => {
+    const open = remoteAccountOf("b.test", user());
+    const locked = remoteAccountOf("b.test", user({ manually_approves_subscribers: true }));
+
+    assertEquals(
+        [open.profile.display_name, open.profile.note, open.profile.note_html, open.profile.fields],
+        ["", "", "", []],
+    );
+    assertEquals(
+        [
+            open.profile.pronouns,
+            open.profile.birthday,
+            open.profile.location,
+            open.profile.timezone,
+            open.profile.url,
+        ],
+        [{}, null, null, null, null],
+    );
+    assertEquals([open.profile.locked, locked.profile.locked], [false, true]);
+});
+
+Deno.test("a remote user's web page is kept, unless its URL is longer than 2048 characters", () => {
+    const long = `https://b.test/${"a".repeat(2048)}`;
+
+    const kept = remoteAccountOf("b.test", user({ url: "https://b.test/@bob" }));
+    const dropped = remoteAccountOf("b.test", user({ url: long }));
+
+    assertEquals([kept.profile.url, dropped.profile.url], ["https://b.test/@bob", null]);
+});
+
+Deno.test("a remote field named with HTML is named by its text", () => {
     const account = remoteAccountOf(
         "b.test",
-        user({
-            fields: [{
-                key: { "text/html": { content: "<b>Site</b> &amp; more", remote: false } },
-                value: { "text/plain": { content: "b.test", remote: false } },
-            }],
-        }),
+        withExtensions({ fields: [{ key: "<b>Site</b> &amp;\n more", value: "b.test" }] }),
     );
 
     assertEquals(
         [account.profile.fields[0].name, account.profile.fields[0].name_html],
-        ["Site & more", "<b>Site</b> &amp; more"],
+        ["Site & more", "<b>Site</b> &amp;\n more"],
     );
-});
-
-Deno.test("remote text without HTML is made into HTML, and HTML alone is kept", () => {
-    const markdown = remoteAccountOf(
-        "b.test",
-        user({
-            bio: { "text/markdown": { content: "**Hi** <there>", remote: false } },
-        }),
-    );
-    assertEquals(
-        [markdown.profile.note, markdown.profile.note_format, markdown.profile.note_html],
-        ["**Hi** <there>", "text/markdown", "<p><strong>Hi</strong> &lt;there&gt;</p>"],
-    );
-
-    const plain = remoteAccountOf(
-        "b.test",
-        user({ bio: { "text/plain": { content: "**Hi** <there>", remote: false } } }),
-    );
-    assertEquals(plain.profile.note_html, "<p>**Hi** &lt;there&gt;</p>");
-
-    const html = remoteAccountOf(
-        "b.test",
-        user({
-            bio: {
-                "text/html": { content: "<p>Hi</p>", remote: false },
-                "text/plain": { content: "https://b.test/bio.txt", remote: true },
-            },
-        }),
-    );
-    assertEquals(
-        [html.profile.note, html.profile.note_format, html.profile.note_html],
-        ["", "text/plain", "<p>Hi</p>"],
-    );
-
-    const none = remoteAccountOf("b.test", user());
-    assertEquals([none.profile.display_name, none.profile.note_html], ["", ""]);
 });
 
 Deno.test("a remote account's HTML is sanitised", () => {
     const unsafe = '<p onclick="x">Hi</p><script>bad()</script>';
     const account = remoteAccountOf(
         "b.test",
-        user({
-            bio: { "text/html": { content: unsafe, remote: false } },
-            fields: [{
-                key: { "text/html": { content: unsafe, remote: false } },
-                value: { "text/html": { content: unsafe, remote: false } },
-            }],
-        }),
+        withExtensions({ bio: unsafe, fields: [{ key: unsafe, value: unsafe }] }),
     );
 
     assertEquals(
@@ -363,27 +432,26 @@ Deno.test("a remote account's HTML is sanitised", () => {
     );
 });
 
-Deno.test("a remote picture is the first version clients can show, at a web address", () => {
+Deno.test("a remote picture is a version clients can show, at a web address", () => {
+    const hash = "AB".repeat(32);
     const account = remoteAccountOf(
         "b.test",
-        user({
-            avatar: {
-                "image/x-icon": { content: "https://b.test/bob.ico", remote: true },
-                "image/png": { content: "javascript:alert(1)", remote: true },
-                "image/jpeg": { content: "data", remote: false },
-                "image/webp": {
-                    content: "https://b.test/bob.webp",
-                    remote: true,
+        withExtensions(
+            undefined,
+            { header: { url: "https://b.test/sea.svg", media_type: "image/svg+xml" } },
+            {
+                avatar: {
+                    url: "https://b.test/bob.webp",
+                    media_type: "image/webp",
                     size: 1234,
-                    hash: "AB".repeat(32),
+                    hash: hash.toLowerCase(),
                     width: 64,
                     height: 48,
                     thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
                     description: "Bob",
                 },
             },
-            header: { "image/svg+xml": { content: "https://b.test/sea.svg", remote: true } },
-        }),
+        ),
     );
 
     assertEquals(account.avatar, {
@@ -397,4 +465,126 @@ Deno.test("a remote picture is the first version clients can show, at a web addr
         description: "Bob",
     });
     assertEquals(account.header, null);
+});
+
+Deno.test("a remote user's decorations are its header, overlays in order, mask, background and audio", () => {
+    const account = remoteAccountOf(
+        "b.test",
+        withExtensions(undefined, {
+            header: image("header"),
+            avatar_overlays: [image("top"), image("bottom")],
+            avatar_mask: image("mask"),
+            background: image("background"),
+            audio: { url: "https://b.test/song.ogg", media_type: "audio/ogg" },
+        }),
+    );
+
+    assertEquals(account.header?.url, "https://b.test/header.png");
+    assertEquals(
+        account.decorations.map(({ kind, position, media }) => [kind, position, media.url]),
+        [
+            ["avatar_overlay", 0, "https://b.test/top.png"],
+            ["avatar_overlay", 1, "https://b.test/bottom.png"],
+            ["avatar_mask", 0, "https://b.test/mask.png"],
+            ["background", 0, "https://b.test/background.png"],
+            ["audio", 0, "https://b.test/song.ogg"],
+        ],
+    );
+});
+
+Deno.test("a remote user keeps at most ten avatar overlays, and skips those clients can't show", () => {
+    const overlays = Array.from({ length: 15 }, (_, index) => image(`overlay${index}`));
+    const account = remoteAccountOf(
+        "b.test",
+        withExtensions(undefined, {
+            avatar_overlays: [
+                { url: "https://b.test/art.svg", media_type: "image/svg+xml" },
+                ...overlays,
+            ],
+        }),
+    );
+
+    assertEquals(
+        account.decorations.map(({ position, media }) => [position, media.url]),
+        overlays.slice(0, 10).map(({ url }, position) => [position, url]),
+    );
+});
+
+Deno.test("a remote profile that doesn't match Versia's is ignored, and the user is still saved", async () => {
+    await using test = await createTestContext();
+    await createInstance(test.ctx, "b.test");
+    const invalid = remoteAccountOf(
+        "b.test",
+        withExtensions({ bio: "<p>Hi</p>", timezone: "Not/AZone" }, { header: image("header") }, {
+            display_name: "Bob",
+        }),
+    );
+
+    assertEquals(
+        [invalid.profile.display_name, invalid.profile.note_html, invalid.profile.timezone],
+        ["Bob", "", null],
+    );
+    assertEquals(invalid.header?.url, "https://b.test/header.png");
+    assertEquals(typeof await saveRemoteAccount(test.ctx, invalid), "string");
+});
+
+Deno.test("a received user stores its profile and decorations, and loses them when it stops giving them", async () => {
+    await using test = await createTestContext();
+    await createInstance(test.ctx, "b.test");
+    const full = withExtensions({
+        bio: "<p>Hi</p>",
+        fields: [{ key: "Site", value: "b.test" }],
+        pronouns: { en: "he/him" },
+        birthday: "1990-05-06",
+        location: "Berlin",
+        timezone: "Europe/Berlin",
+    }, {
+        header: image("header"),
+        avatar_overlays: [image("top"), image("bottom")],
+        avatar_mask: image("mask"),
+        background: image("background"),
+        audio: { url: "https://b.test/song.ogg", media_type: "audio/ogg" },
+    }, { avatar: image("avatar"), url: "https://b.test/@bob" });
+
+    const id = await saveRemoteAccount(test.ctx, remoteAccountOf("b.test", full));
+
+    const row = await findAccount(test.ctx, id);
+    assertEquals(
+        [row?.note_html, row?.fields.length, row?.pronouns, row?.birthday, row?.location],
+        ["<p>Hi</p>", 1, { en: "he/him" }, "1990-05-06", "Berlin"],
+    );
+    assertEquals([row?.timezone, row?.url], ["Europe/Berlin", "https://b.test/@bob"]);
+    assertEquals(
+        (await findMedia(test.ctx, row?.header_id ?? ""))?.url,
+        "https://b.test/header.png",
+    );
+    assertEquals(
+        (await findAccountDecorations(test.ctx, id)).map(({ kind, position }) => [kind, position]),
+        [
+            ["audio", 0],
+            ["avatar_mask", 0],
+            ["avatar_overlay", 0],
+            ["avatar_overlay", 1],
+            ["background", 0],
+        ],
+    );
+    assertEquals((await test.ctx.db.selectFrom("media").select("id").execute()).length, 7);
+
+    await saveRemoteAccount(test.ctx, remoteAccountOf("b.test", user()));
+
+    const bare = await findAccount(test.ctx, id);
+    assertEquals(
+        [
+            bare?.note_html,
+            bare?.pronouns,
+            bare?.birthday,
+            bare?.location,
+            bare?.timezone,
+            bare?.url,
+        ],
+        ["", {}, null, null, null, null],
+    );
+    assertEquals(bare?.header_id, null);
+    assertEquals(await findAccountDecorations(test.ctx, id), []);
+    assertEquals(await test.ctx.db.selectFrom("media").select("id").execute(), []);
 });

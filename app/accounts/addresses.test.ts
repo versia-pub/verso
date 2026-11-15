@@ -100,8 +100,7 @@ Deno.test("an instance can't answer for one user with another", async () => {
         id: "mallory",
         created_at: "2026-10-18T12:00:00Z",
         username: "mallory",
-        fields: [],
-        manually_approves_followers: false,
+        manually_approves_subscribers: false,
         indexable: true,
     });
 

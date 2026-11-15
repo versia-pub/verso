@@ -3,15 +3,16 @@
  * @see https://versia.pub/structures/content-format
  * @module
  */
-import { v0_6 } from "@versia/protocol";
+import { type v0_6, v0_7 } from "@versia/protocol";
 import type { Context } from "../kernel/context.ts";
 import type { MediaRow, RemoteMedia } from "./media_queries.ts";
 import { fileUrl } from "./render.ts";
 import { servedTypeOf } from "./serving.ts";
 import { isPlayable, pictureTypes } from "./uploads.ts";
 
-/** The longest URL and media type Verso stores for remote media. */
-const maxUrlLength = 2048;
+/** The longest URL Verso stores from a peer. */
+export const maxUrlLength = 2048;
+/** The longest media type Verso stores for remote media. */
 const maxMediaTypeLength = 255;
 
 /** The longest thumbhash Verso keeps. Real ones are at most about 40 characters. */
@@ -24,6 +25,37 @@ const maxInteger = 2 ** 31 - 1;
 const stored = (value: number | null | undefined) =>
     value !== null && value !== undefined && value <= maxInteger ? value : undefined;
 
+/** What either version of Versia says about a file besides where it is and what type it is. */
+type Details = {
+    readonly size?: number | null;
+    readonly hash?: string | null;
+    readonly thumbhash?: string | null;
+    readonly width?: number | null;
+    readonly height?: number | null;
+    readonly description?: string | null;
+};
+
+/**
+ * The media at `url`, as Verso stores it, or `null` if its URL or type is too long to store or
+ * isn't a web URL. Numbers too large to store, or thumbhashes too long to be one, are left out.
+ */
+const storableMedia = (url: string, mediaType: string, details: Details): RemoteMedia | null => {
+    if (mediaType.length > maxMediaTypeLength || url.length > maxUrlLength) return null;
+    if (!v0_7.WebUrl.safeParse(url).success) return null;
+
+    const { thumbhash } = details;
+    return {
+        url,
+        mediaType,
+        size: stored(details.size),
+        sha256: details.hash?.toLowerCase(),
+        width: stored(details.width),
+        height: stored(details.height),
+        thumbhash: thumbhash && thumbhash.length <= maxThumbhashLength ? thumbhash : undefined,
+        description: details.description ?? undefined,
+    };
+};
+
 /**
  * The first version of the media at a URL whose type `takes` accepts. Versions with a URL or type
  * too long to store are skipped, and numbers too large to store, or thumbhashes too long to be one,
@@ -35,24 +67,23 @@ const firstOf = (
 ): RemoteMedia | null => {
     for (const [mediaType, entry] of Object.entries(formats ?? {})) {
         if (!entry.remote || !takes(mediaType)) continue;
-        if (mediaType.length > maxMediaTypeLength || entry.content.length > maxUrlLength) continue;
-        if (!v0_6.WebUrl.safeParse(entry.content).success) continue;
 
-        const { thumbhash } = entry;
-        return {
-            url: entry.content,
-            mediaType,
-            size: stored(entry.size),
-            sha256: entry.hash?.toLowerCase(),
-            width: stored(entry.width),
-            height: stored(entry.height),
-            thumbhash: thumbhash && thumbhash.length <= maxThumbhashLength ? thumbhash : undefined,
-            description: entry.description ?? undefined,
-        };
+        const media = storableMedia(entry.content, mediaType, entry);
+        if (media !== null) return media;
     }
 
     return null;
 };
+
+/**
+ * The media `media`, as {@link firstOf} stores one version, or `null` if there is none or `takes`
+ * doesn't accept its type.
+ */
+export const remoteMediaV07 = (
+    media: v0_7.Media | null | undefined,
+    takes: (mediaType: string) => boolean,
+): RemoteMedia | null =>
+    media && takes(media.media_type) ? storableMedia(media.url, media.media_type, media) : null;
 
 /** The first version of an image at a URL that clients can display. */
 export const remotePicture = (formats: v0_6.ContentFormat | null | undefined): RemoteMedia | null =>
@@ -64,6 +95,16 @@ export const remotePicture = (formats: v0_6.ContentFormat | null | undefined): R
  */
 export const remoteFile = (formats: v0_6.ContentFormat): RemoteMedia | null =>
     remotePicture(formats) ?? firstOf(formats, isPlayable) ?? firstOf(formats, () => true);
+
+/** What a processed `row` tells Versia about its file, besides its URL and type. */
+const detailsOf = (row: MediaRow) => ({
+    description: row.description ?? undefined,
+    size: row.size ?? undefined,
+    hash: row.sha256 ?? undefined,
+    thumbhash: row.thumbhash ?? undefined,
+    width: row.width ?? undefined,
+    height: row.height ?? undefined,
+});
 
 /**
  * Local media as Versia describes it: at the URL it is served at, with the type it is served as.
@@ -78,12 +119,14 @@ export const versiaFile = (ctx: Context, row: MediaRow): v0_6.ContentFormat | un
         [servedTypeOf(row)]: {
             content: fileUrl(ctx, row.sha256),
             remote: true,
-            description: row.description ?? undefined,
-            size: row.size ?? undefined,
-            hash: row.sha256,
-            thumbhash: row.thumbhash ?? undefined,
-            width: row.width ?? undefined,
-            height: row.height ?? undefined,
+            ...detailsOf(row),
         },
     };
+};
+
+/** Local media as {@link versiaFile} gives it, in Versia v0.7's shape. */
+export const versiaMediaV07 = (ctx: Context, row: MediaRow): v0_7.Media | undefined => {
+    if (row.processed_at === null || row.sha256 === null) return undefined;
+
+    return { url: fileUrl(ctx, row.sha256), media_type: servedTypeOf(row), ...detailsOf(row) };
 };

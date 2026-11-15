@@ -262,6 +262,11 @@ export const deleteUnusedMedia = (
                             ),
                         ),
                         eb.exists(
+                            eb.selectFrom("account_decorations")
+                                .select("account_decorations.media_id")
+                                .whereRef("account_decorations.media_id", "=", "unused.id"),
+                        ),
+                        eb.exists(
                             eb.selectFrom("emojis").select("emojis.id")
                                 .whereRef("emojis.media_id", "=", "unused.id"),
                         ),

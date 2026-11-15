@@ -3,6 +3,7 @@ import { type Dialect, Kysely, PostgresDialect } from "kysely";
 import { DatabaseSync } from "node:sqlite";
 import pg from "pg";
 import type {
+    AccountDecorationsTable,
     AccountRolesTable,
     AccountsTable,
     IdentitiesTable,
@@ -77,6 +78,7 @@ import { sqliteDialect } from "./sqlite.ts";
 /** Every table, as migrations add them. */
 export type Database = {
     access_tokens: AccessTokensTable;
+    account_decorations: AccountDecorationsTable;
     account_domain_blocks: AccountDomainBlocksTable;
     account_emojis: AccountEmojisTable;
     account_notes: AccountNotesTable;

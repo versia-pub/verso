@@ -1,12 +1,12 @@
 /**
  * Remote users moving to another account, as Versia's migration extension has them: a Migration
- * entity, or a User whose `new` names the account it moved to. Either moves it only once the
- * account it moved to, fetched again, says it moved from it, at most once a week.
+ * entity, or a User whose `destination` names the account it moved to. Either moves it only once
+ * the account it moved to, fetched again, says it moved from it, at most once a week.
  * @see https://versia.pub/extensions/migration
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/activitypub/activity/move.rb
  * @module
  */
-import { parseReference, type Reference, v0_6 } from "@versia/protocol";
+import { parseReference, type Reference, v0_6, v0_7 } from "@versia/protocol";
 import type { EntityType } from "../federation/registry.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
@@ -17,8 +17,8 @@ import type { AccountMoved } from "./events.ts";
 const cooldownMs = 7 * 24 * 60 * 60_000;
 
 /** The migration extension of `user`, if it has a valid one. */
-export const migrationOf = (user: v0_6.User): v0_6.MigrationExtension | undefined =>
-    v0_6.MigrationExtension.safeParse(user.extensions?.[v0_6.migrationKey]).data;
+export const migrationOf = (user: v0_7.User): v0_7.MigrationExtension | undefined =>
+    v0_7.MigrationExtension.safeParse(user.extensions?.[v0_7.migrationKey]).data;
 
 /** The reference to `account` that other instances use, whether it is local or remote. */
 export const referenceOf = (ctx: Context, account: AccountRow): Reference => ({
@@ -47,7 +47,7 @@ export const accountAt = async (
 export const savePrevious = async (
     ctx: Context,
     accountId: string,
-    user: v0_6.User,
+    user: v0_7.User,
     host: string,
 ): Promise<void> => {
     const text = migrationOf(user)?.previous;
@@ -108,15 +108,15 @@ const receiveMove = async (
 };
 
 /** The reference to the account a received user moved to, if it says it did. */
-const newOf = (user: v0_6.User, host: string) => {
-    const text = migrationOf(user)?.new;
+const newOf = (user: v0_7.User, host: string) => {
+    const text = migrationOf(user)?.destination;
     return text === undefined || text === null ? undefined : parseReference(text, host);
 };
 
 /** Fetches the account a received user says it moved to, before {@link receiveUserMove}. */
 export const prepareUserMove = async (
     ctx: Context,
-    user: v0_6.User,
+    user: v0_7.User,
     host: string,
     budget: Budget,
 ): Promise<void> => {
@@ -132,7 +132,7 @@ export const prepareUserMove = async (
  */
 export const receiveUserMove = async (
     ctx: Context,
-    user: v0_6.User,
+    user: v0_7.User,
     host: string,
 ): Promise<void> => {
     const destination = newOf(user, host);

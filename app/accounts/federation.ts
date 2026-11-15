@@ -2,37 +2,33 @@
  * Accounts as Versia renders them: local ones for remote instances, and remote users for Verso.
  * @module
  */
-import { formatReference, type Reference, v0_6 } from "@versia/protocol";
+import { formatReference, type Reference, type v0_6, v0_7 } from "@versia/protocol";
 import type { EntityType, Known } from "../federation/registry.ts";
 import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml, sanitizerVersion, textOfHtml } from "../kernel/html.ts";
 import { emojisOfAccounts, type ShownEmoji } from "../emojis/emoji_queries.ts";
-import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
+import { emojiExtensionsV07, remoteEmojisOfV07 } from "../emojis/versia.ts";
 import { findMedia } from "../media/media_queries.ts";
-import { remotePicture, versiaFile } from "../media/versia.ts";
+import type { RemoteMedia } from "../media/media_queries.ts";
+import { isPlayable, pictureTypes } from "../media/uploads.ts";
+import { maxUrlLength, remoteMediaV07, versiaMediaV07 } from "../media/versia.ts";
 import {
     type AccountRow,
     findAccount,
+    findAccountDecorations,
     findAccounts,
     findRemoteAccount,
     findRemoteAccountAt,
 } from "./account_queries.ts";
-import { prepareUserMove, receiveUserMove, savePrevious } from "./moves.ts";
-import { deleteRemoteAccount, type RemoteAccount, saveRemoteAccount } from "./remote.ts";
-import type { ProfileField, TextFormat } from "./tables.ts";
-import { escapeHtml } from "./text.ts";
-import { renderText } from "../kernel/markup.ts";
-
-/** Text as its owner wrote it, and as HTML, so each instance can display whichever it supports. */
-const text = (format: TextFormat, written: string, html: string): v0_6.ContentFormat => ({
-    [format]: { content: written, remote: false },
-    "text/html": { content: html, remote: false },
-});
-
-/** A default picture served by Verso, given by its URL. */
-const picture = (url: string): v0_6.ContentFormat => ({
-    "image/png": { content: url, remote: true },
-});
+import { prepareUserMove, receiveUserMove, referenceOf, savePrevious } from "./moves.ts";
+import { profileUrl } from "./render.ts";
+import {
+    deleteRemoteAccount,
+    type RemoteAccount,
+    type RemoteDecoration,
+    saveRemoteAccount,
+} from "./remote.ts";
+import type { DecorationKind, ProfileField, TextFormat } from "./tables.ts";
 
 /**
  * Whether the local account `id` has an avatar or header still being processed, so it isn't
@@ -51,9 +47,13 @@ export const hasPicturesProcessing = async (ctx: Context, id: string): Promise<b
 };
 
 /** A local account's picture `id`, once processed, or else its default one at `fallback`. */
-const ownPicture = async (ctx: Context, id: string | null, fallback: string) => {
+const ownPicture = async (
+    ctx: Context,
+    id: string | null,
+    fallback: string,
+): Promise<v0_7.Media> => {
     const row = id === null ? undefined : await findMedia(ctx, id);
-    return (row && versiaFile(ctx, row)) ?? picture(fallback);
+    return (row && versiaMediaV07(ctx, row)) ?? { url: fallback, media_type: "image/png" };
 };
 
 /**
@@ -61,55 +61,93 @@ const ownPicture = async (ctx: Context, id: string | null, fallback: string) => 
  * account it moved to, if it says it moved from an account, or to one.
  */
 const migrationExtension = (
-    ctx: Context,
     row: AccountRow,
     movedTo: string | undefined,
-): v0_6.Entity["extensions"] => {
+): v0_7.Entity["extensions"] => {
     const { previous_host: host, previous_id: id } = row;
-    const previous = host === null || id === null
-        ? undefined
-        : formatReference({ host, id }, ctx.urls.domain);
+    const previous = host === null || id === null ? undefined : v0_7.formatReference({ host, id });
     if (previous === undefined && movedTo === undefined) return undefined;
 
-    const extension: v0_6.MigrationExtension = {
+    const extension: v0_7.MigrationExtension = {
         ...previous !== undefined && { previous },
-        ...movedTo !== undefined && { new: movedTo },
+        ...movedTo !== undefined && { destination: movedTo },
     };
-    return { [v0_6.migrationKey]: extension };
+    return { [v0_7.migrationKey]: extension };
 };
 
 /** `extensions`, or `undefined` if there are none. */
-const someExtensions = (extensions: NonNullable<v0_6.Entity["extensions"]>) =>
+const someExtensions = (extensions: NonNullable<v0_7.Entity["extensions"]>) =>
     Object.keys(extensions).length === 0 ? undefined : extensions;
 
+/** The Profile extension of the local account `row`, or none if its profile is empty. */
+const profileExtension = (row: AccountRow): v0_7.Entity["extensions"] => {
+    const profile: v0_7.Profile = {
+        bio: row.note === "" ? undefined : row.note_html,
+        fields: row.fields.length === 0
+            ? undefined
+            : row.fields.map((field) => ({ key: field.name_html, value: field.value_html })),
+        pronouns: Object.keys(row.pronouns).length === 0 ? undefined : row.pronouns,
+        birthday: row.birthday ?? undefined,
+        location: row.location ?? undefined,
+        timezone: row.timezone ?? undefined,
+    };
+
+    return Object.values(profile).every((value) => value === undefined)
+        ? undefined
+        : { [v0_7.profileKey]: profile };
+};
+
+/** What a local account has to show as decorations: its header and its processed others. */
+type OwnDecorations = {
+    readonly header: v0_7.Media;
+    readonly decorations: readonly { kind: DecorationKind; media: v0_7.Media }[];
+};
+
+/** The Decorations extension of a local account: its header and other decorations. */
+const decorationsExtension = (
+    { header, decorations }: OwnDecorations,
+): v0_7.Entity["extensions"] => {
+    const of = (kind: DecorationKind) =>
+        decorations.filter((decoration) => decoration.kind === kind).map(({ media }) => media);
+    const overlays = of("avatar_overlay");
+
+    const extension: v0_7.Decorations = {
+        header,
+        avatar_overlays: overlays.length === 0 ? undefined : overlays,
+        avatar_mask: of("avatar_mask")[0],
+        background: of("background")[0],
+        audio: of("audio")[0],
+    };
+
+    return { [v0_7.decorationsKey]: extension };
+};
+
 /**
- * A local account as a Versia User, with the custom emojis it uses, its pictures, and the reference
- * to the account it moved to, if it did.
+ * A local account as a Versia User, with its profile, the custom emojis it uses, its pictures and
+ * decorations, and the reference to the account it moved to, if it did.
  */
 const renderVersiaUser = (
     ctx: Context,
     row: AccountRow,
     emojis: readonly ShownEmoji[],
-    pictures: { readonly avatar: v0_6.ContentFormat; readonly header: v0_6.ContentFormat },
+    avatar: v0_7.Media,
+    decorations: OwnDecorations,
     movedTo: string | undefined,
-): v0_6.User => ({
+): v0_7.User => ({
     type: "User",
     id: row.id,
     created_at: row.created_at.toISOString(),
     username: row.username,
     display_name: row.display_name === "" ? undefined : row.display_name,
-    bio: row.note === "" ? undefined : text(row.note_format, row.note, row.note_html),
-    fields: row.fields.map((field) => ({
-        key: text(field.format, field.name, field.name_html),
-        value: text(field.format, field.value, field.value_html),
-    })),
-    avatar: pictures.avatar,
-    header: pictures.header,
-    manually_approves_followers: row.locked,
+    avatar,
+    manually_approves_subscribers: row.locked,
     indexable: row.indexable,
+    url: profileUrl(ctx, row),
     extensions: someExtensions({
-        ...emojiExtensions(ctx, emojis),
-        ...migrationExtension(ctx, row, movedTo),
+        ...profileExtension(row),
+        ...decorationsExtension(decorations),
+        ...emojiExtensionsV07(ctx, emojis),
+        ...migrationExtension(row, movedTo),
     }),
 });
 
@@ -135,19 +173,39 @@ export const knownUser = async (ctx: Context, reference: Reference): Promise<Kno
 export const localVersiaUser = async (
     ctx: Context,
     id: string,
-): Promise<v0_6.User | undefined> => {
+): Promise<v0_7.User | undefined> => {
     const row = await localUser(ctx, id);
     if (row === undefined) return undefined;
 
     const emojis = (await emojisOfAccounts(ctx, [row.id])).get(row.id) ?? [];
-    const movedTo = row.moved_to_account_id === null
+    // Versia v0.7 writes the host of every reference, even to a local account.
+    const destination = row.moved_to_account_id === null
         ? undefined
-        : (await userReferenceMap(ctx, [row.moved_to_account_id])).get(row.moved_to_account_id);
+        : await findAccount(ctx, row.moved_to_account_id);
+    const movedTo = destination && v0_7.formatReference(referenceOf(ctx, destination));
 
-    return renderVersiaUser(ctx, row, emojis, {
-        avatar: await ownPicture(ctx, row.avatar_id, ctx.urls.url`/accounts/${row.id}/avatar.png`),
-        header: await ownPicture(ctx, row.header_id, ctx.urls.url`/accounts/${row.id}/header.png`),
-    }, movedTo);
+    const decorations = [];
+    for (const { kind, media_id } of await findAccountDecorations(ctx, row.id)) {
+        const media = await findMedia(ctx, media_id);
+        const shown = media && versiaMediaV07(ctx, media);
+        if (shown) decorations.push({ kind, media: shown });
+    }
+
+    return renderVersiaUser(
+        ctx,
+        row,
+        emojis,
+        await ownPicture(ctx, row.avatar_id, ctx.urls.url`/accounts/${row.id}/avatar.png`),
+        {
+            header: await ownPicture(
+                ctx,
+                row.header_id,
+                ctx.urls.url`/accounts/${row.id}/header.png`,
+            ),
+            decorations,
+        },
+        movedTo,
+    );
 };
 
 /**
@@ -156,9 +214,9 @@ export const localVersiaUser = async (
  * what they wrote and pinned by the notes module.
  * @see https://versia.pub/entities/user
  */
-export const userType: EntityType<v0_6.User> = {
+export const userType: EntityType<v0_7.User> = {
     type: "User",
-    schema: v0_6.User,
+    schema: v0_7.User,
     // A profile can change back to what it was.
     resendable: true,
     // A user has no author, and lives where it came from.
@@ -240,20 +298,70 @@ export const remoteText = (
     };
 };
 
-/** A user on the instance `instanceId`, as Verso stores it. */
-export const remoteAccountOf = (instanceId: string, user: v0_6.User): RemoteAccount => {
-    const bio = remoteText(user.bio, renderText);
-    const fields = user.fields.map((field): ProfileField => {
-        const name = remoteText(field.key, escapeHtml);
-        const value = remoteText(field.value, escapeHtml);
+/** How many avatar overlays Verso stores for a user, which bounds what a peer can make it store. */
+const maxOverlays = 10;
+
+/** The extension `key` of `user`, if it is one that `schema` accepts, or else an empty one. */
+const extensionOf = <T extends v0_7.Profile | v0_7.Decorations>(
+    schema: { safeParse: (data: unknown) => { data?: T } },
+    user: v0_7.User,
+    key: string,
+): Partial<T> => schema.safeParse(user.extensions?.[key]).data ?? {};
+
+/** The image `media`, if clients can display its type. */
+const remoteImage = (media: v0_7.Media | null | undefined): RemoteMedia | null =>
+    remoteMediaV07(media, (mediaType) => pictureTypes.has(mediaType));
+
+/** The decorations of a user that Verso stores: the header isn't one, and is stored apart. */
+const remoteDecorationsOf = (decorations: v0_7.Decorations): RemoteDecoration[] => {
+    const single = (kind: DecorationKind, media: RemoteMedia | null): RemoteDecoration[] =>
+        media === null ? [] : [{ kind, position: 0, media }];
+
+    const overlays = (decorations.avatar_overlays ?? []).flatMap((overlay) =>
+        remoteImage(overlay) ?? []
+    )
+        .slice(0, maxOverlays);
+
+    return [
+        ...overlays.map((media, position): RemoteDecoration => ({
+            kind: "avatar_overlay",
+            position,
+            media,
+        })),
+        ...single("avatar_mask", remoteImage(decorations.avatar_mask)),
+        ...single("background", remoteImage(decorations.background)),
+        ...single("audio", remoteMediaV07(decorations.audio, isPlayable)),
+    ];
+};
+
+/**
+ * Rich text from a peer as Verso stores it: as sanitised HTML, and as the text of that, without the
+ * spaces `textOfHtml` puts around blocks.
+ */
+const remoteRichText = (html: string | null | undefined) => {
+    const sanitised = sanitizeHtml(html ?? "");
+    return { html: sanitised, text: textOfHtml(sanitised).trim() };
+};
+
+/**
+ * A user on the instance `instanceId`, as Verso stores it. An extension that doesn't match what
+ * Versia defines is treated as absent, as custom emojis are, so it can't make Verso reject the
+ * user.
+ */
+export const remoteAccountOf = (instanceId: string, user: v0_7.User): RemoteAccount => {
+    const profile = extensionOf(v0_7.Profile, user, v0_7.profileKey);
+    const decorations = extensionOf(v0_7.Decorations, user, v0_7.decorationsKey);
+
+    const bio = remoteRichText(profile.bio);
+    const fields = (profile.fields ?? []).map((field): ProfileField => {
+        const name = remoteRichText(field.key);
+        const value = remoteRichText(field.value);
 
         return {
-            // Clients display a field's name as text, so a name given only as HTML is displayed as
-            // its text.
-            name: name.text || textOfHtml(name.html).replaceAll(/\s+/g, " ").trim(),
+            // Clients display a field's name as text.
+            name: name.text.replaceAll(/\s+/g, " ").trim(),
             value: value.text,
-            // Each is in the format of its name, which is nearly always the same as its value's.
-            format: name.format,
+            format: "text/plain",
             name_html: name.html,
             value_html: value.html,
         };
@@ -267,15 +375,21 @@ export const remoteAccountOf = (instanceId: string, user: v0_6.User): RemoteAcco
             username: user.username,
             display_name: user.display_name ?? "",
             note: bio.text,
-            note_format: bio.format,
+            note_format: "text/plain",
             note_html: bio.html,
             fields,
+            pronouns: profile.pronouns ?? {},
+            birthday: profile.birthday ?? null,
+            location: profile.location ?? null,
+            timezone: profile.timezone ?? null,
+            url: user.url && user.url.length <= maxUrlLength ? user.url : null,
             html_version: sanitizerVersion,
-            locked: user.manually_approves_followers,
+            locked: user.manually_approves_subscribers,
             indexable: user.indexable,
         },
-        avatar: remotePicture(user.avatar),
-        header: remotePicture(user.header),
-        emojis: remoteEmojisOf(user.extensions),
+        avatar: remoteImage(user.avatar),
+        header: remoteImage(decorations.header),
+        decorations: remoteDecorationsOf(decorations),
+        emojis: remoteEmojisOfV07(user.extensions),
     };
 };

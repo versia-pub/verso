@@ -16,7 +16,7 @@ import { countAll, readCount } from "../db/count.ts";
 import type { Database } from "../db/database.ts";
 import { type PageBounds, readPage } from "../db/paging.ts";
 import type { Context } from "../kernel/context.ts";
-import type { AccountsTable } from "./tables.ts";
+import type { AccountDecorationsTable, AccountsTable } from "./tables.ts";
 
 /**
  * An account, with the domain of its instance (`null` for the local instance), and its own
@@ -234,6 +234,11 @@ export type RemoteProfile = Required<
         | "note_format"
         | "note_html"
         | "fields"
+        | "pronouns"
+        | "birthday"
+        | "location"
+        | "timezone"
+        | "url"
         | "html_version"
         | "locked"
         | "indexable"
@@ -324,6 +329,51 @@ export const setAccountPictures = async (
     await ctx.db.updateTable("accounts").set(pictures).where("id", "=", id).execute();
 };
 
+/** A decoration of an account, without the account: where it goes, and its media in `media`. */
+export type AccountDecoration = Omit<Selectable<AccountDecorationsTable>, "account_id">;
+
+/** The decorations of the account `accountId`, in the order of their slots. */
+export const findAccountDecorations = (
+    ctx: Context,
+    accountId: string,
+): Promise<AccountDecoration[]> =>
+    ctx.db.selectFrom("account_decorations")
+        .select(["kind", "position", "media_id"])
+        .where("account_id", "=", accountId)
+        .orderBy("kind")
+        .orderBy("position")
+        .execute();
+
+/** Replaces the decorations of the account `accountId` with `decorations`. */
+export const replaceAccountDecorations = async (
+    ctx: Context,
+    accountId: string,
+    decorations: readonly AccountDecoration[],
+): Promise<void> => {
+    await ctx.db.deleteFrom("account_decorations").where("account_id", "=", accountId).execute();
+    if (decorations.length === 0) return;
+
+    await ctx.db.insertInto("account_decorations")
+        .values(decorations.map((decoration) => ({ account_id: accountId, ...decoration })))
+        .execute();
+};
+
+/** The ids of the media that decorate the accounts `ids`. */
+export const findDecorationMedia = async (
+    ctx: Context,
+    ids: readonly string[],
+): Promise<string[]> => {
+    const media = [];
+    for (const batch of batchesOf(ids)) {
+        const rows = await ctx.db.selectFrom("account_decorations").select("media_id")
+            .where("account_id", "in", batch)
+            .execute();
+        media.push(...rows.map((row) => row.media_id));
+    }
+
+    return media;
+};
+
 /** The id of the account that has the media `mediaId` as its avatar or header, if any. */
 export const findAccountByPicture = async (
     ctx: Context,
@@ -366,8 +416,8 @@ export const setSuspendedAt = async (
 
 /**
  * Empties the local account `id` of its profile and counts, and marks it deleted from `at`, unless
- * it already was. Its pictures go when its media is deleted. Returns whether it wasn't deleted
- * before.
+ * it already was. Its pictures and decorations go when its media is deleted. Returns whether it
+ * wasn't deleted before.
  */
 export const emptyAccount = async (ctx: Context, id: string, at: Date): Promise<boolean> => {
     const before = await ctx.db.selectFrom("accounts").select("deleted_at")
@@ -383,6 +433,10 @@ export const emptyAccount = async (ctx: Context, id: string, at: Date): Promise<
             note_format: "text/plain",
             note_html: "",
             fields: [],
+            pronouns: {},
+            birthday: null,
+            location: null,
+            timezone: null,
             locked: false,
             bot: false,
             discoverable: false,

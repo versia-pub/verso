@@ -51,8 +51,7 @@ export const userEntity = (id: string, more: Entity = {}): Entity => ({
     id,
     created_at: "2026-10-18T12:00:00Z",
     username: id,
-    fields: [],
-    manually_approves_followers: false,
+    manually_approves_subscribers: false,
     indexable: true,
     ...more,
 });

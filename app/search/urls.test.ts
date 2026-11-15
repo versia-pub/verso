@@ -64,8 +64,7 @@ Deno.test("an entity URL on a remote instance is fetched, unless it fails", asyn
         id: "carol",
         created_at: "2026-01-01T00:00:00Z",
         username: "carol",
-        fields: [],
-        manually_approves_followers: false,
+        manually_approves_subscribers: false,
         indexable: true,
     });
     for (const [id, group] of [["n1", "public"], ["n2", "followers"]]) {

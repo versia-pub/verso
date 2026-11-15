@@ -1,5 +1,8 @@
 import { assertEquals } from "@std/assert";
-import { remoteFile, remotePicture } from "./versia.ts";
+import { createTestContext } from "../testing/context.ts";
+import { findMedia } from "./media_queries.ts";
+import { pictureTypes } from "./uploads.ts";
+import { remoteFile, remoteMediaV07, remotePicture, versiaMediaV07 } from "./versia.ts";
 
 Deno.test("a version that isn't at a web address isn't taken, even if it reads as one", () => {
     assertEquals(
@@ -9,6 +12,16 @@ Deno.test("a version that isn't at a web address isn't taken, even if it reads a
         })?.url,
         "https://b.example/bob.webp",
     );
+});
+
+Deno.test("a remote media's hash is stored in lowercase", () => {
+    const hash = "AB".repeat(32);
+
+    const media = remotePicture({
+        "image/webp": { content: "https://b.example/bob.webp", remote: true, hash },
+    });
+
+    assertEquals(media?.sha256, hash.toLowerCase());
 });
 
 Deno.test("what is too large to store is left out of remote media, or skips its version", () => {
@@ -55,4 +68,115 @@ Deno.test("what is too large to store is left out of remote media, or skips its 
 
     assertEquals(remoteFile({ [type]: { content: url, remote: true } })?.mediaType, type);
     assertEquals(remoteFile({ [`${type}a`]: { content: url, remote: true } }), null);
+});
+
+const pictures = (mediaType: string) => pictureTypes.has(mediaType);
+
+Deno.test("v0.7 media is stored with what it says, and left out if its type isn't taken", () => {
+    const hash = "AB".repeat(32);
+
+    assertEquals(
+        remoteMediaV07({
+            url: "https://b.example/bob.webp",
+            media_type: "image/webp",
+            description: "Bob",
+            size: 1234,
+            hash: hash.toLowerCase(),
+            thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+            width: 64,
+            height: 48,
+        }, pictures),
+        {
+            url: "https://b.example/bob.webp",
+            mediaType: "image/webp",
+            description: "Bob",
+            size: 1234,
+            sha256: hash.toLowerCase(),
+            thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+            width: 64,
+            height: 48,
+        },
+    );
+    assertEquals(
+        remoteMediaV07({ url: "https://b.example/sea.svg", media_type: "image/svg+xml" }, pictures),
+        null,
+    );
+    assertEquals(remoteMediaV07(undefined, pictures), null);
+    assertEquals(remoteMediaV07(null, pictures), null);
+});
+
+Deno.test("v0.7 media that is too large to store is left out, or isn't taken", () => {
+    const url = "https://b.example/bob.webp";
+    const largest = 2 ** 31 - 1;
+    const media = { url, media_type: "image/webp" };
+
+    const kept = remoteMediaV07({ ...media, size: largest, width: largest, height: 1 }, pictures);
+    assertEquals([kept?.size, kept?.width, kept?.height], [largest, largest, 1]);
+
+    const tooLarge = remoteMediaV07({
+        ...media,
+        size: largest + 1,
+        width: largest + 1,
+        height: largest + 1,
+        thumbhash: "a".repeat(101),
+    }, pictures);
+    assertEquals(
+        [tooLarge?.url, tooLarge?.size, tooLarge?.width, tooLarge?.height, tooLarge?.thumbhash],
+        [url, undefined, undefined, undefined, undefined],
+    );
+
+    const longUrl = `https://b.example/${"a".repeat(2048 - 18)}`;
+    assertEquals(remoteMediaV07({ ...media, url: longUrl }, pictures)?.url, longUrl);
+    assertEquals(remoteMediaV07({ ...media, url: `${longUrl}a` }, pictures), null);
+
+    const type = `application/${"a".repeat(255 - 12)}`;
+    assertEquals(remoteMediaV07({ url, media_type: type }, () => true)?.mediaType, type);
+    assertEquals(remoteMediaV07({ url, media_type: `${type}a` }, () => true), null);
+});
+
+Deno.test("local media is given to v0.7 as its file, once processed", async () => {
+    await using test = await createTestContext();
+    const insert = async (changes: { processed_at: Date | null; sha256: string | null }) => {
+        const id = test.ctx.ids();
+        await test.ctx.db.insertInto("media")
+            .values({
+                id,
+                instance_id: null,
+                media_type: "image/png",
+                preview_sha256: "c".repeat(64),
+                size: 10,
+                width: 64,
+                height: 48,
+                thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+                description: "Me",
+                created_at: test.clock.now(),
+                ...changes,
+            })
+            .execute();
+        const row = await findMedia(test.ctx, id);
+        if (row === undefined) throw new Error("The media wasn't saved");
+
+        return row;
+    };
+
+    const processed = await insert({ processed_at: test.clock.now(), sha256: "ab".repeat(32) });
+    assertEquals(versiaMediaV07(test.ctx, processed), {
+        url: `https://social.example/media/${"ab".repeat(32)}`,
+        media_type: "image/png",
+        description: "Me",
+        size: 10,
+        hash: "ab".repeat(32),
+        thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+        width: 64,
+        height: 48,
+    });
+
+    assertEquals(
+        versiaMediaV07(test.ctx, await insert({ processed_at: null, sha256: "ab" })),
+        undefined,
+    );
+    assertEquals(
+        versiaMediaV07(test.ctx, await insert({ processed_at: test.clock.now(), sha256: null })),
+        undefined,
+    );
 });

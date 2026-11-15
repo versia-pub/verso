@@ -1,4 +1,4 @@
-import { v0_6 } from "@versia/protocol";
+import { v0_6, v0_7 } from "@versia/protocol";
 import { userType } from "./accounts/federation.ts";
 import { migrationType } from "./accounts/moves.ts";
 import { deleteType } from "./federation/delete.ts";
@@ -44,5 +44,5 @@ const types = [user, note, ...likeTypes, shareType, reactionType, voteType];
  */
 export const registry = createRegistry(
     [...types, deleteType(types), ...followTypes, reportType, migrationType],
-    [v0_6.customEmojisKey, messagingExtension],
+    [v0_6.customEmojisKey, v0_7.profileKey, v0_7.decorationsKey, messagingExtension],
 );

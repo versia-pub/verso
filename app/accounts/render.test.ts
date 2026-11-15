@@ -83,6 +83,11 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
                 value_html: unsafe,
             }],
             // Stored as received, before HTML was sanitised on arrival.
+            pronouns: {},
+            birthday: null,
+            location: null,
+            timezone: null,
+            url: null,
             html_version: 0,
             locked: false,
             indexable: true,
@@ -93,6 +98,7 @@ Deno.test("a remote account shows its own pictures, and its HTML made safe", asy
             description: "Bob",
         },
         header: null,
+        decorations: [],
         emojis: [],
     });
 
@@ -151,12 +157,18 @@ Deno.test("a remote account's HTML, sanitised when it was stored, is shown as it
                 name_html: "Site",
                 value_html: stored,
             }],
+            pronouns: {},
+            birthday: null,
+            location: null,
+            timezone: null,
+            url: null,
             html_version: sanitizerVersion,
             locked: false,
             indexable: true,
         },
         avatar: null,
         header: null,
+        decorations: [],
         emojis: [],
     });
 

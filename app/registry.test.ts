@@ -23,3 +23,8 @@ Deno.test("every entity other instances fetch says who it is by, so a suspended 
         "pub.versia:share/Share",
     ]);
 });
+
+Deno.test("Verso says it supports the profile and decorations extensions", () => {
+    assertEquals(registry.extensions.includes("pub.versia:profile"), true);
+    assertEquals(registry.extensions.includes("pub.versia:decorations"), true);
+});

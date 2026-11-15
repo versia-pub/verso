@@ -138,6 +138,21 @@ Deno.test("files an account or an emoji shows aren't removed", async () => {
     assertEquals([left.length, left.some((row) => row.id === unused)], [4, false]);
 });
 
+Deno.test("a file an account uses as a decoration isn't removed until that use is gone", async () => {
+    await using test = await open();
+    const file = await test.uploaded(zip(1));
+    await test.ctx.db.insertInto("account_decorations")
+        .values({ account_id: "alice", kind: "background", position: 0, media_id: file })
+        .execute();
+
+    await test.later(24 * hour);
+    assertEquals((await findMedia(test.ctx, file))?.id, file);
+
+    await test.ctx.db.deleteFrom("account_decorations").execute();
+    await test.later(24 * hour);
+    assertEquals(await findMedia(test.ctx, file), undefined);
+});
+
 Deno.test("other instances' files nothing uses are removed, and nothing kept under their hash", async () => {
     await using test = await open();
     await createInstance(test.ctx, "b.example");

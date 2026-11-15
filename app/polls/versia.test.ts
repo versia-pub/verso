@@ -88,8 +88,7 @@ const open = async () => {
         id: "bob",
         created_at: "2026-01-01T00:00:00Z",
         username: "bob",
-        fields: [],
-        manually_approves_followers: false,
+        manually_approves_subscribers: false,
         indexable: true,
     });
     for (const id of ["alice", "dave"]) await createLocalAccount(a, id);

@@ -161,8 +161,7 @@ const open = async (options: { multiple?: boolean; visibility?: Visibility } = {
         id: "bob",
         created_at: "2026-01-01T00:00:00Z",
         username: "bob",
-        fields: [],
-        manually_approves_followers: false,
+        manually_approves_subscribers: false,
         indexable: true,
     });
     await createLocalAccount(a, "alice");

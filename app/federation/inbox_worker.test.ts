@@ -176,8 +176,7 @@ Deno.test("a User sent unasked updates one Verso has, and is dropped otherwise",
         id: "alice",
         created_at: "2026-10-18T12:00:00Z",
         username: "alice",
-        fields: [],
-        manually_approves_followers: false,
+        manually_approves_subscribers: false,
         indexable: true,
     };
     const account = () =>

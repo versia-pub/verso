@@ -41,6 +41,16 @@ export type AccountsTable = {
     /** The bio, as HTML. */
     note_html: Generated<string>;
     fields: Generated<ProfileField[]>;
+    /** The pronouns it uses, as plain text by BCP 47 language tag, like `{ "en": "she/her" }`. */
+    pronouns: Generated<Record<string, string>>;
+    /** Its birthday, as `YYYY-MM-DD`, or `--MM-DD` without the year. */
+    birthday: string | null;
+    /** Where it says it is, as plain text. */
+    location: string | null;
+    /** Its time zone, as an IANA name like `America/New_York`. */
+    timezone: string | null;
+    /** For a remote account, its web page on its own instance, if it gave one. */
+    url: string | null;
     /**
      * For a remote account, the version of the sanitiser its bio and fields went through, or 0 if
      * none.
@@ -103,6 +113,18 @@ export type AccountsTable = {
     moved_to_account_id: string | null;
     /** When it last moved, or `null` if it never did. */
     moved_at: Date | null;
+};
+
+/** The kinds of image or sound that decorate a profile, besides its header. */
+export type DecorationKind = "avatar_overlay" | "avatar_mask" | "background" | "audio";
+
+/** A decoration of an account's profile, in `media`. */
+export type AccountDecorationsTable = {
+    account_id: string;
+    kind: DecorationKind;
+    /** 0 for a kind with one decoration. For overlays, their order, with 0 the topmost. */
+    position: number;
+    media_id: string;
 };
 
 /** A login at an OpenID issuer, linked to a local account. */

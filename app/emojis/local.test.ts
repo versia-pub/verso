@@ -123,24 +123,23 @@ Deno.test("a local account uses this instance's emojis its name, bio and fields 
 
     const user = await localVersiaUser(test.ctx, "alice");
 
-    assertEquals(user?.extensions, {
-        "pub.versia:custom_emojis": {
-            emojis: ["blob", "cat"].map((shortcode) => ({
-                name: `:${shortcode}:`,
-                content: {
-                    "image/png": {
-                        content: `https://social.example/media/emoji-${shortcode}`,
-                        remote: true,
-                    },
-                },
-            })),
-        },
+    assertEquals(user?.extensions?.["pub.versia:custom_emojis"], {
+        emojis: ["blob", "cat"].map((shortcode) => ({
+            name: `:${shortcode}:`,
+            content: {
+                url: `https://social.example/media/emoji-${shortcode}`,
+                media_type: "image/png",
+            },
+        })),
     });
 
     await updateProfile(test.ctx, "alice", { fields: [] });
 
     assertEquals(await shortcodes(), []);
-    assertEquals((await localVersiaUser(test.ctx, "alice"))?.extensions, undefined);
+    assertEquals(
+        (await localVersiaUser(test.ctx, "alice"))?.extensions?.["pub.versia:custom_emojis"],
+        undefined,
+    );
 });
 
 Deno.test("text uses only emojis its author may use whose pictures are ready", async () => {

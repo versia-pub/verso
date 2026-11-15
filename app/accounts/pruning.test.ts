@@ -273,10 +273,10 @@ Deno.test("a remote account fetched since the cutoff, and local accounts, are ke
     );
 });
 
-Deno.test("pruned accounts' pictures go with them", async () => {
+Deno.test("pruned accounts' pictures and decorations go with them", async () => {
     await using test = await open();
     await createRemoteAccount(test.ctx, "erin", "b.example");
-    const picture = async (accountId: string, column: "avatar_id" | "header_id") => {
+    const media = async () => {
         const id = test.ctx.ids();
         await test.ctx.db.insertInto("media")
             .values({
@@ -288,12 +288,19 @@ Deno.test("pruned accounts' pictures go with them", async () => {
                 created_at: test.clock.now(),
             })
             .execute();
-        await test.ctx.db.updateTable("accounts").set({ [column]: id })
+
+        return id;
+    };
+    const picture = async (accountId: string, column: "avatar_id" | "header_id") => {
+        await test.ctx.db.updateTable("accounts").set({ [column]: await media() })
             .where("id", "=", accountId).execute();
     };
     await picture("dave", "avatar_id");
     await picture("dave", "header_id");
     await picture("erin", "header_id");
+    await test.ctx.db.insertInto("account_decorations")
+        .values({ account_id: "erin", kind: "background", position: 0, media_id: await media() })
+        .execute();
 
     assertEquals(await prune(test.ctx), []);
     assertEquals(await test.ctx.db.selectFrom("media").select("id").execute(), []);
@@ -374,6 +381,7 @@ Deno.test("old remote accounts are read by index", async () => {
  */
 const ownColumns = [
     "access_tokens.account_id",
+    "account_decorations.account_id",
     "account_domain_blocks.account_id",
     "account_emojis.account_id",
     "account_notes.account_id",

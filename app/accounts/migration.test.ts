@@ -23,8 +23,7 @@ const user = (id: string, previous?: string) => ({
     id,
     created_at: "2026-01-01T00:00:00Z",
     username: id,
-    fields: [],
-    manually_approves_followers: false,
+    manually_approves_subscribers: false,
     indexable: true,
     ...(previous === undefined ? {} : { extensions: { "pub.versia:migration": { previous } } }),
 });
@@ -162,9 +161,11 @@ Deno.test("a user's previous account is sent with the custom emojis they use", a
     const extensions = (await localVersiaUser(ctx, alice))?.extensions;
     assertEquals(Object.keys(extensions ?? {}).sort(), [
         "pub.versia:custom_emojis",
+        "pub.versia:decorations",
         "pub.versia:migration",
     ]);
-    assertEquals(extensions?.["pub.versia:migration"], { previous: dan });
+    // Versia v0.7 writes the host of every reference.
+    assertEquals(extensions?.["pub.versia:migration"], { previous: `a.test:${dan}` });
 });
 
 Deno.test("saying which account a user moved from doesn't accept their follow requests", async () => {
@@ -344,13 +345,20 @@ Deno.test("a user that moved is sent saying so, along with a Migration to where 
     assertEquals(await sentTo(network, "b.test"), [migration]);
     const toC = await sentTo(network, "c.test");
     assertEquals(toC.find((entity) => entity.type === migration.type), migration);
-    assertEquals(toC.findLast((entity) => entity.type === "User")?.extensions, {
-        "pub.versia:migration": { previous: dan, new: "b.test:bob" },
+    const extensionsOf = (entity?: { extensions?: object | null }) => {
+        const { "pub.versia:decorations": _, ...rest } = { ...entity?.extensions } as Record<
+            string,
+            unknown
+        >;
+        return rest;
+    };
+    assertEquals(extensionsOf(toC.findLast((entity) => entity.type === "User")), {
+        "pub.versia:migration": { previous: `a.test:${dan}`, destination: "b.test:bob" },
     });
 
     await call(app, token, "DELETE", "/api/v1/migration/previous");
-    assertEquals((await localVersiaUser(ctx, alice))?.extensions, {
-        "pub.versia:migration": { new: "b.test:bob" },
+    assertEquals(extensionsOf(await localVersiaUser(ctx, alice)), {
+        "pub.versia:migration": { destination: "b.test:bob" },
     });
 
     await call(app, token, "DELETE", "/api/v1/migration/move");
@@ -358,7 +366,7 @@ Deno.test("a user that moved is sent saying so, along with a Migration to where 
     const cancelled = (await sentTo(network, "c.test")).findLast((entity) =>
         entity.type === "User"
     );
-    assertEquals(cancelled?.extensions, undefined);
+    assertEquals(extensionsOf(cancelled), {});
 });
 
 Deno.test("only local users move", async () => {
@@ -402,7 +410,9 @@ Deno.test("a user that cancels their move says they moved nowhere, and moves aga
     assertEquals([cancelled.status, cancelled.body.moved], [200, null]);
     assertEquals((await findAccount(ctx, alice))?.moved_at, movedAt);
     assertEquals(await status("/api/v1/timelines/home"), 200);
-    assertEquals((await localVersiaUser(ctx, alice))?.extensions, undefined);
+    assertEquals(Object.keys((await localVersiaUser(ctx, alice))?.extensions ?? {}), [
+        "pub.versia:decorations",
+    ]);
     // The move was cancelled before its followers moved, so they don't.
     await network.drain();
     assertEquals((await followsFrom(ctx, dan, [alice, bea])).map((row) => row.followee_id), [

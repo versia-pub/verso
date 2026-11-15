@@ -14,6 +14,7 @@ export const purgedColumns = [
     ["account_roles", "account_id"],
     ["account_domain_blocks", "account_id"],
     ["account_emojis", "account_id"],
+    ["account_decorations", "account_id"],
     ["account_notes", "account_id"],
     ["account_notes", "target_id"],
     ["account_search", "account_id"],

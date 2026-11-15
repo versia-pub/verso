@@ -20,8 +20,7 @@ const user = (id: string, previous?: string) => ({
     id,
     created_at: "2026-01-01T00:00:00Z",
     username: id,
-    fields: [],
-    manually_approves_followers: false,
+    manually_approves_subscribers: false,
     indexable: true,
     ...(previous === undefined ? {} : { extensions: { "pub.versia:migration": { previous } } }),
 });

@@ -246,8 +246,7 @@ Deno.test("failing to fetch the replies of a thread's start fails, unless it has
         id: "eve",
         created_at: "2026-01-01T00:00:00Z",
         username: "eve",
-        fields: [],
-        manually_approves_followers: false,
+        manually_approves_subscribers: false,
         indexable: true,
     });
     evil.serve("/.versia/v0.7/entities/Note/n1", {

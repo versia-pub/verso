@@ -48,12 +48,18 @@ const bob: RemoteAccount = {
         note_format: "text/plain",
         note_html: "",
         fields: [],
+        pronouns: {},
+        birthday: null,
+        location: null,
+        timezone: null,
+        url: null,
         html_version: 0,
         locked: false,
         indexable: true,
     },
     avatar: null,
     header: null,
+    decorations: [],
     emojis: [],
 };
 

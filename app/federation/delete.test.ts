@@ -7,7 +7,7 @@ const inbox = "https://a.test/.versia/v0.7/inbox";
 
 const user = (id: string) =>
     userEntity(id, {
-        avatar: { "image/png": { content: `https://pictures.example/${id}.png`, remote: true } },
+        avatar: { url: `https://pictures.example/${id}.png`, media_type: "image/png" },
     });
 
 /** a.test, with alice on evil.test and bob on other.test already stored. */

@@ -19,6 +19,16 @@ const emojis = (...shortcodes: string[]) => ({
     },
 });
 
+/** The extension for emojis as a user has them, in Versia v0.7's shape. */
+const userEmojis = (...shortcodes: string[]) => ({
+    "pub.versia:custom_emojis": {
+        emojis: shortcodes.map((shortcode) => ({
+            name: `:${shortcode}:`,
+            content: { url: `https://b.test/${shortcode}.png`, media_type: "image/png" },
+        })),
+    },
+});
+
 /** bob, using the emojis of `extensions`. */
 const user = (extensions: object) => ({
     type: "User",
@@ -26,8 +36,7 @@ const user = (extensions: object) => ({
     created_at: "2026-01-01T00:00:00Z",
     username: "bob",
     display_name: "Bob :blob:",
-    fields: [],
-    manually_approves_followers: false,
+    manually_approves_subscribers: false,
     indexable: true,
     extensions,
 });
@@ -54,7 +63,7 @@ const open = async () => {
     const network = await createNetwork(["a.test"]);
     const a = network.instances["a.test"].ctx;
     const b = await addEvilInstance(network, "b.test");
-    b.serve("/.versia/v0.7/entities/User/bob", user(emojis("blob")));
+    b.serve("/.versia/v0.7/entities/User/bob", user(userEmojis("blob")));
 
     const alice = await createLocalAccount(a, "alice");
     const bob = await a.federation.resolve(a, { host: "b.test", id: "bob" }, "User");
@@ -126,7 +135,7 @@ Deno.test("a remote user's emojis are shown with their account", async () => {
     }]);
 
     // Sent again with others, it uses only those.
-    await test.send(user(emojis("cat")));
+    await test.send(user(userEmojis("cat")));
     assertEquals(test.shown(await test.account()), [["cat", "https://b.test/cat.png"]]);
 
     await test.send(user({}));
@@ -173,7 +182,7 @@ Deno.test("an emoji's new picture is shown wherever its instance's emoji by that
         "pub.versia:custom_emojis": {
             emojis: [{
                 name: ":blob:",
-                content: { "image/png": { content: "https://b.test/new.png", remote: true } },
+                content: { url: "https://b.test/new.png", media_type: "image/png" },
             }],
         },
     }));

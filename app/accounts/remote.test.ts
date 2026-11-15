@@ -2,8 +2,15 @@ import { assertEquals } from "@std/assert";
 import { createInstance } from "../instances/testing.ts";
 import { findMedia } from "../media/media_queries.ts";
 import { createTestContext } from "../testing/context.ts";
-import { findAccount, type RemoteProfile } from "./account_queries.ts";
-import { type RemoteAccount, saveRemoteAccount } from "./remote.ts";
+import { batchSize } from "../db/batches.ts";
+import {
+    findAccount,
+    findAccountDecorations,
+    findDecorationMedia,
+    type RemoteProfile,
+    replaceAccountDecorations,
+} from "./account_queries.ts";
+import { deleteRemoteAccount, type RemoteAccount, saveRemoteAccount } from "./remote.ts";
 
 const profile: RemoteProfile = {
     username: "bob",
@@ -12,6 +19,11 @@ const profile: RemoteProfile = {
     note_format: "text/plain",
     note_html: "<p>Hi</p>",
     fields: [],
+    pronouns: {},
+    birthday: null,
+    location: null,
+    timezone: null,
+    url: null,
     html_version: 0,
     locked: false,
     indexable: true,
@@ -24,6 +36,7 @@ const bob: RemoteAccount = {
     profile,
     avatar: { url: "https://b.example/bob.png", mediaType: "image/png", width: 64 },
     header: null,
+    decorations: [],
     emojis: [],
 };
 
@@ -110,4 +123,119 @@ Deno.test("a remote account's pictures are saved over the old ones, or deleted w
     assertEquals(await pictures(id), { avatar: null, header: second.header });
     assertEquals(await findMedia(test.ctx, first.avatar ?? ""), undefined);
     assertEquals((await test.ctx.db.selectFrom("media").select("id").execute()).length, 1);
+});
+
+Deno.test("a remote account's decorations are saved by slot, and deleted with their media when gone", async () => {
+    await using test = await open();
+    const decoration = (kind: "avatar_overlay" | "background", position: number, name: string) => ({
+        kind,
+        position,
+        media: { url: `https://b.example/${name}.png`, mediaType: "image/png" },
+    });
+    const urls = async () => {
+        const rows = await findAccountDecorations(test.ctx, id);
+        return await Promise.all(rows.map(async (row) => [
+            row.kind,
+            row.position,
+            (await findMedia(test.ctx, row.media_id))?.url,
+        ]));
+    };
+
+    const id = await saveRemoteAccount(test.ctx, {
+        ...bob,
+        decorations: [
+            decoration("avatar_overlay", 0, "top"),
+            decoration("avatar_overlay", 1, "bottom"),
+            decoration("background", 0, "sky"),
+        ],
+    });
+    const first = await findAccountDecorations(test.ctx, id);
+    assertEquals(await urls(), [
+        ["avatar_overlay", 0, "https://b.example/top.png"],
+        ["avatar_overlay", 1, "https://b.example/bottom.png"],
+        ["background", 0, "https://b.example/sky.png"],
+    ]);
+
+    // Slots keep their media rows, and the slot that is gone loses its media.
+    await saveRemoteAccount(test.ctx, {
+        ...bob,
+        decorations: [decoration("avatar_overlay", 0, "new"), decoration("background", 0, "sky")],
+    });
+    const second = await findAccountDecorations(test.ctx, id);
+    assertEquals(second.map((row) => row.media_id), [first[0].media_id, first[2].media_id]);
+    assertEquals(await urls(), [
+        ["avatar_overlay", 0, "https://b.example/new.png"],
+        ["background", 0, "https://b.example/sky.png"],
+    ]);
+    assertEquals(await findMedia(test.ctx, first[1].media_id), undefined);
+
+    await saveRemoteAccount(test.ctx, bob);
+    assertEquals(await urls(), []);
+    assertEquals(
+        (await test.ctx.db.selectFrom("media").select("url").execute()).map((row) => row.url),
+        ["https://b.example/bob.png"],
+    );
+});
+
+Deno.test("deleting a remote account deletes its decoration media", async () => {
+    await using test = await open();
+    const id = await saveRemoteAccount(test.ctx, {
+        ...bob,
+        decorations: [{
+            kind: "audio",
+            position: 0,
+            media: { url: "https://b.example/song.ogg", mediaType: "audio/ogg" },
+        }],
+    });
+    assertEquals((await test.ctx.db.selectFrom("media").select("id").execute()).length, 2);
+
+    await deleteRemoteAccount(test.ctx, "b.example", "abc");
+
+    assertEquals(await findAccount(test.ctx, id), undefined);
+    assertEquals(await test.ctx.db.selectFrom("media").select("id").execute(), []);
+});
+
+Deno.test("an account's decorations are found by kind, then position, whatever order they were saved in", async () => {
+    await using test = await open();
+    const overlay = (position: number) => ({
+        kind: "avatar_overlay" as const,
+        position,
+        media: { url: `https://b.example/${position}.png`, mediaType: "image/png" },
+    });
+    const id = await saveRemoteAccount(test.ctx, {
+        ...bob,
+        decorations: [overlay(0), overlay(1), overlay(2)],
+    });
+    const saved = await findAccountDecorations(test.ctx, id);
+
+    await replaceAccountDecorations(test.ctx, id, saved.toReversed());
+
+    assertEquals(await findAccountDecorations(test.ctx, id), saved);
+});
+
+Deno.test("the decoration media of more accounts than fit in one query are all found", async () => {
+    await using test = await open();
+    const decorated = (remoteId: string, username: string) =>
+        saveRemoteAccount(test.ctx, {
+            ...bob,
+            remoteId,
+            profile: { ...profile, username },
+            decorations: [{
+                kind: "background",
+                position: 0,
+                media: { url: `https://b.example/${username}.png`, mediaType: "image/png" },
+            }],
+        });
+    const first = await decorated("abc", "bob");
+    const second = await decorated("def", "carol");
+    // The second account's id falls in the second batch.
+    const others = Array.from({ length: batchSize - 1 }, (_, index) => `other${index}`);
+
+    const media = await findDecorationMedia(test.ctx, [first, ...others, second]);
+
+    const expected = [
+        ...await findAccountDecorations(test.ctx, first),
+        ...await findAccountDecorations(test.ctx, second),
+    ].map((row) => row.media_id);
+    assertEquals(media, expected);
 });
