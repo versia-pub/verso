@@ -237,6 +237,18 @@ Deno.test("who may quote a status is given as Mastodon does, and what a viewer m
     assertEquals((await test.quote(unlisted.id, "dave")).status, 200);
 });
 
+Deno.test("a quote of an unlisted status is at most unlisted", async () => {
+    await using test = await open();
+    const unlisted = await createNote(test.ctx, "alice", { visibility: "unlisted" });
+
+    const visibilityOf = async (visibility: string) =>
+        (await test.quote(unlisted.id, "bob", { visibility })).body.visibility;
+
+    assertEquals(await visibilityOf("public"), "unlisted");
+    assertEquals(await visibilityOf("unlisted"), "unlisted");
+    assertEquals(await visibilityOf("private"), "private");
+});
+
 Deno.test("a quote shows why its status is hidden from a viewer, and what they may see", async () => {
     await using test = await open();
     const note = await createNote(test.ctx, "alice");

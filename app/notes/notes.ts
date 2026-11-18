@@ -79,6 +79,9 @@ export type Draft = {
     readonly poll?: PollDraft;
 };
 
+/** The visibilities from the narrowest to the widest. */
+const widths: readonly Visibility[] = ["direct", "private", "unlisted", "public"];
+
 const mentionKey = (mention: Mention) => `${mention.username}@${mention.domain}`.toLowerCase();
 
 /** How long posting may spend looking up the users it mentions. */
@@ -198,9 +201,10 @@ export const insertDraft = async (
     const chosen = draft.visibility ?? author.default_visibility;
     // A silenced user's public statuses are unlisted.
     const requested = chosen === "public" && author.silenced_at !== null ? "unlisted" : chosen;
-    const visibility = quoted?.visibility === "private" &&
-            (requested === "public" || requested === "unlisted")
-        ? "private"
+    // A quote is no wider than the status it quotes.
+    const visibility = quoted !== undefined &&
+            widths.indexOf(quoted.visibility) < widths.indexOf(requested)
+        ? quoted.visibility
         : requested;
     if (
         visibility === "direct" && quoted !== undefined && quoted.account_id !== accountId &&

@@ -30,8 +30,9 @@ instances, but accounts on Mastodon and other ActivityPub servers can't be found
   them. Send `poll: null` to remove a poll.
 - Anyone who can see a public or unlisted status may quote it, and only the author may quote a
   private one. Statuses have no quote policy: `quote_approval_policy` is accepted and ignored, and
-  `quote_approval` always says so. A quote of a private status is posted as private. A direct quote
-  has to be of the sender or of someone it mentions.
+  `quote_approval` always says so. A quote is never wider than the status it quotes, so a public
+  quote of an unlisted status is posted as unlisted. A direct quote has to be of the sender or of
+  someone it mentions.
 - Verso doesn't tell a blocked account that it can't quote, so a user who blocks the quoted author
   can't quote them, but one the author blocks can. Quotes can't be revoked: revoking one answers
   `403`. A quote's state is never `pending`, `rejected`, `revoked` or `deleted`; a status whose

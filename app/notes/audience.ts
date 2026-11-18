@@ -14,10 +14,11 @@ import { mentionsOf, type NoteRow } from "./note_queries.ts";
 export const everyone: readonly Visibility[] = ["public", "unlisted"];
 
 /**
- * The remote instances a local status is shown on: those of the users it mentions, those of the
- * author's followers unless it is direct, and the instances of the authors of the statuses that a
- * public or unlisted status replies to and `quotedAccountId`, which is the author of the status it
- * quotes, if any, so that they can show the thread and the quote.
+ * The remote instances a local status is shown on. These are the instances of the users it
+ * mentions and of the author of the status it replies to, and those of the author's followers
+ * unless it is direct. A public or unlisted status also goes to the instance of `quotedAccountId`,
+ * the author of the status it quotes.
+ * @see https://versia.pub/extensions/social#delivery-and-access
  */
 export const audienceOf = async (
     ctx: Context,
@@ -25,9 +26,9 @@ export const audienceOf = async (
     mentionIds: readonly string[],
     quotedAccountId: string | null = null,
 ): Promise<Audience> => {
-    const linked = [note.in_reply_to_account_id, quotedAccountId].flatMap((id) => id ?? []);
-    const replied = everyone.includes(note.visibility) ? linked : [];
-    const instanceIds = await instancesHosting(ctx, [...mentionIds, ...replied]);
+    const quoted = everyone.includes(note.visibility) ? [quotedAccountId] : [];
+    const linked = [note.in_reply_to_account_id, ...quoted].flatMap((id) => id ?? []);
+    const instanceIds = await instancesHosting(ctx, [...mentionIds, ...linked]);
 
     return note.visibility === "direct"
         ? { instanceIds }
@@ -51,7 +52,8 @@ export const instanceMaySee = async (
     if (instanceId === undefined) return false;
 
     const mentionIds = (await mentionsOf(ctx, [note.id])).get(note.id) ?? [];
-    if ((await instancesHosting(ctx, mentionIds)).includes(instanceId)) return true;
+    const shownTo = [...mentionIds, note.in_reply_to_account_id].flatMap((id) => id ?? []);
+    if ((await instancesHosting(ctx, shownTo)).includes(instanceId)) return true;
 
     return note.visibility === "private" &&
         await hasUnblockedFollowersOn(ctx, note.account_id, instanceId);

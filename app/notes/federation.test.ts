@@ -305,7 +305,7 @@ Deno.test("only local notes that exist are given", async () => {
     assertEquals(await test.find("missing", "b.example"), undefined);
 });
 
-Deno.test("a note is shown on the instances of who it mentions, the followers, and who a public reply is to", async () => {
+Deno.test("a note is shown on the instances of who it mentions, the followers, and who it replies to", async () => {
     await using test = await open();
     await createInstance(test.ctx, "d.example");
     await createRemoteAccount(test.ctx, "frank", "d.example");
@@ -326,8 +326,10 @@ Deno.test("a note is shown on the instances of who it mentions, the followers, a
 
     assertEquals(await shownOn(note("public"), []), ["b.example", "c.example"]);
     assertEquals(await shownOn(note("unlisted"), []), ["b.example", "c.example"]);
-    assertEquals(await shownOn(note("private"), []), ["b.example"]);
-    assertEquals(await shownOn(note("direct"), []), []);
+    assertEquals(await shownOn(note("private"), []), ["b.example", "c.example"]);
+    assertEquals(await shownOn(note("private", null), []), ["b.example"]);
+    assertEquals(await shownOn(note("direct"), []), ["c.example"]);
+    assertEquals(await shownOn(note("direct", null), []), []);
     assertEquals(await shownOn(note("direct"), ["alice", "bob", "erin"]), [
         "c.example",
     ]);
@@ -540,6 +542,33 @@ Deno.test("a followers-only note doesn't reach an instance where its author bloc
     const again = await createNote(test.ctx, "alice", { visibility: "private" });
 
     assertEquals((await test.find(again.id, "b.example"))?.id, again.id);
+});
+
+Deno.test("a note that isn't public may be fetched by the instance of who it replies to", async () => {
+    await using test = await open();
+    const parent = await createNote(test.ctx, "erin", {
+        instance_id: "c.example",
+        remote_id: "p1",
+    });
+
+    const reply = (visibility: Visibility, replyTo: string | null) =>
+        createNote(test.ctx, "alice", {
+            visibility,
+            in_reply_to_id: replyTo === null ? null : parent.id,
+            in_reply_to_account_id: replyTo,
+        });
+    const found = async (visibility: Visibility, replyTo: string | null) => {
+        const note = await reply(visibility, replyTo);
+        return (await test.find(note.id, "c.example"))?.id === note.id;
+    };
+
+    assertEquals(await found("private", "erin"), true);
+    assertEquals(await found("direct", "erin"), true);
+    assertEquals(await found("private", null), false);
+    assertEquals(await found("direct", null), false);
+    // Only the instance of who it replies to.
+    const direct = await reply("direct", "erin");
+    assertEquals(await test.find(direct.id, "b.example"), undefined);
 });
 
 Deno.test("a note reaches the instances of more followers than one query can name", async () => {
