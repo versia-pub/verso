@@ -74,9 +74,9 @@ Deno.test("a share is sent to the sharer's followers and the note's author, and 
     const deleted = {
         type: "Delete",
         created_at: now,
-        author: "alice",
+        author: "social.example:alice",
         deleted_type: "pub.versia:share/Share",
-        deleted: shared.id,
+        deleted: `social.example:${shared.id}`,
     };
 
     const sentFor = (await sent(test.ctx)).map((
@@ -86,8 +86,8 @@ Deno.test("a share is sent to the sharer's followers and the note's author, and 
         ["b.example", "b.example:n1"],
         ["c.example", "b.example:n1"],
         ["c.example", `social.example:${local.id}`],
-        ["b.example", shared.id],
-        ["c.example", shared.id],
+        ["b.example", `social.example:${shared.id}`],
+        ["c.example", `social.example:${shared.id}`],
     ]);
     assertEquals((await sent(test.ctx))[0][1], entity);
     assertEquals((await sent(test.ctx))[3][1], deleted);

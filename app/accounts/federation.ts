@@ -246,6 +246,8 @@ export const userType: EntityType<v0_7.User> = {
         await receiveUserMove(ctx, user, sender.domain);
     },
     deleteRemote: (ctx, id, sender) => deleteRemoteAccount(ctx, sender.instanceId, id),
+    hasRemote: async (ctx, id, sender) =>
+        await findRemoteAccount(ctx, sender.instanceId, id) !== undefined,
     known: knownUser,
     find: (ctx, id) => localVersiaUser(ctx, id),
 };

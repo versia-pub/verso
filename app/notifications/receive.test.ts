@@ -46,9 +46,9 @@ const interaction = (type: string, id: string, fields: Record<string, unknown>) 
 const undo = (type: string, id: string) => ({
     type: "Delete",
     created_at: "2026-01-01T00:00:00Z",
-    author: "bob",
+    author: "b.test:bob",
     deleted_type: type,
-    deleted: id,
+    deleted: `b.test:${id}`,
 });
 
 const like = "pub.versia:likes/Like";

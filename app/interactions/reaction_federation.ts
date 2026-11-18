@@ -23,6 +23,7 @@ import { isReactionEvent } from "./events.ts";
 import {
     countReactionsOf,
     findLocalReaction,
+    findRemoteReaction,
     type LocalReaction,
     reactionPage,
 } from "./reaction_queries.ts";
@@ -171,6 +172,8 @@ export const reactionType: EntityType<v0_7.Reaction> = {
         });
     },
     deleteRemote: (ctx, id, sender) => undoRemoteReaction(ctx, sender.instanceId, id),
+    hasRemote: async (ctx, id, sender) =>
+        await findRemoteReaction(ctx, sender.instanceId, id) !== undefined,
     find: async (ctx, id, requester) => {
         const reaction = await findLocalReaction(ctx, id);
         const note = reaction && await findNote(ctx, reaction.note_id);

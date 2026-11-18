@@ -56,7 +56,7 @@ export const userEntity = (id: string, more: Entity = {}): Entity => ({
     ...more,
 });
 
-/** A Versia `Delete` entity for `deleted`, which is a `User` unless `more` says otherwise. */
+/** A Versia `Delete` entity for the reference `deleted`, a `User` unless `more` says otherwise. */
 export const deleteEntity = (deleted: string, more: Entity = {}): Entity => ({
     type: "Delete",
     created_at: "2026-10-18T12:00:00Z",

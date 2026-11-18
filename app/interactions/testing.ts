@@ -20,9 +20,9 @@ export const user = (id: string): Record<string, unknown> => ({
 export const undo = (deleted_type: string, deleted: string): Record<string, unknown> => ({
     type: "Delete",
     created_at: "2026-01-01T00:00:00Z",
-    author: "bob",
+    author: "b.test:bob",
     deleted_type,
-    deleted,
+    deleted: `b.test:${deleted}`,
 });
 
 /** Why `ctx` gave up on what it was sent, oldest first. */

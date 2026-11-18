@@ -93,8 +93,8 @@ Deno.test("a reaction is sent to the note's author and the reactor's followers, 
             ["b.example", blob],
             ["c.example", blob],
             ["c.example", party],
-            ["b.example", blob],
-            ["c.example", blob],
+            ["b.example", `social.example:${blob}`],
+            ["c.example", `social.example:${blob}`],
         ],
     );
     assertEquals((await sent(test.ctx))[0][1], {
@@ -121,9 +121,9 @@ Deno.test("a reaction is sent to the note's author and the reactor's followers, 
     assertEquals((await sent(test.ctx))[3][1], {
         type: "Delete",
         created_at: now,
-        author: "alice",
+        author: "social.example:alice",
         deleted_type: "pub.versia:reactions/Reaction",
-        deleted: blob,
+        deleted: `social.example:${blob}`,
     });
 });
 
@@ -282,8 +282,8 @@ Deno.test("local users' reactions with a deleted emoji are undone, and remote in
 
     const deletes = (await sent(test.ctx)).slice(before);
     assertEquals(deletes.map(([domain, each]) => [domain, each.type, each.deleted]), [
-        ["b.example", "Delete", blob],
-        ["c.example", "Delete", blob],
+        ["b.example", "Delete", `social.example:${blob}`],
+        ["c.example", "Delete", `social.example:${blob}`],
     ]);
     const left = await test.ctx.db.selectFrom("reactions").select("id").orderBy("id").execute();
     assertEquals(left.length, 2);

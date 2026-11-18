@@ -497,18 +497,18 @@ Deno.test("a deleted local note is deleted where it was sent, and a remote one n
     for (const id of [note.id, direct.id, remote.id]) await removeNote(test.ctx, id);
 
     assertEquals(await sent(test.ctx), [
-        ["b.example", "Delete", note.id],
-        ["c.example", "Delete", note.id],
-        ["d.example", "Delete", note.id],
+        ["b.example", "Delete", `social.example:${note.id}`],
+        ["c.example", "Delete", `social.example:${note.id}`],
+        ["d.example", "Delete", `social.example:${note.id}`],
     ]);
 
     const [[, entity]] = await queued(test.ctx);
     assertEquals(entity, {
         type: "Delete",
         created_at: test.clock.now().toISOString(),
-        author: "alice",
+        author: "social.example:alice",
         deleted_type: noteName,
-        deleted: note.id,
+        deleted: `social.example:${note.id}`,
     });
 });
 
@@ -523,10 +523,10 @@ Deno.test("a followers-only note doesn't reach an instance where its author bloc
     await removeNote(test.ctx, hidden?.id ?? "");
 
     assertEquals((await sent(test.ctx)).toSorted(), [
-        ["b.example", "Delete", hidden?.id],
+        ["b.example", "Delete", `social.example:${hidden?.id}`],
         ["b.example", noteName, mentioning?.id],
         ["b.example", noteName, shown?.id],
-        ["c.example", "Delete", hidden?.id],
+        ["c.example", "Delete", `social.example:${hidden?.id}`],
         ["c.example", noteName, hidden?.id],
         ["c.example", noteName, mentioning?.id],
         ["c.example", noteName, shown?.id],

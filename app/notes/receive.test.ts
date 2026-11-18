@@ -687,16 +687,16 @@ Deno.test("a Delete removes a remote note, and uncounts it", async () => {
 
     await test.send({
         type: "Delete",
-        author: "bob",
+        author: "b.test:bob",
         deleted_type: "pub.versia:social/Note",
-        deleted: "n1",
+        deleted: "b.test:n1",
         created_at: "2026-01-01T00:00:00Z",
     });
     await test.send({
         type: "Delete",
-        author: "bob",
+        author: "b.test:bob",
         deleted_type: "pub.versia:social/Note",
-        deleted: "n9",
+        deleted: "b.test:n9",
         created_at: "2026-01-01T00:00:00Z",
     });
 

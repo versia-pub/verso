@@ -1,6 +1,5 @@
 export * from "./collection.ts";
 export * from "./common.ts";
-export * from "./delete.ts";
 export * from "./instance.ts";
 export * from "./migration.ts";
 export * from "./note.ts";

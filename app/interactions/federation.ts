@@ -23,6 +23,7 @@ import {
     countLikesOfNote,
     countNotesLikedBy,
     findLocalLike,
+    findRemoteLike,
     type LikeRow,
     likesOfNote,
     notesLikedBy,
@@ -190,6 +191,8 @@ const likingType = <T extends v0_7.Like | v0_7.Dislike>(
         });
     },
     deleteRemote: (ctx, id, sender) => undoRemoteLike(ctx, sender.instanceId, id),
+    hasRemote: async (ctx, id, sender) =>
+        (await findRemoteLike(ctx, sender.instanceId, id))?.kind === kind,
 });
 
 /**

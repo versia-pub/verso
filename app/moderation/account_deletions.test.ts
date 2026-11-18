@@ -217,7 +217,11 @@ Deno.test("a deleted account is kept empty and suspended, with its login and the
     );
     assertEquals(await rowsOf(test.ctx, "identities"), 1);
     assertEquals(await rowsOf(test.ctx, "reports", "target_account_id"), 1);
-    assertEquals(await userDeletes(test.ctx), [["alice", "alice", true]]);
+    assertEquals(await userDeletes(test.ctx), [[
+        "social.example:alice",
+        "social.example:alice",
+        true,
+    ]]);
 
     // It stays suspended, and deleting it again later changes nothing.
     test.clock.advance(60_000);
@@ -263,7 +267,11 @@ Deno.test("an account deleted without a tombstone is removed, with its login and
     assertEquals(await test.ctx.files.get(file.sha256 ?? ""), undefined);
     assertEquals(await rowsOf(test.ctx, "identities"), 0);
     assertEquals(await rowsOf(test.ctx, "reports", "target_account_id"), 0);
-    assertEquals(await userDeletes(test.ctx), [["alice", "alice", true]]);
+    assertEquals(await userDeletes(test.ctx), [[
+        "social.example:alice",
+        "social.example:alice",
+        true,
+    ]]);
 
     // Its login can make a new account.
     await createLocalAccount(test.ctx, "alice");

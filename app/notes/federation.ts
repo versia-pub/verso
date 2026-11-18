@@ -173,6 +173,8 @@ export const noteType: EntityType<v0_7.Note> = {
         // A boost is deleted as a Share, not a Note.
         if (note?.reblog_of_id === null) await removeNote(ctx, note.id);
     },
+    hasRemote: async (ctx, id, sender) =>
+        (await findRemoteNote(ctx, sender.instanceId, id))?.reblog_of_id === null,
     known: knownNote,
     collections: { replies: linkCollection("in_reply_to_id"), quotes: linkCollection("quote_id") },
     find: async (ctx, id, requester) => {

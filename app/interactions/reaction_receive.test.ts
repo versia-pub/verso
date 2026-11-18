@@ -78,7 +78,11 @@ Deno.test("a reaction to a local note is kept, once, and a Delete undoes it", as
     c.serve("/.versia/v0.7/entities/User/bob", user("bob"));
     assertEquals(
         (await c.send("https://a.test/.versia/v0.7/inbox", {
-            body: undo("pub.versia:reactions/Reaction", "r1"),
+            body: {
+                ...undo("pub.versia:reactions/Reaction", "r1"),
+                author: "c.test:bob",
+                deleted: "c.test:r1",
+            },
         })).status,
         202,
     );

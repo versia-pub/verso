@@ -119,3 +119,21 @@ Deno.test("only the instance a like came from may undo it", async () => {
 
     assertEquals((await findNote(test.a, test.local.id))?.likes_count, 2);
 });
+
+Deno.test("a like deleted as a dislike, or a dislike as a like, is dropped and stays", async () => {
+    await using test = await open();
+    const liked = `a.test:${test.local.id}`;
+
+    await test.send(liking("Like", "l1", liked));
+    await test.send(undo(likeType("Dislike"), "l1"));
+    assertEquals(await test.state(), ["like", "l1", 1]);
+
+    await test.send(liking("Dislike", "d1", liked));
+    await test.send(undo(likeType("Like"), "d1"));
+    assertEquals(await test.state(), ["dislike", "d1", 0]);
+
+    const errors = await test.errors();
+    assertEquals(errors.length, 2);
+    assertStringIncludes(errors[0], "b.test:l1 is a pub.versia:likes/Like, not a");
+    assertStringIncludes(errors[1], "b.test:d1 is a pub.versia:likes/Dislike, not a");
+});

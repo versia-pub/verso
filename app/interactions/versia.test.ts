@@ -69,9 +69,9 @@ Deno.test("a like of another instance's note is sent there, and a Delete when un
         ["b.example", {
             type: "Delete",
             created_at: now,
-            author: "alice",
+            author: "social.example:alice",
             deleted_type: "pub.versia:likes/Like",
-            deleted: row?.id,
+            deleted: `social.example:${row?.id}`,
         }],
     ]);
 });

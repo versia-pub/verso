@@ -55,7 +55,11 @@ Deno.test("a local status is deleted with its media, and other instances are tol
 
     assertEquals(await findNote(test.ctx, note.id), undefined);
     assertEquals(await findMedia(test.ctx, mediaId), undefined);
-    assertEquals(await deletes(test.ctx), [["c.example", "pub.versia:social/Note", note.id]]);
+    assertEquals(await deletes(test.ctx), [[
+        "c.example",
+        "pub.versia:social/Note",
+        `social.example:${note.id}`,
+    ]]);
     assertEquals(await removeStatus(test.ctx, note.id), false);
 });
 
@@ -83,8 +87,8 @@ Deno.test("a local boost is undone, so other instances are told of a Share", asy
     assertEquals(await findNote(test.ctx, shared.id), undefined);
     assertEquals((await findNote(test.ctx, note.id))?.shares_count, 0);
     assertEquals(await deletes(test.ctx), [
-        ["b.example", "pub.versia:share/Share", shared.id],
-        ["c.example", "pub.versia:share/Share", shared.id],
+        ["b.example", "pub.versia:share/Share", `social.example:${shared.id}`],
+        ["c.example", "pub.versia:share/Share", `social.example:${shared.id}`],
     ]);
 });
 

@@ -13,7 +13,7 @@ import { hasFollowers } from "../graph/follows.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { everyone, instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
-import { findNote, type NoteRow } from "../notes/note_queries.ts";
+import { findNote, findRemoteNote, type NoteRow } from "../notes/note_queries.ts";
 import { countSharesOf, shareIdsOf } from "../notes/share_queries.ts";
 import { canSee } from "../notes/visibility.ts";
 import { knownNoteRow } from "../notes/remote.ts";
@@ -172,6 +172,10 @@ export const shareType: EntityType<v0_7.Share> = {
         });
     },
     deleteRemote: (ctx, id, sender) => undoRemoteShare(ctx, sender.instanceId, id),
+    hasRemote: async (ctx, id, sender) => {
+        const share = await findRemoteNote(ctx, sender.instanceId, id);
+        return share !== undefined && share.reblog_of_id !== null;
+    },
     find: async (ctx, id, requester) => {
         const share = await findNote(ctx, id);
         if (share?.instance_id !== null || share.reblog_of_id === null) return undefined;

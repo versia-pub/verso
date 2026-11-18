@@ -96,6 +96,11 @@ export type EntityType<T = unknown> = {
      */
     deleteRemote?(ctx: Context, id: string, sender: Sender): Promise<void>;
     /**
+     * Whether Verso has the entity with this id from `sender`, as this type. A Delete naming another
+     * type for it is dropped. Every type with `deleteRemote` needs it, or nothing is deleted.
+     */
+    hasRemote?(ctx: Context, id: string, sender: Sender): Promise<boolean>;
+    /**
      * Runs before `deleteRemote`, outside its transaction, for work too large for one transaction,
      * like removing all of a user's statuses. It may run more than once.
      */

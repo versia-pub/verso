@@ -82,14 +82,18 @@ Deno.test("a share of a local note is kept and counted, once, and a Delete undoe
     assertEquals((await test.kept("s1"))?.id, share?.id);
     assertEquals(await test.counts(test.local.id), [1, 1]);
 
-    // A Note's Delete doesn't delete a Share.
+    // A Note's Delete doesn't delete a Share, and is dropped.
     await test.send(undo("pub.versia:social/Note", "s1"));
     assertEquals((await test.kept("s1"))?.id, share?.id);
+
+    const dropped = await test.errors();
+    assertEquals(dropped.length, 1);
+    assertStringIncludes(dropped[0], "b.test:s1 is a pub.versia:share/Share");
 
     await test.send(undo("pub.versia:share/Share", "s1"));
     assertEquals(await test.kept("s1"), undefined);
     assertEquals(await test.counts(test.local.id), [0, 0]);
-    assertEquals(await test.errors(), []);
+    assertEquals(await test.errors(), dropped);
 });
 
 Deno.test("a share of a local note its sharer may not see is refused, and stores nothing", async () => {

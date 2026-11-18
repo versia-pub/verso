@@ -65,7 +65,7 @@ Deno.test("a deleted user's notes go first, in batches, with what they counted",
         {
             type: "Delete",
             deleted_type: "User",
-            deleted: "bob",
+            deleted: "b.example:bob",
             created_at: "2026-10-25T00:00:00Z",
         },
         test.sender,
