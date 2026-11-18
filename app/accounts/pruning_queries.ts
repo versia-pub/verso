@@ -29,6 +29,7 @@ export const keepingColumns = [
     ["notification_permissions", "from_account_id"],
     ["notification_requests", "from_account_id"],
     ["notifications", "from_account_id"],
+    ["poll_ballots", "account_id"],
     ["poll_votes", "account_id"],
     ["reactions", "account_id"],
     ["reports", "account_id"],

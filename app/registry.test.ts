@@ -7,6 +7,7 @@ Deno.test("only entities that can change back to what they were are resendable",
     // Every other entity is new when sent, with a time of its own, so its body differs.
     assertEquals(resendable.map((type) => type.type).toSorted(), [
         "User",
+        "pub.versia:polls/Vote",
         "pub.versia:social/Note",
     ]);
 });
@@ -21,6 +22,7 @@ Deno.test("every entity other instances fetch says who it is by, so a suspended 
     assertEquals(fetched.map((type) => type.type).toSorted(), [
         "User",
         "pub.versia:likes/Like",
+        "pub.versia:polls/Vote",
         "pub.versia:reactions/Reaction",
         "pub.versia:share/Share",
         "pub.versia:social/Note",

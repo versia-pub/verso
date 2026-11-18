@@ -3,5 +3,4 @@ export * from "./common.ts";
 export * from "./instance.ts";
 export * from "./migration.ts";
 export * from "./note.ts";
-export * from "./polls.ts";
 export * from "./user.ts";

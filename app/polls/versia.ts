@@ -9,14 +9,13 @@ import type { Context } from "../kernel/context.ts";
 import { sanitizeHtml, textOfHtml } from "../kernel/html.ts";
 import { escapeHtml } from "../kernel/markup.ts";
 import {
-    deletePoll,
     insertPoll,
     type NewPoll,
     type PollWithOptions,
     setRemoteVotes,
     updatePoll,
 } from "./poll_queries.ts";
-import { asksAnew, hasEnded } from "./polls.ts";
+import { hasEnded } from "./polls.ts";
 
 /**
  * How many options of a remote poll Verso stores. Each costs a query, so a poll can't make Verso do
@@ -24,13 +23,16 @@ import { asksAnew, hasEnded } from "./polls.ts";
  */
 const remoteOptions = 100;
 
-/** A remote poll, with how many votes each option has. */
-export type RemotePoll = NewPoll & { readonly votes: readonly number[] };
+/** A remote poll, with how many votes each option has and how many users voted, if it says. */
+export type RemotePoll = NewPoll & {
+    readonly votes: readonly number[];
+    readonly voters: number | null;
+};
 
 /**
  * The `extensions` that a local status with the poll `poll` has, or `undefined` if it has none.
  * Like Mastodon, a poll that hides its totals sends none until it ends, but Versia requires them,
- * so each option has 0. The voters aren't sent.
+ * so each option has 0, and `voters` is left out.
  */
 export const pollExtensions = (
     ctx: Context,
@@ -45,6 +47,7 @@ export const pollExtensions = (
             votes: hidden ? 0 : option.votes_count,
         })),
         multiple_choice: poll.multiple,
+        ...!hidden && poll.voters_count !== null ? { voters: poll.voters_count } : {},
         expires_at: poll.expires_at?.toISOString(),
     };
 
@@ -65,6 +68,7 @@ export const remotePollOf = (extensions: v0_7.Entity["extensions"]): RemotePoll 
     return {
         options: options.map((option) => textOfHtml(sanitizeHtml(option.content)).trim()),
         votes: options.map((option) => option.votes),
+        voters: parsed.data.voters ?? null,
         multiple: parsed.data.multiple_choice,
         // Versia has no such setting.
         hideTotals: false,
@@ -72,16 +76,10 @@ export const remotePollOf = (extensions: v0_7.Entity["extensions"]): RemotePoll 
     };
 };
 
-/** Whether a remote status with the poll `previous` is edited by now having `poll`. */
-export const editsRemotePoll = (
-    previous: PollWithOptions | undefined,
-    poll: RemotePoll | undefined,
-): boolean =>
-    previous === undefined || poll === undefined ? previous !== poll : asksAnew(previous, poll);
-
 /**
- * Gives the remote status `noteId`, whose poll was `previous`, the poll `poll`, or none if it is
- * `undefined`. A poll that asks something else loses the votes local users cast in it.
+ * Gives the remote status `noteId`, whose poll was `previous`, the poll `poll`, or leaves it as it
+ * is if `poll` is `undefined`. The options of a poll can't change, so a status with one gets no
+ * other.
  */
 export const keepRemotePoll = async (
     ctx: Context,
@@ -89,12 +87,9 @@ export const keepRemotePoll = async (
     previous: PollWithOptions | undefined,
     poll: RemotePoll | undefined,
 ): Promise<void> => {
-    if (poll === undefined) {
-        if (previous) await deletePoll(ctx, previous);
-        return;
-    }
+    if (poll === undefined) return;
 
     const id = previous?.id ?? await insertPoll(ctx, noteId, poll);
-    if (previous) await updatePoll(ctx, previous, poll, asksAnew(previous, poll));
-    await setRemoteVotes(ctx, id, poll.votes);
+    if (previous) await updatePoll(ctx, previous, poll);
+    await setRemoteVotes(ctx, id, poll.votes, poll.voters);
 };

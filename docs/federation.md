@@ -90,13 +90,19 @@ A status is a `pub.versia:social/Note`. Verso maps the Note's `visibility` like 
 
 - A received Note's `content` is sanitised and stored as HTML. Its `url` is shown as the status's
   `url`, unless it's longer than 2048 characters. Its `quoting` is the status it quotes.
-- Its `updated_at` is kept as received. A version that changes the text, warning, sensitivity,
-  attachments or poll is an edit made at `updated_at`, but not before the status was created and not
-  in the future. A Note without `updated_at` is an edit made now.
+- Its `updated_at` is kept as received. A version that changes the text, warning, sensitivity or
+  attachments is an edit made at `updated_at`, but not before the status was created and not in the
+  future. A Note without `updated_at` is an edit made now.
 - A mention links to the account Verso has for the reference in its `data-mention`, not to the
   `href` the sender wrote. A mention of an account Verso doesn't have keeps its `href`.
 - A poll is in the Note's `pub.versia:polls` extension. Each option is RichText, and Verso shows its
-  text only. A poll that hides its totals sends 0 votes for every option until it ends.
+  text only. A poll that hides its totals sends 0 votes for every option, and no `voters`, until it
+  ends. Verso keeps the `voters` it receives.
+- A poll's options and `multiple_choice` can't change. A version that changes them, or adds or
+  removes a poll, is discarded.
+- A voter has one ballot in a poll, which is one Vote with all their choices. A Vote sent again with
+  other options changes it, and a Delete withdraws it. Neither counts once the poll has ended. Verso
+  sends a local poll again after a vote, at most about once a minute.
 
 `Delete` is handled in [`app/federation/delete.ts`](../app/federation/delete.ts), which calls
 `prepareDelete` and `deleteRemote` on the deleted entity's type.

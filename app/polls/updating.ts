@@ -1,7 +1,7 @@
 /**
  * Live counts in polls on local statuses. A vote in one queues a job that sends the status again,
  * with the votes so far. Votes that arrive while it waits are sent in the same job, so a popular
- * poll isn't sent with every vote.
+ * poll is sent about once a minute, not with every vote.
  * @see https://docs.joinmastodon.org/spec/activitypub/#Question
  * @module
  */
@@ -21,8 +21,8 @@ export const pollUpdatesQueue = "polls-updated";
 
 const UpdateJob = z.object({ pollId: z.string() });
 
-/** How long after a vote the poll is sent. Mastodon waits as long. */
-export const updateDelayMs = 3 * 60_000;
+/** How long after a vote the poll is sent. The spec asks for about one a minute. */
+export const updateDelayMs = 60_000;
 
 /**
  * The poll `pollId`, if its status is a local one and its votes are to be sent now. That means it

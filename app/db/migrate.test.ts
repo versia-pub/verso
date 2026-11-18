@@ -415,6 +415,80 @@ Deno.test("domain blocks there were get ids in the order they were made", async 
     );
 });
 
+Deno.test("each voter's votes in a poll there were become one ballot, with the first's id and time", async () => {
+    await using db = await testDatabase<Database>();
+    const before = Object.fromEntries(
+        Object.entries(migrations).filter(([name]) => name < "0109_poll_ballots"),
+    );
+    assertEquals((await migrate(db, before)).ok, true);
+
+    const first = new Date("2026-01-01T00:00:00Z");
+    const second = new Date("2026-01-02T00:00:00Z");
+    for (const id of ["alice", "bob"]) {
+        await db.insertInto("accounts")
+            .values({ id, username: id, instance_id: null, remote_id: null, created_at: first })
+            .execute();
+    }
+    for (const id of ["n1", "n2"]) {
+        await sql`
+            insert into notes
+                (id, account_id, visibility, content, content_format, content_html, created_at)
+            values (${id}, 'alice', 'public', 'Hi', 'text/plain', '<p>Hi</p>', ${first})
+        `.execute(db);
+        await sql`
+            insert into polls (id, note_id, multiple, hide_totals, created_at)
+            values (${"p" + id.slice(1)}, ${id}, true, false, ${first})
+        `.execute(db);
+    }
+    // bob chose two options of the first poll, and one of the second, which alice did too.
+    for (
+        const [id, poll, account, choice, at] of [
+            ["v2", "p1", "bob", 2, second],
+            ["v1", "p1", "bob", 0, first],
+            ["v3", "p2", "bob", 1, first],
+            ["v4", "p2", "alice", 1, second],
+        ] as const
+    ) {
+        await sql`
+            insert into poll_votes (id, poll_id, account_id, choice, created_at)
+            values (${id}, ${poll}, ${account}, ${choice}, ${at})
+        `.execute(db);
+    }
+
+    assertEquals((await migrate(db)).ok, true);
+
+    assertEquals(
+        await db.selectFrom("poll_ballots").selectAll().orderBy("id").execute(),
+        [
+            {
+                id: "v1",
+                poll_id: "p1",
+                account_id: "bob",
+                remote_id: null,
+                created_at: first,
+                updated_at: null,
+            },
+            {
+                id: "v3",
+                poll_id: "p2",
+                account_id: "bob",
+                remote_id: null,
+                created_at: first,
+                updated_at: null,
+            },
+            {
+                id: "v4",
+                poll_id: "p2",
+                account_id: "alice",
+                remote_id: null,
+                created_at: second,
+                updated_at: null,
+            },
+        ],
+    );
+    assertEquals((await db.selectFrom("poll_votes").select("id").execute()).length, 4);
+});
+
 Deno.test("ids that were UUIDv7 become 18 characters, in every table that holds them", async () => {
     await using db = await testDatabase<Database>();
     const before = Object.fromEntries(

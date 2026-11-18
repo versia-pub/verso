@@ -23,7 +23,7 @@ import {
     reattach,
 } from "../media/attachments.ts";
 import { pollOf } from "../polls/poll_queries.ts";
-import { addPoll, changePoll, changesPoll, type PollDraft } from "../polls/polls.ts";
+import { addPoll, changePoll, changesPoll, checkPollEdit, type PollDraft } from "../polls/polls.ts";
 import type { NoteEdited, NotePosted } from "./events.ts";
 import {
     countReply,
@@ -275,7 +275,7 @@ export type Edit = {
     readonly mediaIds?: readonly string[];
     /** Changes to the descriptions of the media attached after the edit. */
     readonly mediaChanges?: readonly AttachmentChange[];
-    /** A poll in place of its current one, or `null` to remove it, as {@link changesPoll} says. */
+    /** A poll with the end and hidden totals to change to, as {@link checkPollEdit} allows. */
     readonly poll?: PollDraft | null;
 };
 
@@ -283,7 +283,8 @@ export type Edit = {
  * Edits a status written by `accountId`, a local user, and looks up the mentioned users again, as
  * posting does. The previous version is saved in its edit history. Returns the status as it is now,
  * or `undefined` if it isn't theirs or is a boost, which has nothing to edit. A status left
- * unchanged isn't marked as edited or sent again.
+ * unchanged isn't marked as edited or sent again. An edit that adds or removes a poll, or changes
+ * its options, is refused with `Unprocessable`.
  */
 export const editNote = async (
     ctx: Context,
@@ -316,6 +317,8 @@ export const editNote = async (
         const media = await attachedTo(tx, note.id);
         const mediaChanges = edit.mediaChanges ?? [];
         const poll = await pollOf(tx, note.id);
+        checkPollEdit(tx, poll, edit.poll);
+
         const same = changes.content === note.content &&
             changes.content_format === note.content_format &&
             changes.spoiler_text === note.spoiler_text && changes.sensitive === note.sensitive &&
@@ -337,7 +340,7 @@ export const editNote = async (
             found.hashtags,
         );
         await reattach(tx, accountId, note.id, edit.mediaIds, mediaChanges);
-        await changePoll(tx, note.id, poll, edit.poll);
+        await changePoll(tx, poll, edit.poll);
         const options = (await pollOf(tx, note.id))?.options.map((option) => option.title);
         await useEmojis(tx, note, found, spoilerText, options ?? []);
 

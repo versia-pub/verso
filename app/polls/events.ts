@@ -14,13 +14,12 @@ export type PollEnded = {
 /** Whether `event` is a {@link PollEnded}. */
 export const isPollEnded = (event: DomainEvent): event is PollEnded => event.type === "polls.ended";
 
-/** `accountId` voted in the poll `pollId` on the status `noteId`, with the votes `voteIds`. */
+/** The votes of `accountId` in the poll `pollId` on the status `noteId` changed. */
 export type PollVoted = {
     readonly type: "polls.voted";
     readonly pollId: string;
     readonly noteId: string;
     readonly accountId: string;
-    readonly voteIds: readonly string[];
 };
 
 /** Whether `event` is a {@link PollVoted}. */

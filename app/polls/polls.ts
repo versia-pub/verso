@@ -7,10 +7,10 @@ import { blocksBetween } from "../graph/block_queries.ts";
 import { NotPermitted, Unprocessable } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
+import type { NoteRow } from "../notes/note_queries.ts";
 import { visibleNote } from "../notes/visibility.ts";
 import type { PollVoted } from "./events.ts";
 import {
-    deletePoll,
     findPoll,
     insertPoll,
     insertVotes,
@@ -48,45 +48,48 @@ export const addPoll = async (ctx: Context, noteId: string, draft: PollDraft): P
 };
 
 /**
- * Whether editing a status with the poll `poll` changes it. A `draft` of `undefined` leaves it as
- * it is, and `null` removes it. Its end is set anew from now, like Mastodon does.
+ * Throws `Unprocessable` if editing a status with the poll `poll` to have the poll `draft` would
+ * add a poll, remove one, or change what it asks. A `draft` of `undefined` leaves it as it is, and
+ * `null` removes it. A poll's options and whether it allows several choices can't change, since
+ * votes in it answer them.
+ */
+export const checkPollEdit = (
+    ctx: Context,
+    poll: PollWithOptions | undefined,
+    draft: PollDraft | null | undefined,
+): void => {
+    if (draft === undefined || draft === null && poll === undefined) return;
+
+    if (draft === null || poll === undefined || asksAnew(poll, asNewPoll(ctx, draft))) {
+        throw new Unprocessable("The poll's options can't be changed");
+    }
+};
+
+/**
+ * Whether editing a status with the poll `poll` to have the poll `draft` changes it, once
+ * {@link checkPollEdit} allows it. Its end is set anew from now, like Mastodon does.
  */
 export const changesPoll = (
     ctx: Context,
     poll: PollWithOptions | undefined,
     draft: PollDraft | null | undefined,
 ): boolean => {
-    if (draft === undefined) return false;
-    if (draft === null || poll === undefined) return draft !== null || poll !== undefined;
+    if (!draft || poll === undefined) return false;
 
     const changes = asNewPoll(ctx, draft);
-    return asksAnew(poll, changes) || poll.hide_totals !== changes.hideTotals ||
+    return poll.hide_totals !== changes.hideTotals ||
         poll.expires_at?.getTime() !== changes.expiresAt?.getTime();
 };
 
-/**
- * Applies the change {@link changesPoll} reports to `poll`, the poll of the status `noteId`. A poll
- * that asks something else loses its votes.
- */
+/** Applies the change {@link changesPoll} reports to `poll`, the poll of a status. */
 export const changePoll = async (
     ctx: Context,
-    noteId: string,
     poll: PollWithOptions | undefined,
     draft: PollDraft | null | undefined,
 ): Promise<void> => {
-    if (draft === undefined) return;
-    if (draft === null) {
-        if (poll) await deletePoll(ctx, poll);
-        return;
-    }
+    if (!draft || poll === undefined) return;
 
-    const changes = asNewPoll(ctx, draft);
-    if (poll === undefined) {
-        await insertPoll(ctx, noteId, changes);
-        return;
-    }
-
-    await updatePoll(ctx, poll, changes, asksAnew(poll, changes));
+    await updatePoll(ctx, poll, asNewPoll(ctx, draft));
 };
 
 /** Whether `poll` has ended. */
@@ -94,21 +97,23 @@ export const hasEnded = (ctx: Context, poll: PollRow): boolean =>
     poll.expires_at !== null && poll.expires_at <= ctx.clock.now();
 
 /**
- * Votes as `accountId` for the options `choices` of the poll `pollId`, in `ctx`'s transaction. Like
- * Mastodon, it allows a vote once, or in a poll of several choices once for each option, before the
- * poll ends, and not in one's own polls. A vote that is `resent` counts once, because remote
- * instances may send one again. Returns the poll, or `undefined` if there is none or `accountId`
- * may not see its status.
+ * Locks the votes in the poll `pollId`, so that a voter's two changes can't both count as its
+ * first, and a recount can't overwrite totals another vote is changing.
  */
-export const castVotes = async (
+export const lockPoll = (ctx: Context, pollId: string): Promise<void> =>
+    lockKey(ctx.db, `poll:${pollId}`);
+
+/**
+ * The poll `pollId` and its status, if `accountId` may vote in it: there is one, and `accountId`
+ * may see the status. Locks the votes in it. Throws `NotPermitted` if `accountId` blocks
+ * the status's author.
+ */
+export const votable = async (
     ctx: Context,
     accountId: string,
     pollId: string,
-    choices: readonly number[],
-    resent = false,
-): Promise<PollWithOptions | undefined> => {
-    // So that two votes by one account can't both count as its first.
-    await lockKey(ctx.db, `vote:${pollId}:${accountId}`);
+): Promise<{ readonly poll: PollWithOptions; readonly note: NoteRow } | undefined> => {
+    await lockPoll(ctx, pollId);
 
     const poll = await findPoll(ctx, pollId);
     const note = poll && await visibleNote(ctx, poll.note_id, accountId);
@@ -118,13 +123,29 @@ export const castVotes = async (
     const { blocking } = await blocksBetween(ctx, accountId, [note.account_id]);
     if (blocking.size > 0) throw new NotPermitted();
 
-    const voted = (await votesAmong(ctx, [accountId], [poll.id])).get(accountId)?.get(poll.id) ??
-        [];
-    if (resent && choices.every((choice) => voted.includes(choice))) return poll;
+    return { poll, note };
+};
 
+/** Whether `choices` has an option that `poll` doesn't have. */
+export const hasUnknownChoice = (poll: PollWithOptions, choices: readonly number[]): boolean =>
+    choices.some((choice) => choice < 0 || choice >= poll.options.length);
+
+/**
+ * Throws `Unprocessable` if `accountId`, who voted for `voted`, may not also vote for `choices` in
+ * `poll`, on `note`. Like Mastodon, a vote is allowed once, or in a poll of several choices once for
+ * each option, before the poll ends, and not in one's own polls.
+ */
+export const checkVote = (
+    ctx: Context,
+    poll: PollWithOptions,
+    note: NoteRow,
+    accountId: string,
+    choices: readonly number[],
+    voted: readonly number[],
+): void => {
     // The messages are Mastodon's.
     if (hasEnded(ctx, poll)) throw new Unprocessable("The poll has already ended");
-    if (choices.some((choice) => choice < 0 || choice >= poll.options.length)) {
+    if (hasUnknownChoice(poll, choices)) {
         throw new Unprocessable("The chosen vote option does not exist");
     }
     if (note.account_id === accountId) {
@@ -135,14 +156,33 @@ export const castVotes = async (
         ? new Set(choices).size < choices.length || choices.some((c) => voted.includes(c))
         : voted.length > 0 || choices.length > 1;
     if (again) throw new Unprocessable("You have already voted on this poll");
+};
 
-    const voteIds = await insertVotes(ctx, poll, accountId, choices, voted.length > 0);
+/**
+ * Votes as `accountId` for the options `choices` of the poll `pollId`, in `ctx`'s transaction. The
+ * rules are {@link checkVote}'s. Returns the poll, or `undefined` if there is none or `accountId`
+ * may not see its status.
+ */
+export const castVotes = async (
+    ctx: Context,
+    accountId: string,
+    pollId: string,
+    choices: readonly number[],
+): Promise<PollWithOptions | undefined> => {
+    const found = await votable(ctx, accountId, pollId);
+    if (found === undefined) return undefined;
+
+    const { poll, note } = found;
+    const voted = (await votesAmong(ctx, [accountId], [poll.id])).get(accountId)?.get(poll.id) ??
+        [];
+    checkVote(ctx, poll, note, accountId, choices, voted);
+
+    await insertVotes(ctx, poll, accountId, choices, voted.length > 0);
     const event: PollVoted = {
         type: "polls.voted",
         pollId: poll.id,
         noteId: note.id,
         accountId,
-        voteIds,
     };
     await emit(ctx, event);
 

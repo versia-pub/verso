@@ -1,6 +1,6 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { createLocalAccount } from "../accounts/testing.ts";
-import { findRemoteNoteAt, versionsOf } from "../notes/note_queries.ts";
+import { findRemoteNoteAt } from "../notes/note_queries.ts";
 import { postNote } from "../notes/notes.ts";
 import { renderVersiaNotes } from "../notes/versia.ts";
 import { registry } from "../registry.ts";
@@ -47,17 +47,19 @@ Deno.test("a local poll is in its Note, with its options as HTML text and its co
         (await renderVersiaNotes(test.ctx, [shown, hidden])).map((note) => note.extensions);
 
     const expiresAt = new Date(test.clock.now().getTime() + 3600_000).toISOString();
-    const poll = (votes: number[], multiple: boolean) => ({
+    const poll = (votes: number[], multiple: boolean, voters?: number) => ({
         "pub.versia:polls": {
             options: [option("Red &amp; &lt;b&gt;", votes[0]), option("Blue", votes[1])],
             multiple_choice: multiple,
+            ...voters === undefined ? {} : { voters },
             expires_at: expiresAt,
         },
     });
-    assertEquals(await extensions(), [poll([0, 1], false), poll([0, 0], true)]);
+    // The voters are hidden with the counts.
+    assertEquals(await extensions(), [poll([0, 1], false, 1), poll([0, 0], true)]);
 
     test.clock.advance(3600_000);
-    assertEquals(await extensions(), [poll([0, 1], false), poll([0, 1], true)]);
+    assertEquals(await extensions(), [poll([0, 1], false, 1), poll([0, 1], true, 1)]);
 });
 
 /** A public status by bob on b.test, which mentions alice, with the poll `fields` give. */
@@ -186,34 +188,67 @@ Deno.test("a remote poll sent again with new counts isn't edited, and keeps loca
     );
 });
 
-Deno.test("a remote poll that asks something else, or is removed, is an edit", async () => {
+Deno.test("a remote poll's voters are kept when it says how many there are", async () => {
+    await using test = await open();
+
+    await test.send(note({ voters: 6 }));
+    assertEquals((await test.asked())?.voters, 6);
+
+    await test.send(note({ voters: 7 }));
+    assertEquals((await test.asked())?.voters, 7);
+
+    await test.send(note({}));
+    assertEquals((await test.asked())?.voters, null);
+});
+
+Deno.test("a version of a remote status that changes its poll's options, or adds or removes a poll, is discarded", async () => {
     await using test = await open();
     await test.send(note({}));
     const poll = await pollOf(test.a, (await test.kept()).id);
     await vote(test.a, "alice", poll?.id ?? "", [0]);
+    const before = await test.asked();
+    const edit = { updated_at: "2026-01-02T00:00:00Z" };
 
-    await test.send(note({ options: [option("Red"), option("Green", 1)] }));
+    for (
+        const version of [
+            note({ options: [option("Red"), option("Green", 1)] }, edit),
+            note({ options: [option("Blue", 4), option("Red", 3)] }, edit),
+            note({ options: [option("Red", 3), option("Blue", 4), option("Green")] }, edit),
+            note({ multiple_choice: true }, edit),
+            note({}, { ...edit, extensions: undefined }),
+        ]
+    ) {
+        await test.send({ ...version, content: "<p>Which one?</p>" });
+
+        assertEquals(await test.asked(), before);
+        assertEquals((await test.kept()).edited_at, null);
+        assertEquals((await test.kept()).content_html, "<p>Which?</p>");
+    }
+
+    assertEquals(
+        await votesAmong(test.a, ["alice"], [poll?.id ?? ""]),
+        new Map([["alice", new Map([[poll?.id ?? "", [0]]])]]),
+    );
+
+    // The same poll, with a new question, is an edit.
+    await test.send(note({}, { ...edit, content: "<p>Which one?</p>" }));
+    assertEquals((await test.kept()).content_html, "<p>Which one?</p>");
     assertEquals((await test.kept()).edited_at, test.network.clock.now());
-    assertEquals((await test.asked())?.options, [["Red", 0], ["Green", 1]]);
-    assertEquals(await votesAmong(test.a, ["alice"], [poll?.id ?? ""]), new Map());
+    assertEquals(
+        await votesAmong(test.a, ["alice"], [poll?.id ?? ""]),
+        new Map([["alice", new Map([[poll?.id ?? "", [0]]])]]),
+    );
+});
 
-    await test.send(note({ options: [option("Red"), option("Green", 1)], multiple_choice: true }));
-    assertEquals((await test.kept()).edited_at, test.network.clock.now());
-
+Deno.test("a version of a remote status without a poll can't gain one", async () => {
+    await using test = await open();
     await test.send(note({}, { extensions: undefined }));
-    assertEquals((await test.kept()).edited_at, test.network.clock.now());
     assertEquals(await test.asked(), undefined);
 
-    await test.send(note({}));
-    assertEquals((await test.kept()).edited_at, test.network.clock.now());
+    await test.send(note({}, { updated_at: "2026-01-02T00:00:00Z", content: "<p>Which one?</p>" }));
 
-    const versions = await versionsOf(test.a, (await test.kept()).id);
-    assertEquals(versions.map((version) => version.poll_options), [
-        ["Red", "Blue"],
-        ["Red", "Green"],
-        ["Red", "Green"],
-        null,
-    ]);
+    assertEquals(await test.asked(), undefined);
+    assertEquals((await test.kept()).edited_at, null);
 });
 
 Deno.test("a remote poll that ended, sent again, doesn't end again", async () => {

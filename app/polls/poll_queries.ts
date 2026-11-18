@@ -2,11 +2,11 @@ import { type Selectable, sql } from "kysely";
 import { skippingLocked } from "../db/locking.ts";
 import type { AccountIdQuery } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
-import type { PollOptionsTable, PollsTable, PollVotesTable } from "./tables.ts";
+import type { PollBallotsTable, PollOptionsTable, PollsTable } from "./tables.ts";
 
 export type PollRow = Selectable<PollsTable>;
 export type PollOptionRow = Selectable<PollOptionsTable>;
-export type PollVoteRow = Selectable<PollVotesTable>;
+export type PollBallotRow = Selectable<PollBallotsTable>;
 
 /** A poll with its options, in order. */
 export type PollWithOptions = PollRow & { readonly options: readonly PollOptionRow[] };
@@ -47,43 +47,36 @@ export const insertPoll = async (ctx: Context, noteId: string, poll: NewPoll): P
 };
 
 /**
- * Changes `poll` to ask what `changes` asks, keeping its votes unless `reset`. If its end moves, it
- * hasn't ended yet.
+ * Changes the end and the hidden totals of `poll` to those `changes` has. Its options and votes stay
+ * as they are, since they can't change. If its end moves, it hasn't ended yet.
  */
 export const updatePoll = async (
     ctx: Context,
     poll: PollRow,
     changes: NewPoll,
-    reset: boolean,
 ): Promise<void> => {
     const moves = poll.expires_at?.getTime() !== changes.expiresAt?.getTime();
 
     await ctx.db.updateTable("polls")
         .set({
-            multiple: changes.multiple,
             hide_totals: changes.hideTotals,
             expires_at: changes.expiresAt,
             // Its voters are told again when the new end comes.
             ...moves ? { ended_at: null } : {},
-            ...reset ? { voters_count: 0 } : {},
         })
         .where("id", "=", poll.id)
         .execute();
-    if (!reset) return;
-
-    await ctx.db.deleteFrom("poll_votes").where("poll_id", "=", poll.id).execute();
-    await ctx.db.deleteFrom("poll_options").where("poll_id", "=", poll.id).execute();
-    await insertOptions(ctx, poll.id, changes.options);
 };
 
 /**
- * Sets how many votes each option of the remote poll `pollId` has, in order, as its instance
- * reports them. How many accounts voted is unknown, because Versia doesn't say.
+ * Sets how many votes each option of the remote poll `pollId` has, in order, and how many accounts
+ * voted, as its instance reports them. `voters` is `null` if it didn't say.
  */
 export const setRemoteVotes = async (
     ctx: Context,
     pollId: string,
     votes: readonly number[],
+    voters: number | null,
 ): Promise<void> => {
     for (const [position, count] of votes.entries()) {
         await ctx.db.updateTable("poll_options")
@@ -93,13 +86,8 @@ export const setRemoteVotes = async (
             .execute();
     }
 
-    await ctx.db.updateTable("polls").set({ voters_count: null }).where("id", "=", pollId)
+    await ctx.db.updateTable("polls").set({ voters_count: voters }).where("id", "=", pollId)
         .execute();
-};
-
-/** Deletes `poll`, and its options and votes with it. */
-export const deletePoll = async (ctx: Context, poll: PollRow): Promise<void> => {
-    await ctx.db.deleteFrom("polls").where("id", "=", poll.id).execute();
 };
 
 /** The polls of those of `noteIds` that have one, with their options, by status. */
@@ -173,8 +161,9 @@ export const votesAmong = async (
 };
 
 /**
- * Adds `accountId`'s votes for `choices` in `poll`, counts them, and counts `accountId` as a voter
- * unless `voted` already. Returns the votes' ids, in the order of `choices`.
+ * Adds the votes of the local user `accountId` for `choices` in `poll`, and counts them. Their
+ * ballot is made if `voted` isn't so, and then they count as a voter. Otherwise its `updated_at`
+ * is set.
  */
 export const insertVotes = async (
     ctx: Context,
@@ -182,41 +171,183 @@ export const insertVotes = async (
     accountId: string,
     choices: readonly number[],
     voted: boolean,
-): Promise<string[]> => {
-    const ids = choices.map(() => ctx.ids());
-
-    await ctx.db.insertInto("poll_votes")
-        .values(choices.map((choice, index) => ({
-            id: ids[index],
-            poll_id: poll.id,
-            account_id: accountId,
-            choice,
-            created_at: ctx.clock.now(),
-        })))
-        .execute();
-
+): Promise<void> => {
+    await insertChoices(ctx, poll.id, accountId, choices);
     await ctx.db.updateTable("poll_options")
         .set({ votes_count: sql`votes_count + 1` })
         .where("poll_id", "=", poll.id)
         .where("position", "in", choices)
         .execute();
 
-    if (voted) return ids;
+    if (voted) {
+        await ctx.db.updateTable("poll_ballots")
+            .set({ updated_at: ctx.clock.now() })
+            .where("poll_id", "=", poll.id)
+            .where("account_id", "=", accountId)
+            .execute();
+        return;
+    }
+
+    await insertBallot(ctx, {
+        id: ctx.ids(),
+        poll_id: poll.id,
+        account_id: accountId,
+        remote_id: null,
+        created_at: ctx.clock.now(),
+        updated_at: null,
+    });
     await ctx.db.updateTable("polls")
         .set({ voters_count: sql`voters_count + 1` })
         .where("id", "=", poll.id)
         .where("voters_count", "is not", null)
         .execute();
-
-    return ids;
 };
 
-/** The votes of `ids`, as they were cast. */
-export const findVotes = (ctx: Context, ids: readonly string[]): Promise<PollVoteRow[]> =>
-    ids.length === 0
-        ? Promise.resolve([])
-        : ctx.db.selectFrom("poll_votes").selectAll().where("id", "in", ids).orderBy("choice")
-            .execute();
+/** Adds one vote of `accountId` in `pollId` for each of `choices`. */
+const insertChoices = async (
+    ctx: Context,
+    pollId: string,
+    accountId: string,
+    choices: readonly number[],
+): Promise<void> => {
+    await ctx.db.insertInto("poll_votes")
+        .values(choices.map((choice) => ({
+            id: ctx.ids(),
+            poll_id: pollId,
+            account_id: accountId,
+            choice,
+            created_at: ctx.clock.now(),
+        })))
+        .execute();
+};
+
+/** Adds `ballot`, without its votes. */
+const insertBallot = async (ctx: Context, ballot: PollBallotRow): Promise<void> => {
+    await ctx.db.insertInto("poll_ballots").values(ballot).execute();
+};
+
+/** The ballot `id`, if there is one. */
+export const findBallot = (ctx: Context, id: string): Promise<PollBallotRow | undefined> =>
+    ctx.db.selectFrom("poll_ballots").selectAll().where("id", "=", id).executeTakeFirst();
+
+/** The ballot of `accountId` in the poll `pollId`, if they have one. */
+export const ballotOf = (
+    ctx: Context,
+    pollId: string,
+    accountId: string,
+): Promise<PollBallotRow | undefined> =>
+    ctx.db.selectFrom("poll_ballots").selectAll()
+        .where("poll_id", "=", pollId)
+        .where("account_id", "=", accountId)
+        .executeTakeFirst();
+
+/** The ballot of `accountId` that is the Vote `remoteId` on their instance, if they have one. */
+export const remoteBallotOf = (
+    ctx: Context,
+    accountId: string,
+    remoteId: string,
+): Promise<PollBallotRow | undefined> =>
+    ctx.db.selectFrom("poll_ballots").selectAll()
+        .where("account_id", "=", accountId)
+        .where("remote_id", "=", remoteId)
+        .executeTakeFirst();
+
+/** The ballot that is the Vote `remoteId` of an account of the instance `instanceId`, if any. */
+export const findRemoteBallot = (
+    ctx: Context,
+    instanceId: string,
+    remoteId: string,
+): Promise<PollBallotRow | undefined> =>
+    ctx.db.selectFrom("poll_ballots")
+        .innerJoin("accounts", "accounts.id", "poll_ballots.account_id")
+        .selectAll("poll_ballots")
+        .where("poll_ballots.remote_id", "=", remoteId)
+        .where("accounts.instance_id", "=", instanceId)
+        .executeTakeFirst();
+
+/** The options `ballot` chose, in order. */
+export const choicesOf = async (ctx: Context, ballot: PollBallotRow): Promise<number[]> =>
+    (await ctx.db.selectFrom("poll_votes").select("choice")
+        .where("poll_id", "=", ballot.poll_id)
+        .where("account_id", "=", ballot.account_id)
+        .orderBy("choice")
+        .execute()).map((row) => row.choice);
+
+/**
+ * Gives `ballot` the choices `choices` in place of its own, and sets its `updated_at`. Counts stay
+ * as they are until {@link recountPoll}.
+ */
+export const setChoices = async (
+    ctx: Context,
+    ballot: PollBallotRow,
+    choices: readonly number[],
+    updatedAt: Date | null,
+): Promise<void> => {
+    await ctx.db.deleteFrom("poll_votes")
+        .where("poll_id", "=", ballot.poll_id)
+        .where("account_id", "=", ballot.account_id)
+        .execute();
+    await insertChoices(ctx, ballot.poll_id, ballot.account_id, choices);
+
+    await setBallotUpdatedAt(ctx, ballot, updatedAt);
+};
+
+/** Sets when `ballot` was last updated, as its voter's instance says. */
+export const setBallotUpdatedAt = async (
+    ctx: Context,
+    ballot: PollBallotRow,
+    updatedAt: Date | null,
+): Promise<void> => {
+    await ctx.db.updateTable("poll_ballots").set({ updated_at: updatedAt })
+        .where("id", "=", ballot.id)
+        .execute();
+};
+
+/** Adds `ballot` of a remote voter, and its votes for `choices`. Counts wait for a recount. */
+export const insertRemoteBallot = async (
+    ctx: Context,
+    ballot: PollBallotRow,
+    choices: readonly number[],
+): Promise<void> => {
+    await insertBallot(ctx, ballot);
+    await insertChoices(ctx, ballot.poll_id, ballot.account_id, choices);
+};
+
+/** Deletes `ballot` and its votes. Counts wait for a recount. */
+export const deleteBallot = async (ctx: Context, ballot: PollBallotRow): Promise<void> => {
+    await ctx.db.deleteFrom("poll_votes")
+        .where("poll_id", "=", ballot.poll_id)
+        .where("account_id", "=", ballot.account_id)
+        .execute();
+    await ctx.db.deleteFrom("poll_ballots").where("id", "=", ballot.id).execute();
+};
+
+/**
+ * Sets every option's `votes_count` of the poll `pollId` and its `voters_count` from the votes and
+ * ballots stored. A change received from a remote voter can move any of them, so they are counted
+ * again rather than adjusted.
+ */
+export const recountPoll = async (ctx: Context, pollId: string): Promise<void> => {
+    await ctx.db.updateTable("poll_options")
+        .set({
+            votes_count: sql`(
+                select count(*) from poll_votes
+                where poll_votes.poll_id = poll_options.poll_id
+                    and poll_votes.choice = poll_options.position
+            )`,
+        })
+        .where("poll_id", "=", pollId)
+        .execute();
+
+    await ctx.db.updateTable("polls")
+        .set({
+            voters_count: sql`(
+                select count(*) from poll_ballots where poll_ballots.poll_id = polls.id
+            )`,
+        })
+        .where("id", "=", pollId)
+        .execute();
+};
 
 /** The instances of the remote accounts that voted in `pollId`, other than `skipped`. */
 export const voterInstances = async (

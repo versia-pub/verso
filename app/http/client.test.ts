@@ -451,13 +451,21 @@ Deno.test("a user asks a question with a poll, another votes, and the poll is ch
 
     const edited = await alice.statuses.edit(posted.id, {
         status: "Which?",
-        poll: { options: ["Red", "Green"], expires_in: 600 },
+        poll: { options: ["Red", "Blue"], expires_in: 1200, multiple: true },
     });
-    assertEquals(edited.poll?.votes_count, 0);
-    assertEquals(
-        (await alice.statuses.edit(posted.id, { status: "Which?", poll: null })).poll,
-        null,
+    assertEquals(edited.poll?.votes_count, 2);
+    assertEquals(edited.poll?.own_votes ?? [], []);
+
+    const error = await assertRejects(
+        () =>
+            alice.statuses.edit(posted.id, {
+                status: "Which?",
+                poll: { options: ["Red", "Green"], expires_in: 600, multiple: true },
+            }),
+        ApiError,
     );
+    assertEquals(error.status, 422);
+    assertEquals((await alice.polls.get(id)).votes_count, 2);
 });
 
 Deno.test("a user who voted in a poll is notified when it ends", async () => {

@@ -124,7 +124,7 @@ const fetches = (network: Awaited<ReturnType<typeof open>>["network"], id: strin
         new URL(request.url).pathname === `/.versia/v0.7/entities/pub.versia:social/Note/${id}`
     ).length;
 
-Deno.test("votes in a local poll reach its followers' instances a few minutes after the first", async () => {
+Deno.test("votes in a local poll reach its followers' instances a minute after the first", async () => {
     await using test = await open();
     const a = test.network.instances["a.test"];
     const carol = await clientOf(a, await createLocalAccount(a.ctx, "carol"));
@@ -137,7 +137,7 @@ Deno.test("votes in a local poll reach its followers' instances a few minutes af
         (await carol("POST", `/api/v1/polls/${poll.id}/votes`, { choices: [1] })).status,
         200,
     );
-    test.network.clock.advance(2 * 60_000);
+    test.network.clock.advance(30_000);
     assertEquals(
         (await dave("POST", `/api/v1/polls/${poll.id}/votes`, { choices: [1] })).status,
         200,
@@ -145,7 +145,7 @@ Deno.test("votes in a local poll reach its followers' instances a few minutes af
     await test.network.drain();
     assertEquals(test.counts(await test.pollOf("bob", uri)), [0, 0, 0]);
 
-    test.network.clock.advance(60_000);
+    test.network.clock.advance(30_000);
     await test.network.drain();
     assertEquals(test.counts(await test.pollOf("bob", uri)), [0, 2, 0]);
 
@@ -155,7 +155,7 @@ Deno.test("votes in a local poll reach its followers' instances a few minutes af
         (await erin("POST", `/api/v1/polls/${poll.id}/votes`, { choices: [0] })).status,
         200,
     );
-    test.network.clock.advance(3 * 60_000);
+    test.network.clock.advance(60_000);
     await test.network.drain();
     assertEquals(test.counts(await test.pollOf("bob", uri)), [1, 2, 0]);
 });

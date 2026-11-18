@@ -20,7 +20,8 @@ import { PermanentFailure } from "../jobs/worker.ts";
 import { attachedTo, attachRemote, changesRemoteAttachments } from "../media/attachments.ts";
 import { maxUrlLength, remoteMedia } from "../media/versia.ts";
 import { pollOf } from "../polls/poll_queries.ts";
-import { editsRemotePoll, keepRemotePoll, remotePollOf } from "../polls/versia.ts";
+import { asksAnew } from "../polls/polls.ts";
+import { keepRemotePoll, remotePollOf } from "../polls/versia.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { sanitizeHtml, sanitizerVersion, shownHtml, textOfHtml } from "../kernel/html.ts";
@@ -177,7 +178,8 @@ const editedAt = (ctx: Context, note: v0_7.Note, createdAt: Date): Date => {
  * older `updated_at` than the stored one, or another `created_at`, is discarded. A newer version
  * with different content is marked as edited at its `updated_at`, or at the time it is received if
  * it has none, and the previous content is saved in its edit history. A poll's counts changing
- * isn't an edit, but its options changing is. A new status, or an edited one, is emitted.
+ * isn't an edit. A version whose poll has other options or another `multiple_choice`, or that adds
+ * or removes a poll, is discarded. A new status, or an edited one, is emitted.
  */
 export const receiveNote = async (
     ctx: Context,
@@ -221,6 +223,19 @@ export const receiveNote = async (
         return;
     }
 
+    // A poll's options can't change, and a status can't gain or lose a poll, because its votes
+    // answer them.
+    const poll = remotePollOf(note.extensions);
+    const previousPoll = existing && await pollOf(ctx, existing.id);
+    if (
+        existing &&
+        (previousPoll === undefined || poll === undefined
+            ? previousPoll !== poll
+            : asksAnew(previousPoll, poll))
+    ) {
+        return;
+    }
+
     const rows = await findAccounts(ctx, mentions.map((mention) => mention.id));
     const mentionHrefs = new Map(mentions.flatMap((mention) => {
         const row = rows.find((each) => each.id === mention.id);
@@ -249,17 +264,14 @@ export const receiveNote = async (
         remoteEmojisOf(note.extensions),
     );
     const files = note.attachments.flatMap((media) => remoteMedia(media, () => true) ?? []);
-    const poll = remotePollOf(note.extensions);
 
     if (existing) {
-        const previousPoll = await pollOf(ctx, existing.id);
         const edited =
             // Stored before it was sanitised on arrival, it is compared as it was shown.
             changes.content_html !== shownHtml(existing.content_html, existing.html_version) ||
             changes.spoiler_text !== existing.spoiler_text ||
             changes.sensitive !== existing.sensitive ||
-            changesRemoteAttachments(ctx, await attachedTo(ctx, existing.id), files) ||
-            editsRemotePoll(previousPoll, poll);
+            changesRemoteAttachments(ctx, await attachedTo(ctx, existing.id), files);
         if (edited) await keepVersion(ctx, existing);
 
         // Its audience may change, and with it whether it is counted.

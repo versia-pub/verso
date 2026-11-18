@@ -133,6 +133,29 @@ const references: Record<string, (ctx: Context) => Promise<unknown>> = {
                 created_at: ctx.clock.now(),
             })
             .execute(),
+    "poll_ballots.account_id": async (ctx) => {
+        const noteId = await aliceNote(ctx);
+        const pollId = ctx.ids();
+        await ctx.db.insertInto("polls")
+            .values({
+                id: pollId,
+                note_id: noteId,
+                multiple: false,
+                hide_totals: false,
+                created_at: ctx.clock.now(),
+            })
+            .execute();
+        await ctx.db.insertInto("poll_ballots")
+            .values({
+                id: ctx.ids(),
+                poll_id: pollId,
+                account_id: "dave",
+                remote_id: null,
+                created_at: ctx.clock.now(),
+                updated_at: null,
+            })
+            .execute();
+    },
     "poll_votes.account_id": async (ctx) => {
         const noteId = await aliceNote(ctx);
         const pollId = ctx.ids();

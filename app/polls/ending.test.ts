@@ -68,7 +68,7 @@ Deno.test("a poll that is edited to end later notifies again when it does", asyn
     // carol muted its thread.
     assertEquals(await test.notified(), ["alice alice true", "bob alice true"]);
 
-    await changePoll(test.ctx, test.note.id, test.asked, { ...test.poll, expiresIn: 600 });
+    await changePoll(test.ctx, test.asked, { ...test.poll, expiresIn: 600 });
     test.clock.advance(599_000);
     await endPolls(test.ctx);
     assertEquals((await test.notified()).length, 2);

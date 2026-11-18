@@ -115,14 +115,6 @@ Deno.test("a Delete of a type that can't be deleted is given up on", async () =>
         await test.send({ ...deleteEntity("evil.test:alice"), deleted_type: "Subscribe" }) ?? "",
         "A Subscribe can't be deleted",
     );
-    // Verso stores votes, but a Delete can't withdraw one yet.
-    assertStringIncludes(
-        await test.send(
-            deleteEntity("evil.test:alice", { deleted_type: "pub.versia:polls/Vote" }),
-        ) ??
-            "",
-        "A pub.versia:polls/Vote can't be deleted",
-    );
     assertEquals(await test.usernames(), ["alice", "bob"]);
 });
 

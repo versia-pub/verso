@@ -213,8 +213,20 @@ Deno.test("a vote is counted once per account, and once per option in a poll of 
     assertEquals(form.body.own_votes, [0]);
     assertEquals(await refused(several.pollId, [0]), "You have already voted on this poll");
     assertEquals(await refused(several.pollId, [1, 1]), "You have already voted on this poll");
+    // A voter has one ballot, which a further vote marks as changed.
+    const ballots = async () =>
+        (await test.ctx.db.selectFrom("poll_ballots")
+            .select(["account_id", "remote_id", "created_at", "updated_at"])
+            .where("poll_id", "=", several.pollId).orderBy("created_at").execute())
+            .map((ballot) => [ballot.account_id, ballot.remote_id, ballot.updated_at]);
+    const bob = (await test.ctx.db.selectFrom("accounts").select("id")
+        .where("username", "=", "bob").executeTakeFirstOrThrow()).id;
+    assertEquals(await ballots(), [[bob, null, null]]);
+    test.clock.advance(1000);
     assertEquals((await test.vote(several.pollId, [2, 1])).body.own_votes, [0, 1, 2]);
+    assertEquals(await ballots(), [[bob, null, test.ctx.clock.now()]]);
     const both = await test.vote(several.pollId, [0, 2], "carol");
+    assertEquals((await ballots()).length, 2);
     assertEquals(tally(both.body), ["Red 2", "Blue 1", "Green 2"]);
     assertEquals([both.body.votes_count, both.body.voters_count], [5, 2]);
 });
@@ -250,7 +262,7 @@ Deno.test("a poll that hides its totals shows them only once it ends", async () 
     assertEquals(tally(await test.poll(pollId)), ["Red 0", "Blue 0", "Green 1"]);
 });
 
-Deno.test("editing a poll keeps its votes unless it asks something else", async () => {
+Deno.test("editing a poll keeps its votes, and may move its end", async () => {
     await using test = await open();
     const { statusId, pollId } = await test.ask();
     await test.vote(pollId, [0]);
@@ -276,20 +288,6 @@ Deno.test("editing a poll keeps its votes unless it asks something else", async 
         new Date(test.ctx.clock.now().getTime() + 600_000).toISOString(),
     );
 
-    const multiple = await edit({
-        poll: { options: ["Red", "Blue", "Green"], expires_in: 600, multiple: true },
-    });
-    assertEquals(
-        [tally(multiple.body.poll), multiple.body.poll.voters_count],
-        [["Red 0", "Blue 0", "Green 0"], 0],
-    );
-    await test.vote(pollId, [1]);
-    const other = await edit({
-        poll: { options: ["Red", "Blue"], expires_in: 600, multiple: true },
-    });
-    assertEquals(tally(other.body.poll), ["Red 0", "Blue 0"]);
-    assertEquals((await test.poll(pollId, "bob")).own_votes, []);
-
     // Media can be added to a status with a poll, and removed from it, without touching the poll.
     const file = await test.uploaded();
     const withMedia = await edit({ media_ids: [file] });
@@ -297,27 +295,59 @@ Deno.test("editing a poll keeps its votes unless it asks something else", async 
     assertEquals(withMedia.body.poll.id, pollId);
     const withoutMedia = await edit({ media_ids: [] });
     assertEquals([withoutMedia.body.media_attachments, withoutMedia.body.poll.id], [[], pollId]);
-    const removed = await edit({ poll: null });
-    assertEquals(removed.body.poll, null);
-    assertEquals((await test.request("GET", `/api/v1/polls/${pollId}`)).status, 404);
 
     const history = await test.request("GET", `/api/v1/statuses/${statusId}/history`);
     assertEquals(
         history.body.map((version: { poll?: { options: { title: string }[] } }) =>
             version.poll?.options.map((option) => option.title).join()
         ),
-        [
-            "Red,Blue,Green",
-            "Red,Blue,Green",
-            "Red,Blue,Green",
-            "Red,Blue,Green",
-            // The edits that added and removed media.
-            "Red,Blue",
-            "Red,Blue",
-            "Red,Blue",
-            undefined,
-        ],
+        Array(5).fill("Red,Blue,Green"),
     );
+});
+
+Deno.test("a poll's options can't change, and a status can't gain or lose its poll", async () => {
+    await using test = await open();
+    const { statusId, pollId } = await test.ask();
+    await test.vote(pollId, [0]);
+    const plain = await test.request("POST", "/api/v1/statuses", { status: "Hi" });
+    const edit = (id: string, body: Record<string, unknown>) =>
+        test.request("PUT", `/api/v1/statuses/${id}`, { status: "Edited", ...body });
+    const poll = { options: ["Red", "Blue", "Green"], expires_in: 600 };
+
+    for (
+        const [id, body] of [
+            [statusId, { poll: null }],
+            [statusId, { poll: { ...poll, options: ["Red", "Blue"] } }],
+            [statusId, { poll: { ...poll, options: ["Blue", "Red", "Green"] } }],
+            [statusId, { poll: { ...poll, options: ["Red", "Blue", "Yellow"] } }],
+            [statusId, { poll: { ...poll, multiple: true } }],
+            [plain.body.id, { poll }],
+        ] as const
+    ) {
+        const refused = await edit(id, body);
+
+        assertEquals(
+            [refused.status, refused.body.error_description],
+            [422, "The poll's options can't be changed"],
+            JSON.stringify(body),
+        );
+    }
+
+    // Nothing was written.
+    const kept = await test.request("GET", `/api/v1/statuses/${statusId}`);
+    assertEquals([kept.body.edited_at, kept.body.poll.id, tally(kept.body.poll)], [null, pollId, [
+        "Red 1",
+        "Blue 0",
+        "Green 0",
+    ]]);
+    assertEquals((await test.request("GET", `/api/v1/statuses/${plain.body.id}`)).body.poll, null);
+    assertEquals(
+        (await test.request("GET", `/api/v1/statuses/${plain.body.id}`)).body.edited_at,
+        null,
+    );
+
+    // An edit that leaves a status without a poll without one is fine.
+    assertEquals((await edit(plain.body.id, { poll: null })).status, 200);
 });
 
 Deno.test("a poll that is sent again unchanged doesn't edit its status", async () => {

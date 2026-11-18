@@ -35,3 +35,16 @@ export type PollVotesTable = {
     choice: number;
     created_at: Date;
 };
+
+/** An account's ballot in a poll: all its votes, which Versia sends as one Vote. */
+export type PollBallotsTable = {
+    /** The Vote's id, as Verso sends it for a local voter. */
+    id: string;
+    poll_id: string;
+    account_id: string;
+    /** The Vote's id on the voter's instance, or `null` for a local voter. */
+    remote_id: string | null;
+    created_at: Date;
+    /** For a local voter, when choices were last added. For a remote one, as received. */
+    updated_at: Date | null;
+};

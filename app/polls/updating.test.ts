@@ -43,17 +43,17 @@ const open = async (hideTotals = false) => {
     return { ...test, note, poll, queued, sendsOf };
 };
 
-Deno.test("a vote queues one update of a poll, three minutes later, for all the votes before it", async () => {
+Deno.test("a vote queues one update of a poll, a minute later, for all the votes before it", async () => {
     await using test = await open();
 
     await test.ctx.transaction((tx) => castVotes(tx, "bob", test.poll.id, [0]));
-    test.clock.advance(60_000);
+    test.clock.advance(20_000);
     await test.ctx.transaction((tx) => castVotes(tx, "carol", test.poll.id, [1]));
 
-    assertEquals(await test.queued(), [[updateDelayMs - 60_000, { pollId: test.poll.id }]]);
+    assertEquals(await test.queued(), [[updateDelayMs - 20_000, { pollId: test.poll.id }]]);
 
     const before = await test.sendsOf();
-    test.clock.advance(updateDelayMs - 60_000);
+    test.clock.advance(updateDelayMs - 20_000);
     await drain(test.ctx, { [pollUpdatesQueue]: queues[pollUpdatesQueue] });
 
     assertEquals(await test.sendsOf() - before, 1);

@@ -59,7 +59,7 @@ their own.
 | `follows`, `blocks`, `mutes`, `account_domain_blocks`, `account_notes`                  | `graph`         |
 | `endorsements`                                                                          | `graph`         |
 | `likes`, `reactions`                                                                    | `interactions`  |
-| `polls`, `poll_options`, `poll_votes`                                                   | `polls`         |
+| `polls`, `poll_options`, `poll_ballots`, `poll_votes`                                   | `polls`         |
 | `scheduled_notes`                                                                       | `schedules`     |
 | `emojis`, `note_emojis`, `account_emojis`                                               | `emojis`        |
 | `media`, `note_media`, `scheduled_note_media`                                           | `media`         |

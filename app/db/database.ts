@@ -66,7 +66,12 @@ import type {
     NotificationRequestsTable,
     NotificationsTable,
 } from "../notifications/tables.ts";
-import type { PollOptionsTable, PollsTable, PollVotesTable } from "../polls/tables.ts";
+import type {
+    PollBallotsTable,
+    PollOptionsTable,
+    PollsTable,
+    PollVotesTable,
+} from "../polls/tables.ts";
 import type { ReportsTable } from "../reports/tables.ts";
 import type { ScheduledNotesTable } from "../schedules/tables.ts";
 import type { PushSubscriptionsTable, VapidKeysTable } from "../push/tables.ts";
@@ -127,6 +132,7 @@ export type Database = {
     notification_requests: NotificationRequestsTable;
     notifications: NotificationsTable;
     oauth_flows: OAuthFlowsTable;
+    poll_ballots: PollBallotsTable;
     poll_options: PollOptionsTable;
     poll_votes: PollVotesTable;
     polls: PollsTable;
