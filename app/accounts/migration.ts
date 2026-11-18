@@ -6,9 +6,9 @@
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/move_service.rb
  * @module
  */
-import type { v0_6 } from "@versia/protocol";
-import { formatReference } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
+import { followedInstances } from "../graph/follows.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
 import { type AccountRow, findAccount, updateLocalAccount } from "./account_queries.ts";
@@ -84,9 +84,9 @@ const refusalOf = (ctx: Context, from: AccountRow, to: AccountRow): MoveRefusal 
 
 /**
  * Moves the local user `accountId` to `to`, if `to` says it moved from it: its local followers
- * then follow `to`, and the instances of its followers and of `to` are sent a Migration, and its
- * profile, which says where it moved. `to` must have been fetched again just now, so that what it
- * says is current.
+ * then follow `to`, and the instances of its followers, of the accounts it follows and of `to` are
+ * sent a Migration, and its profile, which says where it moved. `to` must have been fetched again
+ * just now, so that what it says is current.
  */
 export const moveTo = async (
     ctx: Context,
@@ -114,14 +114,15 @@ export const moveTo = async (
         await emit(tx, moved);
         await profileUpdated(tx, from.id);
 
-        const migration: v0_6.Migration = {
+        const migration: v0_7.Migration = {
             type: "pub.versia:migration/Migration",
             created_at: tx.clock.now().toISOString(),
-            author: from.id,
-            destination: formatReference(referenceOf(tx, to), tx.urls.domain),
+            author: v0_7.formatReference(referenceOf(tx, from)),
+            destination: v0_7.formatReference(referenceOf(tx, to)),
         };
+        const followed = await followedInstances(tx, from.id);
         await queueDeliveriesTo(tx, migration, {
-            instanceIds: to.instance_id === null ? [] : [to.instance_id],
+            instanceIds: to.instance_id === null ? followed : [to.instance_id, ...followed],
             followersOf: from.id,
         });
     });

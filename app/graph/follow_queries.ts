@@ -274,6 +274,20 @@ export const followerInstanceIds = async (
         .flatMap((row) => row.instance_id ?? []);
 
 /**
+ * The remote instances of the accounts `accountId` follows, and was accepted by, other than
+ * suspended ones.
+ */
+export const followedInstanceIds = async (ctx: Context, accountId: string): Promise<string[]> =>
+    (await listed(ctx, "following", accountId)
+        .innerJoin("accounts", "accounts.id", "follows.followee_id")
+        .where("accounts.suspended_at", "is", null)
+        .select("accounts.instance_id")
+        .distinct()
+        .execute())
+        // Local accounts have no instance.
+        .flatMap((row) => row.instance_id ?? []);
+
+/**
  * Whether any of an account's followers, other than suspended ones and `skipped`, is on the
  * instance `instanceId`, joining their accounts as {@link followerInstanceIds} does, but stopping
  * at the first.

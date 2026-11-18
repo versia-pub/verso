@@ -317,6 +317,46 @@ Deno.test("a user moves only to an available account, fetched just now, saying i
     assertEquals(await previousOf(ctx, alice), [null, null]);
 });
 
+Deno.test("a Migration is sent to the instances of the accounts the user follows, if they accepted and aren't suspended", async () => {
+    await using network = await createNetwork(["a.test"]);
+    const { ctx, app } = network.instances["a.test"];
+    const remote = async (domain: string, id: string) => {
+        const instance = await addEvilInstance(network, domain, ["pub.versia:migration"]);
+        instance.serve(`/.versia/v0.7/entities/User/${id}`, user(id));
+        const found = await ctx.federation.resolve(ctx, { host: domain, id }, "User");
+        assertExists(found);
+        return found;
+    };
+    const alice = await createLocalAccount(ctx, "alice");
+    const bob = await createLocalAccount(ctx, "bob");
+    const carol = await remote("c.test", "carol");
+    const dave = await remote("d.test", "dave");
+    const erin = await remote("e.test", "erin");
+    await insertFollow(ctx, { followerId: alice, followeeId: carol, accepted: true, options: {} });
+    await insertFollow(ctx, { followerId: alice, followeeId: dave, accepted: false, options: {} });
+    await insertFollow(ctx, { followerId: alice, followeeId: erin, accepted: true, options: {} });
+    await ctx.db.updateTable("accounts").set({ suspended_at: ctx.clock.now() })
+        .where("id", "=", erin).execute();
+    await call(app, await tokenFor(ctx, bob), "PUT", "/api/v1/migration/previous", {
+        acct: "alice",
+    });
+
+    // bob is local, so only the accounts alice follows are sent the Migration.
+    const moved = await call(app, await tokenFor(ctx, alice), "POST", "/api/v1/migration/move", {
+        acct: "bob",
+    });
+    assertEquals(moved.status, 200, JSON.stringify(moved.body));
+    await network.drain();
+
+    const migrations = async (domain: string) =>
+        (await sentTo(network, domain)).filter((entity) =>
+            entity.type === "pub.versia:migration/Migration"
+        ).length;
+    assertEquals(await migrations("c.test"), 1);
+    assertEquals(await migrations("d.test"), 0);
+    assertEquals(await migrations("e.test"), 0);
+});
+
 Deno.test("a user that moved is sent saying so, along with a Migration to where it moved", async () => {
     await using network = await createNetwork(["a.test"]);
     const { ctx, app } = network.instances["a.test"];
@@ -339,7 +379,7 @@ Deno.test("a user that moved is sent saying so, along with a Migration to where 
     const migration = {
         type: "pub.versia:migration/Migration",
         created_at: network.clock.now().toISOString(),
-        author: alice,
+        author: `a.test:${alice}`,
         destination: "b.test:bob",
     };
     assertEquals(await sentTo(network, "b.test"), [migration]);

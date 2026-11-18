@@ -280,3 +280,23 @@ Deno.test("a Migration received without being prepared moves no one", async () =
     );
     assertEquals(await test.movedTo(), undefined);
 });
+
+Deno.test("a Migration with a bare author or destination moves no one", async () => {
+    await using test = await open();
+    await test.idOf("bob2");
+
+    for (const [author, destination] of [["bob", "c.test:bob2"], ["b.test:bob", "bob2"]]) {
+        const response = await test.b.send("https://a.test/.versia/v0.7/inbox", {
+            body: {
+                type: "pub.versia:migration/Migration",
+                created_at: test.network.clock.now().toISOString(),
+                author,
+                destination,
+            },
+        });
+        await response.body?.cancel();
+        await test.network.drain();
+
+        assertEquals(await test.movedTo(), undefined);
+    }
+});

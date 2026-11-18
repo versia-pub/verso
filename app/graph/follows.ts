@@ -20,6 +20,7 @@ import {
     deleteFollow,
     everyListedQuery,
     followedIdsQuery,
+    followedInstanceIds,
     followerInstanceIds,
     type FollowOptions,
     followsFrom,
@@ -243,6 +244,13 @@ export const followerInstances = (
         accountId,
         unblocked ? blockedByAccount(ctx, accountId).all : undefined,
     );
+
+/**
+ * The remote instances of the accounts `accountId` follows, and was accepted by, other than
+ * suspended ones.
+ */
+export const followedInstances = (ctx: Context, accountId: string): Promise<string[]> =>
+    followedInstanceIds(ctx, accountId);
 
 /** The accounts `accountId` follows, and was accepted by, for timelines and threads. */
 export const followedSubquery = (

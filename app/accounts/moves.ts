@@ -6,7 +6,7 @@
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/activitypub/activity/move.rb
  * @module
  */
-import { parseReference, type Reference, v0_6, v0_7 } from "@versia/protocol";
+import { type Reference, v0_7 } from "@versia/protocol";
 import type { EntityType } from "../federation/registry.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
@@ -40,18 +40,14 @@ export const accountAt = async (
     return row?.domain === null ? row : undefined;
 };
 
-/**
- * Stores the account the remote user `accountId`, as its instance `host` sent it, says it moved
- * from.
- */
+/** Stores the account the remote user `accountId`, as its instance sent it, says it moved from. */
 export const savePrevious = async (
     ctx: Context,
     accountId: string,
     user: v0_7.User,
-    host: string,
 ): Promise<void> => {
     const text = migrationOf(user)?.previous;
-    const previous = text === undefined || text === null ? undefined : parseReference(text, host);
+    const previous = text === undefined || text === null ? undefined : v0_7.parseReference(text);
 
     await ctx.db.updateTable("accounts")
         .set({ previous_host: previous?.host ?? null, previous_id: previous?.id ?? null })
@@ -108,19 +104,18 @@ const receiveMove = async (
 };
 
 /** The reference to the account a received user moved to, if it says it did. */
-const newOf = (user: v0_7.User, host: string) => {
+const destinationOf = (user: v0_7.User) => {
     const text = migrationOf(user)?.destination;
-    return text === undefined || text === null ? undefined : parseReference(text, host);
+    return text === undefined || text === null ? undefined : v0_7.parseReference(text);
 };
 
 /** Fetches the account a received user says it moved to, before {@link receiveUserMove}. */
 export const prepareUserMove = async (
     ctx: Context,
     user: v0_7.User,
-    host: string,
     budget: Budget,
 ): Promise<void> => {
-    const destination = newOf(user, host);
+    const destination = destinationOf(user);
     if (destination === undefined) return;
 
     await prepareMove(ctx, user, destination, budget);
@@ -135,16 +130,16 @@ export const receiveUserMove = async (
     user: v0_7.User,
     host: string,
 ): Promise<void> => {
-    const destination = newOf(user, host);
+    const destination = destinationOf(user);
     if (destination === undefined) return;
 
     await receiveMove(ctx, user, { host, id: user.id }, destination);
 };
 
 /** The parties of a Migration, if both are valid references. */
-const partiesOf = (migration: v0_6.Migration, origin: string) => {
-    const author = parseReference(migration.author, origin);
-    const destination = parseReference(migration.destination, origin);
+const partiesOf = (migration: v0_7.Migration) => {
+    const author = v0_7.parseReference(migration.author);
+    const destination = v0_7.parseReference(migration.destination);
     return author && destination && { author, destination };
 };
 
@@ -153,17 +148,17 @@ const partiesOf = (migration: v0_6.Migration, origin: string) => {
  * author only if the account it moved to says it moved from it.
  * @see https://versia.pub/extensions/migration
  */
-export const migrationType: EntityType<v0_6.Migration> = {
+export const migrationType: EntityType<v0_7.Migration> = {
     type: "pub.versia:migration/Migration",
-    extension: v0_6.migrationKey,
-    schema: v0_6.Migration,
-    authority: (migration, origin) => parseReference(migration.author, origin)?.host,
-    prepare: async (ctx, migration, sender, budget) => {
-        const parties = partiesOf(migration, sender.domain);
+    extension: v0_7.migrationKey,
+    schema: v0_7.Migration,
+    authority: (migration) => v0_7.parseReference(migration.author)?.host,
+    prepare: async (ctx, migration, _, budget) => {
+        const parties = partiesOf(migration);
         if (parties) await prepareMove(ctx, migration, parties.destination, budget);
     },
-    receive: async (ctx, migration, sender) => {
-        const parties = partiesOf(migration, sender.domain);
+    receive: async (ctx, migration) => {
+        const parties = partiesOf(migration);
         if (parties) await receiveMove(ctx, migration, parties.author, parties.destination);
     },
 };
