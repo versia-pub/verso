@@ -89,7 +89,8 @@ Deno.test("missing or malformed headers and unknown keys are rejected", async ()
             signature.slice(0, -2),
             // Headers trims spaces at either end, so put one inside.
             `${signature.slice(0, 40)} ${signature.slice(41)}`,
-            signature.replaceAll("+", "-").replaceAll("/", "_"),
+            // The key is random, so the signature may have no "+" or "/" to swap: add a "-".
+            `-${signature.slice(1)}`,
             "A".repeat(84) + "==",
         ]
     ) {
