@@ -7,11 +7,11 @@
  * @module
  */
 import type { ReportCategory } from "@versia/client-api";
-import { parseReference, v0_6 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { type AccountRow, findAccount, findAccounts } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
-import type { EntityType, Sender } from "../federation/registry.ts";
+import type { EntityType } from "../federation/registry.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { instanceMaySee } from "../notes/audience.ts";
 import { findNotes, type NoteRow } from "../notes/note_queries.ts";
@@ -21,6 +21,10 @@ import { isReportForwarded } from "./events.ts";
 import { findReport, insertReceivedReport } from "./report_queries.ts";
 
 const typeName = "pub.versia:reports/Report";
+
+/** The types that a report's `reported` gives an account and a status. */
+const userTypeName = "User";
+const noteTypeName = "pub.versia:social/Note";
 
 /** Mastodon's limit on the length of a received report's comment, in characters. */
 const commentLimit = 5000;
@@ -59,12 +63,18 @@ export const reportDeliveries = async (ctx: Context, event: DomainEvent): Promis
 
     const notes = await findNotes(ctx, report.note_ids);
     const references = await noteReferenceMap(ctx, notes.map((note) => note.id));
-    const entity: v0_6.Report = {
+    const entity: v0_7.Report = {
         type: typeName,
         created_at: report.created_at.toISOString(),
         reported: [
-            ...await userReferences(ctx, [target.id]),
-            ...report.note_ids.flatMap((id) => references.get(id) ?? []),
+            ...(await userReferences(ctx, [target.id])).map((reference) => ({
+                type: userTypeName,
+                reference,
+            })),
+            ...report.note_ids.flatMap((id) => references.get(id) ?? []).map((reference) => ({
+                type: noteTypeName,
+                reference,
+            })),
         ],
         tags: [report.category],
         ...report.comment !== "" && { comment: report.comment },
@@ -79,19 +89,22 @@ const categoryFromTags = (tags: readonly string[]): ReportCategory =>
     tags.find((tag): tag is "spam" | "legal" => tag === "spam" || tag === "legal") ?? "other";
 
 /** What a received report names that Verso has: users by their account ids, and statuses. */
-const reportedBy = async (ctx: Context, report: v0_6.Report, sender: Sender) => {
+const reportedBy = async (ctx: Context, report: v0_7.Report) => {
     const users = new Set<string>();
     const notes = new Map<string, NoteRow>();
 
-    // A reference doesn't say what it is of, so each is looked for among both.
-    for (const text of report.reported) {
-        const reference = parseReference(text, sender.domain);
+    // Verso only stores reports of accounts and statuses, so other types are ignored.
+    for (const entry of report.reported) {
+        const reference = v0_7.parseReference(entry.reference);
         if (reference === undefined) continue;
 
-        const user = await knownUser(ctx, reference);
-        if (user !== undefined) users.add(user.id);
-        const note = await knownNoteRow(ctx, reference);
-        if (note !== undefined) notes.set(note.id, note);
+        if (entry.type === userTypeName) {
+            const user = await knownUser(ctx, reference);
+            if (user !== undefined) users.add(user.id);
+        } else if (entry.type === noteTypeName) {
+            const note = await knownNoteRow(ctx, reference);
+            if (note !== undefined) notes.set(note.id, note);
+        }
     }
 
     return { users: [...users], notes: [...notes.values()] };
@@ -104,15 +117,15 @@ const reportedBy = async (ctx: Context, report: v0_6.Report, sender: Sender) => 
  * for statuses that reply to local users, which is when Mastodon sends it on to here. A report
  * Verso has nothing in is dropped. A comment is cut at {@link commentLimit} characters.
  */
-export const reportType: EntityType<v0_6.Report> = {
+export const reportType: EntityType<v0_7.Report> = {
     type: typeName,
-    extension: v0_6.reportsKey,
-    schema: v0_6.Report,
+    extension: v0_7.reportsKey,
+    schema: v0_7.Report,
     // An anonymous report comes from the instance that sent it.
     authority: (report, origin) =>
-        report.author ? parseReference(report.author, origin)?.host : origin,
+        report.author ? v0_7.parseReference(report.author)?.host : origin,
     receive: async (ctx, report, sender) => {
-        const { users, notes } = await reportedBy(ctx, report, sender);
+        const { users, notes } = await reportedBy(ctx, report);
         const accounts = await findAccounts(ctx, users);
         const repliedTo = await findAccounts(
             ctx,

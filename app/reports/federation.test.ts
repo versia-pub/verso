@@ -71,10 +71,27 @@ Deno.test("a report to forward is sent to the account's instance, without saying
     assertEquals(await sent(test.ctx), [["b.example", {
         type: "pub.versia:reports/Report",
         created_at: test.clock.now().toISOString(),
-        reported: ["b.example:carol", "b.example:n1", "b.example:n2"],
+        reported: [
+            { type: "User", reference: "b.example:carol" },
+            { type: "pub.versia:social/Note", reference: "b.example:n1" },
+            { type: "pub.versia:social/Note", reference: "b.example:n2" },
+        ],
         tags: ["spam"],
         comment: "Spam",
     }]]);
+});
+
+Deno.test("a sent report labels the account a User and each status a Note", async () => {
+    await using test = await open();
+
+    await test.report({});
+
+    const [[, entity]] = await sent(test.ctx);
+    assertEquals(entity.reported, [
+        { type: "User", reference: "b.example:carol" },
+        { type: "pub.versia:social/Note", reference: "b.example:n1" },
+        { type: "pub.versia:social/Note", reference: "b.example:n2" },
+    ]);
 });
 
 Deno.test("a report is only forwarded if asked, and of a remote account", async () => {
@@ -101,7 +118,11 @@ Deno.test("a report is forwarded to the domains asked for, of the account and th
     const entity = {
         type: "pub.versia:reports/Report",
         created_at: test.clock.now().toISOString(),
-        reported: ["b.example:carol", "b.example:n1", "b.example:n2"],
+        reported: [
+            { type: "User", reference: "b.example:carol" },
+            { type: "pub.versia:social/Note", reference: "b.example:n1" },
+            { type: "pub.versia:social/Note", reference: "b.example:n2" },
+        ],
         tags: ["other"],
     };
 
@@ -127,8 +148,17 @@ Deno.test("a report forwarded to no domains is sent nowhere", async () => {
 /** b.example, as the sender of a report. */
 const sender: Sender = { domain: "b.example", instanceId: "b.example", fetched: false };
 
+/** An account that a report names, by its reference. */
+const user = (reference: string) => ({ type: "User", reference });
+
+/** A status that a report names, by its reference. */
+const status = (reference: string) => ({ type: "pub.versia:social/Note", reference });
+
 /** A report from b.example of `reported`, anonymous unless it has an `author`. */
-const received = (reported: string[], options: Record<string, unknown> = {}) => ({
+const received = (
+    reported: { type: string; reference: string }[],
+    options: Record<string, unknown> = {},
+) => ({
     type: "pub.versia:reports/Report" as const,
     created_at: "2026-01-01T00:00:00.000Z",
     reported,
@@ -141,7 +171,7 @@ Deno.test("only the author's instance may send a report, or for an anonymous one
     const report = received([]);
 
     assertEquals(reportType.authority(report, "b.example"), "b.example");
-    assertEquals(reportType.authority({ ...report, author: "x" }, "b.example"), "b.example");
+    assertEquals(reportType.authority({ ...report, author: "x" }, "b.example"), undefined);
     assertEquals(
         reportType.authority({ ...report, author: "c.example:x" }, "b.example"),
         "c.example",
@@ -159,12 +189,12 @@ Deno.test("a received report of a local account is kept, with the statuses its i
     await reportType.receive(
         test.ctx,
         received([
-            `${domain}:${hidden.id}`,
-            `${domain}:bob`,
-            `${domain}:${shown.id}`,
-            `${domain}:alice`,
-            `${domain}:${followed.id}`,
-            `${domain}:nobody`,
+            status(`${domain}:${hidden.id}`),
+            user(`${domain}:bob`),
+            status(`${domain}:${shown.id}`),
+            user(`${domain}:alice`),
+            status(`${domain}:${followed.id}`),
+            user(`${domain}:nobody`),
         ], { comment: "x".repeat(4999) + "🙂🙂" }),
         sender,
     );
@@ -203,10 +233,22 @@ Deno.test("a received report of a remote account is kept only for replies to loc
     });
 
     // carol's statuses that reply to remote users aren't this instance's to judge.
-    await reportType.receive(test.ctx, received(["carol", "n1", "n2"], { tags: [] }), sender);
+    await reportType.receive(
+        test.ctx,
+        received([user("b.example:carol"), status("b.example:n1"), status("b.example:n2")], {
+            tags: [],
+        }),
+        sender,
+    );
     assertEquals(await reportsForAdmin(test.ctx, false), []);
 
-    await reportType.receive(test.ctx, received(["carol", "n1", "n3"], { tags: [] }), sender);
+    await reportType.receive(
+        test.ctx,
+        received([user("b.example:carol"), status("b.example:n1"), status("b.example:n3")], {
+            tags: [],
+        }),
+        sender,
+    );
     const [report] = await reportsForAdmin(test.ctx, false);
 
     assertEquals(
@@ -214,7 +256,11 @@ Deno.test("a received report of a remote account is kept only for replies to loc
         ["carol@b.example", "other", [test.notes[0].id, reply.id]],
     );
 
-    await reportType.receive(test.ctx, received(["carol", "n3"], { tags: ["legal"] }), sender);
+    await reportType.receive(
+        test.ctx,
+        received([user("b.example:carol"), status("b.example:n3")], { tags: ["legal"] }),
+        sender,
+    );
     const categories = (await reportsForAdmin(test.ctx, false)).map((each) => each.category);
     assertEquals(categories, ["other", "legal"]);
 });
@@ -225,10 +271,12 @@ Deno.test("a received report names the accounts it is of, and is stored once", a
     const domain = test.ctx.urls.domain;
 
     // Statuses alone don't say an account is reported.
-    await reportType.receive(test.ctx, received([`${domain}:${note.id}`]), sender);
+    await reportType.receive(test.ctx, received([status(`${domain}:${note.id}`)]), sender);
     assertEquals(await reportsForAdmin(test.ctx, false), []);
 
-    const report = received([`${domain}:bob`, `${domain}:${note.id}`], { comment: null });
+    const report = received([user(`${domain}:bob`), status(`${domain}:${note.id}`)], {
+        comment: null,
+    });
     await reportType.receive(test.ctx, report, sender);
     await reportType.receive(test.ctx, report, sender);
 
@@ -242,4 +290,40 @@ Deno.test("a received report names the accounts it is of, and is stored once", a
         sender,
     );
     assertEquals((await reportsForAdmin(test.ctx, false)).length, 2);
+});
+
+Deno.test("a received entry is looked up only as the type it names", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "bob");
+    const domain = test.ctx.urls.domain;
+
+    // A status labelled as a user isn't a status, and an account labelled as a status isn't anyone.
+    await reportType.receive(
+        test.ctx,
+        received([user(`${domain}:bob`), user(`${domain}:${note.id}`), status(`${domain}:bob`)]),
+        sender,
+    );
+    const [report] = await reportsForAdmin(test.ctx, false);
+
+    assertEquals([report?.target, report?.status_ids], ["bob", []]);
+});
+
+Deno.test("a received entry of a type Verso doesn't store is ignored, and the others still count", async () => {
+    await using test = await open();
+    const note = await createNote(test.ctx, "bob");
+    const domain = test.ctx.urls.domain;
+
+    await reportType.receive(
+        test.ctx,
+        received([
+            { type: "pub.versia:social/Group", reference: `${domain}:alice` },
+            user(`${domain}:bob`),
+            { type: "pub.versia:social/Group", reference: `${domain}:${note.id}` },
+            status(`${domain}:${note.id}`),
+        ]),
+        sender,
+    );
+
+    const reports = await reportsForAdmin(test.ctx, false);
+    assertEquals(reports.map((each) => [each.target, each.status_ids]), [["bob", [note.id]]]);
 });
