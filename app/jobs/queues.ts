@@ -17,6 +17,7 @@ import {
 } from "../federation/deliver.ts";
 import { deliverDeadPayload, deliverHandler } from "../federation/deliver_worker.ts";
 import { inboxQueue } from "../federation/inbox.ts";
+import { deleteExpiredTombstones } from "../federation/tombstones.ts";
 import {
     resanitiseHandler,
     resanitiseQueue,
@@ -69,6 +70,7 @@ import type { Queue } from "./worker.ts";
 const hourly: Record<string, Queue["handler"]> = {
     "jobs-cleanup": (ctx) => deleteExpiredJobs(ctx),
     "delivery-bodies-cleanup": (ctx) => deleteExpiredDeliveryBodies(ctx),
+    "tombstones-cleanup": (ctx) => deleteExpiredTombstones(ctx),
     "oauth-cleanup": (ctx) => deleteExpiredFlows(ctx),
     "rate-limits-cleanup": (ctx) => deleteEndedRateLimits(ctx),
     [unusedMediaQueue]: (ctx) => removeUnusedMedia(ctx),

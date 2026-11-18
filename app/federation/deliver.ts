@@ -5,6 +5,7 @@
  * @see https://versia.pub/federation/http
  * @module
  */
+import { parseReference } from "@versia/protocol";
 import type { SelectQueryBuilder } from "kysely";
 import { z } from "zod";
 import type { Database } from "../db/database.ts";
@@ -16,7 +17,7 @@ import { type DeadPayload, enqueue, enqueueAll } from "../jobs/job_queries.ts";
 import type { JobPayload, JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
-import { byRemovedUser, bySuspendedUser } from "./authors.ts";
+import { authorOf, byRemovedUser, bySuspendedUser } from "./authors.ts";
 
 /** Versia's own queue, so deliveries of other protocols can't hold it up. */
 export const deliverQueue = "versia-deliver";
@@ -85,10 +86,20 @@ export const queueDeliveriesTo = async (
     const { instanceIds, followersOf, unblockedFollowers, everyInstance } = audience;
     if (instanceIds.length === 0 && followersOf === undefined && everyInstance !== true) return;
 
-    // Stored once, however many instances it goes to.
+    // Stored once, however many instances it goes to. The ids let it be dropped if the entity, or
+    // its author, is deleted before it is sent.
     const bodyId = ctx.ids();
+    const { id } = entity as { id?: unknown };
+    const reference = authorOf(entity);
+    const author = reference === undefined ? undefined : parseReference(reference, ctx.urls.domain);
     await ctx.db.insertInto("delivery_bodies")
-        .values({ id: bodyId, body: JSON.stringify(entity), created_at: ctx.clock.now() })
+        .values({
+            id: bodyId,
+            body: JSON.stringify(entity),
+            created_at: ctx.clock.now(),
+            entity_id: typeof id === "string" ? id : null,
+            author_id: author?.host === ctx.urls.domain ? author.id : null,
+        })
         .execute();
 
     const payload: FanOutJob = { bodyId, instanceIds: [...instanceIds] };
@@ -96,6 +107,20 @@ export const queueDeliveriesTo = async (
     if (unblockedFollowers === true) payload.unblockedFollowers = true;
     if (everyInstance === true) payload.everyInstance = true;
     await enqueue(ctx, { queue: fanOutQueue, payload });
+};
+
+/**
+ * Drops the queued deliveries of the entity `entityId`, and of changes to it, that haven't been
+ * sent. The entity is deleted, so no instance may be sent it any more. The delivery jobs left find
+ * it gone and finish.
+ */
+export const dropDeliveriesOf = async (ctx: Context, entityId: string): Promise<void> => {
+    await ctx.db.deleteFrom("delivery_bodies").where("entity_id", "=", entityId).execute();
+};
+
+/** Drops the queued deliveries of everything by the local user `accountId`, once deleted. */
+export const dropDeliveriesBy = async (ctx: Context, accountId: string): Promise<void> => {
+    await ctx.db.deleteFrom("delivery_bodies").where("author_id", "=", accountId).execute();
 };
 
 /**
@@ -144,14 +169,10 @@ const domainsOf = async (ctx: Context, job: FanOutJob) => {
 };
 
 /**
- * Whether the entity stored as `bodyId` is by a local user suspended or removed since, and isn't a
+ * Whether the entity `row` stored is by a local user suspended or removed since, and isn't a
  * Delete, nor a SubscribeReject, which answers a Subscribe, as every one must be.
  */
-const withheld = async (ctx: Context, bodyId: string) => {
-    const row = await ctx.db.selectFrom("delivery_bodies").select("body").where("id", "=", bodyId)
-        .executeTakeFirst();
-    if (row === undefined) return false;
-
+const withheld = async (ctx: Context, row: { body: string }) => {
     const entity: unknown = JSON.parse(row.body);
     const { type } = entity as { type?: unknown };
     if (type === "Delete" || type === "SubscribeReject") return false;
@@ -163,16 +184,22 @@ const withheld = async (ctx: Context, bodyId: string) => {
 /**
  * Runs fan-out jobs: queues a delivery of the entity to each instance it goes to, grouped by
  * instance so each can be rate limited, or deletes the entity if it goes to none, or is by a
- * suspended or removed user, unless it deletes something. A job run again doesn't queue a delivery
- * that is still queued, but may queue one that was already sent again. The deliveries are due when
- * the job was queued, so the entities queued earlier are sent first.
+ * suspended or removed user, unless it deletes something. An entity dropped since it was queued is
+ * left alone, as it was deleted. A job run again doesn't queue a delivery that is still queued, but
+ * may queue one that was already sent again. The deliveries are due when the job was queued, so
+ * the entities queued earlier are sent first.
  */
 export const fanOutHandler: Handler = async (ctx: Context, job: JobsTable): Promise<void> => {
     const payload = FanOutJob.safeParse(job.payload);
     if (!payload.success) throw new PermanentFailure("The job isn't a fan-out job");
     const { bodyId } = payload.data;
 
-    const domains = await withheld(ctx, bodyId) ? [] : await domainsOf(ctx, payload.data);
+    // Gone if its entity was deleted, so there is nothing to send.
+    const row = await ctx.db.selectFrom("delivery_bodies").select("body").where("id", "=", bodyId)
+        .executeTakeFirst();
+    if (row === undefined) return;
+
+    const domains = await withheld(ctx, row) ? [] : await domainsOf(ctx, payload.data);
 
     await ctx.transaction(async (tx) => {
         if (domains.length === 0) {

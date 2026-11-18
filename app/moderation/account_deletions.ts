@@ -10,8 +10,8 @@ import type { AccountDeleting } from "../accounts/events.ts";
 import { deleteEmojisOf } from "../emojis/emojis.ts";
 import type { Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
-import { deleteEntity } from "../federation/delete.ts";
-import { queueDeliveriesTo } from "../federation/deliver.ts";
+import { dropDeliveriesBy } from "../federation/deliver.ts";
+import { queueDelete } from "../federation/tombstones.ts";
 import { enqueue } from "../jobs/job_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
@@ -50,8 +50,12 @@ export const deleteLocalAccount = async (
 
         // Every instance is told, since any may have the user's statuses.
         if (deleted) {
-            const entity = deleteEntity(tx, accountId, "User", accountId);
-            await queueDeliveriesTo(tx, entity, { instanceIds: [], everyInstance: true });
+            // Its statuses and likes still queued mustn't reach an instance after the Delete.
+            await dropDeliveriesBy(tx, accountId);
+            await queueDelete(tx, accountId, "User", accountId, {
+                instanceIds: [],
+                everyInstance: true,
+            });
         }
 
         return { deleted, keys };

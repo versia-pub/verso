@@ -21,7 +21,7 @@ import { noteReferenceMap } from "../notes/versia.ts";
 import { authorityOf, resolveAuthor } from "./authors.ts";
 import { isShareEvent } from "./events.ts";
 import { keepRemoteShare, undoRemoteShare } from "./shares.ts";
-import { deleteEntity } from "../federation/delete.ts";
+import { queueDelete } from "../federation/tombstones.ts";
 import { withHosts } from "../federation/references.ts";
 
 const extension = "pub.versia:share";
@@ -77,8 +77,7 @@ export const shareDeliveries = async (ctx: Context, event: DomainEvent): Promise
         return;
     }
 
-    const entity = deleteEntity(ctx, event.accountId, typeName, event.shareId);
-    await queueDeliveriesTo(ctx, entity, audience);
+    await queueDelete(ctx, event.accountId, typeName, event.shareId, audience);
 };
 
 /**

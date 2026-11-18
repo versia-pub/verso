@@ -23,7 +23,8 @@ export const fanOut = async (ctx: Context): Promise<number> =>
 
 /**
  * The deliveries queued, in the order they were queued, each with the entity it sends, once the
- * fan-out jobs queued have run.
+ * fan-out jobs queued have run. Those of an entity deleted since, whose body was dropped, are left
+ * out, as the worker doesn't send them.
  */
 export const queuedDeliveries = async (
     ctx: Context,
@@ -33,13 +34,14 @@ export const queuedDeliveries = async (
     const jobs = await ctx.db.selectFrom("jobs").select(["payload", "created_at"])
         .where("queue", "=", deliverQueue).orderBy("run_at").orderBy("id").execute();
 
-    return await Promise.all(jobs.map(async (job) => {
+    const deliveries = [];
+    for (const job of jobs) {
         const payload = DeliverJob.parse(job.payload);
         const entity = await deliveryBody(ctx, payload, job.created_at);
-        if (!entity) throw new Error("A queued delivery's entity is missing");
+        if (entity) deliveries.push({ domain: payload.domain, body: entity.body });
+    }
 
-        return { domain: payload.domain, body: entity.body };
-    }));
+    return deliveries;
 };
 
 /** An entity as a plain object, before it is sent. */

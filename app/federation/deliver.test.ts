@@ -20,6 +20,8 @@ import type { JobsTable } from "../jobs/tables.ts";
 import {
     deleteExpiredDeliveryBodies,
     deliverQueue,
+    dropDeliveriesBy,
+    dropDeliveriesOf,
     expiredDeliveryBodies,
     fanOutDeadPayload,
     fanOutHandler,
@@ -27,7 +29,7 @@ import {
     queueDeliveries,
     queueDeliveriesTo,
 } from "./deliver.ts";
-import { deleteEntity } from "./delete.ts";
+import { deleteEntity } from "./tombstones.ts";
 import { fanOut, queuedDeliveries } from "./testing.ts";
 
 /** An event only these tests emit: an account, to deliver to some recipients. */
@@ -391,6 +393,78 @@ Deno.test("what a local user deleted since queued isn't sent, except Deletes and
         ["c.example", "SubscribeReject"],
     ]);
     assertEquals((await test.bodies()).length, 2);
+});
+
+Deno.test("a queued entity is stored with its own id, and its author's if the author is local", async () => {
+    await using test = await open();
+    const audience = { instanceIds: ["b.example"] };
+    const stored = async () => (await test.ctx.db.selectFrom("delivery_bodies").select([
+        "entity_id",
+        "author_id",
+    ])
+        .orderBy("id").execute());
+
+    await queueDeliveriesTo(
+        test.ctx,
+        { type: "Note", id: "n1", author: "social.example:alice" },
+        audience,
+    );
+    await queueDeliveriesTo(
+        test.ctx,
+        { type: "Note", id: "n2", author: "b.example:carol" },
+        audience,
+    );
+    // A user is by itself, and a Delete has no id.
+    await queueDeliveriesTo(test.ctx, { type: "User", id: "social.example:bob" }, audience);
+    await queueDeliveriesTo(test.ctx, { type: "Delete", author: "alice" }, audience);
+    await queueDeliveriesTo(test.ctx, { type: "Thing" }, audience);
+
+    assertEquals(await stored(), [
+        { entity_id: "n1", author_id: "alice" },
+        { entity_id: "n2", author_id: null },
+        { entity_id: "social.example:bob", author_id: "bob" },
+        { entity_id: null, author_id: "alice" },
+        { entity_id: null, author_id: null },
+    ]);
+});
+
+Deno.test("queued deliveries are dropped by their entity, or by the local user who made them", async () => {
+    await using test = await open();
+    const audience = { instanceIds: ["b.example"] };
+    const note = (id: string, author: string) => ({ type: "Note", id, author });
+    await queueDeliveriesTo(test.ctx, note("n1", "social.example:alice"), audience);
+    await queueDeliveriesTo(test.ctx, note("n1", "social.example:alice"), audience);
+    await queueDeliveriesTo(test.ctx, note("n2", "social.example:alice"), audience);
+    await queueDeliveriesTo(test.ctx, note("n3", "social.example:bob"), audience);
+    const ids = async () =>
+        (await test.ctx.db.selectFrom("delivery_bodies").select("entity_id").orderBy("id")
+            .execute())
+            .map((row) => row.entity_id);
+
+    await dropDeliveriesOf(test.ctx, "n1");
+    assertEquals(await ids(), ["n2", "n3"]);
+
+    await dropDeliveriesBy(test.ctx, "alice");
+    assertEquals(await ids(), ["n3"]);
+});
+
+Deno.test("a fan-out of an entity dropped since it was queued queues nothing", async () => {
+    await using test = await open();
+    await queueDeliveriesTo(
+        test.ctx,
+        { type: "Note", id: "n1", author: "social.example:alice" },
+        { instanceIds: ["b.example"] },
+    );
+
+    await dropDeliveriesOf(test.ctx, "n1");
+
+    assertEquals(await fanOut(test.ctx), 1);
+    assertEquals(
+        await test.ctx.db.selectFrom("jobs").select("id").where("queue", "=", deliverQueue)
+            .execute(),
+        [],
+    );
+    assertEquals(await fanOutJobs(test.ctx), []);
 });
 
 Deno.test("a fan-out run again queues no delivery twice", async () => {

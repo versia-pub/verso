@@ -4,6 +4,7 @@ import { deleteEmoji } from "../emojis/emojis.ts";
 import { createLocalEmoji } from "../emojis/testing.ts";
 import { queuedDeliveries } from "../federation/testing.ts";
 import { fetchSigned } from "../federation/request.ts";
+import { isDeleted } from "../federation/tombstones.ts";
 import { follow } from "../graph/follows.ts";
 import { queues } from "../jobs/queues.ts";
 import { drain } from "../jobs/worker.ts";
@@ -83,19 +84,9 @@ Deno.test("a reaction is sent to the note's author and the reactor's followers, 
     const blob = await test.reacted("alice", theirs.id, "blob");
     const reactedAt = test.ctx.clock.now().toISOString();
     const party = await test.reacted("alice", local.id, "🎉");
-    test.clock.advance(1000);
-    await unreact(test.ctx, "alice", theirs.id, "blob");
-
-    const now = test.ctx.clock.now().toISOString();
     assertEquals(
         (await sent(test.ctx)).map(([domain, each]) => [domain, each.id ?? each.deleted]),
-        [
-            ["b.example", blob],
-            ["c.example", blob],
-            ["c.example", party],
-            ["b.example", `social.example:${blob}`],
-            ["c.example", `social.example:${blob}`],
-        ],
+        [["b.example", blob], ["c.example", blob], ["c.example", party]],
     );
     assertEquals((await sent(test.ctx))[0][1], {
         type: "pub.versia:reactions/Reaction",
@@ -118,7 +109,21 @@ Deno.test("a reaction is sent to the note's author and the reactor's followers, 
     });
     assertEquals((await sent(test.ctx))[2][1].content, "🎉");
     assertEquals((await sent(test.ctx))[2][1].extensions, undefined);
-    assertEquals((await sent(test.ctx))[3][1], {
+
+    // Undone, the reaction isn't sent again if it was sent already, and the Delete follows.
+    test.clock.advance(1000);
+    await unreact(test.ctx, "alice", theirs.id, "blob");
+    assertEquals(await isDeleted(test.ctx, reactionType.type, blob), true);
+    const now = test.ctx.clock.now().toISOString();
+    assertEquals(
+        (await sent(test.ctx)).map(([domain, each]) => [domain, each.id ?? each.deleted]),
+        [
+            ["c.example", party],
+            ["b.example", `social.example:${blob}`],
+            ["c.example", `social.example:${blob}`],
+        ],
+    );
+    assertEquals((await sent(test.ctx))[1][1], {
         type: "Delete",
         created_at: now,
         author: "social.example:alice",
@@ -280,7 +285,7 @@ Deno.test("local users' reactions with a deleted emoji are undone, and remote in
     assertEquals((await sent(test.ctx)).length, before);
     await drain(test.ctx, { [undoneReactionsQueue]: queues[undoneReactionsQueue] });
 
-    const deletes = (await sent(test.ctx)).slice(before);
+    const deletes = (await sent(test.ctx)).filter(([, each]) => each.type === "Delete");
     assertEquals(deletes.map(([domain, each]) => [domain, each.type, each.deleted]), [
         ["b.example", "Delete", `social.example:${blob}`],
         ["c.example", "Delete", `social.example:${blob}`],

@@ -6,11 +6,12 @@
  */
 import { type Reference, v0_6, v0_7 } from "@versia/protocol";
 import { z } from "zod";
-import { NotFound } from "../http/errors.ts";
+import { Gone, NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
 import { versiaJson } from "../http/responses.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { bySuspendedUser } from "./authors.ts";
+import { isDeleted } from "./tombstones.ts";
 
 /**
  * Which page of a collection to return: from `offset`, at most `limit` items. Limits from 1 to 40
@@ -154,7 +155,8 @@ export const createRegistry = (
 
 /**
  * The routes where remote instances fetch one type's entities and their collections. Those of
- * suspended users aren't found.
+ * suspended users aren't found. One that was deleted answers `410 Gone`, as do its collections.
+ * @see https://versia.pub/entities/delete
  */
 const routesOf = (type: EntityType): Route[] => {
     const { find, collections } = type;
@@ -175,9 +177,10 @@ const routesOf = (type: EntityType): Route[] => {
             responses: { 200: type.schema },
             handler: async (ctx, { params, signedBy }) => {
                 const entity = await find(ctx, params.id, signedBy);
-                if (entity === undefined || await bySuspendedUser(ctx, entity, ctx.urls.domain)) {
-                    throw new NotFound();
+                if (entity === undefined) {
+                    throw await isDeleted(ctx, type.type, params.id) ? new Gone() : new NotFound();
                 }
+                if (await bySuspendedUser(ctx, entity, ctx.urls.domain)) throw new NotFound();
 
                 return { status: 200, body: entity };
             },
@@ -199,9 +202,10 @@ const routesOf = (type: EntityType): Route[] => {
             responses: { 200: z.union([v0_7.Collection, v0_7.ReferenceCollection]) },
             handler: async (ctx, { params, query, signedBy }) => {
                 const page = await provider(ctx, params.id, query, signedBy);
-                if (page === undefined || await bySuspendedUser(ctx, page, ctx.urls.domain)) {
-                    throw new NotFound();
+                if (page === undefined) {
+                    throw await isDeleted(ctx, type.type, params.id) ? new Gone() : new NotFound();
                 }
+                if (await bySuspendedUser(ctx, page, ctx.urls.domain)) throw new NotFound();
 
                 const { author: _author, ...body } = page;
 

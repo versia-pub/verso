@@ -4,7 +4,7 @@ import { findNote } from "../notes/note_queries.ts";
 import { createNote } from "../notes/testing.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
-import { deleteEntity as localDelete } from "./delete.ts";
+import { deleteEntity as localDelete } from "./tombstones.ts";
 import { deleteEntity, userEntity } from "./testing.ts";
 
 const inbox = "https://a.test/.versia/v0.7/inbox";

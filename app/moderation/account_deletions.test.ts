@@ -16,7 +16,8 @@ import { upload } from "../media/uploads.ts";
 import { findNote } from "../notes/note_queries.ts";
 import { createNote } from "../notes/testing.ts";
 import { fileReport } from "../reports/reports.ts";
-import { FanOutJob, fanOutQueue } from "../federation/deliver.ts";
+import { FanOutJob, fanOutQueue, queueDeliveriesTo } from "../federation/deliver.ts";
+import { isDeleted } from "../federation/tombstones.ts";
 import { createTestContext } from "../testing/context.ts";
 import { keptColumns, purgedColumns } from "./account_deletion_queries.ts";
 import { deleteLocalAccount } from "./account_deletions.ts";
@@ -251,6 +252,31 @@ Deno.test("a deleted account is kept empty and suspended, with its login and the
     assertEquals(login, { ok: true, accountId: "alice", created: false });
     assertEquals((await findAccount(test.ctx, "alice"))?.display_name, "");
     assertEquals(await rowsOf(test.ctx, "account_roles"), 0);
+});
+
+Deno.test("a deleted account's queued deliveries are dropped, and the User is remembered as deleted", async () => {
+    await using test = await createTestContext();
+    for (const id of ["alice", "bob"]) await createLocalAccount(test.ctx, id);
+    await createInstance(test.ctx, "b.example");
+    const audience = { instanceIds: ["b.example"] };
+    const entity = (id: string, author: string) => ({ type: "Note", id, author });
+    await queueDeliveriesTo(test.ctx, entity("n1", "social.example:alice"), audience);
+    await queueDeliveriesTo(test.ctx, { type: "Like", author: "social.example:alice" }, audience);
+    await queueDeliveriesTo(test.ctx, entity("n2", "social.example:bob"), audience);
+    await queueDeliveriesTo(test.ctx, entity("n3", "b.example:carol"), audience);
+
+    assert(await deleteLocalAccount(test.ctx, "alice", { tombstone: true }));
+
+    const bodies = (await test.ctx.db.selectFrom("delivery_bodies").select("body").orderBy("id")
+        .execute()).map((row) => JSON.parse(row.body));
+    assertEquals(bodies.map((body) => body.id ?? body.type), ["n2", "n3", "Delete"]);
+    assertEquals(await userDeletes(test.ctx), [[
+        "social.example:alice",
+        "social.example:alice",
+        true,
+    ]]);
+    assertEquals(await isDeleted(test.ctx, "User", "alice"), true);
+    assertEquals(await isDeleted(test.ctx, "User", "bob"), false);
 });
 
 Deno.test("an account deleted without a tombstone is removed, with its login and the reports about it", async () => {

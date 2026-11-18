@@ -2,6 +2,7 @@ import { assertEquals, assertExists } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { queuedDeliveries } from "../federation/testing.ts";
 import { fetchSigned } from "../federation/request.ts";
+import { isDeleted } from "../federation/tombstones.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
@@ -55,7 +56,6 @@ Deno.test("a like of another instance's note is sent there, and a Delete when un
     await like(test.ctx, "alice", note.id);
     await like(test.ctx, "bob", local.id);
     const row = await findLike(test.ctx, "alice", note.id);
-    await unlike(test.ctx, "alice", note.id);
 
     const now = test.ctx.clock.now().toISOString();
     assertEquals(await sent(test.ctx), [
@@ -66,6 +66,13 @@ Deno.test("a like of another instance's note is sent there, and a Delete when un
             author: "social.example:alice",
             target: "b.example:n1",
         }],
+    ]);
+
+    // Undone, it is dropped if it wasn't sent yet, and the Delete follows.
+    await unlike(test.ctx, "alice", note.id);
+    const gone = await isDeleted(test.ctx, "pub.versia:likes/Like", row?.id ?? "");
+    assertEquals(gone, true);
+    assertEquals(await sent(test.ctx), [
         ["b.example", {
             type: "Delete",
             created_at: now,
@@ -99,7 +106,6 @@ Deno.test("a like of a public or unlisted status goes to the liker's followers' 
     ];
 
     for (const each of notes) await like(test.ctx, "alice", each.id);
-    for (const each of notes) await unlike(test.ctx, "alice", each.id);
 
     assertEquals(await likesSent(test.ctx), [
         ["b.example", "b.example:n1"],
@@ -107,6 +113,11 @@ Deno.test("a like of a public or unlisted status goes to the liker's followers' 
         ["b.example", "b.example:n2"],
         ["c.example", "b.example:n2"],
         ["b.example", "b.example:n3"],
+    ]);
+
+    for (const each of notes) await unlike(test.ctx, "alice", each.id);
+
+    assertEquals(await likesSent(test.ctx), [
         ["b.example", "Delete"],
         ["c.example", "Delete"],
         ["b.example", "Delete"],

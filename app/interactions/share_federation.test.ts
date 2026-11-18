@@ -2,6 +2,7 @@ import { assertEquals } from "@std/assert";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { queuedDeliveries } from "../federation/testing.ts";
 import { fetchSigned } from "../federation/request.ts";
+import { isDeleted } from "../federation/tombstones.ts";
 import { follow } from "../graph/follows.ts";
 import { createInstance } from "../instances/testing.ts";
 import type { Context } from "../kernel/context.ts";
@@ -60,7 +61,6 @@ Deno.test("a share is sent to the sharer's followers and the note's author, and 
 
     const shared = await share(test.ctx, "alice", theirs.id, "private");
     await share(test.ctx, "alice", local.id);
-    await unshare(test.ctx, "alice", theirs.id);
     if (typeof shared === "string") throw new Error(`The note was ${shared}`);
 
     const now = test.ctx.clock.now().toISOString();
@@ -79,18 +79,24 @@ Deno.test("a share is sent to the sharer's followers and the note's author, and 
         deleted: `social.example:${shared.id}`,
     };
 
-    const sentFor = (await sent(test.ctx)).map((
-        [domain, each],
-    ) => [domain, each.target ?? each.deleted]);
-    assertEquals(sentFor, [
+    const sentFor = async () =>
+        (await sent(test.ctx)).map(([domain, each]) => [domain, each.target ?? each.deleted]);
+    assertEquals(await sentFor(), [
         ["b.example", "b.example:n1"],
         ["c.example", "b.example:n1"],
+        ["c.example", `social.example:${local.id}`],
+    ]);
+    assertEquals((await sent(test.ctx))[0][1], entity);
+
+    // The share, if it hasn't been sent yet when it is undone, isn't sent at all.
+    await unshare(test.ctx, "alice", theirs.id);
+    assertEquals(await isDeleted(test.ctx, shareType.type, shared.id), true);
+    assertEquals(await sentFor(), [
         ["c.example", `social.example:${local.id}`],
         ["b.example", `social.example:${shared.id}`],
         ["c.example", `social.example:${shared.id}`],
     ]);
-    assertEquals((await sent(test.ctx))[0][1], entity);
-    assertEquals((await sent(test.ctx))[3][1], deleted);
+    assertEquals((await sent(test.ctx))[1][1], deleted);
 });
 
 Deno.test("a local share is fetched by instances that may see it, or whose note it shares", async () => {

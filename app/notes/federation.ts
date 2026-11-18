@@ -18,7 +18,7 @@ import { removeNote, removeNotesOf } from "./removal.ts";
 import { pinnedNotes } from "./pin_queries.ts";
 import { knownNote, prepareNote, receiveNote } from "./remote.ts";
 import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";
-import { deleteEntity } from "../federation/delete.ts";
+import { queueDelete } from "../federation/tombstones.ts";
 import { withHosts } from "../federation/references.ts";
 import { blockedByAccount } from "../graph/blocks.ts";
 import { isPollEnded, isPollUpdated } from "../polls/events.ts";
@@ -72,10 +72,11 @@ export const noteDeliveries = async (ctx: Context, event: DomainEvent): Promise<
         visibility: event.visibility,
         in_reply_to_account_id: event.inReplyToAccountId,
     };
-    const entity = deleteEntity(ctx, author.id, "pub.versia:social/Note", event.noteId);
-    await queueDeliveriesTo(
+    await queueDelete(
         ctx,
-        entity,
+        author.id,
+        "pub.versia:social/Note",
+        event.noteId,
         await audienceOf(ctx, note, event.mentionIds, event.quotedAccountId),
     );
 };

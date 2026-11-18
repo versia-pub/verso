@@ -12,7 +12,10 @@ const ignored = { authority: () => undefined, receive: () => Promise.resolve() }
 
 const Thing = z.object({ type: z.literal("Thing"), id: z.string(), seen_by: z.string() });
 
-/** A type whose entities can only be found by b.example, and say who requested them. */
+/**
+ * A type whose entities can only be found by b.example, and say who requested them, except those
+ * named "missing" and "unknown", which aren't found.
+ */
 const thing: EntityType<z.infer<typeof Thing>> = {
     type: "Thing",
     extension: "test.example:things",
@@ -20,7 +23,9 @@ const thing: EntityType<z.infer<typeof Thing>> = {
     ...ignored,
     find: (_ctx, id, requester) =>
         Promise.resolve(
-            requester === "b.example" ? { type: "Thing", id, seen_by: requester } : undefined,
+            requester === "b.example" && id !== "missing" && id !== "unknown"
+                ? { type: "Thing", id, seen_by: requester }
+                : undefined,
         ),
     collections: {
         // Tells the page it was requested for, as its total: offset in thousands, and limit.
@@ -132,6 +137,27 @@ Deno.test("a collection of a suspended user isn't found, and its page has no aut
         .where("id", "=", "owner").execute();
 
     assertEquals((await test.get(path)).status, 404);
+});
+
+Deno.test("a deleted entity and its collections are gone, but only as the type it was deleted as", async () => {
+    await using test = await open();
+    const path = "/.versia/v0.7/entities";
+    const forget = async (id: string, type: string) => {
+        await test.ctx.db.insertInto("deleted_entities")
+            .values({ id, type, deleted_at: test.clock.now() })
+            .execute();
+    };
+    await forget("missing", "Thing");
+    await forget("unknown", "test.example:gadgets/Gadget");
+
+    const gone = await test.get(`${path}/Thing/missing`);
+    assertEquals(gone.status, 410);
+    assertEquals(gone.body.error, "Gone");
+    assertEquals((await test.get(`${path}/Thing/missing/collections/parts`)).status, 410);
+
+    // Not remembered: an id never deleted, or deleted as another type.
+    assertEquals((await test.get(`${path}/Thing/unknown`)).status, 404);
+    assertEquals((await test.get(`${path}/test.example:gadgets/Gadget/unknown`)).status, 410);
 });
 
 Deno.test("a collection's pages start at the first item, and hold from 1 to 40", async () => {

@@ -28,7 +28,7 @@ import {
     reactionPage,
 } from "./reaction_queries.ts";
 import { isUnicodeEmoji, keepRemoteReaction, undoRemoteReaction } from "./reactions.ts";
-import { deleteEntity } from "../federation/delete.ts";
+import { queueDelete } from "../federation/tombstones.ts";
 import { referencesTo, withHosts } from "../federation/references.ts";
 
 const extension = "pub.versia:reactions";
@@ -80,8 +80,7 @@ export const reactionDeliveries = async (ctx: Context, event: DomainEvent): Prom
         return;
     }
 
-    const entity = deleteEntity(ctx, event.accountId, typeName, event.reactionId);
-    await queueDeliveriesTo(ctx, entity, audience);
+    await queueDelete(ctx, event.accountId, typeName, event.reactionId, audience);
 };
 
 /**

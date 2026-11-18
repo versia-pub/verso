@@ -30,7 +30,7 @@ import {
 } from "./like_queries.ts";
 import { keepRemoteLike, undoRemoteLike } from "./likes.ts";
 import type { LikeKind } from "./tables.ts";
-import { deleteEntity } from "../federation/delete.ts";
+import { queueDelete } from "../federation/tombstones.ts";
 import { referencesTo, withHosts } from "../federation/references.ts";
 
 const extension = "pub.versia:likes";
@@ -95,8 +95,13 @@ export const likeDeliveries = async (ctx: Context, event: DomainEvent): Promise<
     const author = await findAccount(ctx, event.accountId);
     if (author?.domain !== null) return;
 
-    const entity = deleteEntity(ctx, author.id, typeNames.like, event.likeId);
-    await queueDeliveriesTo(ctx, entity, await audienceOfInteraction(ctx, author.id, note));
+    await queueDelete(
+        ctx,
+        author.id,
+        typeNames.like,
+        event.likeId,
+        await audienceOfInteraction(ctx, author.id, note),
+    );
 };
 
 /**

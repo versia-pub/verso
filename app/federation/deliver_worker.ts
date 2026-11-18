@@ -71,7 +71,19 @@ export const deliverHandler: Handler = async (ctx: Context, job: JobsTable): Pro
 
     const tried = `${ctx.settings.deliveryMs / 3_600_000} hours`;
     const entity = await deliveryBody(ctx, payload.data, job.created_at);
-    if (!entity) throw new PermanentFailure(`${domain} couldn't be reached in ${tried}`);
+    if (!entity) {
+        // A body only goes when it is dropped or expired. A job is queued a little after its body,
+        // so one this young whose body just expired also ends here, and isn't kept as dead.
+        const age = ctx.clock.now().getTime() - job.created_at.getTime();
+        if (age < ctx.settings.deliveryMs) {
+            logger.info("Dropping a delivery to {domain}, since its entity was deleted", {
+                domain,
+            });
+            return;
+        }
+
+        throw new PermanentFailure(`${domain} couldn't be reached in ${tried}`);
+    }
 
     const { body } = entity;
 

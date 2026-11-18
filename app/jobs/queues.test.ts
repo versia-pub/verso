@@ -20,6 +20,21 @@ Deno.test("delivered entities are cleaned up every hour", async () => {
     assertEquals(await test.ctx.db.selectFrom("delivery_bodies").selectAll().execute(), []);
 });
 
+Deno.test("tombstones are cleaned up every hour", async () => {
+    await using test = await createTestContext();
+    const queue = "tombstones-cleanup";
+    assertEquals(tasks.filter((task) => task.queue === queue), [{ queue, every: "hour" }]);
+
+    await test.ctx.db.insertInto("deleted_entities")
+        .values({ id: "n1", type: "Note", deleted_at: test.clock.now() })
+        .execute();
+    test.clock.advance(30 * 24 * 3_600_000);
+    await enqueue(test.ctx, { queue, payload: {} });
+    await drain(test.ctx, { [queue]: queues[queue] });
+
+    assertEquals(await test.ctx.db.selectFrom("deleted_entities").selectAll().execute(), []);
+});
+
 Deno.test("each worker fans out one entity at a time, so they are sent in order", () => {
     assertEquals(queues[fanOutQueue].concurrency, 1);
 });

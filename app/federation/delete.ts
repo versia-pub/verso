@@ -70,17 +70,3 @@ export const deleteType = (types: readonly EntityType[]): EntityType<v0_7.Delete
         },
     };
 };
-
-/** A Delete by the local user `authorId` of their entity `deleted`, of `deletedType`, dated now. */
-export const deleteEntity = (
-    ctx: Context,
-    authorId: string,
-    deletedType: string,
-    deleted: string,
-): v0_7.Delete => ({
-    type: "Delete",
-    created_at: ctx.clock.now().toISOString(),
-    author: v0_7.formatReference({ host: ctx.urls.domain, id: authorId }),
-    deleted_type: deletedType,
-    deleted: v0_7.formatReference({ host: ctx.urls.domain, id: deleted }),
-});

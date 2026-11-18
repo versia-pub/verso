@@ -73,6 +73,13 @@ export class NotFound extends HttpError {
     }
 }
 
+/** Something that is gone for good, like a deleted entity Verso remembers. */
+export class Gone extends HttpError {
+    constructor() {
+        super(410, "Gone");
+    }
+}
+
 export class ContentTooLarge extends HttpError {
     constructor() {
         super(413, "Content too large");

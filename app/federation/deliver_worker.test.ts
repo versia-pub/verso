@@ -341,11 +341,23 @@ Deno.test("a delivery is given up on by when its entity was queued, not when it 
     assertEquals(test.outcome(await test.job(id)), "given up");
 });
 
-Deno.test("a delivery whose entity is gone is given up on, without sending anything", async () => {
+Deno.test("a delivery whose entity was dropped finishes, without sending anything", async () => {
     await using test = await open();
     const id = await test.queue();
 
     await test.ctx.db.deleteFrom("delivery_bodies").execute();
+    await drain(test.ctx, queues);
+
+    assertEquals(test.outcome(await test.job(id)), "done");
+    assertEquals(test.received, []);
+});
+
+Deno.test("a delivery whose entity expired is given up on, without sending anything", async () => {
+    await using test = await open();
+    const id = await test.queue();
+
+    await test.ctx.db.deleteFrom("delivery_bodies").execute();
+    test.clock.advance(48 * hour);
     await drain(test.ctx, queues);
 
     assertEquals(test.outcome(await test.job(id)), "given up");

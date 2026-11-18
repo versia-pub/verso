@@ -4,6 +4,7 @@ import { encode } from "fast-png";
 import { createLocalAccount, createRemoteAccount } from "../accounts/testing.ts";
 import { audienceInstances } from "../federation/deliver.ts";
 import { queuedDeliveries } from "../federation/testing.ts";
+import { isDeleted } from "../federation/tombstones.ts";
 import { fetchSigned } from "../federation/request.ts";
 import type { CollectionProvider } from "../federation/registry.ts";
 import { block } from "../graph/blocks.ts";
@@ -514,6 +515,32 @@ Deno.test("a deleted local note is deleted where it was sent, and a remote one n
     });
 });
 
+Deno.test("a deleted local note is remembered, and its deliveries not yet sent are dropped, edits too", async () => {
+    await using test = await open();
+    const note = await post(test.ctx, "alice", "Hi");
+    if (note === undefined) throw new Error("Not posted");
+    await editNote(test.ctx, "alice", note.id, { text: "Hi again" });
+    const other = await post(test.ctx, "alice", "Other");
+    const bodies = async () =>
+        (await test.ctx.db.selectFrom("delivery_bodies").select("body").orderBy("id").execute())
+            .map((row) => JSON.parse(row.body))
+            .filter((entity) => entity.type !== "SubscribeAccept")
+            .map((entity) => entity.id ?? entity.type);
+    assertEquals((await bodies()).length, 3);
+
+    await removeNote(test.ctx, note.id);
+
+    assertEquals(await bodies(), [other?.id, "Delete"]);
+    assertEquals(await isDeleted(test.ctx, noteName, note.id), true);
+    const otherGone = await isDeleted(test.ctx, noteName, other?.id ?? "");
+    assertEquals(otherGone, false);
+    // Nothing sent is for the note but its Delete.
+    assertEquals(await sent(test.ctx), [
+        ["b.example", noteName, other?.id],
+        ["b.example", "Delete", `social.example:${note.id}`],
+    ]);
+});
+
 Deno.test("a followers-only note doesn't reach an instance where its author blocks every follower, unless it mentions one", async () => {
     await using test = await open();
     await follow(test.ctx, "erin", "alice");
@@ -522,14 +549,22 @@ Deno.test("a followers-only note doesn't reach an instance where its author bloc
     const hidden = await post(test.ctx, "alice", "Hi", "private");
     const mentioning = await post(test.ctx, "alice", "Hi @carol@b.example", "private");
     const shown = await post(test.ctx, "alice", "Hi");
-    await removeNote(test.ctx, hidden?.id ?? "");
 
+    assertEquals((await sent(test.ctx)).toSorted(), [
+        ["b.example", noteName, mentioning?.id],
+        ["b.example", noteName, shown?.id],
+        ["c.example", noteName, hidden?.id],
+        ["c.example", noteName, mentioning?.id],
+        ["c.example", noteName, shown?.id],
+    ]);
+
+    // The Delete is sent where the note was, and a note not sent yet is dropped.
+    await removeNote(test.ctx, hidden?.id ?? "");
     assertEquals((await sent(test.ctx)).toSorted(), [
         ["b.example", "Delete", `social.example:${hidden?.id}`],
         ["b.example", noteName, mentioning?.id],
         ["b.example", noteName, shown?.id],
         ["c.example", "Delete", `social.example:${hidden?.id}`],
-        ["c.example", noteName, hidden?.id],
         ["c.example", noteName, mentioning?.id],
         ["c.example", noteName, shown?.id],
     ]);
