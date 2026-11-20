@@ -3,7 +3,7 @@
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import { canonicalizeDomain, importPublicKey, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { messagingExtension } from "../federation/messaging.ts";
 import { fetchUnsigned } from "../federation/request.ts";
 import { versiaJson } from "../http/responses.ts";
@@ -65,7 +65,7 @@ const fetchMetadata = async (ctx: Context, domain: string): Promise<Metadata | u
         const metadata = v0_7.InstanceMetadata.parse(
             JSON.parse(new TextDecoder().decode(reply.body)),
         );
-        if (canonicalizeDomain(metadata.domain) !== domain) {
+        if (v0_7.canonicalizeDomain(metadata.domain) !== domain) {
             throw new Error(`The metadata is for ${metadata.domain}`);
         }
 
@@ -93,7 +93,7 @@ const storeMetadata = (ctx: Context, domain: string, metadata: Metadata) =>
  */
 const fetchAndStoreKey = async (ctx: Context, domain: string): Promise<CryptoKey | undefined> => {
     const metadata = await fetchMetadata(ctx, domain);
-    const key = metadata === undefined ? undefined : await importPublicKey(metadata.key);
+    const key = metadata === undefined ? undefined : await v0_7.importPublicKey(metadata.key);
     if (metadata === undefined || key === undefined) return undefined;
 
     await storeMetadata(ctx, domain, metadata);
@@ -170,7 +170,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
             if (known) return known;
 
             const row = await findStoredKey(ctx, domain);
-            const key = row?.public_key ? await importPublicKey(row.public_key) : undefined;
+            const key = row?.public_key ? await v0_7.importPublicKey(row.public_key) : undefined;
             if (!key) {
                 await beforeFetch?.();
                 // A fetch may have finished while this looked, and it is cached before it ends.
@@ -187,7 +187,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
 
             // Another node may have stored a newer key than the one in memory here.
             const key = recent && row?.public_key
-                ? await importPublicKey(row.public_key)
+                ? await v0_7.importPublicKey(row.public_key)
                 : undefined;
             if (!key) return await fetchAndStore(ctx, domain);
 

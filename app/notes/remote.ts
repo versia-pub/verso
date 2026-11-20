@@ -4,7 +4,7 @@
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import { parseReference, type Reference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { findAccounts } from "../accounts/account_queries.ts";
 import { knownUser } from "../accounts/federation.ts";
 import { accountUrl } from "../accounts/render.ts";
@@ -53,7 +53,10 @@ const visibilities = {
  * The status that `reference` points at, local or remote, if Verso has it, without fetching it.
  * Boosts aren't statuses here.
  */
-export const knownNote = async (ctx: Context, reference: Reference): Promise<Known | undefined> => {
+export const knownNote = async (
+    ctx: Context,
+    reference: v0_7.Reference,
+): Promise<Known | undefined> => {
     // A Share isn't a Note in Versia, so nothing can reply to, quote or like it.
     if (reference.host === ctx.urls.domain) {
         const note = await findNote(ctx, reference.id);
@@ -76,15 +79,15 @@ export const knownNote = async (ctx: Context, reference: Reference): Promise<Kno
 const remoteTags = 100;
 
 /**
- * The references in a Note sent by `sender`: its author, the first accounts it mentions (as many as
+ * The references in a Note : its author, the first accounts it mentions (as many as
  * the settings allow), and the statuses it replies to and quotes.
  */
-const referencesIn = (ctx: Context, note: v0_7.Note, sender: Sender) => ({
-    author: parseReference(note.author, sender.domain),
+const referencesIn = (ctx: Context, note: v0_7.Note) => ({
+    author: v0_7.parseReference(note.author),
     mentions: [...new Set(note.mentions)].slice(0, ctx.settings.mentions)
-        .flatMap((text) => parseReference(text, sender.domain) ?? []),
-    parent: note.replies_to ? parseReference(note.replies_to, sender.domain) : undefined,
-    quote: note.quoting ? parseReference(note.quoting, sender.domain) : undefined,
+        .flatMap((text) => v0_7.parseReference(text) ?? []),
+    parent: note.replies_to ? v0_7.parseReference(note.replies_to) : undefined,
+    quote: note.quoting ? v0_7.parseReference(note.quoting) : undefined,
 });
 
 /**
@@ -93,7 +96,7 @@ const referencesIn = (ctx: Context, note: v0_7.Note, sender: Sender) => ({
  */
 const resolveIfAble = async (
     ctx: Context,
-    reference: Reference,
+    reference: v0_7.Reference,
     type: "User" | "pub.versia:social/Note",
     budget: Budget,
 ) => {
@@ -130,7 +133,7 @@ const wanted = async (
  * make Verso fetch them.
  */
 const mayBeWanted = async (ctx: Context, note: v0_7.Note, sender: Sender) => {
-    const references = referencesIn(ctx, note, sender);
+    const references = referencesIn(ctx, note);
     const named = [...references.mentions, references.parent, references.quote];
     if (named.some((reference) => reference?.host === ctx.urls.domain)) return true;
     if (await findRemoteNote(ctx, sender.instanceId, note.id)) return true;
@@ -149,7 +152,7 @@ const idTimeOf = (ctx: Context, createdAt: Date): Date =>
 /** The status that `reference` points at, if there is one and Verso has it. */
 export const knownNoteRow = async (
     ctx: Context,
-    reference: Reference | undefined,
+    reference: v0_7.Reference | undefined,
 ): Promise<NoteRow | undefined> => {
     const known = reference && await knownNote(ctx, reference);
     return known && await findNote(ctx, known.id);
@@ -186,7 +189,7 @@ export const receiveNote = async (
     note: v0_7.Note,
     sender: Sender,
 ): Promise<void> => {
-    const references = referencesIn(ctx, note, sender);
+    const references = referencesIn(ctx, note);
     const author = references.author && await knownUser(ctx, references.author);
 
     const mentions = [];
@@ -353,7 +356,7 @@ export const prepareNote = async (
 ): Promise<void> => {
     if (!sender.fetched && !await mayBeWanted(ctx, note, sender)) return;
 
-    const { author, mentions, parent, quote } = referencesIn(ctx, note, sender);
+    const { author, mentions, parent, quote } = referencesIn(ctx, note);
     // Without its author, the status can't be stored, so it is retried later.
     if (author) await ctx.federation.resolve(ctx, author, "User", budget);
 

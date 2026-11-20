@@ -5,7 +5,7 @@
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/services/resolve_url_service.rb
  * @module
  */
-import { parseReference } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { type AccountRow, findAccounts } from "../accounts/account_queries.ts";
 import { isRemoteFailure } from "../federation/resolver.ts";
 import type { Budget, Context } from "../kernel/context.ts";
@@ -31,7 +31,7 @@ const entityAt = (text: string) => {
 
     const [, name, id] = match;
     const type: "User" | "Note" = name === "User" ? "User" : "Note";
-    const reference = parseReference(id, url.host);
+    const reference = v0_7.parseReference(`${url.host}:${id}`);
     return reference && { type, reference };
 };
 

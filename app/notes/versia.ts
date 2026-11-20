@@ -3,7 +3,7 @@
  * @see https://versia.pub/entities/note
  * @module
  */
-import { formatReference, type v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { findAccounts } from "../accounts/account_queries.ts";
 import { userReferenceMap } from "../accounts/federation.ts";
 import { statusUrl } from "../accounts/render.ts";
@@ -11,7 +11,6 @@ import type { Visibility } from "../kernel/visibility.ts";
 import { emojisOfNotes } from "../emojis/emoji_queries.ts";
 import { emojiExtensions } from "../emojis/versia.ts";
 import type { Context } from "../kernel/context.ts";
-import { withHosts } from "../federation/references.ts";
 import { attachmentsOf } from "../media/attachment_queries.ts";
 import { versiaMedia } from "../media/versia.ts";
 import { pollsOf } from "../polls/poll_queries.ts";
@@ -35,7 +34,7 @@ export const noteReferenceMap = async (
 
     for (const note of await noteOrigins(ctx, ids)) {
         if (note.domain === null) {
-            references.set(note.id, note.id);
+            references.set(note.id, v0_7.formatReference({ host: ctx.urls.domain, id: note.id }));
             continue;
         }
 
@@ -43,7 +42,7 @@ export const noteReferenceMap = async (
 
         references.set(
             note.id,
-            formatReference({ host: note.domain, id: note.remote_id }, ctx.urls.domain),
+            v0_7.formatReference({ host: note.domain, id: note.remote_id }),
         );
     }
 
@@ -72,10 +71,7 @@ export const renderVersiaNotes = async (
         notes.flatMap((note) => [note.in_reply_to_id ?? [], note.quote_id ?? []].flat()),
     );
 
-    const linkedTo = (id: string | null) => {
-        const reference = id === null ? undefined : linked.get(id);
-        return reference === undefined ? undefined : withHosts(ctx, [reference])[0];
-    };
+    const linkedTo = (id: string | null) => id === null ? undefined : linked.get(id);
 
     return notes.map((note): v0_7.Note => {
         const author = users.get(note.account_id);
@@ -88,24 +84,19 @@ export const renderVersiaNotes = async (
             ...emojiExtensions(ctx, emojis.get(note.id) ?? []),
             ...pollExtensions(ctx, polls.get(note.id)),
         };
-        // A reference to a local entity is bare, and v0.7 references always have a host.
-        const [reference] = withHosts(ctx, [author]);
 
         return {
             type: "pub.versia:social/Note",
             id: note.id,
             created_at: note.created_at.toISOString(),
             updated_at: note.edited_at?.toISOString(),
-            author: reference,
+            author,
             category: "microblog",
             content: note.content_html,
             visibility: visibilities[note.visibility],
             is_sensitive: note.sensitive,
             subject: note.spoiler_text === "" ? undefined : note.spoiler_text,
-            mentions: withHosts(
-                ctx,
-                (mentions.get(note.id) ?? []).flatMap((id) => users.get(id) ?? []),
-            ),
+            mentions: (mentions.get(note.id) ?? []).flatMap((id) => users.get(id) ?? []),
             replies_to: linkedTo(note.in_reply_to_id),
             quoting: linkedTo(note.quote_id),
             url: statusUrl(ctx, account, note.id),

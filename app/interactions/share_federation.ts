@@ -4,11 +4,11 @@
  * @see https://versia.pub/extensions/share
  * @module
  */
-import { parseReference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { instancesHosting } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import { type Audience, queueDeliveriesTo } from "../federation/deliver.ts";
-import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
+import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import { hasFollowers } from "../graph/follows.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
@@ -22,7 +22,6 @@ import { authorityOf, resolveAuthor } from "./authors.ts";
 import { isShareEvent } from "./events.ts";
 import { keepRemoteShare, undoRemoteShare } from "./shares.ts";
 import { queueDelete } from "../federation/tombstones.ts";
-import { withHosts } from "../federation/references.ts";
 
 const extension = "pub.versia:share";
 
@@ -35,9 +34,8 @@ const renderVersiaShare = async (
 ): Promise<v0_7.Share | undefined> => {
     if (share.reblog_of_id === null) return undefined;
 
-    const [author] = withHosts(ctx, await userReferences(ctx, [share.account_id]));
-    const note = (await noteReferenceMap(ctx, [share.reblog_of_id])).get(share.reblog_of_id);
-    const [target] = withHosts(ctx, note === undefined ? [] : [note]);
+    const [author] = await userReferences(ctx, [share.account_id]);
+    const target = (await noteReferenceMap(ctx, [share.reblog_of_id])).get(share.reblog_of_id);
     if (author === undefined || target === undefined) return undefined;
 
     return {
@@ -104,7 +102,7 @@ const noteShares: CollectionProvider = async (ctx, id, page, requester) => {
     return {
         author: note.account_id,
         total: await countSharesOf(ctx, id, everyone),
-        items: withHosts(ctx, ids.flatMap((each) => references.get(each) ?? [])),
+        items: ids.flatMap((each) => references.get(each) ?? []),
     };
 };
 
@@ -114,14 +112,14 @@ export const noteShareCollections: Readonly<Record<string, CollectionProvider>> 
 };
 
 /**
- * Whether a Share sent by `sender` is one Verso wants, judging from what Verso has: a boost of a
+ * Whether a Share is one Verso wants, judging from what Verso has: a boost of a
  * local status, or by someone a local user follows. Others could fill Verso with boosts nobody
  * local would see.
  */
-const wanted = async (ctx: Context, share: v0_7.Share, sender: Sender) => {
-    if (parseReference(share.target, sender.domain)?.host === ctx.urls.domain) return true;
+const wanted = async (ctx: Context, share: v0_7.Share) => {
+    if (v0_7.parseReference(share.target)?.host === ctx.urls.domain) return true;
 
-    const reference = parseReference(share.author, sender.domain);
+    const reference = v0_7.parseReference(share.author);
     const author = reference && await knownUser(ctx, reference);
     return author !== undefined && await hasFollowers(ctx, author.id);
 };
@@ -137,22 +135,22 @@ export const shareType: EntityType<v0_7.Share> = {
     schema: v0_7.Share,
     // Only its author's instance may send it.
     authority: authorityOf,
-    prepare: async (ctx, share, sender, budget) => {
-        if (!await wanted(ctx, share, sender)) return;
+    prepare: async (ctx, share, _sender, budget) => {
+        if (!await wanted(ctx, share)) return;
 
         // Without them, the boost can't be stored, so it is retried later.
-        await resolveAuthor(ctx, share, sender, budget);
-        const target = parseReference(share.target, sender.domain);
+        await resolveAuthor(ctx, share, budget);
+        const target = v0_7.parseReference(share.target);
         if (target) await ctx.federation.resolve(ctx, target, "pub.versia:social/Note", budget);
     },
     receive: async (ctx, share, sender) => {
-        if (!await wanted(ctx, share, sender)) return;
+        if (!await wanted(ctx, share)) return;
 
-        const author = parseReference(share.author, sender.domain);
+        const author = v0_7.parseReference(share.author);
         const user = author && await knownUser(ctx, author);
         if (user === undefined) throw new PermanentFailure(`Verso doesn't have ${share.author}`);
 
-        const note = await knownNoteRow(ctx, parseReference(share.target, sender.domain));
+        const note = await knownNoteRow(ctx, v0_7.parseReference(share.target));
         if (note === undefined) throw new PermanentFailure(`Verso doesn't have ${share.target}`);
         // Remote users may boost only public and unlisted statuses too.
         if (!everyone.includes(note.visibility)) {

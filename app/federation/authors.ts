@@ -3,7 +3,7 @@
  * accepted.
  * @module
  */
-import { parseReference } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { hasLocalUser, isSuspended } from "../accounts/account_queries.ts";
 import type { Context } from "../kernel/context.ts";
 
@@ -25,11 +25,22 @@ export const authorOf = (entity: unknown): string | undefined => {
 };
 
 /**
+ * The user `entity`, or a page of a collection, from the instance `origin`, is by. A User's own id
+ * and a page's `author` are bare ids on `origin`, since only references to other entities carry a
+ * domain.
+ */
+export const authorReference = (entity: unknown, origin: string): v0_7.Reference | undefined => {
+    const text = authorOf(entity);
+    if (text === undefined) return undefined;
+
+    return v0_7.parseReference(text.includes(":") ? text : `${origin}:${text}`);
+};
+
+/**
  * Whether `entity`, made here, is by a local user Verso no longer has, like one removed since.
  */
 export const byRemovedUser = async (ctx: Context, entity: unknown): Promise<boolean> => {
-    const reference = authorOf(entity);
-    const author = reference === undefined ? undefined : parseReference(reference, ctx.urls.domain);
+    const author = authorReference(entity, ctx.urls.domain);
     if (author?.host !== ctx.urls.domain) return false;
 
     return !await hasLocalUser(ctx, author.id);
@@ -41,8 +52,7 @@ export const bySuspendedUser = async (
     entity: unknown,
     origin: string,
 ): Promise<boolean> => {
-    const reference = authorOf(entity);
-    const author = reference === undefined ? undefined : parseReference(reference, origin);
+    const author = authorReference(entity, origin);
     if (author === undefined) return false;
 
     return await isSuspended(

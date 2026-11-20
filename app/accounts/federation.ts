@@ -2,7 +2,7 @@
  * Accounts as Versia renders them: local ones for remote instances, and remote users for Verso.
  * @module
  */
-import { formatReference, type Reference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import type { EntityType, Known } from "../federation/registry.ts";
 import { isDiscardedVersion } from "../federation/versions.ts";
 import type { Context } from "../kernel/context.ts";
@@ -164,7 +164,10 @@ const localUser = async (ctx: Context, id: string) => {
 };
 
 /** The user that `reference` points at, local or remote, if Verso has it, without fetching it. */
-export const knownUser = async (ctx: Context, reference: Reference): Promise<Known | undefined> => {
+export const knownUser = async (
+    ctx: Context,
+    reference: v0_7.Reference,
+): Promise<Known | undefined> => {
     if (reference.host === ctx.urls.domain) {
         const row = await localUser(ctx, reference.id);
         return row && { id: row.id, fetchedAt: null };
@@ -253,8 +256,8 @@ export const userType: EntityType<v0_7.User> = {
 };
 
 /**
- * References to the users of `ids` that exist, by id, as Verso puts them in what it sends: a bare
- * id for local users, and the host and id for remote ones.
+ * References to the users of `ids` that exist, by id, as Verso puts them in what it sends:
+ * `domain:id`, with the domain of this instance for local users.
  */
 export const userReferenceMap = async (
     ctx: Context,
@@ -264,14 +267,14 @@ export const userReferenceMap = async (
 
     for (const row of await findAccounts(ctx, ids)) {
         if (row.domain === null) {
-            references.set(row.id, row.id);
+            references.set(row.id, v0_7.formatReference({ host: ctx.urls.domain, id: row.id }));
             continue;
         }
 
         if (row.remote_id === null) throw new Error(`Remote account ${row.id} has no remote id`);
         references.set(
             row.id,
-            formatReference({ host: row.domain, id: row.remote_id }, ctx.urls.domain),
+            v0_7.formatReference({ host: row.domain, id: row.remote_id }),
         );
     }
 

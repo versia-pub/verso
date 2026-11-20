@@ -3,7 +3,7 @@
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import { canonicalizeDomain } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { fetchBudget, isRemoteFailure, spend, withDeadline } from "../federation/resolver.ts";
 import { webfinger } from "../federation/webfinger.ts";
 import { findInstanceId } from "../instances/instance_queries.ts";
@@ -26,7 +26,7 @@ export const parseAddress = (ctx: Context, acct: string): Address | undefined =>
     if (username === "" || rest.length > 0) return undefined;
     if (domain === undefined) return { username, domain: null };
 
-    const canonical = canonicalizeDomain(domain);
+    const canonical = v0_7.canonicalizeDomain(domain);
     if (canonical === undefined) return undefined;
 
     return { username, domain: canonical === ctx.urls.domain ? null : canonical };

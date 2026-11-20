@@ -2,7 +2,7 @@
  * Admins approving or rejecting what trends, since Verso has no admin API to do it through.
  * @module
  */
-import { canonicalizeDomain } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { findLocalAccount, findRemoteAccountByName } from "../accounts/account_queries.ts";
 import { findInstanceId } from "../instances/instance_queries.ts";
 import type { Context } from "../kernel/context.ts";
@@ -36,7 +36,7 @@ const stateOf = (trendable: boolean | null, byDefault: boolean): TrendState => {
  */
 export const websiteDomains = (url: string): string[] => {
     const { hostname } = new URL(url);
-    const labels = (canonicalizeDomain(hostname) ?? hostname).split(".");
+    const labels = (v0_7.canonicalizeDomain(hostname) ?? hostname).split(".");
 
     return labels.map((_, i) => labels.slice(i).join("."));
 };
@@ -118,7 +118,7 @@ export const decideAccount = async (
     if (domain === undefined) {
         account = await findLocalAccount(ctx, username);
     } else {
-        const instanceId = await findInstanceId(ctx, canonicalizeDomain(domain) ?? domain);
+        const instanceId = await findInstanceId(ctx, v0_7.canonicalizeDomain(domain) ?? domain);
         account = instanceId === undefined
             ? undefined
             : await findRemoteAccountByName(ctx, username, instanceId);
@@ -146,7 +146,7 @@ export const decideDomain = async (
     domain: string,
     trendable: boolean,
 ): Promise<string | undefined> => {
-    const name = canonicalizeDomain(domain);
+    const name = v0_7.canonicalizeDomain(domain);
     if (name === undefined) return undefined;
 
     await setProviderTrendable(ctx, name, trendable);

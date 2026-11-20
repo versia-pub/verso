@@ -3,7 +3,7 @@
  * @module
  */
 import { Command, ValidationError } from "@cliffy/command";
-import { canonicalizeDomain } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { deliverQueue } from "../federation/deliver.ts";
 import { findInstanceId } from "../instances/instance_queries.ts";
 import { recordReached } from "../instances/reachability.ts";
@@ -14,7 +14,7 @@ import { AdminError, type AdminIo, missingCommand, runAndPrint } from "./admin_i
 
 /** A domain as signatures name it, or a usage error. */
 const domainArgument = (domain: string) => {
-    const canonical = canonicalizeDomain(domain);
+    const canonical = v0_7.canonicalizeDomain(domain);
     if (canonical === undefined) throw new ValidationError(`${domain} isn't a domain name`);
 
     return canonical;

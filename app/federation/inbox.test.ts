@@ -109,10 +109,22 @@ Deno.test("anything else sent again later, as a delivery tried again is, is queu
 Deno.test("a body that isn't Versia JSON is a 400", async () => {
     await using test = await open();
 
-    for (const body of ['{"type": "User", "type": "User"}', '{"type": 1e3}', "{", "[1,"]) {
+    for (const body of ['{"type": "User", "type": "User"}', '{"type": "User\r"}', "{", "[1,"]) {
         assertEquals((await test.send(body)).status, 400, body);
     }
     assertEquals(await test.jobs(), []);
+});
+
+Deno.test("a v0.7 body with an exponent, or CRLF between tokens, is accepted", async () => {
+    await using test = await open();
+    const avatar = { url: "https://pictures.test/a.png", media_type: "image/png", size: 1000 };
+
+    const exponent = JSON.stringify({ ...user, avatar }).replace('"size":1000', '"size":1e3');
+    const crlf = JSON.stringify({ ...user, username: "alice2" }, null, 2).replaceAll("\n", "\r\n");
+
+    assertEquals((await test.send(exponent)).status, 202);
+    assertEquals((await test.send(crlf)).status, 202);
+    assertEquals((await test.jobs()).length, 2);
 });
 
 Deno.test("an entity of no known type, or not matching its type, is a 422", async () => {

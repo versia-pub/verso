@@ -4,11 +4,11 @@
  * @see https://versia.pub/extensions/likes
  * @module
  */
-import { parseReference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { findAccount } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
-import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
+import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { everyone, instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
@@ -31,7 +31,7 @@ import {
 import { keepRemoteLike, undoRemoteLike } from "./likes.ts";
 import type { LikeKind } from "./tables.ts";
 import { queueDelete } from "../federation/tombstones.ts";
-import { referencesTo, withHosts } from "../federation/references.ts";
+import { referencesTo } from "../federation/references.ts";
 
 const extension = "pub.versia:likes";
 
@@ -48,9 +48,8 @@ const collectionNames: Readonly<Record<LikeKind, string>> = {
 
 /** A local user's like as a Versia Like, if its user and status still exist. */
 const renderVersiaLike = async (ctx: Context, like: LikeRow): Promise<v0_7.Like | undefined> => {
-    const [author] = withHosts(ctx, await userReferences(ctx, [like.account_id]));
-    const note = (await noteReferenceMap(ctx, [like.note_id])).get(like.note_id);
-    const [target] = withHosts(ctx, note === undefined ? [] : [note]);
+    const [author] = await userReferences(ctx, [like.account_id]);
+    const target = (await noteReferenceMap(ctx, [like.note_id])).get(like.note_id);
     if (author === undefined || target === undefined) return undefined;
 
     return {
@@ -117,7 +116,7 @@ const noteLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page, 
     return {
         author: note.account_id,
         total: await countLikesOfNote(ctx, id, kind),
-        items: withHosts(ctx, referencesTo(ctx, likes)),
+        items: referencesTo(ctx, likes),
     };
 };
 
@@ -134,7 +133,7 @@ const userLikes = (kind: LikeKind): CollectionProvider => async (ctx, id, page) 
     return {
         author: id,
         total: await countNotesLikedBy(ctx, id, kind, everyone),
-        items: withHosts(ctx, ids.flatMap((each) => references.get(each) ?? [])),
+        items: ids.flatMap((each) => references.get(each) ?? []),
     };
 };
 
@@ -150,9 +149,8 @@ export const userLikeCollections: Readonly<Record<string, CollectionProvider>> =
     [collectionNames.dislike]: userLikes("dislike"),
 };
 
-/** The status `target`, in a like sent by `sender`, if Verso has it. */
-const likedNote = (ctx: Context, target: string, sender: Sender) =>
-    knownNoteRow(ctx, parseReference(target, sender.domain));
+/** The status `target`, in a like, if Verso has it. */
+const likedNote = (ctx: Context, target: string) => knownNoteRow(ctx, v0_7.parseReference(target));
 
 /**
  * Likes or dislikes of statuses. Verso stores those of statuses it has, and drops others, rather
@@ -169,17 +167,17 @@ const likingType = <T extends v0_7.Like | v0_7.Dislike>(
     // Only its author's instance may send it.
     authority: authorityOf,
     // The author is only fetched for a like Verso will store.
-    prepare: async (ctx, entity, sender, budget) => {
-        if (await likedNote(ctx, entity.target, sender) === undefined) return;
+    prepare: async (ctx, entity, _sender, budget) => {
+        if (await likedNote(ctx, entity.target) === undefined) return;
 
-        await resolveAuthor(ctx, entity, sender, budget);
+        await resolveAuthor(ctx, entity, budget);
     },
     receive: async (ctx, entity, sender) => {
         const { author, target } = entity;
-        const note = await likedNote(ctx, target, sender);
+        const note = await likedNote(ctx, target);
         if (note === undefined) return;
 
-        const reference = parseReference(author, sender.domain);
+        const reference = v0_7.parseReference(author);
         const user = reference && await knownUser(ctx, reference);
         if (user === undefined) throw new PermanentFailure(`Verso doesn't have ${author}`);
         if (note.instance_id === null && !await canSee(ctx, note, user.id)) {

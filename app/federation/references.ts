@@ -1,4 +1,4 @@
-import { formatReference } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import type { Context } from "../kernel/context.ts";
 
 /**
@@ -12,22 +12,15 @@ export type EntityRow = {
 };
 
 /**
- * `references` with the host written for local entities too, as a v0.7 collection holds them: it
- * has no sender whose host a bare id could mean.
- */
-export const withHosts = (ctx: Context, references: readonly string[]): string[] =>
-    references.map((reference) =>
-        reference.includes(":") ? reference : `${ctx.urls.domain}:${reference}`
-    );
-
-/**
- * References to `rows`, in the form Verso sends: a bare id for a local entity, and the host and id
- * for a remote one. A remote entity whose remote id Verso doesn't know is omitted.
+ * References to `rows`, in the form Verso sends: `domain:id`, with the domain of this instance for a
+ * local entity. A remote entity whose remote id Verso doesn't know is omitted.
  */
 export const referencesTo = (ctx: Context, rows: readonly EntityRow[]): string[] =>
     rows.flatMap((row) => {
-        if (row.domain === null) return [row.id];
+        if (row.domain === null) {
+            return [v0_7.formatReference({ host: ctx.urls.domain, id: row.id })];
+        }
         return row.remote_id === null
             ? []
-            : [formatReference({ host: row.domain, id: row.remote_id }, ctx.urls.domain)];
+            : [v0_7.formatReference({ host: row.domain, id: row.remote_id })];
     });

@@ -3,7 +3,7 @@
  * @module
  */
 import { Permission } from "./permissions.ts";
-import { canonicalizeDomain } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 
 /**
@@ -204,7 +204,7 @@ export type Permissions = z.infer<typeof Permissions>;
 
 /** A remote instance's domain, in the form signatures name it. */
 export const DomainName = z.string().transform((domain, ctx) => {
-    const canonical = canonicalizeDomain(domain);
+    const canonical = v0_7.canonicalizeDomain(domain);
     if (canonical === undefined) ctx.addIssue({ code: "custom", message: "Must be a domain name" });
     return canonical ?? domain;
 });

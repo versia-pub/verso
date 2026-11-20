@@ -5,7 +5,6 @@
  * @see https://versia.pub/federation/http
  * @module
  */
-import { parseReference } from "@versia/protocol";
 import type { SelectQueryBuilder } from "kysely";
 import { z } from "zod";
 import type { Database } from "../db/database.ts";
@@ -17,7 +16,7 @@ import { type DeadPayload, enqueue, enqueueAll } from "../jobs/job_queries.ts";
 import type { JobPayload, JobsTable } from "../jobs/tables.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
-import { authorOf, byRemovedUser, bySuspendedUser } from "./authors.ts";
+import { authorReference, byRemovedUser, bySuspendedUser } from "./authors.ts";
 
 /** Versia's own queue, so deliveries of other protocols can't hold it up. */
 export const deliverQueue = "versia-deliver";
@@ -90,8 +89,7 @@ export const queueDeliveriesTo = async (
     // its author, is deleted before it is sent.
     const bodyId = ctx.ids();
     const { id } = entity as { id?: unknown };
-    const reference = authorOf(entity);
-    const author = reference === undefined ? undefined : parseReference(reference, ctx.urls.domain);
+    const author = authorReference(entity, ctx.urls.domain);
     await ctx.db.insertInto("delivery_bodies")
         .values({
             id: bodyId,

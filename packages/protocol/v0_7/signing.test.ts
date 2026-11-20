@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { sign, type SignedMessage, verify } from "./signing.ts";
+import { importPublicKey, sign, type SignedMessage, verify } from "./signing.ts";
 
 const keys = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]) as CryptoKeyPair;
 
@@ -139,4 +139,20 @@ Deno.test("Versia-Signed-By must be a domain as written in the protocol", async 
     }
 
     assertEquals(lookedUp, false);
+});
+
+Deno.test("public keys are imported from SPKI base64 only", async () => {
+    const spki = new Uint8Array(await crypto.subtle.exportKey("spki", keys.publicKey));
+
+    const imported = await importPublicKey(spki.toBase64());
+
+    assertEquals(
+        await verify(message, headers, () => Promise.resolve(imported), signedAt),
+        { ok: true, signedBy: "bob.example" },
+    );
+
+    // The raw 32-byte key, without the SPKI wrapping, is a common mistake.
+    const raw = new Uint8Array(await crypto.subtle.exportKey("raw", keys.publicKey));
+    assertEquals(await importPublicKey(raw.toBase64()), undefined);
+    assertEquals(await importPublicKey("not base64!"), undefined);
 });

@@ -5,7 +5,7 @@
  * @module
  */
 import { getLogger } from "@logtape/logtape";
-import { parseReference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import { fetchEntityCollection } from "../federation/collections.ts";
 import { fetchBudget, isRemoteFailure, withDeadline } from "../federation/resolver.ts";
@@ -136,7 +136,7 @@ export const fetchReplies = async (
             for (const item of parsed.data.items) {
                 if (replies >= max.replies) return;
 
-                const reference = parseReference(item, domain);
+                const reference = v0_7.parseReference(item);
                 if (reference === undefined) continue;
                 const known = await findRemoteNoteAt(ctx, reference.host, reference.id);
                 const id = await ctx.federation.resolve(

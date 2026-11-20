@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { importPublicKey, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import { instanceKey } from "../instances/keys.ts";
 import { remoteKeys } from "../instances/remote_keys.ts";
@@ -329,7 +329,7 @@ Deno.test("a rotated key is fetched again, at most once in a while", async () =>
 
 Deno.test("replies to signed requests are signed by this instance, over what was sent", async () => {
     await using test = await open();
-    const ours = await importPublicKey((await instanceKey(test.ctx)).publicKey);
+    const ours = await v0_7.importPublicKey((await instanceKey(test.ctx)).publicKey);
     const checked = async (method: string, path: string, body?: string) => {
         const headers = await v0_7.sign(
             {
@@ -372,7 +372,7 @@ Deno.test("replies to signed requests are signed by this instance, over what was
 
 Deno.test("error replies to signed routes are signed too, even when the request isn't", async () => {
     await using test = await open();
-    const ours = await importPublicKey((await instanceKey(test.ctx)).publicKey);
+    const ours = await v0_7.importPublicKey((await instanceKey(test.ctx)).publicKey);
     const checked = async (path: string, headers: Record<string, string> = {}) => {
         const response = await test.app.request(path, { headers });
         const bytes = new Uint8Array(await response.arrayBuffer());

@@ -9,7 +9,6 @@ import { v0_7 } from "@versia/protocol";
 import { findAccount, instancesHosting } from "../accounts/account_queries.ts";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
-import { withHosts } from "../federation/references.ts";
 import type { EntityType } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
@@ -35,9 +34,8 @@ const renderVersiaVote = async (
     ballot: PollBallotRow,
 ): Promise<v0_7.Vote | undefined> => {
     const poll = await findPoll(ctx, ballot.poll_id);
-    const [author] = withHosts(ctx, await userReferences(ctx, [ballot.account_id]));
-    const note = poll && (await noteReferenceMap(ctx, [poll.note_id])).get(poll.note_id);
-    const [target] = withHosts(ctx, note === undefined ? [] : [note]);
+    const [author] = await userReferences(ctx, [ballot.account_id]);
+    const target = poll && (await noteReferenceMap(ctx, [poll.note_id])).get(poll.note_id);
     const options = await choicesOf(ctx, ballot);
     if (author === undefined || target === undefined || options.length === 0) return undefined;
 

@@ -4,12 +4,12 @@
  * @see https://versia.pub/extensions/reactions
  * @module
  */
-import { parseReference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { knownUser, userReferences } from "../accounts/federation.ts";
 import type { RemoteEmoji } from "../emojis/emojis.ts";
 import { emojiExtensions, remoteEmojisOf } from "../emojis/versia.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
-import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
+import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { instanceMaySee, instanceMaySeeInteraction } from "../notes/audience.ts";
@@ -29,7 +29,7 @@ import {
 } from "./reaction_queries.ts";
 import { isUnicodeEmoji, keepRemoteReaction, undoRemoteReaction } from "./reactions.ts";
 import { queueDelete } from "../federation/tombstones.ts";
-import { referencesTo, withHosts } from "../federation/references.ts";
+import { referencesTo } from "../federation/references.ts";
 
 const extension = "pub.versia:reactions";
 
@@ -44,9 +44,8 @@ const renderVersiaReaction = async (
     ctx: Context,
     reaction: LocalReaction,
 ): Promise<v0_7.Reaction | undefined> => {
-    const [author] = withHosts(ctx, await userReferences(ctx, [reaction.account_id]));
-    const note = (await noteReferenceMap(ctx, [reaction.note_id])).get(reaction.note_id);
-    const [target] = withHosts(ctx, note === undefined ? [] : [note]);
+    const [author] = await userReferences(ctx, [reaction.account_id]);
+    const target = (await noteReferenceMap(ctx, [reaction.note_id])).get(reaction.note_id);
     if (author === undefined || target === undefined) return undefined;
 
     const { shortcode, media_type } = reaction;
@@ -105,7 +104,7 @@ const noteReactions: CollectionProvider = async (ctx, id, page, requester) => {
     return {
         author: note.account_id,
         total: await countReactionsOf(ctx, id),
-        items: withHosts(ctx, referencesTo(ctx, reactions)),
+        items: referencesTo(ctx, reactions),
     };
 };
 
@@ -114,9 +113,9 @@ export const noteReactionCollections: Readonly<Record<string, CollectionProvider
     "pub.versia:reactions/Reactions": noteReactions,
 };
 
-/** The status that a reaction sent by `sender` is to, if Verso has it. */
-const reactedNote = (ctx: Context, reaction: v0_7.Reaction, sender: Sender) =>
-    knownNoteRow(ctx, parseReference(reaction.target, sender.domain));
+/** The status that a reaction is to, if Verso has it. */
+const reactedNote = (ctx: Context, reaction: v0_7.Reaction) =>
+    knownNoteRow(ctx, v0_7.parseReference(reaction.target));
 
 /**
  * The emoji of a reaction sent by a remote instance: a Unicode emoji, or one of its custom emojis,
@@ -143,18 +142,18 @@ export const reactionType: EntityType<v0_7.Reaction> = {
     // Only its author's instance may send it.
     authority: authorityOf,
     // The author is only fetched for a reaction Verso will store.
-    prepare: async (ctx, reaction, sender, budget) => {
+    prepare: async (ctx, reaction, _sender, budget) => {
         if (remoteReactionEmoji(reaction) === undefined) return;
-        if (await reactedNote(ctx, reaction, sender) === undefined) return;
+        if (await reactedNote(ctx, reaction) === undefined) return;
 
-        await resolveAuthor(ctx, reaction, sender, budget);
+        await resolveAuthor(ctx, reaction, budget);
     },
     receive: async (ctx, reaction, sender) => {
         const emoji = remoteReactionEmoji(reaction);
-        const note = await reactedNote(ctx, reaction, sender);
+        const note = await reactedNote(ctx, reaction);
         if (emoji === undefined || note === undefined) return;
 
-        const reference = parseReference(reaction.author, sender.domain);
+        const reference = v0_7.parseReference(reaction.author);
         const user = reference && await knownUser(ctx, reference);
         if (user === undefined) throw new PermanentFailure(`Verso doesn't have ${reaction.author}`);
         if (note.instance_id === null && !await canSee(ctx, note, user.id)) {

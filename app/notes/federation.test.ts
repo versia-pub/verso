@@ -426,11 +426,11 @@ Deno.test("a note is its author's instance's own", async () => {
     const entity = await test.find((await createNote(test.ctx, "alice")).id, "");
     if (entity === undefined) throw new Error("No note");
 
-    assertEquals(noteType.authority({ ...entity, author: "carol" }, "b.example"), "b.example");
     assertEquals(
         noteType.authority({ ...entity, author: "c.example:erin" }, "b.example"),
         "c.example",
     );
+    assertEquals(noteType.authority({ ...entity, author: "carol" }, "b.example"), undefined);
 });
 
 Deno.test("a posted note is sent to the instances of those it is shown to", async () => {

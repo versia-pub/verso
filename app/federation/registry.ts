@@ -4,7 +4,7 @@
  * here.
  * @module
  */
-import { type Reference, v0_6, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import { Gone, NotFound } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
@@ -110,7 +110,7 @@ export type EntityType<T = unknown> = {
      * The entity `reference` points at, local or remote, if Verso has it. Types without it can't be
      * resolved.
      */
-    known?(ctx: Context, reference: Reference): Promise<Known | undefined>;
+    known?(ctx: Context, reference: v0_7.Reference): Promise<Known | undefined>;
     /**
      * The local entity with this id, if `requester`, a remote instance, may see it, or `undefined`
      * if there is none or it may not. Types without it can't be fetched.
@@ -173,7 +173,7 @@ const routesOf = (type: EntityType): Route[] => {
             tags: ["versia"],
             signed: true,
             contentType: versiaJson,
-            params: z.object({ id: v0_6.Id }),
+            params: z.object({ id: v0_7.Id }),
             responses: { 200: type.schema },
             handler: async (ctx, { params, signedBy }) => {
                 const entity = await find(ctx, params.id, signedBy);
@@ -197,7 +197,7 @@ const routesOf = (type: EntityType): Route[] => {
             tags: ["versia"],
             signed: true,
             contentType: versiaJson,
-            params: z.object({ id: v0_6.Id }),
+            params: z.object({ id: v0_7.Id }),
             query: CollectionPage,
             responses: { 200: z.union([v0_7.Collection, v0_7.ReferenceCollection]) },
             handler: async (ctx, { params, query, signedBy }) => {

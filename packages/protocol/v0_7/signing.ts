@@ -8,8 +8,6 @@
  */
 import { isDomain } from "./reference.ts";
 
-export { importPublicKey } from "../signing.ts";
-
 /** A request, or a response to one. Responses use the method, host and target of their request. */
 export type SignedMessage = {
     /** Like "GET" or "post"; the case doesn't matter. */
@@ -32,6 +30,23 @@ export type Verification =
 
 /** The longest a signature stays valid, either side of its timestamp. */
 const maxClockSkewSeconds = 5 * 60;
+
+/** Imports an instance's public key from SPKI base64, as InstanceMetadata holds it. */
+export const importPublicKey = async (
+    spkiBase64: string,
+): Promise<CryptoKey | undefined> => {
+    try {
+        return await crypto.subtle.importKey(
+            "spki",
+            Uint8Array.fromBase64(spkiBase64),
+            "Ed25519",
+            false,
+            ["verify"],
+        );
+    } catch {
+        return undefined;
+    }
+};
 
 /** Returns the three Versia-* headers to put on `message`. */
 export const sign = async (

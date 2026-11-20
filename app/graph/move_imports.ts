@@ -6,7 +6,7 @@
  * @see https://versia.pub/extensions/migration
  * @module
  */
-import { parseReference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import {
     findAccount,
@@ -227,7 +227,7 @@ export const importCollection = async (
             }
 
             walked++;
-            const reference = parseReference(item, domain);
+            const reference = v0_7.parseReference(item);
             if (reference === undefined) continue;
 
             if (job.collection === "subscribers") {

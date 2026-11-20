@@ -5,7 +5,7 @@
  * @see https://versia.pub/entities/subscribe
  * @module
  */
-import { parseReference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import { findAccount } from "../accounts/account_queries.ts";
 import { isProfileUpdated } from "../accounts/events.ts";
@@ -16,8 +16,7 @@ import {
     userReferences,
 } from "../accounts/federation.ts";
 import { queueDeliveries, queueDeliveriesTo } from "../federation/deliver.ts";
-import { withHosts } from "../federation/references.ts";
-import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
+import type { CollectionProvider, EntityType } from "../federation/registry.ts";
 import { PermanentFailure } from "../jobs/worker.ts";
 import type { Context, DomainEvent } from "../kernel/context.ts";
 import { isFollowEvent } from "./events.ts";
@@ -37,7 +36,7 @@ const followCollection = (side: FollowSide): CollectionProvider => async (ctx, i
     if (owner.hide_collections) return { author: id, total, items: [] };
 
     const ids = await followIdsFrom(ctx, side, id, page.offset, page.limit);
-    return { author: id, total, items: withHosts(ctx, await userReferences(ctx, ids)) };
+    return { author: id, total, items: await userReferences(ctx, ids) };
 };
 
 /** The collections the graph adds to Users. */
@@ -60,9 +59,7 @@ const sendSubscription = async (
     followeeId: string,
     recipientId: string,
 ) => {
-    const references = await userReferences(ctx, [followerId, followeeId]);
-    // v0.7 references always have a host.
-    const [subscriber, target] = withHosts(ctx, references);
+    const [subscriber, target] = await userReferences(ctx, [followerId, followeeId]);
     if (subscriber === undefined || target === undefined) return;
 
     const entity = {
@@ -128,25 +125,24 @@ export const profileDeliveries = async (ctx: Context, event: DomainEvent): Promi
 };
 
 /** The instance of the subscriber of an entity, which only it may send. */
-const subscriberHost = (entity: { subscriber: string }, origin: string) =>
-    parseReference(entity.subscriber, origin)?.host;
+const subscriberHost = (entity: { subscriber: string }) =>
+    v0_7.parseReference(entity.subscriber)?.host;
 
 /** The instance of the target of an entity, which only it may send. */
-const targetHost = (entity: { target: string }, origin: string) =>
-    parseReference(entity.target, origin)?.host;
+const targetHost = (entity: { target: string }) => v0_7.parseReference(entity.target)?.host;
 
 /**
  * The two users named by a subscription entity sent by `sender`: `local`, which must be a local
  * user, and `remote`, on the sender. Either is `undefined` if Verso doesn't have it.
  */
-const partiesOf = async (ctx: Context, local: string, remote: string, sender: Sender) => {
-    const localUser = parseReference(local, sender.domain);
+const partiesOf = async (ctx: Context, local: string, remote: string) => {
+    const localUser = v0_7.parseReference(local);
     if (localUser?.host !== ctx.urls.domain) {
         throw new PermanentFailure(`${local} isn't a user here`);
     }
 
     // The authority is the sender's host, which is the remote user's.
-    const remoteUser = parseReference(remote, sender.domain);
+    const remoteUser = v0_7.parseReference(remote);
 
     return {
         localId: (await knownUser(ctx, localUser))?.id,
@@ -173,17 +169,12 @@ const subscribeType: EntityType<z.infer<typeof Subscribe>> = {
     schema: Subscribe,
     authority: subscriberHost,
     // The follower is often new to Verso.
-    prepare: async (ctx, entity, sender, budget) => {
-        const subscriber = parseReference(entity.subscriber, sender.domain);
+    prepare: async (ctx, entity, _sender, budget) => {
+        const subscriber = v0_7.parseReference(entity.subscriber);
         if (subscriber) await ctx.federation.resolve(ctx, subscriber, "User", budget);
     },
     receive: async (ctx, entity, sender) => {
-        const { localId, remoteId } = await partiesOf(
-            ctx,
-            entity.target,
-            entity.subscriber,
-            sender,
-        );
+        const { localId, remoteId } = await partiesOf(ctx, entity.target, entity.subscriber);
         // Every Subscribe is answered, so one Verso can't apply is rejected back to its sender.
         if (localId === undefined || remoteId === undefined) {
             const { subscriber, target, target_type } = entity;
@@ -203,7 +194,7 @@ const subscribeType: EntityType<z.infer<typeof Subscribe>> = {
 
         // `partiesOf` found the subscriber, so its reference is valid. Accepting emits the
         // SubscribeAccept as for any accepted request, so it isn't sent again below.
-        const subscriber = parseReference(entity.subscriber, sender.domain);
+        const subscriber = v0_7.parseReference(entity.subscriber);
         if (
             result === "requested" && subscriber !== undefined &&
             await isMoveSubscriber(ctx, localId, subscriber.host, subscriber.id)
@@ -225,13 +216,8 @@ const unsubscribeType: EntityType<z.infer<typeof Unsubscribe>> = {
     type: "Unsubscribe",
     schema: Unsubscribe,
     authority: subscriberHost,
-    receive: async (ctx, entity, sender) => {
-        const { localId, remoteId } = await partiesOf(
-            ctx,
-            entity.target,
-            entity.subscriber,
-            sender,
-        );
+    receive: async (ctx, entity) => {
+        const { localId, remoteId } = await partiesOf(ctx, entity.target, entity.subscriber);
         if (localId !== undefined && remoteId !== undefined) {
             await unfollow(ctx, remoteId, localId);
         }
@@ -246,13 +232,8 @@ const subscribeAcceptType: EntityType<z.infer<typeof SubscribeAccept>> = {
     type: "SubscribeAccept",
     schema: SubscribeAccept,
     authority: targetHost,
-    receive: async (ctx, entity, sender) => {
-        const { localId, remoteId } = await partiesOf(
-            ctx,
-            entity.subscriber,
-            entity.target,
-            sender,
-        );
+    receive: async (ctx, entity) => {
+        const { localId, remoteId } = await partiesOf(ctx, entity.subscriber, entity.target);
         if (localId === undefined || remoteId === undefined) return;
 
         const [existing] = await followsFrom(ctx, localId, [remoteId]);
@@ -270,13 +251,8 @@ const subscribeRejectType: EntityType<z.infer<typeof SubscribeReject>> = {
     type: "SubscribeReject",
     schema: SubscribeReject,
     authority: targetHost,
-    receive: async (ctx, entity, sender) => {
-        const { localId, remoteId } = await partiesOf(
-            ctx,
-            entity.subscriber,
-            entity.target,
-            sender,
-        );
+    receive: async (ctx, entity) => {
+        const { localId, remoteId } = await partiesOf(ctx, entity.subscriber, entity.target);
         if (localId !== undefined && remoteId !== undefined) {
             await rejectFollow(ctx, localId, remoteId);
         }

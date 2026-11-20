@@ -5,7 +5,7 @@
  * @see https://versia.pub/extensions/social#note
  * @module
  */
-import { parseReference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { findAccount, findRemoteAccount } from "../accounts/account_queries.ts";
 import { queueDeliveriesTo } from "../federation/deliver.ts";
 import type { CollectionProvider, EntityType, Sender } from "../federation/registry.ts";
@@ -19,7 +19,6 @@ import { pinnedNotes } from "./pin_queries.ts";
 import { knownNote, prepareNote, receiveNote } from "./remote.ts";
 import { noteReferenceMap, renderVersiaNotes } from "./versia.ts";
 import { queueDelete } from "../federation/tombstones.ts";
-import { withHosts } from "../federation/references.ts";
 import { blockedByAccount } from "../graph/blocks.ts";
 import { isPollEnded, isPollUpdated } from "../polls/events.ts";
 import { voterInstances } from "../polls/poll_queries.ts";
@@ -113,7 +112,7 @@ const featured: CollectionProvider = async (ctx, id, page) => {
     return {
         author: id,
         total: pinned.length,
-        items: withHosts(ctx, shown.flatMap((note) => references.get(note.id) ?? [])),
+        items: shown.flatMap((note) => references.get(note.id) ?? []),
     };
 };
 
@@ -152,7 +151,7 @@ const linkCollection = (link: NoteLink): CollectionProvider => async (ctx, id, p
     return {
         author: note.account_id,
         total: await countLinkedNotes(ctx, link, id, everyone),
-        items: withHosts(ctx, ids.flatMap((each) => references.get(each) ?? [])),
+        items: ids.flatMap((each) => references.get(each) ?? []),
     };
 };
 
@@ -166,7 +165,7 @@ export const noteType: EntityType<v0_7.Note> = {
     // An edit can change a status back to what it was.
     resendable: true,
     // Only its author's instance may send it.
-    authority: (note, origin) => parseReference(note.author, origin)?.host,
+    authority: (note) => v0_7.parseReference(note.author)?.host,
     prepare: prepareNote,
     receive: receiveNote,
     deleteRemote: async (ctx, id, sender) => {

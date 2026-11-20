@@ -5,7 +5,7 @@
  * @module
  */
 import { AdminDomainBlock } from "@versia/client-api";
-import { canonicalizeDomain } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import { HttpError, NotFound, NotPermitted, Unprocessable } from "../http/errors.ts";
 import { cursorsOf, PageQuery } from "../http/paging.ts";
@@ -225,7 +225,7 @@ export const adminDomainBlockRoutes = (configured: readonly string[]): readonly 
             body: Notes.extend({ domain: z.string() }),
             responses: { 200: AdminDomainBlock },
             handler: async (ctx, { body }) => {
-                const domain = canonicalizeDomain(body.domain);
+                const domain = v0_7.canonicalizeDomain(body.domain);
                 if (domain === undefined) throw new Unprocessable(`${body.domain} isn't a domain`);
                 checkSeverity(body.severity);
 

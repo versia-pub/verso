@@ -1,5 +1,5 @@
 import { getLogger } from "@logtape/logtape";
-import type { Reference } from "@versia/protocol";
+import type { v0_7 } from "@versia/protocol";
 import type { Kysely } from "kysely";
 import type { Database } from "../db/database.ts";
 import type { Clock } from "./clock.ts";
@@ -49,7 +49,7 @@ export type Budget = {
  */
 export type Resolver = (
     ctx: Context,
-    reference: Reference,
+    reference: v0_7.Reference,
     type: string,
     budget?: Budget,
     maxAgeMs?: number,

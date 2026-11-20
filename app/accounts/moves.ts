@@ -6,7 +6,7 @@
  * @see https://github.com/mastodon/mastodon/blob/v4.7.0/app/lib/activitypub/activity/move.rb
  * @module
  */
-import { type Reference, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import type { EntityType } from "../federation/registry.ts";
 import type { Budget, Context } from "../kernel/context.ts";
 import { emit } from "../kernel/events.ts";
@@ -21,7 +21,7 @@ export const migrationOf = (user: v0_7.User): v0_7.MigrationExtension | undefine
     v0_7.MigrationExtension.safeParse(user.extensions?.[v0_7.migrationKey]).data;
 
 /** The reference to `account` that other instances use, whether it is local or remote. */
-export const referenceOf = (ctx: Context, account: AccountRow): Reference => ({
+export const referenceOf = (ctx: Context, account: AccountRow): v0_7.Reference => ({
     host: account.domain ?? ctx.urls.domain,
     id: account.remote_id ?? account.id,
 });
@@ -29,7 +29,7 @@ export const referenceOf = (ctx: Context, account: AccountRow): Reference => ({
 /** The account `reference` points at, local or remote, if Verso has it. */
 export const accountAt = async (
     ctx: Context,
-    reference: Reference,
+    reference: v0_7.Reference,
 ): Promise<AccountRow | undefined> => {
     if (reference.host !== ctx.urls.domain) {
         const row = await findRemoteAccountAt(ctx, reference.host, reference.id);
@@ -62,7 +62,12 @@ export const savePrevious = async (
 const prepared = new WeakMap<object, Date>();
 
 /** Fetches the account `move` names as moved to again. */
-const prepareMove = async (ctx: Context, move: object, destination: Reference, budget: Budget) => {
+const prepareMove = async (
+    ctx: Context,
+    move: object,
+    destination: v0_7.Reference,
+    budget: Budget,
+) => {
     prepared.set(move, ctx.clock.now());
     await ctx.federation.resolve(ctx, destination, "User", budget, 0);
 };
@@ -80,8 +85,8 @@ const mayMoveTo = (from: AccountRow, to: AccountRow) =>
 const receiveMove = async (
     ctx: Context,
     move: object,
-    author: Reference,
-    destination: Reference,
+    author: v0_7.Reference,
+    destination: v0_7.Reference,
 ) => {
     const since = prepared.get(move);
     const from = await accountAt(ctx, author);

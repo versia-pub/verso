@@ -5,7 +5,7 @@
  * @module
  */
 import type { ReportCategory } from "@versia/client-api";
-import { canonicalizeDomain } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { type AccountRow, findAccount, findAccounts } from "../accounts/account_queries.ts";
 import { ValidationFailed } from "../http/errors.ts";
 import type { Context } from "../kernel/context.ts";
@@ -67,7 +67,7 @@ const forwardDomains = (report: NewReport, target: AccountRow) => {
 
     const domains = report.forwardToDomains ?? [target.domain];
 
-    return [...new Set(domains.flatMap((domain) => canonicalizeDomain(domain.trim()) ?? []))];
+    return [...new Set(domains.flatMap((domain) => v0_7.canonicalizeDomain(domain.trim()) ?? []))];
 };
 
 /**

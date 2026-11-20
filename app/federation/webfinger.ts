@@ -3,7 +3,7 @@
  * @see https://versia.pub/federation/discovery
  * @module
  */
-import { canonicalizeDomain, type Reference } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import type { Context } from "../kernel/context.ts";
 import { fetchUnsigned } from "./request.ts";
@@ -19,12 +19,12 @@ const Jrd = z.object({
 const userPath = /^\/\.versia\/v0\.7\/entities\/User\/([A-Za-z0-9_-]+)$/;
 
 /** The user that a WebFinger link points at, if it is a Versia User on `domain`. */
-const userOf = (domain: string, href: string): Reference | undefined => {
+const userOf = (domain: string, href: string): v0_7.Reference | undefined => {
     const url = URL.parse(href);
     if (url?.protocol !== "https:" || url.host !== domain || url.search !== "") return undefined;
 
     const id = userPath.exec(url.pathname)?.[1];
-    return id === undefined ? undefined : { host: domain, id };
+    return id === undefined ? undefined : v0_7.parseReference(`${domain}:${id}`);
 };
 
 /**
@@ -36,8 +36,8 @@ export const webfinger = async (
     ctx: Context,
     username: string,
     domain: string,
-): Promise<Reference | undefined> => {
-    const host = canonicalizeDomain(domain);
+): Promise<v0_7.Reference | undefined> => {
+    const host = v0_7.canonicalizeDomain(domain);
     if (host === undefined || await ctx.federation.isBlocked(ctx, host)) return undefined;
 
     const url = new URL(`https://${host}/.well-known/webfinger`);

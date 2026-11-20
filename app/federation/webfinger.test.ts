@@ -56,6 +56,8 @@ Deno.test("only a Versia User link on the same host is followed", async () => {
             self("http://evil.test/.versia/v0.7/entities/User/x"),
             self("https://evil.test/.versia/v0.7/entities/Note/x"),
             self("https://evil.test/.versia/v0.7/entities/User/x?y=1"),
+            self("https://evil.test/.versia/v0.7/entities/User/X"),
+            self(`https://evil.test/.versia/v0.7/entities/User/${"x".repeat(19)}`),
             self("https://evil.test/.versia/v0.7/entities/User/x", "application/activity+json"),
             {
                 rel: "alternate",

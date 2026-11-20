@@ -4,7 +4,7 @@
  * @see https://versia.pub/federation/http
  * @module
  */
-import { parseJson } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 import { BadRequest, ValidationFailed } from "../http/errors.ts";
 import { defineRoute, type Route } from "../http/route.ts";
@@ -60,7 +60,7 @@ export type Checked = { readonly type: EntityType; readonly entity: unknown };
  * @see https://versia.pub/extensions
  */
 export const checkEntity = (registry: Registry, body: Uint8Array): Checked | undefined => {
-    const parsed = parseJson(body);
+    const parsed = v0_7.parseJson(body);
     if (!parsed.ok) throw new BadRequest(`The body isn't valid Versia JSON: ${parsed.reason}`);
 
     const typed = Typed.safeParse(parsed.value);

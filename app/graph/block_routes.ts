@@ -12,7 +12,7 @@ import { mutePage } from "./mute_queries.ts";
 import { mute, unmute } from "./mutes.ts";
 import { relationshipReply } from "./relationships.ts";
 import { Account, MutedAccount, Relationship } from "@versia/client-api";
-import { canonicalizeDomain } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { z } from "zod";
 
 /** Blocks or unblocks an account. */
@@ -82,7 +82,7 @@ const muteRoute = defineRoute({
 const DomainBody = (description: string) =>
     z.object({
         domain: z.string().transform((domain, issues) => {
-            const canonical = canonicalizeDomain(domain);
+            const canonical = v0_7.canonicalizeDomain(domain);
             if (canonical === undefined) {
                 issues.addIssue({ code: "custom", message: "Must be a domain name" });
             }

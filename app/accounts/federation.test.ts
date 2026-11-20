@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { importPublicKey, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { encode } from "fast-png";
 import { requestTarget } from "../federation/request.ts";
 import { instanceKey } from "../instances/keys.ts";
@@ -35,7 +35,7 @@ const fetchSigned = async (from: Context, to: Context, path: string) => {
         }),
     );
     const body = new Uint8Array(await response.arrayBuffer());
-    const theirs = await importPublicKey((await instanceKey(to)).publicKey);
+    const theirs = await v0_7.importPublicKey((await instanceKey(to)).publicKey);
     const signature = await v0_7.verify(
         { method: "GET", host: to.urls.domain, target, body },
         response.headers,

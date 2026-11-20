@@ -19055,7 +19055,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     }
                 ],
@@ -19275,7 +19275,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -19426,7 +19426,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -19577,7 +19577,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -19728,7 +19728,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -19879,7 +19879,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -20030,7 +20030,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -20181,7 +20181,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     }
                 ],
@@ -20517,7 +20517,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -20668,7 +20668,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -20819,7 +20819,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -20970,7 +20970,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -21121,7 +21121,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -21272,7 +21272,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     },
                     {
@@ -21423,7 +21423,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     }
                 ],
@@ -21520,7 +21520,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     }
                 ],
@@ -21617,7 +21617,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     }
                 ],
@@ -21719,7 +21719,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9_-]+$"
+                            "pattern": "^[a-z0-9_-]{1,18}$"
                         }
                     }
                 ],

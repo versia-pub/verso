@@ -134,3 +134,21 @@ Deno.test("an entity is fetched from the budget it is given", async () => {
     );
     assertEquals(budgets, [budget]);
 });
+
+Deno.test("an entity URL with a port names nothing", async () => {
+    const asked: unknown[] = [];
+    await using test = await createTestContext({
+        federation: {
+            resolve: (_ctx, reference) => {
+                asked.push(reference);
+                return Promise.resolve("bob");
+            },
+        },
+    });
+
+    assertEquals(
+        await resolveEntityAt(test.ctx, "https://b.test:8443/.versia/v0.7/entities/User/bob"),
+        undefined,
+    );
+    assertEquals(asked, []);
+});

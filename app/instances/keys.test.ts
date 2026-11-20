@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertNotEquals, assertRejects } from "@std/assert";
-import { importPublicKey, v0_7 } from "@versia/protocol";
+import { v0_7 } from "@versia/protocol";
 import { createTestContext } from "../testing/context.ts";
 import type { InstanceKey } from "../kernel/context.ts";
 import { createInstanceKey, ensureInstanceKey, instanceKey, rotateInstanceKey } from "./keys.ts";
@@ -15,7 +15,7 @@ const now = new Date("2026-01-01T00:00:00Z");
 /** Whether the key's private half signs what its public half verifies. */
 const isPair = async (key: InstanceKey) => {
     const headers = new Headers(await v0_7.sign(message, key.privateKey, "a.example", now));
-    const publicKey = await importPublicKey(key.publicKey);
+    const publicKey = await v0_7.importPublicKey(key.publicKey);
 
     return (await v0_7.verify(message, headers, () => Promise.resolve(publicKey), now)).ok;
 };

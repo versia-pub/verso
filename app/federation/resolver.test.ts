@@ -6,7 +6,7 @@ import { blockDomain } from "../moderation/domain_blocks.ts";
 import { registry } from "../registry.ts";
 import { addEvilInstance } from "../testing/evil.ts";
 import { createNetwork } from "../testing/network.ts";
-import type { Reference } from "@versia/protocol";
+import type { v0_7 } from "@versia/protocol";
 import type { Budget, Context, Resolver } from "../kernel/context.ts";
 import { createRegistry, type Sender } from "./registry.ts";
 import { BadReply, fetchUnsigned, Unreachable } from "./request.ts";
@@ -254,7 +254,7 @@ Deno.test("entities that refer to each other are fetched once each, without wait
             void await resolve(ctx, { host: "evil.test", id: entity.next }, "Linked", budget),
         receive: (_: unknown, entity: z.infer<typeof Linked>) =>
             Promise.resolve(void saved.add(entity.id)),
-        known: (_: unknown, reference: Reference) =>
+        known: (_: unknown, reference: v0_7.Reference) =>
             Promise.resolve(
                 saved.has(reference.id) ? { id: reference.id, fetchedAt: null } : undefined,
             ),
