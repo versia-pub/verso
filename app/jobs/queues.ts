@@ -5,6 +5,12 @@ import {
     startAccountPruning,
 } from "../accounts/pruning.ts";
 import { announcementsQueue, publishDueAnnouncements } from "../announcements/announcements.ts";
+import {
+    metadataRefreshHandler,
+    metadataRefreshQueue,
+    metadataRefreshStartQueue,
+    startMetadataRefresh,
+} from "../instances/metadata_refresh.ts";
 import { deleteExpiredFlows } from "../auth/flow_queries.ts";
 import { acceptHandler, acceptQueue } from "../graph/follows.ts";
 import { moveHandler, moveQueue } from "../graph/moves.ts";
@@ -75,6 +81,7 @@ const hourly: Record<string, Queue["handler"]> = {
     "rate-limits-cleanup": (ctx) => deleteEndedRateLimits(ctx),
     [unusedMediaQueue]: (ctx) => removeUnusedMedia(ctx),
     [resanitiseStartQueue]: (ctx) => startResanitising(ctx),
+    [metadataRefreshStartQueue]: (ctx) => startMetadataRefresh(ctx),
 };
 
 /** Like `hourly`, but enqueued every day. */
@@ -132,6 +139,8 @@ export const queues: Record<string, Queue> = {
         perGroup: 1,
         leaseMs: 15 * 60_000,
     },
+    // By the instance.
+    [metadataRefreshQueue]: { handler: metadataRefreshHandler, concurrency: 4, perGroup: 1 },
     [fileCleanupQueue]: { handler: fileCleanupHandler, concurrency: 2 },
     // Each job deletes all a user has, which takes a while for a busy one.
     [accountDeletionQueue]: {

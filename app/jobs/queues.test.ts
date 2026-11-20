@@ -35,6 +35,14 @@ Deno.test("tombstones are cleaned up every hour", async () => {
     assertEquals(await test.ctx.db.selectFrom("deleted_entities").selectAll().execute(), []);
 });
 
+Deno.test("instance metadata is refreshed from an hourly start, one fetch per instance at a time", () => {
+    const queue = "instance-metadata-refresh-start";
+
+    assertEquals(tasks.filter((task) => task.queue === queue), [{ queue, every: "hour" }]);
+    assertEquals(queues["instance-metadata-refresh"].concurrency, 4);
+    assertEquals(queues["instance-metadata-refresh"].perGroup, 1);
+});
+
 Deno.test("each worker fans out one entity at a time, so they are sent in order", () => {
     assertEquals(queues[fanOutQueue].concurrency, 1);
 });

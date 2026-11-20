@@ -2,7 +2,7 @@ import denoConfig from "../../deno.json" with { type: "json" };
 import { assert, assertEquals, assertFalse, assertRejects } from "@std/assert";
 import { fakeTransport, type Server } from "../kernel/fake_transport.ts";
 import { createTestContext } from "../testing/context.ts";
-import { remoteKeys } from "./remote_keys.ts";
+import { refetchMetadata, remoteKeys } from "./remote_keys.ts";
 import { type KeyPair, keyPair, metadata, metadataServer } from "./testing.ts";
 
 /** Whether `key` is the public half of `pair`. */
@@ -197,11 +197,48 @@ Deno.test("a refresh takes a key another node stored, and fetches one never stor
     await test.ctx.db.updateTable("instances").set({ public_key: after.spki }).execute();
 
     assert(await isKeyOf(await keys.refresh(test.ctx, "b.example"), after));
+    // The refreshed key is kept in memory, so a change stored since isn't read yet.
+    await test.ctx.db.updateTable("instances").set({ public_key: before.spki }).execute();
     assert(await isKeyOf(await keys.get(test.ctx, "b.example"), after));
 
     test.transport.servers.set("c.example", metadataServer("c.example", before));
     assert(await isKeyOf(await keys.refresh(test.ctx, "c.example"), before));
     assertEquals(test.transport.sent.length, 2);
+});
+
+Deno.test("a key in memory is used until it is old enough, then the stored one is read", async () => {
+    await using test = await open();
+    const [before, after] = [await keyPair(), await keyPair()];
+    test.transport.servers.set("b.example", metadataServer("b.example", before));
+    const keys = remoteKeys({ refetchAfterMs: 1000 });
+    await keys.get(test.ctx, "b.example");
+    // Another node stores a new key.
+    await test.ctx.db.updateTable("instances").set({ public_key: after.spki }).execute();
+
+    test.clock.advance(999);
+    assert(await isKeyOf(await keys.get(test.ctx, "b.example"), before));
+
+    test.clock.advance(1);
+    assert(await isKeyOf(await keys.get(test.ctx, "b.example"), after));
+    // Reading it again starts the time over, and it was never fetched from the instance.
+    await test.ctx.db.updateTable("instances").set({ public_key: before.spki }).execute();
+    assert(await isKeyOf(await keys.get(test.ctx, "b.example"), after));
+    assertEquals(test.transport.sent.length, 1);
+});
+
+Deno.test("refetching metadata says whether it got a key, and stores it only then", async () => {
+    await using test = await open();
+    const pair = await keyPair();
+    test.transport.servers.set("b.example", metadataServer("b.example", pair));
+
+    assert(await refetchMetadata(test.ctx, "b.example"));
+    const stored = await test.row("b.example");
+    test.transport.servers.delete("b.example");
+    test.clock.advance(1000);
+    assertFalse(await refetchMetadata(test.ctx, "b.example"));
+
+    assertEquals(stored?.public_key, pair.spki);
+    assertEquals(await test.row("b.example"), stored);
 });
 
 Deno.test("only the most recently used keys are kept in memory", async () => {

@@ -87,25 +87,58 @@ const storeMetadata = (ctx: Context, domain: string, metadata: Metadata) =>
         takes_messages: metadata.takesMessages,
     });
 
+/**
+ * Fetches the metadata of the instance at `domain` and stores it, unless it fails or its key can't
+ * be imported, which leaves the stored row as it was. Returns the key it stored.
+ */
+const fetchAndStoreKey = async (ctx: Context, domain: string): Promise<CryptoKey | undefined> => {
+    const metadata = await fetchMetadata(ctx, domain);
+    const key = metadata === undefined ? undefined : await importPublicKey(metadata.key);
+    if (metadata === undefined || key === undefined) return undefined;
+
+    await storeMetadata(ctx, domain, metadata);
+    return key;
+};
+
+/**
+ * Fetches the metadata of the instance at `domain` again and stores it. Returns whether that worked.
+ */
+export const refetchMetadata = async (ctx: Context, domain: string): Promise<boolean> =>
+    await fetchAndStoreKey(ctx, domain) !== undefined;
+
 /** A key store for one process, shared by its requests. */
 export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
     const capacity = options.capacity ?? 1000;
     const refetchAfterMs = options.refetchAfterMs ?? 5 * 60 * 1000;
     const concurrency = options.concurrency ?? 16;
 
-    /** Keys by domain, least recently used first. */
-    const remembered = new Map<string, CryptoKey>();
+    /** Keys by domain, least recently used first, with when each was loaded. */
+    const remembered = new Map<string, { readonly key: CryptoKey; readonly loadedAt: number }>();
     /** Fetches in progress, so requests arriving together fetch once. */
     const fetching = new Map<string, Promise<CryptoKey | undefined>>();
     /** When each instance whose key couldn't be fetched may be requested again. */
     const failed = lru<string, number>(capacity);
 
-    const remember = (domain: string, key: CryptoKey) => {
+    const remember = (domain: string, key: CryptoKey, loadedAt: number) => {
         remembered.delete(domain);
-        remembered.set(domain, key);
+        remembered.set(domain, { key, loadedAt });
 
         const oldest = remembered.keys().next();
         if (remembered.size > capacity && !oldest.done) remembered.delete(oldest.value);
+    };
+
+    /**
+     * The key in memory, unless it was loaded `refetchAfterMs` ago or earlier. Then the stored row
+     * is read again, since another node or the daily refetch may have replaced the key.
+     */
+    const rememberedKey = (ctx: Context, domain: string) => {
+        const known = remembered.get(domain);
+        if (!known || ctx.clock.now().getTime() - known.loadedAt >= refetchAfterMs) {
+            return undefined;
+        }
+
+        remember(domain, known.key, known.loadedAt);
+        return known.key;
     };
 
     const fetchAndStore = (ctx: Context, domain: string) => {
@@ -117,15 +150,13 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
         if (fetching.size >= concurrency) return Promise.resolve(undefined);
 
         pending = (async () => {
-            const metadata = await fetchMetadata(ctx, domain);
-            const key = metadata === undefined ? undefined : await importPublicKey(metadata.key);
-            if (metadata === undefined || key === undefined) {
+            const key = await fetchAndStoreKey(ctx, domain);
+            if (key === undefined) {
                 failed.set(domain, now + refetchAfterMs);
                 return undefined;
             }
 
-            await storeMetadata(ctx, domain, metadata);
-            remember(domain, key);
+            remember(domain, key, ctx.clock.now().getTime());
             return key;
         })().finally(() => fetching.delete(domain));
 
@@ -135,21 +166,18 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
 
     return {
         get: async (ctx, domain, beforeFetch) => {
-            const known = remembered.get(domain);
-            if (known) {
-                remember(domain, known);
-                return known;
-            }
+            const known = rememberedKey(ctx, domain);
+            if (known) return known;
 
             const row = await findStoredKey(ctx, domain);
             const key = row?.public_key ? await importPublicKey(row.public_key) : undefined;
             if (!key) {
                 await beforeFetch?.();
                 // A fetch may have finished while this looked, and it is cached before it ends.
-                return remembered.get(domain) ?? await fetchAndStore(ctx, domain);
+                return rememberedKey(ctx, domain) ?? await fetchAndStore(ctx, domain);
             }
 
-            remember(domain, key);
+            remember(domain, key, ctx.clock.now().getTime());
             return key;
         },
         refresh: async (ctx, domain) => {
@@ -163,7 +191,7 @@ export const remoteKeys = (options: RemoteKeysOptions = {}): RemoteKeys => {
                 : undefined;
             if (!key) return await fetchAndStore(ctx, domain);
 
-            remember(domain, key);
+            remember(domain, key, ctx.clock.now().getTime());
             return key;
         },
     };

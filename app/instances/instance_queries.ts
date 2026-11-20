@@ -123,3 +123,19 @@ export const findStoredKey = (
         .select(["public_key", "key_fetched_at"])
         .where("domain", "=", domain)
         .executeTakeFirst();
+
+/**
+ * The domains of the Versia instances whose key was fetched before `before`, or never, sorted.
+ * Instances marked unreachable aren't included.
+ */
+export const staleKeyDomains = async (ctx: Context, before: Date): Promise<string[]> => {
+    const rows = await ctx.db.selectFrom("instances").select("domain")
+        .where("protocol", "=", "versia")
+        .where("public_key", "is not", null)
+        .where("unreachable_since", "is", null)
+        .where((eb) => eb.or([eb("key_fetched_at", "is", null), eb("key_fetched_at", "<", before)]))
+        .orderBy("domain")
+        .execute();
+
+    return rows.map((row) => row.domain);
+};
