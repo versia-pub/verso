@@ -56,7 +56,7 @@ let
       networking.firewall.allowedTCPPorts = [ 443 ];
       networking.extraHosts = ''
         ${nodes.a.networking.primaryIPAddress} a.test
-        ${nodes.b.networking.primaryIPAddress} b.test
+        ${nodes.b.networking.primaryIPAddress} b.test media.web.garage
       '';
       environment.systemPackages = [ pkgs.curl ];
     };
@@ -83,7 +83,8 @@ let
             s3_region = "garage";
           };
           s3_web = {
-            bind_addr = "127.0.0.1:3902";
+            # a.test caches b.test's media from here.
+            bind_addr = "0.0.0.0:3902";
             root_domain = ".web.garage";
           };
         };
@@ -124,7 +125,7 @@ let
         credentials.s3 = "/etc/verso-s3";
       };
       environment.etc.verso-s3.text = s3Key.secret;
-      networking.hosts."127.0.0.1" = [ "media.web.garage" ];
+      networking.firewall.allowedTCPPorts = [ 3902 ];
       environment.systemPackages = [ config.services.garage.package ];
     };
 in
@@ -260,17 +261,29 @@ pkgs.testers.runNixOSTest {
         served = b.succeed(f"curl --fail --silent --dump-header - --output /dev/null {url}").lower()
         assert f"content-type: {kind}" in served, served
 
-    # bea posts it, mentioning alice, and a.test shows it from b.test's bucket. Remote pictures have
-    # no preview of a.test's own.
+    # bea posts it, mentioning alice. a.test caches it and makes its own preview, and shows them
+    # from its own storage once it has. Until then its media proxy serves them, caching them first.
     api(b, "bea-token", "POST", "/api/v1/statuses", {"status": "@alice@a.test Look", "media_ids": [picture["id"]]})
     a.wait_until_succeeds(
         "curl --fail --silent https://a.test/api/v1/notifications "
-        "--header 'authorization: Bearer alice-token' | grep -qF '\"type\":\"mention\"'"
+        "--header 'authorization: Bearer alice-token' "
+        "| grep -qE '\"preview_url\":\"https://a.test/media/[0-9a-f]{64}\"'"
     )
     mention = next(n for n in api(a, "alice-token", "GET", "/api/v1/notifications") if n["type"] == "mention")
     [attachment] = mention["status"]["media_attachments"]
-    shown = [attachment["type"], attachment["url"], attachment["preview_url"], attachment["description"]]
-    assert shown == ["image", processed["url"], None, "A_square"], f"a.test shows {shown!r}"
+    assert [attachment["type"], attachment["description"]] == ["image", "A_square"], f"a.test shows {attachment!r}"
+    proxy = f"https://a.test/media/proxy/{attachment['id']}"
+    for url, kind in [
+        (attachment["url"], "image/png"),
+        (attachment["preview_url"], "image/webp"),
+        (proxy, "image/png"),
+        (f"{proxy}/small", "image/webp"),
+    ]:
+        served = a.succeed(
+            f"curl --fail --silent --location --dump-header - --output /dev/null {url} "
+            "--header 'authorization: Bearer alice-token'"
+        ).lower()
+        assert f"content-type: {kind}" in served, served
 
     # alice asks which colour, in a poll, and bea sees it from b.test.
     asked = api(a, "alice-token", "POST", "/api/v1/statuses", {
