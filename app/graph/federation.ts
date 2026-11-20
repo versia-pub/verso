@@ -23,6 +23,7 @@ import type { Context, DomainEvent } from "../kernel/context.ts";
 import { isFollowEvent } from "./events.ts";
 import { countFollows, followIdsFrom, followsFrom, type FollowSide } from "./follow_queries.ts";
 import { acceptFollow, follow, rejectFollow, unfollow } from "./follows.ts";
+import { acceptUnlessSilenced, isMoveSubscriber } from "./move_imports.ts";
 
 /**
  * A local user's followers or follows, oldest first, so pages stay stable as more arrive. A user
@@ -161,10 +162,11 @@ const SubscribeReject = v0_7.SubscribeReject.extend({ target_type: z.literal("Us
 
 /**
  * A user requesting to follow a local one. It is accepted at once, unless the local user is locked
- * or the follower is silenced, which leaves it waiting for the local user to answer. A follower
- * requesting again is accepted again, in case their instance missed it. A Subscribe to a user who
- * can't be followed, because they are suspended or moved, or naming a user Verso doesn't have, is
- * rejected.
+ * or the follower is silenced, which leaves it waiting for the local user to answer. A locked user
+ * who an account moved to accepts the subscribers of the account it moved from, unless silenced, as
+ * the migration extension says. A follower requesting again is accepted again, in case their
+ * instance missed it. A Subscribe to a user who can't be followed, because they are suspended or
+ * moved, or naming a user Verso doesn't have, is rejected.
  */
 const subscribeType: EntityType<z.infer<typeof Subscribe>> = {
     type: "Subscribe",
@@ -198,6 +200,16 @@ const subscribeType: EntityType<z.infer<typeof Subscribe>> = {
 
         const [existing] = await followsFrom(ctx, remoteId, [localId]);
         const result = await follow(ctx, remoteId, localId);
+
+        // `partiesOf` found the subscriber, so its reference is valid. Accepting emits the
+        // SubscribeAccept as for any accepted request, so it isn't sent again below.
+        const subscriber = parseReference(entity.subscriber, sender.domain);
+        if (
+            result === "requested" && subscriber !== undefined &&
+            await isMoveSubscriber(ctx, localId, subscriber.host, subscriber.id)
+        ) {
+            await acceptUnlessSilenced(ctx, remoteId, localId);
+        }
 
         // Every Subscribe is answered. A new follow was answered when `follow` emitted it.
         if (result === "missing" || result === "moved") {

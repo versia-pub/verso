@@ -71,6 +71,22 @@ export type AccountNotesTable = {
 };
 
 /**
+ * A subscriber of a remote account that moved to the local account `account_id`, as the reference
+ * its old instance sent. Most are unknown to Verso. The local account accepts their Subscribes for
+ * 30 days.
+ */
+export type MoveSubscribersTable = {
+    /** The local account the remote one moved to. */
+    account_id: string;
+    /** The subscriber's domain. */
+    host: string;
+    /** The subscriber's id on that domain. */
+    remote_id: string;
+    /** When it was recorded, for deleting it after 30 days. */
+    created_at: Date;
+};
+
+/**
  * A domain an account blocks, which blocks every account there, and on its subdomains, as a block
  * of each would.
  */

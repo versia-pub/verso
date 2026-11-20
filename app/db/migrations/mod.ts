@@ -109,6 +109,7 @@ import { accountUpdatedAt } from "./0107_account_updated_at.ts";
 import { noteUrlUpdatedAt } from "./0108_note_url_updated_at.ts";
 import { pollBallots } from "./0109_poll_ballots.ts";
 import { deletedEntities } from "./0110_deleted_entities.ts";
+import { moveSubscribers } from "./0111_move_subscribers.ts";
 
 /**
  * Every migration, by name. Names start with a four-digit number, since they run in name order. A
@@ -225,4 +226,5 @@ export const migrations: Record<string, Migration> = {
     "0108_note_url_updated_at": noteUrlUpdatedAt,
     "0109_poll_ballots": pollBallots,
     "0110_deleted_entities": deletedEntities,
+    "0111_move_subscribers": moveSubscribers,
 };

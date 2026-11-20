@@ -75,3 +75,13 @@ Mastodon refuses the settings methods too.
 
 Cancels the user's move, and returns the AccountMigration. Followers that already moved stay with
 the new account, and the user still can't move again until 30 days after they moved.
+
+## Moving from another instance
+
+When an account on another instance moves to a local user, Verso fetches the old account's
+subscribers and subscriptions from its instance, as the migration extension asks.
+
+- The user follows up to 7,500 of the accounts the old account followed, except the ones they block.
+  Following a locked account leaves a request.
+- The old account's followers are accepted for 30 days, even if the user is locked, except silenced
+  ones. Their Subscribes are accepted as they arrive.

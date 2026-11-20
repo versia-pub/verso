@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert";
+import { createLocalAccount } from "../accounts/testing.ts";
 import { fanOutQueue } from "../federation/deliver.ts";
 import { resanitiseQueue, resanitiseStartQueue } from "../federation/resanitising.ts";
 import { deliveryOf } from "../federation/testing.ts";
@@ -33,6 +34,24 @@ Deno.test("tombstones are cleaned up every hour", async () => {
     await drain(test.ctx, { [queue]: queues[queue] });
 
     assertEquals(await test.ctx.db.selectFrom("deleted_entities").selectAll().execute(), []);
+});
+
+Deno.test("move subscribers are cleaned up every hour", async () => {
+    await using test = await createTestContext();
+    const queue = "move-subscribers-cleanup";
+    assertEquals(tasks.filter((task) => task.queue === queue), [{ queue, every: "hour" }]);
+    assertEquals(queues["move-imports"].concurrency, 2);
+    assertEquals(queues["move-imports"].perGroup, 1);
+
+    const account_id = await createLocalAccount(test.ctx, "alice");
+    await test.ctx.db.insertInto("move_subscribers")
+        .values({ account_id, host: "b.test", remote_id: "bob", created_at: test.clock.now() })
+        .execute();
+    test.clock.advance(30 * 24 * 3_600_000);
+    await enqueue(test.ctx, { queue, payload: {} });
+    await drain(test.ctx, { [queue]: queues[queue] });
+
+    assertEquals(await test.ctx.db.selectFrom("move_subscribers").selectAll().execute(), []);
 });
 
 Deno.test("instance metadata is refreshed from an hourly start, one fetch per instance at a time", () => {

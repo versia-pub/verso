@@ -22,6 +22,7 @@ import { blockerIdsAfter, insertBlock } from "./block_queries.ts";
 import { blockingAny } from "./blocks.ts";
 import { follow, unfollow } from "./follows.ts";
 import { followsFrom, localFollowsOf } from "./follow_queries.ts";
+import { acceptUnlessSilenced } from "./move_imports.ts";
 import { mutesAfter, mutesOf, upsertMute } from "./mute_queries.ts";
 
 /** The queue of the jobs that move what local accounts have with an account that moved. */
@@ -58,7 +59,8 @@ const inBatches = async <Row>(
 /**
  * Moves the local followers of `from` to `to`, with the same options, and puts `to` in the lists
  * that have `from` because of the follow, then has them unfollow `from`. A follower that can't
- * follow `to`, or blocks it, keeps following `from`.
+ * follow `to`, or blocks it, keeps following `from`. If `from` is remote and `to` is local, `to`
+ * accepts them even if it is locked, unless they are silenced, as the migration extension says.
  */
 const moveFollows: Step = async (ctx, from, to) => {
     const target = ctx.db.selectFrom("accounts").select("id as account_id")
@@ -79,6 +81,9 @@ const moveFollows: Step = async (ctx, from, to) => {
                     languages: old.languages,
                 });
                 if (result !== "following" && result !== "requested") continue;
+                if (result === "requested" && from.domain !== null && to.domain === null) {
+                    await acceptUnlessSilenced(tx, old.follower_id, to.id);
+                }
 
                 const [moved] = await followsFrom(tx, old.follower_id, [to.id]);
                 await copyListAccounts(tx, old.id, { accountId: to.id, followId: moved.id });

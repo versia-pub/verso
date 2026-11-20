@@ -13,6 +13,11 @@ import {
 } from "../instances/metadata_refresh.ts";
 import { deleteExpiredFlows } from "../auth/flow_queries.ts";
 import { acceptHandler, acceptQueue } from "../graph/follows.ts";
+import {
+    deleteExpiredMoveSubscribers,
+    moveImportHandler,
+    moveImportQueue,
+} from "../graph/move_imports.ts";
 import { moveHandler, moveQueue } from "../graph/moves.ts";
 import {
     deleteExpiredDeliveryBodies,
@@ -77,6 +82,7 @@ const hourly: Record<string, Queue["handler"]> = {
     "jobs-cleanup": (ctx) => deleteExpiredJobs(ctx),
     "delivery-bodies-cleanup": (ctx) => deleteExpiredDeliveryBodies(ctx),
     "tombstones-cleanup": (ctx) => deleteExpiredTombstones(ctx),
+    "move-subscribers-cleanup": (ctx) => deleteExpiredMoveSubscribers(ctx),
     "oauth-cleanup": (ctx) => deleteExpiredFlows(ctx),
     "rate-limits-cleanup": (ctx) => deleteEndedRateLimits(ctx),
     [unusedMediaQueue]: (ctx) => removeUnusedMedia(ctx),
@@ -118,6 +124,8 @@ export const queues: Record<string, Queue> = {
     [messageQueue]: { handler: messageHandler, concurrency: 2, perGroup: 1 },
     [acceptQueue]: { handler: acceptHandler, concurrency: 2 },
     [moveQueue]: { handler: moveHandler, concurrency: 2 },
+    // By the instance of the account that moved, which each job fetches from.
+    [moveImportQueue]: { handler: moveImportHandler, concurrency: 2, perGroup: 1 },
     [undoneReactionsQueue]: { handler: undoneReactionsHandler, concurrency: 2 },
     [notifyQueue]: { handler: notifyHandler, concurrency: 2 },
     [totalsQueue]: { handler: totalsHandler, concurrency: 4, perGroup: 2 },

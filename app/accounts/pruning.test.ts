@@ -422,6 +422,7 @@ const ownColumns = [
     "lists.account_id",
     "markers.account_id",
     "media.account_id",
+    "move_subscribers.account_id",
     "note_pins.account_id",
     "notification_permissions.account_id",
     "notification_policies.account_id",

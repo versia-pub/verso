@@ -6,13 +6,12 @@
  * @module
  */
 import { z } from "zod";
-import { fetchSigned } from "../federation/request.ts";
+import { fetchEntityCollection } from "../federation/collections.ts";
 import { domainsOf } from "../instances/instance_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
 import { enqueue } from "../jobs/job_queries.ts";
 import { type Handler, PermanentFailure } from "../jobs/worker.ts";
 import type { Context } from "../kernel/context.ts";
-import { entityUrl } from "../kernel/urls.ts";
 import { findNote, type NoteRow } from "./note_queries.ts";
 import { saveTotals, totalsOf } from "./total_queries.ts";
 
@@ -65,40 +64,20 @@ const largestTotal = 2 ** 31 - 1;
 const Total = z.object({ total: z.number().int().min(0) });
 
 /**
- * A page of the collection `name` of the remote status `remoteId` on `domain`, as JSON, or `null`
- * if its instance doesn't have it.
- */
-export const fetchNoteCollection = async (
-    ctx: Context,
-    domain: string,
-    remoteId: string,
-    name: string,
-    page: { readonly offset?: number; readonly limit: number },
-): Promise<unknown> => {
-    const url = entityUrl(domain, "pub.versia:social/Note", remoteId);
-    url.pathname += `/collections/${name}`;
-    if (page.offset !== undefined) url.searchParams.set("offset", String(page.offset));
-    url.searchParams.set("limit", String(page.limit));
-
-    const reply = await fetchSigned(ctx, url);
-    if (reply.status === 404 || reply.status === 410) return null;
-    if (reply.status < 200 || reply.status > 299) {
-        throw new Error(`${domain} answered ${reply.status} for ${name} of ${remoteId}`);
-    }
-
-    try {
-        return JSON.parse(new TextDecoder().decode(reply.body));
-    } catch {
-        throw new PermanentFailure(`${domain} sent an invalid ${name}`);
-    }
-};
-
-/**
  * The total of one of a status's collections, or `null` if its instance doesn't have it. Requests
  * one item, as a page can't be empty.
  */
 const fetchTotal = async (ctx: Context, domain: string, remoteId: string, name: string) => {
-    const page = await fetchNoteCollection(ctx, domain, remoteId, name, { limit: 1 });
+    const page = await fetchEntityCollection(
+        ctx,
+        domain,
+        "pub.versia:social/Note",
+        remoteId,
+        name,
+        {
+            limit: 1,
+        },
+    );
     if (page === null) return null;
 
     const parsed = Total.safeParse(page);

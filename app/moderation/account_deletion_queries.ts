@@ -32,6 +32,7 @@ export const purgedColumns = [
     ["filters", "account_id"],
     ["follows", "follower_id"],
     ["follows", "followee_id"],
+    ["move_subscribers", "account_id"],
     ["likes", "account_id"],
     ["reactions", "account_id"],
     ["list_accounts", "account_id"],

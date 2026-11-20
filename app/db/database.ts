@@ -23,6 +23,7 @@ import type {
     BlocksTable,
     EndorsementsTable,
     FollowsTable,
+    MoveSubscribersTable,
     MutesTable,
 } from "../graph/tables.ts";
 import type { LikesTable, ReactionsTable } from "../interactions/tables.ts";
@@ -107,6 +108,7 @@ export type Database = {
     follows: FollowsTable;
     blocks: BlocksTable;
     bookmarks: BookmarksTable;
+    move_subscribers: MoveSubscribersTable;
     mutes: MutesTable;
     identities: IdentitiesTable;
     instance_keys: InstanceKeysTable;

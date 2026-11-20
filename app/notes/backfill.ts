@@ -7,6 +7,7 @@
 import { getLogger } from "@logtape/logtape";
 import { parseReference, v0_7 } from "@versia/protocol";
 import { z } from "zod";
+import { fetchEntityCollection } from "../federation/collections.ts";
 import { fetchBudget, isRemoteFailure, withDeadline } from "../federation/resolver.ts";
 import { domainsOf } from "../instances/instance_queries.ts";
 import type { JobsTable } from "../jobs/tables.ts";
@@ -21,7 +22,6 @@ import {
     startRefresh,
 } from "./async_refreshes.ts";
 import { findNote, findRemoteNoteAt, type NoteRow } from "./note_queries.ts";
-import { fetchNoteCollection } from "./totals.ts";
 
 const logger = getLogger(["verso", "notes"]);
 
@@ -121,10 +121,14 @@ export const fetchReplies = async (
             if (pages >= max.pages || ctx.clock.now().getTime() >= until) return;
             pages++;
 
-            const page = await fetchNoteCollection(timed, domain, remoteId, "replies", {
-                offset,
-                limit: 40,
-            });
+            const page = await fetchEntityCollection(
+                timed,
+                domain,
+                "pub.versia:social/Note",
+                remoteId,
+                "replies",
+                { offset, limit: 40 },
+            );
             if (page === null) return;
             const parsed = v0_7.ReferenceCollection.safeParse(page);
             if (!parsed.success) throw new PermanentFailure(`${domain} sent invalid replies`);
